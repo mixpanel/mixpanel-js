@@ -372,6 +372,13 @@ mpmodule("mixpanel.track");
         same(data.properties.longstr_array[0].length, 255, "sub arrays of strings should have truncated values");
     });// truncate properties test
 
+    test("should send screen properties", 2, function() {
+        var data = mixpanel.test.track('test', {});
+
+        same(data.properties.$screen_height, screen.height.toString());
+        same(data.properties.$screen_width, screen.width.toString());
+    });
+
 mpmodule("json");
 
     test("basic", 2, function() {
