@@ -375,8 +375,8 @@ mpmodule("mixpanel.track");
     test("should send screen properties", 2, function() {
         var data = mixpanel.test.track('test', {});
 
-        same(data.properties.$screen_height, screen.height.toString());
-        same(data.properties.$screen_width, screen.width.toString());
+        same(data.properties.$screen_height, screen.height);
+        same(data.properties.$screen_width, screen.width);
     });
 
 mpmodule("json");

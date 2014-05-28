@@ -1259,14 +1259,15 @@ Globals should be all caps
         },
 
         properties: function() {
-            return _.strip_empty_properties({
+            return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
                 '$browser': _.info.browser(userAgent, navigator.vendor, window.opera),
                 '$referrer': document.referrer,
                 '$referring_domain': _.info.referringDomain(document.referrer),
-                '$device': _.info.device(userAgent),
-                '$screen_height': screen.height.toString(),
-                '$screen_width': screen.width.toString(),
+                '$device': _.info.device(userAgent)
+            }), {
+                '$screen_height': screen.height,
+                '$screen_width': screen.width,
                 'mp_lib': 'web'
             });
         },
