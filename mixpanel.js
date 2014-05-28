@@ -1265,8 +1265,8 @@ Globals should be all caps
                 '$referrer': document.referrer,
                 '$referring_domain': _.info.referringDomain(document.referrer),
                 '$device': _.info.device(userAgent),
-                '$screen_height': screen.height,
-                '$screen_width': screen.width,
+                '$screen_height': screen.height.toString(),
+                '$screen_width': screen.width.toString(),
                 'mp_lib': 'web'
             });
         },
