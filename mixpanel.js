@@ -1711,7 +1711,7 @@ Globals should be all caps
             set_q = this._get_or_create_queue(SET_ACTION),
             set_once_q = this._get_or_create_queue(SET_ONCE_ACTION),
             add_q = this._get_or_create_queue(ADD_ACTION),
-            append_q = this._get_or_create_queue(APPEND_ACTION, []);
+            append_q = this._get_or_create_queue(APPEND_ACTION, []),
             union_q = this._get_or_create_queue(UNION_ACTION, []);
 
         if (q_key === SET_QUEUE_KEY) {
@@ -2321,13 +2321,13 @@ Globals should be all caps
      *
      * @param {String} unique_id A string that uniquely identifies a user
      */
-    MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _union_callback, _set_once_callback) {
+    MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
         // Optional Parameters
         //  _set_callback:function  A callback to be run if and when the People set queue is flushed
         //  _add_callback:function  A callback to be run if and when the People add queue is flushed
         //  _append_callback:function  A callback to be run if and when the People append queue is flushed
-        //  _union_callback:function  A callback to be run if and when the People union queue is flushed
         //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
+        //  _union_callback:function  A callback to be run if and when the People union queue is flushed
 
         // identify only changes the distinct id if it doesn't match either the existing or the alias;
         // if it's new, blow away the alias as well.
@@ -2337,7 +2337,7 @@ Globals should be all caps
         }
         this._flags.identify_called = true;
         // Flush any queued up people requests
-        this['people']._flush(_set_callback, _add_callback, _append_callback, _union_callback, _set_once_callback);
+        this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback);
     };
 
     /**
@@ -2846,13 +2846,13 @@ Globals should be all caps
 
     // Flush queued engage operations - order does not matter,
     // and there are network level race conditions anyway
-    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _union_callback, _set_once_callback) {
+    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
         var _this = this,
             i,
             $set_queue = _.extend({}, this._mixpanel.cookie._get_queue(SET_ACTION)),
             $set_once_queue = _.extend({}, this._mixpanel.cookie._get_queue(SET_ONCE_ACTION)),
             $add_queue = _.extend({}, this._mixpanel.cookie._get_queue(ADD_ACTION)),
-            $append_queue = this._mixpanel.cookie._get_queue(APPEND_ACTION);
+            $append_queue = this._mixpanel.cookie._get_queue(APPEND_ACTION),
             $union_queue = this._mixpanel.cookie._get_queue(UNION_ACTION);
 
         if (!_.isUndefined($set_queue) && _.isObject($set_queue) && !_.isEmptyObject($set_queue)) {
@@ -2969,6 +2969,7 @@ Globals should be all caps
     MixpanelPeople.prototype['set_once']                = MixpanelPeople.prototype.set_once;
     MixpanelPeople.prototype['increment']               = MixpanelPeople.prototype.increment;
     MixpanelPeople.prototype['append']                  = MixpanelPeople.prototype.append;
+    MixpanelPeople.prototype['union']                   = MixpanelPeople.prototype.union;
     MixpanelPeople.prototype['track_charge']            = MixpanelPeople.prototype.track_charge;
     MixpanelPeople.prototype['clear_charges']           = MixpanelPeople.prototype.clear_charges;
     MixpanelPeople.prototype['delete_user']             = MixpanelPeople.prototype.delete_user;
