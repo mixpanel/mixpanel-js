@@ -52,14 +52,16 @@ Globals should be all caps
 /** @const */       , SET_ONCE_QUEUE_KEY        = "__mpso"
 /** @const */       , ADD_QUEUE_KEY             = "__mpa"
 /** @const */       , APPEND_QUEUE_KEY          = "__mpap"
+/** @const */       , UNION_QUEUE_KEY           = "__mpu"
 /** @const */       , SET_ACTION                = "$set"
 /** @const */       , SET_ONCE_ACTION           = "$set_once"
 /** @const */       , ADD_ACTION                = "$add"
 /** @const */       , APPEND_ACTION             = "$append"
+/** @const */       , UNION_ACTION              = "$union"
 // This key is deprecated, but we want to check for it to see whether aliasing is allowed.
 /** @const */       , PEOPLE_DISTINCT_ID_KEY    = "$people_distinct_id"
 /** @const */       , ALIAS_ID_KEY              = "__alias"
-/** @const */       , RESERVED_PROPERTIES       = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY];
+/** @const */       , RESERVED_PROPERTIES       = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, UNION_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY];
 
 /*
  * Dynamic... constants? Is that an oxymoron?
@@ -1709,7 +1711,8 @@ Globals should be all caps
             set_q = this._get_or_create_queue(SET_ACTION),
             set_once_q = this._get_or_create_queue(SET_ONCE_ACTION),
             add_q = this._get_or_create_queue(ADD_ACTION),
-            append_q = this._get_or_create_queue(APPEND_ACTION, []);
+            append_q = this._get_or_create_queue(APPEND_ACTION, []),
+            union_q = this._get_or_create_queue(UNION_ACTION, []);
 
         if (q_key === SET_QUEUE_KEY) {
             // Update the set queue - we can override any existing values
@@ -1741,6 +1744,8 @@ Globals should be all caps
             }, this);
         } else if (q_key === APPEND_QUEUE_KEY) {
             append_q.push(q_data);
+        } else if (q_key === UNION_QUEUE_KEY) {
+            union_q.push(q_data);
         }
 
         console.log("MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):");
@@ -1769,6 +1774,8 @@ Globals should be all caps
             return ADD_QUEUE_KEY;
         } else if (queue === APPEND_ACTION) {
             return APPEND_QUEUE_KEY;
+        } else if (queue === UNION_ACTION) {
+            return UNION_QUEUE_KEY;
         } else {
             console.error("Invalid queue:", queue);
         }
@@ -2314,12 +2321,13 @@ Globals should be all caps
      *
      * @param {String} unique_id A string that uniquely identifies a user
      */
-    MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback) {
+    MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
         // Optional Parameters
         //  _set_callback:function  A callback to be run if and when the People set queue is flushed
         //  _add_callback:function  A callback to be run if and when the People add queue is flushed
         //  _append_callback:function  A callback to be run if and when the People append queue is flushed
         //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
+        //  _union_callback:function  A callback to be run if and when the People union queue is flushed
 
         // identify only changes the distinct id if it doesn't match either the existing or the alias;
         // if it's new, blow away the alias as well.
@@ -2329,7 +2337,7 @@ Globals should be all caps
         }
         this._flags.identify_called = true;
         // Flush any queued up people requests
-        this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback);
+        this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback);
     };
 
     /**
@@ -2638,8 +2646,8 @@ Globals should be all caps
      *     });
      *
      * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
-     * @param {*} [value] An amount to increment the given property
-     * @param {Function} [callback] If provided, the callback will be called after the tracking event
+     * @param {*} [value] a value to append to the current property
+     * @param {Function} [callback] If provided, the callback will be called after the tracking event.
      */
     MixpanelPeople.prototype.append = function(list_name, value, callback) {
         var data = {};
@@ -2657,6 +2665,55 @@ Globals should be all caps
             $append[list_name] = value;
         }
         data[APPEND_ACTION] = $append;
+
+        return this._send_request(data, callback);
+    };
+
+    /*
+     * Performs a union on a list, list values are merged with the existing list on the user profile, ignoring duplicate list values
+     *
+     * ### Usage:
+     *
+     *     // merges a value to a list, creating it if needed
+     *     mixpanel.people.union('pages_visited', 'homepage');
+     *
+     *     // like mixpanel.people.set(), you can append multiple properties at once:
+     *     mixpanel.people.union({
+     *         list1: 'bob',
+     *         list2: 123
+     *     });
+     *
+     *     // like mixpanel.people.append(), you can append multiple values to the same list:
+     *     mixpanel.people.union({
+     *         list1: ['bob', 'billy'],
+     *     });
+     *
+     * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
+     * @param {*} [value] Value / values to be merged with the given property
+     * @param {Function} [callback] If provided, the callback will be called after the tracking event
+     */
+    MixpanelPeople.prototype.union = function(list_name, value, callback) {
+        var data = {};
+        var $union = {};
+        var add_list = function(key, value) {
+            if (_.isArray(value)) {
+                $union[key] = value;
+            } else if (value) {
+                $union[key] = [value];
+            }
+        };
+
+        if (_.isObject(list_name)) {
+            _.each(list_name, function(v, k) {
+                if (k !== '$distinct_id' && k !== '$token') {
+                    add_list(k, v);
+                }
+            });
+            callback = value;
+        } else {
+            add_list(list_name, value);
+        }
+        data[UNION_ACTION] = $union;
 
         return this._send_request(data, callback);
     };
@@ -2780,6 +2837,8 @@ Globals should be all caps
             this._mixpanel.cookie._add_to_people_queue(ADD_ACTION, data);
         } else if (APPEND_ACTION in data) {
             this._mixpanel.cookie._add_to_people_queue(APPEND_ACTION, data);
+        } else if (UNION_ACTION in data) {
+            this._mixpanel.cookie._add_to_people_queue(UNION_ACTION, data);
         } else {
             console.error("Invalid call to _enqueue():", data);
         }
@@ -2787,12 +2846,14 @@ Globals should be all caps
 
     // Flush queued engage operations - order does not matter,
     // and there are network level race conditions anyway
-    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback) {
+    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
         var _this = this,
+            i,
             $set_queue = _.extend({}, this._mixpanel.cookie._get_queue(SET_ACTION)),
             $set_once_queue = _.extend({}, this._mixpanel.cookie._get_queue(SET_ONCE_ACTION)),
             $add_queue = _.extend({}, this._mixpanel.cookie._get_queue(ADD_ACTION)),
-            $append_queue = this._mixpanel.cookie._get_queue(APPEND_ACTION);
+            $append_queue = this._mixpanel.cookie._get_queue(APPEND_ACTION),
+            $union_queue = this._mixpanel.cookie._get_queue(UNION_ACTION);
 
         if (!_.isUndefined($set_queue) && _.isObject($set_queue) && !_.isEmptyObject($set_queue)) {
             _this._mixpanel.cookie._pop_from_people_queue(SET_ACTION, $set_queue);
@@ -2836,7 +2897,7 @@ Globals should be all caps
         // we have to fire off each $append individually since there is
         // no concat method server side
         if (!_.isUndefined($append_queue) && _.isArray($append_queue) && $append_queue.length) {
-            for (var i = $append_queue.length - 1; i >= 0; i--) {
+            for (i = $append_queue.length - 1; i >= 0; i--) {
                 var $append_item = $append_queue.pop();
                 _this.append($append_item, function(response, data) {
                     if (response == 0) {
@@ -2846,6 +2907,20 @@ Globals should be all caps
                 });
             };
             // Save the shortened append queue
+            _this._mixpanel.cookie.save();
+        }
+
+        if (!_.isUndefined($union_queue) && _.isArray($union_queue) && $union_queue.length) {
+            for (i = $union_queue.length - 1; i >= 0; i--) {
+                var $union_item = $union_queue.pop();
+                _this.union($union_item, function(response, data) {
+                    if (response == 0) {
+                        _this._mixpanel.cookie._add_to_people_queue(UNION_ACTION, $union_item);
+                    }
+                    if (!_.isUndefined(_union_callback)) { _union_callback(response, data); }
+                });
+            };
+            // Save the shortened union queue
             _this._mixpanel.cookie.save();
         }
     };
@@ -2894,6 +2969,7 @@ Globals should be all caps
     MixpanelPeople.prototype['set_once']                = MixpanelPeople.prototype.set_once;
     MixpanelPeople.prototype['increment']               = MixpanelPeople.prototype.increment;
     MixpanelPeople.prototype['append']                  = MixpanelPeople.prototype.append;
+    MixpanelPeople.prototype['union']                   = MixpanelPeople.prototype.union;
     MixpanelPeople.prototype['track_charge']            = MixpanelPeople.prototype.track_charge;
     MixpanelPeople.prototype['clear_charges']           = MixpanelPeople.prototype.clear_charges;
     MixpanelPeople.prototype['delete_user']             = MixpanelPeople.prototype.delete_user;

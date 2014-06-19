@@ -1270,6 +1270,55 @@ mpmodule("mixpanel.people.append");
         same(s, { "$distinct_id": this.id, "$token": this.token, "$append": { "a": 3 }}, "$token and $distinct_id pulled out correctly");
     });
 
+mpmodule("mixpanel.people.union");
+
+    test("union (basic functionality)", 6, function() {
+        var _union1 = { 'key': 'val' },
+            _union2 = { 'key': ['val'] },
+            _union3 = { 'key': 'val', 'key2': 'val2' },
+            _union4 = { 'key': ['val'], 'key2': ['val2'] },
+            i;
+
+        i = mixpanel.people.union('key', 'val');
+        same(i["$union"], { 'key': ['val'] }, ".union() with two params works");
+
+        i = mixpanel.people.union(_union1);
+        same(i["$union"], { 'key': ['val'] }, ".union() with an object (only 1 key) works");
+
+        i = mixpanel.people.union(_union2);
+        same(i["$union"], _union2, ".union() with an object (array) works");
+
+        i = mixpanel.people.union(_union3);
+        same(i["$union"], { 'key': ['val'], 'key2': ['val2'] }, ".union() with an object (multiple keys) works");
+
+        i = mixpanel.people.union(_union4);
+        same(i["$union"], _union4, ".union() with an object (multiple keys) with arrays as values works");
+
+        mixpanel.test.identify(this.id);
+        i = mixpanel.test.people.union(_union2);
+        same(i, { "$distinct_id": this.id, "$token": this.token, "$union": _union2 }, "Basic union works for additional libs");
+    });
+
+    test("union queues data", 2, function() {
+        stop();
+        s = mixpanel.test.people.union({ a: 2 }, function(resp) {
+            same(resp, -1, "responded with 'queued'");
+            start();
+        });
+        same(mixpanel.test.cookie.props['__mpu'], [ { a: [2] } ], "queued union saved");
+    });
+
+    test("union hits server immediately if identified", 2, function() {
+        mixpanel.test.identify(this.id);
+
+        stop();
+        s = mixpanel.test.people.union({ a: 3 }, function(resp) {
+            same(resp, 1, "responded with 'success'");
+            start();
+        });
+        same(s, { "$distinct_id": this.id, "$token": this.token, "$union": { "a": [3] }}, "$token and $distinct_id pulled out correctly");
+    });
+
 mpmodule("mixpanel.people.track_charge");
 
     test("track_charge (basic functionality)", 2, function() {
@@ -1406,6 +1455,38 @@ mpmodule("mixpanel.people flushing");
         });
     });
 
+    test("identify flushes union queue", 12, function() {
+        var _this = this, run = 0, queue_name = '__mpu';
+        mixpanel.test.people.union("a", 2);
+        mixpanel.test.people.union({ 'b': 'asdf' });
+        mixpanel.test.people.union("c", [1,2,3]);
+
+        same(mixpanel.test.cookie.props[queue_name].length, 3, 'Queue has 3 elements before flushing');
+
+        stop(); stop(); stop();
+        mixpanel.test.identify(this.id, function() {}, function() {}, function() {}, function() {}, function(resp, data) {
+            ok(resp == 1, "Successful write");
+            ok(contains_obj(data, {
+                "$token": _this.token,
+                "$distinct_id": _this.id
+            }));
+
+            var $union = data['$union'];
+            if (_.has($union, 'a')) { same($union, { 'a': [2] }); }
+            else if (_.has($union, 'b')) { same($union, { 'b': ['asdf'] }); }
+            else if (_.has($union, 'c')) { same($union, { 'c': [1,2,3] }); }
+
+            run++;
+            if (run == 3) {
+                same(mixpanel.test.cookie.props[queue_name], [], "Queue is cleared after flushing");
+                // reload cookie to make sure it's persisted correctly
+                mixpanel.test.cookie.load();
+                same(mixpanel.test.cookie.props[queue_name], [], "Empty queue is persisted");
+            };
+            start();
+        });
+    });
+
     test("identify does not make a request if nothing is queued", 1, function() {
         var num_scripts = $('script').length;
         mixpanel.test.identify(this.id);
@@ -1422,19 +1503,22 @@ mpmodule("mixpanel.people flushing");
     // to the server.  By making sure the queue's are cleared right away
     // (before waiting for the server response), we can avoid this
     // issue.
-    test("identify clears out queues before server response", 6, function() {
+    test("identify clears out queues before server response", 8, function() {
         mixpanel.test.people.set("key", "val");
         mixpanel.test.people.increment("num");
         mixpanel.test.people.append("ary", 'val');
+        mixpanel.test.people.union("stuff", 'val');
 
         mixpanel.test.identify(this.id);
 
         same(mixpanel.test.cookie.props['__mpap'], []);
+        same(mixpanel.test.cookie.props['__mpu'], []);
         same(mixpanel.test.cookie.props['__mpa'], {});
         same(mixpanel.test.cookie.props['__mps'], {});
         // reload cookie to make sure it's persisted correctly
         mixpanel.test.cookie.load();
         same(mixpanel.test.cookie.props['__mpap'], []);
+        same(mixpanel.test.cookie.props['__mpu'], []);
         same(mixpanel.test.cookie.props['__mpa'], {});
         same(mixpanel.test.cookie.props['__mps'], {});
     });
