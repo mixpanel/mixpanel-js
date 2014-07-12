@@ -1974,6 +1974,7 @@ Globals should be all caps
 
         // needed to correctly format responses
         var verbose_mode = this.get_config('verbose');
+        if (data['verbose']) { verbose_mode = true; }
 
         if (this.get_config('test')) { data['test'] = 1; }
         if (verbose_mode) { data['verbose'] = 1; }
@@ -2327,9 +2328,32 @@ Globals should be all caps
             this.unregister(ALIAS_ID_KEY);
             this._register_single('distinct_id', unique_id);
         }
+        this._check_and_handle_notifications(unique_id);
         this._flags.identify_called = true;
         // Flush any queued up people requests
         this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback);
+    };
+
+    MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
+        if (this._flags.identify_called) {
+            return;
+        }
+
+        console.log("MIXPANEL NOTIFICATION CHECK");
+
+        data = {
+            verbose:     true,
+            version:     '1',
+            lib:         'web',
+            token:       this.get_config('token'),
+            distinct_id: distinct_id
+        };
+        var host = DEBUG ? window.location.origin : this.get_config('api_host');
+        this._send_request(host + '/decide/', data, function(r) {
+            if (r.notifications && r.notifications.length > 0) {
+console.log("NOTIFICATIONS WAITING");
+            }
+        });
     };
 
     /**
