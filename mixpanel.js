@@ -2384,19 +2384,35 @@ Globals should be all caps
                 'left:0;right:0;' +
                 'width:350px;' +
                 'margin:100px auto;' +
-                'padding:30px;' +
+                'padding:5px;' +
                 'text-align:center;' +
                 'background-color:white;' +
                 'font-size:14px' +
             '}' +
-            '\n#mixpanel-notification-dismiss {' +
+            '\n.mixpanel-notification-body {' +
+                'margin-top:10px;' +
+                'padding:20px 30px 10px 30px;' +
+            '}' +
+            '\n#mixpanel-notification-cancel {' +
+                'float:right;' +
+                'padding-right:5px;' +
+                'cursor:pointer;' +
+            '}' +
+            '\n#mixpanel-notification-button {' +
                 'display:inline-block;' +
-                'margin-top:20px;' +
+                'margin:20px auto 10px auto;' +
                 'padding:10px;' +
                 'border:1px solid gray;' +
             '}';
         document.head.appendChild(style_el);
 
+        var dest_url = notification.cta_url,
+            clickthrough = false;
+        if (!dest_url || dest_url.length === 0) {
+            dest_url = 'dismiss';
+        } else {
+            clickthrough = true;
+        }
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
         notif_wrapper.innerHTML =
@@ -2404,18 +2420,30 @@ Globals should be all caps
                 '<div class="mixpanel-notification-bgwrapper">' +
                     '<div class="mixpanel-notification-bg"></div>' +
                     '<div class="mixpanel-notification">' +
+                        '<div id="mixpanel-notification-cancel">x</div>' +
                         '<div class="mixpanel-notification-body">' +
                             notification.body +
                         '</div>' +
-                        '<a id="mixpanel-notification-dismiss" href="dismiss">GOT IT</a>' +
+                        '<a id="mixpanel-notification-button" href="' + dest_url + '">GOT IT</a>' +
                     '</div>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(notif_wrapper);
 
-        document.getElementById('mixpanel-notification-dismiss').addEventListener('click', function(e) {
-            e.preventDefault();
+        var dismiss = function() {
             document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
+        };
+        document.getElementById('mixpanel-notification-cancel').addEventListener('click', function(e) {
+            e.preventDefault();
+            dismiss();
+        });
+        document.getElementById('mixpanel-notification-button').addEventListener('click', function(e) {
+            e.preventDefault();
+            dismiss();
+            //TODO track clickthrough?
+            if (clickthrough) {
+                window.location.href = dest_url;
+            }
         });
     };
 
