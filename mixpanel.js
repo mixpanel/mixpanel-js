@@ -2389,9 +2389,14 @@ Globals should be all caps
                 'background-color:white;' +
                 'font-size:14px' +
             '}' +
-            '\n.mixpanel-notification-body {' +
+            '\n.mixpanel-notification-title {' +
                 'margin-top:10px;' +
                 'padding:20px 30px 10px 30px;' +
+                'font-size:120%;font-weight:bold;' +
+            '}' +
+            '\n.mixpanel-notification-body {' +
+                'margin-top:10px;' +
+                'padding:10px 30px;' +
             '}' +
             '\n#mixpanel-notification-cancel {' +
                 'float:right;' +
@@ -2422,9 +2427,8 @@ Globals should be all caps
                     '<div class="mixpanel-notification-bg"></div>' +
                     '<div class="mixpanel-notification">' +
                         '<div id="mixpanel-notification-cancel">x</div>' +
-                        '<div class="mixpanel-notification-body">' +
-                            notification.body +
-                        '</div>' +
+                        '<div class="mixpanel-notification-title">' + notification.title + '</div>' +
+                        '<div class="mixpanel-notification-body">' + notification.body + '</div>' +
                         '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
                     '</div>' +
                 '</div>' +
