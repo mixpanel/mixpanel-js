@@ -2360,16 +2360,46 @@ Globals should be all caps
     MixpanelLib.prototype._show_notification = function(notification) {
         var style_el = document.createElement('style');
         style_el.innerHTML =
-            '\n.mixpanel-notification-overlay {position:absolute;left:0px;top:0px;width:100%;height:100%;text-align:center;z-index:10000}' +
-            '\n.mixpanel-notification {width:250px;text-align:center;margin:100px auto;padding:20px;background-color:white;font-size:14px}';
+            '\nbody {height:100%;margin:0;padding:0}' + // IE hack
+            '\n.mixpanel-notification-overlay {' +
+                'position:absolute;' +
+                'top:0;left:0;' +
+                'width:100%; height:100%;' +
+                'text-align:center;' +
+                'z-index:10000' +
+            '}' +
+            '\n.mixpanel-notification-bgwrapper {' +
+                'position:relative;' +
+                'width:100%;height:100%;' +
+            '}' +
+            '\n.mixpanel-notification-bg {' +
+                'position:absolute;' +
+                'top:0;left:0;' +
+                'width:100%;height:100%;' +
+                'background-color:black;' +
+                'opacity:0.5' +
+            '}' +
+            '\n.mixpanel-notification {' +
+                'position:absolute;' +
+                'left:0;right:0;' +
+                'width:250px;' +
+                'margin:100px auto;' +
+                'padding:20px;' +
+                'text-align:center;' +
+                'background-color:white;' +
+                'font-size:14px' +
+            '}';
         document.head.appendChild(style_el);
 
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
         notif_wrapper.innerHTML =
             '<div class="mixpanel-notification-overlay">' +
-                '<div class="mixpanel-notification">' +
-                    notification.body +
+                '<div class="mixpanel-notification-bgwrapper">' +
+                    '<div class="mixpanel-notification-bg"></div>' +
+                    '<div class="mixpanel-notification">' +
+                        notification.body +
+                    '</div>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(notif_wrapper);
