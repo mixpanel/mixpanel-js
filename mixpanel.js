@@ -2349,11 +2349,23 @@ Globals should be all caps
             distinct_id: distinct_id
         };
         var host = DEBUG ? window.location.origin : this.get_config('api_host');
+        var self = this;
         this._send_request(host + '/decide/', data, function(r) {
             if (r.notifications && r.notifications.length > 0) {
-console.log("NOTIFICATIONS WAITING");
+                self._show_notification(r.notifications[0]);
             }
         });
+    };
+
+    MixpanelLib.prototype._show_notification = function(notification) {
+console.log("SHOWING NOTIFICATION: " + JSON.stringify(notification));
+        var notif_wrapper = document.createElement('div');
+        notif_wrapper.id = 'mixpanel-notification-wrapper';
+        notif_wrapper.innerHTML =
+            '<div class="mixpanel-notification">' +
+                notification.body +
+            '</div>';
+        document.body.appendChild(notif_wrapper);
     };
 
     /**
