@@ -2389,6 +2389,9 @@ Globals should be all caps
                 'background-color:white;' +
                 'font-size:14px' +
             '}' +
+            '\n.mixpanel-notification-image {' +
+                'padding-left:10px;' +
+            '}' +
             '\n.mixpanel-notification-title {' +
                 'margin-top:10px;' +
                 'padding:20px 30px 10px 30px;' +
@@ -2412,13 +2415,19 @@ Globals should be all caps
         document.head.appendChild(style_el);
 
         var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
-        var cta = string_or_default(notification.cta, 'GOT IT'),
+        var image_url = string_or_default(notification.image_url, null),
+            cta = string_or_default(notification.cta, 'GOT IT'),
             dest_url = string_or_default(notification.cta_url, null),
             clickthrough = true;
         if (!dest_url) {
             dest_url = '#dismiss';
             clickthrough = false;
         }
+        var img_html = '';
+        if (image_url) {
+            img_html = '<img class="mixpanel-notification-img" src="' + image_url + '" height="75" width="75">';
+        }
+
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
         notif_wrapper.innerHTML =
@@ -2427,6 +2436,7 @@ Globals should be all caps
                     '<div class="mixpanel-notification-bg"></div>' +
                     '<div class="mixpanel-notification">' +
                         '<div id="mixpanel-notification-cancel">x</div>' +
+                        img_html +
                         '<div class="mixpanel-notification-title">' + notification.title + '</div>' +
                         '<div class="mixpanel-notification-body">' + notification.body + '</div>' +
                         '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
