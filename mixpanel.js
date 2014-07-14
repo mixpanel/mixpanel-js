@@ -2360,14 +2360,17 @@ Globals should be all caps
     MixpanelLib.prototype._show_notification = function(notification) {
         var style_el = document.createElement('style');
         style_el.innerHTML =
-            '.mixpanel-notification {color: blue}';
+            '\n.mixpanel-notification-overlay {position:absolute;left:0px;top:0px;width:100%;height:100%;text-align:center;z-index:10000}' +
+            '\n.mixpanel-notification {width:250px;text-align:center;margin:100px auto;padding:20px;background-color:white;font-size:14px}';
         document.head.appendChild(style_el);
 
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
         notif_wrapper.innerHTML =
-            '<div class="mixpanel-notification">' +
-                notification.body +
+            '<div class="mixpanel-notification-overlay">' +
+                '<div class="mixpanel-notification">' +
+                    notification.body +
+                '</div>' +
             '</div>';
         document.body.appendChild(notif_wrapper);
     };
