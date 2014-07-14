@@ -2406,12 +2406,13 @@ Globals should be all caps
             '}';
         document.head.appendChild(style_el);
 
-        var dest_url = notification.cta_url,
-            clickthrough = false;
-        if (!dest_url || dest_url.length === 0) {
-            dest_url = 'dismiss';
-        } else {
+        var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
+        var cta = string_or_default(notification.cta, 'GOT IT'),
+            dest_url = string_or_default(notification.cta_url, null),
             clickthrough = true;
+        if (!dest_url) {
+            dest_url = '#dismiss';
+            clickthrough = false;
         }
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
@@ -2424,7 +2425,7 @@ Globals should be all caps
                         '<div class="mixpanel-notification-body">' +
                             notification.body +
                         '</div>' +
-                        '<a id="mixpanel-notification-button" href="' + dest_url + '">GOT IT</a>' +
+                        '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
                     '</div>' +
                 '</div>' +
             '</div>';
