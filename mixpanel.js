@@ -2358,7 +2358,11 @@ Globals should be all caps
     };
 
     MixpanelLib.prototype._show_notification = function(notification) {
-console.log("SHOWING NOTIFICATION: " + JSON.stringify(notification));
+        var style_el = document.createElement('style');
+        style_el.innerHTML =
+            '.mixpanel-notification {color: blue}';
+        document.head.appendChild(style_el);
+
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
         notif_wrapper.innerHTML =
