@@ -2362,9 +2362,9 @@ Globals should be all caps
         style_el.innerHTML =
             '\nbody {height:100%;margin:0;padding:0}' + // IE hack
             '\n.mixpanel-notification-overlay {' +
-                'position:absolute;' +
+                'position:fixed;' +
                 'top:0;left:0;' +
-                'width:100%; height:100%;' +
+                'width:100%;height:100%;' +
                 'text-align:center;' +
                 'z-index:10000' +
             '}' +
@@ -2373,7 +2373,7 @@ Globals should be all caps
                 'width:100%;height:100%;' +
             '}' +
             '\n.mixpanel-notification-bg {' +
-                'position:absolute;' +
+                'position:fixed;' +
                 'top:0;left:0;' +
                 'width:100%;height:100%;' +
                 'background-color:black;' +
