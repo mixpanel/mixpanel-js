@@ -2638,7 +2638,7 @@ Globals should be all caps
      *     });
      *
      * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
-     * @param {*} [value] An amount to increment the given property
+     * @param {*} [value] An item to append to the list
      * @param {Function} [callback] If provided, the callback will be called after the tracking event
      */
     MixpanelPeople.prototype.append = function(list_name, value, callback) {
