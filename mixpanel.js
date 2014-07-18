@@ -1843,8 +1843,8 @@ Globals should be all caps
      *      mixpanel.library_name.track(...)
      *
      * @param {String} token   Your Mixpanel API token
-     * @param {Object} config  A dictionary of config options to override
-     * @param {String} name    The name for the new mixpanel instance that you want created
+     * @param {Object} [config]  A dictionary of config options to override
+     * @param {String} [name]    The name for the new mixpanel instance that you want created
      */
     MixpanelLib.prototype.init = function (token, config, name) {
         if (typeof(name) === "undefined") {
