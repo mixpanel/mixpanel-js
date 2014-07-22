@@ -1291,7 +1291,6 @@ mpmodule("mixpanel.people.union");
         same(i, { "$distinct_id": this.id, "$token": this.token, "$union": _union2 }, "Basic union message works")
     });
 
-
     test("union queues and merges data", 4, function() {
         var _union1 = { 'key1': ['val1.1'], 'key2': ['val1.2'], 'nonsense': 22 },
             _union2 = { 'key1': ['val2.1'], 'key3': ['val2.3'], 'nonsense': 33 },
@@ -1305,6 +1304,23 @@ mpmodule("mixpanel.people.union");
             same(resp, -1, "responded with 'queued'");
         });
         same(mixpanel.test.cookie.props['__mpu'], { 'key1': ['val1.1', 'val2.1'], 'key2': ['val1.2'], 'key3':['val2.3'] }, "queued union saved");
+    });
+
+    test("set after union clobbers union queue", 4, function() {
+        var _union = {'key1': ['union_val'], 'key2': ['val2']},
+            _set = {'key1': 'set_val'},
+            i;
+
+        mixpanel.test.people.union(_union, function(resp) {
+            same(resp, -1, "responded with 'queued'");
+        });
+
+        mixpanel.test.people.set(_set, function(resp) {
+            same(resp, -1, "responded with 'queued'");
+        });
+
+        same(mixpanel.test.cookie.props['__mpu'], {'key2': ['val2']}, "set after union empties union queue");
+        ok(contains_obj(mixpanel.test.cookie.props['__mps'], {'key1': 'set_val'}), "set after union enqueues set");
     });
 
 mpmodule("mixpanel.people.track_charge");
