@@ -2189,7 +2189,7 @@ Globals should be all caps
      * behavior around after the lib is loaded.
      * This is only useful for external integrations that
      * do not wish to rely on our convenience methods
-     * (created in the snippet). Good example is Optimizely.
+     * (created in the snippet).
      *
      * ### Usage:
      *     mixpanel.push(['register', { a: 'b' }]);
