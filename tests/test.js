@@ -1270,6 +1270,43 @@ mpmodule("mixpanel.people.append");
         same(s, { "$distinct_id": this.id, "$token": this.token, "$append": { "a": 3 }}, "$token and $distinct_id pulled out correctly");
     });
 
+mpmodule("mixpanel.people.union");
+
+    test("union (basic functionality)", 4, function() {
+        var _union1 = { 'key': ['val1'] },
+            _union2 = { 'key1': ['val1', 'val2'], 'key2': ['val2'] },
+            i;
+
+        i = mixpanel.people.union('key', ['vals']);
+        same(i["$union"], { 'key': ['vals'] }, ".union() with two params works");
+
+        i = mixpanel.people.union(_union1);
+        same(i["$union"], _union1, ".union() with an object (with only 1 key) works");
+
+        i = mixpanel.people.union(_union2);
+        same(i["$union"], _union2, ".union() with an object (with multiple keys) works");
+
+        mixpanel.test.identify(this.id);
+        i = mixpanel.test.people.union(_union2);
+        same(i, { "$distinct_id": this.id, "$token": this.token, "$union": _union2 }, "Basic union message works")
+    });
+
+
+    test("union queues and merges data", 4, function() {
+        var _union1 = { 'key1': ['val1.1'], 'key2': ['val1.2'], 'nonsense': 22 },
+            _union2 = { 'key1': ['val2.1'], 'key3': ['val2.3'], 'nonsense': 33 },
+            i;
+
+        mixpanel.test.people.union(_union1, function(resp) {
+            same(resp, -1, "responded with 'queued'");
+        });
+        same(mixpanel.test.cookie.props['__mpu'], { 'key1': ['val1.1'], 'key2': ['val1.2']}, "queued union saved");
+        mixpanel.test.people.union(_union2, function(resp) {
+            same(resp, -1, "responded with 'queued'");
+        });
+        same(mixpanel.test.cookie.props['__mpu'], { 'key1': ['val1.1', 'val2.1'], 'key2': ['val1.2'], 'key3':['val2.3'] }, "queued union saved");
+    });
+
 mpmodule("mixpanel.people.track_charge");
 
     test("track_charge (basic functionality)", 2, function() {

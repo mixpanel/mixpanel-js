@@ -52,14 +52,16 @@ Globals should be all caps
 /** @const */       , SET_ONCE_QUEUE_KEY        = "__mpso"
 /** @const */       , ADD_QUEUE_KEY             = "__mpa"
 /** @const */       , APPEND_QUEUE_KEY          = "__mpap"
+/** @const */       , UNION_QUEUE_KEY           = "__mpu"
 /** @const */       , SET_ACTION                = "$set"
 /** @const */       , SET_ONCE_ACTION           = "$set_once"
 /** @const */       , ADD_ACTION                = "$add"
 /** @const */       , APPEND_ACTION             = "$append"
+/** @const */       , UNION_ACTION              = "$union"
 // This key is deprecated, but we want to check for it to see whether aliasing is allowed.
 /** @const */       , PEOPLE_DISTINCT_ID_KEY    = "$people_distinct_id"
 /** @const */       , ALIAS_ID_KEY              = "__alias"
-/** @const */       , RESERVED_PROPERTIES       = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY];
+/** @const */       , RESERVED_PROPERTIES       = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, UNION_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY];
 
 /*
  * Dynamic... constants? Is that an oxymoron?
@@ -1709,6 +1711,7 @@ Globals should be all caps
             set_q = this._get_or_create_queue(SET_ACTION),
             set_once_q = this._get_or_create_queue(SET_ONCE_ACTION),
             add_q = this._get_or_create_queue(ADD_ACTION),
+            union_q = this._get_or_create_queue(UNION_ACTION),
             append_q = this._get_or_create_queue(APPEND_ACTION, []);
 
         if (q_key === SET_QUEUE_KEY) {
@@ -1717,6 +1720,9 @@ Globals should be all caps
             // if there was a pending increment, override it
             // with the set.
             this._pop_from_people_queue(ADD_ACTION, q_data);
+            // if there was a pending union, override it
+            // with the set.
+            this._pop_from_people_queue(UNION_ACTION, q_data); // TODO needs test
         } else if (q_key === SET_ONCE_QUEUE_KEY) {
             // only queue the data if there is not already a set_once call for it.
             _.each(q_data, function(v, k) {
@@ -1739,6 +1745,16 @@ Globals should be all caps
                     add_q[k] += v;
                 }
             }, this);
+        } else if (q_key === UNION_QUEUE_KEY) {
+            _.each(q_data, function(v, k) {
+                if (_.isArray(v)) {
+                    if (!(k in union_q)) {
+                        union_q[k] = [];
+                    }
+                    // We may send duplicates, the server will dedup them.
+                    union_q[k] = union_q[k].concat(v);
+                }
+            });
         } else if (q_key === APPEND_QUEUE_KEY) {
             append_q.push(q_data);
         }
@@ -1769,6 +1785,8 @@ Globals should be all caps
             return ADD_QUEUE_KEY;
         } else if (queue === APPEND_ACTION) {
             return APPEND_QUEUE_KEY;
+        } else if (queue === UNION_ACTION) {
+            return UNION_QUEUE_KEY;
         } else {
             console.error("Invalid queue:", queue);
         }
@@ -2314,12 +2332,13 @@ Globals should be all caps
      *
      * @param {String} unique_id A string that uniquely identifies a user
      */
-    MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback) {
+    MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
         // Optional Parameters
         //  _set_callback:function  A callback to be run if and when the People set queue is flushed
         //  _add_callback:function  A callback to be run if and when the People add queue is flushed
         //  _append_callback:function  A callback to be run if and when the People append queue is flushed
         //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
+        //  _union_callback:function  A callback to be run if and when the People union queue is flushed
 
         // identify only changes the distinct id if it doesn't match either the existing or the alias;
         // if it's new, blow away the alias as well.
@@ -2329,7 +2348,7 @@ Globals should be all caps
         }
         this._flags.identify_called = true;
         // Flush any queued up people requests
-        this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback);
+        this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback);
     };
 
     /**
@@ -2638,7 +2657,7 @@ Globals should be all caps
      *     });
      *
      * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
-     * @param {*} [value] An amount to increment the given property
+     * @param {*} [value] A value to append to the given list property
      * @param {Function} [callback] If provided, the callback will be called after the tracking event
      */
     MixpanelPeople.prototype.append = function(list_name, value, callback) {
@@ -2657,6 +2676,44 @@ Globals should be all caps
             $append[list_name] = value;
         }
         data[APPEND_ACTION] = $append;
+
+        return this._send_request(data, callback);
+    };
+
+    /*
+     * Merge a given list with a list-valued people analytics property.
+     *
+     * ### Usage:
+     *
+     *     // Merge the given list, creating it if needed
+     *     mixpanel.people.append('number_one_hits', ['Space Oddity', 'Under Pressure']);
+     *
+     *     // like mixpanel.people.set(), you can append multiple properties at once:
+     *     mixpanel.people.append({
+     *         bowie_hits: ['Space Oddity', 'Under Pressure'],
+     *         queen_hits: ['Bohemian Rhapsody', 'Under Pressure']
+     *     });
+     *
+     * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
+     * @param {*} [value] A list to merge with the current value of the property.
+     * @param {Function} [callback] If provided, the callback will be called after the tracking event
+     */
+    MixpanelPeople.prototype.union = function(list_name, values, callback) {
+        var data = {};
+        var $union = {};
+        if (_.isObject(list_name)) {
+            _.each(list_name, function(v, k) {
+                if (k == '$distinct_id' || k == '$token') {
+                    return;
+                } else {
+                    $union[k] = v;
+                }
+            });
+            callback = values;
+        } else {
+            $union[list_name] = values;
+        }
+        data[UNION_ACTION] = $union;
 
         return this._send_request(data, callback);
     };
@@ -2780,6 +2837,8 @@ Globals should be all caps
             this._mixpanel.cookie._add_to_people_queue(ADD_ACTION, data);
         } else if (APPEND_ACTION in data) {
             this._mixpanel.cookie._add_to_people_queue(APPEND_ACTION, data);
+        } else if (UNION_ACTION in data) {
+            this._mixpanel.cookie._add_to_people_queue(UNION_ACTION, data);
         } else {
             console.error("Invalid call to _enqueue():", data);
         }
@@ -2787,12 +2846,13 @@ Globals should be all caps
 
     // Flush queued engage operations - order does not matter,
     // and there are network level race conditions anyway
-    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback) {
+    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) { // TODO fix callsites to include _union_callback
         var _this = this,
             $set_queue = _.extend({}, this._mixpanel.cookie._get_queue(SET_ACTION)),
             $set_once_queue = _.extend({}, this._mixpanel.cookie._get_queue(SET_ONCE_ACTION)),
             $add_queue = _.extend({}, this._mixpanel.cookie._get_queue(ADD_ACTION)),
-            $append_queue = this._mixpanel.cookie._get_queue(APPEND_ACTION);
+            $append_queue = this._mixpanel.cookie._get_queue(APPEND_ACTION),
+            $union_queue = _.extend({}, this._mixpanel.cookie._get_queue(UNION_ACTION));
 
         if (!_.isUndefined($set_queue) && _.isObject($set_queue) && !_.isEmptyObject($set_queue)) {
             _this._mixpanel.cookie._pop_from_people_queue(SET_ACTION, $set_queue);
@@ -2829,6 +2889,19 @@ Globals should be all caps
                 }
                 if (!_.isUndefined(_add_callback)) {
                     _add_callback(response, data);
+                }
+            });
+        }
+
+        if (!_.isUndefined($union_queue) && _.isObject($union_queue) && !_.isEmptyObject($union_queue)) {
+            _this._mixpanel.cookie._pop_from_people_queue(UNION_ACTION, $union_queue);
+            this.union($union_queue, function(response, data) {
+                // on bad response, we want to add it back to the queue
+                if (response == 0) {
+                    _this._mixpanel.cookie._add_to_people_queue(UNION_ACTION, $union_queue);
+                }
+                if (!_.isUndefined(_union_callback)) {
+                    _union_callback(response, data);
                 }
             });
         }
