@@ -1722,7 +1722,7 @@ Globals should be all caps
             this._pop_from_people_queue(ADD_ACTION, q_data);
             // if there was a pending union, override it
             // with the set.
-            this._pop_from_people_queue(UNION_ACTION, q_data); // TODO needs test
+            this._pop_from_people_queue(UNION_ACTION, q_data);
         } else if (q_key === SET_ONCE_QUEUE_KEY) {
             // only queue the data if there is not already a set_once call for it.
             _.each(q_data, function(v, k) {
@@ -2967,6 +2967,7 @@ Globals should be all caps
     MixpanelPeople.prototype['set_once']                = MixpanelPeople.prototype.set_once;
     MixpanelPeople.prototype['increment']               = MixpanelPeople.prototype.increment;
     MixpanelPeople.prototype['append']                  = MixpanelPeople.prototype.append;
+    MixpanelPeople.prototype['union']                   = MixpanelPeople.prototype.union;
     MixpanelPeople.prototype['track_charge']            = MixpanelPeople.prototype.track_charge;
     MixpanelPeople.prototype['clear_charges']           = MixpanelPeople.prototype.clear_charges;
     MixpanelPeople.prototype['delete_user']             = MixpanelPeople.prototype.delete_user;

@@ -1323,6 +1323,18 @@ mpmodule("mixpanel.people.union");
         ok(contains_obj(mixpanel.test.cookie.props['__mps'], {'key1': 'set_val'}), "set after union enqueues set");
     });
 
+    test("union sends immediately if identified", 2, function() {
+        mixpanel.test.identify(this.id);
+
+        stop();
+        s = mixpanel.test.people.union({ a: [3] }, function(resp) {
+            same(resp, 1, "responded with 'success'");
+            start();
+        });
+        same(s, { "$distinct_id": this.id, "$token": this.token, "$union": { "a": [3] }}, "$token and $distinct_id pulled out correctly");
+
+    });
+
 mpmodule("mixpanel.people.track_charge");
 
     test("track_charge (basic functionality)", 2, function() {
