@@ -1443,6 +1443,25 @@ mpmodule("mixpanel.people flushing");
         });
     });
 
+    test("identify flushes union queue", 4, function() {
+        var _union1 = { 'key1': ['val1.1'], 'key2': ['val1.2'], 'nonsense': 22 },
+            i;
+
+        mixpanel.test.people.union(_union1);
+        mixpanel.test.people.union("key2", ["val2.2"]);
+
+        stop();
+        mixpanel.test.identify(this.id, function(){}, function(){}, function(){}, function() {}, function(resp, data) {
+            ok(resp == 1, "Successful write");
+            same(data["$union"], {'key1': ['val1.1'], 'key2':['val1.2', 'val2.2']});
+            same(mixpanel.test.cookie.props['__mpu'], {}, 'Queue is cleared after flushing');
+
+            mixpanel.test.cookie.load();
+            same(mixpanel.test.cookie.props['__mpu'], {}, 'Empty queue is persisted');
+            start();
+        });
+    });
+
     test("identify does not make a request if nothing is queued", 1, function() {
         var num_scripts = $('script').length;
         mixpanel.test.identify(this.id);
