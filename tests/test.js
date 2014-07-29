@@ -1412,7 +1412,9 @@ mpmodule("mixpanel.people flushing");
 
         stop();
         setTimeout(function() {
-            same($('script').length, num_scripts, "No scripts added to page.");
+            // notification check results in extra script tag when !USE_XHR
+            var extra_scripts = USE_XHR ? 0 : 1;
+            same($('script').length, num_scripts + extra_scripts, "No scripts added to page.");
             start();
         }, 500);
     });
