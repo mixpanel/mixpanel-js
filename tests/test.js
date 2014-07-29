@@ -1652,9 +1652,11 @@ if (USE_XHR) {
 // Necessary because the alias tests can't clean up after themselves, as there is no callback.
 setTimeout(function() {
     _.each(document.cookie.split(';'), function(c) {
-        var name = c.split('=')[0].trim();
+        var name = c.split('=')[0].replace(/^\s+|\s+$/g, '');
         if (name.match(/mp_test_\d+_mixpanel$/)) {
-            console.log("removing cookie:", name);
+            if (window.console) {
+                console.log("removing cookie:", name);
+            }
             cookie.remove(name);
             cookie.remove(name, true);
         }
