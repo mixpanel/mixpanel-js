@@ -2352,12 +2352,17 @@ Globals should be all caps
         var self = this;
         this._send_request(host + '/decide/', data, function(r) {
             if (r.notifications && r.notifications.length > 0) {
-                self._show_notification(r.notifications[0]);
+                self._show_notification.call(self, r.notifications[0]);
             }
         });
     };
 
     MixpanelLib.prototype._show_notification = function(notification) {
+        if (!document.body) {
+            setTimeout(function() { this._show_notification(notification); }, 1000);
+            return;
+        }
+
         var style_el = document.createElement('style');
         style_el.innerHTML =
             '\nbody {height:100%;margin:0;padding:0}' + // IE hack
