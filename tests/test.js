@@ -220,21 +220,25 @@ window.test_async = function() {
     mixpanel.track('test', {}, function(response, data) {
         test1.properties = data.properties;
     });
+    var lib_loaded = mixpanel.__loaded;
     mixpanel.identify(test1.id);
     mixpanel.name_tag(test1.name);
 
-    module("async tracking");
+    // only run pre-load snippet tests if lib didn't finish loading before identify/name_tag calls
+    if (!lib_loaded) {
+        module("async tracking");
 
-        test("priority functions", 2, function() {
-            stop();
+            test("priority functions", 2, function() {
+                stop();
 
-            wait(function() { return test1.properties !== null; }, function() {
-                var p = test1.properties;
-                same(p.mp_name_tag, test1.name, "name_tag should fire before track");
-                same(p.distinct_id, test1.id, "identify should fire before track");
-                start();
+                wait(function() { return test1.properties !== null; }, function() {
+                    var p = test1.properties;
+                    same(p.mp_name_tag, test1.name, "name_tag should fire before track");
+                    same(p.distinct_id, test1.id, "identify should fire before track");
+                    start();
+                });
             });
-        });
+    }
 };
 
 window.test_mixpanel = function(mixpanel) {
