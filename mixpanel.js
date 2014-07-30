@@ -2452,6 +2452,18 @@ Globals should be all caps
 
         var dismiss = function() {
             document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
+
+            // mark notification shown
+            // TODO skip if notification.id missing??
+            // mixpanel.people.append({
+            //     $campaigns: notification.id,
+            //     $notifications: {
+            //         campaign_id: notification.id,
+            //         message_id: notification.message_id,
+            //         type: 'web',
+            //         time: new Date()
+            //     }
+            // });
         };
         document.getElementById('mixpanel-notification-cancel').addEventListener('click', function(e) {
             e.preventDefault();
