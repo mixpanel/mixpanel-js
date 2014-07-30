@@ -1,5 +1,5 @@
 /*
- * Mixpanel JS Library v2.2.2
+ * Mixpanel JS Library v2.2.1
  *
  * Copyright 2012, Mixpanel, Inc. All Rights Reserved
  * http://mixpanel.com/
@@ -2327,23 +2327,9 @@ Globals should be all caps
             this.unregister(ALIAS_ID_KEY);
             this._register_single('distinct_id', unique_id);
         }
-        if (!this._flags.identify_called) {
-            this._flags.identify_called = true;
-            this._check_and_handle_notifications();
-        }
+        this._flags.identify_called = true;
         // Flush any queued up people requests
         this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback);
-    };
-
-    // TMP
-    MixpanelLib.prototype._check_and_handle_notifications = function() {
-        var host = DEBUG ? window.location.host : 'cdn.mxpnl.com',
-            pixel = document.createElement('div');
-        pixel.innerHTML =
-            '<div style="display:none">' +
-                '<img src="' + window.location.protocol + '//' + host + '/libs/decide.gif">' +
-            '</div>';
-        document.body.appendChild(pixel);
     };
 
     /**
