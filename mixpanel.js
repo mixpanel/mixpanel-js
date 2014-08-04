@@ -2376,7 +2376,7 @@ Globals should be all caps
         }
         var img_html = '';
         if (image_url) {
-            img_html = '<img class="mixpanel-notification-img" src="' + image_url + '" height="75" width="75">';
+            img_html = '<img class="mixpanel-notification-img" src="' + image_url + '" height="200" width="200">';
         }
 
         var style_el = document.createElement('style');
@@ -2406,6 +2406,7 @@ Globals should be all caps
                 'width:424px;' +
                 'margin:60px 40px 0 0;' +
                 'padding:5px;' +
+                'border-radius:3px;' +
                 'text-align:' + (image_url ? 'center' : 'left') + ';' +
                 'background-color:white;' +
                 'font-size:14px' +
@@ -2416,7 +2417,7 @@ Globals should be all caps
             '\n.mixpanel-notification-title {' +
                 'margin-top:10px;' +
                 'padding:20px 30px 10px 30px;' +
-                'font-size:120%;font-weight:bold;' +
+                'font-size:19px;font-weight:bold;' +
             '}' +
             '\n.mixpanel-notification-image {' +
                 'padding-left:10px;' +
@@ -2424,17 +2425,30 @@ Globals should be all caps
             '\n.mixpanel-notification-body {' +
                 'margin-top:10px;' +
                 'padding:10px 30px;' +
+                'font-size:15px;font-weight:normal;' +
             '}' +
             '\n#mixpanel-notification-cancel {' +
                 'float:right;' +
-                'padding-right:5px;' +
+                'padding:7px 10px 0 0;' +
+                'font-size:12px;font-weight:bold;' +
+                'color:#bac5ce;' +
                 'cursor:pointer;' +
+            '}' +
+            '\n.mixpanel-notification-actions {' +
+                'padding:30px 0 35px 0;' +
+                'text-align:center;' +
             '}' +
             '\n#mixpanel-notification-button {' +
                 'display:inline-block;' +
-                'margin:20px auto 10px auto;' +
-                'padding:10px;' +
+                'margin:0 auto;' +
+                'padding:10px 15px;' +
                 'border:1px solid gray;' +
+                'border-radius:40px;' +
+                'font-size:15px;font-weight:bold;' +
+                'color:black;' +
+            '}' +
+            '\n#mixpanel-notification-button:hover {' +
+                'text-decoration:none;' +
             '}';
         document.head.appendChild(style_el);
 
@@ -2445,12 +2459,14 @@ Globals should be all caps
                 '<div class="mixpanel-notification-bgwrapper">' +
                     '<div class="mixpanel-notification-bg"></div>' +
                     '<div class="mixpanel-notification">' +
-                        '<div id="mixpanel-notification-cancel">x</div>' +
+                        '<div id="mixpanel-notification-cancel">X</div>' +
                         '<div id="mixpanel-notification-content">' +
                             '<div class="mixpanel-notification-title">' + notification.title + '</div>' +
                             img_html +
                             '<div class="mixpanel-notification-body">' + notification.body + '</div>' +
-                            '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
+                            '<div class="mixpanel-notification-actions">' +
+                                '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
