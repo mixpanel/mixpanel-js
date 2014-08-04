@@ -2363,6 +2363,8 @@ Globals should be all caps
             return;
         }
 
+        notification.body = notification.body.replace(/\n/g, '<br/>');
+
         var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
         var image_url = string_or_default(notification.image_url, null),
             cta = string_or_default(notification.cta, 'GOT IT'),
