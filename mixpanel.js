@@ -2363,6 +2363,20 @@ Globals should be all caps
             return;
         }
 
+        var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
+        var image_url = string_or_default(notification.image_url, null),
+            cta = string_or_default(notification.cta, 'GOT IT'),
+            dest_url = string_or_default(notification.cta_url, null),
+            clickthrough = true;
+        if (!dest_url) {
+            dest_url = '#dismiss';
+            clickthrough = false;
+        }
+        var img_html = '';
+        if (image_url) {
+            img_html = '<img class="mixpanel-notification-img" src="' + image_url + '" height="75" width="75">';
+        }
+
         var style_el = document.createElement('style');
         style_el.innerHTML =
             '\nbody {height:100%;margin:0;padding:0}' + // IE hack
@@ -2386,21 +2400,24 @@ Globals should be all caps
             '}' +
             '\n.mixpanel-notification {' +
                 'position:absolute;' +
-                'left:0;right:0;' +
-                'width:350px;' +
-                'margin:100px auto;' +
+                'right:0;' +
+                'width:424px;' +
+                'margin:60px 40px 0 0;' +
                 'padding:5px;' +
-                'text-align:center;' +
+                'text-align:' + (image_url ? 'center' : 'left') + ';' +
                 'background-color:white;' +
                 'font-size:14px' +
             '}' +
-            '\n.mixpanel-notification-image {' +
-                'padding-left:10px;' +
+            '\n.mixpanel-notification-content {' +
+                'padding:0px 30px;' +
             '}' +
             '\n.mixpanel-notification-title {' +
                 'margin-top:10px;' +
                 'padding:20px 30px 10px 30px;' +
                 'font-size:120%;font-weight:bold;' +
+            '}' +
+            '\n.mixpanel-notification-image {' +
+                'padding-left:10px;' +
             '}' +
             '\n.mixpanel-notification-body {' +
                 'margin-top:10px;' +
@@ -2419,20 +2436,6 @@ Globals should be all caps
             '}';
         document.head.appendChild(style_el);
 
-        var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
-        var image_url = string_or_default(notification.image_url, null),
-            cta = string_or_default(notification.cta, 'GOT IT'),
-            dest_url = string_or_default(notification.cta_url, null),
-            clickthrough = true;
-        if (!dest_url) {
-            dest_url = '#dismiss';
-            clickthrough = false;
-        }
-        var img_html = '';
-        if (image_url) {
-            img_html = '<img class="mixpanel-notification-img" src="' + image_url + '" height="75" width="75">';
-        }
-
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
         notif_wrapper.innerHTML =
@@ -2441,10 +2444,12 @@ Globals should be all caps
                     '<div class="mixpanel-notification-bg"></div>' +
                     '<div class="mixpanel-notification">' +
                         '<div id="mixpanel-notification-cancel">x</div>' +
-                        img_html +
-                        '<div class="mixpanel-notification-title">' + notification.title + '</div>' +
-                        '<div class="mixpanel-notification-body">' + notification.body + '</div>' +
-                        '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
+                        '<div id="mixpanel-notification-content">' +
+                            '<div class="mixpanel-notification-title">' + notification.title + '</div>' +
+                            img_html +
+                            '<div class="mixpanel-notification-body">' + notification.body + '</div>' +
+                            '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
+                        '</div>' +
                     '</div>' +
                 '</div>' +
             '</div>';
