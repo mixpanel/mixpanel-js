@@ -31,17 +31,55 @@
                 redirect(window.location + "?ref");
             }
 
-            mixpanel.init("MIXPANEL_TOKEN",
-            {
-                cookie_name: "test",
+            var called_all_mixpanel_functions = false;
+
+            mixpanel.init("MIXPANEL_HEADCALLS_TOKEN", {
+                cookie_name: "headtest",
                 reset_cookie: true,
                 debug: true,
+                loaded: function(headtest) {
+                    test('tracking functions queued in <head> before lib loads are later executed successfully', function() {
+                        var props = headtest.cookie.properties();
+                        ok(headtest._flags.identify_called);
+                        headtest.track("purchase llamas", {}, function(response) {
+                            same(response, 0, "tracking disabled event should fail");
+                        });
+                        headtest.track("purchase capybaras", {}, function(response) {
+                            same(response, 1, "tracking enabled event should succeed");
+                        });
+                        ok(props.wombat);
+                        ok(!props.wookie);
+                        same(headtest.config.track_links_timeout, 200);
+                        same(props.distinct_id, 'q-bert');
+                    });
+                }
+            }, 'headtest');
+
+            test('all functions are queued before loading without stopping execution', function() {
+                ok(called_all_mixpanel_functions);
             });
 
-            test('identify does not explode in head', function() {
-                mixpanel.identify('q-bert');
-                ok(mixpanel._flags.identify_called);
-            });
+            mixpanel.headtest.disable(['purchase llamas']);
+            mixpanel.headtest.track('another event');
+            mixpanel.headtest.track_links("#nav", "Clicked Nav Link");
+            mixpanel.headtest.track_forms("#myform", "Submitted my form");
+            mixpanel.headtest.register({wombat: true, wookie: 1516});
+            mixpanel.headtest.register_once({wombat: false});
+            mixpanel.headtest.unregister('wookie');
+            mixpanel.headtest.set_config({track_links_timeout: 200});
+
+            mixpanel.headtest.alias('spyhunter');
+            mixpanel.headtest.identify('q-bert');
+
+            mixpanel.headtest.people.set({purchases: 5});
+            mixpanel.headtest.people.set_once({purchases: 2});
+            mixpanel.headtest.people.increment('purchases');
+            mixpanel.headtest.people.append({'bad': 'dudes'});
+            mixpanel.headtest.people.track_charge(89.99);
+            mixpanel.headtest.people.clear_charges();
+            mixpanel.headtest.people.delete_user();
+
+            called_all_mixpanel_functions = true;
 
         </script>
     </head>
@@ -55,5 +93,7 @@
         <script type="text/javascript">
             $('#qunit-tests').addClass('hidepass')
         </script>
+        <div id="nav"/>
+        <div id="myform"/>
     </body>
 </html>
