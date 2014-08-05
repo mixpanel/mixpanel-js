@@ -53,7 +53,7 @@
                 reset_cookie: true,
                 debug: true,
                 loaded: function(instance) {
-                    loaded = true;
+                    lib_loaded = true;
                     if (vals_preinited) {
                         test('Existing array parsed', 1, function() {
                             same(window.mixpanel.additional.cookie.props['test val 1'], val2, "Initial super property was set correctly");
@@ -62,6 +62,14 @@
                             same(window.mixpanel.additional.people.val_to_change, 41, "Function pushed onto people array was called");
                         });
                     }
+                    instance.set_config({api_host: 'https://api.mixpanel.com'});
+                    test('Setting api_host to https in init callback works', function() {
+                        stop();
+                        instance.track("some event", {}, function(response) {
+                            same(response, 1, "tracking event to https should succeed");
+                            start();
+                        });
+                    });
                 }
             }, "additional");
             if (!lib_loaded) {
