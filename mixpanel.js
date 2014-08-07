@@ -2358,8 +2358,9 @@ Globals should be all caps
     };
 
     MixpanelLib.prototype._show_notification = function(notification) {
+        var self = this;
         if (!document.body) {
-            setTimeout(function() { this._show_notification(notification); }, 1000);
+            setTimeout(function() { self._show_notification.call(self, notification); }, 1000);
             return;
         }
 
@@ -2493,7 +2494,7 @@ Globals should be all caps
 
             // mark notification shown
             // TODO skip if notification.id missing??
-            // mixpanel.people.append({
+            // self.people.append({
             //     $campaigns: notification.id,
             //     $notifications: {
             //         campaign_id: notification.id,
