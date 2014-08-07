@@ -238,6 +238,9 @@ window.test_async = function() {
                     start();
                 });
             });
+    } else {
+        var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
+        $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
     }
 };
 
