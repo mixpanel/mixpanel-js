@@ -2376,10 +2376,19 @@ Globals should be all caps
         }
         var img_html = '';
         if (image_url) {
-            img_html = '<img class="mixpanel-notification-img" src="' + image_url + '" height="200" width="200">';
+            img_html = '<img class="mixpanel-notification-img" src="' + image_url + '"/>';
         }
 
         var style_el = document.createElement('style');
+        if (notification.type === 'dark') {
+            var css_bg = '#1d1f25',
+                css_text = '#fff',
+                css_border_gray = '#32353c';
+        } else {
+            var css_bg = '#fff',
+                css_text = '#52606b',
+                css_border_gray = '#e4ecf2';
+        }
         style_el.innerHTML =
             '\nbody {height:100%;margin:0;padding:0}' + // IE hack
             '\n.mixpanel-notification-overlay {' +
@@ -2406,10 +2415,11 @@ Globals should be all caps
                 'width:424px;' +
                 'margin:60px 40px 0 0;' +
                 'padding:5px;' +
-                'border-radius:3px;' +
+                'border-radius:4px;' +
                 'text-align:' + (image_url ? 'center' : 'left') + ';' +
-                'background-color:white;' +
-                'font-size:14px' +
+                'background-color:' + css_bg + ';' +
+                'font-size:14px;' +
+                'color:' + css_text + ';' +
             '}' +
             '\n.mixpanel-notification-content {' +
                 'padding:0px 30px;' +
@@ -2431,6 +2441,11 @@ Globals should be all caps
                 'float:right;' +
                 'padding:7px 10px 0 0;' +
                 'font-size:12px;font-weight:bold;' +
+                'transform:scale(1.4,1);' +
+                '-webkit-transform:scale(1.4,1);' +
+                '-moz-transform:scale(1.4,1);' +
+                '-ms-transform:scale(1.4,1);' +
+                '-o-transform:scale(1.4,1);' +
                 'color:#bac5ce;' +
                 'cursor:pointer;' +
             '}' +
@@ -2441,11 +2456,11 @@ Globals should be all caps
             '\n#mixpanel-notification-button {' +
                 'display:inline-block;' +
                 'margin:0 auto;' +
-                'padding:10px 15px;' +
-                'border:1px solid gray;' +
+                'padding:10px 25px;' +
+                'border:2px solid ' + css_border_gray + ';' +
                 'border-radius:40px;' +
                 'font-size:15px;font-weight:bold;' +
-                'color:black;' +
+                'color:' + css_text + ';' +
             '}' +
             '\n#mixpanel-notification-button:hover {' +
                 'text-decoration:none;' +
