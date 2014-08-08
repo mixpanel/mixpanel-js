@@ -74,8 +74,6 @@
             }, "additional");
             if (!lib_loaded) {
                 mixpanel.additional.register({ 'test val 1': val2 });
-            }
-            if (!lib_loaded) {
                 mixpanel.additional.people.push(function() { this.val_to_change = 41 });
             }
             vals_preinited = true;
