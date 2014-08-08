@@ -2413,7 +2413,8 @@ Globals should be all caps
                 'top:0;left:0;' +
                 'width:100%;height:100%;' +
                 'text-align:center;' +
-                'z-index:10000' +
+                'z-index:10000;' +
+                'font-family:sans-serif;' +
             '}' +
             '\n.mixpanel-notification-bgwrapper {' +
                 'position:relative;' +
@@ -2478,8 +2479,6 @@ Globals should be all caps
                 'border-radius:40px;' +
                 'font-size:15px;font-weight:bold;' +
                 'color:' + css_text + ';' +
-            '}' +
-            '\n#mixpanel-notification-button:hover {' +
                 'text-decoration:none;' +
             '}';
         document.head.appendChild(style_el);
