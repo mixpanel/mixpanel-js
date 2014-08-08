@@ -38,13 +38,16 @@
                 reset_cookie: true,
                 debug: true,
                 loaded: function(headtest) {
-                    test('functions queued in <head> before lib loads are later executed successfully', function() {
+                    test('functions queued in <head> before lib loads are later executed successfully', 7, function() {
+                        stop(); stop();
                         ok(headtest._flags.identify_called);
                         headtest.track("purchase llamas", {}, function(response) {
                             same(response, 0, "tracking disabled event should fail");
+                            start();
                         });
                         headtest.track("purchase capybaras", {}, function(response) {
                             same(response, 1, "tracking enabled event should succeed");
+                            start();
                         });
                         var props = headtest.cookie.properties();
                         ok(props.wombat);
@@ -53,7 +56,7 @@
                         ok(props.distinct_id === 'q-bert' || props.distinct_id === 'spyhunter');
                     });
 
-                    test('functions continue to work after lib loads', function() {
+                    test('functions continue to work after lib loads', 6, function() {
                         headtest.disable(['purchase capybaras']);
                         headtest.track("purchase capybaras", {}, function(response) {
                             same(response, 0, "tracking disabled event should fail");
@@ -88,8 +91,16 @@
                 }
             }, 'headtest');
 
+            // test is executed later; queue it up here to check that the rest of this
+            // block executes immediately and successfully
             test('all functions are queued before loading without stopping execution', function() {
                 ok(called_all_mixpanel_functions);
+            });
+            asyncTest('mixpanel lib loads successfully', function() {
+                setTimeout(function() {
+                    ok(window.mixpanel.headtest.__loaded);
+                    start();
+                }, 2000);
             });
 
             mixpanel.headtest.disable(['purchase llamas']);
@@ -123,9 +134,6 @@
         <h2 id="qunit-userAgent"></h2>
         <ol id="qunit-tests"></ol>
         <div id="qunit-fixture"></div>
-        <script type="text/javascript">
-            $('#qunit-tests').addClass('hidepass')
-        </script>
         <div id="nav"/>
         <div id="myform"/>
     </body>
