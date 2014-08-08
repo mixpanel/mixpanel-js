@@ -2373,9 +2373,30 @@ Globals should be all caps
         });
     };
 
+    _.add_document_styles = function(styles) {
+        var style_text = '';
+        for (selector in styles) {
+            style_text += '\n' + selector + ' {';
+            var props = styles[selector];
+            for (k in props) {
+                style_text += k + ':' + props[k] + ';';
+            }
+            style_text += '}';
+        }
+
+        var head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
+            style_el = document.createElement('style');
+        head_el.appendChild(style_el);
+        style_el.setAttribute('type', 'text/css');
+        if (style_el.styleSheet) { // IE
+            style_el.styleSheet.cssText = style_text;
+        } else {
+            style_el.innerHTML = style_text;
+        }
+    };
+
     MixpanelLib.prototype._show_notification = function(notification) {
         var self = this,
-            head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
             body_el = document.body || document.getElementsByTagName('body')[0];
         if (!body_el) {
             setTimeout(function() { self._show_notification.call(self, notification); }, 1000);
@@ -2398,7 +2419,6 @@ Globals should be all caps
             img_html = '<img class="mixpanel-notification-img" src="' + image_url + '"/>';
         }
 
-        var style_el = document.createElement('style');
         if (notification.type === 'dark') {
             var css_bg = '#1d1f25',
                 css_text = '#fff',
@@ -2408,82 +2428,95 @@ Globals should be all caps
                 css_text = '#52606b',
                 css_border_gray = '#e4ecf2';
         }
-        style_el.innerHTML =
-            '\nbody {height:100%;margin:0;padding:0}' + // IE hack
-            '\n.mixpanel-notification-overlay {' +
-                'position:fixed;' +
-                'top:0;left:0;' +
-                'width:100%;height:100%;' +
-                'text-align:center;' +
-                'z-index:10000;' +
-                'font-family:sans-serif;' +
-            '}' +
-            '\n.mixpanel-notification-bgwrapper {' +
-                'position:relative;' +
-                'width:100%;height:100%;' +
-            '}' +
-            '\n.mixpanel-notification-bg {' +
-                'position:fixed;' +
-                'top:0;left:0;' +
-                'width:100%;height:100%;' +
-                'background-color:black;' +
-                'opacity:0.5' +
-            '}' +
-            '\n#mixpanel-notification {' +
-                'position:absolute;' +
-                'right:0;' +
-                'width:424px;' +
-                'margin:60px 40px 0 0;' +
-                'padding:5px;' +
-                'border-radius:4px;' +
-                'text-align:' + (image_url ? 'center' : 'left') + ';' +
-                'background-color:' + css_bg + ';' +
-                'font-size:14px;' +
-                'color:' + css_text + ';' +
-            '}' +
-            '\n.mixpanel-notification-content {' +
-                'padding:0px 30px;' +
-            '}' +
-            '\n.mixpanel-notification-title {' +
-                'margin-top:10px;' +
-                'padding:20px 30px 10px 30px;' +
-                'font-size:19px;font-weight:bold;' +
-            '}' +
-            '\n.mixpanel-notification-image {' +
-                'padding-left:10px;' +
-            '}' +
-            '\n.mixpanel-notification-body {' +
-                'margin-top:10px;' +
-                'padding:10px 30px;' +
-                'font-size:15px;font-weight:normal;' +
-            '}' +
-            '\n#mixpanel-notification-cancel {' +
-                'float:right;' +
-                'padding:7px 10px 0 0;' +
-                'font-size:12px;font-weight:bold;' +
-                'transform:scale(1.4,1);' +
-                '-webkit-transform:scale(1.4,1);' +
-                '-moz-transform:scale(1.4,1);' +
-                '-ms-transform:scale(1.4,1);' +
-                '-o-transform:scale(1.4,1);' +
-                'color:#bac5ce;' +
-                'cursor:pointer;' +
-            '}' +
-            '\n.mixpanel-notification-actions {' +
-                'padding:30px 0 35px 0;' +
-                'text-align:center;' +
-            '}' +
-            '\n#mixpanel-notification-button {' +
-                'display:inline-block;' +
-                'margin:0 auto;' +
-                'padding:10px 25px;' +
-                'border:2px solid ' + css_border_gray + ';' +
-                'border-radius:40px;' +
-                'font-size:15px;font-weight:bold;' +
-                'color:' + css_text + ';' +
-                'text-decoration:none;' +
-            '}';
-        head_el.appendChild(style_el);
+        _.add_document_styles({
+            'body': { // IE hack
+                'height': '100%',
+                'margin': '0',
+                'padding': '0'
+            },
+            '.mixpanel-notification-overlay': {
+                'position': 'fixed',
+                'top': '0',
+                'left': '0',
+                'width': '100%',
+                'height': '100%',
+                'text-align': 'center',
+                'z-index': '10000',
+                'font-family': 'sans-serif'
+            },
+            '.mixpanel-notification-bgwrapper': {
+                'position': 'relative',
+                'width': '100%',
+                'height': '100%'
+            },
+            '.mixpanel-notification-bg': {
+                'position': 'fixed',
+                'top': '0',
+                'left': '0',
+                'width': '100%',
+                'height': '100%',
+                'background-color': 'black',
+                'opacity': '0.5'
+            },
+            '#mixpanel-notification': {
+                'position': 'absolute',
+                'right': '0',
+                'width': '424px',
+                'margin': '60px 40px 0 0',
+                'padding': '5px',
+                'border-radius': '4px',
+                'text-align': image_url ? 'center' : 'left',
+                'background-color': css_bg,
+                'font-size': '14px',
+                'color': css_text
+            },
+            '.mixpanel-notification-content': {
+                'padding': '0px 30px'
+            },
+            '.mixpanel-notification-title': {
+                'margin-top': '10px',
+                'padding': '20px 30px 10px 30px',
+                'font-size': '19px',
+                'font-weight': 'bold'
+            },
+            '.mixpanel-notification-image': {
+                'padding-left': '10px'
+            },
+            '.mixpanel-notification-body': {
+                'margin-top': '10px',
+                'padding': '10px 30px',
+                'font-size': '15px',
+                'font-weight': 'normal'
+            },
+            '#mixpanel-notification-cancel': {
+                'float': 'right',
+                'padding': '7px 10px 0 0',
+                'font-size': '12px',
+                'font-weight': 'bold',
+                'transform': 'scale(1.4,1)',
+                '-webkit-transform': 'scale(1.4,1)',
+                '-moz-transform': 'scale(1.4,1)',
+                '-ms-transform': 'scale(1.4,1)',
+                '-o-transform': 'scale(1.4,1)',
+                'color': '#bac5ce',
+                'cursor': 'pointer'
+            },
+            '.mixpanel-notification-actions': {
+                'padding': '30px 0 35px 0',
+                'text-align': 'center'
+            },
+            '#mixpanel-notification-button': {
+                'display': 'inline-block',
+                'margin': '0 auto',
+                'padding': '10px 25px',
+                'border': '2px solid ' + css_border_gray,
+                'border-radius': '40px',
+                'font-size': '15px',
+                'font-weight': 'bold',
+                'color': css_text,
+                'text-decoration': 'none'
+            }
+        });
 
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
