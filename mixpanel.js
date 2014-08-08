@@ -2410,7 +2410,7 @@ Globals should be all caps
                 'background-color:black;' +
                 'opacity:0.5' +
             '}' +
-            '\n.mixpanel-notification {' +
+            '\n#mixpanel-notification {' +
                 'position:absolute;' +
                 'right:0;' +
                 'width:424px;' +
@@ -2474,7 +2474,7 @@ Globals should be all caps
             '<div class="mixpanel-notification-overlay">' +
                 '<div class="mixpanel-notification-bgwrapper">' +
                     '<div class="mixpanel-notification-bg"></div>' +
-                    '<div class="mixpanel-notification">' +
+                    '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
                         '<div id="mixpanel-notification-cancel">X</div>' +
                         '<div id="mixpanel-notification-content">' +
                             '<div class="mixpanel-notification-title">' + notification.title + '</div>' +
@@ -2488,6 +2488,19 @@ Globals should be all caps
                 '</div>' +
             '</div>';
         document.body.appendChild(notif_wrapper);
+
+        var animate_notification = function(current_opacity, current_top) {
+            if (current_opacity >= 1.0 && current_top <= 0) {
+                return;
+            }
+            current_opacity += 0.02;
+            current_top -= 15;
+            var notification = document.getElementById('mixpanel-notification');
+            notification.style.opacity = String(current_opacity > 1.0 ? 1.0 : current_opacity);
+            notification.style.top = String(current_top < 0 ? 0 : current_top) + 'px';
+            setTimeout(function() { animate_notification(current_opacity, current_top) }, 1);
+        };
+        setTimeout(function() { animate_notification(0.0, 200) }, 500);
 
         var dismiss = function() {
             document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
