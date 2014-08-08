@@ -56,10 +56,10 @@
                     lib_loaded = true;
                     if (vals_preinited) {
                         test('Existing array parsed', 1, function() {
-                            same(window.mixpanel.additional.cookie.props['test val 1'], val2, "Initial super property was set correctly");
+                            same(instance.cookie.props['test val 1'], val2, "Initial super property was set correctly");
                         });
                         test('People array parsed', 1, function() {
-                            same(window.mixpanel.additional.people.val_to_change, 41, "Function pushed onto people array was called");
+                            same(instance.people.val_to_change, 41, "Function pushed onto people array was called");
                         });
                     }
                     instance.set_config({api_host: 'https://api.mixpanel.com'});
