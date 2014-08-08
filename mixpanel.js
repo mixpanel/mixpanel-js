@@ -2374,8 +2374,10 @@ Globals should be all caps
     };
 
     MixpanelLib.prototype._show_notification = function(notification) {
-        var self = this;
-        if (!document.body) {
+        var self = this,
+            head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
+            body_el = document.body || document.getElementsByTagName('body')[0];
+        if (!body_el) {
             setTimeout(function() { self._show_notification.call(self, notification); }, 1000);
             return;
         }
@@ -2481,7 +2483,7 @@ Globals should be all caps
                 'color:' + css_text + ';' +
                 'text-decoration:none;' +
             '}';
-        document.head.appendChild(style_el);
+        head_el.appendChild(style_el);
 
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
@@ -2502,7 +2504,7 @@ Globals should be all caps
                     '</div>' +
                 '</div>' +
             '</div>';
-        document.body.appendChild(notif_wrapper);
+        body_el.appendChild(notif_wrapper);
 
         var animate_notification = function(current_opacity, current_top) {
             if (current_opacity >= 1.0 && current_top <= 0) {
@@ -2532,11 +2534,11 @@ Globals should be all caps
             //     }
             // });
         };
-        document.getElementById('mixpanel-notification-cancel').addEventListener('click', function(e) {
+        _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
             e.preventDefault();
             dismiss();
         });
-        document.getElementById('mixpanel-notification-button').addEventListener('click', function(e) {
+        _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
             e.preventDefault();
             dismiss();
             //TODO track clickthrough?
