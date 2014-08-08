@@ -22,15 +22,17 @@
         <ol id="qunit-tests"></ol>
         <div id="qunit-fixture"></div>
         <script type="text/javascript">
-            var timed_out = false;
-            setTimeout(function() {
-                timed_out = true;
-            }, 5000);
-            window.onload = function() {
-                test('window.onload fires when api "down"', 1, function() {
-                    ok(!timed_out, 'onload callback');
-                });
-            };
+            window.onload_ran = false;
+            window.lib_onload_ran = false;
+            window.onload = function() { window.onload_ran = true; };
+
+            asyncTest('onload functions fire within 5 seconds when api "down"', 2, function() {
+                setTimeout(function() {
+                   ok(window.onload_ran, 'window.onload ran');
+                   ok(window.lib_onload_ran, 'mixpanel lib onload ran');
+                   start();
+                }, 5000);
+            });
         </script>
         <script type="text/javascript" src="../mixpanel-jslib-snippet.js"></script>
         <script type="text/javascript">
@@ -45,11 +47,7 @@
                 track_pageview: true,
                 img: false,
 
-                loaded: function(mixpanel) {
-                    test('lib loaded fires when api "down"', 1, function() {
-                        ok(!timed_out, 'lib loaded callback');
-                    });
-                }
+                loaded: function(mixpanel) { window.lib_onload_ran = true; }
             });
         </script>
     </body>
