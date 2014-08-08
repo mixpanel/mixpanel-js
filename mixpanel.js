@@ -258,6 +258,22 @@ Globals should be all caps
             + pad(d.getUTCSeconds());
     };
 
+    _.safewrap_class = function(klass, functions) {
+        var safewrap = function(f) {
+            return function() {
+                try {
+                    f.apply(this, arguments);
+                } catch(e) {
+                    console.critical('Implementation error. Please contact support@mixpanel.com.');
+                }
+            };
+        };
+
+        for (var i = 0; i < functions.length; i++) {
+            klass.prototype[functions[i]] = safewrap(klass.prototype[functions[i]]);
+        }
+    };
+
     _.strip_empty_properties = function(p) {
         var ret = {};
         _.each(p, function(v, k) {
@@ -3048,6 +3064,8 @@ Globals should be all caps
             _this._mixpanel.cookie.save();
         }
     };
+
+    _.safewrap_class(MixpanelLib, ['identify', '_show_notification']);
 
     // EXPORTS (for closure compiler)
 
