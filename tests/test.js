@@ -241,6 +241,8 @@ window.test_async = function() {
     } else {
         var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
         $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
+
+        // ensure that the post-load tests run even if the lib loaded before the call to mixpanel.init
         if (!window.TEST_MIXPANEL_STARTED) {
             window.test_mixpanel(mixpanel);
         }
