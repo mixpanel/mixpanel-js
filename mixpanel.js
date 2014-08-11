@@ -2391,7 +2391,7 @@ Globals should be all caps
         if (style_el.styleSheet) { // IE
             style_el.styleSheet.cssText = style_text;
         } else {
-            style_el.innerHTML = style_text;
+            style_el.textContent = style_text;
         }
     };
 
