@@ -2429,11 +2429,6 @@ Globals should be all caps
                 css_border_gray = '#e4ecf2';
         }
         _.add_document_styles({
-            'body': { // IE hack
-                'height': '100%',
-                'margin': '0',
-                'padding': '0'
-            },
             '.mixpanel-notification-overlay': {
                 'position': 'fixed',
                 'top': '0',
@@ -2519,6 +2514,19 @@ Globals should be all caps
                 'font-weight': 'bold',
                 'color': css_text,
                 'text-decoration': 'none'
+            },
+
+            // IE hacks
+            '* html .mixpanel-notification-overlay': {
+                'position': 'absolute'
+            },
+            '* html .mixpanel-notification-bg': {
+                'position': 'absolute'
+            },
+            'html, body': { // IE hack
+                'height': '100%',
+                'margin': '0',
+                'padding': '0'
             }
         });
 
