@@ -2373,28 +2373,6 @@ Globals should be all caps
         });
     };
 
-    _.add_document_styles = function(styles) {
-        var style_text = '';
-        for (selector in styles) {
-            style_text += '\n' + selector + ' {';
-            var props = styles[selector];
-            for (k in props) {
-                style_text += k + ':' + props[k] + ';';
-            }
-            style_text += '}';
-        }
-
-        var head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
-            style_el = document.createElement('style');
-        head_el.appendChild(style_el);
-        style_el.setAttribute('type', 'text/css');
-        if (style_el.styleSheet) { // IE
-            style_el.styleSheet.cssText = style_text;
-        } else {
-            style_el.textContent = style_text;
-        }
-    };
-
     MixpanelLib.prototype._show_notification = function(notification) {
         var self = this,
             body_el = document.body || document.getElementsByTagName('body')[0];
@@ -2419,6 +2397,27 @@ Globals should be all caps
             img_html = '<img class="mixpanel-notification-img" src="' + image_url + '"/>';
         }
 
+        var add_document_styles = function(styles) {
+            var style_text = '';
+            for (selector in styles) {
+                style_text += '\n' + selector + ' {';
+                var props = styles[selector];
+                for (k in props) {
+                    style_text += k + ':' + props[k] + ';';
+                }
+                style_text += '}';
+            }
+
+            var head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
+                style_el = document.createElement('style');
+            head_el.appendChild(style_el);
+            style_el.setAttribute('type', 'text/css');
+            if (style_el.styleSheet) { // IE
+                style_el.styleSheet.cssText = style_text;
+            } else {
+                style_el.textContent = style_text;
+            }
+        };
         if (notification.type === 'dark') {
             var css_bg = '#1d1f25',
                 css_text = '#fff',
@@ -2428,7 +2427,7 @@ Globals should be all caps
                 css_text = '#52606b',
                 css_border_gray = '#e4ecf2';
         }
-        _.add_document_styles({
+        add_document_styles({
             '.mixpanel-notification-overlay': {
                 'position': 'fixed',
                 'top': '0',
