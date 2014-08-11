@@ -2456,7 +2456,11 @@ Globals should be all caps
                 'width': '100%',
                 'height': '100%',
                 'background-color': 'black',
-                'opacity': '0.5'
+                'opacity': '0.5',
+                '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=50)', // IE8
+                'filter': 'alpha(opacity=50)', // IE5-7
+                '-moz-opacity': '0.5',
+                '-khtml-opacity': '0.5'
             },
             '#mixpanel-notification': {
                 'position': 'absolute',
