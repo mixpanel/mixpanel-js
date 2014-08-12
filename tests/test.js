@@ -27,8 +27,10 @@ var mpmodule = function(module_name, extra_setup, extra_teardown) {
             // We don't always block on .track() calls, so in browsers where
             // we can't use xhr, the jsonp query is invalid. To fix this,
             // we save the keys but make the callbacks noops.
-            _jsc = _.uniq(_jsc.concat(_.keys(mixpanel.test._jsc)));
-            clearLibInstance(mixpanel.test);
+            if (mixpanel.test) {
+                _jsc = _.uniq(_jsc.concat(_.keys(mixpanel.test._jsc)));
+                clearLibInstance(mixpanel.test);
+            }
 
             if (extra_teardown) { extra_teardown.call(this); }
         }
