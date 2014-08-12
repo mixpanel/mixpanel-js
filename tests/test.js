@@ -27,8 +27,10 @@ var mpmodule = function(module_name, extra_setup, extra_teardown) {
             // We don't always block on .track() calls, so in browsers where
             // we can't use xhr, the jsonp query is invalid. To fix this,
             // we save the keys but make the callbacks noops.
-            _jsc = _.uniq(_jsc.concat(_.keys(mixpanel.test._jsc)));
-            clearLibInstance(mixpanel.test);
+            if (mixpanel.test) {
+                _jsc = _.uniq(_jsc.concat(_.keys(mixpanel.test._jsc)));
+                clearLibInstance(mixpanel.test);
+            }
 
             if (extra_teardown) { extra_teardown.call(this); }
         }
@@ -220,24 +222,39 @@ window.test_async = function() {
     mixpanel.track('test', {}, function(response, data) {
         test1.properties = data.properties;
     });
+    var lib_loaded = mixpanel.__loaded;
     mixpanel.identify(test1.id);
     mixpanel.name_tag(test1.name);
 
-    module("async tracking");
+    // only run pre-load snippet tests if lib didn't finish loading before identify/name_tag calls
+    if (!lib_loaded) {
+        module("async tracking");
 
-        test("priority functions", 2, function() {
-            stop();
+            test("priority functions", 2, function() {
+                stop();
 
-            wait(function() { return test1.properties !== null; }, function() {
-                var p = test1.properties;
-                same(p.mp_name_tag, test1.name, "name_tag should fire before track");
-                same(p.distinct_id, test1.id, "identify should fire before track");
-                start();
+                wait(function() { return test1.properties !== null; }, function() {
+                    var p = test1.properties;
+                    same(p.mp_name_tag, test1.name, "name_tag should fire before track");
+                    same(p.distinct_id, test1.id, "identify should fire before track");
+                    start();
+                });
             });
-        });
+    } else {
+        var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
+        $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
+
+        // ensure that the post-load tests run even if the lib loaded before the call to mixpanel.init
+        if (!window.TEST_MIXPANEL_STARTED) {
+            window.test_mixpanel(mixpanel);
+        }
+    }
 };
 
 window.test_mixpanel = function(mixpanel) {
+
+window.TEST_MIXPANEL_STARTED = true;
+
 /* Tests to run once the lib is loaded on the page.
  */
 setTimeout( function() {
@@ -269,7 +286,7 @@ mpmodule("mixpanel.track");
             function i(n) { return _.include(result, n); }
             ok(i(1) && i(2), 'both callbacks executed.');
             start();
-        }, 1000);
+        }, 3000);
     });
 
     test("ip is honored", 2, function() {
@@ -403,235 +420,237 @@ mpmodule("json");
         ok(_.isEqual(decoded, o), "roundtrip should be equal");
     });
 
-mpmodule("cookies");
+if (!window.COOKIE_FAILURE_TEST) {
+    mpmodule("cookies");
 
-    test("cookie manipulation", 4, function() {
-        var c = mixpanel._.cookie
-            , name = "mp_test_cookie_2348958345"
-            , content = "testing 1 2 3;2jf3f39*#%&*%@)(@%_@{}[]";
+        test("cookie manipulation", 4, function() {
+            var c = mixpanel._.cookie
+                , name = "mp_test_cookie_2348958345"
+                , content = "testing 1 2 3;2jf3f39*#%&*%@)(@%_@{}[]";
 
-        if (cookie.exists(name)) {
+            if (cookie.exists(name)) {
+                c.remove(name);
+            }
+
+            notOk(cookie.exists(name), "test cookie should not exist");
+
+            c.set(name, content);
+
+            ok(cookie.exists(name), "test cookie should exist");
+
+            equal(c.get(name), content, "cookie.get should return the cookie's content");
+
             c.remove(name);
+
+            notOk(cookie.exists(name), "test cookie should not exist");
+        });
+
+        test("cookie name", 6, function() {
+            var token = "FJDIF"
+                , name1 = "mp_"+token+"_mixpanel"
+                , name2 = "mp_cn2";
+
+            notOk(cookie.exists(name1), "test cookie should not exist");
+
+            mixpanel.init(token, {}, "cn1");
+            ok(cookie.exists(name1), "test cookie should exist");
+
+            notOk(cookie.exists(name2), "test cookie 2 should not exist");
+
+            mixpanel.init(token, { cookie_name: "cn2" }, "cn2");
+            ok(cookie.exists(name2), "test cookie 2 should exist");
+
+            mixpanel.cn1.cookie.clear();
+            mixpanel.cn2.cookie.clear();
+
+            notOk(cookie.exists(name1), "test cookie should not exist");
+            notOk(cookie.exists(name2), "test cookie 2 should not exist");
+
+            clearLibInstance(mixpanel.cn1);
+            clearLibInstance(mixpanel.cn2);
+        });
+
+        test("cross subdomain", 4, function() {
+            var name = mixpanel.test.config.cookie_name;
+
+            ok(mixpanel.test.cookie.get_cross_subdomain(), "Cross subdomain should be set correctly");
+            // Remove non-cross-subdomain cookie if it exists.
+            cookie.remove(name, false);
+            ok(cookie.exists(name), "Cookie should still exist");
+
+            mixpanel.test.set_config({ cross_subdomain_cookie: false });
+            notOk(mixpanel.test.cookie.get_cross_subdomain(), "Should switch to false");
+            // Remove cross-subdomain cookie if it exists.
+            cookie.remove(name, true);
+            ok(cookie.exists(name), "Cookie should still exist for current subdomain");
+        });
+
+        test("Old values loaded", 1, function() {
+            var c1 = {
+                distinct_id: '12345',
+                asdf: 'asdf',
+                $original_referrer: 'http://whodat.com'
+            };
+            var token = "oldvalues9087tyguhbjkn",
+                name = "mp_" + token + "_mixpanel";
+
+            // Set some existing cookie values & make sure they are loaded in correctly.
+            cookie.remove(name);
+            cookie.remove(name, true);
+            cookie.set(name, mixpanel._.JSONEncode(c1));
+
+            var ov1 = mixpanel.init(token, {}, "ov1");
+            ok(contains_obj(ov1.cookie.props, c1), "original cookie values should be loaded");
+            clearLibInstance(mixpanel.ov1);
+        });
+
+        test("cookie upgrade", 12, function() {
+            var c1 = {
+                'all': { 'test': '7abc' },
+                'events': { 'test2': 'ab8c' },
+                'funnels': { 'test3': 'ab6c' }
+            };
+
+            // Set up a cookie with the name used by the old lib
+            cookie.remove('mp_super_properties');
+            cookie.remove('mp_super_properties', true);
+            cookie.set('mp_super_properties', mixpanel._.JSONEncode(c1));
+
+            var cu0 = mixpanel.init("ajsfjow", { upgrade: true }, "cu0");
+
+            notOk(cookie.exists('mp_super_properties'), "upgrade should remove the cookie");
+
+            ok(contains_obj(cu0.cookie.props, c1['all']), "old cookie[all] was imported");
+            ok(contains_obj(cu0.cookie.props, c1['events']), "old cookie[events] was imported");
+            notOk(contains_obj(cu0.cookie.props, c1['funnels']), "old cookie[funnels] was not imported");
+
+            var c2 = {
+                'all': { 'test4': 'a3bc' },
+                'events': { 'test5': 'a2bc' },
+                'funnels': { 'test6': 'a5bc' }
+            };
+
+            // Set up an old-style cookie with a custom name
+            cookie.remove('mp_super_properties_other');
+            cookie.remove('mp_super_properties_other', true);
+            cookie.set('mp_super_properties_other', mixpanel._.JSONEncode(c2));
+
+            var cu1 = mixpanel.init("ajsfdjow", { upgrade: 'mp_super_properties_other' }, "cu1");
+
+            notOk(cookie.exists('mp_super_properties_other'), "upgrade should remove the cookie");
+
+            ok(contains_obj(cu1.cookie.props, c2['all']), "old cookie[all] was imported");
+            ok(contains_obj(cu1.cookie.props, c2['events']), "old cookie[events] was imported");
+            notOk(contains_obj(cu1.cookie.props, c2['funnels']), "old cookie[funnels] was not imported");
+
+            var c3 = { 'a': 'b' }
+                , token = "cookieupgrade3_23fj902"
+                , name = "mp_" + token + "_mixpanel"
+                , old_name = "mp_" + token + "_cu2";
+
+            cookie.remove(name);
+            cookie.remove(name, true);
+            cookie.remove(old_name);
+            cookie.remove(old_name, true);
+
+            // Set up a cookie with the tracker name appended, like this one used to.
+            cookie.set(old_name, mixpanel._.JSONEncode(c3));
+
+            var cu2 = mixpanel.init(token, {}, 'cu2');
+
+            // Old cookie should be removed when lib is initialized
+            notOk(cookie.exists(old_name), "initializing a lib with a custom name should kill off the old name");
+            ok(contains_obj(cu2.cookie.props, c3), "old cookie was imported");
+
+            var c4 = { 'c': 'd' }
+                , token = "cookieupgrade4_29fj"
+                , name = "mp_" + token + "_mixpanel"
+                , old_name = "mp_" + token + "_cu3";
+
+            // Set the cookie the lib will set by default
+            cookie.remove(name);
+            cookie.remove(name, true);
+            cookie.set(name, mixpanel._.JSONEncode(c4));
+
+            // Reset the cookie with the tracker name appended
+            cookie.remove(old_name);
+            cookie.remove(old_name, true);
+            // Set c value in old cookie - we want to test to make sure it doesn't override
+            // the current one.
+            cookie.set(old_name, mixpanel._.JSONEncode({ 'c': 'error' }));
+
+            var cu3 = mixpanel.init(token, { upgrade: true }, 'cu3');
+
+            notOk(cookie.exists(old_name), "initializing the lib should kill off the old one, even if the correct name exists");
+            ok(contains_obj(cu3.cookie.props, c4), "old cookie should be imported");
+
+            clearLibInstance(cu0);
+            clearLibInstance(cu1);
+            clearLibInstance(cu2);
+            clearLibInstance(cu3);
+        });
+
+        test("disable cookies", 7, function() {
+            var c_name = "mpl_should_not_exist";
+
+            cookie.remove(c_name);
+            cookie.remove(c_name, true);
+
+            mixpanel.init("Asdfja", { cookie_name: c_name, disable_cookie: true }, "dc0");
+
+            notOk(cookie.exists(c_name), "cookie should not exist");
+
+            var dc1 = mixpanel.init("Asdf", { cookie_name: c_name }, "dc1");
+            dc1.set_config({ disable_cookie: true });
+
+            notOk(cookie.exists(c_name), "cookie 2 should not exist");
+
+            var props = { 'a': 'b' };
+            dc1.register(props);
+
+            stop();
+            var data = dc1.track('test', {'c': 'd'}, function(response) {
+                same(response, 1, "tracking still works");
+                start();
+            });
+
+            var dp = data.properties;
+
+            ok('token' in dp, "token included in properties");
+
+            ok(contains_obj(dp, {'a': 'b', 'c': 'd'}), 'super properties included correctly');
+            ok(contains_obj(dc1.cookie.props, props), "Super properties saved");
+
+            notOk(cookie.exists(c_name), "cookie 2 should not exist even after tracking/registering");
+        });
+
+        function cookie_included(name, callback) {
+            $.getJSON("/tests/cookie_included/" + name, function(resp) {
+                callback(resp);
+            });
         }
 
-        notOk(cookie.exists(name), "test cookie should not exist");
-
-        c.set(name, content);
-
-        ok(cookie.exists(name), "test cookie should exist");
-
-        equal(c.get(name), content, "cookie.get should return the cookie's content");
-
-        c.remove(name);
-
-        notOk(cookie.exists(name), "test cookie should not exist");
-    });
-
-    test("cookie name", 6, function() {
-        var token = "FJDIF"
-            , name1 = "mp_"+token+"_mixpanel"
-            , name2 = "mp_cn2";
-
-        notOk(cookie.exists(name1), "test cookie should not exist");
-
-        mixpanel.init(token, {}, "cn1");
-        ok(cookie.exists(name1), "test cookie should exist");
-
-        notOk(cookie.exists(name2), "test cookie 2 should not exist");
-
-        mixpanel.init(token, { cookie_name: "cn2" }, "cn2");
-        ok(cookie.exists(name2), "test cookie 2 should exist");
-
-        mixpanel.cn1.cookie.clear();
-        mixpanel.cn2.cookie.clear();
-
-        notOk(cookie.exists(name1), "test cookie should not exist");
-        notOk(cookie.exists(name2), "test cookie 2 should not exist");
-
-        clearLibInstance(mixpanel.cn1);
-        clearLibInstance(mixpanel.cn2);
-    });
-
-    test("cross subdomain", 4, function() {
-        var name = mixpanel.test.config.cookie_name;
-
-        ok(mixpanel.test.cookie.get_cross_subdomain(), "Cross subdomain should be set correctly");
-        // Remove non-cross-subdomain cookie if it exists.
-        cookie.remove(name, false);
-        ok(cookie.exists(name), "Cookie should still exist");
-
-        mixpanel.test.set_config({ cross_subdomain_cookie: false });
-        notOk(mixpanel.test.cookie.get_cross_subdomain(), "Should switch to false");
-        // Remove cross-subdomain cookie if it exists.
-        cookie.remove(name, true);
-        ok(cookie.exists(name), "Cookie should still exist for current subdomain");
-    });
-
-    test("Old values loaded", 1, function() {
-        var c1 = {
-            distinct_id: '12345',
-            asdf: 'asdf',
-            $original_referrer: 'http://whodat.com'
-        };
-        var token = "oldvalues9087tyguhbjkn",
-            name = "mp_" + token + "_mixpanel";
-
-        // Set some existing cookie values & make sure they are loaded in correctly.
-        cookie.remove(name);
-        cookie.remove(name, true);
-        cookie.set(name, mixpanel._.JSONEncode(c1));
-
-        var ov1 = mixpanel.init(token, {}, "ov1");
-        ok(contains_obj(ov1.cookie.props, c1), "original cookie values should be loaded");
-        clearLibInstance(mixpanel.ov1);
-    });
-
-    test("cookie upgrade", 12, function() {
-        var c1 = {
-            'all': { 'test': '7abc' },
-            'events': { 'test2': 'ab8c' },
-            'funnels': { 'test3': 'ab6c' }
-        };
-
-        // Set up a cookie with the name used by the old lib
-        cookie.remove('mp_super_properties');
-        cookie.remove('mp_super_properties', true);
-        cookie.set('mp_super_properties', mixpanel._.JSONEncode(c1));
-
-        var cu0 = mixpanel.init("ajsfjow", { upgrade: true }, "cu0");
-
-        notOk(cookie.exists('mp_super_properties'), "upgrade should remove the cookie");
-
-        ok(contains_obj(cu0.cookie.props, c1['all']), "old cookie[all] was imported");
-        ok(contains_obj(cu0.cookie.props, c1['events']), "old cookie[events] was imported");
-        notOk(contains_obj(cu0.cookie.props, c1['funnels']), "old cookie[funnels] was not imported");
-
-        var c2 = {
-            'all': { 'test4': 'a3bc' },
-            'events': { 'test5': 'a2bc' },
-            'funnels': { 'test6': 'a5bc' }
-        };
-
-        // Set up an old-style cookie with a custom name
-        cookie.remove('mp_super_properties_other');
-        cookie.remove('mp_super_properties_other', true);
-        cookie.set('mp_super_properties_other', mixpanel._.JSONEncode(c2));
-
-        var cu1 = mixpanel.init("ajsfdjow", { upgrade: 'mp_super_properties_other' }, "cu1");
-
-        notOk(cookie.exists('mp_super_properties_other'), "upgrade should remove the cookie");
-
-        ok(contains_obj(cu1.cookie.props, c2['all']), "old cookie[all] was imported");
-        ok(contains_obj(cu1.cookie.props, c2['events']), "old cookie[events] was imported");
-        notOk(contains_obj(cu1.cookie.props, c2['funnels']), "old cookie[funnels] was not imported");
-
-        var c3 = { 'a': 'b' }
-            , token = "cookieupgrade3_23fj902"
-            , name = "mp_" + token + "_mixpanel"
-            , old_name = "mp_" + token + "_cu2";
-
-        cookie.remove(name);
-        cookie.remove(name, true);
-        cookie.remove(old_name);
-        cookie.remove(old_name, true);
-
-        // Set up a cookie with the tracker name appended, like this one used to.
-        cookie.set(old_name, mixpanel._.JSONEncode(c3));
-
-        var cu2 = mixpanel.init(token, {}, 'cu2');
-
-        // Old cookie should be removed when lib is initialized
-        notOk(cookie.exists(old_name), "initializing a lib with a custom name should kill off the old name");
-        ok(contains_obj(cu2.cookie.props, c3), "old cookie was imported");
-
-        var c4 = { 'c': 'd' }
-            , token = "cookieupgrade4_29fj"
-            , name = "mp_" + token + "_mixpanel"
-            , old_name = "mp_" + token + "_cu3";
-
-        // Set the cookie the lib will set by default
-        cookie.remove(name);
-        cookie.remove(name, true);
-        cookie.set(name, mixpanel._.JSONEncode(c4));
-
-        // Reset the cookie with the tracker name appended
-        cookie.remove(old_name);
-        cookie.remove(old_name, true);
-        // Set c value in old cookie - we want to test to make sure it doesn't override
-        // the current one.
-        cookie.set(old_name, mixpanel._.JSONEncode({ 'c': 'error' }));
-
-        var cu3 = mixpanel.init(token, { upgrade: true }, 'cu3');
-
-        notOk(cookie.exists(old_name), "initializing the lib should kill off the old one, even if the correct name exists");
-        ok(contains_obj(cu3.cookie.props, c4), "old cookie should be imported");
-
-        clearLibInstance(cu0);
-        clearLibInstance(cu1);
-        clearLibInstance(cu2);
-        clearLibInstance(cu3);
-    });
-
-    test("disable cookies", 7, function() {
-        var c_name = "mpl_should_not_exist";
-
-        cookie.remove(c_name);
-        cookie.remove(c_name, true);
-
-        mixpanel.init("Asdfja", { cookie_name: c_name, disable_cookie: true }, "dc0");
-
-        notOk(cookie.exists(c_name), "cookie should not exist");
-
-        var dc1 = mixpanel.init("Asdf", { cookie_name: c_name }, "dc1");
-        dc1.set_config({ disable_cookie: true });
-
-        notOk(cookie.exists(c_name), "cookie 2 should not exist");
-
-        var props = { 'a': 'b' };
-        dc1.register(props);
-
-        stop();
-        var data = dc1.track('test', {'c': 'd'}, function(response) {
-            same(response, 1, "tracking still works");
-            start();
+        asyncTest("secure cookie false by default", 1, function() {
+            cookie_included(mixpanel.test.cookie.name, function(resp) {
+                same(resp, 1, "cookie is included in request to server");
+                start();
+            });
         });
 
-        var dp = data.properties;
+        asyncTest("secure cookie only sent to https", 1, function() {
+            mixpanel.test.set_config({ secure_cookie: true });
+            var expected = document.location.protocol === "https:" ? 1 : 0;
 
-        ok('token' in dp, "token included in properties");
-
-        ok(contains_obj(dp, {'a': 'b', 'c': 'd'}), 'super properties included correctly');
-        ok(contains_obj(dc1.cookie.props, props), "Super properties saved");
-
-        notOk(cookie.exists(c_name), "cookie 2 should not exist even after tracking/registering");
-    });
-
-    function cookie_included(name, callback) {
-        $.getJSON("/tests/cookie_included/" + name, function(resp) {
-            callback(resp);
+            cookie_included(mixpanel.test.cookie.name, function(resp) {
+                same(resp, expected, "cookie is only included in request to server if https");
+                start();
+            });
         });
-    }
-
-    asyncTest("secure cookie false by default", 1, function() {
-        cookie_included(mixpanel.test.cookie.name, function(resp) {
-            same(resp, 1, "cookie is included in request to server");
-            start();
-        });
-    });
-
-    asyncTest("secure cookie only sent to https", 1, function() {
-        mixpanel.test.set_config({ secure_cookie: true });
-        var expected = document.location.protocol === "https:" ? 1 : 0;
-
-        cookie_included(mixpanel.test.cookie.name, function(resp) {
-            same(resp, expected, "cookie is only included in request to server if https");
-            start();
-        });
-    });
+}
 
 mpmodule("mixpanel");
 
-    test("constructor", 3, function() {
+    test("constructor", window.COOKIE_FAILURE_TEST ? 2 : 3, function() {
         var token = 'ASDF',
             sp = { 'test': 'all' };
 
@@ -642,7 +661,9 @@ mpmodule("mixpanel");
 
         // Recreate object - should pull super props from cookie
         mixpanel.init(token, { cookie_name: 'mpl_t2', track_pageview: false }, 'mpl2');
-        ok(contains_obj(mixpanel.mpl2.cookie.props, sp), "Super properties saved to cookie");
+        if (!window.COOKIE_FAILURE_TEST) {
+            ok(contains_obj(mixpanel.mpl2.cookie.props, sp), "Super properties saved to cookie");
+        }
 
         mixpanel.init(token, { cookie_name: 'mpl_t', track_pageview: false }, 'mpl3');
         var props = mixpanel.mpl3.cookie.properties();
@@ -1652,9 +1673,11 @@ if (USE_XHR) {
 // Necessary because the alias tests can't clean up after themselves, as there is no callback.
 setTimeout(function() {
     _.each(document.cookie.split(';'), function(c) {
-        var name = c.split('=')[0].trim();
+        var name = c.split('=')[0].replace(/^\s+|\s+$/g, '');
         if (name.match(/mp_test_\d+_mixpanel$/)) {
-            console.log("removing cookie:", name);
+            if (window.console) {
+                console.log("removing cookie:", name);
+            }
             cookie.remove(name);
             cookie.remove(name, true);
         }
