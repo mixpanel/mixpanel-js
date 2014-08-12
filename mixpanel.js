@@ -1,5 +1,5 @@
 /*
- * Mixpanel JS Library v2.2.1
+ * Mixpanel JS Library v2.2.3
  *
  * Copyright 2012, Mixpanel, Inc. All Rights Reserved
  * http://mixpanel.com/
@@ -1859,8 +1859,8 @@ Globals should be all caps
      *      mixpanel.library_name.track(...)
      *
      * @param {String} token   Your Mixpanel API token
-     * @param {Object} config  A dictionary of config options to override
-     * @param {String} name    The name for the new mixpanel instance that you want created
+     * @param {Object} [config]  A dictionary of config options to override
+     * @param {String} [name]    The name for the new mixpanel instance that you want created
      */
     MixpanelLib.prototype.init = function (token, config, name) {
         if (typeof(name) === "undefined") {
@@ -2902,7 +2902,7 @@ Globals should be all caps
      *     });
      *
      * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
-     * @param {*} [value] An amount to increment the given property
+     * @param {*} [value] An item to append to the list
      * @param {Function} [callback] If provided, the callback will be called after the tracking event
      */
     MixpanelPeople.prototype.append = function(list_name, value, callback) {
