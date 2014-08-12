@@ -49,6 +49,9 @@
 
                 loaded: function(mixpanel) { window.lib_onload_ran = true; }
             });
+            QUnit.done = function(details) {
+                mixpanel.cookie.clear();
+            };
         </script>
     </body>
 </html>

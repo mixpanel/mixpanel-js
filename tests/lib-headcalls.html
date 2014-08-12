@@ -111,6 +111,9 @@
 
                 called_all_mixpanel_functions = true;
 
+                QUnit.done = function(details) {
+                    mixpanel.headtest.cookie.clear();
+                };
             }
         </script>
     </head>

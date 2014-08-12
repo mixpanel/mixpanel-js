@@ -93,6 +93,11 @@
                     });
                 });
             }
+
+            QUnit.done = function(details) {
+                mixpanel.cookie.clear();
+                mixpanel.additional.cookie.clear();
+            };
         </script>
     </body>
 </html>
