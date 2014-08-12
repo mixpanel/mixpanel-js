@@ -1,5 +1,5 @@
 /*
- * Mixpanel JS Library v2.2.1
+ * Mixpanel JS Library v2.2.3
  *
  * Copyright 2012, Mixpanel, Inc. All Rights Reserved
  * http://mixpanel.com/
