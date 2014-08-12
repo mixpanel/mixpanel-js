@@ -286,7 +286,7 @@ mpmodule("mixpanel.track");
             function i(n) { return _.include(result, n); }
             ok(i(1) && i(2), 'both callbacks executed.');
             start();
-        }, 1000);
+        }, 3000);
     });
 
     test("ip is honored", 2, function() {
