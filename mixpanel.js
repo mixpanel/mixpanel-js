@@ -2418,7 +2418,7 @@ Globals should be all caps
                 style_el.textContent = style_text;
             }
         };
-        if (notification.type === 'dark') {
+        if (notification.style === 'dark') {
             var css_bg = '#1d1f25',
                 css_text = '#fff',
                 css_border_gray = '#32353c';
