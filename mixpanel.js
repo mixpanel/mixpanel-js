@@ -258,19 +258,19 @@ Globals should be all caps
             + pad(d.getUTCSeconds());
     };
 
-    _.safewrap_class = function(klass, functions) {
-        var safewrap = function(f) {
-            return function() {
-                try {
-                    f.apply(this, arguments);
-                } catch(e) {
-                    console.critical('Implementation error. Please contact support@mixpanel.com.');
-                }
-            };
+    _.safewrap = function(f) {
+        return function() {
+            try {
+                f.apply(this, arguments);
+            } catch(e) {
+                console.critical('Implementation error. Please contact support@mixpanel.com.');
+            }
         };
+    };
 
+    _.safewrap_class = function(klass, functions) {
         for (var i = 0; i < functions.length; i++) {
-            klass.prototype[functions[i]] = safewrap(klass.prototype[functions[i]]);
+            klass.prototype[functions[i]] = _.safewrap(klass.prototype[functions[i]]);
         }
     };
 
@@ -2554,7 +2554,7 @@ Globals should be all caps
             '</div>';
         body_el.appendChild(notif_wrapper);
 
-        var animate_notification = function(current_opacity, current_top) {
+        var animate_notification = _.safewrap(function(current_opacity, current_top) {
             if (current_opacity >= 1.0 && current_top <= 0) {
                 return;
             }
@@ -2564,24 +2564,33 @@ Globals should be all caps
             notification.style.opacity = String(current_opacity > 1.0 ? 1.0 : current_opacity);
             notification.style.top = String(current_top < 0 ? 0 : current_top) + 'px';
             setTimeout(function() { animate_notification(current_opacity, current_top) }, 1);
-        };
+        });
         setTimeout(function() { animate_notification(0.0, 200) }, 500);
 
-        var dismiss = function() {
+        var dismiss = _.safewrap(function() {
             document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
 
             // mark notification shown
-            // TODO skip if notification.id missing??
-            // self.people.append({
-            //     $campaigns: notification.id,
-            //     $notifications: {
-            //         campaign_id: notification.id,
-            //         message_id: notification.message_id,
-            //         type: 'web',
-            //         time: new Date()
-            //     }
-            // });
-        };
+            self.people.append({
+                $campaigns: notification.id,
+                $notifications: {
+                    campaign_id: notification.id,
+                    message_id: notification.message_id,
+                    type: 'web',
+                    time: new Date()
+                }
+            });
+
+            // track delivery
+            // TODO title == $ignore???
+            self.track('$campaign_delivery', {
+                campaign_id: notification.id,
+                message_id: notification.message_id,
+                message_type: 'web_inapp'
+            });
+
+            // FIXME clickthrough in callbacks
+        });
         _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
             e.preventDefault();
             dismiss();
