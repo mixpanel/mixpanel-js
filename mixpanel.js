@@ -2395,14 +2395,14 @@ Globals should be all caps
         }
         var img_html = '';
         if (image_url) {
-            img_html = '<img class="mixpanel-notification-img" src="' + image_url + '"/>';
+            img_html = '<img id="mixpanel-notification-img" src="' + image_url + '"/>';
         }
 
         var thumb_img_html = '';
         if (thumb_image_url) {
             thumb_img_html =
                 '<div id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;">' +
-                    '<img class="mixpanel-notification-thumbnail-img" src="' + thumb_image_url + '" width="75" height="75"/>' +
+                    '<img id="mixpanel-notification-thumbnail-img" src="' + thumb_image_url + '" width="75" height="75"/>' +
                 '</div>';
         }
 
@@ -2438,7 +2438,7 @@ Globals should be all caps
         }
         var caret_size = '10px';
         add_document_styles({
-            '.mixpanel-notification-overlay': {
+            '#mixpanel-notification-overlay': {
                 'position': 'fixed',
                 'top': '0',
                 'left': '0',
@@ -2448,12 +2448,12 @@ Globals should be all caps
                 'z-index': '10000',
                 'font-family': 'sans-serif'
             },
-            '.mixpanel-notification-bgwrapper': {
+            '#mixpanel-notification-bgwrapper': {
                 'position': 'relative',
                 'width': '100%',
                 'height': '100%'
             },
-            '.mixpanel-notification-bg': {
+            '#mixpanel-notification-bg': {
                 'position': 'fixed',
                 'top': '0',
                 'left': '0',
@@ -2488,7 +2488,7 @@ Globals should be all caps
                 'font-size': '14px',
                 'color': css_text
             },
-            '.mixpanel-notification-caret': {
+            '#mixpanel-notification-caret': {
                 'position': 'absolute',
                 'top': '-' + caret_size,
                 'right': '50px',
@@ -2496,19 +2496,19 @@ Globals should be all caps
                 'border-right': caret_size + ' solid transparent',
                 'border-bottom': caret_size + ' solid ' + css_bg
             },
-            '.mixpanel-notification-content': {
+            '#mixpanel-notification-content': {
                 'padding': '0px 30px'
             },
-            '.mixpanel-notification-title': {
+            '#mixpanel-notification-title': {
                 'margin-top': '10px',
                 'padding': '20px 30px 10px 30px',
                 'font-size': '19px',
                 'font-weight': 'bold'
             },
-            '.mixpanel-notification-image': {
+            '#mixpanel-notification-image': {
                 'padding-left': '10px'
             },
-            '.mixpanel-notification-body': {
+            '#mixpanel-notification-body': {
                 'margin-top': '10px',
                 'padding': '10px 30px',
                 'font-size': '15px',
@@ -2527,7 +2527,7 @@ Globals should be all caps
                 'color': '#bac5ce',
                 'cursor': 'pointer'
             },
-            '.mixpanel-notification-actions': {
+            '#mixpanel-notification-actions': {
                 'padding': '30px 0 35px 0',
                 'text-align': 'center'
             },
@@ -2546,10 +2546,10 @@ Globals should be all caps
             },
 
             // IE hacks
-            '* html .mixpanel-notification-overlay': {
+            '* html #mixpanel-notification-overlay': {
                 'position': 'absolute'
             },
-            '* html .mixpanel-notification-bg': {
+            '* html #mixpanel-notification-bg': {
                 'position': 'absolute'
             },
             'html, body': {
@@ -2562,18 +2562,18 @@ Globals should be all caps
         var notif_wrapper = document.createElement('div');
         notif_wrapper.id = 'mixpanel-notification-wrapper';
         notif_wrapper.innerHTML =
-            '<div class="mixpanel-notification-overlay">' +
-                '<div class="mixpanel-notification-bgwrapper">' +
-                    '<div class="mixpanel-notification-bg"></div>' +
+            '<div id="mixpanel-notification-overlay">' +
+                '<div id="mixpanel-notification-bgwrapper">' +
+                    '<div id="mixpanel-notification-bg"></div>' +
                     thumb_img_html +
                     '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
-                        '<div class="mixpanel-notification-caret"></div>' +
+                        '<div id="mixpanel-notification-caret"></div>' +
                         '<div id="mixpanel-notification-cancel">X</div>' +
                         '<div id="mixpanel-notification-content">' +
-                            '<div class="mixpanel-notification-title">' + notification.title + '</div>' +
+                            '<div id="mixpanel-notification-title">' + notification.title + '</div>' +
                             img_html +
-                            '<div class="mixpanel-notification-body">' + notification.body + '</div>' +
-                            '<div class="mixpanel-notification-actions">' +
+                            '<div id="mixpanel-notification-body">' + notification.body + '</div>' +
+                            '<div id="mixpanel-notification-actions">' +
                                 '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
                             '</div>' +
                         '</div>' +
@@ -2600,7 +2600,7 @@ Globals should be all caps
 
             setTimeout(function() { animate_notification(opacity, notif_top, thumb_top) }, 1);
         });
-        setTimeout(function() { animate_notification(0.0, 200, -225) }, 500);
+        setTimeout(function() { animate_notification(0.0, 100, -125) }, 500);
 
         var dismiss = _.safewrap(function() {
             document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
