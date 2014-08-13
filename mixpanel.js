@@ -2460,7 +2460,7 @@ Globals should be all caps
                 'width': '100%',
                 'height': '100%',
                 'background-color': 'black',
-                'opacity': '0.5',
+                'opacity': '0.0',
                 '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=50)', // IE8
                 'filter': 'alpha(opacity=50)', // IE5-7
                 '-moz-opacity': '0.5',
@@ -2582,25 +2582,43 @@ Globals should be all caps
             '</div>';
         body_el.appendChild(notif_wrapper);
 
-        var animate_notification = _.safewrap(function(opacity, notif_top, thumb_top) {
-            if (opacity >= 1.0 && notif_top <= 0 && thumb_top >= 25) {
+        var animate_notification = _.safewrap(function(anim_props) {
+            var in_progress = false;
+            for (prop in anim_props) {
+                var anim = anim_props[prop];
+                if (anim.val !== anim.goal) {
+                    in_progress = true;
+                    anim.val += anim.incr;
+                    if ((anim.incr > 0 && anim.val >= anim.goal) || (anim.incr < 0 && anim.val <= anim.goal)) {
+                        anim.val = anim.goal;
+                    }
+                }
+            }
+            if (!in_progress) {
                 return;
             }
-            opacity += 0.02;
-            notif_top -= 15;
-            thumb_top += 15;
+
+            var bg = document.getElementById('mixpanel-notification-bg');
+            bg.style.opacity = String(anim_props.bg_opacity.val);
 
             var notification = document.getElementById('mixpanel-notification');
-            notification.style.opacity = String(opacity > 1.0 ? 1.0 : opacity);
-            notification.style.top = String(notif_top < 0 ? 0 : notif_top) + 'px';
+            notification.style.opacity = String(anim_props.notif_opacity.val);
+            notification.style.top = String(anim_props.notif_top.val) + 'px';
 
             var thumbnail = document.getElementById('mixpanel-notification-thumbnail');
-            thumbnail.style.opacity = String(opacity > 1.0 ? 1.0 : opacity);
-            thumbnail.style.top = String(thumb_top > 25 ? 25 : thumb_top) + 'px';
+            thumbnail.style.opacity = String(anim_props.notif_opacity.val);
+            thumbnail.style.top = String(anim_props.thumb_top.val) + 'px';
 
-            setTimeout(function() { animate_notification(opacity, notif_top, thumb_top) }, 1);
+            setTimeout(function() { animate_notification(anim_props) }, 1);
         });
-        setTimeout(function() { animate_notification(0.0, 100, -125) }, 500);
+        setTimeout(function() {
+            animate_notification({
+                bg_opacity:    {val: 0.0, goal: 0.5, incr: 0.02},
+                notif_opacity: {val: 0.0, goal: 1.0, incr: 0.02},
+                notif_top:     {val: 150, goal: 0,   incr: -15 },
+                thumb_top:     {val: -75, goal: 25,  incr: 10  }
+            });
+        }, 500);
 
         var dismiss = _.safewrap(function() {
             document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
