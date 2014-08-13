@@ -2385,6 +2385,7 @@ Globals should be all caps
 
         var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
         var image_url = string_or_default(notification.image_url, null),
+            thumb_image_url = string_or_default(notification.thumb_image_url, null),
             cta = string_or_default(notification.cta, 'GOT IT'),
             dest_url = string_or_default(notification.cta_url, null),
             clickthrough = true;
@@ -2395,6 +2396,14 @@ Globals should be all caps
         var img_html = '';
         if (image_url) {
             img_html = '<img class="mixpanel-notification-img" src="' + image_url + '"/>';
+        }
+
+        var thumb_img_html = '';
+        if (thumb_image_url) {
+            thumb_img_html =
+                '<div id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;">' +
+                    '<img class="mixpanel-notification-thumbnail-img" src="' + thumb_image_url + '" width="75" height="75"/>' +
+                '</div>';
         }
 
         var add_document_styles = function(styles) {
@@ -2456,11 +2465,19 @@ Globals should be all caps
                 '-moz-opacity': '0.5',
                 '-khtml-opacity': '0.5'
             },
+            '#mixpanel-notification-thumbnail': {
+                'position': 'absolute',
+                'right': '70px',
+                'overflow': 'hidden',
+                'border-radius': '50%',
+                '-webkit-border-radius': '50%',
+                '-moz-border-radius': '50%'
+            },
             '#mixpanel-notification': {
                 'position': 'absolute',
                 'right': '0',
                 'width': '424px',
-                'margin': '60px 40px 0 0',
+                'margin': '130px 40px 0 0',
                 'padding': '5px',
                 'border-radius': '4px',
                 '-webkit-border-radius': '4px',
@@ -2526,7 +2543,7 @@ Globals should be all caps
             '* html .mixpanel-notification-bg': {
                 'position': 'absolute'
             },
-            'html, body': { // IE hack
+            'html, body': {
                 'height': '100%',
                 'margin': '0',
                 'padding': '0'
@@ -2539,6 +2556,7 @@ Globals should be all caps
             '<div class="mixpanel-notification-overlay">' +
                 '<div class="mixpanel-notification-bgwrapper">' +
                     '<div class="mixpanel-notification-bg"></div>' +
+                    thumb_img_html +
                     '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
                         '<div id="mixpanel-notification-cancel">X</div>' +
                         '<div id="mixpanel-notification-content">' +
@@ -2554,18 +2572,25 @@ Globals should be all caps
             '</div>';
         body_el.appendChild(notif_wrapper);
 
-        var animate_notification = _.safewrap(function(current_opacity, current_top) {
-            if (current_opacity >= 1.0 && current_top <= 0) {
+        var animate_notification = _.safewrap(function(opacity, notif_top, thumb_top) {
+            if (opacity >= 1.0 && notif_top <= 0 && thumb_top >= 25) {
                 return;
             }
-            current_opacity += 0.02;
-            current_top -= 15;
+            opacity += 0.02;
+            notif_top -= 15;
+            thumb_top += 15;
+
             var notification = document.getElementById('mixpanel-notification');
-            notification.style.opacity = String(current_opacity > 1.0 ? 1.0 : current_opacity);
-            notification.style.top = String(current_top < 0 ? 0 : current_top) + 'px';
-            setTimeout(function() { animate_notification(current_opacity, current_top) }, 1);
+            notification.style.opacity = String(opacity > 1.0 ? 1.0 : opacity);
+            notification.style.top = String(notif_top < 0 ? 0 : notif_top) + 'px';
+
+            var thumbnail = document.getElementById('mixpanel-notification-thumbnail');
+            thumbnail.style.opacity = String(opacity > 1.0 ? 1.0 : opacity);
+            thumbnail.style.top = String(thumb_top > 25 ? 25 : thumb_top) + 'px';
+
+            setTimeout(function() { animate_notification(opacity, notif_top, thumb_top) }, 1);
         });
-        setTimeout(function() { animate_notification(0.0, 200) }, 500);
+        setTimeout(function() { animate_notification(0.0, 200, -100) }, 500);
 
         var dismiss = _.safewrap(function() {
             document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
