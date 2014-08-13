@@ -2436,6 +2436,7 @@ Globals should be all caps
                 css_text = '#52606b',
                 css_border_gray = '#e4ecf2';
         }
+        var caret_size = '10px';
         add_document_styles({
             '.mixpanel-notification-overlay': {
                 'position': 'fixed',
@@ -2486,6 +2487,14 @@ Globals should be all caps
                 'background-color': css_bg,
                 'font-size': '14px',
                 'color': css_text
+            },
+            '.mixpanel-notification-caret': {
+                'position': 'absolute',
+                'top': '-' + caret_size,
+                'right': '50px',
+                'border-left': caret_size + ' solid transparent',
+                'border-right': caret_size + ' solid transparent',
+                'border-bottom': caret_size + ' solid ' + css_bg
             },
             '.mixpanel-notification-content': {
                 'padding': '0px 30px'
@@ -2558,6 +2567,7 @@ Globals should be all caps
                     '<div class="mixpanel-notification-bg"></div>' +
                     thumb_img_html +
                     '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
+                        '<div class="mixpanel-notification-caret"></div>' +
                         '<div id="mixpanel-notification-cancel">X</div>' +
                         '<div id="mixpanel-notification-content">' +
                             '<div class="mixpanel-notification-title">' + notification.title + '</div>' +
@@ -2590,7 +2600,7 @@ Globals should be all caps
 
             setTimeout(function() { animate_notification(opacity, notif_top, thumb_top) }, 1);
         });
-        setTimeout(function() { animate_notification(0.0, 200, -100) }, 500);
+        setTimeout(function() { animate_notification(0.0, 200, -225) }, 500);
 
         var dismiss = _.safewrap(function() {
             document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
