@@ -2408,6 +2408,16 @@ Globals should be all caps
             notif_top = 0;
         }
 
+        var doc_width = Math.max(
+                body_el.scrollWidth, document.documentElement.scrollWidth,
+                body_el.offsetWidth, document.documentElement.offsetWidth,
+                body_el.clientWidth, document.documentElement.clientWidth
+            ),
+            doc_height = Math.max(
+                body_el.scrollHeight, document.documentElement.scrollHeight,
+                body_el.offsetHeight, document.documentElement.offsetHeight,
+                body_el.clientHeight, document.documentElement.clientHeight
+            );
         var add_document_styles = function(styles) {
             var style_text = '';
             for (selector in styles) {
@@ -2461,12 +2471,14 @@ Globals should be all caps
                 'left': '0',
                 'width': '100%',
                 'height': '100%',
+                'min-width': String(doc_width * 4) + 'px',
+                'min-height': String(doc_height * 4) + 'px',
                 'background-color': 'black',
                 'opacity': '0.0',
                 '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=50)', // IE8
                 'filter': 'alpha(opacity=50)', // IE5-7
-                '-moz-opacity': '0.5',
-                '-khtml-opacity': '0.5'
+                '-moz-opacity': '0.0',
+                '-khtml-opacity': '0.0'
             },
             '#mixpanel-notification-thumbnail': {
                 'position': 'absolute',
