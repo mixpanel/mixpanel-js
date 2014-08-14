@@ -2364,9 +2364,8 @@ Globals should be all caps
             token:       this.get_config('token'),
             distinct_id: distinct_id
         };
-        var host = DEBUG ? window.location.origin : this.get_config('api_host');
         var self = this;
-        this._send_request(host + '/decide/', data, function(r) {
+        this._send_request(this.get_config('api_host') + '/decide/', data, function(r) {
             if (r.notifications && r.notifications.length > 0) {
                 self._show_notification.call(self, r.notifications[0]);
             }
