@@ -2401,11 +2401,8 @@ Globals should be all caps
             thumb_img_html = '',
             notif_top = -80;
         if (thumb_image_url) {
-            thumb_img_html =
-                '<div id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;">' +
-                    '<img id="mixpanel-notification-thumbnail-img" src="' + thumb_image_url +
-                        '" width="' + thumb_img_size + '" height="' + thumb_img_size + '"/>' +
-                '</div>';
+            thumb_img_html = '<img id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;"' +
+                ' src="' + thumb_image_url + '" width="' + thumb_img_size + '" height="' + thumb_img_size + '"/>';
             notif_top = 0;
         }
 
@@ -2475,9 +2472,9 @@ Globals should be all caps
                 'width': thumb_img_size + 'px',
                 'height': thumb_img_size + 'px',
                 'overflow': 'hidden',
-                'border-radius': '50%',
-                '-webkit-border-radius': '50%',
-                '-moz-border-radius': '50%'
+                'border-radius': thumb_img_size + 'px',
+                '-webkit-border-radius': thumb_img_size + 'px',
+                '-moz-border-radius': thumb_img_size + 'px'
             },
             '#mixpanel-notification': {
                 'position': 'absolute',
