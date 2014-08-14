@@ -2505,8 +2505,8 @@ Globals should be all caps
                 'font-size': '19px',
                 'font-weight': 'bold'
             },
-            '#mixpanel-notification-image': {
-                'padding-left': '10px'
+            '#mixpanel-notification-img': {
+                'width': '350px'
             },
             '#mixpanel-notification-body': {
                 'margin-top': '10px',
