@@ -2500,7 +2500,7 @@ Globals should be all caps
             },
             '#mixpanel-notification-title': {
                 'margin-top': '10px',
-                'padding': '20px 30px 10px 30px',
+                'padding': '20px 0px 10px 0px',
                 'font-size': '19px',
                 'font-weight': 'bold'
             },
@@ -2509,7 +2509,7 @@ Globals should be all caps
             },
             '#mixpanel-notification-body': {
                 'margin-top': '10px',
-                'padding': '10px 30px',
+                'padding': '10px 0px',
                 'font-size': '15px',
                 'font-weight': 'normal'
             },
