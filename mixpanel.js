@@ -2380,8 +2380,10 @@ Globals should be all caps
             return;
         }
 
-        notification.body = notification.body.replace(/\n/g, '<br/>');
+        var ie_ver = /MSIE (\d+).+/.exec(navigator.userAgent),
+            ie6 = ie_ver && ie_ver[1] <= 6;
 
+        notification.body = notification.body.replace(/\n/g, '<br/>');
         var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
         var image_url = string_or_default(notification.image_url, null),
             thumb_image_url = string_or_default(notification.thumb_image_url, null),
@@ -2569,7 +2571,7 @@ Globals should be all caps
                     '<div id="mixpanel-notification-bg"></div>' +
                     thumb_img_html +
                     '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
-                        (thumb_image_url ? '<div id="mixpanel-notification-caret"></div>' : '') +
+                        (thumb_image_url && !ie6 ? '<div id="mixpanel-notification-caret"></div>' : '') +
                         '<div id="mixpanel-notification-cancel">X</div>' +
                         '<div id="mixpanel-notification-content">' +
                             '<div id="mixpanel-notification-title">' + notification.title + '</div>' +
