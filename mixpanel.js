@@ -2397,11 +2397,13 @@ Globals should be all caps
             img_html = '<img id="mixpanel-notification-img" src="' + image_url + '"/>';
         }
 
-        var thumb_img_html = '';
+        var thumb_img_size = '75',
+            thumb_img_html = '';
         if (thumb_image_url) {
             thumb_img_html =
                 '<div id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;">' +
-                    '<img id="mixpanel-notification-thumbnail-img" src="' + thumb_image_url + '" width="75" height="75"/>' +
+                    '<img id="mixpanel-notification-thumbnail-img" src="' + thumb_image_url +
+                        '" width="' + thumb_img_size + '" height="' + thumb_img_size + '"/>' +
                 '</div>';
         }
 
@@ -2468,6 +2470,8 @@ Globals should be all caps
             '#mixpanel-notification-thumbnail': {
                 'position': 'absolute',
                 'right': '65px',
+                'width': thumb_img_size + 'px',
+                'height': thumb_img_size + 'px',
                 'overflow': 'hidden',
                 'border-radius': '50%',
                 '-webkit-border-radius': '50%',
