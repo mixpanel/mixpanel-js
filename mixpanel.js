@@ -2582,7 +2582,7 @@ Globals should be all caps
             '</div>';
         body_el.appendChild(notif_wrapper);
 
-        var animate_notification = _.safewrap(function(anim_props) {
+        var animate_notification = _.safewrap(function(anim_props, done_cb) {
             var in_progress = false;
             for (prop in anim_props) {
                 var anim = anim_props[prop];
@@ -2595,6 +2595,9 @@ Globals should be all caps
                 }
             }
             if (!in_progress) {
+                if (done_cb) {
+                    done_cb();
+                }
                 return;
             }
 
@@ -2609,7 +2612,7 @@ Globals should be all caps
             thumbnail.style.opacity = String(anim_props.notif_opacity.val);
             thumbnail.style.top = String(anim_props.thumb_top.val) + 'px';
 
-            setTimeout(function() { animate_notification(anim_props) }, 1);
+            setTimeout(function() { animate_notification(anim_props, done_cb) }, 1);
         });
         setTimeout(function() {
             animate_notification({
@@ -2621,8 +2624,6 @@ Globals should be all caps
         }, 500);
 
         var dismiss = _.safewrap(function() {
-            document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
-
             // mark notification shown
             self.people.append({
                 $campaigns: notification.id,
@@ -2643,6 +2644,14 @@ Globals should be all caps
             });
 
             // FIXME clickthrough in callbacks
+            animate_notification({
+                bg_opacity:    {val: 0.5, goal: 0.0, incr: -0.02},
+                notif_opacity: {val: 1.0, goal: 0.0, incr: -0.02},
+                notif_top:     {val: 0,   goal: 150, incr: 15   },
+                thumb_top:     {val: 25,  goal: -75, incr: -10  }
+            }, function() {
+                document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
+            });
         });
         _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
             e.preventDefault();
