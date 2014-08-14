@@ -2398,13 +2398,15 @@ Globals should be all caps
         }
 
         var thumb_img_size = '75',
-            thumb_img_html = '';
+            thumb_img_html = '',
+            notif_top = -80;
         if (thumb_image_url) {
             thumb_img_html =
                 '<div id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;">' +
                     '<img id="mixpanel-notification-thumbnail-img" src="' + thumb_image_url +
                         '" width="' + thumb_img_size + '" height="' + thumb_img_size + '"/>' +
                 '</div>';
+            notif_top = 0;
         }
 
         var add_document_styles = function(styles) {
@@ -2570,7 +2572,7 @@ Globals should be all caps
                     '<div id="mixpanel-notification-bg"></div>' +
                     thumb_img_html +
                     '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
-                        '<div id="mixpanel-notification-caret"></div>' +
+                        (thumb_image_url ? '<div id="mixpanel-notification-caret"></div>' : '') +
                         '<div id="mixpanel-notification-cancel">X</div>' +
                         '<div id="mixpanel-notification-content">' +
                             '<div id="mixpanel-notification-title">' + notification.title + '</div>' +
@@ -2621,10 +2623,10 @@ Globals should be all caps
         });
         setTimeout(function() {
             animate_notification({
-                bg_opacity:    {val: 0.0, goal: 0.5, incr: 0.02},
-                notif_opacity: {val: 0.0, goal: 1.0, incr: 0.02},
-                notif_top:     {val: 150, goal: 0,   incr: -15 },
-                thumb_top:     {val: -75, goal: 25,  incr: 10  }
+                bg_opacity:    {val: 0.0, goal: 0.5,       incr: 0.02},
+                notif_opacity: {val: 0.0, goal: 1.0,       incr: 0.02},
+                notif_top:     {val: 150, goal: notif_top, incr: -15 },
+                thumb_top:     {val: -75, goal: 25,        incr: 10  }
             });
         }, 500);
 
@@ -2649,10 +2651,10 @@ Globals should be all caps
             });
 
             animate_notification({
-                bg_opacity:    {val: 0.5, goal: 0.0, incr: -0.02},
-                notif_opacity: {val: 1.0, goal: 0.0, incr: -0.02},
-                notif_top:     {val: 0,   goal: 150, incr: 15   },
-                thumb_top:     {val: 25,  goal: -75, incr: -10  }
+                bg_opacity:    {val: 0.5,       goal: 0.0, incr: -0.02},
+                notif_opacity: {val: 1.0,       goal: 0.0, incr: -0.02},
+                notif_top:     {val: notif_top, goal: 150, incr: 15   },
+                thumb_top:     {val: 25,        goal: -75, incr: -10  }
             }, function() {
                 document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
             });
