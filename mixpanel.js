@@ -2608,8 +2608,10 @@ Globals should be all caps
             notification.style.top = String(anim_props.notif_top.val) + 'px';
 
             var thumbnail = document.getElementById('mixpanel-notification-thumbnail');
-            thumbnail.style.opacity = String(anim_props.notif_opacity.val);
-            thumbnail.style.top = String(anim_props.thumb_top.val) + 'px';
+            if (thumbnail) {
+                thumbnail.style.opacity = String(anim_props.notif_opacity.val);
+                thumbnail.style.top = String(anim_props.thumb_top.val) + 'px';
+            }
 
             setTimeout(function() { animate_notification(anim_props, done_cb) }, 1);
         });
