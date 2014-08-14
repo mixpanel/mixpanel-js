@@ -2482,7 +2482,7 @@ Globals should be all caps
                 'position': 'absolute',
                 'right': '0',
                 'width': '424px',
-                'margin': '120px 40px 0 0',
+                'margin': '115px 40px 0 0',
                 'padding': '5px',
                 'border-radius': '4px',
                 '-webkit-border-radius': '4px',
