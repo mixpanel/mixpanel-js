@@ -2643,7 +2643,6 @@ Globals should be all caps
                 message_type: 'web_inapp'
             });
 
-            // FIXME clickthrough in callbacks
             animate_notification({
                 bg_opacity:    {val: 0.5, goal: 0.0, incr: -0.02},
                 notif_opacity: {val: 1.0, goal: 0.0, incr: -0.02},
@@ -2660,9 +2659,8 @@ Globals should be all caps
         _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
             e.preventDefault();
             dismiss();
-            //TODO track clickthrough?
             if (clickthrough) {
-                window.location.href = dest_url;
+                setTimeout(function() { window.location.href = dest_url; }, self.config.track_links_timeout);
             }
         });
     };
