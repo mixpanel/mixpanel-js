@@ -2461,6 +2461,7 @@ Globals should be all caps
                 'left': '0',
                 'width': '100%',
                 'height': '100%',
+                'overflow': 'auto',
                 'text-align': 'center',
                 'z-index': '10000',
                 'font-family': 'sans-serif'
