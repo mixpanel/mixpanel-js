@@ -2381,7 +2381,22 @@ Globals should be all caps
         }
 
         var ie_ver = /MSIE (\d+).+/.exec(navigator.userAgent),
-            ie6 = ie_ver && ie_ver[1] <= 6;
+            ie6 = ie_ver && ie_ver[1] <= 6,
+            doc_width = Math.max(
+                body_el.scrollWidth, document.documentElement.scrollWidth,
+                body_el.offsetWidth, document.documentElement.offsetWidth,
+                body_el.clientWidth, document.documentElement.clientWidth
+            ),
+            doc_height = Math.max(
+                body_el.scrollHeight, document.documentElement.scrollHeight,
+                body_el.offsetHeight, document.documentElement.offsetHeight,
+                body_el.clientHeight, document.documentElement.clientHeight
+            ),
+            NOTIF_WIDTH = 424,
+            NOTIF_MARGIN = 40;
+        if (doc_width < NOTIF_WIDTH + NOTIF_MARGIN * 2) {
+            return; // no notification in small viewports
+        }
 
         notification.body = notification.body.replace(/\n/g, '<br/>');
         var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
@@ -2408,16 +2423,6 @@ Globals should be all caps
             notif_top = 0;
         }
 
-        var doc_width = Math.max(
-                body_el.scrollWidth, document.documentElement.scrollWidth,
-                body_el.offsetWidth, document.documentElement.offsetWidth,
-                body_el.clientWidth, document.documentElement.clientWidth
-            ),
-            doc_height = Math.max(
-                body_el.scrollHeight, document.documentElement.scrollHeight,
-                body_el.offsetHeight, document.documentElement.offsetHeight,
-                body_el.clientHeight, document.documentElement.clientHeight
-            );
         var add_document_styles = function(styles) {
             var style_text = '';
             for (selector in styles) {
@@ -2493,8 +2498,8 @@ Globals should be all caps
             '#mixpanel-notification': {
                 'position': 'absolute',
                 'right': '0',
-                'width': '424px',
-                'margin': '115px 40px 0 0',
+                'width': String(NOTIF_WIDTH) + 'px',
+                'margin': '115px ' + String(NOTIF_MARGIN) + 'px 0 0',
                 'padding': '5px',
                 'border-radius': '4px',
                 '-webkit-border-radius': '4px',
