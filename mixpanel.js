@@ -2642,24 +2642,25 @@ Globals should be all caps
         }, 500);
 
         var dismiss = _.safewrap(function() {
-            // mark notification shown
-            self.people.append({
-                $campaigns: notification.id,
-                $notifications: {
+            if (notification.id) {
+                // mark notification shown
+                self.people.append({
+                    $campaigns: notification.id,
+                    $notifications: {
+                        campaign_id: notification.id,
+                        message_id: notification.message_id,
+                        type: 'web',
+                        time: new Date()
+                    }
+                });
+
+                // track delivery
+                self.track('$campaign_delivery', {
                     campaign_id: notification.id,
                     message_id: notification.message_id,
-                    type: 'web',
-                    time: new Date()
-                }
-            });
-
-            // track delivery
-            // TODO title == $ignore???
-            self.track('$campaign_delivery', {
-                campaign_id: notification.id,
-                message_id: notification.message_id,
-                message_type: 'web_inapp'
-            });
+                    message_type: 'web_inapp'
+                });
+            }
 
             animate_notification({
                 bg_opacity:    {val: 0.5,       goal: 0.0, incr: -0.02},
