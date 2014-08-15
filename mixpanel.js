@@ -2450,7 +2450,7 @@ Globals should be all caps
                 css_border_gray = '#32353c';
         } else {
             var css_bg = '#fff',
-                css_text = '#52606b',
+                css_text = '#6c7c85',
                 css_border_gray = '#e4ecf2';
         }
         var caret_size = '10px';
@@ -2464,7 +2464,7 @@ Globals should be all caps
                 'overflow': 'auto',
                 'text-align': 'center',
                 'z-index': '10000',
-                'font-family': 'sans-serif'
+                'font-family': '"Lucida Sans Unicode", "Lucida Grande", sans-serif'
             },
             '#mixpanel-notification-bgwrapper': {
                 'position': 'relative',
@@ -2500,8 +2500,7 @@ Globals should be all caps
                 'position': 'absolute',
                 'right': '0',
                 'width': String(NOTIF_WIDTH) + 'px',
-                'margin': '115px ' + String(NOTIF_MARGIN) + 'px 0 0',
-                'padding': '5px',
+                'margin': '117px ' + String(NOTIF_MARGIN) + 'px 0 0',
                 'border-radius': '4px',
                 '-webkit-border-radius': '4px',
                 '-moz-border-radius': '4px',
@@ -2519,20 +2518,20 @@ Globals should be all caps
                 'border-bottom': caret_size + ' solid ' + css_bg
             },
             '#mixpanel-notification-content': {
-                'padding': '0px 30px'
+                'padding': '0px 20px'
             },
             '#mixpanel-notification-title': {
-                'margin-top': '10px',
-                'padding': '20px 0px 10px 0px',
+                'padding': '25px 0px 20px 0px',
                 'font-size': '19px',
                 'font-weight': 'bold'
             },
             '#mixpanel-notification-img': {
-                'width': '350px'
+                'width': '360px'
             },
             '#mixpanel-notification-body': {
                 'margin-top': '10px',
                 'padding': '10px 0px',
+                'line-height': '24px',
                 'font-size': '15px',
                 'font-weight': 'normal'
             },
@@ -2550,13 +2549,13 @@ Globals should be all caps
                 'cursor': 'pointer'
             },
             '#mixpanel-notification-actions': {
-                'padding': '30px 0 35px 0',
+                'padding': '20px 0 35px 0',
                 'text-align': 'center'
             },
             '#mixpanel-notification-button': {
                 'display': 'inline-block',
                 'margin': '0 auto',
-                'padding': '10px 25px',
+                'padding': '10px 30px',
                 'border': '2px solid ' + css_border_gray,
                 'border-radius': '40px',
                 '-webkit-border-radius': '40px',
