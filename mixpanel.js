@@ -2537,14 +2537,9 @@ Globals should be all caps
             },
             '#mixpanel-notification-cancel': {
                 'float': 'right',
-                'padding': '7px 10px 0 0',
+                'padding': '17px 17px 0 0',
                 'font-size': '12px',
                 'font-weight': 'bold',
-                'transform': 'scale(1.4,1)',
-                '-webkit-transform': 'scale(1.4,1)',
-                '-moz-transform': 'scale(1.4,1)',
-                '-ms-transform': 'scale(1.4,1)',
-                '-o-transform': 'scale(1.4,1)',
                 'color': '#bac5ce',
                 'cursor': 'pointer'
             },
@@ -2589,7 +2584,7 @@ Globals should be all caps
                     thumb_img_html +
                     '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
                         (thumb_image_url && !ie6 ? '<div id="mixpanel-notification-caret"></div>' : '') +
-                        '<div id="mixpanel-notification-cancel">X</div>' +
+                        '<img id="mixpanel-notification-cancel" src="http://cdn.mxpnl.com/site_media/images/icons/notification-x.png"/>' +
                         '<div id="mixpanel-notification-content">' +
                             '<div id="mixpanel-notification-title">' + notification.title + '</div>' +
                             img_html +
