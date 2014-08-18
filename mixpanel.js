@@ -2704,7 +2704,7 @@ Globals should be all caps
         };
 
         // actually attach notification to DOM
-        var trigger_notification = function() {
+        var trigger_notification = _.safewrap(function() {
             body_el.appendChild(notif_wrapper);
             setTimeout(function() {
                 animate_notification({
@@ -2725,7 +2725,7 @@ Globals should be all caps
                     setTimeout(function() { window.location.href = dest_url; }, self.config.track_links_timeout);
                 }
             });
-        };
+        });
 
         // wait for any images to load before showing notification
         preload_images(imgs_to_preload, trigger_notification);
