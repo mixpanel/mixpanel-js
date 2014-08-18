@@ -2529,10 +2529,10 @@ Globals should be all caps
                 'font-weight': 'bold'
             },
             '#mixpanel-notification-img': {
-                'width': '360px'
+                'width': '360px',
+                'margin-bottom': '10px'
             },
             '#mixpanel-notification-body': {
-                'margin-top': '10px',
                 'padding': '10px 0px',
                 'line-height': '24px',
                 'font-size': '15px',
