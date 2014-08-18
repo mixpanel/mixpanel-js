@@ -2382,6 +2382,7 @@ Globals should be all caps
 
         var ie_ver = /MSIE (\d+).+/.exec(navigator.userAgent),
             ie6 = ie_ver && ie_ver[1] <= 6,
+            ie7 = ie_ver && ie_ver[1] <= 7,
             doc_width = Math.max(
                 body_el.scrollWidth, document.documentElement.scrollWidth,
                 body_el.offsetWidth, document.documentElement.offsetWidth,
@@ -2409,18 +2410,18 @@ Globals should be all caps
             dest_url = '#dismiss';
             clickthrough = false;
         }
-        var imgs_to_preload = 0;
+
+        var imgs_to_preload = [];
         var img_html = '';
         if (image_url) {
-            imgs_to_preload++;
+            imgs_to_preload.push(image_url);
             img_html = '<img id="mixpanel-notification-img" src="' + image_url + '"/>';
         }
-
         var thumb_img_size = '75',
             thumb_img_html = '',
             notif_top = -80;
         if (thumb_image_url) {
-            imgs_to_preload++;
+            imgs_to_preload.push(thumb_image_url);
             thumb_img_html = '<img id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;"' +
                 ' src="' + thumb_image_url + '" width="' + thumb_img_size + '" height="' + thumb_img_size + '"/>';
             notif_top = 0;
@@ -2666,52 +2667,68 @@ Globals should be all caps
             });
         });
 
-        var preloaded_imgs = 0,
-            preload_img = function(src, all_loaded_cb) {
-                if (!src) {
-                    return;
+        var preload_images = function(srcs, all_loaded_cb) {
+            if (srcs.length === 0) {
+                if (all_loaded_cb) {
+                    all_loaded_cb();
                 }
-                var img = new Image();
-                img.onload = function() {
-                    preloaded_imgs++;
-                    if (preloaded_imgs >= imgs_to_preload && all_loaded_cb) {
-                        all_loaded_cb();
-                    }
-                }
-                img.src = src;
-            },
+                return;
+            }
 
-            // actually attach notification to DOM
-            trigger_notification = function() {
-                body_el.appendChild(notif_wrapper);
+            var preloaded_imgs = 0;
+            for (var i = 0; i < srcs.length; i++) {
+                var img = new Image(),
+                    onload = function() {
+                        preloaded_imgs++;
+                        if (preloaded_imgs === srcs.length && all_loaded_cb) {
+                            all_loaded_cb();
+                            all_loaded_cb = null;
+                        }
+                    };
+                img.onload = onload;
+                img.src = srcs[i];
+                if (img.complete) {
+                    onload();
+                }
+            }
+
+            // IE6/7 doesn't fire onload reliably
+            if (ie7) {
                 setTimeout(function() {
-                    animate_notification({
-                        bg_opacity:    {val: 0.0, goal: 0.5,       incr: 0.02},
-                        notif_opacity: {val: 0.0, goal: 1.0,       incr: 0.02},
-                        notif_top:     {val: 150, goal: notif_top, incr: -15 },
-                        thumb_top:     {val: -75, goal: 25,        incr: 10  }
-                    });
-                }, 500);
-                _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
-                    e.preventDefault();
-                    dismiss();
-                });
-                _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
-                    e.preventDefault();
-                    dismiss();
-                    if (clickthrough) {
-                        setTimeout(function() { window.location.href = dest_url; }, self.config.track_links_timeout);
+                    if (all_loaded_cb) {
+                        all_loaded_cb();
+                        all_loaded_cb = null;
                     }
-                });
-            };
+                }, 300);
+            }
+        };
 
-        // wait for images to load
-        if (imgs_to_preload === 0) {
-            trigger_notification();
-        } else {
-            preload_img(image_url, trigger_notification);
-            preload_img(thumb_image_url, trigger_notification);
-        }
+        // actually attach notification to DOM
+        var trigger_notification = function() {
+            body_el.appendChild(notif_wrapper);
+            setTimeout(function() {
+                animate_notification({
+                    bg_opacity:    {val: 0.0, goal: 0.5,       incr: 0.02},
+                    notif_opacity: {val: 0.0, goal: 1.0,       incr: 0.02},
+                    notif_top:     {val: 150, goal: notif_top, incr: -15 },
+                    thumb_top:     {val: -75, goal: 25,        incr: 10  }
+                });
+            }, 300);
+            _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
+                e.preventDefault();
+                dismiss();
+            });
+            _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
+                e.preventDefault();
+                dismiss();
+                if (clickthrough) {
+                    setTimeout(function() { window.location.href = dest_url; }, self.config.track_links_timeout);
+                }
+            });
+        };
+
+        // wait for any images to load before showing notification
+        preload_images(imgs_to_preload, trigger_notification);
     };
 
     /**
