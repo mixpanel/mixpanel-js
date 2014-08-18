@@ -2409,8 +2409,10 @@ Globals should be all caps
             dest_url = '#dismiss';
             clickthrough = false;
         }
+        var imgs_to_preload = 0;
         var img_html = '';
         if (image_url) {
+            imgs_to_preload++;
             img_html = '<img id="mixpanel-notification-img" src="' + image_url + '"/>';
         }
 
@@ -2418,6 +2420,7 @@ Globals should be all caps
             thumb_img_html = '',
             notif_top = -80;
         if (thumb_image_url) {
+            imgs_to_preload++;
             thumb_img_html = '<img id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;"' +
                 ' src="' + thumb_image_url + '" width="' + thumb_img_size + '" height="' + thumb_img_size + '"/>';
             notif_top = 0;
@@ -2596,7 +2599,6 @@ Globals should be all caps
                     '</div>' +
                 '</div>' +
             '</div>';
-        body_el.appendChild(notif_wrapper);
 
         var animate_notification = _.safewrap(function(anim_props, done_cb) {
             var in_progress = false;
@@ -2632,14 +2634,6 @@ Globals should be all caps
 
             setTimeout(function() { animate_notification(anim_props, done_cb) }, 1);
         });
-        setTimeout(function() {
-            animate_notification({
-                bg_opacity:    {val: 0.0, goal: 0.5,       incr: 0.02},
-                notif_opacity: {val: 0.0, goal: 1.0,       incr: 0.02},
-                notif_top:     {val: 150, goal: notif_top, incr: -15 },
-                thumb_top:     {val: -75, goal: 25,        incr: 10  }
-            });
-        }, 500);
 
         var dismiss = _.safewrap(function() {
             if (notification.id) {
@@ -2671,17 +2665,53 @@ Globals should be all caps
                 document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
             });
         });
-        _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
-            e.preventDefault();
-            dismiss();
-        });
-        _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
-            e.preventDefault();
-            dismiss();
-            if (clickthrough) {
-                setTimeout(function() { window.location.href = dest_url; }, self.config.track_links_timeout);
-            }
-        });
+
+        var preloaded_imgs = 0,
+            preload_img = function(src, all_loaded_cb) {
+                if (!src) {
+                    return;
+                }
+                var img = new Image();
+                img.onload = function() {
+                    preloaded_imgs++;
+                    if (preloaded_imgs >= imgs_to_preload && all_loaded_cb) {
+                        all_loaded_cb();
+                    }
+                }
+                img.src = src;
+            },
+
+            // actually attach notification to DOM
+            trigger_notification = function() {
+                body_el.appendChild(notif_wrapper);
+                setTimeout(function() {
+                    animate_notification({
+                        bg_opacity:    {val: 0.0, goal: 0.5,       incr: 0.02},
+                        notif_opacity: {val: 0.0, goal: 1.0,       incr: 0.02},
+                        notif_top:     {val: 150, goal: notif_top, incr: -15 },
+                        thumb_top:     {val: -75, goal: 25,        incr: 10  }
+                    });
+                }, 500);
+                _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
+                    e.preventDefault();
+                    dismiss();
+                });
+                _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
+                    e.preventDefault();
+                    dismiss();
+                    if (clickthrough) {
+                        setTimeout(function() { window.location.href = dest_url; }, self.config.track_links_timeout);
+                    }
+                });
+            };
+
+        // wait for images to load
+        if (imgs_to_preload === 0) {
+            trigger_notification();
+        } else {
+            preload_img(image_url, trigger_notification);
+            preload_img(thumb_image_url, trigger_notification);
+        }
     };
 
     /**
