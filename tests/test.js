@@ -1291,6 +1291,55 @@ mpmodule("mixpanel.people.append");
         same(s, { "$distinct_id": this.id, "$token": this.token, "$append": { "a": 3 }}, "$token and $distinct_id pulled out correctly");
     });
 
+mpmodule("mixpanel.people.union");
+
+    test("union (basic functionality)", 6, function() {
+        var _union1 = { 'key': 'val' },
+            _union2 = { 'key': ['val'] },
+            _union3 = { 'key': 'val', 'key2': 'val2' },
+            _union4 = { 'key': ['val'], 'key2': ['val2'] },
+            i;
+
+        i = mixpanel.people.union('key', 'val');
+        same(i["$union"], { 'key': ['val'] }, ".union() with two params works");
+
+        i = mixpanel.people.union(_union1);
+        same(i["$union"], { 'key': ['val'] }, ".union() with an object (only 1 key) works");
+
+        i = mixpanel.people.union(_union2);
+        same(i["$union"], _union2, ".union() with an object (array) works");
+
+        i = mixpanel.people.union(_union3);
+        same(i["$union"], { 'key': ['val'], 'key2': ['val2'] }, ".union() with an object (multiple keys) works");
+
+        i = mixpanel.people.union(_union4);
+        same(i["$union"], _union4, ".union() with an object (multiple keys) with arrays as values works");
+
+        mixpanel.test.identify(this.id);
+        i = mixpanel.test.people.union(_union2);
+        same(i, { "$distinct_id": this.id, "$token": this.token, "$union": _union2 }, "Basic union works for additional libs");
+    });
+
+    test("union queues data", 2, function() {
+        stop();
+        s = mixpanel.test.people.union({ a: 2 }, function(resp) {
+            same(resp, -1, "responded with 'queued'");
+            start();
+        });
+        same(mixpanel.test.cookie.props['__mpu'], [ { a: [2] } ], "queued append saved");
+    });
+
+    test("append hits server immediately if identified", 2, function() {
+        mixpanel.test.identify(this.id);
+
+        stop();
+        s = mixpanel.test.people.union({ a: 3 }, function(resp) {
+            same(resp, 1, "responded with 'success'");
+            start();
+        });
+        same(s, { "$distinct_id": this.id, "$token": this.token, "$union": { "a": [3] }}, "$token and $distinct_id pulled out correctly");
+    });
+
 mpmodule("mixpanel.people.track_charge");
 
     test("track_charge (basic functionality)", 2, function() {
