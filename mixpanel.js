@@ -3088,7 +3088,7 @@ Globals should be all caps
             this.notification_el = document.createElement('div');
             this.notification_el.id = 'mixpanel-notification-wrapper';
             this.notification_el.innerHTML =
-                '<div id="mixpanel-notification-overlay">' +
+                '<div id="mixpanel-notification-overlay"><div id="mixpanel-notification-campaignid-' + this.campaign_id + '">' +
                     '<div id="mixpanel-notification-bgwrapper">' +
                         '<div id="mixpanel-notification-bg"></div>' +
                         this.thumb_img_html +
@@ -3105,7 +3105,7 @@ Globals should be all caps
                             '</div>' +
                         '</div>' +
                     '</div>' +
-                '</div>';
+                '</div></div>';
         };
 
         MixpanelLib._Notification.prototype._init_styles = function() {
