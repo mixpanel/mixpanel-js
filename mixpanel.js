@@ -35,6 +35,7 @@ Globals should be all caps
  * minimize file size.
  */
     var   ArrayProto        = Array.prototype
+        , FuncProto         = Function.prototype
         , ObjProto          = Object.prototype
         , slice             = ArrayProto.slice
         , toString          = ObjProto.toString
@@ -104,10 +105,35 @@ Globals should be all caps
     // Embed part of the Underscore Library
 
     (function() {
-        var nativeForEach = ArrayProto.forEach,
+        var nativeBind    = FuncProto.bind,
+            nativeForEach = ArrayProto.forEach,
             nativeIndexOf = ArrayProto.indexOf,
             nativeIsArray = Array.isArray,
             breaker = {};
+
+        _.bind = function (func, context) {
+            var args, bound;
+            if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
+            if (!_.isFunction(func)) throw new TypeError;
+            args = slice.call(arguments, 2);
+            return bound = function() {
+                if (!(this instanceof bound)) return func.apply(context, args.concat(slice.call(arguments)));
+                ctor.prototype = func.prototype;
+                var self = new ctor;
+                ctor.prototype = null;
+                var result = func.apply(self, args.concat(slice.call(arguments)));
+                if (Object(result) === result) return result;
+                return self;
+            };
+        };
+
+        _.bind_instance_methods = function(obj) {
+            for (func in obj) {
+                if (typeof(obj[func]) === 'function') {
+                    obj[func] = _.bind(obj[func], obj);
+                }
+            }
+        };
 
         /**
          * @param {*=} obj
@@ -2372,237 +2398,115 @@ Globals should be all caps
         });
     };
 
-    MixpanelLib.prototype._show_notification = function(notification) {
-        var self = this,
-            body_el = document.body || document.getElementsByTagName('body')[0];
-        if (!body_el) {
-            setTimeout(function() { self._show_notification.call(self, notification); }, 1000);
-            return;
+    MixpanelLib.prototype._show_notification = function(notification_data) {
+        var notification = new MixpanelLib.Notification(notification_data, this);
+        notification.show();
+    };
+
+    MixpanelLib.Notification = function(notif_data, mixpanel_instance) {
+        _.bind_instance_methods(this);
+
+        this.mixpanel = mixpanel_instance;
+
+        this.campaign_id = notif_data.id;
+        this.message_id  = notif_data.message_id;
+
+        this.body            = notif_data.body.replace(/\n/g, '<br/>');
+        this.cta             = this._string_or_default(notif_data.cta, 'GOT IT');
+        this.dest_url        = this._string_or_default(notif_data.cta_url, null);
+        this.image_url       = this._string_or_default(notif_data.image_url, null);
+        this.style           = notif_data.style;
+        this.thumb_image_url = this._string_or_default(notif_data.thumb_image_url, null);
+        this.title           = notif_data.title;
+
+        this.clickthrough = true;
+        if (!this.dest_url) {
+            this.dest_url = '#dismiss';
+            this.clickthrough = false;
         }
 
-        var ie_ver = /MSIE (\d+).+/.exec(navigator.userAgent),
-            ie6 = ie_ver && ie_ver[1] <= 6,
-            ie7 = ie_ver && ie_ver[1] <= 7,
-            doc_width = Math.max(
-                body_el.scrollWidth, document.documentElement.scrollWidth,
-                body_el.offsetWidth, document.documentElement.offsetWidth,
-                body_el.clientWidth, document.documentElement.clientWidth
-            ),
-            doc_height = Math.max(
-                body_el.scrollHeight, document.documentElement.scrollHeight,
-                body_el.offsetHeight, document.documentElement.offsetHeight,
-                body_el.clientHeight, document.documentElement.clientHeight
-            ),
-            NOTIF_WIDTH = 424,
-            NOTIF_MARGIN = 40;
-        if (doc_width < NOTIF_WIDTH + NOTIF_MARGIN * 2) {
-            return; // no notification in small viewports
+        this.imgs_to_preload = [];
+        this.img_html = '';
+        if (this.image_url) {
+            this.imgs_to_preload.push(this.image_url);
+            this.img_html = '<img id="mixpanel-notification-img" src="' + this.image_url + '"/>';
         }
+        this.thumb_img_html = '';
+        this.notif_top = -80;
+        if (this.thumb_image_url) {
+            this.imgs_to_preload.push(this.thumb_image_url);
+            this.thumb_img_html = '<img id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;"' +
+                ' src="' + this.thumb_image_url +
+                '" width="' + MixpanelLib.Notification.THUMB_IMG_SIZE + '" height="' + MixpanelLib.Notification.THUMB_IMG_SIZE + '"/>';
+            this.notif_top = 0;
+        }
+    };
 
-        notification.body = notification.body.replace(/\n/g, '<br/>');
-        var string_or_default = function(s, default_s) { return (s && s.length > 0) ? s : default_s; };
-        var image_url = string_or_default(notification.image_url, null),
-            thumb_image_url = string_or_default(notification.thumb_image_url, null),
-            cta = string_or_default(notification.cta, 'GOT IT'),
-            dest_url = string_or_default(notification.cta_url, null),
-            clickthrough = true;
-        if (!dest_url) {
-            dest_url = '#dismiss';
-            clickthrough = false;
-        }
+        MixpanelLib.Notification.CARET_SIZE     = 10;
+        MixpanelLib.Notification.NOTIF_WIDTH    = 424;
+        MixpanelLib.Notification.NOTIF_MARGIN   = 40;
+        MixpanelLib.Notification.THUMB_IMG_SIZE = 75;
 
-        var imgs_to_preload = [];
-        var img_html = '';
-        if (image_url) {
-            imgs_to_preload.push(image_url);
-            img_html = '<img id="mixpanel-notification-img" src="' + image_url + '"/>';
-        }
-        var thumb_img_size = '75',
-            thumb_img_html = '',
-            notif_top = -80;
-        if (thumb_image_url) {
-            imgs_to_preload.push(thumb_image_url);
-            thumb_img_html = '<img id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;"' +
-                ' src="' + thumb_image_url + '" width="' + thumb_img_size + '" height="' + thumb_img_size + '"/>';
-            notif_top = 0;
-        }
+        MixpanelLib.Notification.prototype.show = function() {
+            var self = this;
+            this._set_client_config();
 
-        var add_document_styles = function(styles) {
-            var style_text = '';
-            for (selector in styles) {
-                style_text += '\n' + selector + ' {';
-                var props = styles[selector];
-                for (k in props) {
-                    style_text += k + ':' + props[k] + ';';
-                }
-                style_text += '}';
+            // don't display until HTML body exists
+            if (!this.body_el) {
+                setTimeout(function() { self.show(); }, 1000);
+                return;
             }
 
-            var head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
-                style_el = document.createElement('style');
-            head_el.appendChild(style_el);
-            style_el.setAttribute('type', 'text/css');
-            if (style_el.styleSheet) { // IE
-                style_el.styleSheet.cssText = style_text;
-            } else {
-                style_el.textContent = style_text;
+            // no possibility to double-display
+            if (this.shown) {
+                return;
             }
+            this.shown = true;
+
+            // no notification in small viewports
+            if (this.doc_width < MixpanelLib.Notification.NOTIF_WIDTH + MixpanelLib.Notification.NOTIF_MARGIN * 2) {
+                return;
+            }
+
+            this._init_styles();
+            this._init_notification_el();
+
+            // wait for any images to load before showing notification
+            this._preload_images(this._attach_and_animate);
         };
-        if (notification.style === 'dark') {
-            var css_bg = '#1d1f25',
-                css_text = '#fff',
-                css_border_gray = '#32353c';
-        } else {
-            var css_bg = '#fff',
-                css_text = '#6c7c85',
-                css_border_gray = '#e4ecf2';
-        }
-        var caret_size = '10px';
-        add_document_styles({
-            '#mixpanel-notification-overlay': {
-                'position': 'fixed',
-                'top': '0',
-                'left': '0',
-                'width': '100%',
-                'height': '100%',
-                'overflow': 'auto',
-                'text-align': 'center',
-                'z-index': '10000',
-                'font-family': '"Lucida Sans Unicode", "Lucida Grande", sans-serif'
-            },
-            '#mixpanel-notification-bgwrapper': {
-                'position': 'relative',
-                'width': '100%',
-                'height': '100%'
-            },
-            '#mixpanel-notification-bg': {
-                'position': 'fixed',
-                'top': '0',
-                'left': '0',
-                'width': '100%',
-                'height': '100%',
-                'min-width': String(doc_width * 4) + 'px',
-                'min-height': String(doc_height * 4) + 'px',
-                'background-color': 'black',
-                'opacity': '0.0',
-                '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=50)', // IE8
-                'filter': 'alpha(opacity=50)', // IE5-7
-                '-moz-opacity': '0.0',
-                '-khtml-opacity': '0.0'
-            },
-            '#mixpanel-notification-thumbnail': {
-                'position': 'absolute',
-                'right': '65px',
-                'width': thumb_img_size + 'px',
-                'height': thumb_img_size + 'px',
-                'overflow': 'hidden',
-                'border-radius': thumb_img_size + 'px',
-                '-webkit-border-radius': thumb_img_size + 'px',
-                '-moz-border-radius': thumb_img_size + 'px'
-            },
-            '#mixpanel-notification': {
-                'position': 'absolute',
-                'right': '0',
-                'width': String(NOTIF_WIDTH) + 'px',
-                'margin': '117px ' + String(NOTIF_MARGIN) + 'px 0 0',
-                'border-radius': '4px',
-                '-webkit-border-radius': '4px',
-                '-moz-border-radius': '4px',
-                'text-align': image_url ? 'center' : 'left',
-                'background-color': css_bg,
-                'font-size': '14px',
-                'color': css_text
-            },
-            '#mixpanel-notification-caret': {
-                'position': 'absolute',
-                'top': '-' + caret_size,
-                'right': '50px',
-                'border-left': caret_size + ' solid transparent',
-                'border-right': caret_size + ' solid transparent',
-                'border-bottom': caret_size + ' solid ' + css_bg
-            },
-            '#mixpanel-notification-content': {
-                'padding': '0px 20px'
-            },
-            '#mixpanel-notification-title': {
-                'padding': '25px 0px 20px 0px',
-                'font-size': '19px',
-                'font-weight': 'bold'
-            },
-            '#mixpanel-notification-img': {
-                'width': '360px',
-                'margin-bottom': '10px'
-            },
-            '#mixpanel-notification-body': {
-                'padding': '10px 0px',
-                'line-height': '24px',
-                'font-size': '15px',
-                'font-weight': 'normal'
-            },
-            '#mixpanel-notification-cancel': {
-                'float': 'right',
-                'padding': '17px 17px 0 0',
-                'font-size': '12px',
-                'font-weight': 'bold',
-                'color': '#bac5ce',
-                'cursor': 'pointer'
-            },
-            '#mixpanel-notification-actions': {
-                'padding': '20px 0 35px 0',
-                'text-align': 'center'
-            },
-            '#mixpanel-notification-button': {
-                'display': 'inline-block',
-                'margin': '0 auto',
-                'padding': '10px 30px',
-                'border': '2px solid ' + css_border_gray,
-                'border-radius': '40px',
-                '-webkit-border-radius': '40px',
-                '-moz-border-radius': '40px',
-                'font-size': '15px',
-                'font-weight': 'bold',
-                'color': css_text,
-                'text-decoration': 'none'
-            },
 
-            // IE hacks
-            '* html #mixpanel-notification-overlay': {
-                'position': 'absolute'
-            },
-            '* html #mixpanel-notification-bg': {
-                'position': 'absolute'
-            },
-            'html, body': {
-                'height': '100%',
-                'margin': '0',
-                'padding': '0'
+        MixpanelLib.Notification.prototype.dismiss = _.safewrap(function() {
+            if (this.campaign_id) {
+                // mark notification shown
+                this.mixpanel.people.append({
+                    $campaigns: this.campaign_id,
+                    $notifications: {
+                        campaign_id: this.campaign_id,
+                        message_id:  this.message_id,
+                        type:        'web',
+                        time:        new Date()
+                    }
+                });
+
+                // track delivery
+                this.mixpanel.track('$campaign_delivery', {
+                    campaign_id:  this.campaign_id,
+                    message_id:   this.message_id,
+                    message_type: 'web_inapp'
+                });
             }
+
+            this._animate_notification({
+                bg_opacity:    {val: 0.5,            goal: 0.0, incr: -0.02},
+                notif_opacity: {val: 1.0,            goal: 0.0, incr: -0.02},
+                notif_top:     {val: this.notif_top, goal: 150, incr: 15   },
+                thumb_top:     {val: 25,             goal: -75, incr: -10  }
+            }, this._remove_notification_el);
         });
 
-        var notif_wrapper = document.createElement('div');
-        notif_wrapper.id = 'mixpanel-notification-wrapper';
-        notif_wrapper.innerHTML =
-            '<div id="mixpanel-notification-overlay">' +
-                '<div id="mixpanel-notification-bgwrapper">' +
-                    '<div id="mixpanel-notification-bg"></div>' +
-                    thumb_img_html +
-                    '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
-                        (thumb_image_url && !ie6 ? '<div id="mixpanel-notification-caret"></div>' : '') +
-                        '<img id="mixpanel-notification-cancel" src="http://cdn.mxpnl.com/site_media/images/icons/notification-x.png"/>' +
-                        '<div id="mixpanel-notification-content">' +
-                            '<div id="mixpanel-notification-title">' + notification.title + '</div>' +
-                            img_html +
-                            '<div id="mixpanel-notification-body">' + notification.body + '</div>' +
-                            '<div id="mixpanel-notification-actions">' +
-                                '<a id="mixpanel-notification-button" href="' + dest_url + '">' + cta + '</a>' +
-                            '</div>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
-
-        var animate_notification = _.safewrap(function(anim_props, done_cb) {
-            var in_progress = false;
+        MixpanelLib.Notification.prototype._animate_notification = _.safewrap(function(anim_props, done_cb) {
+            var self = this,
+                in_progress = false;
             for (prop in anim_props) {
                 var anim = anim_props[prop];
                 if (anim.val !== anim.goal) {
@@ -2633,67 +2537,242 @@ Globals should be all caps
                 thumbnail.style.top = String(anim_props.thumb_top.val) + 'px';
             }
 
-            setTimeout(function() { animate_notification(anim_props, done_cb) }, 1);
+            setTimeout(function() { self._animate_notification(anim_props, done_cb) }, 1);
         });
 
-        var dismiss = _.safewrap(function() {
-            if (notification.id) {
-                // mark notification shown
-                self.people.append({
-                    $campaigns: notification.id,
-                    $notifications: {
-                        campaign_id: notification.id,
-                        message_id: notification.message_id,
-                        type: 'web',
-                        time: new Date()
-                    }
-                });
+        MixpanelLib.Notification.prototype._attach_and_animate = _.safewrap(function() {
+            var self = this;
 
-                // track delivery
-                self.track('$campaign_delivery', {
-                    campaign_id: notification.id,
-                    message_id: notification.message_id,
-                    message_type: 'web_inapp'
+            this.body_el.appendChild(this.notification_el);
+            setTimeout(function() {
+                self._animate_notification({
+                    bg_opacity:    {val: 0.0, goal: 0.5,            incr: 0.02},
+                    notif_opacity: {val: 0.0, goal: 1.0,            incr: 0.02},
+                    notif_top:     {val: 150, goal: self.notif_top, incr: -15 },
+                    thumb_top:     {val: -75, goal: 25,             incr: 10  }
                 });
-            }
-
-            animate_notification({
-                bg_opacity:    {val: 0.5,       goal: 0.0, incr: -0.02},
-                notif_opacity: {val: 1.0,       goal: 0.0, incr: -0.02},
-                notif_top:     {val: notif_top, goal: 150, incr: 15   },
-                thumb_top:     {val: 25,        goal: -75, incr: -10  }
-            }, function() {
-                document.getElementById('mixpanel-notification-wrapper').style.visibility = 'hidden';
+            }, 300);
+            _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
+                e.preventDefault();
+                self.dismiss();
+            });
+            _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
+                e.preventDefault();
+                self.dismiss();
+                if (self.clickthrough) {
+                    setTimeout(function() { window.location.href = dest_url; }, self.mixpanel.config.track_links_timeout);
+                }
             });
         });
 
-        var preload_images = function(srcs, all_loaded_cb) {
-            if (srcs.length === 0) {
-                if (all_loaded_cb) {
-                    all_loaded_cb();
+        MixpanelLib.Notification.prototype._init_notification_el = function() {
+            this.notification_el = document.createElement('div');
+            this.notification_el.id = 'mixpanel-notification-wrapper';
+            this.notification_el.innerHTML =
+                '<div id="mixpanel-notification-overlay">' +
+                    '<div id="mixpanel-notification-bgwrapper">' +
+                        '<div id="mixpanel-notification-bg"></div>' +
+                        this.thumb_img_html +
+                        '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
+                            (this.thumb_image_url && !this.ie6 ? '<div id="mixpanel-notification-caret"></div>' : '') +
+                            '<img id="mixpanel-notification-cancel" src="http://cdn.mxpnl.com/site_media/images/icons/notification-x.png"/>' +
+                            '<div id="mixpanel-notification-content">' +
+                                '<div id="mixpanel-notification-title">' + this.title + '</div>' +
+                                this.img_html +
+                                '<div id="mixpanel-notification-body">' + this.body + '</div>' +
+                                '<div id="mixpanel-notification-actions">' +
+                                    '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+        };
+
+        MixpanelLib.Notification.prototype._init_styles = function() {
+            if (this.style === 'dark') {
+                this.css = {
+                    bg:          '#1d1f25',
+                    text_color:  '#fff',
+                    border_gray: '#32353c'
+                };
+            } else {
+                this.css = {
+                    bg:          '#fff',
+                    text_color:  '#6c7c85',
+                    border_gray: '#e4ecf2'
+                };
+            }
+            this._inject_styles({
+                '#mixpanel-notification-overlay': {
+                    'position': 'fixed',
+                    'top': '0',
+                    'left': '0',
+                    'width': '100%',
+                    'height': '100%',
+                    'overflow': 'auto',
+                    'text-align': 'center',
+                    'z-index': '10000',
+                    'font-family': '"Lucida Sans Unicode", "Lucida Grande", sans-serif'
+                },
+                '#mixpanel-notification-bgwrapper': {
+                    'position': 'relative',
+                    'width': '100%',
+                    'height': '100%'
+                },
+                '#mixpanel-notification-bg': {
+                    'position': 'fixed',
+                    'top': '0',
+                    'left': '0',
+                    'width': '100%',
+                    'height': '100%',
+                    'min-width': String(this.doc_width * 4) + 'px',
+                    'min-height': String(this.doc_height * 4) + 'px',
+                    'background-color': 'black',
+                    'opacity': '0.0',
+                    '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=50)', // IE8
+                    'filter': 'alpha(opacity=50)', // IE5-7
+                    '-moz-opacity': '0.0',
+                    '-khtml-opacity': '0.0'
+                },
+                '#mixpanel-notification-thumbnail': {
+                    'position': 'absolute',
+                    'right': '65px',
+                    'width': MixpanelLib.Notification.THUMB_IMG_SIZE + 'px',
+                    'height': MixpanelLib.Notification.THUMB_IMG_SIZE + 'px',
+                    'overflow': 'hidden',
+                    'border-radius': MixpanelLib.Notification.THUMB_IMG_SIZE + 'px',
+                    '-webkit-border-radius': MixpanelLib.Notification.THUMB_IMG_SIZE + 'px',
+                    '-moz-border-radius': MixpanelLib.Notification.THUMB_IMG_SIZE + 'px'
+                },
+                '#mixpanel-notification': {
+                    'position': 'absolute',
+                    'right': '0',
+                    'width': MixpanelLib.Notification.NOTIF_WIDTH + 'px',
+                    'margin': '117px ' + MixpanelLib.Notification.NOTIF_MARGIN + 'px 0 0',
+                    'border-radius': '4px',
+                    '-webkit-border-radius': '4px',
+                    '-moz-border-radius': '4px',
+                    'text-align': this.image_url ? 'center' : 'left',
+                    'background-color': this.css.bg,
+                    'font-size': '14px',
+                    'color': this.css.text_color
+                },
+                '#mixpanel-notification-caret': {
+                    'position': 'absolute',
+                    'top': '-' + MixpanelLib.Notification.CARET_SIZE + 'px',
+                    'right': '50px',
+                    'border-left': MixpanelLib.Notification.CARET_SIZE + 'px solid transparent',
+                    'border-right': MixpanelLib.Notification.CARET_SIZE + 'px solid transparent',
+                    'border-bottom': MixpanelLib.Notification.CARET_SIZE + 'px solid ' + this.css.bg
+                },
+                '#mixpanel-notification-content': {
+                    'padding': '0px 20px'
+                },
+                '#mixpanel-notification-title': {
+                    'padding': '25px 0px 20px 0px',
+                    'font-size': '19px',
+                    'font-weight': 'bold'
+                },
+                '#mixpanel-notification-img': {
+                    'width': '360px',
+                    'margin-bottom': '10px'
+                },
+                '#mixpanel-notification-body': {
+                    'padding': '10px 0px',
+                    'line-height': '24px',
+                    'font-size': '15px',
+                    'font-weight': 'normal'
+                },
+                '#mixpanel-notification-cancel': {
+                    'float': 'right',
+                    'padding': '17px 17px 0 0',
+                    'font-size': '12px',
+                    'font-weight': 'bold',
+                    'color': '#bac5ce',
+                    'cursor': 'pointer'
+                },
+                '#mixpanel-notification-actions': {
+                    'padding': '20px 0 35px 0',
+                    'text-align': 'center'
+                },
+                '#mixpanel-notification-button': {
+                    'display': 'inline-block',
+                    'margin': '0 auto',
+                    'padding': '10px 30px',
+                    'border': '2px solid ' + this.css.border_gray,
+                    'border-radius': '40px',
+                    '-webkit-border-radius': '40px',
+                    '-moz-border-radius': '40px',
+                    'font-size': '15px',
+                    'font-weight': 'bold',
+                    'color': this.css.text_color,
+                    'text-decoration': 'none'
+                },
+
+                // IE hacks
+                '* html #mixpanel-notification-overlay': {
+                    'position': 'absolute'
+                },
+                '* html #mixpanel-notification-bg': {
+                    'position': 'absolute'
+                },
+                'html, body': {
+                    'height': '100%',
+                    'margin': '0',
+                    'padding': '0'
                 }
+            });
+        };
+
+        MixpanelLib.Notification.prototype._inject_styles = function(styles) {
+            var style_text = '';
+            for (selector in styles) {
+                style_text += '\n' + selector + ' {';
+                var props = styles[selector];
+                for (k in props) {
+                    style_text += k + ':' + props[k] + ';';
+                }
+                style_text += '}';
+            }
+
+            var head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
+                style_el = document.createElement('style');
+            head_el.appendChild(style_el);
+            style_el.setAttribute('type', 'text/css');
+            if (style_el.styleSheet) { // IE
+                style_el.styleSheet.cssText = style_text;
+            } else {
+                style_el.textContent = style_text;
+            }
+        };
+
+        MixpanelLib.Notification.prototype._preload_images = function(all_loaded_cb) {
+            var self = this;
+            if (this.imgs_to_preload.length === 0) {
+                all_loaded_cb();
                 return;
             }
 
             var preloaded_imgs = 0;
-            for (var i = 0; i < srcs.length; i++) {
+            for (var i = 0; i < this.imgs_to_preload.length; i++) {
                 var img = new Image(),
                     onload = function() {
                         preloaded_imgs++;
-                        if (preloaded_imgs === srcs.length && all_loaded_cb) {
+                        if (preloaded_imgs === self.imgs_to_preload.length && all_loaded_cb) {
                             all_loaded_cb();
                             all_loaded_cb = null;
                         }
                     };
                 img.onload = onload;
-                img.src = srcs[i];
+                img.src = this.imgs_to_preload[i];
                 if (img.complete) {
                     onload();
                 }
             }
 
             // IE6/7 doesn't fire onload reliably
-            if (ie7) {
+            if (this.ie7) {
                 setTimeout(function() {
                     if (all_loaded_cb) {
                         all_loaded_cb();
@@ -2703,33 +2782,33 @@ Globals should be all caps
             }
         };
 
-        // actually attach notification to DOM
-        var trigger_notification = _.safewrap(function() {
-            body_el.appendChild(notif_wrapper);
-            setTimeout(function() {
-                animate_notification({
-                    bg_opacity:    {val: 0.0, goal: 0.5,       incr: 0.02},
-                    notif_opacity: {val: 0.0, goal: 1.0,       incr: 0.02},
-                    notif_top:     {val: 150, goal: notif_top, incr: -15 },
-                    thumb_top:     {val: -75, goal: 25,        incr: 10  }
-                });
-            }, 300);
-            _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
-                e.preventDefault();
-                dismiss();
-            });
-            _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
-                e.preventDefault();
-                dismiss();
-                if (clickthrough) {
-                    setTimeout(function() { window.location.href = dest_url; }, self.config.track_links_timeout);
-                }
-            });
+        MixpanelLib.Notification.prototype._remove_notification_el = _.safewrap(function() {
+            this.notification_el.style.visibility = 'hidden';
         });
 
-        // wait for any images to load before showing notification
-        preload_images(imgs_to_preload, trigger_notification);
-    };
+        MixpanelLib.Notification.prototype._set_client_config = function() {
+            this.ie_ver = /MSIE (\d+).+/.exec(navigator.userAgent);
+            this.ie6 = this.ie_ver && this.ie_ver[1] <= 6;
+            this.ie7 = this.ie_ver && this.ie_ver[1] <= 7;
+
+            this.body_el = document.body || document.getElementsByTagName('body')[0];
+            if (this.body_el) {
+                this.doc_width = Math.max(
+                    this.body_el.scrollWidth, document.documentElement.scrollWidth,
+                    this.body_el.offsetWidth, document.documentElement.offsetWidth,
+                    this.body_el.clientWidth, document.documentElement.clientWidth
+                );
+                this.doc_height = Math.max(
+                    this.body_el.scrollHeight, document.documentElement.scrollHeight,
+                    this.body_el.offsetHeight, document.documentElement.offsetHeight,
+                    this.body_el.clientHeight, document.documentElement.clientHeight
+                );
+            }
+        };
+
+        MixpanelLib.Notification.prototype._string_or_default = function(s, default_s) {
+            return (s && s.length > 0) ? s : default_s;
+        };
 
     /**
      * Returns the current distinct id of the user. This is either the id automatically
