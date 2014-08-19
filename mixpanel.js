@@ -3330,7 +3330,7 @@ Globals should be all caps
             return (s && s.length > 0) ? s : default_s;
         };
 
-    _.safewrap_class(MixpanelLib, ['identify', '_show_notification']);
+    _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
 
     // EXPORTS (for closure compiler)
 
