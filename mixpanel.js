@@ -2976,12 +2976,6 @@ Globals should be all caps
                 return;
             }
 
-            // no possibility to double-display
-            if (this.shown) {
-                return;
-            }
-            this.shown = true;
-
             // no notification in small viewports
             if (this.doc_width < MixpanelLib._Notification.NOTIF_WIDTH + MixpanelLib._Notification.NOTIF_MARGIN * 2) {
                 return;
@@ -3061,6 +3055,12 @@ Globals should be all caps
 
         MixpanelLib._Notification.prototype._attach_and_animate = _.safewrap(function() {
             var self = this;
+
+            // no possibility to double-display
+            if (this.shown) {
+                return;
+            }
+            this.shown = true;
 
             this.body_el.appendChild(this.notification_el);
             setTimeout(function() {
