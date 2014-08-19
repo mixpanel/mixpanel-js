@@ -2784,6 +2784,7 @@ Globals should be all caps
 
         MixpanelLib.Notification.prototype._remove_notification_el = _.safewrap(function() {
             this.notification_el.style.visibility = 'hidden';
+            this.body_el.removeChild(this.notification_el);
         });
 
         MixpanelLib.Notification.prototype._set_client_config = function() {
