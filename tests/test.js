@@ -1482,6 +1482,19 @@ xhrmodule("mixpanel._check_and_handle_notifications");
             same(this.requests.length, 1, "_check_and_handle_notifications should have fired off a request");
             ok(this.requests[0].url.match(/decide\//));
         });
+
+        test("notifications are never checked again after identify()", 2, function() {
+            mixpanel.test.identify(this.id);
+            ok(this.requests.length >= 1, "identify should have fired off a request");
+
+            var num_requests = this.requests.length;
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            same(this.requests.length, num_requests, "_check_and_handle_notifications after identify should not make requests");
+        });
     } else {
         test("_check_and_handle_notifications makes a request", 1, function() {
             var num_scripts = $('script').length;
@@ -1490,6 +1503,26 @@ xhrmodule("mixpanel._check_and_handle_notifications");
             setTimeout(function() {
                 same($('script').length, num_scripts + 1, "_check_and_handle_notifications should have fired off a request");
                 start();
+            }, 500);
+        });
+
+        test("notifications are never checked again after identify()", 2, function() {
+            var num_scripts = $('script').length;
+            mixpanel.test.identify(this.id);
+            stop();
+            setTimeout(function() {
+                ok($('script').length >= num_scripts + 1, "identify should have fired off a request");
+
+                num_scripts = $('script').length;
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                setTimeout(function() {
+                    same($('script').length, num_scripts, "_check_and_handle_notifications after identify should not make requests");
+                    start();
+                }, 500);
             }, 500);
         });
     }
