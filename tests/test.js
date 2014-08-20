@@ -1529,7 +1529,7 @@ mpmodule("mixpanel.people.delete_user");
 
 mpmodule("in-app notification display");
 
-    asyncTest("notification with normal data displays", 1, function() {
+    asyncTest("notification with normal data adds itself to DOM", 1, function() {
         mixpanel._show_notification({
             body: "notification body test",
             title: "hallo"
@@ -1560,6 +1560,19 @@ mpmodule("in-app notification display");
         mixpanel.test._show_notification({body: null});
         mixpanel.test._show_notification({bla: 'bla'});
         ok(true);
+    });
+
+    asyncTest("notification prevents script injection", 2, function() {
+        mixpanel._show_notification({
+            body: 'injection test</div><img src="nope" onerror="window.injectedvar=42;"/>',
+            title: "bad image title"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification').length, 1);
+            $('#mixpanel-notification-wrapper').remove();
+            ok(_.isUndefined(window.injectedvar), 'window.injectedvar should not exist');
+            start();
+        }, 2000);
     });
 
 mpmodule("verbose output");
