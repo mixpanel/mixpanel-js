@@ -1543,9 +1543,9 @@ mpmodule("in-app notification display");
 
     asyncTest("notification does not show when images don't load", 1, function() {
         mixpanel._show_notification({
-            body: "notification body test",
+            body: "bad image body test",
             image_url: "http://notgonna.loadever.com/blablabla",
-            title: "hallo"
+            title: "bad image title"
         });
         setTimeout(function() {
             same($('#mixpanel-notification').length, 0);

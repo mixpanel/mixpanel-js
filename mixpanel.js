@@ -2927,16 +2927,16 @@ Globals should be all caps
 
         this.mixpanel = mixpanel_instance;
 
-        this.campaign_id = notif_data.id;
-        this.message_id  = notif_data.message_id;
+        this.campaign_id = notif_data['id'];
+        this.message_id  = notif_data['message_id'];
 
-        this.body            = notif_data.body.replace(/\n/g, '<br/>');
-        this.cta             = this._string_or_default(notif_data.cta, 'GOT IT');
-        this.dest_url        = this._string_or_default(notif_data.cta_url, null);
-        this.image_url       = this._string_or_default(notif_data.image_url, null);
-        this.style           = notif_data.style;
-        this.thumb_image_url = this._string_or_default(notif_data.thumb_image_url, null);
-        this.title           = notif_data.title;
+        this.body            = notif_data['body'].replace(/\n/g, '<br/>');
+        this.cta             = this._string_or_default(notif_data['cta'], 'GOT IT');
+        this.dest_url        = this._string_or_default(notif_data['cta_url'], null);
+        this.image_url       = this._string_or_default(notif_data['image_url'], null);
+        this.style           = notif_data['style'];
+        this.thumb_image_url = this._string_or_default(notif_data['thumb_image_url'], null);
+        this.title           = notif_data['title'];
 
         this.clickthrough = true;
         if (!this.dest_url) {
@@ -3330,56 +3330,58 @@ Globals should be all caps
             return (s && s.length > 0) ? s : default_s;
         };
 
-    _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
-
     // EXPORTS (for closure compiler)
 
     // Underscore Exports
-    _['toArray']                                        = _.toArray;
-    _['isObject']                                       = _.isObject;
-    _['JSONEncode']                                     = _.JSONEncode;
-    _['JSONDecode']                                     = _.JSONDecode;
-    _['isBlockedUA']                                    = _.isBlockedUA;
-    _['isEmptyObject']                                  = _.isEmptyObject;
-    _['info']                                           = _.info;
-    _['info']['device']                                 = _.info.device;
-    _['info']['browser']                                = _.info.browser;
+    _['toArray']         = _.toArray;
+    _['isObject']        = _.isObject;
+    _['JSONEncode']      = _.JSONEncode;
+    _['JSONDecode']      = _.JSONDecode;
+    _['isBlockedUA']     = _.isBlockedUA;
+    _['isEmptyObject']   = _.isEmptyObject;
+    _['info']            = _.info;
+    _['info']['device']  = _.info.device;
+    _['info']['browser'] = _.info.browser;
 
     // MixpanelLib Exports
-    MixpanelLib.prototype['init']                       = MixpanelLib.prototype.init;
-    MixpanelLib.prototype['disable']                    = MixpanelLib.prototype.disable;
-    MixpanelLib.prototype['track']                      = MixpanelLib.prototype.track;
-    MixpanelLib.prototype['track_links']                = MixpanelLib.prototype.track_links;
-    MixpanelLib.prototype['track_forms']                = MixpanelLib.prototype.track_forms;
-    MixpanelLib.prototype['track_pageview']             = MixpanelLib.prototype.track_pageview;
-    MixpanelLib.prototype['register']                   = MixpanelLib.prototype.register;
-    MixpanelLib.prototype['register_once']              = MixpanelLib.prototype.register_once;
-    MixpanelLib.prototype['unregister']                 = MixpanelLib.prototype.unregister;
-    MixpanelLib.prototype['identify']                   = MixpanelLib.prototype.identify;
-    MixpanelLib.prototype['alias']                      = MixpanelLib.prototype.alias;
-    MixpanelLib.prototype['name_tag']                   = MixpanelLib.prototype.name_tag;
-    MixpanelLib.prototype['set_config']                 = MixpanelLib.prototype.set_config;
-    MixpanelLib.prototype['get_config']                 = MixpanelLib.prototype.get_config;
-    MixpanelLib.prototype['get_property']               = MixpanelLib.prototype.get_property;
-    MixpanelLib.prototype['get_distinct_id']            = MixpanelLib.prototype.get_distinct_id;
-    MixpanelLib.prototype['toString']                   = MixpanelLib.prototype.toString;
+    MixpanelLib.prototype['init']                            = MixpanelLib.prototype.init;
+    MixpanelLib.prototype['disable']                         = MixpanelLib.prototype.disable;
+    MixpanelLib.prototype['track']                           = MixpanelLib.prototype.track;
+    MixpanelLib.prototype['track_links']                     = MixpanelLib.prototype.track_links;
+    MixpanelLib.prototype['track_forms']                     = MixpanelLib.prototype.track_forms;
+    MixpanelLib.prototype['track_pageview']                  = MixpanelLib.prototype.track_pageview;
+    MixpanelLib.prototype['register']                        = MixpanelLib.prototype.register;
+    MixpanelLib.prototype['register_once']                   = MixpanelLib.prototype.register_once;
+    MixpanelLib.prototype['unregister']                      = MixpanelLib.prototype.unregister;
+    MixpanelLib.prototype['identify']                        = MixpanelLib.prototype.identify;
+    MixpanelLib.prototype['alias']                           = MixpanelLib.prototype.alias;
+    MixpanelLib.prototype['name_tag']                        = MixpanelLib.prototype.name_tag;
+    MixpanelLib.prototype['set_config']                      = MixpanelLib.prototype.set_config;
+    MixpanelLib.prototype['get_config']                      = MixpanelLib.prototype.get_config;
+    MixpanelLib.prototype['get_property']                    = MixpanelLib.prototype.get_property;
+    MixpanelLib.prototype['get_distinct_id']                 = MixpanelLib.prototype.get_distinct_id;
+    MixpanelLib.prototype['toString']                        = MixpanelLib.prototype.toString;
+    MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
+    MixpanelLib.prototype['_show_notification']              = MixpanelLib.prototype._show_notification;
 
     // MixpanelCookie Exports
-    MixpanelCookie.prototype['properties']              = MixpanelCookie.prototype.properties;
-    MixpanelCookie.prototype['update_search_keyword']   = MixpanelCookie.prototype.update_search_keyword;
-    MixpanelCookie.prototype['update_referrer_info']    = MixpanelCookie.prototype.update_referrer_info;
-    MixpanelCookie.prototype['get_cross_subdomain']     = MixpanelCookie.prototype.get_cross_subdomain;
-    MixpanelCookie.prototype['clear']                   = MixpanelCookie.prototype.clear;
+    MixpanelCookie.prototype['properties']            = MixpanelCookie.prototype.properties;
+    MixpanelCookie.prototype['update_search_keyword'] = MixpanelCookie.prototype.update_search_keyword;
+    MixpanelCookie.prototype['update_referrer_info']  = MixpanelCookie.prototype.update_referrer_info;
+    MixpanelCookie.prototype['get_cross_subdomain']   = MixpanelCookie.prototype.get_cross_subdomain;
+    MixpanelCookie.prototype['clear']                 = MixpanelCookie.prototype.clear;
 
     // MixpanelPeople Exports
-    MixpanelPeople.prototype['set']                     = MixpanelPeople.prototype.set;
-    MixpanelPeople.prototype['set_once']                = MixpanelPeople.prototype.set_once;
-    MixpanelPeople.prototype['increment']               = MixpanelPeople.prototype.increment;
-    MixpanelPeople.prototype['append']                  = MixpanelPeople.prototype.append;
-    MixpanelPeople.prototype['track_charge']            = MixpanelPeople.prototype.track_charge;
-    MixpanelPeople.prototype['clear_charges']           = MixpanelPeople.prototype.clear_charges;
-    MixpanelPeople.prototype['delete_user']             = MixpanelPeople.prototype.delete_user;
-    MixpanelPeople.prototype['toString']                = MixpanelPeople.prototype.toString;
+    MixpanelPeople.prototype['set']           = MixpanelPeople.prototype.set;
+    MixpanelPeople.prototype['set_once']      = MixpanelPeople.prototype.set_once;
+    MixpanelPeople.prototype['increment']     = MixpanelPeople.prototype.increment;
+    MixpanelPeople.prototype['append']        = MixpanelPeople.prototype.append;
+    MixpanelPeople.prototype['track_charge']  = MixpanelPeople.prototype.track_charge;
+    MixpanelPeople.prototype['clear_charges'] = MixpanelPeople.prototype.clear_charges;
+    MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user;
+    MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
+
+    _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
 
     // Initialization
     if (_.isUndefined(mixpanel)) {
