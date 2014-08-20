@@ -1474,6 +1474,26 @@ mpmodule("mixpanel.people.delete_user");
         same(d, { "$token": this.token, "$distinct_id": this.id, "$delete": this.id }, "Cannot delete user without valid distinct id");
     });
 
+xhrmodule("mixpanel._check_and_handle_notifications");
+
+    if (USE_XHR) {
+        test("_check_and_handle_notifications makes a request to decide/ server", 2, function() {
+            mixpanel.test._check_and_handle_notifications(this.id);
+            same(this.requests.length, 1, "_check_and_handle_notifications should have fired off a request");
+            ok(this.requests[0].url.match(/decide\//));
+        });
+    } else {
+        test("_check_and_handle_notifications makes a request", 1, function() {
+            var num_scripts = $('script').length;
+            mixpanel.test._check_and_handle_notifications(this.id);
+            stop();
+            setTimeout(function() {
+                same($('script').length, num_scripts + 1, "_check_and_handle_notifications should have fired off a request");
+                start();
+            }, 500);
+        });
+    }
+
 mpmodule("verbose output");
 
     asyncTest("track endpoint returns json when verbose=1", 1, function() {
