@@ -3273,7 +3273,8 @@ Globals should be all caps
                 return;
             }
 
-            var preloaded_imgs = 0;
+            var preloaded_imgs = 0,
+                img_objs = [];
             for (var i = 0; i < this.imgs_to_preload.length; i++) {
                 var img = new Image(),
                     onload = function() {
@@ -3288,16 +3289,23 @@ Globals should be all caps
                 if (img.complete) {
                     onload();
                 }
+                img_objs.push(img);
             }
 
             // IE6/7 doesn't fire onload reliably
             if (this.ie7) {
                 setTimeout(function() {
-                    if (all_loaded_cb) {
+                    var imgs_loaded = true;
+                    for (i = 0; i < img_objs.length; i++) {
+                        if (!img_objs[i].complete) {
+                            imgs_loaded = false;
+                        }
+                    }
+                    if (imgs_loaded && all_loaded_cb) {
                         all_loaded_cb();
                         all_loaded_cb = null;
                     }
-                }, 300);
+                }, 500);
             }
         };
 
