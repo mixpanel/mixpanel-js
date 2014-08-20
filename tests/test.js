@@ -1076,6 +1076,59 @@ mpmodule("mixpanel.push");
         same(mixpanel.cookie.props.value, value, "executed immediately");
     });
 
+xhrmodule("mixpanel._check_and_handle_notifications");
+
+    if (USE_XHR) {
+        test("_check_and_handle_notifications makes a request to decide/ server", 2, function() {
+            mixpanel.test._check_and_handle_notifications(this.id);
+            same(this.requests.length, 1, "_check_and_handle_notifications should have fired off a request");
+            ok(this.requests[0].url.match(/decide\//));
+        });
+
+        test("notifications are never checked again after identify()", 2, function() {
+            mixpanel.test.identify(this.id);
+            ok(this.requests.length >= 1, "identify should have fired off a request");
+
+            var num_requests = this.requests.length;
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            same(this.requests.length, num_requests, "_check_and_handle_notifications after identify should not make requests");
+        });
+    } else {
+        test("_check_and_handle_notifications makes a request", 1, function() {
+            var num_scripts = $('script').length;
+            mixpanel.test._check_and_handle_notifications(this.id);
+            stop();
+            setTimeout(function() {
+                same($('script').length, num_scripts + 1, "_check_and_handle_notifications should have fired off a request");
+                start();
+            }, 500);
+        });
+
+        test("notifications are never checked again after identify()", 2, function() {
+            var num_scripts = $('script').length;
+            mixpanel.test.identify(this.id);
+            stop();
+            setTimeout(function() {
+                ok($('script').length >= num_scripts + 1, "identify should have fired off a request");
+
+                num_scripts = $('script').length;
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                setTimeout(function() {
+                    same($('script').length, num_scripts, "_check_and_handle_notifications after identify should not make requests");
+                    start();
+                }, 500);
+            }, 500);
+        });
+    }
+
 mpmodule("mixpanel.people.set");
 
     test("set (basic functionality)", 6, function() {
@@ -1474,58 +1527,16 @@ mpmodule("mixpanel.people.delete_user");
         same(d, { "$token": this.token, "$distinct_id": this.id, "$delete": this.id }, "Cannot delete user without valid distinct id");
     });
 
-xhrmodule("mixpanel._check_and_handle_notifications");
+mpmodule("in-app notification display");
 
-    if (USE_XHR) {
-        test("_check_and_handle_notifications makes a request to decide/ server", 2, function() {
-            mixpanel.test._check_and_handle_notifications(this.id);
-            same(this.requests.length, 1, "_check_and_handle_notifications should have fired off a request");
-            ok(this.requests[0].url.match(/decide\//));
-        });
-
-        test("notifications are never checked again after identify()", 2, function() {
-            mixpanel.test.identify(this.id);
-            ok(this.requests.length >= 1, "identify should have fired off a request");
-
-            var num_requests = this.requests.length;
-            mixpanel.test._check_and_handle_notifications(this.id);
-            mixpanel.test._check_and_handle_notifications(this.id);
-            mixpanel.test._check_and_handle_notifications(this.id);
-            mixpanel.test._check_and_handle_notifications(this.id);
-            mixpanel.test._check_and_handle_notifications(this.id);
-            same(this.requests.length, num_requests, "_check_and_handle_notifications after identify should not make requests");
-        });
-    } else {
-        test("_check_and_handle_notifications makes a request", 1, function() {
-            var num_scripts = $('script').length;
-            mixpanel.test._check_and_handle_notifications(this.id);
-            stop();
-            setTimeout(function() {
-                same($('script').length, num_scripts + 1, "_check_and_handle_notifications should have fired off a request");
-                start();
-            }, 500);
-        });
-
-        test("notifications are never checked again after identify()", 2, function() {
-            var num_scripts = $('script').length;
-            mixpanel.test.identify(this.id);
-            stop();
-            setTimeout(function() {
-                ok($('script').length >= num_scripts + 1, "identify should have fired off a request");
-
-                num_scripts = $('script').length;
-                mixpanel.test._check_and_handle_notifications(this.id);
-                mixpanel.test._check_and_handle_notifications(this.id);
-                mixpanel.test._check_and_handle_notifications(this.id);
-                mixpanel.test._check_and_handle_notifications(this.id);
-                mixpanel.test._check_and_handle_notifications(this.id);
-                setTimeout(function() {
-                    same($('script').length, num_scripts, "_check_and_handle_notifications after identify should not make requests");
-                    start();
-                }, 500);
-            }, 500);
-        });
-    }
+    test("calling _show_notification with bad data does not halt execution", 1, function() {
+        mixpanel.test._show_notification();
+        mixpanel.test._show_notification(15);
+        mixpanel.test._show_notification('hi');
+        mixpanel.test._show_notification({body: null});
+        mixpanel.test._show_notification({bla: 'bla'});
+        ok(true);
+    });
 
 mpmodule("verbose output");
 
