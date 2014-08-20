@@ -1529,13 +1529,16 @@ mpmodule("mixpanel.people.delete_user");
 
 mpmodule("in-app notification display");
 
-    test("calling _show_notification with bad data does not halt execution", 1, function() {
-        mixpanel.test._show_notification();
-        mixpanel.test._show_notification(15);
-        mixpanel.test._show_notification('hi');
-        mixpanel.test._show_notification({body: null});
-        mixpanel.test._show_notification({bla: 'bla'});
-        ok(true);
+    asyncTest("notification with normal data displays", 1, function() {
+        mixpanel._show_notification({
+            body: "notification body test",
+            title: "hallo"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification').length, 1);
+            $('#mixpanel-notification-wrapper').remove();
+            start();
+        }, 2000);
     });
 
     asyncTest("notification does not show when images don't load", 1, function() {
@@ -1548,6 +1551,15 @@ mpmodule("in-app notification display");
             same($('#mixpanel-notification').length, 0);
             start();
         }, 2000);
+    });
+
+    test("calling _show_notification with bad data does not halt execution", 1, function() {
+        mixpanel.test._show_notification();
+        mixpanel.test._show_notification(15);
+        mixpanel.test._show_notification('hi');
+        mixpanel.test._show_notification({body: null});
+        mixpanel.test._show_notification({bla: 'bla'});
+        ok(true);
     });
 
 mpmodule("verbose output");
