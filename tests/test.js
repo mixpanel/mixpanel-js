@@ -1538,6 +1538,18 @@ mpmodule("in-app notification display");
         ok(true);
     });
 
+    asyncTest("notification does not show when images don't load", 1, function() {
+        mixpanel._show_notification({
+            body: "notification body test",
+            image_url: "http://notgonna.loadever.com/blablabla",
+            title: "hallo"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification').length, 0);
+            start();
+        }, 2000);
+    });
+
 mpmodule("verbose output");
 
     asyncTest("track endpoint returns json when verbose=1", 1, function() {
