@@ -3093,7 +3093,7 @@ Globals should be all caps
                 e.preventDefault();
                 self.dismiss();
                 if (self.clickthrough) {
-                    setTimeout(function() { window.location.href = dest_url; }, self.mixpanel.config.track_links_timeout);
+                    setTimeout(function() { window.location.href = self.dest_url; }, self.mixpanel.config.track_links_timeout);
                 }
             });
         });
