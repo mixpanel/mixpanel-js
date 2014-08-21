@@ -157,6 +157,19 @@ Globals should be all caps
             }
         };
 
+        _.escapeHTML = function(s) {
+            var escaped = s;
+            if (escaped) {
+                escaped = escaped
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+            return escaped;
+        };
+
         _.extend = function(obj) {
             each(slice.call(arguments, 1), function(source) {
                 for (var prop in source) {
@@ -2927,16 +2940,16 @@ Globals should be all caps
 
         this.mixpanel = mixpanel_instance;
 
-        this.campaign_id = notif_data['id'];
-        this.message_id  = notif_data['message_id'];
+        this.campaign_id = _.escapeHTML(notif_data['id']);
+        this.message_id  = _.escapeHTML(notif_data['message_id']);
 
-        this.body            = notif_data['body'].replace(/\n/g, '<br/>');
-        this.cta             = this._string_or_default(notif_data['cta'], 'GOT IT');
-        this.dest_url        = this._string_or_default(notif_data['cta_url'], null);
-        this.image_url       = this._string_or_default(notif_data['image_url'], null);
-        this.style           = notif_data['style'];
-        this.thumb_image_url = this._string_or_default(notif_data['thumb_image_url'], null);
-        this.title           = notif_data['title'];
+        this.body            = _.escapeHTML(notif_data['body']).replace(/\n/g, '<br/>');
+        this.cta             = this._string_or_default(_.escapeHTML(notif_data['cta']), 'GOT IT');
+        this.dest_url        = this._string_or_default(_.escapeHTML(notif_data['cta_url']), null);
+        this.image_url       = this._string_or_default(_.escapeHTML(notif_data['image_url']), null);
+        this.style           = _.escapeHTML(notif_data['style']);
+        this.thumb_image_url = this._string_or_default(_.escapeHTML(notif_data['thumb_image_url']), null);
+        this.title           = _.escapeHTML(notif_data['title']);
 
         this.clickthrough = true;
         if (!this.dest_url) {
