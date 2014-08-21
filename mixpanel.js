@@ -160,7 +160,7 @@ Globals should be all caps
         _.escapeHTML = function(s) {
             var escaped = s;
             if (escaped) {
-                escaped = escaped
+                escaped = String(escaped)
                     .replace(/&/g, '&amp;')
                     .replace(/</g, '&lt;')
                     .replace(/>/g, '&gt;')
