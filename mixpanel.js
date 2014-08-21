@@ -3126,13 +3126,17 @@ Globals should be all caps
             if (this.style === 'dark') {
                 this.css = {
                     bg:          '#1d1f25',
+                    bg_hover:    '#2d2f35',
                     text_color:  '#fff',
+                    text_hover:  '#ddd',
                     border_gray: '#32353c'
                 };
             } else {
                 this.css = {
                     bg:          '#fff',
+                    bg_hover:    '#eee',
                     text_color:  '#6c7c85',
+                    text_hover:  '#8c9ca5',
                     border_gray: '#e4ecf2'
                 };
             }
@@ -3242,6 +3246,10 @@ Globals should be all caps
                     'font-weight': 'bold',
                     'color': this.css.text_color,
                     'text-decoration': 'none'
+                },
+                '#mixpanel-notification-button:hover': {
+                    'background-color': this.css.bg_hover,
+                    'color': this.css.text_hover
                 },
 
                 // IE hacks
