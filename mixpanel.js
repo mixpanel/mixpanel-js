@@ -2990,7 +2990,7 @@ Globals should be all caps
 
             // don't display until HTML body exists
             if (!this.body_el) {
-                setTimeout(function() { self.show(); }, 1000);
+                setTimeout(function() { self.show(); }, 300);
                 return;
             }
 
