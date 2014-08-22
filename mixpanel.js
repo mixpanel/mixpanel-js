@@ -2967,9 +2967,12 @@ Globals should be all caps
         this.notif_top = MixpanelLib._Notification.NOTIF_TOP_DEFAULT - 80;
         if (this.thumb_image_url) {
             this.imgs_to_preload.push(this.thumb_image_url);
-            this.thumb_img_html = '<img id="mixpanel-notification-thumbnail" style="opacity:0.0;top:-100px;"' +
-                ' src="' + this.thumb_image_url +
-                '" width="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '" height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"/>';
+            this.thumb_img_html = '<img id="mixpanel-notification-thumbnail"' +
+                ' style="opacity:0.0;top:-' + MixpanelLib._Notification.THUMB_IMG_SIZE + 'px;"' +
+                ' src="' + this.thumb_image_url + '"' +
+                ' width="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
+                ' height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
+                '/>';
             this.notif_top = MixpanelLib._Notification.NOTIF_TOP_DEFAULT;
         }
     };
@@ -2979,6 +2982,7 @@ Globals should be all caps
         MixpanelLib._Notification.NOTIF_WIDTH       = 424;
         MixpanelLib._Notification.NOTIF_MARGIN      = 40;
         MixpanelLib._Notification.THUMB_IMG_SIZE    = 75;
+        MixpanelLib._Notification.THUMB_TOP         = 25;
 
         MixpanelLib._Notification.prototype.show = function() {
             var self = this;
@@ -3024,10 +3028,26 @@ Globals should be all caps
             }
 
             this._animate_notification({
-                bg_opacity:    {val: 0.5,            goal: 0.0,                                               incr: -0.02},
-                notif_opacity: {val: 1.0,            goal: 0.0,                                               incr: -0.02},
-                notif_top:     {val: this.notif_top, goal: 150 + MixpanelLib._Notification.NOTIF_TOP_DEFAULT, incr: 15   },
-                thumb_top:     {val: 25,             goal: -75,                                               incr: -10  }
+                bg_opacity: {
+                    val:  0.5,
+                    goal: 0.0,
+                    incr: -0.02
+                },
+                notif_opacity: {
+                    val:  1.0,
+                    goal: 0.0,
+                    incr: -0.02
+                },
+                notif_top: {
+                    val:  this.notif_top,
+                    goal: 150 + MixpanelLib._Notification.NOTIF_TOP_DEFAULT,
+                    incr: 15
+                },
+                thumb_top: {
+                    val:  MixpanelLib._Notification.THUMB_TOP,
+                    goal: -MixpanelLib._Notification.THUMB_IMG_SIZE,
+                    incr: -10
+                }
             }, this._remove_notification_el);
         });
 
@@ -3079,10 +3099,26 @@ Globals should be all caps
             this.body_el.appendChild(this.notification_el);
             setTimeout(function() {
                 self._animate_notification({
-                    bg_opacity:    {val: 0.0,                                               goal: 0.5,            incr: 0.02},
-                    notif_opacity: {val: 0.0,                                               goal: 1.0,            incr: 0.02},
-                    notif_top:     {val: 150 + MixpanelLib._Notification.NOTIF_TOP_DEFAULT, goal: self.notif_top, incr: -15 },
-                    thumb_top:     {val: -75,                                               goal: 25,             incr: 10  }
+                    bg_opacity: {
+                        val:  0.0,
+                        goal: 0.5,
+                        incr: 0.02
+                    },
+                    notif_opacity: {
+                        val:  0.0,
+                        goal: 1.0,
+                        incr: 0.02
+                    },
+                    notif_top: {
+                        val:  150 + MixpanelLib._Notification.NOTIF_TOP_DEFAULT,
+                        goal: self.notif_top,
+                        incr: -15
+                    },
+                    thumb_top: {
+                        val:  -MixpanelLib._Notification.THUMB_IMG_SIZE,
+                        goal: MixpanelLib._Notification.THUMB_TOP,
+                        incr: 10
+                    }
                 });
             }, 300);
             _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
