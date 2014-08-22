@@ -3108,7 +3108,7 @@ Globals should be all caps
                         this.thumb_img_html +
                         '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
                             (this.thumb_image_url && !this.ie6 ? '<div id="mixpanel-notification-caret"></div>' : '') +
-                            '<img id="mixpanel-notification-cancel" src="//cdn.mxpnl.com/site_media/images/icons/notification-x.png"/>' +
+                            '<div id="mixpanel-notification-cancel"></div>' +
                             '<div id="mixpanel-notification-content">' +
                                 '<div id="mixpanel-notification-title">' + this.title + '</div>' +
                                 this.img_html +
@@ -3224,11 +3224,17 @@ Globals should be all caps
                 '#mixpanel-notification-cancel': {
                     'float': 'right',
                     'width': '8px',
-                    'padding': '17px 17px 0 0',
+                    'height': '8px',
+                    'background-size': '8px 16px',
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notification-x.png)',
+                    'margin': '17px 17px 0 0',
                     'font-size': '12px',
                     'font-weight': 'bold',
                     'color': '#bac5ce',
                     'cursor': 'pointer'
+                },
+                '#mixpanel-notification-cancel:hover': {
+                    'background-position-y': '8px'
                 },
                 '#mixpanel-notification-actions': {
                     'padding': '20px 0 35px 0',
