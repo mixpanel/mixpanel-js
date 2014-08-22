@@ -2994,11 +2994,6 @@ Globals should be all caps
                 return;
             }
 
-            // no notification in small viewports
-            if (this.doc_width < MixpanelLib._Notification.NOTIF_WIDTH + MixpanelLib._Notification.NOTIF_MARGIN * 2) {
-                return;
-            }
-
             this._init_styles();
             this._init_notification_el();
 
@@ -3176,6 +3171,16 @@ Globals should be all caps
                     border_gray: '#e4ecf2'
                 };
             }
+
+            // don't display on small viewports
+            var media_queries = {},
+                min_width = MixpanelLib._Notification.NOTIF_WIDTH + MixpanelLib._Notification.NOTIF_MARGIN * 2;
+            media_queries['@media only screen and (max-width: ' + (min_width - 1) + 'px)'] = {
+                '#mixpanel-notification-overlay': {
+                    'display': 'none'
+                }
+            };
+
             this._inject_styles({
                 '#mixpanel-notification-overlay': {
                     'position': 'fixed',
@@ -3306,19 +3311,31 @@ Globals should be all caps
                     'margin': '0',
                     'padding': '0'
                 }
-            });
+            }, media_queries);
         };
 
-        MixpanelLib._Notification.prototype._inject_styles = function(styles) {
-            var style_text = '';
-            for (selector in styles) {
-                style_text += '\n' + selector + ' {';
-                var props = styles[selector];
-                for (k in props) {
-                    style_text += k + ':' + props[k] + ';';
+        MixpanelLib._Notification.prototype._inject_styles = function(styles, media_queries) {
+            var create_style_text = function(style_defs) {
+                var st = '';
+                for (selector in style_defs) {
+                    st += '\n' + selector + ' {';
+                    var props = style_defs[selector];
+                    for (k in props) {
+                        st += k + ':' + props[k] + ';';
+                    }
+                    st += '}';
                 }
-                style_text += '}';
+                return st;
+            };
+            var create_media_query_text = function(mq_defs) {
+                var mqt = '';
+                for (mq in mq_defs) {
+                    mqt += '\n' + mq + ' {' + create_style_text(mq_defs[mq]) + '\n}';
+                }
+                return mqt;
             }
+
+            style_text = create_style_text(styles) + create_media_query_text(media_queries);
 
             var head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
                 style_el = document.createElement('style');
