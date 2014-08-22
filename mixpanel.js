@@ -3184,8 +3184,8 @@ Globals should be all caps
                 this.css = {
                     bg:          '#fff',
                     bg_hover:    '#eee',
-                    text_color:  '#6c7c85',
-                    text_hover:  '#8c9ca5',
+                    text_color:  '#5c6578',
+                    text_hover:  '#7c8598',
                     border_gray: '#e4ecf2'
                 };
             }
@@ -3209,7 +3209,8 @@ Globals should be all caps
                     'overflow': 'auto',
                     'text-align': 'center',
                     'z-index': '10000',
-                    'font-family': '"Lucida Sans Unicode", "Lucida Grande", sans-serif'
+                    'font-family': '"Helvetica", "Arial", sans-serif',
+                    '-webkit-font-smoothing': 'antialiased'
                 },
                 '#mixpanel-notification-bgwrapper': {
                     'position': 'relative',
