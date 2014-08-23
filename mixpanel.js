@@ -1624,6 +1624,7 @@ Globals should be all caps
 
     MixpanelCookie.prototype.save = function() {
         if (this.disabled) { return; }
+        this._expire_notification_campaigns();
         _.cookie.set(
             this.name,
             _.JSONEncode(this['props']),
@@ -1690,6 +1691,22 @@ Globals should be all caps
         if (prop in this['props']) {
             delete this['props'][prop];
             this.save();
+        }
+    };
+
+    MixpanelCookie.prototype._expire_notification_campaigns = function() {
+        var campaigns_shown = this['props'][CAMPAIGN_IDS_KEY],
+            EXPIRY_TIME = DEBUG ? 60 * 1000 : 60 * 60 * 1000; // 1 minute (DEBUG) / 1 hour (PDXN)
+        if (!campaigns_shown) {
+            return;
+        }
+        for (campaign_id in campaigns_shown) {
+            if (new Date() - new Date(campaigns_shown[campaign_id]) > EXPIRY_TIME) {
+                delete campaigns_shown[campaign_id];
+            }
+        }
+        if (_.isEmptyObject(campaigns_shown)) {
+            delete this['props'][CAMPAIGN_IDS_KEY];
         }
     };
 
@@ -3487,7 +3504,8 @@ Globals should be all caps
     MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user;
     MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
-    _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
+    _.safewrap_class(MixpanelCookie, ['_expire_notification_campaigns']);
+    _.safewrap_class(MixpanelLib,    ['identify', '_check_and_handle_notifications', '_show_notification']);
 
     // Initialization
     if (_.isUndefined(mixpanel)) {
