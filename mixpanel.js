@@ -2947,12 +2947,9 @@ Globals should be all caps
     MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
         _.bind_instance_methods(this);
 
-        this.mixpanel = mixpanel_instance;
-        this.cookie = new MixpanelCookie({
-            'cookie_name':       this.mixpanel['config']['token'] + '_cmpns',
-            'cookie_expiration': 1
-        });
-        this.shown_campaigns = this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = []);
+        this.mixpanel        = mixpanel_instance;
+        this.cookie          = this.mixpanel.cookie;
+        this.shown_campaigns = this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = {});
 
         this.campaign_id = _.escapeHTML(notif_data['id']);
         this.message_id  = _.escapeHTML(notif_data['message_id']);
@@ -3018,7 +3015,7 @@ Globals should be all caps
         MixpanelLib._Notification.prototype.dismiss = _.safewrap(function() {
             if (this.campaign_id) {
                 // mark notification shown (local cache)
-                this.shown_campaigns.push(this.campaign_id);
+                this.shown_campaigns[this.campaign_id] = new Date();
                 this.cookie.save();
 
                 // mark notification shown (mixpanel property)
@@ -3104,7 +3101,7 @@ Globals should be all caps
             var self = this;
 
             // no possibility to double-display
-            if (this.shown || this.shown_campaigns.indexOf(this.campaign_id) >= 0) {
+            if (this.shown || this.shown_campaigns[this.campaign_id]) {
                 return;
             }
             this.shown = true;
