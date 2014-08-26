@@ -3190,31 +3190,25 @@ Globals should be all caps
             };
 
             this._inject_styles({
-                '#mixpanel-notification-wrapper': {
-                    'position': 'absolute',
-                    'z-index': '50000'
-                },
                 '#mixpanel-notification-overlay': {
                     'position': 'fixed',
-                    'z-index': '50010',
                     'top': '0',
                     'left': '0',
                     'width': '100%',
                     'height': '100%',
                     'overflow': 'auto',
                     'text-align': 'center',
+                    'z-index': '10000',
                     'font-family': '"Helvetica", "Arial", sans-serif',
                     '-webkit-font-smoothing': 'antialiased'
                 },
                 '#mixpanel-notification-bgwrapper': {
                     'position': 'relative',
-                    'z-index': '50020',
                     'width': '100%',
                     'height': '100%'
                 },
                 '#mixpanel-notification-bg': {
                     'position': 'fixed',
-                    'z-index': '50030',
                     'top': '0',
                     'left': '0',
                     'width': '100%',
@@ -3230,7 +3224,6 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-thumbnail': {
                     'position': 'absolute',
-                    'z-index': '50040',
                     'right': '65px',
                     'width': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     'height': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
@@ -3241,7 +3234,6 @@ Globals should be all caps
                 },
                 '#mixpanel-notification': {
                     'position': 'absolute',
-                    'z-index': '50050',
                     'right': '0',
                     'width': MixpanelLib._Notification.NOTIF_WIDTH + 'px',
                     'margin-right': MixpanelLib._Notification.NOTIF_MARGIN + 'px',
