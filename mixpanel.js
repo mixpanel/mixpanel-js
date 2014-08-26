@@ -3144,6 +3144,10 @@ Globals should be all caps
             return this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = {});
         };
 
+        MixpanelLib._Notification.prototype._ie_lte = function(version) {
+            return this.ie_ver && this.ie_ver <= version;
+        };
+
         MixpanelLib._Notification.prototype._init_notification_el = function() {
             this.notification_el = document.createElement('div');
             this.notification_el.id = 'mixpanel-notification-wrapper';
@@ -3153,7 +3157,7 @@ Globals should be all caps
                         '<div id="mixpanel-notification-bg"></div>' +
                         this.thumb_img_html +
                         '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
-                            (this.thumb_image_url && !this.ie6 ? '<div id="mixpanel-notification-caret"></div>' : '') +
+                            (this.thumb_image_url && !this._ie_lte(6) ? '<div id="mixpanel-notification-caret"></div>' : '') +
                             '<div id="mixpanel-notification-cancel"></div>' +
                             '<div id="mixpanel-notification-content">' +
                                 '<div id="mixpanel-notification-title">' + this.title + '</div>' +
@@ -3195,8 +3199,7 @@ Globals should be all caps
                     'display': 'none'
                 }
             };
-
-            this._inject_styles({
+            var notif_styles = {
                 '#mixpanel-notification-overlay': {
                     'position': 'fixed',
                     'top': '0',
@@ -3220,8 +3223,8 @@ Globals should be all caps
                     'left': '0',
                     'width': '100%',
                     'height': '100%',
-                    'min-width': String(this.doc_width * 4) + 'px',
-                    'min-height': String(this.doc_height * 4) + 'px',
+                    'min-width': this.doc_width * 4 + 'px',
+                    'min-height': this.doc_height * 4 + 'px',
                     'background-color': 'black',
                     'opacity': '0.0',
                     '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=50)', // IE8
@@ -3323,21 +3326,25 @@ Globals should be all caps
                 '#mixpanel-notification-button:hover': {
                     'background-color': this.css.bg_hover,
                     'color': this.css.text_hover
-                },
-
-                // IE hacks
-                '* html #mixpanel-notification-overlay': {
-                    'position': 'absolute'
-                },
-                '* html #mixpanel-notification-bg': {
-                    'position': 'absolute'
-                },
-                'html, body': {
-                    'height': '100%',
-                    'margin': '0',
-                    'padding': '0'
                 }
-            }, media_queries);
+            };
+
+            // IE hacks
+            if (this._ie_lte(8)) {
+                _.extend(notif_styles, {
+                    '* html #mixpanel-notification-overlay': {
+                        'position': 'absolute'
+                    },
+                    '* html #mixpanel-notification-bg': {
+                        'position': 'absolute'
+                    },
+                    'html, body': {
+                        'height': '100%'
+                    }
+                });
+            }
+
+            this._inject_styles(notif_styles, media_queries);
         };
 
         MixpanelLib._Notification.prototype._inject_styles = function(styles, media_queries) {
@@ -3439,7 +3446,7 @@ Globals should be all caps
             }
 
             // IE6/7 doesn't fire onload reliably
-            if (this.ie7) {
+            if (this._ie_lte(7)) {
                 setTimeout(function() {
                     var imgs_loaded = true;
                     for (i = 0; i < img_objs.length; i++) {
@@ -3462,8 +3469,7 @@ Globals should be all caps
 
         MixpanelLib._Notification.prototype._set_client_config = function() {
             this.ie_ver = /MSIE (\d+).+/.exec(navigator.userAgent);
-            this.ie6 = this.ie_ver && this.ie_ver[1] <= 6;
-            this.ie7 = this.ie_ver && this.ie_ver[1] <= 7;
+            this.ie_ver = this.ie_ver && this.ie_ver[1];
 
             this.body_el = document.body || document.getElementsByTagName('body')[0];
             if (this.body_el) {
