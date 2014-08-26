@@ -1996,8 +1996,8 @@ Globals should be all caps
 
         if ('img' in data) {
             var img = document.createElement("img");
-                img.src = url;
             document.body.appendChild(img);
+            img.src = url;
         } else if (USE_XHR) {
             var req = new XMLHttpRequest();
             req.open("GET", url, true);
