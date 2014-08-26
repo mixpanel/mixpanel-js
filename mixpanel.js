@@ -3358,9 +3358,8 @@ Globals should be all caps
                 return mqt;
             }
 
-            style_text = create_style_text(styles) + create_media_query_text(media_queries);
-
-            var head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
+            var style_text = create_style_text(styles) + create_media_query_text(media_queries),
+                head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
                 style_el = document.createElement('style');
             head_el.appendChild(style_el);
             style_el.setAttribute('type', 'text/css');
