@@ -82,7 +82,7 @@ Globals should be all caps
         // IE<10 does not support cross-origin XHR's but script tags
         // with defer won't block window.onload; ENQUEUE_REQUESTS
         // should only be true for Opera<12
-        , ENQUEUE_REQUESTS  = !USE_XHR && (userAgent.indexOf('MSIE') == -1);
+        , ENQUEUE_REQUESTS  = !USE_XHR && (userAgent.indexOf('MSIE') == -1) && (userAgent.indexOf('Mozilla') == -1);
 
 /*
  * Closure-level globals
@@ -2567,11 +2567,15 @@ Globals should be all caps
             distinct_id: distinct_id
         };
         var self = this;
-        this._send_request(this.get_config('api_host') + '/decide/', data, function(r) {
-            if (r.notifications && r.notifications.length > 0) {
-                self._show_notification.call(self, r.notifications[0]);
-            }
-        });
+        this._send_request(
+            this.get_config('api_host') + '/decide/',
+            data,
+            this._prepare_callback(function(r) {
+                if (r['notifications'] && r['notifications'].length > 0) {
+                    self._show_notification.call(self, r['notifications'][0]);
+                }
+            })
+        );
     };
 
     MixpanelLib.prototype._show_notification = function(notification_data) {
