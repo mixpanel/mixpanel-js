@@ -3265,6 +3265,7 @@ Globals should be all caps
                     'padding': '0px 20px'
                 },
                 '#mixpanel-notification-title': {
+                    'overflow-wrap': 'break-word',
                     'padding': '25px 0px 20px 0px',
                     'font-size': '19px',
                     'font-weight': 'bold'
@@ -3274,6 +3275,7 @@ Globals should be all caps
                     'margin-bottom': '10px'
                 },
                 '#mixpanel-notification-body': {
+                    'overflow-wrap': 'break-word',
                     'padding': '10px 0px',
                     'line-height': '24px',
                     'font-size': '15px',
@@ -3302,6 +3304,8 @@ Globals should be all caps
                     'display': 'inline-block',
                     'margin': '0 auto',
                     'padding': '10px 30px',
+                    'max-width': '300px',
+                    'overflow-wrap': 'break-word',
                     'border': '2px solid ' + this.css.border_gray,
                     'border-radius': '40px',
                     '-webkit-border-radius': '40px',
