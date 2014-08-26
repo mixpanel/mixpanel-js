@@ -3030,30 +3030,6 @@ Globals should be all caps
         };
 
         MixpanelLib._Notification.prototype.dismiss = _.safewrap(function() {
-            if (this.campaign_id) {
-                // mark notification shown (local cache)
-                this.shown_campaigns[this.campaign_id] = new Date();
-                this.cookie.save();
-
-                // mark notification shown (mixpanel property)
-                this.mixpanel.people.append({
-                    $campaigns: this.campaign_id,
-                    $notifications: {
-                        campaign_id: this.campaign_id,
-                        message_id:  this.message_id,
-                        type:        'web',
-                        time:        new Date()
-                    }
-                });
-
-                // track delivery
-                this.mixpanel.track('$campaign_delivery', {
-                    campaign_id:  this.campaign_id,
-                    message_id:   this.message_id,
-                    message_type: 'web_inapp'
-                });
-            }
-
             this._animate_notification({
                 bg_opacity: {
                     val:  0.5,
@@ -3146,7 +3122,7 @@ Globals should be all caps
                         goal: MixpanelLib._Notification.THUMB_TOP,
                         incr: 10
                     }
-                });
+                }, self._mark_as_shown);
             }, 300);
             _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
                 e.preventDefault();
@@ -3386,6 +3362,45 @@ Globals should be all caps
                 style_el.styleSheet.cssText = style_text;
             } else {
                 style_el.textContent = style_text;
+            }
+        };
+
+        MixpanelLib._Notification.prototype._mark_as_shown = function() {
+            var get_style = function(el, style_name) {
+                var styles = {};
+                if (document.defaultView && document.defaultView.getComputedStyle) {
+                    styles = document.defaultView.getComputedStyle(el, null); // FF3 requires both args
+                } else if (el.currentStyle) { // IE
+                    styles = el.currentStyle;
+                }
+                return styles[style_name];
+            };
+
+            if (this.campaign_id) {
+                var notif_el = document.getElementById('mixpanel-notification-overlay');
+                if (notif_el && get_style(notif_el, 'visibility') !== 'hidden' && get_style(notif_el, 'display') !== 'none') {
+                    // mark notification shown (local cache)
+                    this.shown_campaigns[this.campaign_id] = new Date();
+                    this.cookie.save();
+
+                    // track delivery
+                    this.mixpanel.track('$campaign_delivery', {
+                        campaign_id:  this.campaign_id,
+                        message_id:   this.message_id,
+                        message_type: 'web_inapp'
+                    });
+
+                    // mark notification shown (mixpanel property)
+                    this.mixpanel.people.append({
+                        $campaigns: this.campaign_id,
+                        $notifications: {
+                            campaign_id: this.campaign_id,
+                            message_id:  this.message_id,
+                            type:        'web',
+                            time:        new Date()
+                        }
+                    });
+                }
             }
         };
 
