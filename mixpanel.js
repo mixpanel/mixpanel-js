@@ -2970,7 +2970,6 @@ Globals should be all caps
 
         this.mixpanel        = mixpanel_instance;
         this.cookie          = this.mixpanel.cookie;
-        this.shown_campaigns = this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = {});
 
         this.campaign_id = _.escapeHTML(notif_data['id']);
         this.message_id  = _.escapeHTML(notif_data['message_id']);
@@ -3098,7 +3097,7 @@ Globals should be all caps
             var self = this;
 
             // no possibility to double-display
-            if (this.shown || this.shown_campaigns[this.campaign_id]) {
+            if (this.shown || this._get_shown_campaigns()[this.campaign_id]) {
                 return;
             }
             this.shown = true;
@@ -3140,6 +3139,10 @@ Globals should be all caps
                 }
             });
         });
+
+        MixpanelLib._Notification.prototype._get_shown_campaigns = function() {
+            return this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = {});
+        };
 
         MixpanelLib._Notification.prototype._init_notification_el = function() {
             this.notification_el = document.createElement('div');
@@ -3385,7 +3388,7 @@ Globals should be all caps
                 var notif_el = document.getElementById('mixpanel-notification-overlay');
                 if (notif_el && get_style(notif_el, 'visibility') !== 'hidden' && get_style(notif_el, 'display') !== 'none') {
                     // mark notification shown (local cache)
-                    this.shown_campaigns[this.campaign_id] = new Date();
+                    this._get_shown_campaigns()[this.campaign_id] = new Date();
                     this.cookie.save();
 
                     // track delivery
