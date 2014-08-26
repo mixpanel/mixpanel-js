@@ -3257,6 +3257,7 @@ Globals should be all caps
                     'padding': '0px 20px'
                 },
                 '#mixpanel-notification-title': {
+                    'max-height': '600px',
                     'overflow': 'hidden',
                     'overflow-wrap': 'break-word',
                     'padding': '25px 0px 20px 0px',
@@ -3268,6 +3269,7 @@ Globals should be all caps
                     'margin-bottom': '10px'
                 },
                 '#mixpanel-notification-body': {
+                    'max-height': '600px',
                     'overflow': 'hidden',
                     'overflow-wrap': 'break-word',
                     'padding': '10px 0px',
@@ -3298,6 +3300,7 @@ Globals should be all caps
                     'display': 'inline-block',
                     'margin': '0 auto',
                     'padding': '10px 30px',
+                    'max-height': '600px',
                     'max-width': '300px',
                     'overflow': 'hidden',
                     'overflow-wrap': 'break-word',
