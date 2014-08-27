@@ -1701,7 +1701,7 @@ Globals should be all caps
             return;
         }
         for (campaign_id in campaigns_shown) {
-            if (new Date() - new Date(campaigns_shown[campaign_id]) > EXPIRY_TIME) {
+            if (1 * new Date() - campaigns_shown[campaign_id] > EXPIRY_TIME) {
                 delete campaigns_shown[campaign_id];
             }
         }
@@ -3395,7 +3395,7 @@ Globals should be all caps
                 var notif_el = document.getElementById('mixpanel-notification-overlay');
                 if (notif_el && get_style(notif_el, 'visibility') !== 'hidden' && get_style(notif_el, 'display') !== 'none') {
                     // mark notification shown (local cache)
-                    this._get_shown_campaigns()[this.campaign_id] = new Date();
+                    this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
                     this.cookie.save();
 
                     // track delivery
