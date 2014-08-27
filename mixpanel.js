@@ -137,7 +137,7 @@ Globals should be all caps
         };
 
         _.bind_instance_methods = function(obj) {
-            for (func in obj) {
+            for (var func in obj) {
                 if (typeof(obj[func]) === 'function') {
                     obj[func] = _.bind(obj[func], obj);
                 }
@@ -3060,7 +3060,7 @@ Globals should be all caps
         MixpanelLib._Notification.prototype._animate_notification = _.safewrap(function(anim_props, done_cb) {
             var self = this,
                 in_progress = false;
-            for (prop in anim_props) {
+            for (var prop in anim_props) {
                 var anim = anim_props[prop];
                 if (anim.val !== anim.goal) {
                     in_progress = true;
@@ -3350,10 +3350,10 @@ Globals should be all caps
         MixpanelLib._Notification.prototype._inject_styles = function(styles, media_queries) {
             var create_style_text = function(style_defs) {
                 var st = '';
-                for (selector in style_defs) {
+                for (var selector in style_defs) {
                     st += '\n' + selector + ' {';
                     var props = style_defs[selector];
-                    for (k in props) {
+                    for (var k in props) {
                         st += k + ':' + props[k] + ';';
                     }
                     st += '}';
@@ -3362,7 +3362,7 @@ Globals should be all caps
             };
             var create_media_query_text = function(mq_defs) {
                 var mqt = '';
-                for (mq in mq_defs) {
+                for (var mq in mq_defs) {
                     mqt += '\n' + mq + ' {' + create_style_text(mq_defs[mq]) + '\n}';
                 }
                 return mqt;
