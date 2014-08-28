@@ -3269,7 +3269,7 @@ Globals should be all caps
                 '#mixpanel-notification-title': {
                     'max-height': '600px',
                     'overflow': 'hidden',
-                    'overflow-wrap': 'break-word',
+                    'word-wrap': 'break-word',
                     'padding': '25px 0px 20px 0px',
                     'font-size': '19px',
                     'font-weight': 'bold'
@@ -3281,7 +3281,7 @@ Globals should be all caps
                 '#mixpanel-notification-body': {
                     'max-height': '600px',
                     'overflow': 'hidden',
-                    'overflow-wrap': 'break-word',
+                    'word-wrap': 'break-word',
                     'padding': '10px 0px',
                     'line-height': '24px',
                     'font-size': '15px',
@@ -3300,7 +3300,7 @@ Globals should be all caps
                     'cursor': 'pointer'
                 },
                 '#mixpanel-notification-cancel:hover': {
-                    'background-position-y': '8px'
+                    'background-position': 'center 8px'
                 },
                 '#mixpanel-notification-actions': {
                     'padding': '20px 0 35px 0',
@@ -3313,7 +3313,7 @@ Globals should be all caps
                     'max-height': '600px',
                     'max-width': '300px',
                     'overflow': 'hidden',
-                    'overflow-wrap': 'break-word',
+                    'word-wrap': 'break-word',
                     'border': '2px solid ' + this.css.border_gray,
                     'border-radius': '40px',
                     '-webkit-border-radius': '40px',
