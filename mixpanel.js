@@ -3291,7 +3291,6 @@ Globals should be all caps
                     'float': 'right',
                     'width': '8px',
                     'height': '8px',
-                    'background-size': '8px 16px',
                     'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notification-x.png)',
                     'margin': '17px 17px 0 0',
                     'font-size': '12px',
