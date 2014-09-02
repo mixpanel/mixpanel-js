@@ -3167,7 +3167,9 @@ Globals should be all caps
                                     '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
                                 '</div>' +
                             '</div>' +
-                            '<div id="mixpanel-notification-tagline">POWERED BY MIXPANEL</div>' +
+                            '<div id="mixpanel-notification-tagline">' +
+                                '<a href="http://mixpanel.com?from=inapp">POWERED BY MIXPANEL</a>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                 '</div></div>';
@@ -3212,6 +3214,10 @@ Globals should be all caps
                     'z-index': '10000',
                     'font-family': '"Helvetica", "Arial", sans-serif',
                     '-webkit-font-smoothing': 'antialiased'
+                },
+                '#mixpanel-notification-overlay a': {
+                    'text-decoration': 'none',
+                    'color': 'inherit'
                 },
                 '#mixpanel-notification-bgwrapper': {
                     'position': 'relative',
@@ -3321,7 +3327,6 @@ Globals should be all caps
                     'font-size': '15px',
                     'font-weight': 'bold',
                     'color': this.css.text_color,
-                    'text-decoration': 'none',
                     '-webkit-transition': 'background-color 0.2s',
                     '-moz-transition': 'background-color 0.2s',
                     '-ms-transition': 'background-color 0.2s',
