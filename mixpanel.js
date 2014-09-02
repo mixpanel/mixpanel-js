@@ -3167,6 +3167,7 @@ Globals should be all caps
                                     '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
                                 '</div>' +
                             '</div>' +
+                            '<div id="mixpanel-notification-tagline">POWERED BY MIXPANEL</div>' +
                         '</div>' +
                     '</div>' +
                 '</div></div>';
@@ -3330,6 +3331,14 @@ Globals should be all caps
                 '#mixpanel-notification-button:hover': {
                     'background-color': this.css.bg_hover,
                     'color': this.css.text_hover
+                },
+                '#mixpanel-notification-tagline': {
+                    'float': 'right',
+                    'margin': '0 20px 20px 0',
+                    'font-size': '10px',
+                    'font-weight': '600',
+                    'letter-spacing': '0.8px',
+                    'color': '#ccd7e0'
                 }
             };
 
