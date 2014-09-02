@@ -3168,7 +3168,7 @@ Globals should be all caps
                                 '</div>' +
                             '</div>' +
                             '<div id="mixpanel-notification-tagline">' +
-                                '<a href="http://mixpanel.com?from=inapp">POWERED BY MIXPANEL</a>' +
+                                '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
                             '</div>' +
                         '</div>' +
                     '</div>' +
