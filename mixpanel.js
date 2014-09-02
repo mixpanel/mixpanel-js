@@ -3176,7 +3176,7 @@ Globals should be all caps
             if (this.style === 'dark') {
                 this.css = {
                     bg:          '#1d1f25',
-                    bg_hover:    '#2d2f35',
+                    bg_hover:    '#3a4147',
                     text_color:  '#fff',
                     text_hover:  '#ddd',
                     border_gray: '#32353c'
@@ -3320,7 +3320,12 @@ Globals should be all caps
                     'font-size': '15px',
                     'font-weight': 'bold',
                     'color': this.css.text_color,
-                    'text-decoration': 'none'
+                    'text-decoration': 'none',
+                    '-webkit-transition': 'background-color 0.2s',
+                    '-moz-transition': 'background-color 0.2s',
+                    '-ms-transition': 'background-color 0.2s',
+                    '-o-transition': 'background-color 0.2s',
+                    'transition': 'background-color 0.2s'
                 },
                 '#mixpanel-notification-button:hover': {
                     'background-color': this.css.bg_hover,
