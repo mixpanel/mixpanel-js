@@ -3283,7 +3283,7 @@ Globals should be all caps
                     'overflow': 'hidden',
                     'word-wrap': 'break-word',
                     'padding': '10px 0px',
-                    'line-height': '24px',
+                    'line-height': '21px',
                     'font-size': '15px',
                     'font-weight': 'normal'
                 },
