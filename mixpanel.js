@@ -3144,12 +3144,12 @@ Globals should be all caps
                                     this.img_html +
                                     '<div id="mixpanel-notification-title">' + this.title + '</div>' +
                                     '<div id="mixpanel-notification-body">' + this.body + '</div>' +
+                                    '<div id="mixpanel-notification-tagline">' +
+                                        '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
+                                    '</div>' +
                                     '<div id="mixpanel-notification-actions">' +
                                         '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
                                     '</div>' +
-                                '</div>' +
-                                '<div id="mixpanel-notification-tagline">' +
-                                    '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
                                 '</div>' +
                             '</div>' +
                         '</div>' +
@@ -3268,11 +3268,20 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-body': {
                     'max-height': '600px',
+                    'margin-bottom': '30px',
                     'overflow': 'hidden',
                     'word-wrap': 'break-word',
                     'line-height': '21px',
                     'font-size': '15px',
-                    'font-weight': 'normal'
+                    'font-weight': 'normal',
+                    'text-align': 'left'
+                },
+                '#mixpanel-notification-tagline': {
+                    'font-size': '10px',
+                    'font-weight': '600',
+                    'letter-spacing': '0.8px',
+                    'color': '#ccd7e0',
+                    'text-align': 'left'
                 },
                 '#mixpanel-notification-cancel': {
                     'float': 'right',
@@ -3316,14 +3325,6 @@ Globals should be all caps
                 '#mixpanel-notification-button:hover': {
                     'background-color': this.css.bg_hover,
                     'color': this.css.text_hover
-                },
-                '#mixpanel-notification-tagline': {
-                    'float': 'right',
-                    'margin': '0 20px 20px 0',
-                    'font-size': '10px',
-                    'font-weight': '600',
-                    'letter-spacing': '0.8px',
-                    'color': '#ccd7e0'
                 }
             };
 
