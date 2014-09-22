@@ -2995,24 +2995,22 @@ Globals should be all caps
             this.img_html = '<img id="mixpanel-notification-img" src="' + this.image_url + '"/>';
         }
         this.thumb_img_html = '';
-        this.notif_top = MixpanelLib._Notification.NOTIF_TOP_DEFAULT - 80;
         if (this.thumb_image_url) {
             this.imgs_to_preload.push(this.thumb_image_url);
             this.thumb_img_html = '<img id="mixpanel-notification-thumbnail"' +
-                ' style="opacity:0.0;top:-' + MixpanelLib._Notification.THUMB_IMG_SIZE + 'px;"' +
                 ' src="' + this.thumb_image_url + '"' +
                 ' width="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
                 ' height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
-                '/>';
-            this.notif_top = MixpanelLib._Notification.NOTIF_TOP_DEFAULT;
+                '/><div id="mixpanel-notification-thumbspacer"></div>';
         }
     };
 
-        MixpanelLib._Notification.NOTIF_TOP_DEFAULT = 117;
-        MixpanelLib._Notification.NOTIF_WIDTH       = 424;
-        MixpanelLib._Notification.NOTIF_MARGIN      = 40;
-        MixpanelLib._Notification.THUMB_IMG_SIZE    = 75;
-        MixpanelLib._Notification.THUMB_TOP         = 25;
+        MixpanelLib._Notification.NOTIF_TOP       = 25;
+        MixpanelLib._Notification.NOTIF_START_TOP = 150;
+        MixpanelLib._Notification.NOTIF_WIDTH     = 424;
+        MixpanelLib._Notification.NOTIF_MARGIN    = 40;
+        MixpanelLib._Notification.THUMB_IMG_SIZE  = 60;
+        MixpanelLib._Notification.THUMB_OFFSET    = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
 
         MixpanelLib._Notification.prototype.show = function() {
             var self = this;
@@ -3044,14 +3042,9 @@ Globals should be all caps
                     incr: -0.02
                 },
                 notif_top: {
-                    val:  this.notif_top,
-                    goal: 150 + MixpanelLib._Notification.NOTIF_TOP_DEFAULT,
+                    val:  MixpanelLib._Notification.NOTIF_TOP,
+                    goal: MixpanelLib._Notification.NOTIF_START_TOP + MixpanelLib._Notification.NOTIF_TOP,
                     incr: 15
-                },
-                thumb_top: {
-                    val:  MixpanelLib._Notification.THUMB_TOP,
-                    goal: -MixpanelLib._Notification.THUMB_IMG_SIZE,
-                    incr: -10
                 }
             }, this._remove_notification_el);
         });
@@ -3083,12 +3076,6 @@ Globals should be all caps
             notification.style.opacity = String(anim_props.notif_opacity.val);
             notification.style.top = String(anim_props.notif_top.val) + 'px';
 
-            var thumbnail = document.getElementById('mixpanel-notification-thumbnail');
-            if (thumbnail) {
-                thumbnail.style.opacity = String(anim_props.notif_opacity.val);
-                thumbnail.style.top = String(anim_props.thumb_top.val) + 'px';
-            }
-
             setTimeout(function() { self._animate_notification(anim_props, done_cb) }, 1);
         });
 
@@ -3115,14 +3102,9 @@ Globals should be all caps
                         incr: 0.02
                     },
                     notif_top: {
-                        val:  150 + MixpanelLib._Notification.NOTIF_TOP_DEFAULT,
-                        goal: self.notif_top,
+                        val:  MixpanelLib._Notification.NOTIF_START_TOP + MixpanelLib._Notification.NOTIF_TOP,
+                        goal: MixpanelLib._Notification.NOTIF_TOP,
                         incr: -15
-                    },
-                    thumb_top: {
-                        val:  -MixpanelLib._Notification.THUMB_IMG_SIZE,
-                        goal: MixpanelLib._Notification.THUMB_TOP,
-                        incr: 10
                     }
                 }, self._mark_as_shown);
             }, 300);
@@ -3154,19 +3136,21 @@ Globals should be all caps
                 '<div id="mixpanel-notification-overlay"><div id="mixpanel-notification-campaignid-' + this.campaign_id + '">' +
                     '<div id="mixpanel-notification-bgwrapper">' +
                         '<div id="mixpanel-notification-bg"></div>' +
-                        this.thumb_img_html +
-                        '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
-                            '<div id="mixpanel-notification-cancel"></div>' +
-                            '<div id="mixpanel-notification-content">' +
-                                '<div id="mixpanel-notification-title">' + this.title + '</div>' +
-                                this.img_html +
-                                '<div id="mixpanel-notification-body">' + this.body + '</div>' +
-                                '<div id="mixpanel-notification-actions">' +
-                                    '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
+                        '<div id="mixpanel-notification" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
+                            this.thumb_img_html +
+                            '<div id="mixpanel-notification-mainbox">' +
+                                '<div id="mixpanel-notification-cancel"></div>' +
+                                '<div id="mixpanel-notification-content">' +
+                                    '<div id="mixpanel-notification-title">' + this.title + '</div>' +
+                                    this.img_html +
+                                    '<div id="mixpanel-notification-body">' + this.body + '</div>' +
+                                    '<div id="mixpanel-notification-actions">' +
+                                        '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
+                                    '</div>' +
                                 '</div>' +
-                            '</div>' +
-                            '<div id="mixpanel-notification-tagline">' +
-                                '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
+                                '<div id="mixpanel-notification-tagline">' +
+                                    '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
+                                '</div>' +
                             '</div>' +
                         '</div>' +
                     '</div>' +
@@ -3237,12 +3221,17 @@ Globals should be all caps
                     '-moz-opacity': '0.0',
                     '-khtml-opacity': '0.0'
                 },
+                '#mixpanel-notification-thumbspacer': {
+                    'height': MixpanelLib._Notification.THUMB_OFFSET + 'px'
+                },
                 '#mixpanel-notification-thumbnail': {
                     'position': 'absolute',
+                    'top': '0px',
                     'right': '65px',
                     'width': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     'height': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     'overflow': 'hidden',
+                    'z-index': '100',
                     'border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     '-webkit-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     '-moz-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px'
@@ -3251,7 +3240,9 @@ Globals should be all caps
                     'position': 'absolute',
                     'right': '0',
                     'width': MixpanelLib._Notification.NOTIF_WIDTH + 'px',
-                    'margin-right': MixpanelLib._Notification.NOTIF_MARGIN + 'px',
+                    'margin-right': MixpanelLib._Notification.NOTIF_MARGIN + 'px'
+                },
+                '#mixpanel-notification-mainbox': {
                     'border-radius': '4px',
                     '-webkit-border-radius': '4px',
                     '-moz-border-radius': '4px',
