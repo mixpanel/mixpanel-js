@@ -3008,7 +3008,6 @@ Globals should be all caps
         }
     };
 
-        MixpanelLib._Notification.CARET_SIZE        = 10;
         MixpanelLib._Notification.NOTIF_TOP_DEFAULT = 117;
         MixpanelLib._Notification.NOTIF_WIDTH       = 424;
         MixpanelLib._Notification.NOTIF_MARGIN      = 40;
@@ -3157,7 +3156,6 @@ Globals should be all caps
                         '<div id="mixpanel-notification-bg"></div>' +
                         this.thumb_img_html +
                         '<div id="mixpanel-notification" style="opacity:0.0;top:100px;">' +
-                            (this.thumb_image_url && !this._ie_lte(6) ? '<div id="mixpanel-notification-caret"></div>' : '') +
                             '<div id="mixpanel-notification-cancel"></div>' +
                             '<div id="mixpanel-notification-content">' +
                                 '<div id="mixpanel-notification-title">' + this.title + '</div>' +
@@ -3261,14 +3259,6 @@ Globals should be all caps
                     'background-color': this.css.bg,
                     'font-size': '14px',
                     'color': this.css.text_color
-                },
-                '#mixpanel-notification-caret': {
-                    'position': 'absolute',
-                    'top': '-' + MixpanelLib._Notification.CARET_SIZE + 'px',
-                    'right': '50px',
-                    'border-left': MixpanelLib._Notification.CARET_SIZE + 'px solid transparent',
-                    'border-right': MixpanelLib._Notification.CARET_SIZE + 'px solid transparent',
-                    'border-bottom': MixpanelLib._Notification.CARET_SIZE + 'px solid ' + this.css.bg
                 },
                 '#mixpanel-notification-content': {
                     'padding': '0px 20px'
