@@ -3243,9 +3243,12 @@ Globals should be all caps
                     'margin-right': MixpanelLib._Notification.NOTIF_MARGIN + 'px'
                 },
                 '#mixpanel-notification-mainbox': {
-                    'border-radius': '4px',
                     '-webkit-border-radius': '4px',
-                    '-moz-border-radius': '4px',
+                    '-moz-border-radius':    '4px',
+                    'border-radius':         '4px',
+                    '-webkit-box-shadow': '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
+                    '-moz-box-shadow':    '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
+                    'box-shadow':         '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
                     'text-align': this.image_url ? 'center' : 'left',
                     'background-color': this.css.bg,
                     'font-size': '14px',
