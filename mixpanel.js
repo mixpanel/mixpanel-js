@@ -3237,9 +3237,9 @@ Globals should be all caps
                     'height': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     'overflow': 'hidden',
                     'z-index': '100',
-                    'border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     '-webkit-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
-                    '-moz-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px'
+                    '-moz-border-radius':    MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
+                    'border-radius':         MixpanelLib._Notification.THUMB_IMG_SIZE + 'px'
                 },
                 '#mixpanel-notification-mainbox': {
                     '-webkit-border-radius': '4px',
@@ -3258,7 +3258,10 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-img': {
                     'width': '328px',
-                    'margin-top': '60px'
+                    'margin-top': '60px',
+                    '-webkit-border-radius': '5px',
+                    '-moz-border-radius':    '5px',
+                    'border-radius':         '5px'
                 },
                 '#mixpanel-notification-title': {
                     'max-height': '600px',
