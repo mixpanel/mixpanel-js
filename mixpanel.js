@@ -3141,8 +3141,8 @@ Globals should be all caps
                             '<div id="mixpanel-notification-mainbox">' +
                                 '<div id="mixpanel-notification-cancel"></div>' +
                                 '<div id="mixpanel-notification-content">' +
-                                    '<div id="mixpanel-notification-title">' + this.title + '</div>' +
                                     this.img_html +
+                                    '<div id="mixpanel-notification-title">' + this.title + '</div>' +
                                     '<div id="mixpanel-notification-body">' + this.body + '</div>' +
                                     '<div id="mixpanel-notification-actions">' +
                                         '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
@@ -3254,6 +3254,10 @@ Globals should be all caps
                 '#mixpanel-notification-content': {
                     'padding': '0px 20px'
                 },
+                '#mixpanel-notification-img': {
+                    'width': '328px',
+                    'margin-top': '60px'
+                },
                 '#mixpanel-notification-title': {
                     'max-height': '600px',
                     'overflow': 'hidden',
@@ -3262,15 +3266,10 @@ Globals should be all caps
                     'font-size': '19px',
                     'font-weight': 'bold'
                 },
-                '#mixpanel-notification-img': {
-                    'width': '328px',
-                    'margin-bottom': '10px'
-                },
                 '#mixpanel-notification-body': {
                     'max-height': '600px',
                     'overflow': 'hidden',
                     'word-wrap': 'break-word',
-                    'padding': '10px 0px',
                     'line-height': '21px',
                     'font-size': '15px',
                     'font-weight': 'normal'
