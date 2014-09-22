@@ -3172,8 +3172,8 @@ Globals should be all caps
                     bg_actions:   '#e7eaee',
                     bg_hover:     '#eee',
                     text_title:   '#5c6578',
-                    text_main:    '#2b2e33',
-                    text_tagline: '#24262b',
+                    text_main:    '#8b949b',
+                    text_tagline: '#ced9e6',
                     text_hover:   '#7c8598',
                     border_gray:  '#e4ecf2'
                 };
@@ -3292,7 +3292,9 @@ Globals should be all caps
                     'font-weight': '600',
                     'letter-spacing': '0.8px',
                     'color': '#ccd7e0',
-                    'text-align': 'left',
+                    'text-align': 'left'
+                },
+                '#mixpanel-notification-tagline a': {
                     'color': this.css.text_tagline
                 },
                 '#mixpanel-notification-cancel': {
