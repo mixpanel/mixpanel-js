@@ -3008,7 +3008,6 @@ Globals should be all caps
         MixpanelLib._Notification.NOTIF_TOP       = 25;
         MixpanelLib._Notification.NOTIF_START_TOP = 150;
         MixpanelLib._Notification.NOTIF_WIDTH     = 388;
-        MixpanelLib._Notification.NOTIF_MARGIN    = 40;
         MixpanelLib._Notification.THUMB_IMG_SIZE  = 60;
         MixpanelLib._Notification.THUMB_OFFSET    = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
 
@@ -3178,7 +3177,7 @@ Globals should be all caps
 
             // don't display on small viewports
             var media_queries = {},
-                min_width = MixpanelLib._Notification.NOTIF_WIDTH + MixpanelLib._Notification.NOTIF_MARGIN * 2;
+                min_width = MixpanelLib._Notification.NOTIF_WIDTH + 20;
             media_queries['@media only screen and (max-width: ' + (min_width - 1) + 'px)'] = {
                 '#mixpanel-notification-overlay': {
                     'display': 'none'
@@ -3221,6 +3220,12 @@ Globals should be all caps
                     '-moz-opacity': '0.0',
                     '-khtml-opacity': '0.0'
                 },
+                '#mixpanel-notification': {
+                    'position': 'absolute',
+                    'left': '50%',
+                    'width': MixpanelLib._Notification.NOTIF_WIDTH + 'px',
+                    'margin-left': (-MixpanelLib._Notification.NOTIF_WIDTH / 2) + 'px'
+                },
                 '#mixpanel-notification-thumbspacer': {
                     'height': MixpanelLib._Notification.THUMB_OFFSET + 'px'
                 },
@@ -3235,12 +3240,6 @@ Globals should be all caps
                     'border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     '-webkit-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     '-moz-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px'
-                },
-                '#mixpanel-notification': {
-                    'position': 'absolute',
-                    'right': '0',
-                    'width': MixpanelLib._Notification.NOTIF_WIDTH + 'px',
-                    'margin-right': MixpanelLib._Notification.NOTIF_MARGIN + 'px'
                 },
                 '#mixpanel-notification-mainbox': {
                     '-webkit-border-radius': '4px',
