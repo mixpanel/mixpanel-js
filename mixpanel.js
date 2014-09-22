@@ -3227,7 +3227,7 @@ Globals should be all caps
                 '#mixpanel-notification-thumbnail': {
                     'position': 'absolute',
                     'top': '0px',
-                    'right': '65px',
+                    'left': (MixpanelLib._Notification.NOTIF_WIDTH / 2 - MixpanelLib._Notification.THUMB_OFFSET) + 'px',
                     'width': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     'height': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
                     'overflow': 'hidden',
