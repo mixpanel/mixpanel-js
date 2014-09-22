@@ -3007,7 +3007,7 @@ Globals should be all caps
 
         MixpanelLib._Notification.NOTIF_TOP       = 25;
         MixpanelLib._Notification.NOTIF_START_TOP = 150;
-        MixpanelLib._Notification.NOTIF_WIDTH     = 424;
+        MixpanelLib._Notification.NOTIF_WIDTH     = 388;
         MixpanelLib._Notification.NOTIF_MARGIN    = 40;
         MixpanelLib._Notification.THUMB_IMG_SIZE  = 60;
         MixpanelLib._Notification.THUMB_OFFSET    = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
@@ -3263,7 +3263,7 @@ Globals should be all caps
                     'font-weight': 'bold'
                 },
                 '#mixpanel-notification-img': {
-                    'width': '360px',
+                    'width': '328px',
                     'margin-bottom': '10px'
                 },
                 '#mixpanel-notification-body': {
