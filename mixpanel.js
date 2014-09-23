@@ -2968,8 +2968,8 @@ Globals should be all caps
     MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
         _.bind_instance_methods(this);
 
-        this.mixpanel        = mixpanel_instance;
-        this.cookie          = this.mixpanel.cookie;
+        this.mixpanel = mixpanel_instance;
+        this.cookie   = this.mixpanel.cookie;
 
         this.campaign_id = _.escapeHTML(notif_data['id']);
         this.message_id  = _.escapeHTML(notif_data['message_id']);
@@ -2977,6 +2977,7 @@ Globals should be all caps
         this.body            = _.escapeHTML(this._string_or_default(notif_data['body'], '')).replace(/\n/g, '<br/>');
         this.cta             = this._string_or_default(_.escapeHTML(notif_data['cta']), 'Done');
         this.dest_url        = this._string_or_default(_.escapeHTML(notif_data['cta_url']), null);
+        this.icon_url        = this._string_or_default(_.escapeHTML(notif_data['icon_url']), null);
         this.image_url       = this._string_or_default(_.escapeHTML(notif_data['image_url']), null);
         this.notif_type      = _.escapeHTML(notif_data['type']);
         this.style           = _.escapeHTML(notif_data['style']);
@@ -2989,23 +2990,8 @@ Globals should be all caps
             this.clickthrough = false;
         }
 
-        this.imgs_to_preload = [];
-        this.img_html = '';
-        if (this.image_url) {
-            this.imgs_to_preload.push(this.image_url);
-            this.img_html = '<img id="mixpanel-notification-img" src="' + this.image_url + '"/>';
-        }
-        this.thumb_img_html = '';
-        if (this.thumb_image_url) {
-            this.imgs_to_preload.push(this.thumb_image_url);
-            this.thumb_img_html = '<img id="mixpanel-notification-thumbnail"' +
-                ' src="' + this.thumb_image_url + '"' +
-                ' width="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
-                ' height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
-                '/><div id="mixpanel-notification-thumbspacer"></div>';
-        }
-
         this.notif_width = this.notif_type !== 'mini' ? MixpanelLib._Notification.NOTIF_WIDTH : MixpanelLib._Notification.NOTIF_WIDTH_MINI;
+        this.imgs_to_preload = this._init_image_html();
     };
 
         MixpanelLib._Notification.NOTIF_TOP         = 25;
@@ -3134,6 +3120,32 @@ Globals should be all caps
             return this.ie_ver && this.ie_ver <= version;
         };
 
+        MixpanelLib._Notification.prototype._init_image_html = function() {
+            imgs_to_preload = [];
+
+            if (this.notif_type !== 'mini') {
+                this.img_html = '';
+                if (this.image_url) {
+                    imgs_to_preload.push(this.image_url);
+                    this.img_html = '<img id="mixpanel-notification-img" src="' + this.image_url + '"/>';
+                }
+                this.thumb_img_html = '';
+                if (this.thumb_image_url) {
+                    imgs_to_preload.push(this.thumb_image_url);
+                    this.thumb_img_html = '<img id="mixpanel-notification-thumbnail"' +
+                        ' src="' + this.thumb_image_url + '"' +
+                        ' width="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
+                        ' height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
+                        '/><div id="mixpanel-notification-thumbspacer"></div>';
+                }
+            } else {
+                this.icon_url = this.icon_url || '//cdn.mxpnl.com/site_media/images/icons/notifications/mini-news-dark.png';
+                imgs_to_preload.push(this.icon_url);
+            }
+
+            return imgs_to_preload;
+        };
+
         MixpanelLib._Notification.prototype._init_notification_el = function() {
             this.notification_el = document.createElement('div');
             this.notification_el.id = 'mixpanel-notification-wrapper';
@@ -3162,7 +3174,12 @@ Globals should be all caps
                         '<div id="mixpanel-notification-mainbox">' +
                             '<div id="mixpanel-notification-cancel"></div>' +
                             '<div id="mixpanel-notification-mini-content">' +
-                                '<div id="mixpanel-notification-mini-icon"></div>' +
+                                '<div id="mixpanel-notification-mini-icon">' +
+                                    '<img src="' + this.icon_url +
+                                        '" width="'  + MixpanelLib._Notification.MINI_ICON_WIDTH +
+                                        '" height="' + MixpanelLib._Notification.NOTIF_HEIGHT_MINI +
+                                    '"/>' +
+                                '</div>' +
                                 '<div id="mixpanel-notification-body"><span>' + this.body + '</span></div>' +
                             '</div>' +
                         '</div>' +
@@ -3373,7 +3390,7 @@ Globals should be all caps
                     'float': 'right',
                     'width': '8px',
                     'height': '8px',
-                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notification-x.png)',
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/cancel-x.png)',
                     'margin': '17px 17px 0 0',
                     'font-size': '12px',
                     'font-weight': 'bold',
