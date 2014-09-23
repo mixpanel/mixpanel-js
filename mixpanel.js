@@ -3013,6 +3013,7 @@ Globals should be all caps
         MixpanelLib._Notification.NOTIF_WIDTH       = 388;
         MixpanelLib._Notification.NOTIF_WIDTH_MINI  = 420;
         MixpanelLib._Notification.NOTIF_HEIGHT_MINI = 85;
+        MixpanelLib._Notification.MINI_ICON_WIDTH   = 75;
         MixpanelLib._Notification.THUMB_IMG_SIZE    = 60;
         MixpanelLib._Notification.THUMB_OFFSET      = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
 
@@ -3160,8 +3161,9 @@ Globals should be all caps
                     '<div id="mixpanel-notification-mini" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
                         '<div id="mixpanel-notification-mainbox">' +
                             '<div id="mixpanel-notification-cancel"></div>' +
-                            '<div id="mixpanel-notification-content">' +
-                                '<div id="mixpanel-notification-body">' + this.body + '</div>' +
+                            '<div id="mixpanel-notification-mini-content">' +
+                                '<div id="mixpanel-notification-mini-icon"></div>' +
+                                '<div id="mixpanel-notification-body"><span>' + this.body + '</span></div>' +
                             '</div>' +
                         '</div>' +
                     '</div>';
@@ -3292,8 +3294,21 @@ Globals should be all caps
                         '-moz-border-radius':    '6px',
                         'border-radius':         '6px'
                     },
+                '#mixpanel-notification-mini-icon': {
+                    'display': 'inline-block',
+                    'width': MixpanelLib._Notification.MINI_ICON_WIDTH + 'px',
+                    'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                    '-webkit-border-radius': '6px 0 0 6px',
+                    '-moz-border-radius':    '6px 0 0 6px',
+                    'border-radius':         '6px 0 0 6px',
+                    'background-color': this.css.bg_actions
+                },
                 '#mixpanel-notification-content': {
                     'padding': '0px 20px'
+                },
+                '#mixpanel-notification-mini-content': {
+                    'text-align': 'left',
+                    'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px'
                 },
                 '#mixpanel-notification-img': {
                     'width': '328px',
@@ -3321,6 +3336,20 @@ Globals should be all caps
                     'font-weight': 'normal',
                     'text-align': 'left'
                 },
+                    '#mixpanel-notification-mini #mixpanel-notification-body': {
+                        'display': 'inline-block',
+                        'max-width': '250px',
+                        'margin': '0 0 0 30px',
+                        'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                        'line-height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                        'font-size': '16px',
+                        'letter-spacing': '0.8px'
+                    },
+                    '#mixpanel-notification-mini #mixpanel-notification-body span': {
+                        'display': 'inline-block',
+                        'vertical-align': 'middle',
+                        'line-height': 'normal'
+                    },
                 '#mixpanel-notification-tagline': {
                     'margin-bottom': '15px',
                     'font-size': '10px',
