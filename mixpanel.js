@@ -3295,7 +3295,15 @@ Globals should be all caps
                     'text-align': 'left'
                 },
                 '#mixpanel-notification-tagline a': {
-                    'color': this.css.text_tagline
+                    'color': this.css.text_tagline,
+                    '-webkit-transition': 'color 0.2s',
+                    '-moz-transition':    'color 0.2s',
+                    '-ms-transition':     'color 0.2s',
+                    '-o-transition':      'color 0.2s',
+                    'transition':         'color 0.2s'
+                },
+                '#mixpanel-notification-tagline a:hover': {
+                    'color': this.css.text_hover
                 },
                 '#mixpanel-notification-cancel': {
                     'float': 'right',
