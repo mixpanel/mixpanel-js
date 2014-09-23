@@ -3325,11 +3325,11 @@ Globals should be all caps
                     'overflow': 'hidden',
                     'word-wrap': 'break-word',
                     'color': this.css.text_title,
-                    '-webkit-transition': 'background-color 0.2s',
-                    '-moz-transition':    'background-color 0.2s',
-                    '-ms-transition':     'background-color 0.2s',
-                    '-o-transition':      'background-color 0.2s',
-                    'transition':         'background-color 0.2s'
+                    '-webkit-transition': 'background-color 0.2s, color 0.2s',
+                    '-moz-transition':    'background-color 0.2s, color 0.2s',
+                    '-ms-transition':     'background-color 0.2s, color 0.2s',
+                    '-o-transition':      'background-color 0.2s, color 0.2s',
+                    'transition':         'background-color 0.2s, color 0.2s'
                 },
                 '#mixpanel-notification-button:hover': {
                     'background-color': this.css.bg_hover,
