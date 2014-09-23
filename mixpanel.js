@@ -3320,7 +3320,7 @@ Globals should be all caps
                     '-webkit-border-radius': '0 0 4px 4px',
                     '-moz-border-radius':    '0 0 4px 4px',
                     'border-radius':         '0 0 4px 4px',
-                    'font-size': '15px',
+                    'font-size': '17px',
                     'font-weight': 'bold',
                     'overflow': 'hidden',
                     'word-wrap': 'break-word',
