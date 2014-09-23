@@ -3199,25 +3199,27 @@ Globals should be all caps
         MixpanelLib._Notification.prototype._init_styles = function() {
             if (this.style === 'dark') {
                 this.css = {
-                    bg:           '#1d1f25',
-                    bg_actions:   '#282b32',
-                    bg_hover:     '#3a4147',
-                    text_title:   '#fff',
-                    text_main:    '#9498a3',
-                    text_tagline: '#464851',
-                    text_hover:   '#ddd',
-                    border_gray:  '#32353c'
+                    bg:             '#1d1f25',
+                    bg_actions:     '#282b32',
+                    bg_hover:       '#3a4147',
+                    border_gray:    '#32353c',
+                    cancel_opacity: '0.4',
+                    text_title:     '#fff',
+                    text_main:      '#9498a3',
+                    text_tagline:   '#464851',
+                    text_hover:     '#ddd'
                 };
             } else {
                 this.css = {
-                    bg:           '#fff',
-                    bg_actions:   '#e7eaee',
-                    bg_hover:     '#eee',
-                    text_title:   '#5c6578',
-                    text_main:    '#8b949b',
-                    text_tagline: '#ced9e6',
-                    text_hover:   '#7c8598',
-                    border_gray:  '#e4ecf2'
+                    bg:             '#fff',
+                    bg_actions:     '#e7eaee',
+                    bg_hover:       '#eee',
+                    border_gray:    '#e4ecf2',
+                    cancel_opacity: '1.0',
+                    text_title:     '#5c6578',
+                    text_main:      '#8b949b',
+                    text_tagline:   '#ced9e6',
+                    text_hover:     '#7c8598'
                 };
             }
 
@@ -3363,7 +3365,8 @@ Globals should be all caps
                         'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
                         'line-height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
                         'font-size': '16px',
-                        'letter-spacing': '0.8px'
+                        'letter-spacing': '0.8px',
+                        'color': this.css.text_title
                     },
                     '#mixpanel-notification-mini #mixpanel-notification-body span': {
                         'display': 'inline-block',
@@ -3398,7 +3401,10 @@ Globals should be all caps
                     'font-size': '12px',
                     'font-weight': 'bold',
                     'color': '#bac5ce',
-                    'cursor': 'pointer'
+                    'cursor': 'pointer',
+                    'opacity':        this.css.cancel_opacity,
+                    '-moz-opacity':   this.css.cancel_opacity,
+                    '-khtml-opacity': this.css.cancel_opacity
                 },
                     '#mixpanel-notification-mini #mixpanel-notification-cancel': {
                         'margin': '12px 15px 0 0'
