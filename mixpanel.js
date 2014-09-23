@@ -3103,7 +3103,9 @@ Globals should be all caps
                 e.preventDefault();
                 self.dismiss();
             });
-            _.register_event(document.getElementById('mixpanel-notification-button'), 'click', function(e) {
+            var click_el = document.getElementById('mixpanel-notification-button') ||
+                           document.getElementById('mixpanel-notification-mini-content');
+            _.register_event(click_el, 'click', function(e) {
                 e.preventDefault();
                 self.dismiss();
                 if (self.clickthrough) {
@@ -3325,7 +3327,8 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-mini-content': {
                     'text-align': 'left',
-                    'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px'
+                    'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                    'cursor': 'pointer'
                 },
                 '#mixpanel-notification-img': {
                     'width': '328px',
