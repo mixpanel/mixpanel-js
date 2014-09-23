@@ -2978,6 +2978,7 @@ Globals should be all caps
         this.cta             = this._string_or_default(_.escapeHTML(notif_data['cta']), 'Done');
         this.dest_url        = this._string_or_default(_.escapeHTML(notif_data['cta_url']), null);
         this.image_url       = this._string_or_default(_.escapeHTML(notif_data['image_url']), null);
+        this.notif_type      = _.escapeHTML(notif_data['type']);
         this.style           = _.escapeHTML(notif_data['style']);
         this.thumb_image_url = this._string_or_default(_.escapeHTML(notif_data['thumb_image_url']), null);
         this.title           = _.escapeHTML(this._string_or_default(notif_data['title'], ''));
@@ -3003,13 +3004,17 @@ Globals should be all caps
                 ' height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
                 '/><div id="mixpanel-notification-thumbspacer"></div>';
         }
+
+        this.notif_width = this.notif_type !== 'mini' ? MixpanelLib._Notification.NOTIF_WIDTH : MixpanelLib._Notification.NOTIF_WIDTH_MINI;
     };
 
-        MixpanelLib._Notification.NOTIF_TOP       = 25;
-        MixpanelLib._Notification.NOTIF_START_TOP = 150;
-        MixpanelLib._Notification.NOTIF_WIDTH     = 388;
-        MixpanelLib._Notification.THUMB_IMG_SIZE  = 60;
-        MixpanelLib._Notification.THUMB_OFFSET    = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
+        MixpanelLib._Notification.NOTIF_TOP         = 25;
+        MixpanelLib._Notification.NOTIF_START_TOP   = 150;
+        MixpanelLib._Notification.NOTIF_WIDTH       = 388;
+        MixpanelLib._Notification.NOTIF_WIDTH_MINI  = 420;
+        MixpanelLib._Notification.NOTIF_HEIGHT_MINI = 85;
+        MixpanelLib._Notification.THUMB_IMG_SIZE    = 60;
+        MixpanelLib._Notification.THUMB_OFFSET      = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
 
         MixpanelLib._Notification.prototype.show = function() {
             var self = this;
@@ -3071,7 +3076,7 @@ Globals should be all caps
             var bg = document.getElementById('mixpanel-notification-bg');
             bg.style.opacity = String(anim_props.bg_opacity.val);
 
-            var notification = document.getElementById('mixpanel-notification');
+            var notification = document.getElementById('mixpanel-notification') || document.getElementById('mixpanel-notification-mini');
             notification.style.opacity = String(anim_props.notif_opacity.val);
             notification.style.top = String(anim_props.notif_top.val) + 'px';
 
@@ -3131,25 +3136,41 @@ Globals should be all caps
         MixpanelLib._Notification.prototype._init_notification_el = function() {
             this.notification_el = document.createElement('div');
             this.notification_el.id = 'mixpanel-notification-wrapper';
+            if (this.notif_type !== 'mini') {
+                // TAKEOVER notification
+                notification_html =
+                    '<div id="mixpanel-notification" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
+                        this.thumb_img_html +
+                        '<div id="mixpanel-notification-mainbox">' +
+                            '<div id="mixpanel-notification-cancel"></div>' +
+                            '<div id="mixpanel-notification-content">' +
+                                this.img_html +
+                                '<div id="mixpanel-notification-title">' + this.title + '</div>' +
+                                '<div id="mixpanel-notification-body">' + this.body + '</div>' +
+                                '<div id="mixpanel-notification-tagline">' +
+                                    '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
+                                '</div>' +
+                            '</div>' +
+                            '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
+                        '</div>' +
+                    '</div>';
+            } else {
+                // MINI notification
+                notification_html =
+                    '<div id="mixpanel-notification-mini" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
+                        '<div id="mixpanel-notification-mainbox">' +
+                            '<div id="mixpanel-notification-cancel"></div>' +
+                            '<div id="mixpanel-notification-content">' +
+                                '<div id="mixpanel-notification-body">' + this.body + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+            }
             this.notification_el.innerHTML =
                 '<div id="mixpanel-notification-overlay"><div id="mixpanel-notification-campaignid-' + this.campaign_id + '">' +
                     '<div id="mixpanel-notification-bgwrapper">' +
                         '<div id="mixpanel-notification-bg"></div>' +
-                        '<div id="mixpanel-notification" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
-                            this.thumb_img_html +
-                            '<div id="mixpanel-notification-mainbox">' +
-                                '<div id="mixpanel-notification-cancel"></div>' +
-                                '<div id="mixpanel-notification-content">' +
-                                    this.img_html +
-                                    '<div id="mixpanel-notification-title">' + this.title + '</div>' +
-                                    '<div id="mixpanel-notification-body">' + this.body + '</div>' +
-                                    '<div id="mixpanel-notification-tagline">' +
-                                        '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
-                                    '</div>' +
-                                '</div>' +
-                                '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
-                            '</div>' +
-                        '</div>' +
+                        notification_html +
                     '</div>' +
                 '</div></div>';
         };
@@ -3181,7 +3202,7 @@ Globals should be all caps
 
             // don't display on small viewports
             var media_queries = {},
-                min_width = MixpanelLib._Notification.NOTIF_WIDTH + 20;
+                min_width = MixpanelLib._Notification.NOTIF_WIDTH_MINI + 20;
             media_queries['@media only screen and (max-width: ' + (min_width - 1) + 'px)'] = {
                 '#mixpanel-notification-overlay': {
                     'display': 'none'
@@ -3230,6 +3251,13 @@ Globals should be all caps
                     'width': MixpanelLib._Notification.NOTIF_WIDTH + 'px',
                     'margin-left': (-MixpanelLib._Notification.NOTIF_WIDTH / 2) + 'px'
                 },
+                '#mixpanel-notification-mini': {
+                    'position': 'absolute',
+                    'right': '20px',
+                    'width': this.notif_width + 'px',
+                    'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                    'margin-top': '20px'
+                },
                 '#mixpanel-notification-thumbspacer': {
                     'height': MixpanelLib._Notification.THUMB_OFFSET + 'px'
                 },
@@ -3257,6 +3285,13 @@ Globals should be all caps
                     'font-size': '14px',
                     'color': this.css.text_main
                 },
+                    '#mixpanel-notification-mini #mixpanel-notification-mainbox': {
+                        'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                        'border': '3px solid rgba(0, 0, 0, 0.3)',
+                        '-webkit-border-radius': '6px',
+                        '-moz-border-radius':    '6px',
+                        'border-radius':         '6px'
+                    },
                 '#mixpanel-notification-content': {
                     'padding': '0px 20px'
                 },
@@ -3316,6 +3351,9 @@ Globals should be all caps
                     'color': '#bac5ce',
                     'cursor': 'pointer'
                 },
+                    '#mixpanel-notification-mini #mixpanel-notification-cancel': {
+                        'margin': '12px 15px 0 0'
+                    },
                 '#mixpanel-notification-cancel:hover': {
                     'background-position': 'center 8px'
                 },
