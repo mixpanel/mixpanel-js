@@ -3005,8 +3005,8 @@ Globals should be all caps
         MixpanelLib._Notification.MINI_ICON_WIDTH   = 75;
         MixpanelLib._Notification.THUMB_IMG_SIZE    = 60;
         MixpanelLib._Notification.THUMB_OFFSET      = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
-        MixpanelLib._Notification.VIDEO_WIDTH       = 528;
-        MixpanelLib._Notification.VIDEO_HEIGHT      = MixpanelLib._Notification.VIDEO_WIDTH / 4 * 3;
+        MixpanelLib._Notification.VIDEO_WIDTH       = 595;
+        MixpanelLib._Notification.VIDEO_HEIGHT      = 334;
 
         MixpanelLib._Notification.prototype.show = function() {
             var self = this;
@@ -3207,8 +3207,8 @@ Globals should be all caps
                 video_html =
                     '<div id="mixpanel-notification-video" style="display:none;">' +
                         '<iframe width="' + this.video_width + '" height="' + this.video_height + '" ' +
-                            ' src="//www.youtube.com/embed/DYGz3xqiR2U?rel=0"' +
-                            ' frameborder="0" allowfullscreen' +
+                            ' src="//www.youtube.com/embed/DYGz3xqiR2U?wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
+                            ' frameborder="0" allowfullscreen="1" scrolling="no"' +
                         '></iframe>'
                     '</div>';
             }
