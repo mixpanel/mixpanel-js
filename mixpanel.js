@@ -2983,6 +2983,9 @@ Globals should be all caps
         this.style           = _.escapeHTML(notif_data['style']);
         this.thumb_image_url = this._string_or_default(_.escapeHTML(notif_data['thumb_image_url']), null);
         this.title           = _.escapeHTML(this._string_or_default(notif_data['title'], ''));
+        this.youtube_video   = this._string_or_default(_.escapeHTML(notif_data['youtube_video']), null);
+        this.video_width     = MixpanelLib._Notification.VIDEO_WIDTH;
+        this.video_height    = MixpanelLib._Notification.VIDEO_HEIGHT;
 
         this.clickthrough = true;
         if (!this.dest_url) {
@@ -3002,6 +3005,8 @@ Globals should be all caps
         MixpanelLib._Notification.MINI_ICON_WIDTH   = 75;
         MixpanelLib._Notification.THUMB_IMG_SIZE    = 60;
         MixpanelLib._Notification.THUMB_OFFSET      = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
+        MixpanelLib._Notification.VIDEO_WIDTH       = 528;
+        MixpanelLib._Notification.VIDEO_HEIGHT      = MixpanelLib._Notification.VIDEO_WIDTH / 4 * 3;
 
         MixpanelLib._Notification.prototype.show = function() {
             var self = this;
@@ -3063,7 +3068,7 @@ Globals should be all caps
             var bg = document.getElementById('mixpanel-notification-bg');
             bg.style.opacity = String(anim_props.bg_opacity.val);
 
-            var notification = document.getElementById('mixpanel-notification') || document.getElementById('mixpanel-notification-mini');
+            var notification = self._get_notification_display_el();
             notification.style.opacity = String(anim_props.notif_opacity.val);
             notification.style.top = String(anim_props.notif_top.val) + 'px';
 
@@ -3107,12 +3112,20 @@ Globals should be all caps
                            document.getElementById('mixpanel-notification-mini-content');
             _.register_event(click_el, 'click', function(e) {
                 e.preventDefault();
-                self.dismiss();
-                if (self.clickthrough) {
-                    setTimeout(function() { window.location.href = self.dest_url; }, self.mixpanel.config.track_links_timeout);
+                if (self.youtube_video) {
+                    self._switch_to_video();
+                } else {
+                    self.dismiss();
+                    if (self.clickthrough) {
+                        setTimeout(function() { window.location.href = self.dest_url; }, self.mixpanel.config.track_links_timeout);
+                    }
                 }
             });
         });
+
+        MixpanelLib._Notification.prototype._get_notification_display_el = function() {
+            return document.getElementById('mixpanel-notification') || document.getElementById('mixpanel-notification-mini');
+        };
 
         MixpanelLib._Notification.prototype._get_shown_campaigns = function() {
             return this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = {});
@@ -3149,6 +3162,9 @@ Globals should be all caps
         };
 
         MixpanelLib._Notification.prototype._init_notification_el = function() {
+            var notification_html = '',
+                video_html        = '';
+
             this.notification_el = document.createElement('div');
             this.notification_el.id = 'mixpanel-notification-wrapper';
             if (this.notif_type !== 'mini') {
@@ -3177,14 +3193,23 @@ Globals should be all caps
                             '<div id="mixpanel-notification-cancel"></div>' +
                             '<div id="mixpanel-notification-mini-content">' +
                                 '<div id="mixpanel-notification-mini-icon">' +
-                                    '<img src="' + this.icon_url +
-                                        '" width="'  + MixpanelLib._Notification.MINI_ICON_WIDTH +
-                                        '" height="' + MixpanelLib._Notification.NOTIF_HEIGHT_MINI +
-                                    '"/>' +
+                                    '<img src="' + this.icon_url + '"' +
+                                        ' width="'  + MixpanelLib._Notification.MINI_ICON_WIDTH + '"' +
+                                        ' height="' + MixpanelLib._Notification.NOTIF_HEIGHT_MINI + '"' +
+                                    '/>' +
                                 '</div>' +
                                 '<div id="mixpanel-notification-body"><span>' + this.body + '</span></div>' +
                             '</div>' +
                         '</div>' +
+                    '</div>';
+            }
+            if (this.youtube_video) {
+                video_html =
+                    '<div id="mixpanel-notification-video" style="display:none;">' +
+                        '<iframe width="' + this.video_width + '" height="' + this.video_height + '" ' +
+                            ' src="//www.youtube.com/embed/DYGz3xqiR2U?rel=0"' +
+                            ' frameborder="0" allowfullscreen' +
+                        '></iframe>'
                     '</div>';
             }
             this.notification_el.innerHTML =
@@ -3192,6 +3217,7 @@ Globals should be all caps
                     '<div id="mixpanel-notification-bgwrapper">' +
                         '<div id="mixpanel-notification-bg"></div>' +
                         notification_html +
+                        video_html +
                     '</div>' +
                 '</div></div>';
         };
@@ -3222,6 +3248,7 @@ Globals should be all caps
                     text_hover:     '#7c8598'
                 };
             }
+            var shadow = '0px 1px 15px 0px rgba(10, 10, 10, 0.7)';
 
             // don't display on small viewports
             var media_queries = {},
@@ -3300,9 +3327,9 @@ Globals should be all caps
                     '-webkit-border-radius': '4px',
                     '-moz-border-radius':    '4px',
                     'border-radius':         '4px',
-                    '-webkit-box-shadow': '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
-                    '-moz-box-shadow':    '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
-                    'box-shadow':         '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
+                    '-webkit-box-shadow': shadow,
+                    '-moz-box-shadow':    shadow,
+                    'box-shadow':         shadow,
                     'text-align': this.image_url ? 'center' : 'left',
                     'background-color': this.css.bg,
                     'font-size': '14px',
@@ -3435,6 +3462,21 @@ Globals should be all caps
                 '#mixpanel-notification-button:hover': {
                     'background-color': this.css.bg_hover,
                     'color': this.css.text_hover
+                },
+                '#mixpanel-notification-video': {
+                    'position': 'absolute',
+                    'width': this.video_width + 'px',
+                    'height': this.video_height + 'px',
+                    'top': '50px',
+                    'left': '50%',
+                    'margin-left': (-this.video_width / 2) + 'px',
+                    'overflow': 'hidden',
+                    '-webkit-border-radius': '5px',
+                    '-moz-border-radius':    '5px',
+                    'border-radius':         '5px',
+                    '-webkit-box-shadow': shadow,
+                    '-moz-box-shadow':    shadow,
+                    'box-shadow':         shadow
                 }
             };
 
@@ -3594,6 +3636,12 @@ Globals should be all caps
                 );
             }
         };
+
+        MixpanelLib._Notification.prototype._switch_to_video = _.safewrap(function() {
+            var video_el = document.getElementById('mixpanel-notification-video');
+            video_el.style.display = 'block';
+            this._get_notification_display_el().style.visibility = 'hidden';
+        });
 
         MixpanelLib._Notification.prototype._string_or_default = function(s, default_s) {
             return (s && s.length > 0) ? s : default_s;
