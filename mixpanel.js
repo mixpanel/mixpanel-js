@@ -2995,6 +2995,7 @@ Globals should be all caps
 
         this.notif_width = this.notif_type !== 'mini' ? MixpanelLib._Notification.NOTIF_WIDTH : MixpanelLib._Notification.NOTIF_WIDTH_MINI;
         this.imgs_to_preload = this._init_image_html();
+        this._init_video();
     };
 
         MixpanelLib._Notification.NOTIF_TOP         = 25;
@@ -3085,6 +3086,9 @@ Globals should be all caps
             this.shown = true;
 
             this.body_el.appendChild(this.notification_el);
+            if (window.YT) {
+                self._video_ready();
+            }
             setTimeout(function() {
                 self._animate_notification({
                     bg_opacity: {
@@ -3206,8 +3210,8 @@ Globals should be all caps
             if (this.youtube_video) {
                 video_html =
                     '<div id="mixpanel-notification-video" style="display:none;">' +
-                        '<iframe width="' + this.video_width + '" height="' + this.video_height + '" ' +
-                            ' src="//www.youtube.com/embed/DYGz3xqiR2U?wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
+                        '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
+                            ' src="//www.youtube.com/embed/DYGz3xqiR2U?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
                             ' frameborder="0" allowfullscreen="1" scrolling="no"' +
                         '></iframe>'
                     '</div>';
@@ -3221,6 +3225,44 @@ Globals should be all caps
                     '</div>' +
                 '</div></div>';
         };
+
+        MixpanelLib._Notification.prototype._init_video = _.safewrap(function() {
+            if (!this.youtube_video) {
+                return;
+            }
+
+            var self = this;
+            window['onYouTubeIframeAPIReady'] = function() {
+                if (document.getElementById('mixpanel-notification-video')) {
+                    self._video_ready();
+                }
+            };
+
+            // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
+            var tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            var firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        });
+
+        MixpanelLib._Notification.prototype._video_ready = _.safewrap(function() {
+            if (this.video_inited) {
+                return;
+            } else {
+                this.video_inited = true;
+            }
+
+            this._ytplayer = new YT.Player('mixpanel-notification-video-frame', {
+                events: {
+                    'onReady': function() {
+                        console.log("player ready");
+                    },
+                    'onStateChange': function(event) {
+                        console.log("state change data = " + event.data + " curtime = " + event.target.getCurrentTime());
+                    }
+                }
+            });
+        });
 
         MixpanelLib._Notification.prototype._init_styles = function() {
             if (this.style === 'dark') {
