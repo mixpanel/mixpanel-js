@@ -3210,8 +3210,12 @@ Globals should be all caps
             if (this.youtube_video) {
                 video_html =
                     '<div id="mixpanel-notification-video" style="display:none;">' +
+                        '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
+                            ' width="' + this.video_width + '" height="' + this.video_height + '"' +
+                        '/>' +
                         '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
-                            ' src="//www.youtube.com/embed/DYGz3xqiR2U?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
+                            ' src="//www.youtube.com/embed/' + this.youtube_video +
+                                '?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
                             ' frameborder="0" allowfullscreen="1" scrolling="no"' +
                         '></iframe>'
                     '</div>';
