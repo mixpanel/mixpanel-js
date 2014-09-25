@@ -3004,6 +3004,7 @@ Globals should be all caps
         MixpanelLib._Notification.NOTIF_WIDTH_MINI  = 420;
         MixpanelLib._Notification.NOTIF_HEIGHT_MINI = 85;
         MixpanelLib._Notification.MINI_ICON_WIDTH   = 75;
+        MixpanelLib._Notification.THUMB_BORDER_SIZE = 5;
         MixpanelLib._Notification.THUMB_IMG_SIZE    = 60;
         MixpanelLib._Notification.THUMB_OFFSET      = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
         MixpanelLib._Notification.VIDEO_WIDTH       = 595;
@@ -3151,11 +3152,14 @@ Globals should be all caps
                 this.thumb_img_html = '';
                 if (this.thumb_image_url) {
                     imgs_to_preload.push(this.thumb_image_url);
-                    this.thumb_img_html = '<img id="mixpanel-notification-thumbnail"' +
-                        ' src="' + this.thumb_image_url + '"' +
-                        ' width="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
-                        ' height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
-                        '/><div id="mixpanel-notification-thumbspacer"></div>';
+                    this.thumb_img_html =
+                        '<div id="mixpanel-notification-thumbborder-wrapper"><div id="mixpanel-notification-thumbborder"></div></div>' +
+                        '<img id="mixpanel-notification-thumbnail"' +
+                            ' src="' + this.thumb_image_url + '"' +
+                            ' width="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
+                            ' height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
+                        '/>' +
+                        '<div id="mixpanel-notification-thumbspacer"></div>';
                 }
             } else {
                 this.icon_url = this.icon_url || '//cdn.mxpnl.com/site_media/images/icons/notifications/mini-news-dark.png';
@@ -3275,7 +3279,8 @@ Globals should be all caps
                     text_hover:     '#7c8598'
                 };
             }
-            var shadow = '0px 1px 15px 0px rgba(10, 10, 10, 0.7)';
+            var shadow = '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
+                thumb_total_size = MixpanelLib._Notification.THUMB_IMG_SIZE + MixpanelLib._Notification.THUMB_BORDER_SIZE * 2;
 
             // don't display on small viewports
             var media_queries = {},
@@ -3337,6 +3342,26 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-thumbspacer': {
                     'height': MixpanelLib._Notification.THUMB_OFFSET + 'px'
+                },
+                '#mixpanel-notification-thumbborder-wrapper': {
+                    'position': 'absolute',
+                    'top': (-MixpanelLib._Notification.THUMB_BORDER_SIZE) + 'px',
+                    'left': (MixpanelLib._Notification.NOTIF_WIDTH / 2 - MixpanelLib._Notification.THUMB_OFFSET - MixpanelLib._Notification.THUMB_BORDER_SIZE) + 'px',
+                    'width': thumb_total_size + 'px',
+                    'height': (thumb_total_size / 2) + 'px',
+                    'overflow': 'hidden'
+                },
+                '#mixpanel-notification-thumbborder': {
+                    'position': 'absolute',
+                    'width': thumb_total_size + 'px',
+                    'height': thumb_total_size + 'px',
+                    '-webkit-border-radius': thumb_total_size + 'px',
+                    '-moz-border-radius':    thumb_total_size + 'px',
+                    'border-radius':         thumb_total_size + 'px',
+                    'background-color': this.css.bg_actions,
+                    '-moz-opacity':   '0.5',
+                    '-khtml-opacity': '0.5',
+                    'opacity':        '0.5'
                 },
                 '#mixpanel-notification-thumbnail': {
                     'position': 'absolute',
