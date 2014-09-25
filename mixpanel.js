@@ -3086,7 +3086,7 @@ Globals should be all caps
             this.shown = true;
 
             this.body_el.appendChild(this.notification_el);
-            if (window.YT) {
+            if (window.YT && window.YT.loaded) {
                 self._video_ready();
             }
             setTimeout(function() {
