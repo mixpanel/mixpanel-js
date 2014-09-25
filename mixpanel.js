@@ -3249,25 +3249,6 @@ Globals should be all caps
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         });
 
-        MixpanelLib._Notification.prototype._video_ready = _.safewrap(function() {
-            if (this.video_inited) {
-                return;
-            } else {
-                this.video_inited = true;
-            }
-
-            this._ytplayer = new YT.Player('mixpanel-notification-video-frame', {
-                events: {
-                    'onReady': function() {
-                        console.log("player ready");
-                    },
-                    'onStateChange': function(event) {
-                        console.log("state change data = " + event.data + " curtime = " + event.target.getCurrentTime());
-                    }
-                }
-            });
-        });
-
         MixpanelLib._Notification.prototype._init_styles = function() {
             if (this.style === 'dark') {
                 this.css = {
@@ -3523,6 +3504,11 @@ Globals should be all caps
                     '-webkit-box-shadow': shadow,
                     '-moz-box-shadow':    shadow,
                     'box-shadow':         shadow
+                },
+                '#mixpanel-notification-video-preview': {
+                    'position': 'absolute',
+                    'width': this.video_width + 'px',
+                    'height': this.video_height + 'px'
                 }
             };
 
@@ -3692,6 +3678,32 @@ Globals should be all caps
         MixpanelLib._Notification.prototype._string_or_default = function(s, default_s) {
             return (s && s.length > 0) ? s : default_s;
         };
+
+        MixpanelLib._Notification.prototype._video_ready = _.safewrap(function() {
+            var self = this;
+            if (self.video_inited) {
+                return;
+            }
+            self.video_inited = true;
+
+            self._ytplayer = new window.YT.Player('mixpanel-notification-video-frame', {
+                events: {
+                    'onReady': function() {
+                        console.log("player ready");
+                    },
+                    'onStateChange': function(event) {
+                        console.log("state change data = " + event.data + " curtime = " + event.target.getCurrentTime());
+                    }
+                }
+            });
+
+            var video_preview = document.getElementById('mixpanel-notification-video-preview');
+            _.register_event(video_preview, 'click', function(e) {
+                e.preventDefault();
+                self._ytplayer.playVideo();
+                video_preview.style.visibility = 'hidden';
+            });
+        });
 
     // EXPORTS (for closure compiler)
 
