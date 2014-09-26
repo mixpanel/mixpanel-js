@@ -2975,7 +2975,7 @@ Globals should be all caps
         this.message_id  = _.escapeHTML(notif_data['message_id']);
 
         this.body            = _.escapeHTML(this._string_or_default(notif_data['body'], '')).replace(/\n/g, '<br/>');
-        this.cta             = this._string_or_default(_.escapeHTML(notif_data['cta']), 'Done');
+        this.cta             = this._string_or_default(_.escapeHTML(notif_data['cta']), 'Close');
         this.dest_url        = this._string_or_default(_.escapeHTML(notif_data['cta_url']), null);
         this.icon_url        = this._string_or_default(_.escapeHTML(notif_data['icon_url']), null);
         this.image_url       = this._string_or_default(_.escapeHTML(notif_data['image_url']), null);
@@ -3177,6 +3177,8 @@ Globals should be all caps
             this.notification_el.id = 'mixpanel-notification-wrapper';
             if (this.notif_type !== 'mini') {
                 // TAKEOVER notification
+                var close_html = (this.clickthrough || this.youtube_video) ? '' : '<div id="mixpanel-notification-button-close"></div>',
+                    play_html  = this.youtube_video ? '<div id="mixpanel-notification-button-play"></div>' : '';
                 notification_html =
                     '<div id="mixpanel-notification" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
                         this.thumb_img_html +
@@ -3190,7 +3192,11 @@ Globals should be all caps
                                     '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
                                 '</div>' +
                             '</div>' +
-                            '<a id="mixpanel-notification-button" href="' + this.dest_url + '">' + this.cta + '</a>' +
+                            '<div id="mixpanel-notification-button">' +
+                                close_html +
+                                '<a id="mixpanel-notification-button-link" href="' + this.dest_url + '">' + this.cta + '</a>' +
+                                play_html +
+                            '</div>' +
                         '</div>' +
                     '</div>';
             } else {
@@ -3264,7 +3270,8 @@ Globals should be all caps
                     text_title:     '#fff',
                     text_main:      '#9498a3',
                     text_tagline:   '#464851',
-                    text_hover:     '#ddd'
+                    text_hover:     '#ddd',
+                    icons:          'dark'
                 };
             } else {
                 this.css = {
@@ -3276,7 +3283,8 @@ Globals should be all caps
                     text_title:     '#5c6578',
                     text_main:      '#8b949b',
                     text_tagline:   '#ced9e6',
-                    text_hover:     '#7c8598'
+                    text_hover:     '#7c8598',
+                    icons:          'light'
                 };
             }
             var shadow = '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
@@ -3491,7 +3499,7 @@ Globals should be all caps
                 '#mixpanel-notification-cancel:hover': {
                     'background-position': 'center 8px'
                 },
-                'a#mixpanel-notification-button': {
+                '#mixpanel-notification-button': {
                     'display': 'block',
                     'padding': '25px',
                     'max-height': '600px',
@@ -3500,19 +3508,51 @@ Globals should be all caps
                     '-webkit-border-radius': '0 0 4px 4px',
                     '-moz-border-radius':    '0 0 4px 4px',
                     'border-radius':         '0 0 4px 4px',
+                    'overflow': 'hidden',
+                    'cursor': 'pointer',
+                    '-webkit-transition': 'background-color 0.2s',
+                    '-moz-transition':    'background-color 0.2s',
+                    '-ms-transition':     'background-color 0.2s',
+                    '-o-transition':      'background-color 0.2s',
+                    'transition':         'background-color 0.2s'
+                },
+                '#mixpanel-notification-button-close': {
+                    'display': 'inline-block',
+                    'width': '9px',
+                    'height': '10px',
+                    'margin-right': '8px',
+                    'margin-top': '5px',
+                    'vertical-align': 'top',
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.css.icons + '.png)'
+                },
+                '#mixpanel-notification-button-play': {
+                    'display': 'inline-block',
+                    'width': '30px',
+                    'height': '30px',
+                    'margin-left': '15px',
+                    'margin-top': '-5px',
+                    'vertical-align': 'top',
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.css.icons + '.png)'
+                },
+                'a#mixpanel-notification-button-link': {
+                    'display': 'inline-block',
+                    'text-align': 'center',
                     'font-size': '17px',
                     'font-weight': 'bold',
                     'overflow': 'hidden',
                     'word-wrap': 'break-word',
                     'color': this.css.text_title,
-                    '-webkit-transition': 'background-color 0.2s, color 0.2s',
-                    '-moz-transition':    'background-color 0.2s, color 0.2s',
-                    '-ms-transition':     'background-color 0.2s, color 0.2s',
-                    '-o-transition':      'background-color 0.2s, color 0.2s',
-                    'transition':         'background-color 0.2s, color 0.2s'
+                    '-webkit-transition': 'color 0.2s',
+                    '-moz-transition':    'color 0.2s',
+                    '-ms-transition':     'color 0.2s',
+                    '-o-transition':      'color 0.2s',
+                    'transition':         'color 0.2s'
                 },
                 '#mixpanel-notification-button:hover': {
                     'background-color': this.css.bg_hover,
+                    'color': this.css.text_hover
+                },
+                '#mixpanel-notification-button:hover a': {
                     'color': this.css.text_hover
                 },
                 '#mixpanel-notification-video': {
