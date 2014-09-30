@@ -3609,7 +3609,7 @@ Globals should be all caps
                     '-khtml-opacity': '0.7'
                 },
                 '#mixpanel-notification-video-elapsed': {
-                    'width': '20%',
+                    'width': '0',
                     'background-color': '#6cb6f5',
                     'opacity':        '0.9',
                     '-moz-opacity':   '0.9',
@@ -3815,6 +3815,12 @@ Globals should be all caps
                 e.preventDefault();
                 self._ytplayer.playVideo();
                 video_preview.style.visibility = 'hidden';
+
+                var progress_bar = document.getElementById('mixpanel-notification-video-elapsed'),
+                    video_duration = self._ytplayer.getDuration();
+                self._video_progress_checker = window.setInterval(function() {
+                    progress_bar.style.width = (self._ytplayer.getCurrentTime() / video_duration * 100) + '%';
+                }, 300);
             });
         });
 
