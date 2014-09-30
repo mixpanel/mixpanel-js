@@ -3222,14 +3222,20 @@ Globals should be all caps
             if (this.youtube_video) {
                 video_html =
                     '<div id="mixpanel-notification-video" style="display:none;">' +
-                        '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
-                            ' width="' + this.video_width + '" height="' + this.video_height + '"' +
-                        '/>' +
                         '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
                             ' src="//www.youtube.com/embed/' + this.youtube_video +
                                 '?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
                             ' frameborder="0" allowfullscreen="1" scrolling="no"' +
-                        '></iframe>'
+                        '></iframe>' +
+                        '<div id="mixpanel-notification-video-play"></div>' +
+                        '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
+                            '<div id="mixpanel-notification-video-progress-total" class="mixpanel-notification-video-progress-el"></div>' +
+                            '<div id="mixpanel-notification-video-elapsed" class="mixpanel-notification-video-progress-el"></div>' +
+                        '</div>' +
+                        '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
+                        '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
+                            ' width="' + this.video_width + '" height="' + this.video_height + '"' +
+                        '/>' +
                     '</div>';
             }
             this.notification_el.innerHTML =
@@ -3561,7 +3567,7 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-video': {
                     'position': 'absolute',
-                    'width': this.video_width + 'px',
+                    'width': (this.video_width - 1) + 'px',
                     'height': this.video_height + 'px',
                     'top': '50px',
                     'left': '50%',
@@ -3574,10 +3580,48 @@ Globals should be all caps
                     '-moz-box-shadow':    shadow,
                     'box-shadow':         shadow
                 },
+                '#mixpanel-notification-video-frame': {
+                    'margin-left': '-1px'
+                },
                 '#mixpanel-notification-video-preview': {
                     'position': 'absolute',
+                    'top': '0',
+                    'left': '0',
                     'width': this.video_width + 'px',
                     'height': this.video_height + 'px'
+                },
+                '#mixpanel-notification-video .mixpanel-notification-video-progress-el': {
+                    'position': 'absolute',
+                    'bottom': '0',
+                    'height': '25px',
+                    '-webkit-border-radius': '0 0 0 5px',
+                    '-moz-border-radius':    '0 0 0 5px',
+                    'border-radius':         '0 0 0 5px'
+                },
+                '#mixpanel-notification-video-progress': {
+                    'width': '90%'
+                },
+                '#mixpanel-notification-video-progress-total': {
+                    'width': '100%',
+                    'background-color': '#000',
+                    'opacity':        '0.7',
+                    '-moz-opacity':   '0.7',
+                    '-khtml-opacity': '0.7'
+                },
+                '#mixpanel-notification-video-elapsed': {
+                    'width': '20%',
+                    'background-color': '#6cb6f5',
+                    'opacity':        '0.9',
+                    '-moz-opacity':   '0.9',
+                    '-khtml-opacity': '0.9'
+                },
+                '#mixpanel-notification-video #mixpanel-notification-video-time': {
+                    'width': '10%',
+                    'right': '0',
+                    'background-color': '#666',
+                    '-webkit-border-radius': '0 0 5px 0',
+                    '-moz-border-radius':    '0 0 5px 0',
+                    'border-radius':         '0 0 5px 0'
                 }
             };
 
