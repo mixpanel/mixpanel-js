@@ -3212,7 +3212,9 @@ Globals should be all caps
                                         ' height="' + MixpanelLib._Notification.NOTIF_HEIGHT_MINI + '"' +
                                     '/>' +
                                 '</div>' +
-                                '<div id="mixpanel-notification-body"><span>' + this.body + '</span></div>' +
+                                '<div id="mixpanel-notification-body">' +
+                                    '<div id="mixpanel-notification-body-text"><div>' + this.body + '</div></div>' +
+                                '</div>' +
                             '</div>' +
                         '</div>' +
                     '</div>';
@@ -3450,15 +3452,17 @@ Globals should be all caps
                         'max-width': '250px',
                         'margin': '0 0 0 30px',
                         'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
-                        'line-height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
                         'font-size': '16px',
                         'letter-spacing': '0.8px',
                         'color': this.css.text_title
                     },
-                    '#mixpanel-notification-mini #mixpanel-notification-body span': {
-                        'display': 'inline-block',
-                        'vertical-align': 'middle',
-                        'line-height': 'normal'
+                    '#mixpanel-notification-mini #mixpanel-notification-body-text': {
+                        'display': 'table',
+                        'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px'
+                    },
+                    '#mixpanel-notification-mini #mixpanel-notification-body-text div': {
+                        'display': 'table-cell',
+                        'vertical-align': 'middle'
                     },
                 '#mixpanel-notification-tagline': {
                     'margin-bottom': '15px',
