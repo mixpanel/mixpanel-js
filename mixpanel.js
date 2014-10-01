@@ -2977,7 +2977,6 @@ Globals should be all caps
         this.body            = _.escapeHTML(this._string_or_default(notif_data['body'], '')).replace(/\n/g, '<br/>');
         this.cta             = this._string_or_default(_.escapeHTML(notif_data['cta']), 'Close');
         this.dest_url        = this._string_or_default(_.escapeHTML(notif_data['cta_url']), null);
-        this.icon_url        = this._string_or_default(_.escapeHTML(notif_data['icon_url']), null);
         this.image_url       = this._string_or_default(_.escapeHTML(notif_data['image_url']), null);
         this.notif_type      = _.escapeHTML(notif_data['type']);
         this.style           = _.escapeHTML(notif_data['style']);
@@ -3162,8 +3161,8 @@ Globals should be all caps
                         '<div id="mixpanel-notification-thumbspacer"></div>';
                 }
             } else {
-                this.icon_url = this.icon_url || '//cdn.mxpnl.com/site_media/images/icons/notifications/mini-news-dark.png';
-                imgs_to_preload.push(this.icon_url);
+                this.thumb_image_url = this.thumb_image_url || '//cdn.mxpnl.com/site_media/images/icons/notifications/mini-news-dark.png';
+                imgs_to_preload.push(this.thumb_image_url);
             }
 
             return imgs_to_preload;
@@ -3207,7 +3206,7 @@ Globals should be all caps
                             '<div id="mixpanel-notification-cancel"></div>' +
                             '<div id="mixpanel-notification-mini-content">' +
                                 '<div id="mixpanel-notification-mini-icon">' +
-                                    '<img src="' + this.icon_url + '"' +
+                                    '<img src="' + this.thumb_image_url + '"' +
                                         ' width="'  + MixpanelLib._Notification.MINI_ICON_WIDTH + '"' +
                                         ' height="' + MixpanelLib._Notification.NOTIF_HEIGHT_MINI + '"' +
                                     '/>' +
