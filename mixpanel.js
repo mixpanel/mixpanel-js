@@ -2983,7 +2983,7 @@ Globals should be all caps
         this.style           = _.escapeHTML(notif_data['style']);
         this.thumb_image_url = this._string_or_default(_.escapeHTML(notif_data['thumb_image_url']), null);
         this.title           = _.escapeHTML(this._string_or_default(notif_data['title'], ''));
-        this.youtube_video   = this._string_or_default(_.escapeHTML(notif_data['youtube_video']), null);
+        this.video_url       = this._string_or_default(_.escapeHTML(notif_data['video_url']), null);
         this.video_width     = MixpanelLib._Notification.VIDEO_WIDTH;
         this.video_height    = MixpanelLib._Notification.VIDEO_HEIGHT;
 
@@ -3249,11 +3249,18 @@ Globals should be all caps
         };
 
         MixpanelLib._Notification.prototype._init_video = _.safewrap(function() {
-            if (!this.youtube_video) {
+            if (!this.video_url) {
                 return;
             }
-
             var self = this;
+
+            var youtube_match = self.video_url.match(/.*youtube\.com\/.*v=([A-Za-z0-9]{11})/);
+            if (youtube_match) {
+                self.youtube_video = youtube_match[1];
+            } else {
+                // TODO vimeo
+                return;
+            }
             window['onYouTubeIframeAPIReady'] = function() {
                 if (document.getElementById('mixpanel-notification-video')) {
                     self._video_ready();
