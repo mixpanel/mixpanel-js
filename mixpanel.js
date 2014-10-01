@@ -3624,6 +3624,9 @@ Globals should be all caps
                 '#mixpanel-notification-video #mixpanel-notification-video-time': {
                     'width': '10%',
                     'right': '0',
+                    'font-size': '11px',
+                    'line-height': '25px',
+                    'color': this.css.text_main,
                     'background-color': '#666',
                     '-webkit-border-radius': '0 0 5px 0',
                     '-moz-border-radius':    '0 0 5px 0',
@@ -3807,19 +3810,35 @@ Globals should be all caps
             self.video_inited = true;
 
             var video_preview = document.getElementById('mixpanel-notification-video-preview'),
-                progress_bar = document.getElementById('mixpanel-notification-video-elapsed');
+                progress_bar  = document.getElementById('mixpanel-notification-video-elapsed'),
+                progress_time = document.getElementById('mixpanel-notification-video-time');
 
-            self._ytplayer = new window.YT.Player('mixpanel-notification-video-frame', {
+            new window.YT.Player('mixpanel-notification-video-frame', {
                 events: {
-                    'onReady': function() {
-                        var video_duration = self._ytplayer.getDuration();
+                    'onReady': function(event) {
+                        var ytplayer = event.target,
+                            video_duration = ytplayer.getDuration(),
+                            pad = function(i) {
+                                return ('00' + i).slice(-2);
+                            },
+                            update_video_time = function(current_time) {
+                                var secs = Math.round(video_duration - current_time),
+                                    mins = Math.floor(secs / 60),
+                                    hours = Math.floor(mins / 60);
+                                secs -= mins * 60;
+                                mins -= hours * 60;
+                                progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
+                            };
+                        update_video_time(0);
                         _.register_event(video_preview, 'click', function(e) {
                             e.preventDefault();
-                            self._ytplayer.playVideo();
+                            ytplayer.playVideo();
                             video_preview.style.visibility = 'hidden';
                             self._video_progress_checker = window.setInterval(function() {
-                                progress_bar.style.width = (self._ytplayer.getCurrentTime() / video_duration * 100) + '%';
-                            }, 300);
+                                var current_time = ytplayer.getCurrentTime();
+                                progress_bar.style.width = (current_time / video_duration * 100) + '%';
+                                update_video_time(current_time);
+                            }, 250);
                         });
                     },
                     'onStateChange': function(event) {
