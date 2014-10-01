@@ -3227,11 +3227,13 @@ Globals should be all caps
                             ' frameborder="0" allowfullscreen="1" scrolling="no"' +
                         '></iframe>' +
                         '<div id="mixpanel-notification-video-play"></div>' +
-                        '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
-                            '<div id="mixpanel-notification-video-progress-total" class="mixpanel-notification-video-progress-el"></div>' +
-                            '<div id="mixpanel-notification-video-elapsed" class="mixpanel-notification-video-progress-el"></div>' +
+                        '<div id="mixpanel-notification-video-controls">' +
+                            '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
+                                '<div id="mixpanel-notification-video-progress-total" class="mixpanel-notification-video-progress-el"></div>' +
+                                '<div id="mixpanel-notification-video-elapsed" class="mixpanel-notification-video-progress-el"></div>' +
+                            '</div>' +
+                            '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
                         '</div>' +
-                        '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
                         '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
                             ' width="' + this.video_width + '" height="' + this.video_height + '"' +
                         '/>' +
@@ -3595,6 +3597,21 @@ Globals should be all caps
                     'left': '0',
                     'width': this.video_width + 'px',
                     'height': this.video_height + 'px'
+                },
+                '#mixpanel-notification-video-controls': {
+                    'opacity':        '0',
+                    '-moz-opacity':   '0',
+                    '-khtml-opacity': '0',
+                    '-webkit-transition': 'opacity 0.5s',
+                    '-moz-transition':    'opacity 0.5s',
+                    '-ms-transition':     'opacity 0.5s',
+                    '-o-transition':      'opacity 0.5s',
+                    'transition':         'opacity 0.5s'
+                },
+                '#mixpanel-notification-video:hover #mixpanel-notification-video-controls': {
+                    'opacity':        '1',
+                    '-moz-opacity':   '1',
+                    '-khtml-opacity': '1'
                 },
                 '#mixpanel-notification-video .mixpanel-notification-video-progress-el': {
                     'position': 'absolute',
