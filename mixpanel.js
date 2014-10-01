@@ -3811,7 +3811,8 @@ Globals should be all caps
 
             var video_preview = document.getElementById('mixpanel-notification-video-preview'),
                 progress_bar  = document.getElementById('mixpanel-notification-video-elapsed'),
-                progress_time = document.getElementById('mixpanel-notification-video-time');
+                progress_time = document.getElementById('mixpanel-notification-video-time'),
+                progress_el   = document.getElementById('mixpanel-notification-video-progress');
 
             new window.YT.Player('mixpanel-notification-video-frame', {
                 events: {
@@ -3830,6 +3831,10 @@ Globals should be all caps
                                 progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
                             };
                         update_video_time(0);
+                        _.register_event(progress_el, 'click', function(e) {
+                            var clickx = Math.max(0, e.pageX - progress_el.getBoundingClientRect().left);
+                            ytplayer.seekTo(video_duration * clickx / progress_el.clientWidth, true);
+                        });
                         _.register_event(video_preview, 'click', function(e) {
                             e.preventDefault();
                             ytplayer.playVideo();
