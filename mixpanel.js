@@ -3759,6 +3759,7 @@ Globals should be all caps
         };
 
         MixpanelLib._Notification.prototype._remove_notification_el = _.safewrap(function() {
+            window.clearInterval(this._video_progress_checker);
             this.notification_el.style.visibility = 'hidden';
             this.body_el.removeChild(this.notification_el);
         });
@@ -3799,28 +3800,31 @@ Globals should be all caps
             }
             self.video_inited = true;
 
+            var video_preview = document.getElementById('mixpanel-notification-video-preview'),
+                progress_bar = document.getElementById('mixpanel-notification-video-elapsed');
+
             self._ytplayer = new window.YT.Player('mixpanel-notification-video-frame', {
                 events: {
                     'onReady': function() {
-                        console.log("player ready");
+                        var video_duration = self._ytplayer.getDuration();
+                        _.register_event(video_preview, 'click', function(e) {
+                            e.preventDefault();
+                            self._ytplayer.playVideo();
+                            video_preview.style.visibility = 'hidden';
+                            self._video_progress_checker = window.setInterval(function() {
+                                progress_bar.style.width = (self._ytplayer.getCurrentTime() / video_duration * 100) + '%';
+                            }, 300);
+                        });
                     },
                     'onStateChange': function(event) {
-                        console.log("state change data = " + event.data + " curtime = " + event.target.getCurrentTime());
+                        if (event.data === YT.PlayerState.ENDED) {
+                            window.clearInterval(self._video_progress_checker);
+                            self._video_progress_checker = null;
+                            progress_bar.style.width = '100%';
+                            video_preview.style.visibility = '';
+                        }
                     }
                 }
-            });
-
-            var video_preview = document.getElementById('mixpanel-notification-video-preview');
-            _.register_event(video_preview, 'click', function(e) {
-                e.preventDefault();
-                self._ytplayer.playVideo();
-                video_preview.style.visibility = 'hidden';
-
-                var progress_bar = document.getElementById('mixpanel-notification-video-elapsed'),
-                    video_duration = self._ytplayer.getDuration();
-                self._video_progress_checker = window.setInterval(function() {
-                    progress_bar.style.width = (self._ytplayer.getCurrentTime() / video_duration * 100) + '%';
-                }, 300);
             });
         });
 
