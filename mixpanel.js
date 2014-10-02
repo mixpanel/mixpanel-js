@@ -2974,15 +2974,19 @@ Globals should be all caps
         this.campaign_id = _.escapeHTML(notif_data['id']);
         this.message_id  = _.escapeHTML(notif_data['message_id']);
 
-        this.body            = _.escapeHTML(this._string_or_default(notif_data['body'], '')).replace(/\n/g, '<br/>');
-        this.cta             = this._string_or_default(_.escapeHTML(notif_data['cta']), 'Close');
-        this.dest_url        = this._string_or_default(_.escapeHTML(notif_data['cta_url']), null);
-        this.image_url       = this._string_or_default(_.escapeHTML(notif_data['image_url']), null);
+        var _string_or_default = function(s, default_s) {
+            return (s && s.length > 0) ? s : default_s;
+        };
+
+        this.body            = _.escapeHTML(_string_or_default(notif_data['body'], '')).replace(/\n/g, '<br/>');
+        this.cta             = _string_or_default(_.escapeHTML(notif_data['cta']), 'Close');
+        this.dest_url        = _string_or_default(_.escapeHTML(notif_data['cta_url']), null);
+        this.image_url       = _string_or_default(_.escapeHTML(notif_data['image_url']), null);
         this.notif_type      = _.escapeHTML(notif_data['type']);
-        this.style           = _.escapeHTML(notif_data['style']);
-        this.thumb_image_url = this._string_or_default(_.escapeHTML(notif_data['thumb_image_url']), null);
-        this.title           = _.escapeHTML(this._string_or_default(notif_data['title'], ''));
-        this.video_url       = this._string_or_default(_.escapeHTML(notif_data['video_url']), null);
+        this.style           = _.escapeHTML(_string_or_default(notif_data['style'], 'light'));
+        this.thumb_image_url = _string_or_default(_.escapeHTML(notif_data['thumb_image_url']), null);
+        this.title           = _.escapeHTML(_string_or_default(notif_data['title'], ''));
+        this.video_url       = _string_or_default(_.escapeHTML(notif_data['video_url']), null);
         this.video_width     = MixpanelLib._Notification.VIDEO_WIDTH;
         this.video_height    = MixpanelLib._Notification.VIDEO_HEIGHT;
 
@@ -3226,7 +3230,6 @@ Globals should be all caps
                                 '?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
                             ' frameborder="0" allowfullscreen="1" scrolling="no"' +
                         '></iframe>' +
-                        '<div id="mixpanel-notification-video-play"></div>' +
                         '<div id="mixpanel-notification-video-controls">' +
                             '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
                                 '<div id="mixpanel-notification-video-progress-total" class="mixpanel-notification-video-progress-el"></div>' +
@@ -3234,9 +3237,14 @@ Globals should be all caps
                             '</div>' +
                             '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
                         '</div>' +
-                        '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
-                            ' width="' + this.video_width + '" height="' + this.video_height + '"' +
-                        '/>' +
+                        '<div id="mixpanel-notification-video-overlay">' +
+                            '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
+                                ' width="' + this.video_width + '" height="' + this.video_height + '"' +
+                            '/>' +
+                            '<div id="mixpanel-notification-video-play">' +
+                                '<img src="//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-large.png" width="57" height="57"/>' +
+                            '</div>' +
+                        '</div>' +
                     '</div>';
             }
             this.notification_el.innerHTML =
@@ -3286,8 +3294,7 @@ Globals should be all caps
                     text_title:     '#fff',
                     text_main:      '#9498a3',
                     text_tagline:   '#464851',
-                    text_hover:     '#ddd',
-                    icons:          'dark'
+                    text_hover:     '#ddd'
                 };
             } else {
                 this.css = {
@@ -3299,8 +3306,7 @@ Globals should be all caps
                     text_title:     '#5c6578',
                     text_main:      '#8b949b',
                     text_tagline:   '#ced9e6',
-                    text_hover:     '#7c8598',
-                    icons:          'light'
+                    text_hover:     '#7c8598'
                 };
             }
             var shadow = '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
@@ -3541,7 +3547,7 @@ Globals should be all caps
                     'margin-right': '8px',
                     'margin-top': '3px',
                     'vertical-align': 'top',
-                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.css.icons + '.png)'
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.style + '.png)'
                 },
                 '#mixpanel-notification-button-play': {
                     'display': 'inline-block',
@@ -3550,7 +3556,7 @@ Globals should be all caps
                     'margin-left': '15px',
                     'margin-top': '-5px',
                     'vertical-align': 'top',
-                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.css.icons + '.png)'
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '.png)'
                 },
                 'a#mixpanel-notification-button-link': {
                     'display': 'inline-block',
@@ -3591,12 +3597,23 @@ Globals should be all caps
                 '#mixpanel-notification-video-frame': {
                     'margin-left': '-1px'
                 },
-                '#mixpanel-notification-video-preview': {
+                '#mixpanel-notification-video-overlay': {
                     'position': 'absolute',
                     'top': '0',
                     'left': '0',
                     'width': this.video_width + 'px',
                     'height': this.video_height + 'px'
+                },
+                '#mixpanel-notification-video-play': {
+                    'position': 'absolute',
+                    'top': (this.video_height / 2 - 29) + 'px',
+                    'left': '50%',
+                    'margin-left': '-29px',
+                    'width': '57px',
+                    'height': '57px',
+                    'opacity':        '0.6',
+                    '-moz-opacity':   '0.6',
+                    '-khtml-opacity': '0.6'
                 },
                 '#mixpanel-notification-video-controls': {
                     'opacity':        '0',
@@ -3815,10 +3832,6 @@ Globals should be all caps
             this._get_notification_display_el().style.visibility = 'hidden';
         });
 
-        MixpanelLib._Notification.prototype._string_or_default = function(s, default_s) {
-            return (s && s.length > 0) ? s : default_s;
-        };
-
         MixpanelLib._Notification.prototype._video_ready = _.safewrap(function() {
             var self = this;
             if (self.video_inited) {
@@ -3826,7 +3839,7 @@ Globals should be all caps
             }
             self.video_inited = true;
 
-            var video_preview = document.getElementById('mixpanel-notification-video-preview'),
+            var video_overlay = document.getElementById('mixpanel-notification-video-overlay'),
                 progress_bar  = document.getElementById('mixpanel-notification-video-elapsed'),
                 progress_time = document.getElementById('mixpanel-notification-video-time'),
                 progress_el   = document.getElementById('mixpanel-notification-video-progress');
@@ -3852,10 +3865,10 @@ Globals should be all caps
                             var clickx = Math.max(0, e.pageX - progress_el.getBoundingClientRect().left);
                             ytplayer.seekTo(video_duration * clickx / progress_el.clientWidth, true);
                         });
-                        _.register_event(video_preview, 'click', function(e) {
+                        _.register_event(video_overlay, 'click', function(e) {
                             e.preventDefault();
                             ytplayer.playVideo();
-                            video_preview.style.visibility = 'hidden';
+                            video_overlay.style.visibility = 'hidden';
                             self._video_progress_checker = window.setInterval(function() {
                                 var current_time = ytplayer.getCurrentTime();
                                 progress_bar.style.width = (current_time / video_duration * 100) + '%';
@@ -3868,7 +3881,7 @@ Globals should be all caps
                             window.clearInterval(self._video_progress_checker);
                             self._video_progress_checker = null;
                             progress_bar.style.width = '100%';
-                            video_preview.style.visibility = '';
+                            video_overlay.style.visibility = '';
                         }
                     }
                 }
