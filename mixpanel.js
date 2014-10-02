@@ -3602,7 +3602,8 @@ Globals should be all caps
                     'top': '0',
                     'left': '0',
                     'width': this.video_width + 'px',
-                    'height': this.video_height + 'px'
+                    'height': this.video_height + 'px',
+                    'cursor': 'pointer'
                 },
                 '#mixpanel-notification-video-play': {
                     'position': 'absolute',
@@ -3611,9 +3612,19 @@ Globals should be all caps
                     'margin-left': '-29px',
                     'width': '57px',
                     'height': '57px',
-                    'opacity':        '0.6',
-                    '-moz-opacity':   '0.6',
-                    '-khtml-opacity': '0.6'
+                    'opacity':        '0.8',
+                    '-moz-opacity':   '0.8',
+                    '-khtml-opacity': '0.8',
+                    '-webkit-transition': 'opacity 0.5s',
+                    '-moz-transition':    'opacity 0.5s',
+                    '-ms-transition':     'opacity 0.5s',
+                    '-o-transition':      'opacity 0.5s',
+                    'transition':         'opacity 0.5s'
+                },
+                '#mixpanel-notification-video-overlay:hover #mixpanel-notification-video-play': {
+                    'opacity':        '1.0',
+                    '-moz-opacity':   '1.0',
+                    '-khtml-opacity': '1.0'
                 },
                 '#mixpanel-notification-video-controls': {
                     'opacity':        '0',
