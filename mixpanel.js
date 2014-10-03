@@ -3775,6 +3775,12 @@ Globals should be all caps
                     });
                 }
             }
+
+            // click on background to dismiss
+            var self = this;
+            _.register_event(document.getElementById('mixpanel-notification-bg'), 'click', function(e) {
+                self.dismiss();
+            });
         };
 
         MixpanelLib._Notification.prototype._preload_images = function(all_loaded_cb) {
