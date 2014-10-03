@@ -3654,7 +3654,7 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-video-progress-total': {
                     'width': '100%',
-                    'background-color': '#000',
+                    'background-color': this.css.bg,
                     'opacity':        '0.7',
                     '-moz-opacity':   '0.7',
                     '-khtml-opacity': '0.7'
