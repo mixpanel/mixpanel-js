@@ -3545,7 +3545,7 @@ Globals should be all caps
                     'width': '9px',
                     'height': '10px',
                     'margin-right': '8px',
-                    'margin-top': '3px',
+                    'margin-top': '5px',
                     'vertical-align': 'top',
                     'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.style + '.png)'
                 },
