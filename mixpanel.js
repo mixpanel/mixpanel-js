@@ -3556,7 +3556,7 @@ Globals should be all caps
                     'margin-left': '15px',
                     'margin-top': '-5px',
                     'vertical-align': 'top',
-                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '.png)'
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-small.png)'
                 },
                 'a#mixpanel-notification-button-link': {
                     'display': 'inline-block',
