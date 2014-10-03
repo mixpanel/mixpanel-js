@@ -3263,7 +3263,10 @@ Globals should be all caps
             }
             var self = this;
 
-            var youtube_match = self.video_url.match(/.*youtube\.com\/.*v=([A-Za-z0-9]{11})/);
+            var youtube_match = self.video_url.match(
+                // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
+                /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
+            );
             if (youtube_match) {
                 self.youtube_video = youtube_match[1];
             } else {
