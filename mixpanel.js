@@ -3006,7 +3006,6 @@ Globals should be all caps
         MixpanelLib._Notification.NOTIF_WIDTH       = 388;
         MixpanelLib._Notification.NOTIF_WIDTH_MINI  = 420;
         MixpanelLib._Notification.NOTIF_HEIGHT_MINI = 85;
-        MixpanelLib._Notification.MINI_ICON_WIDTH   = 75;
         MixpanelLib._Notification.THUMB_BORDER_SIZE = 5;
         MixpanelLib._Notification.THUMB_IMG_SIZE    = 60;
         MixpanelLib._Notification.THUMB_OFFSET      = MixpanelLib._Notification.THUMB_IMG_SIZE / 2;
@@ -3210,10 +3209,7 @@ Globals should be all caps
                             '<div id="mixpanel-notification-cancel"></div>' +
                             '<div id="mixpanel-notification-mini-content">' +
                                 '<div id="mixpanel-notification-mini-icon">' +
-                                    '<img src="' + this.thumb_image_url + '"' +
-                                        ' width="'  + MixpanelLib._Notification.MINI_ICON_WIDTH + '"' +
-                                        ' height="' + MixpanelLib._Notification.NOTIF_HEIGHT_MINI + '"' +
-                                    '/>' +
+                                    '<div id="mixpanel-notification-mini-icon-img"></div>' +
                                 '</div>' +
                                 '<div id="mixpanel-notification-body">' +
                                     '<div id="mixpanel-notification-body-text"><div>' + this.body + '</div></div>' +
@@ -3428,13 +3424,22 @@ Globals should be all caps
                         'border-radius':         '6px'
                     },
                 '#mixpanel-notification-mini-icon': {
+                    'position': 'relative',
                     'display': 'inline-block',
-                    'width': MixpanelLib._Notification.MINI_ICON_WIDTH + 'px',
+                    'width': '75px',
                     'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
                     '-webkit-border-radius': '6px 0 0 6px',
                     '-moz-border-radius':    '6px 0 0 6px',
                     'border-radius':         '6px 0 0 6px',
                     'background-color': this.css.bg_actions
+                },
+                '#mixpanel-notification-mini-icon-img': {
+                    'position': 'absolute',
+                    'background-image': 'url(' + this.thumb_image_url + ')',
+                    'width': '43px',
+                    'height': '41px',
+                    'top': '20px',
+                    'left': '15px'
                 },
                 '#mixpanel-notification-content': {
                     'padding': '0px 20px'
