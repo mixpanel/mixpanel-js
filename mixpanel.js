@@ -3436,10 +3436,10 @@ Globals should be all caps
                 '#mixpanel-notification-mini-icon-img': {
                     'position': 'absolute',
                     'background-image': 'url(' + this.thumb_image_url + ')',
-                    'width': '43px',
-                    'height': '41px',
-                    'top': '22px',
-                    'left': '16px'
+                    'width': '48px',
+                    'height': '48px',
+                    'top': '20px',
+                    'left': '12px'
                 },
                 '#mixpanel-notification-content': {
                     'padding': '0px 20px'
