@@ -2992,6 +2992,9 @@ Globals should be all caps
             this.clickthrough = false;
         }
 
+        if (this.notif_type !== 'mini') {
+            this.notif_type = 'takeover';
+        }
         this.notif_width = this.notif_type !== 'mini' ? MixpanelLib._Notification.NOTIF_WIDTH : MixpanelLib._Notification.NOTIF_WIDTH_MINI;
         this.imgs_to_preload = this._init_image_html();
         this._init_video();
@@ -3244,13 +3247,15 @@ Globals should be all caps
                     '</div>';
             }
             this.notification_el.innerHTML =
-                '<div id="mixpanel-notification-overlay"><div id="mixpanel-notification-campaignid-' + this.campaign_id + '">' +
-                    '<div id="mixpanel-notification-bgwrapper">' +
-                        '<div id="mixpanel-notification-bg"></div>' +
-                        notification_html +
-                        video_html +
+                '<div id="mixpanel-notification-overlay" class="mixpanel-notification-' + this.notif_type + '">' +
+                    '<div id="mixpanel-notification-campaignid-' + this.campaign_id + '">' +
+                        '<div id="mixpanel-notification-bgwrapper">' +
+                            '<div id="mixpanel-notification-bg"></div>' +
+                            notification_html +
+                            video_html +
+                        '</div>' +
                     '</div>' +
-                '</div></div>';
+                '</div>';
         };
 
         MixpanelLib._Notification.prototype._init_video = _.safewrap(function() {
@@ -3332,6 +3337,10 @@ Globals should be all caps
                     'font-family': '"Helvetica", "Arial", sans-serif',
                     '-webkit-font-smoothing': 'antialiased'
                 },
+                    '#mixpanel-notification-overlay.mixpanel-notification-mini': {
+                        'height': '0',
+                        'overflow': 'visible'
+                    },
                 '#mixpanel-notification-overlay a': {
                     'text-decoration': 'none',
                     'color': 'inherit'
@@ -3356,6 +3365,9 @@ Globals should be all caps
                     '-moz-opacity': '0.0',
                     '-khtml-opacity': '0.0'
                 },
+                    '.mixpanel-notification-mini #mixpanel-notification-bg': {
+                        'display': 'none'
+                    },
                 '#mixpanel-notification': {
                     'position': 'absolute',
                     'left': '50%',
