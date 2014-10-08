@@ -3268,39 +3268,6 @@ Globals should be all caps
                 '</div>';
         };
 
-        MixpanelLib._Notification.prototype._init_video = _.safewrap(function() {
-            if (!this.video_url) {
-                return;
-            }
-            var self = this;
-
-            var youtube_match = self.video_url.match(
-                    // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
-                    /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
-                ),
-                vimeo_match = self.video_url.match(
-                    /vimeo\.com\/.*?(\d+)/i
-                );
-            if (youtube_match) {
-                self.show_video = true;
-                self.youtube_video = youtube_match[1];
-                window['onYouTubeIframeAPIReady'] = function() {
-                    if (document.getElementById('mixpanel-notification-video')) {
-                        self._video_ready();
-                    }
-                };
-
-                // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
-                var tag = document.createElement('script');
-                tag.src = "https://www.youtube.com/iframe_api";
-                var firstScriptTag = document.getElementsByTagName('script')[0];
-                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-            } else if (vimeo_match) {
-                self.show_video = true;
-                self.vimeo_video = vimeo_match[1];
-            }
-        });
-
         MixpanelLib._Notification.prototype._init_styles = function() {
             if (this.style === 'dark') {
                 this.style_vals = {
@@ -3755,6 +3722,39 @@ Globals should be all caps
 
             this._inject_styles(notif_styles, media_queries);
         };
+
+        MixpanelLib._Notification.prototype._init_video = _.safewrap(function() {
+            if (!this.video_url) {
+                return;
+            }
+            var self = this;
+
+            var youtube_match = self.video_url.match(
+                    // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
+                    /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
+                ),
+                vimeo_match = self.video_url.match(
+                    /vimeo\.com\/.*?(\d+)/i
+                );
+            if (youtube_match) {
+                self.show_video = true;
+                self.youtube_video = youtube_match[1];
+                window['onYouTubeIframeAPIReady'] = function() {
+                    if (document.getElementById('mixpanel-notification-video')) {
+                        self._video_ready();
+                    }
+                };
+
+                // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
+                var tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                var firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            } else if (vimeo_match) {
+                self.show_video = true;
+                self.vimeo_video = vimeo_match[1];
+            }
+        });
 
         MixpanelLib._Notification.prototype._inject_styles = function(styles, media_queries) {
             var create_style_text = function(style_defs) {
