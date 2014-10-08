@@ -3118,7 +3118,7 @@ Globals should be all caps
                            document.getElementById('mixpanel-notification-mini-content');
             _.register_event(click_el, 'click', function(e) {
                 e.preventDefault();
-                if (self.youtube_video) {
+                if (self.show_video) {
                     self._switch_to_video();
                 } else {
                     self.dismiss();
@@ -3182,8 +3182,8 @@ Globals should be all caps
             this.notification_el.id = 'mixpanel-notification-wrapper';
             if (this.notif_type !== 'mini') {
                 // TAKEOVER notification
-                var close_html = (this.clickthrough || this.youtube_video) ? '' : '<div id="mixpanel-notification-button-close"></div>',
-                    play_html  = this.youtube_video ? '<div id="mixpanel-notification-button-play"></div>' : '';
+                var close_html = (this.clickthrough || this.show_video) ? '' : '<div id="mixpanel-notification-button-close"></div>',
+                    play_html  = this.show_video ? '<div id="mixpanel-notification-button-play"></div>' : '';
                 notification_html =
                     '<div id="mixpanel-notification" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
                         this.thumb_img_html +
@@ -3227,7 +3227,7 @@ Globals should be all caps
                         '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
                             ' src="//www.youtube.com/embed/' + this.youtube_video +
                                 '?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
-                            ' frameborder="0" allowfullscreen="1" scrolling="no"' +
+                            ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
                         '></iframe>' +
                         '<div id="mixpanel-notification-video-controls">' +
                             '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
@@ -3244,6 +3244,15 @@ Globals should be all caps
                                 '<img src="//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-large.png" width="57" height="57"/>' +
                             '</div>' +
                         '</div>' +
+                    '</div>';
+            } else if (this.vimeo_video) {
+                video_html =
+                    '<div id="mixpanel-notification-video" style="display:none;">' +
+                        '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
+                            ' src="//player.vimeo.com/video/' + this.vimeo_video +
+                                '?title=0&byline=0&portrait=0"' +
+                            ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
+                        '></iframe>' +
                     '</div>';
             }
             this.notification_el.innerHTML =
@@ -3265,26 +3274,30 @@ Globals should be all caps
             var self = this;
 
             var youtube_match = self.video_url.match(
-                // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
-                /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
-            );
+                    // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
+                    /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
+                ),
+                vimeo_match = self.video_url.match(
+                    /vimeo\.com\/.*?(\d+)/i
+                );
             if (youtube_match) {
+                self.show_video = true;
                 self.youtube_video = youtube_match[1];
-            } else {
-                // TODO vimeo
-                return;
-            }
-            window['onYouTubeIframeAPIReady'] = function() {
-                if (document.getElementById('mixpanel-notification-video')) {
-                    self._video_ready();
-                }
-            };
+                window['onYouTubeIframeAPIReady'] = function() {
+                    if (document.getElementById('mixpanel-notification-video')) {
+                        self._video_ready();
+                    }
+                };
 
-            // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
-            var tag = document.createElement('script');
-            tag.src = "https://www.youtube.com/iframe_api";
-            var firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
+                var tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                var firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            } else if (vimeo_match) {
+                self.show_video = true;
+                self.vimeo_video = vimeo_match[1];
+            }
         });
 
         MixpanelLib._Notification.prototype._init_styles = function() {
@@ -3366,7 +3379,9 @@ Globals should be all caps
                     '-khtml-opacity': '0.0'
                 },
                     '.mixpanel-notification-mini #mixpanel-notification-bg': {
-                        'display': 'none'
+                        'width': '0',
+                        'height': '0',
+                        'min-width': '0'
                     },
                 '#mixpanel-notification': {
                     'position': 'absolute',
@@ -3864,9 +3879,41 @@ Globals should be all caps
         };
 
         MixpanelLib._Notification.prototype._switch_to_video = _.safewrap(function() {
+            var self = this;
+
             var video_el = document.getElementById('mixpanel-notification-video');
             video_el.style.display = 'block';
-            this._get_notification_display_el().style.visibility = 'hidden';
+
+            var cur_bg_opacity = 0.5;
+            if (self.notif_type === 'mini') {
+                cur_bg_opacity = 0.0;
+                var bg = document.getElementById('mixpanel-notification-bg'),
+                    overlay = document.getElementById('mixpanel-notification-overlay');
+                bg.style.opacity = '0.0';
+                bg.style.width = '100%';
+                bg.style.height = '100%';
+                overlay.style.width = '100%';
+            }
+
+            self._animate_notification({
+                bg_opacity: {
+                    val:  cur_bg_opacity,
+                    goal: 0.5,
+                    incr: -0.02
+                },
+                notif_opacity: {
+                    val:  1.0,
+                    goal: 0.0,
+                    incr: -0.02
+                },
+                notif_top: {
+                    val:  MixpanelLib._Notification.NOTIF_TOP,
+                    goal: MixpanelLib._Notification.NOTIF_START_TOP + MixpanelLib._Notification.NOTIF_TOP,
+                    incr: 15
+                }
+            }, function() {
+                self._get_notification_display_el().style.visibility = 'hidden';
+            });
         });
 
         MixpanelLib._Notification.prototype._video_ready = _.safewrap(function() {
