@@ -3176,6 +3176,7 @@ Globals should be all caps
 
         MixpanelLib._Notification.prototype._init_notification_el = function() {
             var notification_html = '',
+                video_src         = '',
                 video_html        = '';
 
             this.notification_el = document.createElement('div');
@@ -3222,37 +3223,35 @@ Globals should be all caps
                     '</div>';
             }
             if (this.youtube_video) {
+                video_src = '//www.youtube.com/embed/' + this.youtube_video +
+                    '?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1';
                 video_html =
-                    '<div id="mixpanel-notification-video" style="display:none;">' +
-                        '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
-                            ' src="//www.youtube.com/embed/' + this.youtube_video +
-                                '?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1"' +
-                            ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
-                        '></iframe>' +
-                        '<div id="mixpanel-notification-video-controls">' +
-                            '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
-                                '<div id="mixpanel-notification-video-progress-total" class="mixpanel-notification-video-progress-el"></div>' +
-                                '<div id="mixpanel-notification-video-elapsed" class="mixpanel-notification-video-progress-el"></div>' +
-                            '</div>' +
-                            '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
+                    '<div id="mixpanel-notification-video-controls">' +
+                        '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
+                            '<div id="mixpanel-notification-video-progress-total" class="mixpanel-notification-video-progress-el"></div>' +
+                            '<div id="mixpanel-notification-video-elapsed" class="mixpanel-notification-video-progress-el"></div>' +
                         '</div>' +
-                        '<div id="mixpanel-notification-video-overlay">' +
-                            '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
-                                ' width="' + this.video_width + '" height="' + this.video_height + '"' +
-                            '/>' +
-                            '<div id="mixpanel-notification-video-play">' +
-                                '<img src="//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-large.png" width="57" height="57"/>' +
-                            '</div>' +
+                        '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
+                    '</div>' +
+                    '<div id="mixpanel-notification-video-overlay">' +
+                        '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
+                            ' width="' + this.video_width + '" height="' + this.video_height + '"' +
+                        '/>' +
+                        '<div id="mixpanel-notification-video-play">' +
+                            '<img src="//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-large.png" width="57" height="57"/>' +
                         '</div>' +
                     '</div>';
             } else if (this.vimeo_video) {
+                video_src = '//player.vimeo.com/video/' + this.vimeo_video + '?title=0&byline=0&portrait=0';
+            }
+            if (this.show_video) {
                 video_html =
                     '<div id="mixpanel-notification-video" style="display:none;">' +
                         '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
-                            ' src="//player.vimeo.com/video/' + this.vimeo_video +
-                                '?title=0&byline=0&portrait=0"' +
+                            ' src="' + video_src + '"' +
                             ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
                         '></iframe>' +
+                        video_html +
                     '</div>';
             }
             this.notification_el.innerHTML =
