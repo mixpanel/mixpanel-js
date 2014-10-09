@@ -2579,7 +2579,7 @@ Globals should be all caps
     };
 
     MixpanelLib.prototype._show_notification = function(notification_data) {
-        var notification = new MixpanelLib._Notification(notification_data, this);
+        var notification = new MPNotif(notification_data, this);
         notification.show();
     };
 
@@ -2983,8 +2983,8 @@ Globals should be all caps
         this.thumb_image_url = _.escapeHTML(notif_data['thumb_image_url']) || null;
         this.title           = _.escapeHTML(notif_data['title']) || '';
         this.video_url       = _.escapeHTML(notif_data['video_url']) || null;
-        this.video_width     = MixpanelLib._Notification.VIDEO_WIDTH;
-        this.video_height    = MixpanelLib._Notification.VIDEO_HEIGHT;
+        this.video_width     = MPNotif.VIDEO_WIDTH;
+        this.video_height    = MPNotif.VIDEO_HEIGHT;
 
         this.clickthrough = true;
         if (!this.dest_url) {
@@ -2995,23 +2995,25 @@ Globals should be all caps
         if (this.notif_type !== 'mini') {
             this.notif_type = 'takeover';
         }
-        this.notif_width = this.notif_type !== 'mini' ? MixpanelLib._Notification.NOTIF_WIDTH : MixpanelLib._Notification.NOTIF_WIDTH_MINI;
+        this.notif_width = this.notif_type !== 'mini' ? MPNotif.NOTIF_WIDTH : MPNotif.NOTIF_WIDTH_MINI;
         this.imgs_to_preload = this._init_image_html();
         this._init_video();
     };
 
-        MixpanelLib._Notification.NOTIF_TOP         = 25;
-        MixpanelLib._Notification.NOTIF_START_TOP   = 150;
-        MixpanelLib._Notification.NOTIF_WIDTH       = 388;
-        MixpanelLib._Notification.NOTIF_WIDTH_MINI  = 420;
-        MixpanelLib._Notification.NOTIF_HEIGHT_MINI = 85;
-        MixpanelLib._Notification.THUMB_BORDER_SIZE = 5;
-        MixpanelLib._Notification.THUMB_IMG_SIZE    = 60;
-        MixpanelLib._Notification.THUMB_OFFSET      = Math.round(MixpanelLib._Notification.THUMB_IMG_SIZE / 2);
-        MixpanelLib._Notification.VIDEO_WIDTH       = 595;
-        MixpanelLib._Notification.VIDEO_HEIGHT      = 334;
+    var MPNotif = MixpanelLib._Notification;
 
-        MixpanelLib._Notification.prototype.show = function() {
+        MPNotif.NOTIF_TOP         = 25;
+        MPNotif.NOTIF_START_TOP   = 150;
+        MPNotif.NOTIF_WIDTH       = 388;
+        MPNotif.NOTIF_WIDTH_MINI  = 420;
+        MPNotif.NOTIF_HEIGHT_MINI = 85;
+        MPNotif.THUMB_BORDER_SIZE = 5;
+        MPNotif.THUMB_IMG_SIZE    = 60;
+        MPNotif.THUMB_OFFSET      = Math.round(MPNotif.THUMB_IMG_SIZE / 2);
+        MPNotif.VIDEO_WIDTH       = 595;
+        MPNotif.VIDEO_HEIGHT      = 334;
+
+        MPNotif.prototype.show = function() {
             var self = this;
             this._set_client_config();
 
@@ -3028,7 +3030,7 @@ Globals should be all caps
             this._preload_images(this._attach_and_animate);
         };
 
-        MixpanelLib._Notification.prototype.dismiss = _.safewrap(function() {
+        MPNotif.prototype.dismiss = _.safewrap(function() {
             this._animate_notification({
                 bg_opacity: {
                     val:  0.5,
@@ -3041,14 +3043,14 @@ Globals should be all caps
                     incr: -0.02
                 },
                 notif_top: {
-                    val:  MixpanelLib._Notification.NOTIF_TOP,
-                    goal: MixpanelLib._Notification.NOTIF_START_TOP + MixpanelLib._Notification.NOTIF_TOP,
+                    val:  MPNotif.NOTIF_TOP,
+                    goal: MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP,
                     incr: 15
                 }
             }, this._remove_notification_el);
         });
 
-        MixpanelLib._Notification.prototype._animate_notification = _.safewrap(function(anim_props, done_cb) {
+        MPNotif.prototype._animate_notification = _.safewrap(function(anim_props, done_cb) {
             var self = this,
                 in_progress = false;
             for (var prop in anim_props) {
@@ -3091,7 +3093,7 @@ Globals should be all caps
             setTimeout(function() { self._animate_notification(anim_props, done_cb) }, 1);
         });
 
-        MixpanelLib._Notification.prototype._attach_and_animate = _.safewrap(function() {
+        MPNotif.prototype._attach_and_animate = _.safewrap(function() {
             var self = this;
 
             // no possibility to double-display
@@ -3117,8 +3119,8 @@ Globals should be all caps
                         incr: 0.02
                     },
                     notif_top: {
-                        val:  MixpanelLib._Notification.NOTIF_START_TOP + MixpanelLib._Notification.NOTIF_TOP,
-                        goal: MixpanelLib._Notification.NOTIF_TOP,
+                        val:  MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP,
+                        goal: MPNotif.NOTIF_TOP,
                         incr: -25
                     }
                 }, self._mark_as_shown);
@@ -3144,19 +3146,19 @@ Globals should be all caps
             });
         });
 
-        MixpanelLib._Notification.prototype._get_notification_display_el = function() {
+        MPNotif.prototype._get_notification_display_el = function() {
             return document.getElementById('mixpanel-notification') || document.getElementById('mixpanel-notification-mini');
         };
 
-        MixpanelLib._Notification.prototype._get_shown_campaigns = function() {
+        MPNotif.prototype._get_shown_campaigns = function() {
             return this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = {});
         };
 
-        MixpanelLib._Notification.prototype._ie_lte = function(version) {
+        MPNotif.prototype._ie_lte = function(version) {
             return this.ie_ver && this.ie_ver <= version;
         };
 
-        MixpanelLib._Notification.prototype._init_image_html = function() {
+        MPNotif.prototype._init_image_html = function() {
             imgs_to_preload = [];
 
             if (this.notif_type !== 'mini') {
@@ -3172,8 +3174,8 @@ Globals should be all caps
                         '<div id="mixpanel-notification-thumbborder-wrapper"><div id="mixpanel-notification-thumbborder"></div></div>' +
                         '<img id="mixpanel-notification-thumbnail"' +
                             ' src="' + this.thumb_image_url + '"' +
-                            ' width="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
-                            ' height="' + MixpanelLib._Notification.THUMB_IMG_SIZE + '"' +
+                            ' width="' + MPNotif.THUMB_IMG_SIZE + '"' +
+                            ' height="' + MPNotif.THUMB_IMG_SIZE + '"' +
                         '/>' +
                         '<div id="mixpanel-notification-thumbspacer"></div>';
                 } else {
@@ -3187,7 +3189,7 @@ Globals should be all caps
             return imgs_to_preload;
         };
 
-        MixpanelLib._Notification.prototype._init_notification_el = function() {
+        MPNotif.prototype._init_notification_el = function() {
             var notification_html = '',
                 video_src         = '',
                 video_html        = '',
@@ -3202,7 +3204,7 @@ Globals should be all caps
                 var close_html  = (this.clickthrough || this.show_video) ? '' : '<div id="mixpanel-notification-button-close"></div>',
                     play_html   = this.show_video ? '<div id="mixpanel-notification-button-play"></div>' : '';
                 notification_html =
-                    '<div id="mixpanel-notification" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
+                    '<div id="mixpanel-notification" style="opacity:0.0;top:' + MPNotif.NOTIF_START_TOP + 'px;">' +
                         this.thumb_img_html +
                         '<div id="mixpanel-notification-mainbox">' +
                             cancel_html +
@@ -3224,7 +3226,7 @@ Globals should be all caps
             } else {
                 // MINI notification
                 notification_html =
-                    '<div id="mixpanel-notification-mini" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
+                    '<div id="mixpanel-notification-mini" style="opacity:0.0;top:' + MPNotif.NOTIF_START_TOP + 'px;">' +
                         '<div id="mixpanel-notification-mainbox">' +
                             cancel_html +
                             '<div id="mixpanel-notification-mini-content">' +
@@ -3284,7 +3286,7 @@ Globals should be all caps
                 '</div>';
         };
 
-        MixpanelLib._Notification.prototype._init_styles = function() {
+        MPNotif.prototype._init_styles = function() {
             if (this.style === 'dark') {
                 this.style_vals = {
                     bg:             '#1d1f25',
@@ -3311,11 +3313,11 @@ Globals should be all caps
                 };
             }
             var shadow = '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
-                thumb_total_size = MixpanelLib._Notification.THUMB_IMG_SIZE + MixpanelLib._Notification.THUMB_BORDER_SIZE * 2;
+                thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2;
 
             // don't display on small viewports
             var media_queries = {},
-                min_width = MixpanelLib._Notification.NOTIF_WIDTH_MINI + 20;
+                min_width = MPNotif.NOTIF_WIDTH_MINI + 20;
             media_queries['@media only screen and (max-width: ' + (min_width - 1) + 'px)'] = {
                 '#mixpanel-notification-overlay': {
                     'display': 'none'
@@ -3391,8 +3393,8 @@ Globals should be all caps
                 '#mixpanel-notification': {
                     'position': 'absolute',
                     'left': '50%',
-                    'width': MixpanelLib._Notification.NOTIF_WIDTH + 'px',
-                    'margin-left': Math.round(-MixpanelLib._Notification.NOTIF_WIDTH / 2) + 'px',
+                    'width': MPNotif.NOTIF_WIDTH + 'px',
+                    'margin-left': Math.round(-MPNotif.NOTIF_WIDTH / 2) + 'px',
                     'backface-visibility': 'hidden',
                     '-webkit-transform': 'rotateY(0deg)',
                        '-moz-transform': 'rotateY(0deg)',
@@ -3404,7 +3406,7 @@ Globals should be all caps
                     'position': 'absolute',
                     'right': '20px',
                     'width': this.notif_width + 'px',
-                    'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                    'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                     'margin-top': '20px',
                     'backface-visibility': 'hidden',
                     '-webkit-transform': 'rotateY(0deg)',
@@ -3414,12 +3416,12 @@ Globals should be all caps
                             'transform': 'rotateY(0deg)'
                 },
                 '#mixpanel-notification-thumbspacer': {
-                    'height': MixpanelLib._Notification.THUMB_OFFSET + 'px'
+                    'height': MPNotif.THUMB_OFFSET + 'px'
                 },
                 '#mixpanel-notification-thumbborder-wrapper': {
                     'position': 'absolute',
-                    'top': (-MixpanelLib._Notification.THUMB_BORDER_SIZE) + 'px',
-                    'left': (MixpanelLib._Notification.NOTIF_WIDTH / 2 - MixpanelLib._Notification.THUMB_OFFSET - MixpanelLib._Notification.THUMB_BORDER_SIZE) + 'px',
+                    'top': (-MPNotif.THUMB_BORDER_SIZE) + 'px',
+                    'left': (MPNotif.NOTIF_WIDTH / 2 - MPNotif.THUMB_OFFSET - MPNotif.THUMB_BORDER_SIZE) + 'px',
                     'width': thumb_total_size + 'px',
                     'height': (thumb_total_size / 2) + 'px',
                     'overflow': 'hidden'
@@ -3439,14 +3441,14 @@ Globals should be all caps
                 '#mixpanel-notification-thumbnail': {
                     'position': 'absolute',
                     'top': '0px',
-                    'left': (MixpanelLib._Notification.NOTIF_WIDTH / 2 - MixpanelLib._Notification.THUMB_OFFSET) + 'px',
-                    'width': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
-                    'height': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
+                    'left': (MPNotif.NOTIF_WIDTH / 2 - MPNotif.THUMB_OFFSET) + 'px',
+                    'width': MPNotif.THUMB_IMG_SIZE + 'px',
+                    'height': MPNotif.THUMB_IMG_SIZE + 'px',
                     'overflow': 'hidden',
                     'z-index': '100',
-                    '-webkit-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
-                       '-moz-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
-                            'border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px'
+                    '-webkit-border-radius': MPNotif.THUMB_IMG_SIZE + 'px',
+                       '-moz-border-radius': MPNotif.THUMB_IMG_SIZE + 'px',
+                            'border-radius': MPNotif.THUMB_IMG_SIZE + 'px'
                 },
                 '#mixpanel-notification-mainbox': {
                     '-webkit-border-radius': '4px',
@@ -3461,7 +3463,7 @@ Globals should be all caps
                     'color': this.style_vals.text_main
                 },
                     '#mixpanel-notification-mini #mixpanel-notification-mainbox': {
-                        'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                        'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                         'border': '3px solid rgba(128, 128, 128, 0.3)',
                         '-webkit-border-radius': '6px',
                            '-moz-border-radius': '6px',
@@ -3471,7 +3473,7 @@ Globals should be all caps
                     'position': 'relative',
                     'display': 'inline-block',
                     'width': '75px',
-                    'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                    'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                     '-webkit-border-radius': '6px 0 0 6px',
                        '-moz-border-radius': '6px 0 0 6px',
                             'border-radius': '6px 0 0 6px',
@@ -3490,7 +3492,7 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-mini-content': {
                     'text-align': 'left',
-                    'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                    'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                     'cursor': 'pointer'
                 },
                 '#mixpanel-notification-img': {
@@ -3523,14 +3525,14 @@ Globals should be all caps
                         'display': 'inline-block',
                         'max-width': '250px',
                         'margin': '0 0 0 30px',
-                        'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
+                        'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                         'font-size': '16px',
                         'letter-spacing': '0.8px',
                         'color': this.style_vals.text_title
                     },
                     '#mixpanel-notification-mini #mixpanel-notification-body-text': {
                         'display': 'table',
-                        'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px'
+                        'height': MPNotif.NOTIF_HEIGHT_MINI + 'px'
                     },
                     '#mixpanel-notification-mini #mixpanel-notification-body-text div': {
                         'display': 'table-cell',
@@ -3638,7 +3640,7 @@ Globals should be all caps
                     'position': 'absolute',
                     'width': (this.video_width - 1) + 'px',
                     'height': this.video_height + 'px',
-                    'top': MixpanelLib._Notification.NOTIF_TOP,
+                    'top': MPNotif.NOTIF_TOP,
                     'margin-top': '25px',
                     'left': '50%',
                     'margin-left': (-this.video_width / 2) + 'px',
@@ -3763,7 +3765,7 @@ Globals should be all caps
             this._inject_styles(notif_styles, media_queries);
         };
 
-        MixpanelLib._Notification.prototype._init_video = _.safewrap(function() {
+        MPNotif.prototype._init_video = _.safewrap(function() {
             if (!this.video_url) {
                 return;
             }
@@ -3796,7 +3798,7 @@ Globals should be all caps
             }
         });
 
-        MixpanelLib._Notification.prototype._inject_styles = function(styles, media_queries) {
+        MPNotif.prototype._inject_styles = function(styles, media_queries) {
             var create_style_text = function(style_defs) {
                 var st = '';
                 for (var selector in style_defs) {
@@ -3829,7 +3831,7 @@ Globals should be all caps
             }
         };
 
-        MixpanelLib._Notification.prototype._mark_as_shown = function() {
+        MPNotif.prototype._mark_as_shown = function() {
             var get_style = function(el, style_name) {
                 var styles = {};
                 if (document.defaultView && document.defaultView.getComputedStyle) {
@@ -3874,7 +3876,7 @@ Globals should be all caps
             });
         };
 
-        MixpanelLib._Notification.prototype._preload_images = function(all_loaded_cb) {
+        MPNotif.prototype._preload_images = function(all_loaded_cb) {
             var self = this;
             if (this.imgs_to_preload.length === 0) {
                 all_loaded_cb();
@@ -3917,13 +3919,13 @@ Globals should be all caps
             }
         };
 
-        MixpanelLib._Notification.prototype._remove_notification_el = _.safewrap(function() {
+        MPNotif.prototype._remove_notification_el = _.safewrap(function() {
             window.clearInterval(this._video_progress_checker);
             this.notification_el.style.visibility = 'hidden';
             this.body_el.removeChild(this.notification_el);
         });
 
-        MixpanelLib._Notification.prototype._set_client_config = function() {
+        MPNotif.prototype._set_client_config = function() {
             this.ie_ver = /MSIE (\d+).+/.exec(navigator.userAgent);
             this.ie_ver = this.ie_ver && this.ie_ver[1];
 
@@ -3942,7 +3944,7 @@ Globals should be all caps
             }
         };
 
-        MixpanelLib._Notification.prototype._switch_to_video = _.safewrap(function() {
+        MPNotif.prototype._switch_to_video = _.safewrap(function() {
             document.getElementById('mixpanel-notification-flipper').className += ' mixpanel-notification-flipped';
 
             if (this.notif_type === 'mini') {
@@ -3963,7 +3965,7 @@ Globals should be all caps
             }
         });
 
-        MixpanelLib._Notification.prototype._video_ready = _.safewrap(function() {
+        MPNotif.prototype._video_ready = _.safewrap(function() {
             var self = this;
             if (self.video_inited) {
                 return;
