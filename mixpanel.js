@@ -3604,7 +3604,7 @@ Globals should be all caps
                     'vertical-align': 'top',
                     'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.style + '.png)',
                     'background-repeat': 'no-repeat',
-                    'background-position-y': '25px'
+                    'background-position': '0px 25px'
                 },
                 '#mixpanel-notification-button-play': {
                     'display': 'inline-block',
@@ -3613,7 +3613,7 @@ Globals should be all caps
                     'margin-left': '15px',
                     'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-small.png)',
                     'background-repeat': 'no-repeat',
-                    'background-position-y': '15px'
+                    'background-position': '0px 15px'
                 },
                 'a#mixpanel-notification-button-link': {
                     'display': 'inline-block',
