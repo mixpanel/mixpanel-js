@@ -3073,12 +3073,15 @@ Globals should be all caps
                 bg.style.opacity = String(anim_props.bg_opacity.val);
             }
 
-            var notification = self._get_notification_display_el();
+            var notification = self._get_notification_display_el(),
+                video = document.getElementById('mixpanel-notification-video');
             if (anim_props.notif_opacity) {
                 notification.style.opacity = String(anim_props.notif_opacity.val);
+                video.style.opacity = String(anim_props.notif_opacity.val);
             }
             if (anim_props.notif_top) {
                 notification.style.top = String(anim_props.notif_top.val) + 'px';
+                video.style.top = String(anim_props.notif_top.val) + 'px';
             }
 
             setTimeout(function() { self._animate_notification(anim_props, done_cb) }, 1);
@@ -3609,7 +3612,8 @@ Globals should be all caps
                     'position': 'absolute',
                     'width': (this.video_width - 1) + 'px',
                     'height': this.video_height + 'px',
-                    'top': '50px',
+                    'top': MixpanelLib._Notification.NOTIF_TOP,
+                    'margin-top': '25px',
                     'left': '50%',
                     'margin-left': (-this.video_width / 2) + 'px',
                     'overflow': 'hidden',
