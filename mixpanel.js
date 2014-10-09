@@ -3186,19 +3186,22 @@ Globals should be all caps
         MixpanelLib._Notification.prototype._init_notification_el = function() {
             var notification_html = '',
                 video_src         = '',
-                video_html        = '';
+                video_html        = '',
+                cancel_html       =  '<div id="mixpanel-notification-cancel">' +
+                                         '<div id="mixpanel-notification-cancel-icon"></div>' +
+                                     '</div>';
 
             this.notification_el = document.createElement('div');
             this.notification_el.id = 'mixpanel-notification-wrapper';
             if (this.notif_type !== 'mini') {
                 // TAKEOVER notification
-                var close_html = (this.clickthrough || this.show_video) ? '' : '<div id="mixpanel-notification-button-close"></div>',
-                    play_html  = this.show_video ? '<div id="mixpanel-notification-button-play"></div>' : '';
+                var close_html  = (this.clickthrough || this.show_video) ? '' : '<div id="mixpanel-notification-button-close"></div>',
+                    play_html   = this.show_video ? '<div id="mixpanel-notification-button-play"></div>' : '';
                 notification_html =
                     '<div id="mixpanel-notification" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
                         this.thumb_img_html +
                         '<div id="mixpanel-notification-mainbox">' +
-                            '<div id="mixpanel-notification-cancel"></div>' +
+                            cancel_html +
                             '<div id="mixpanel-notification-content">' +
                                 this.img_html +
                                 '<div id="mixpanel-notification-title">' + this.title + '</div>' +
@@ -3219,7 +3222,7 @@ Globals should be all caps
                 notification_html =
                     '<div id="mixpanel-notification-mini" style="opacity:0.0;top:' + MixpanelLib._Notification.NOTIF_START_TOP + 'px;">' +
                         '<div id="mixpanel-notification-mainbox">' +
-                            '<div id="mixpanel-notification-cancel"></div>' +
+                            cancel_html +
                             '<div id="mixpanel-notification-mini-content">' +
                                 '<div id="mixpanel-notification-mini-icon">' +
                                     '<div id="mixpanel-notification-mini-icon-img"></div>' +
@@ -3536,20 +3539,22 @@ Globals should be all caps
                     'float': 'right',
                     'width': '8px',
                     'height': '8px',
+                    'padding': '5px',
+                    'margin': '12px 12px 0 0',
+                    'cursor': 'pointer'
+                },
+                    '#mixpanel-notification-mini #mixpanel-notification-cancel': {
+                        'margin': '7px 10px 0 0'
+                    },
+                '#mixpanel-notification-cancel-icon': {
+                    'width': '8px',
+                    'height': '8px',
                     'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/cancel-x.png)',
-                    'margin': '17px 17px 0 0',
-                    'font-size': '12px',
-                    'font-weight': 'bold',
-                    'color': '#bac5ce',
-                    'cursor': 'pointer',
                     'opacity':        this.style_vals.cancel_opacity,
                     '-moz-opacity':   this.style_vals.cancel_opacity,
                     '-khtml-opacity': this.style_vals.cancel_opacity
                 },
-                    '#mixpanel-notification-mini #mixpanel-notification-cancel': {
-                        'margin': '12px 15px 0 0'
-                    },
-                '#mixpanel-notification-cancel:hover': {
+                '#mixpanel-notification-cancel:hover #mixpanel-notification-cancel-icon': {
                     'background-position': 'center 8px'
                 },
                 '#mixpanel-notification-button': {
