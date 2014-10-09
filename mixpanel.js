@@ -3374,7 +3374,7 @@ Globals should be all caps
                 '#mixpanel-notification-flipper': {
                     'position': 'relative',
                     'transform-style': 'preserve-3d',
-                    'transition': '0.3s'
+                    'transition': 'transform 0.3s'
                 },
                 '#mixpanel-notification': {
                     'position': 'absolute',
