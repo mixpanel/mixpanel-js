@@ -3323,7 +3323,11 @@ Globals should be all caps
             };
             var notif_styles = {
                 '.mixpanel-notification-flipped': {
-                    'transform': 'rotateY(180deg)'
+                    '-webkit-transform': 'rotateY(180deg)',
+                       '-moz-transform': 'rotateY(180deg)',
+                        '-ms-transform': 'rotateY(180deg)',
+                         '-o-transform': 'rotateY(180deg)',
+                            'transform': 'rotateY(180deg)'
                 },
                 '#mixpanel-notification-overlay': {
                     'position': 'fixed',
@@ -3378,7 +3382,11 @@ Globals should be all caps
                 '#mixpanel-notification-flipper': {
                     'position': 'relative',
                     'transform-style': 'preserve-3d',
-                    'transition': 'transform 0.3s'
+                    '-webkit-transition': 'transform 0.3s',
+                       '-moz-transition': 'transform 0.3s',
+                        '-ms-transition': 'transform 0.3s',
+                         '-o-transition': 'transform 0.3s',
+                            'transition': 'transform 0.3s'
                 },
                 '#mixpanel-notification': {
                     'position': 'absolute',
@@ -3386,7 +3394,11 @@ Globals should be all caps
                     'width': MixpanelLib._Notification.NOTIF_WIDTH + 'px',
                     'margin-left': Math.round(-MixpanelLib._Notification.NOTIF_WIDTH / 2) + 'px',
                     'backface-visibility': 'hidden',
-                    'transform': 'rotateY(0deg)'
+                    '-webkit-transform': 'rotateY(0deg)',
+                       '-moz-transform': 'rotateY(0deg)',
+                        '-ms-transform': 'rotateY(0deg)',
+                         '-o-transform': 'rotateY(0deg)',
+                            'transform': 'rotateY(0deg)'
                 },
                 '#mixpanel-notification-mini': {
                     'position': 'absolute',
@@ -3395,7 +3407,11 @@ Globals should be all caps
                     'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
                     'margin-top': '20px',
                     'backface-visibility': 'hidden',
-                    'transform': 'rotateY(0deg)'
+                    '-webkit-transform': 'rotateY(0deg)',
+                       '-moz-transform': 'rotateY(0deg)',
+                        '-ms-transform': 'rotateY(0deg)',
+                         '-o-transform': 'rotateY(0deg)',
+                            'transform': 'rotateY(0deg)'
                 },
                 '#mixpanel-notification-thumbspacer': {
                     'height': MixpanelLib._Notification.THUMB_OFFSET + 'px'
@@ -3413,8 +3429,8 @@ Globals should be all caps
                     'width': thumb_total_size + 'px',
                     'height': thumb_total_size + 'px',
                     '-webkit-border-radius': thumb_total_size + 'px',
-                    '-moz-border-radius':    thumb_total_size + 'px',
-                    'border-radius':         thumb_total_size + 'px',
+                       '-moz-border-radius': thumb_total_size + 'px',
+                            'border-radius': thumb_total_size + 'px',
                     'background-color': this.style_vals.bg_actions,
                     '-moz-opacity':   '0.5',
                     '-khtml-opacity': '0.5',
@@ -3429,16 +3445,16 @@ Globals should be all caps
                     'overflow': 'hidden',
                     'z-index': '100',
                     '-webkit-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
-                    '-moz-border-radius':    MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
-                    'border-radius':         MixpanelLib._Notification.THUMB_IMG_SIZE + 'px'
+                       '-moz-border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px',
+                            'border-radius': MixpanelLib._Notification.THUMB_IMG_SIZE + 'px'
                 },
                 '#mixpanel-notification-mainbox': {
                     '-webkit-border-radius': '4px',
-                    '-moz-border-radius':    '4px',
-                    'border-radius':         '4px',
+                       '-moz-border-radius': '4px',
+                            'border-radius': '4px',
                     '-webkit-box-shadow': shadow,
-                    '-moz-box-shadow':    shadow,
-                    'box-shadow':         shadow,
+                       '-moz-box-shadow': shadow,
+                            'box-shadow': shadow,
                     'text-align': this.image_url ? 'center' : 'left',
                     'background-color': this.style_vals.bg,
                     'font-size': '14px',
@@ -3448,8 +3464,8 @@ Globals should be all caps
                         'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
                         'border': '3px solid rgba(128, 128, 128, 0.3)',
                         '-webkit-border-radius': '6px',
-                        '-moz-border-radius':    '6px',
-                        'border-radius':         '6px'
+                           '-moz-border-radius': '6px',
+                                'border-radius': '6px'
                     },
                 '#mixpanel-notification-mini-icon': {
                     'position': 'relative',
@@ -3457,8 +3473,8 @@ Globals should be all caps
                     'width': '75px',
                     'height': MixpanelLib._Notification.NOTIF_HEIGHT_MINI + 'px',
                     '-webkit-border-radius': '6px 0 0 6px',
-                    '-moz-border-radius':    '6px 0 0 6px',
-                    'border-radius':         '6px 0 0 6px',
+                       '-moz-border-radius': '6px 0 0 6px',
+                            'border-radius': '6px 0 0 6px',
                     'background-color': this.style_vals.bg_actions
                 },
                 '#mixpanel-notification-mini-icon-img': {
@@ -3481,8 +3497,8 @@ Globals should be all caps
                     'width': '328px',
                     'margin-top': '60px',
                     '-webkit-border-radius': '5px',
-                    '-moz-border-radius':    '5px',
-                    'border-radius':         '5px'
+                       '-moz-border-radius': '5px',
+                            'border-radius': '5px'
                 },
                 '#mixpanel-notification-title': {
                     'max-height': '600px',
@@ -3531,10 +3547,10 @@ Globals should be all caps
                 '#mixpanel-notification-tagline a': {
                     'color': this.style_vals.text_tagline,
                     '-webkit-transition': 'color 0.2s',
-                    '-moz-transition':    'color 0.2s',
-                    '-ms-transition':     'color 0.2s',
-                    '-o-transition':      'color 0.2s',
-                    'transition':         'color 0.2s'
+                       '-moz-transition': 'color 0.2s',
+                        '-ms-transition': 'color 0.2s',
+                         '-o-transition': 'color 0.2s',
+                            'transition': 'color 0.2s'
                 },
                 '#mixpanel-notification-tagline a:hover': {
                     'color': this.style_vals.text_hover
@@ -3554,9 +3570,9 @@ Globals should be all caps
                     'width': '8px',
                     'height': '8px',
                     'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/cancel-x.png)',
-                    'opacity':        this.style_vals.cancel_opacity,
-                    '-moz-opacity':   this.style_vals.cancel_opacity,
-                    '-khtml-opacity': this.style_vals.cancel_opacity
+                    '-khtml-opacity': this.style_vals.cancel_opacity,
+                      '-moz-opacity': this.style_vals.cancel_opacity,
+                           'opacity': this.style_vals.cancel_opacity
                 },
                 '#mixpanel-notification-cancel:hover #mixpanel-notification-cancel-icon': {
                     'background-position': 'center 8px'
@@ -3568,15 +3584,15 @@ Globals should be all caps
                     'text-align': 'center',
                     'background-color': this.style_vals.bg_actions,
                     '-webkit-border-radius': '0 0 4px 4px',
-                    '-moz-border-radius':    '0 0 4px 4px',
-                    'border-radius':         '0 0 4px 4px',
+                       '-moz-border-radius': '0 0 4px 4px',
+                            'border-radius': '0 0 4px 4px',
                     'overflow': 'hidden',
                     'cursor': 'pointer',
                     '-webkit-transition': 'background-color 0.2s',
-                    '-moz-transition':    'background-color 0.2s',
-                    '-ms-transition':     'background-color 0.2s',
-                    '-o-transition':      'background-color 0.2s',
-                    'transition':         'background-color 0.2s'
+                       '-moz-transition': 'background-color 0.2s',
+                        '-ms-transition': 'background-color 0.2s',
+                         '-o-transition': 'background-color 0.2s',
+                            'transition': 'background-color 0.2s'
                 },
                 '#mixpanel-notification-button-close': {
                     'display': 'inline-block',
@@ -3606,10 +3622,10 @@ Globals should be all caps
                     'word-wrap': 'break-word',
                     'color': this.style_vals.text_title,
                     '-webkit-transition': 'color 0.2s',
-                    '-moz-transition':    'color 0.2s',
-                    '-ms-transition':     'color 0.2s',
-                    '-o-transition':      'color 0.2s',
-                    'transition':         'color 0.2s'
+                       '-moz-transition': 'color 0.2s',
+                        '-ms-transition': 'color 0.2s',
+                         '-o-transition': 'color 0.2s',
+                            'transition': 'color 0.2s'
                 },
                 '#mixpanel-notification-button:hover': {
                     'background-color': this.style_vals.bg_hover,
@@ -3628,13 +3644,17 @@ Globals should be all caps
                     'margin-left': (-this.video_width / 2) + 'px',
                     'overflow': 'hidden',
                     '-webkit-border-radius': '5px',
-                    '-moz-border-radius':    '5px',
-                    'border-radius':         '5px',
+                       '-moz-border-radius': '5px',
+                            'border-radius': '5px',
                     '-webkit-box-shadow': shadow,
-                    '-moz-box-shadow':    shadow,
-                    'box-shadow':         shadow,
+                       '-moz-box-shadow': shadow,
+                            'box-shadow': shadow,
                     'backface-visibility': 'hidden',
-                    'transform': 'rotateY(180deg)'
+                    '-webkit-transform': 'rotateY(180deg)',
+                       '-moz-transform': 'rotateY(180deg)',
+                        '-ms-transform': 'rotateY(180deg)',
+                         '-o-transform': 'rotateY(180deg)',
+                            'transform': 'rotateY(180deg)'
                 },
                 '#mixpanel-notification-video-frame': {
                     'margin-left': '-1px'
@@ -3647,8 +3667,8 @@ Globals should be all caps
                     'height': this.video_height + 'px',
                     'cursor': 'pointer',
                     '-webkit-border-radius': '5px',
-                    '-moz-border-radius':    '5px',
-                    'border-radius':         '5px',
+                       '-moz-border-radius': '5px',
+                            'border-radius': '5px',
                     'overflow': 'hidden'
                 },
                 '#mixpanel-notification-video-play': {
@@ -3658,42 +3678,42 @@ Globals should be all caps
                     'margin-left': '-29px',
                     'width': '57px',
                     'height': '57px',
-                    'opacity':        '0.8',
-                    '-moz-opacity':   '0.8',
                     '-khtml-opacity': '0.8',
+                      '-moz-opacity': '0.8',
+                           'opacity': '0.8',
                     '-webkit-transition': 'opacity 0.5s',
-                    '-moz-transition':    'opacity 0.5s',
-                    '-ms-transition':     'opacity 0.5s',
-                    '-o-transition':      'opacity 0.5s',
-                    'transition':         'opacity 0.5s'
+                       '-moz-transition': 'opacity 0.5s',
+                        '-ms-transition': 'opacity 0.5s',
+                         '-o-transition': 'opacity 0.5s',
+                            'transition': 'opacity 0.5s'
                 },
                 '#mixpanel-notification-video-overlay:hover #mixpanel-notification-video-play': {
-                    'opacity':        '1.0',
-                    '-moz-opacity':   '1.0',
-                    '-khtml-opacity': '1.0'
+                    '-khtml-opacity': '1.0',
+                      '-moz-opacity': '1.0',
+                           'opacity': '1.0'
                 },
                 '#mixpanel-notification-video-controls': {
-                    'opacity':        '0',
-                    '-moz-opacity':   '0',
                     '-khtml-opacity': '0',
+                      '-moz-opacity': '0',
+                           'opacity': '0',
                     '-webkit-transition': 'opacity 0.5s',
-                    '-moz-transition':    'opacity 0.5s',
-                    '-ms-transition':     'opacity 0.5s',
-                    '-o-transition':      'opacity 0.5s',
-                    'transition':         'opacity 0.5s'
+                       '-moz-transition': 'opacity 0.5s',
+                        '-ms-transition': 'opacity 0.5s',
+                         '-o-transition': 'opacity 0.5s',
+                            'transition': 'opacity 0.5s'
                 },
                 '#mixpanel-notification-video:hover #mixpanel-notification-video-controls': {
-                    'opacity':        '1.0',
-                    '-moz-opacity':   '1.0',
-                    '-khtml-opacity': '1.0'
+                    '-khtml-opacity': '1.0',
+                      '-moz-opacity': '1.0',
+                           'opacity': '1.0'
                 },
                 '#mixpanel-notification-video .mixpanel-notification-video-progress-el': {
                     'position': 'absolute',
                     'bottom': '0',
                     'height': '25px',
                     '-webkit-border-radius': '0 0 0 5px',
-                    '-moz-border-radius':    '0 0 0 5px',
-                    'border-radius':         '0 0 0 5px'
+                       '-moz-border-radius': '0 0 0 5px',
+                            'border-radius': '0 0 0 5px'
                 },
                 '#mixpanel-notification-video-progress': {
                     'width': '90%'
@@ -3701,16 +3721,16 @@ Globals should be all caps
                 '#mixpanel-notification-video-progress-total': {
                     'width': '100%',
                     'background-color': this.style_vals.bg,
-                    'opacity':        '0.7',
-                    '-moz-opacity':   '0.7',
-                    '-khtml-opacity': '0.7'
+                    '-khtml-opacity': '0.7',
+                      '-moz-opacity': '0.7',
+                           'opacity': '0.7'
                 },
                 '#mixpanel-notification-video-elapsed': {
                     'width': '0',
                     'background-color': '#6cb6f5',
-                    'opacity':        '0.9',
-                    '-moz-opacity':   '0.9',
-                    '-khtml-opacity': '0.9'
+                    '-khtml-opacity': '0.9',
+                      '-moz-opacity': '0.9',
+                           'opacity': '0.9'
                 },
                 '#mixpanel-notification-video #mixpanel-notification-video-time': {
                     'width': '10%',
@@ -3720,8 +3740,8 @@ Globals should be all caps
                     'color': this.style_vals.text_main,
                     'background-color': '#666',
                     '-webkit-border-radius': '0 0 5px 0',
-                    '-moz-border-radius':    '0 0 5px 0',
-                    'border-radius':         '0 0 5px 0'
+                       '-moz-border-radius': '0 0 5px 0',
+                            'border-radius': '0 0 5px 0'
                 }
             };
 
