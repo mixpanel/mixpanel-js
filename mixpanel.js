@@ -3649,7 +3649,7 @@ Globals should be all caps
                 '#mixpanel-notification-video-play': {
                     'position': 'absolute',
                     'top': (this.video_height / 2 - 29) + 'px',
-                    'left': '50%',
+                    'left': Math.round(this.video_width / 2) + 'px',
                     'margin-left': '-29px',
                     'width': '57px',
                     'height': '57px',
