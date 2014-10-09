@@ -3115,7 +3115,7 @@ Globals should be all caps
                     notif_top: {
                         val:  MixpanelLib._Notification.NOTIF_START_TOP + MixpanelLib._Notification.NOTIF_TOP,
                         goal: MixpanelLib._Notification.NOTIF_TOP,
-                        incr: -15
+                        incr: -25
                     }
                 }, self._mark_as_shown);
             }, 300);
