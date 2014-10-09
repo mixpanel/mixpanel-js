@@ -3077,11 +3077,15 @@ Globals should be all caps
                 video = document.getElementById('mixpanel-notification-video');
             if (anim_props.notif_opacity) {
                 notification.style.opacity = String(anim_props.notif_opacity.val);
-                video.style.opacity = String(anim_props.notif_opacity.val);
+                if (video) {
+                    video.style.opacity = String(anim_props.notif_opacity.val);
+                }
             }
             if (anim_props.notif_top) {
                 notification.style.top = String(anim_props.notif_top.val) + 'px';
-                video.style.top = String(anim_props.notif_top.val) + 'px';
+                if (video) {
+                    video.style.top = String(anim_props.notif_top.val) + 'px';
+                }
             }
 
             setTimeout(function() { self._animate_notification(anim_props, done_cb) }, 1);
@@ -3559,8 +3563,8 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-button': {
                     'display': 'block',
-                    'padding': '25px',
-                    'max-height': '600px',
+                    'min-height': '60px',
+                    'line-height': '60px',
                     'text-align': 'center',
                     'background-color': this.style_vals.bg_actions,
                     '-webkit-border-radius': '0 0 4px 4px',
@@ -3577,20 +3581,21 @@ Globals should be all caps
                 '#mixpanel-notification-button-close': {
                     'display': 'inline-block',
                     'width': '9px',
-                    'height': '10px',
+                    'height': '60px',
                     'margin-right': '8px',
-                    'margin-top': '5px',
                     'vertical-align': 'top',
-                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.style + '.png)'
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.style + '.png)',
+                    'background-repeat': 'no-repeat',
+                    'background-position-y': '25px'
                 },
                 '#mixpanel-notification-button-play': {
                     'display': 'inline-block',
                     'width': '30px',
-                    'height': '30px',
+                    'height': '60px',
                     'margin-left': '15px',
-                    'margin-top': '-5px',
-                    'vertical-align': 'top',
-                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-small.png)'
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-small.png)',
+                    'background-repeat': 'no-repeat',
+                    'background-position-y': '15px'
                 },
                 'a#mixpanel-notification-button-link': {
                     'display': 'inline-block',
