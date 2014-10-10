@@ -3077,6 +3077,12 @@ Globals should be all caps
 
             var notification = self._get_notification_display_el(),
                 video = document.getElementById('mixpanel-notification-video');
+            if (anim_props.video_top) {
+                video = document.getElementById('mixpanel-notification-video-noflip');
+                video.style.top = String(anim_props.video_top.val) + 'px';
+                video.style.opacity = String(anim_props.video_opacity.val);
+                video = null; // don't chain to notif top
+            }
             if (anim_props.notif_opacity) {
                 notification.style.opacity = String(anim_props.notif_opacity.val);
                 if (video) {
@@ -3264,23 +3270,29 @@ Globals should be all caps
             }
             if (this.show_video) {
                 video_html =
-                    '<div id="mixpanel-notification-video">' +
-                        '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
-                            ' src="' + video_src + '"' +
-                            ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
-                        '></iframe>' +
-                        video_html +
+                    '<div id="mixpanel-notification-video-' + (this.flip_animate ? '' : 'no') + 'flip">' +
+                        '<div id="mixpanel-notification-video">' +
+                            '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
+                                ' src="' + video_src + '"' +
+                                ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
+                            '></iframe>' +
+                            video_html +
+                        '</div>' +
                     '</div>';
+            }
+            var main_html = video_html + notification_html;
+            if (this.flip_animate) {
+                main_html =
+                    '<div id="mixpanel-notification-flipcontainer"><div id="mixpanel-notification-flipper">' +
+                        main_html +
+                    '</div></div>';
             }
             this.notification_el.innerHTML =
                 '<div id="mixpanel-notification-overlay" class="mixpanel-notification-' + this.notif_type + '">' +
                     '<div id="mixpanel-notification-campaignid-' + this.campaign_id + '">' +
                         '<div id="mixpanel-notification-bgwrapper">' +
                             '<div id="mixpanel-notification-bg"></div>' +
-                            '<div id="mixpanel-notification-flipcontainer"><div id="mixpanel-notification-flipper">' +
-                                notification_html +
-                                video_html +
-                            '</div></div>' +
+                            main_html +
                         '</div>' +
                     '</div>' +
                 '</div>';
@@ -3646,6 +3658,21 @@ Globals should be all caps
                 '#mixpanel-notification-button:hover a': {
                     'color': this.style_vals.text_hover
                 },
+                '#mixpanel-notification-video-noflip': {
+                    'position': 'relative',
+                    'top': (-this.video_height - 500) + 'px'
+                },
+                '#mixpanel-notification-video-flip': {
+                    '-webkit-backface-visibility': 'hidden',
+                       '-moz-backface-visibility': 'hidden',
+                        '-ms-backface-visibility': 'hidden',
+                            'backface-visibility': 'hidden',
+                    '-webkit-transform': 'rotateY(180deg)',
+                       '-moz-transform': 'rotateY(180deg)',
+                        '-ms-transform': 'rotateY(180deg)',
+                         '-o-transform': 'rotateY(180deg)',
+                            'transform': 'rotateY(180deg)'
+                },
                 '#mixpanel-notification-video': {
                     'position': 'absolute',
                     'width': (this.video_width - 1) + 'px',
@@ -3660,16 +3687,7 @@ Globals should be all caps
                             'border-radius': '5px',
                     '-webkit-box-shadow': shadow,
                        '-moz-box-shadow': shadow,
-                            'box-shadow': shadow,
-                    '-webkit-backface-visibility': 'hidden',
-                       '-moz-backface-visibility': 'hidden',
-                        '-ms-backface-visibility': 'hidden',
-                            'backface-visibility': 'hidden',
-                    '-webkit-transform': 'rotateY(180deg)',
-                       '-moz-transform': 'rotateY(180deg)',
-                        '-ms-transform': 'rotateY(180deg)',
-                         '-o-transform': 'rotateY(180deg)',
-                            'transform': 'rotateY(180deg)'
+                            'box-shadow': shadow
                 },
                 '#mixpanel-notification-video-frame': {
                     'margin-left': '-1px'
@@ -3979,7 +3997,7 @@ Globals should be all caps
                     }
                     return false;
                 };
-            this.can_flip_animate =
+            this.flip_animate =
                 (this.chrome_ver >= 33 || this.firefox_ver >= 15) &&
                 this.body_el &&
                 is_css_compatible('backfaceVisibility') &&
@@ -3988,7 +4006,31 @@ Globals should be all caps
         };
 
         MPNotif.prototype._switch_to_video = _.safewrap(function() {
-            document.getElementById('mixpanel-notification-flipper').className += ' mixpanel-notification-flipped';
+            var anim_props = {};
+            if (this.flip_animate) {
+                document.getElementById('mixpanel-notification-flipper').className += ' mixpanel-notification-flipped';
+            } else {
+                anim_props.video_top = {
+                    val:  -this.video_height - 100,
+                    goal: 0,
+                    incr: 25
+                };
+                anim_props.video_opacity = {
+                    val:  0.0,
+                    goal: 1.0,
+                    incr: 0.02
+                };
+                anim_props.notif_opacity = {
+                    val:  1.0,
+                    goal: 0.0,
+                    incr: -0.05
+                };
+                anim_props.notif_top = {
+                    val:  MPNotif.NOTIF_TOP,
+                    goal: MPNotif.NOTIF_TOP + this.video_height,
+                    incr: 20
+                };
+            }
 
             if (this.notif_type === 'mini') {
                 cur_bg_opacity = 0.0;
@@ -3998,11 +4040,20 @@ Globals should be all caps
                 bg.style.width = '100%';
                 bg.style.height = '100%';
                 overlay.style.width = '100%';
-                this._animate_notification({
-                    bg_opacity: {
-                        val:  0.0,
-                        goal: 0.5,
-                        incr: -0.02
+                anim_props.bg_opacity = {
+                    val:  0.0,
+                    goal: 0.5,
+                    incr: -0.02
+                };
+            }
+
+            if (anim_props.video_top || anim_props.bg_opacity) {
+                var self = this,
+                    hide_el = (this.flip_animate && this.notif_type !== 'mini') ||
+                              !this.flip_animate;
+                this._animate_notification(anim_props, function() {
+                    if (hide_el) {
+                        self._get_notification_display_el().style.visibility = 'hidden';
                     }
                 });
             }
