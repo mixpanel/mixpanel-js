@@ -3309,6 +3309,7 @@ Globals should be all caps
                     bg:             '#1d1f25',
                     bg_actions:     '#282b32',
                     bg_hover:       '#3a4147',
+                    bg_light:       '#4a5157',
                     border_gray:    '#32353c',
                     cancel_opacity: '0.4',
                     text_title:     '#fff',
@@ -3321,6 +3322,7 @@ Globals should be all caps
                     bg:             '#fff',
                     bg_actions:     '#e7eaee',
                     bg_hover:       '#eee',
+                    bg_light:       '#f5f5f5',
                     border_gray:    '#e4ecf2',
                     cancel_opacity: '1.0',
                     text_title:     '#5c6578',
@@ -3493,17 +3495,34 @@ Globals should be all caps
                         'border': '3px solid rgba(128, 128, 128, 0.3)',
                         '-webkit-border-radius': '6px',
                            '-moz-border-radius': '6px',
-                                'border-radius': '6px'
+                                'border-radius': '6px',
+                        '-webkit-transition': 'background-color 0.2s',
+                           '-moz-transition': 'background-color 0.2s',
+                            '-ms-transition': 'background-color 0.2s',
+                             '-o-transition': 'background-color 0.2s',
+                                'transition': 'background-color 0.2s'
                     },
                 '#mixpanel-notification-mini-icon': {
                     'position': 'relative',
                     'display': 'inline-block',
                     'width': '75px',
                     'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
-                    '-webkit-border-radius': '6px 0 0 6px',
-                       '-moz-border-radius': '6px 0 0 6px',
-                            'border-radius': '6px 0 0 6px',
-                    'background-color': this.style_vals.bg_actions
+                    '-webkit-border-radius': '3px 0 0 3px',
+                       '-moz-border-radius': '3px 0 0 3px',
+                            'border-radius': '3px 0 0 3px',
+                    'background-color': this.style_vals.bg_actions,
+                    'background': 'linear-gradient(135deg, ' + this.style_vals.bg_light + ' 0%, ' + this.style_vals.bg_actions + ' 100%)',
+                    '-webkit-transition': 'background-color 0.2s',
+                       '-moz-transition': 'background-color 0.2s',
+                        '-ms-transition': 'background-color 0.2s',
+                         '-o-transition': 'background-color 0.2s',
+                            'transition': 'background-color 0.2s'
+                },
+                '#mixpanel-notification-mini:hover #mixpanel-notification-mini-icon': {
+                    'background-color': this.style_vals.bg_hover
+                },
+                '#mixpanel-notification-mini:hover #mixpanel-notification-mainbox': {
+                    'background-color': this.style_vals.bg_hover
                 },
                 '#mixpanel-notification-mini-icon-img': {
                     'position': 'absolute',
@@ -3823,7 +3842,7 @@ Globals should be all caps
             var self = this;
 
             // Youtube iframe API compatibility
-            this.yt_custom = 'postMessage' in window;
+            self.yt_custom = 'postMessage' in window;
 
             // detect CSS compatibility
             var sample_styles = document.createElement('div').style,
