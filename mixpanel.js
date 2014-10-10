@@ -3111,7 +3111,7 @@ Globals should be all caps
             this.shown = true;
 
             this.body_el.appendChild(this.notification_el);
-            if (window.YT && window.YT.loaded) {
+            if (window['YT'] && window['YT']['loaded']) {
                 self._yt_video_ready();
             }
             setTimeout(function() {
@@ -4123,11 +4123,11 @@ Globals should be all caps
                 progress_time = document.getElementById('mixpanel-notification-video-time'),
                 progress_el   = document.getElementById('mixpanel-notification-video-progress');
 
-            new window.YT.Player('mixpanel-notification-video-frame', {
-                events: {
+            new window['YT']['Player']('mixpanel-notification-video-frame', {
+                'events': {
                     'onReady': function(event) {
-                        var ytplayer = event.target,
-                            video_duration = ytplayer.getDuration(),
+                        var ytplayer = event['target'],
+                            video_duration = ytplayer['getDuration'](),
                             pad = function(i) {
                                 return ('00' + i).slice(-2);
                             },
@@ -4142,21 +4142,21 @@ Globals should be all caps
                         update_video_time(0);
                         _.register_event(progress_el, 'click', function(e) {
                             var clickx = Math.max(0, e.pageX - progress_el.getBoundingClientRect().left);
-                            ytplayer.seekTo(video_duration * clickx / progress_el.clientWidth, true);
+                            ytplayer['seekTo'](video_duration * clickx / progress_el.clientWidth, true);
                         });
                         _.register_event(video_overlay, 'click', function(e) {
                             e.preventDefault();
-                            ytplayer.playVideo();
+                            ytplayer['playVideo']();
                             video_overlay.style.visibility = 'hidden';
                             self._video_progress_checker = window.setInterval(function() {
-                                var current_time = ytplayer.getCurrentTime();
+                                var current_time = ytplayer['getCurrentTime']();
                                 progress_bar.style.width = (current_time / video_duration * 100) + '%';
                                 update_video_time(current_time);
                             }, 250);
                         });
                     },
                     'onStateChange': function(event) {
-                        if (event.data === YT.PlayerState.ENDED) {
+                        if (event['data'] === window['YT']['PlayerState']['ENDED']) {
                             window.clearInterval(self._video_progress_checker);
                             self._video_progress_checker = null;
                             progress_bar.style.width = '100%';
