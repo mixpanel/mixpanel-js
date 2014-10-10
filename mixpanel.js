@@ -3377,7 +3377,8 @@ Globals should be all caps
                         'min-width': '0'
                     },
                 '#mixpanel-notification-flipcontainer': {
-                    'perspective': '1000px',
+                    '-webkit-perspective': '1000px',
+                            'perspective': '1000px',
                     'position': 'absolute',
                     'width': '100%'
                 },
@@ -3386,11 +3387,11 @@ Globals should be all caps
                     '-webkit-transform-style': 'preserve-3d',
                        '-moz-transform-style': 'preserve-3d',
                             'transform-style': 'preserve-3d',
-                    '-webkit-transition': 'transform 0.3s',
-                       '-moz-transition': 'transform 0.3s',
-                        '-ms-transition': 'transform 0.3s',
-                         '-o-transition': 'transform 0.3s',
-                            'transition': 'transform 0.3s'
+                    '-webkit-transition': '0.3s',
+                       '-moz-transition': '0.3s',
+                        '-ms-transition': '0.3s',
+                         '-o-transition': '0.3s',
+                            'transition': '0.3s'
                 },
                 '#mixpanel-notification': {
                     'position': 'absolute',
@@ -3399,6 +3400,7 @@ Globals should be all caps
                     'margin-left': Math.round(-MPNotif.NOTIF_WIDTH / 2) + 'px',
                     '-webkit-backface-visibility': 'hidden',
                        '-moz-backface-visibility': 'hidden',
+                        '-ms-backface-visibility': 'hidden',
                             'backface-visibility': 'hidden',
                     '-webkit-transform': 'rotateY(0deg)',
                        '-moz-transform': 'rotateY(0deg)',
@@ -3414,6 +3416,7 @@ Globals should be all caps
                     'margin-top': '20px',
                     '-webkit-backface-visibility': 'hidden',
                        '-moz-backface-visibility': 'hidden',
+                        '-ms-backface-visibility': 'hidden',
                             'backface-visibility': 'hidden',
                     '-webkit-transform': 'rotateY(0deg)',
                        '-moz-transform': 'rotateY(0deg)',
@@ -3660,6 +3663,7 @@ Globals should be all caps
                             'box-shadow': shadow,
                     '-webkit-backface-visibility': 'hidden',
                        '-moz-backface-visibility': 'hidden',
+                        '-ms-backface-visibility': 'hidden',
                             'backface-visibility': 'hidden',
                     '-webkit-transform': 'rotateY(180deg)',
                        '-moz-transform': 'rotateY(180deg)',
@@ -3935,8 +3939,16 @@ Globals should be all caps
         });
 
         MPNotif.prototype._set_client_config = function() {
-            this.ie_ver = /MSIE (\d+).+/.exec(navigator.userAgent);
-            this.ie_ver = this.ie_ver && this.ie_ver[1];
+            var get_browser_version = function(browser_ex) {
+                var match = navigator.userAgent.match(browser_ex);
+                return match && match[1];
+            };
+            this.chrome_ver  = get_browser_version(/Chrome\/(\d+)/);
+            this.firefox_ver = get_browser_version(/Firefox\/(\d+)/);
+            this.ie_ver      = get_browser_version(/MSIE (\d+).+/);
+            if (!this.ie_ver && !(window.ActiveXObject) && "ActiveXObject" in window) {
+                this.ie_ver = 11;
+            }
 
             this.body_el = document.body || document.getElementsByTagName('body')[0];
             if (this.body_el) {
@@ -3951,6 +3963,28 @@ Globals should be all caps
                     this.body_el.clientHeight, document.documentElement.clientHeight
                 );
             }
+
+            // detect CSS compatibility
+            var sample_styles = document.createElement('div').style,
+                is_css_compatible = function(rule) {
+                    if (rule in sample_styles) {
+                        return true;
+                    }
+                    rule = rule[0].toUpperCase() + rule.slice(1);
+                    var props = ['O' + rule, 'ms' + rule, 'Webkit' + rule, 'Moz' + rule];
+                    for (var i = 0; i < props.length; i++) {
+                        if (props[i] in sample_styles) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+            this.can_flip_animate =
+                (this.chrome_ver >= 33 || this.firefox_ver >= 15) &&
+                this.body_el &&
+                is_css_compatible('backfaceVisibility') &&
+                is_css_compatible('perspective') &&
+                is_css_compatible('transform');
         };
 
         MPNotif.prototype._switch_to_video = _.safewrap(function() {
