@@ -3597,6 +3597,7 @@ Globals should be all caps
                 '#mixpanel-notification-cancel-icon': {
                     'width': '8px',
                     'height': '8px',
+                    'overflow': 'hidden',
                     'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/cancel-x.png)',
                     '-khtml-opacity': this.style_vals.cancel_opacity,
                       '-moz-opacity': this.style_vals.cancel_opacity,
@@ -3794,6 +3795,20 @@ Globals should be all caps
                     },
                     'html, body': {
                         'height': '100%'
+                    }
+                });
+            }
+            if (this._ie_lte(7)) {
+                _.extend(notif_styles, {
+                    '#mixpanel-notification-mini #mixpanel-notification-body': {
+                        'display': 'inline',
+                        'zoom': '1'
+                    },
+                    '#mixpanel-notification-mini #mixpanel-notification-body-text': {
+                        'padding': '10px'
+                    },
+                    '#mixpanel-notification-mini #mixpanel-notification-mini-icon': {
+                        'display': 'none'
                     }
                 });
             }
