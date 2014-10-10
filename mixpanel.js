@@ -2996,6 +2996,8 @@ Globals should be all caps
             this.notif_type = 'takeover';
         }
         this.notif_width = this.notif_type !== 'mini' ? MPNotif.NOTIF_WIDTH : MPNotif.NOTIF_WIDTH_MINI;
+
+        this._set_client_config();
         this.imgs_to_preload = this._init_image_html();
         this._init_video();
     };
@@ -3110,7 +3112,7 @@ Globals should be all caps
 
             this.body_el.appendChild(this.notification_el);
             if (window.YT && window.YT.loaded) {
-                self._video_ready();
+                self._yt_video_ready();
             }
             setTimeout(function() {
                 self._animate_notification({
@@ -3248,23 +3250,26 @@ Globals should be all caps
             }
             if (this.youtube_video) {
                 video_src = '//www.youtube.com/embed/' + this.youtube_video +
-                    '?enablejsapi=1&wmode=transparent&controls=0&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0&html5=1';
-                video_html =
-                    '<div id="mixpanel-notification-video-controls">' +
-                        '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
-                            '<div id="mixpanel-notification-video-progress-total" class="mixpanel-notification-video-progress-el"></div>' +
-                            '<div id="mixpanel-notification-video-elapsed" class="mixpanel-notification-video-progress-el"></div>' +
+                    '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0';
+                if (this.yt_custom) {
+                    video_src += '&enablejsapi=1&html5=1&controls=0';
+                    video_html =
+                        '<div id="mixpanel-notification-video-controls">' +
+                            '<div id="mixpanel-notification-video-progress" class="mixpanel-notification-video-progress-el">' +
+                                '<div id="mixpanel-notification-video-progress-total" class="mixpanel-notification-video-progress-el"></div>' +
+                                '<div id="mixpanel-notification-video-elapsed" class="mixpanel-notification-video-progress-el"></div>' +
+                            '</div>' +
+                            '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
                         '</div>' +
-                        '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
-                    '</div>' +
-                    '<div id="mixpanel-notification-video-overlay">' +
-                        '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
-                            ' width="' + this.video_width + '" height="' + this.video_height + '"' +
-                        '/>' +
-                        '<div id="mixpanel-notification-video-play">' +
-                            '<img src="//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-large.png" width="57" height="57"/>' +
-                        '</div>' +
-                    '</div>';
+                        '<div id="mixpanel-notification-video-overlay">' +
+                            '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
+                                ' width="' + this.video_width + '" height="' + this.video_height + '"' +
+                            '/>' +
+                            '<div id="mixpanel-notification-video-play">' +
+                                '<img src="//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-large.png" width="57" height="57"/>' +
+                            '</div>' +
+                        '</div>';
+                }
             } else if (this.vimeo_video) {
                 video_src = '//player.vimeo.com/video/' + this.vimeo_video + '?title=0&byline=0&portrait=0';
             }
@@ -3802,6 +3807,32 @@ Globals should be all caps
             }
             var self = this;
 
+            // Youtube iframe API compatibility
+            this.yt_custom = 'postMessage' in window;
+
+            // detect CSS compatibility
+            var sample_styles = document.createElement('div').style,
+                is_css_compatible = function(rule) {
+                    if (rule in sample_styles) {
+                        return true;
+                    }
+                    rule = rule[0].toUpperCase() + rule.slice(1);
+                    var props = ['O' + rule, 'ms' + rule, 'Webkit' + rule, 'Moz' + rule];
+                    for (var i = 0; i < props.length; i++) {
+                        if (props[i] in sample_styles) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+            this.flip_animate =
+                (this.chrome_ver >= 33 || this.firefox_ver >= 15) &&
+                this.body_el &&
+                is_css_compatible('backfaceVisibility') &&
+                is_css_compatible('perspective') &&
+                is_css_compatible('transform');
+
+            self.dest_url = self.video_url;
             var youtube_match = self.video_url.match(
                     // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
                     /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
@@ -3812,20 +3843,29 @@ Globals should be all caps
             if (youtube_match) {
                 self.show_video = true;
                 self.youtube_video = youtube_match[1];
-                window['onYouTubeIframeAPIReady'] = function() {
-                    if (document.getElementById('mixpanel-notification-video')) {
-                        self._video_ready();
-                    }
-                };
 
-                // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
-                var tag = document.createElement('script');
-                tag.src = "//www.youtube.com/iframe_api";
-                var firstScriptTag = document.getElementsByTagName('script')[0];
-                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                if (self.yt_custom) {
+                    window['onYouTubeIframeAPIReady'] = function() {
+                        if (document.getElementById('mixpanel-notification-video')) {
+                            self._yt_video_ready();
+                        }
+                    };
+
+                    // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
+                    var tag = document.createElement('script');
+                    tag.src = "//www.youtube.com/iframe_api";
+                    var firstScriptTag = document.getElementsByTagName('script')[0];
+                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                }
             } else if (vimeo_match) {
                 self.show_video = true;
                 self.vimeo_video = vimeo_match[1];
+            }
+
+            // IE <= 7: fall through to video link rather than embedded player
+            if (self._ie_lte(7)) {
+                self.show_video = false;
+                self.clickthrough = true;
             }
         });
 
@@ -3981,28 +4021,6 @@ Globals should be all caps
                     this.body_el.clientHeight, document.documentElement.clientHeight
                 );
             }
-
-            // detect CSS compatibility
-            var sample_styles = document.createElement('div').style,
-                is_css_compatible = function(rule) {
-                    if (rule in sample_styles) {
-                        return true;
-                    }
-                    rule = rule[0].toUpperCase() + rule.slice(1);
-                    var props = ['O' + rule, 'ms' + rule, 'Webkit' + rule, 'Moz' + rule];
-                    for (var i = 0; i < props.length; i++) {
-                        if (props[i] in sample_styles) {
-                            return true;
-                        }
-                    }
-                    return false;
-                };
-            this.flip_animate =
-                (this.chrome_ver >= 33 || this.firefox_ver >= 15) &&
-                this.body_el &&
-                is_css_compatible('backfaceVisibility') &&
-                is_css_compatible('perspective') &&
-                is_css_compatible('transform');
         };
 
         MPNotif.prototype._switch_to_video = _.safewrap(function() {
@@ -4059,7 +4077,7 @@ Globals should be all caps
             }
         });
 
-        MPNotif.prototype._video_ready = _.safewrap(function() {
+        MPNotif.prototype._yt_video_ready = _.safewrap(function() {
             var self = this;
             if (self.video_inited) {
                 return;
