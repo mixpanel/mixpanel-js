@@ -3378,7 +3378,8 @@ Globals should be all caps
                     'text-align': 'center',
                     'z-index': '10000',
                     'font-family': '"Helvetica", "Arial", sans-serif',
-                    '-webkit-font-smoothing': 'antialiased'
+                    '-webkit-font-smoothing': 'antialiased',
+                    '-moz-osx-font-smoothing': 'grayscale'
                 },
                     '#mixpanel-notification-overlay.mixpanel-notification-mini': {
                         'height': '0',
@@ -3653,7 +3654,7 @@ Globals should be all caps
                     'top': MPNotif.NOTIF_TOP + 'px',
                     'margin-top': '25px',
                     'left': '50%',
-                    'margin-left': (-this.video_width / 2) + 'px',
+                    'margin-left': Math.round(-this.video_width / 2) + 'px',
                     'overflow': 'hidden',
                     'border-radius': '5px',
                     'box-shadow': shadow
@@ -3680,10 +3681,12 @@ Globals should be all caps
                     'width': '57px',
                     'height': '57px',
                     'opacity': '0.8',
-                    'transition': 'opacity 0.5s'
+                    'transition': 'opacity 0.5s',
+                    'backface-visibility': 'hidden'
                 },
                 '#mixpanel-notification-video-overlay:hover #mixpanel-notification-video-play': {
-                    'opacity': '1.0'
+                    'opacity': '1.0',
+                    'backface-visibility': 'hidden'
                 },
                 '#mixpanel-notification-video-controls': {
                     'opacity': '0',
