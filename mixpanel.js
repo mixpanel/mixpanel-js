@@ -3650,7 +3650,7 @@ Globals should be all caps
                     'position': 'absolute',
                     'width': (this.video_width - 1) + 'px',
                     'height': this.video_height + 'px',
-                    'top': MPNotif.NOTIF_TOP,
+                    'top': MPNotif.NOTIF_TOP + 'px',
                     'margin-top': '25px',
                     'left': '50%',
                     'margin-left': (-this.video_width / 2) + 'px',
@@ -3659,7 +3659,8 @@ Globals should be all caps
                     'box-shadow': shadow
                 },
                 '#mixpanel-notification-video-frame': {
-                    'margin-left': '-1px'
+                    'margin-left': '-1px',
+                    'width': this.video_width + 'px'
                 },
                 '#mixpanel-notification-video-overlay': {
                     'position': 'absolute',
