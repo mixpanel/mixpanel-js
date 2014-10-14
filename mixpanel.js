@@ -3189,7 +3189,7 @@ Globals should be all caps
         };
 
         MPNotif.prototype._init_image_html = function() {
-            imgs_to_preload = [];
+            var imgs_to_preload = [];
 
             if (this.notif_type !== 'mini') {
                 if (this.image_url) {
@@ -3223,9 +3223,9 @@ Globals should be all caps
             var notification_html = '',
                 video_src         = '',
                 video_html        = '',
-                cancel_html       =  '<div id="mixpanel-notification-cancel">' +
-                                         '<div id="mixpanel-notification-cancel-icon"></div>' +
-                                     '</div>';
+                cancel_html       = '<div id="mixpanel-notification-cancel">' +
+                                        '<div id="mixpanel-notification-cancel-icon"></div>' +
+                                    '</div>';
 
             this.notification_el = document.createElement('div');
             this.notification_el.id = 'mixpanel-notification-wrapper';
