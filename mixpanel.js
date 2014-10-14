@@ -3895,11 +3895,7 @@ Globals should be all caps
                     this.cookie.save();
 
                     // track delivery
-                    this.mixpanel.track('$campaign_delivery', {
-                        campaign_id:  this.campaign_id,
-                        message_id:   this.message_id,
-                        message_type: 'web_inapp'
-                    });
+                    this._track_event('$campaign_delivery');
 
                     // mark notification shown (mixpanel property)
                     this.mixpanel.people.append({
@@ -4057,6 +4053,17 @@ Globals should be all caps
                 });
             }
         });
+
+        MPNotif.prototype._track_event = function(event_name) {
+            if (this.campaign_id) {
+                this.mixpanel.track(event_name, {
+                    campaign_id:     this.campaign_id,
+                    message_id:      this.message_id,
+                    message_type:    'web_inapp',
+                    message_subtype: this.notif_type
+                });
+            }
+        };
 
         MPNotif.prototype._yt_video_ready = _.safewrap(function() {
             var self = this;
