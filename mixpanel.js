@@ -3079,7 +3079,7 @@ Globals should be all caps
             for (ai = 0; ai < anims.length; ai++) {
                 anim = anims[ai];
                 if (typeof anim.val === 'undefined') {
-                    anim.val = anim.val || anim.start;
+                    anim.val = anim.start;
                 }
                 if (anim.val !== anim.goal) {
                     in_progress = true;
