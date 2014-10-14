@@ -3684,12 +3684,11 @@ Globals should be all caps
                     'width': '57px',
                     'height': '57px',
                     'opacity': '0.8',
-                    'transition': 'opacity 0.5s',
-                    'backface-visibility': 'hidden'
+                    'transition': 'opacity 0.5s'
                 },
                 '#mixpanel-notification-video-overlay:hover #mixpanel-notification-video-play': {
                     'opacity': '1.0',
-                    'backface-visibility': 'hidden'
+                    '-moz-backface-visibility': 'hidden'
                 },
                 '#mixpanel-notification-video-controls': {
                     'opacity': '0',
