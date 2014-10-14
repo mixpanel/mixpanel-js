@@ -4033,7 +4033,6 @@ Globals should be all caps
             }
 
             if (self.notif_type === 'mini') {
-                cur_bg_opacity = 0.0;
                 var bg = document.getElementById('mixpanel-notification-bg'),
                     overlay = document.getElementById('mixpanel-notification-overlay');
                 bg.style.opacity = '0.0';
