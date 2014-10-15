@@ -3311,6 +3311,7 @@ Globals should be all caps
                     bg_light:       '#4a5157',
                     border_gray:    '#32353c',
                     cancel_opacity: '0.4',
+                    mini_hover:     '#2a3137',
                     text_title:     '#fff',
                     text_main:      '#9498a3',
                     text_tagline:   '#464851',
@@ -3320,10 +3321,11 @@ Globals should be all caps
                 this.style_vals = {
                     bg:             '#fff',
                     bg_actions:     '#e7eaee',
-                    bg_hover:       '#eee',
+                    bg_hover:       '#eceff3',
                     bg_light:       '#f5f5f5',
                     border_gray:    '#e4ecf2',
                     cancel_opacity: '1.0',
+                    mini_hover:     '#fafafa',
                     text_title:     '#5c6578',
                     text_main:      '#8b949b',
                     text_tagline:   '#ced9e6',
@@ -3453,10 +3455,10 @@ Globals should be all caps
                     'transition': 'background-color 0.2s'
                 },
                 '#mixpanel-notification-mini:hover #mixpanel-notification-mini-icon': {
-                    'background-color': this.style_vals.bg_hover
+                    'background-color': this.style_vals.mini_hover
                 },
                 '#mixpanel-notification-mini:hover #mixpanel-notification-mainbox': {
-                    'background-color': this.style_vals.bg_hover
+                    'background-color': this.style_vals.mini_hover
                 },
                 '#mixpanel-notification-mini-icon-img': {
                     'position': 'absolute',
