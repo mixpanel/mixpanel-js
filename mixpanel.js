@@ -3333,7 +3333,11 @@ Globals should be all caps
                 };
             }
             var shadow = '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
+                mini_shadow = shadow,
                 thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2;
+            if (this.style !== 'dark') {
+                mini_shadow = '0px 1px 15px 0px rgba(20, 20, 20, 0.2)';
+            }
 
             // don't display on small viewports
             var media_queries = {},
@@ -3442,6 +3446,7 @@ Globals should be all caps
                         'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                         'border': '3px solid rgba(128, 128, 128, 0.3)',
                         'border-radius': '6px',
+                        'box-shadow': mini_shadow,
                         'transition': 'background-color 0.2s'
                     },
                 '#mixpanel-notification-mini-icon': {
