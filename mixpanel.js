@@ -3149,13 +3149,14 @@ Globals should be all caps
             _.register_event(click_el, 'click', function(e) {
                 e.preventDefault();
                 if (self.show_video) {
+                    self._track_event('$campaign_open');
                     self._switch_to_video();
                 } else {
                     self.dismiss();
                     if (self.clickthrough) {
-                        setTimeout(function() {
+                        self._track_event('$campaign_open', function() {
                             window.location.href = self.dest_url;
-                        }, self.mixpanel.config.track_links_timeout);
+                        });
                     }
                 }
             });
@@ -3845,11 +3846,7 @@ Globals should be all caps
                     this.cookie.save();
 
                     // track delivery
-                    this.mixpanel.track('$campaign_delivery', {
-                        campaign_id:  this.campaign_id,
-                        message_id:   this.message_id,
-                        message_type: 'web_inapp'
-                    });
+                    this._track_event('$campaign_delivery');
 
                     // mark notification shown (mixpanel property)
                     this.mixpanel.people.append({
@@ -3996,6 +3993,19 @@ Globals should be all caps
                 self._get_notification_display_el().style.visibility = 'hidden';
             });
         });
+
+        MPNotif.prototype._track_event = function(event_name, cb) {
+            if (this.campaign_id) {
+                this.mixpanel.track(event_name, {
+                    campaign_id:     this.campaign_id,
+                    message_id:      this.message_id,
+                    message_type:    'web_inapp',
+                    message_subtype: this.notif_type
+                }, cb);
+            } else {
+                cb && cb.call();
+            }
+        };
 
         MPNotif.prototype._yt_video_ready = _.safewrap(function() {
             var self = this;
