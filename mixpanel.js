@@ -3543,9 +3543,11 @@ Globals should be all caps
                     'float': 'right',
                     'width': '8px',
                     'height': '8px',
-                    'padding': '5px',
+                    'padding': '10px',
+                    'border-radius': '20px',
                     'margin': '12px 12px 0 0',
-                    'cursor': 'pointer'
+                    'cursor': 'pointer',
+                    'transition': 'background-color 0.2s'
                 },
                     '#mixpanel-notification-mini #mixpanel-notification-cancel': {
                         'margin': '7px 10px 0 0'
@@ -3557,8 +3559,8 @@ Globals should be all caps
                     'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/cancel-x.png)',
                     'opacity': this.style_vals.cancel_opacity
                 },
-                '#mixpanel-notification-cancel:hover #mixpanel-notification-cancel-icon': {
-                    'background-position': 'center 8px'
+                '#mixpanel-notification-cancel:hover': {
+                    'background-color': this.style_vals.bg_hover
                 },
                 '#mixpanel-notification-button': {
                     'display': 'block',
