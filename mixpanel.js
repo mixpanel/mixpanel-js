@@ -3475,7 +3475,7 @@ Globals should be all caps
                     'left': '12px'
                 },
                 '#mixpanel-notification-content': {
-                    'padding': '0px 20px'
+                    'padding': '30px 20px 0px 20px'
                 },
                 '#mixpanel-notification-mini-content': {
                     'text-align': 'left',
@@ -3484,7 +3484,7 @@ Globals should be all caps
                 },
                 '#mixpanel-notification-img': {
                     'width': '328px',
-                    'margin-top': '60px',
+                    'margin-top': '30px',
                     'border-radius': '5px'
                 },
                 '#mixpanel-notification-title': {
