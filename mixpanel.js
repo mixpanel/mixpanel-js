@@ -3333,11 +3333,11 @@ Globals should be all caps
                     text_hover:     '#7c8598'
                 };
             }
-            var shadow = '0px 1px 15px 0px rgba(10, 10, 10, 0.7)',
+            var shadow = '0px 0px 35px 0px rgba(45, 49, 56, 0.7)',
                 mini_shadow = shadow,
                 thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2;
             if (this.style !== 'dark') {
-                mini_shadow = '0px 1px 15px 0px rgba(20, 20, 20, 0.2)';
+                mini_shadow = '0px 0px 35px 0px rgba(45, 49, 56, 0.2)';
             }
 
             // don't display on small viewports
