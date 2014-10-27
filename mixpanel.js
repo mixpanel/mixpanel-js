@@ -3550,7 +3550,7 @@ Globals should be all caps
                     'transition': 'background-color 0.2s'
                 },
                     '#mixpanel-notification-mini #mixpanel-notification-cancel': {
-                        'margin': '7px 10px 0 0'
+                        'margin': '7px 7px 0 0'
                     },
                 '#mixpanel-notification-cancel-icon': {
                     'width': '8px',
