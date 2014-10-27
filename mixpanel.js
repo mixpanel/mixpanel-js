@@ -3438,7 +3438,7 @@ Globals should be all caps
                 '#mixpanel-notification-mainbox': {
                     'border-radius': '4px',
                     'box-shadow': shadow,
-                    'text-align': this.image_url ? 'center' : 'left',
+                    'text-align': 'center',
                     'background-color': this.style_vals.bg,
                     'font-size': '14px',
                     'color': this.style_vals.text_main
