@@ -3446,7 +3446,7 @@ Globals should be all caps
                 },
                     '#mixpanel-notification-mini #mixpanel-notification-mainbox': {
                         'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
-                        'border': '3px solid rgba(128, 128, 128, 0.3)',
+                        'border': '3px solid rgba(255, 255, 255, 0.15)',
                         'border-radius': '6px',
                         'box-shadow': mini_shadow,
                         'transition': 'background-color 0.2s'
