@@ -3004,6 +3004,7 @@ Globals should be all caps
 
     var MPNotif = MixpanelLib._Notification;
 
+        MPNotif.BG_OPACITY        = 0.6;
         MPNotif.NOTIF_TOP         = 25;
         MPNotif.NOTIF_START_TOP   = 200;
         MPNotif.NOTIF_WIDTH       = 388;
@@ -3043,7 +3044,7 @@ Globals should be all caps
                 {
                     el:    document.getElementById('mixpanel-notification-bg'),
                     attr:  'opacity',
-                    start: 0.5,
+                    start: MPNotif.BG_OPACITY,
                     goal:  0.0
                 },
                 {
@@ -3124,7 +3125,7 @@ Globals should be all caps
                         el:    document.getElementById('mixpanel-notification-bg'),
                         attr:  'opacity',
                         start: 0.0,
-                        goal:  0.5
+                        goal:  MPNotif.BG_OPACITY
                     },
                     {
                         el:    self._get_notification_display_el(),
@@ -3385,8 +3386,8 @@ Globals should be all caps
                     'min-height': this.doc_height * 4 + 'px',
                     'background-color': 'black',
                     'opacity': '0.0',
-                    '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=50)', // IE8
-                    'filter': 'alpha(opacity=50)' // IE5-7
+                    '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=60)', // IE8
+                    'filter': 'alpha(opacity=60)' // IE5-7
                 },
                     '.mixpanel-notification-mini #mixpanel-notification-bg': {
                         'width': '0',
@@ -3984,7 +3985,7 @@ Globals should be all caps
                     el:    document.getElementById('mixpanel-notification-bg'),
                     attr:  'opacity',
                     start: 0.0,
-                    goal:  0.5
+                    goal:  MPNotif.BG_OPACITY
                 });
             }
 
