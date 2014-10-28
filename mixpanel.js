@@ -3244,6 +3244,7 @@ Globals should be all caps
                 // MINI notification
                 notification_html =
                     '<div id="mixpanel-notification-mini" style="opacity:0.0;top:' + MPNotif.NOTIF_START_TOP + 'px;">' +
+                        '<div id="mixpanel-notification-mini-border"></div>' +
                         '<div id="mixpanel-notification-mainbox">' +
                             cancel_html +
                             '<div id="mixpanel-notification-mini-content">' +
@@ -3446,11 +3447,21 @@ Globals should be all caps
                 },
                     '#mixpanel-notification-mini #mixpanel-notification-mainbox': {
                         'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
-                        'border': '3px solid rgba(255, 255, 255, 0.15)',
-                        'border-radius': '6px',
-                        'box-shadow': mini_shadow,
+                        'border-radius': '3px',
                         'transition': 'background-color 0.2s'
                     },
+                '#mixpanel-notification-mini-border': {
+                    'height': (MPNotif.NOTIF_HEIGHT_MINI + 6) + 'px',
+                    'width': (MPNotif.NOTIF_WIDTH_MINI + 6) + 'px',
+                    'position': 'absolute',
+                    'top': '-3px',
+                    'left': '-3px',
+                    'border-radius': '6px',
+                    'opacity': '0.25',
+                    'background-color': '#fff',
+                    'z-index': '-1',
+                    'box-shadow': mini_shadow
+                },
                 '#mixpanel-notification-mini-icon': {
                     'position': 'relative',
                     'display': 'inline-block',
