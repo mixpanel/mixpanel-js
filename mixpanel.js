@@ -3551,7 +3551,8 @@ Globals should be all caps
                     'color': this.style_vals.text_hover
                 },
                 '#mixpanel-notification-cancel': {
-                    'float': 'right',
+                    'position': 'absolute',
+                    'right': '0',
                     'width': '8px',
                     'height': '8px',
                     'padding': '10px',
