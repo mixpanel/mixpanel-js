@@ -3338,8 +3338,8 @@ Globals should be all caps
             var shadow = '0px 0px 35px 0px rgba(45, 49, 56, 0.7)',
                 mini_shadow = shadow,
                 thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2;
-            if (this.style !== 'dark') {
-                mini_shadow = '0px 0px 35px 0px rgba(45, 49, 56, 0.2)';
+            if (this.notif_type === 'mini') {
+                shadow = 'none';
             }
 
             // don't display on small viewports
