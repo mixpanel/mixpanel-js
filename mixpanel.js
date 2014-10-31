@@ -3558,6 +3558,7 @@ Globals should be all caps
                     'padding': '10px',
                     'border-radius': '20px',
                     'margin': '12px 12px 0 0',
+                    'box-sizing': 'content-box',
                     'cursor': 'pointer',
                     'transition': 'background-color 0.2s'
                 },
