@@ -3327,6 +3327,7 @@ Globals should be all caps
                 };
             }
             var shadow = '0px 0px 35px 0px rgba(45, 49, 56, 0.7)',
+                video_shadow = shadow,
                 mini_shadow = shadow,
                 thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2;
             if (this.notif_type === 'mini') {
@@ -3624,7 +3625,7 @@ Globals should be all caps
                     'margin-left': Math.round(-this.video_width / 2) + 'px',
                     'overflow': 'hidden',
                     'border-radius': '5px',
-                    'box-shadow': shadow
+                    'box-shadow': video_shadow
                 },
                 '#mixpanel-notification-video-frame': {
                     'margin-left': '-1px',
