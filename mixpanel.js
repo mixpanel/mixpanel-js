@@ -3627,6 +3627,13 @@ Globals should be all caps
                     'border-radius': '5px',
                     'box-shadow': video_shadow
                 },
+                '#mixpanel-notification-video-holder': {
+                    'position': 'absolute',
+                    'width': (this.video_width - 1) + 'px',
+                    'height': this.video_height + 'px',
+                    'overflow': 'hidden',
+                    'border-radius': '5px'
+                },
                 '#mixpanel-notification-video-frame': {
                     'margin-left': '-1px',
                     'width': this.video_width + 'px'
