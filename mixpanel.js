@@ -3116,9 +3116,6 @@ Globals should be all caps
             this.shown = true;
 
             this.body_el.appendChild(this.notification_el);
-            if (window['YT'] && window['YT']['loaded']) {
-                self._yt_video_ready();
-            }
             setTimeout(function() {
                 self._animate_els([
                     {
@@ -3260,7 +3257,7 @@ Globals should be all caps
             }
             if (this.youtube_video) {
                 video_src = '//www.youtube.com/embed/' + this.youtube_video +
-                    '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=0&loop=0';
+                    '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0';
                 if (this.yt_custom) {
                     video_src += '&enablejsapi=1&html5=1&controls=0';
                     video_html =
@@ -3270,26 +3267,20 @@ Globals should be all caps
                                 '<div id="mixpanel-notification-video-elapsed" class="mixpanel-notification-video-progress-el"></div>' +
                             '</div>' +
                             '<div id="mixpanel-notification-video-time" class="mixpanel-notification-video-progress-el"></div>' +
-                        '</div>' +
-                        '<div id="mixpanel-notification-video-overlay">' +
-                            '<img src="//img.youtube.com/vi/' + this.youtube_video + '/0.jpg" id="mixpanel-notification-video-preview"' +
-                                ' width="' + this.video_width + '" height="' + this.video_height + '"' +
-                            '/>' +
-                            '<div id="mixpanel-notification-video-play">' +
-                                '<img src="//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-large.png" width="57" height="57"/>' +
-                            '</div>' +
                         '</div>';
                 }
             } else if (this.vimeo_video) {
-                video_src = '//player.vimeo.com/video/' + this.vimeo_video + '?title=0&byline=0&portrait=0';
+                video_src = '//player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
             }
             if (this.show_video) {
+                this.video_iframe =
+                    '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
+                        ' src="' + video_src + '"' +
+                        ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
+                    '></iframe>';
                 video_html =
                     '<div id="mixpanel-notification-video">' +
-                        '<iframe id="mixpanel-notification-video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
-                            ' src="' + video_src + '"' +
-                            ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
-                        '></iframe>' +
+                        '<div id="mixpanel-notification-video-holder"></div>' +
                         video_html +
                     '</div>';
             }
@@ -3639,30 +3630,6 @@ Globals should be all caps
                     'margin-left': '-1px',
                     'width': this.video_width + 'px'
                 },
-                '#mixpanel-notification-video-overlay': {
-                    'position': 'absolute',
-                    'top': '0',
-                    'left': '0',
-                    'width': this.video_width + 'px',
-                    'height': this.video_height + 'px',
-                    'cursor': 'pointer',
-                    'border-radius': '5px',
-                    'overflow': 'hidden'
-                },
-                '#mixpanel-notification-video-play': {
-                    'position': 'absolute',
-                    'top': (this.video_height / 2 - 29) + 'px',
-                    'left': Math.round(this.video_width / 2) + 'px',
-                    'margin-left': '-29px',
-                    'width': '57px',
-                    'height': '57px',
-                    'opacity': '0.8',
-                    'transition': 'opacity 0.5s'
-                },
-                '#mixpanel-notification-video-overlay:hover #mixpanel-notification-video-play': {
-                    'opacity': '1.0',
-                    '-moz-backface-visibility': 'hidden'
-                },
                 '#mixpanel-notification-video-controls': {
                     'opacity': '0',
                     'transition': 'opacity 0.5s'
@@ -3787,7 +3754,7 @@ Globals should be all caps
 
                 if (self.yt_custom) {
                     window['onYouTubeIframeAPIReady'] = function() {
-                        if (document.getElementById('mixpanel-notification-video')) {
+                        if (document.getElementById('mixpanel-notification-video-frame')) {
                             self._yt_video_ready();
                         }
                     };
@@ -4004,7 +3971,13 @@ Globals should be all caps
                 });
             }
 
+            var video_el = document.getElementById('mixpanel-notification-video-holder');
+            video_el.innerHTML = self.video_iframe;
+
             self._animate_els(anims, 200, function() {
+                if (window['YT'] && window['YT']['loaded']) {
+                    self._yt_video_ready();
+                }
                 self.showing_video = true;
                 self._get_notification_display_el().style.visibility = 'hidden';
             });
@@ -4030,8 +4003,7 @@ Globals should be all caps
             }
             self.video_inited = true;
 
-            var video_overlay = document.getElementById('mixpanel-notification-video-overlay'),
-                progress_bar  = document.getElementById('mixpanel-notification-video-elapsed'),
+            var progress_bar  = document.getElementById('mixpanel-notification-video-elapsed'),
                 progress_time = document.getElementById('mixpanel-notification-video-time'),
                 progress_el   = document.getElementById('mixpanel-notification-video-progress');
 
@@ -4052,28 +4024,15 @@ Globals should be all caps
                                 progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
                             };
                         update_video_time(0);
+                        self._video_progress_checker = window.setInterval(function() {
+                            var current_time = ytplayer['getCurrentTime']();
+                            progress_bar.style.width = (current_time / video_duration * 100) + '%';
+                            update_video_time(current_time);
+                        }, 250);
                         _.register_event(progress_el, 'click', function(e) {
                             var clickx = Math.max(0, e.pageX - progress_el.getBoundingClientRect().left);
                             ytplayer['seekTo'](video_duration * clickx / progress_el.clientWidth, true);
                         });
-                        _.register_event(video_overlay, 'click', function(e) {
-                            e.preventDefault();
-                            ytplayer['playVideo']();
-                            video_overlay.style.visibility = 'hidden';
-                            self._video_progress_checker = window.setInterval(function() {
-                                var current_time = ytplayer['getCurrentTime']();
-                                progress_bar.style.width = (current_time / video_duration * 100) + '%';
-                                update_video_time(current_time);
-                            }, 250);
-                        });
-                    },
-                    'onStateChange': function(event) {
-                        if (event['data'] === window['YT']['PlayerState']['ENDED']) {
-                            window.clearInterval(self._video_progress_checker);
-                            self._video_progress_checker = null;
-                            progress_bar.style.width = '100%';
-                            video_overlay.style.visibility = '';
-                        }
                     }
                 }
             });
