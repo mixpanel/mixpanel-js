@@ -3257,7 +3257,7 @@ Globals should be all caps
             }
             if (this.youtube_video) {
                 video_src = '//www.youtube.com/embed/' + this.youtube_video +
-                    '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0';
+                    '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0&vq=hd1080';
                 if (this.yt_custom) {
                     video_src += '&enablejsapi=1&html5=1&controls=0';
                     video_html =
