@@ -3034,15 +3034,10 @@ Globals should be all caps
         };
 
         MPNotif.prototype.dismiss = _.safewrap(function() {
-            var exiting_el;
-            if (this.showing_video) {
-                exiting_el = document.getElementById('mixpanel-notification-video');
-            } else {
-                exiting_el = this._get_notification_display_el();
-            }
+            var exiting_el = this.showing_video ? this._get_el('video') : this._get_notification_display_el();
             this._animate_els([
                 {
-                    el:    document.getElementById('mixpanel-notification-bg'),
+                    el:    this._get_el('bg'),
                     attr:  'opacity',
                     start: MPNotif.BG_OPACITY,
                     goal:  0.0
@@ -3119,7 +3114,7 @@ Globals should be all caps
             setTimeout(function() {
                 self._animate_els([
                     {
-                        el:    document.getElementById('mixpanel-notification-bg'),
+                        el:    self._get_el('bg'),
                         attr:  'opacity',
                         start: 0.0,
                         goal:  MPNotif.BG_OPACITY
@@ -3138,12 +3133,12 @@ Globals should be all caps
                     }
                 ], 200, self._mark_as_shown);
             }, 300);
-            _.register_event(document.getElementById('mixpanel-notification-cancel'), 'click', function(e) {
+            _.register_event(self._get_el('cancel'), 'click', function(e) {
                 e.preventDefault();
                 self.dismiss();
             });
-            var click_el = document.getElementById('mixpanel-notification-button') ||
-                           document.getElementById('mixpanel-notification-mini-content');
+            var click_el = self._get_el('button') ||
+                           self._get_el('mini-content');
             _.register_event(click_el, 'click', function(e) {
                 e.preventDefault();
                 if (self.show_video) {
@@ -3159,6 +3154,10 @@ Globals should be all caps
                 }
             });
         });
+
+        MPNotif.prototype._get_el = function(id) {
+            return document.getElementById('mixpanel-notification-' + id);
+        };
 
         MPNotif.prototype._get_notification_display_el = function() {
             return document.getElementById('mixpanel-notification') || document.getElementById('mixpanel-notification-mini');
@@ -3762,7 +3761,7 @@ Globals should be all caps
 
                 if (self.yt_custom) {
                     window['onYouTubeIframeAPIReady'] = function() {
-                        if (document.getElementById('mixpanel-notification-video-frame')) {
+                        if (self._get_el('video-frame')) {
                             self._yt_video_ready();
                         }
                     };
@@ -3830,7 +3829,7 @@ Globals should be all caps
             };
 
             if (this.campaign_id) {
-                var notif_el = document.getElementById('mixpanel-notification-overlay');
+                var notif_el = this._get_el('overlay');
                 if (notif_el && get_style(notif_el, 'visibility') !== 'hidden' && get_style(notif_el, 'display') !== 'none') {
                     // mark notification shown (local cache)
                     this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
@@ -3854,7 +3853,7 @@ Globals should be all caps
 
             // click on background to dismiss
             var self = this;
-            _.register_event(document.getElementById('mixpanel-notification-bg'), 'click', function(e) {
+            _.register_event(self._get_el('bg'), 'click', function(e) {
                 self.dismiss();
             });
         };
@@ -3951,13 +3950,13 @@ Globals should be all caps
                         goal:  -500
                     },
                     {
-                        el:    document.getElementById('mixpanel-notification-video'),
+                        el:    self._get_el('video'),
                         attr:  'opacity',
                         start: 0.0,
                         goal:  1.0
                     },
                     {
-                        el:    document.getElementById('mixpanel-notification-video'),
+                        el:    self._get_el('video'),
                         attr:  'top',
                         start: -self.video_height * 2,
                         goal:  0
@@ -3965,21 +3964,21 @@ Globals should be all caps
                 ];
 
             if (self.notif_type === 'mini') {
-                var bg = document.getElementById('mixpanel-notification-bg'),
-                    overlay = document.getElementById('mixpanel-notification-overlay');
+                var bg = self._get_el('bg'),
+                    overlay = self._get_el('overlay');
                 bg.style.opacity = '0.0';
                 bg.style.width = '100%';
                 bg.style.height = '100%';
                 overlay.style.width = '100%';
                 anims.push({
-                    el:    document.getElementById('mixpanel-notification-bg'),
+                    el:    self._get_el('bg'),
                     attr:  'opacity',
                     start: 0.0,
                     goal:  MPNotif.BG_OPACITY
                 });
             }
 
-            var video_el = document.getElementById('mixpanel-notification-video-holder');
+            var video_el = self._get_el('video-holder');
             video_el.innerHTML = self.video_iframe;
 
             self._animate_els(anims, 200, function() {
@@ -4011,9 +4010,9 @@ Globals should be all caps
             }
             self.video_inited = true;
 
-            var progress_bar  = document.getElementById('mixpanel-notification-video-elapsed'),
-                progress_time = document.getElementById('mixpanel-notification-video-time'),
-                progress_el   = document.getElementById('mixpanel-notification-video-progress');
+            var progress_bar  = self._get_el('video-elapsed'),
+                progress_time = self._get_el('video-time'),
+                progress_el   = self._get_el('video-progress');
 
             new window['YT']['Player']('mixpanel-notification-video-frame', {
                 'events': {
