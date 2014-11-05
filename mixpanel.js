@@ -3035,26 +3035,29 @@ Globals should be all caps
 
         MPNotif.prototype.dismiss = _.safewrap(function() {
             var exiting_el = this.showing_video ? this._get_el('video') : this._get_notification_display_el();
-            this._animate_els([
-                {
-                    el:    this._get_el('bg'),
-                    attr:  'opacity',
-                    start: MPNotif.BG_OPACITY,
-                    goal:  0.0
-                },
-                {
-                    el:    exiting_el,
-                    attr:  'opacity',
-                    start: 1.0,
-                    goal:  0.0
-                },
-                {
-                    el:    exiting_el,
-                    attr:  'top',
-                    start: MPNotif.NOTIF_TOP,
-                    goal:  MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP
-                }
-            ], 150, this._remove_notification_el);
+            this._remove_class('bg', 'visible');
+            this._remove_class(exiting_el, 'visible');
+            setTimeout(this._remove_notification_el, 200);
+            // this._animate_els([
+            //     {
+            //         el:    this._get_el('bg'),
+            //         attr:  'opacity',
+            //         start: MPNotif.BG_OPACITY,
+            //         goal:  0.0
+            //     },
+            //     {
+            //         el:    exiting_el,
+            //         attr:  'opacity',
+            //         start: 1.0,
+            //         goal:  0.0
+            //     },
+            //     {
+            //         el:    exiting_el,
+            //         attr:  'top',
+            //         start: MPNotif.NOTIF_TOP,
+            //         goal:  MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP
+            //     }
+            // ], 150, this._remove_notification_el);
         });
 
         MPNotif.prototype._animate_els = _.safewrap(function(anims, mss, done_cb, start_time) {
@@ -3101,6 +3104,28 @@ Globals should be all caps
             setTimeout(function() { self._animate_els(anims, mss, done_cb, start_time); }, 10);
         });
 
+        MPNotif.prototype._add_class = function(el, class_name) {
+            if (typeof el === 'string') {
+                el = this._get_el(el);
+            }
+            if (!el.className) {
+                el.className = class_name;
+            } else if (!~(' ' + el.className + ' ').indexOf(' ' + class_name + ' ')) {
+                el.className += ' ' + class_name;
+            }
+        };
+        MPNotif.prototype._remove_class = function(el, class_name) {
+            if (typeof el === 'string') {
+                el = this._get_el(el);
+            }
+            if (el.className) {
+                el.className = (' ' + el.className + ' ')
+                    .replace(' ' + class_name + ' ', '')
+                    .replace(/^[\s\xA0]+/, '')
+                    .replace(/[\s\xA0]+$/, '');
+            }
+        };
+
         MPNotif.prototype._attach_and_animate = _.safewrap(function() {
             var self = this;
 
@@ -3112,27 +3137,30 @@ Globals should be all caps
 
             this.body_el.appendChild(this.notification_el);
             setTimeout(function() {
-                self._animate_els([
-                    {
-                        el:    self._get_el('bg'),
-                        attr:  'opacity',
-                        start: 0.0,
-                        goal:  MPNotif.BG_OPACITY
-                    },
-                    {
-                        el:    self._get_notification_display_el(),
-                        attr:  'opacity',
-                        start: 0.0,
-                        goal:  1.0
-                    },
-                    {
-                        el:    self._get_notification_display_el(),
-                        attr:  'top',
-                        start: MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP,
-                        goal:  MPNotif.NOTIF_TOP
-                    }
-                ], 200, self._mark_as_shown);
-            }, 300);
+                self._add_class('bg', 'visible');
+                self._add_class(self._get_notification_display_el(), 'visible');
+                self._mark_as_shown();
+                // self._animate_els([
+                //     {
+                //         el:    self._get_el('bg'),
+                //         attr:  'opacity',
+                //         start: 0.0,
+                //         goal:  MPNotif.BG_OPACITY
+                //     },
+                //     {
+                //         el:    self._get_notification_display_el(),
+                //         attr:  'opacity',
+                //         start: 0.0,
+                //         goal:  1.0
+                //     },
+                //     {
+                //         el:    self._get_notification_display_el(),
+                //         attr:  'top',
+                //         start: MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP,
+                //         goal:  MPNotif.NOTIF_TOP
+                //     }
+                // ], 200, self._mark_as_shown);
+            }, 1);
             _.register_event(self._get_el('cancel'), 'click', function(e) {
                 e.preventDefault();
                 self.dismiss();
@@ -3217,7 +3245,7 @@ Globals should be all caps
                 var close_html  = (this.clickthrough || this.show_video) ? '' : '<div id="mixpanel-notification-button-close"></div>',
                     play_html   = this.show_video ? '<div id="mixpanel-notification-button-play"></div>' : '';
                 notification_html =
-                    '<div id="mixpanel-notification" style="opacity:0.0;top:' + MPNotif.NOTIF_START_TOP + 'px;">' +
+                    '<div id="mixpanel-notification">' +
                         this.thumb_img_html +
                         '<div id="mixpanel-notification-mainbox">' +
                             cancel_html +
@@ -3379,8 +3407,12 @@ Globals should be all caps
                     'background-color': 'black',
                     'opacity': '0.0',
                     '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=60)', // IE8
-                    'filter': 'alpha(opacity=60)' // IE5-7
+                    'filter': 'alpha(opacity=60)', // IE5-7
+                    'transition': 'opacity 0.2s'
                 },
+                    '#mixpanel-notification-bg.visible': {
+                        'opacity': MPNotif.BG_OPACITY
+                    },
                     '.mixpanel-notification-mini #mixpanel-notification-bg': {
                         'width': '0',
                         'height': '0',
@@ -3390,8 +3422,15 @@ Globals should be all caps
                     'position': 'absolute',
                     'left': '50%',
                     'width': MPNotif.NOTIF_WIDTH + 'px',
-                    'margin-left': Math.round(-MPNotif.NOTIF_WIDTH / 2) + 'px'
-                },
+                    'margin-left': Math.round(-MPNotif.NOTIF_WIDTH / 2) + 'px',
+                    'opacity': '0.0',
+                    'top': MPNotif.NOTIF_START_TOP + 'px',
+                    'transition': 'opacity 0.2s, top 0.2s'
+                 },
+                    '#mixpanel-notification.visible': {
+                        'opacity': '1.0',
+                        'top': MPNotif.NOTIF_TOP + 'px'
+                    },
                 '#mixpanel-notification-mini': {
                     'position': 'absolute',
                     'right': '20px',
