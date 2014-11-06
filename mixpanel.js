@@ -2992,10 +2992,11 @@ Globals should be all caps
             this.clickthrough = false;
         }
 
-        if (this.notif_type !== 'mini') {
+        this.mini = this.notif_type === 'mini';
+        if (!this.mini) {
             this.notif_type = 'takeover';
         }
-        this.notif_width = this.notif_type !== 'mini' ? MPNotif.NOTIF_WIDTH : MPNotif.NOTIF_WIDTH_MINI;
+        this.notif_width = !this.mini ? MPNotif.NOTIF_WIDTH : MPNotif.NOTIF_WIDTH_MINI;
 
         this._set_client_config();
         this.imgs_to_preload = this._init_image_html();
@@ -3042,6 +3043,16 @@ Globals should be all caps
                 this._add_class(exiting_el, 'hidden');
                 setTimeout(this._remove_notification_el, 200);
             } else {
+                var notif_attr, notif_start, notif_goal;
+                if (this.mini) {
+                    notif_attr  = 'right';
+                    notif_start = 20;
+                    notif_goal  = -100;
+                } else {
+                    notif_attr  = 'top';
+                    notif_start = MPNotif.NOTIF_TOP;
+                    notif_goal  = MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP;
+                }
                 this._animate_els([
                     {
                         el:    this._get_el('bg'),
@@ -3057,9 +3068,9 @@ Globals should be all caps
                     },
                     {
                         el:    exiting_el,
-                        attr:  'top',
-                        start: MPNotif.NOTIF_TOP,
-                        goal:  MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP
+                        attr:  notif_attr,
+                        start: notif_start,
+                        goal:  notif_goal
                     }
                 ], 150, this._remove_notification_el);
             }
@@ -3146,12 +3157,22 @@ Globals should be all caps
             setTimeout(function() {
                 var notif_el = self._get_notification_display_el();
                 if (self.use_transitions) {
-                    if (self.notif_type !== 'mini') {
+                    if (!self.mini) {
                         self._add_class('bg', 'visible');
                     }
                     self._add_class(notif_el, 'visible');
                     self._mark_as_shown();
                 } else {
+                    var notif_attr, notif_start, notif_goal;
+                    if (self.mini) {
+                        notif_attr  = 'right';
+                        notif_start = -100;
+                        notif_goal  = 20;
+                    } else {
+                        notif_attr  = 'top';
+                        notif_start = MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP;
+                        notif_goal  = MPNotif.NOTIF_TOP;
+                    }
                     self._animate_els([
                         {
                             el:    self._get_el('bg'),
@@ -3167,9 +3188,9 @@ Globals should be all caps
                         },
                         {
                             el:    notif_el,
-                            attr:  'top',
-                            start: MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP,
-                            goal:  MPNotif.NOTIF_TOP
+                            attr:  notif_attr,
+                            start: notif_start,
+                            goal:  notif_goal
                         }
                     ], 200, self._mark_as_shown);
                 }
@@ -3215,7 +3236,7 @@ Globals should be all caps
         MPNotif.prototype._init_image_html = function() {
             var imgs_to_preload = [];
 
-            if (this.notif_type !== 'mini') {
+            if (!this.mini) {
                 if (this.image_url) {
                     imgs_to_preload.push(this.image_url);
                     this.img_html = '<img id="img" src="' + this.image_url + '"/>';
@@ -3253,10 +3274,14 @@ Globals should be all caps
 
             this.notification_el = document.createElement('div');
             this.notification_el.id = MPNotif.MARKUP_PREFIX + '-wrapper';
-            if (this.notif_type !== 'mini') {
+            if (!this.mini) {
                 // TAKEOVER notification
                 var close_html  = (this.clickthrough || this.show_video) ? '' : '<div id="button-close"></div>',
                     play_html   = this.show_video ? '<div id="button-play"></div>' : '';
+                if (this._browser_lte('ie', 7)) {
+                    close_html = '';
+                    play_html = '';
+                }
                 notification_html =
                     '<div id="takeover">' +
                         this.thumb_img_html +
@@ -3281,7 +3306,6 @@ Globals should be all caps
                 // MINI notification
                 notification_html =
                     '<div id="mini">' +
-                        '<div id="mini-border"></div>' +
                         '<div id="mainbox">' +
                             cancel_html +
                             '<div id="mini-content">' +
@@ -3293,6 +3317,7 @@ Globals should be all caps
                                 '</div>' +
                             '</div>' +
                         '</div>' +
+                        '<div id="mini-border"></div>' +
                     '</div>';
             }
             if (this.youtube_video) {
@@ -3329,9 +3354,9 @@ Globals should be all caps
             var main_html = video_html + notification_html;
             if (this.flip_animate) {
                 main_html =
-                    (this.notif_type === 'mini' ? notification_html : '') +
+                    (this.mini ? notification_html : '') +
                     '<div id="flipcontainer"><div id="flipper">' +
-                        (this.notif_type === 'mini' ? video_html : main_html) +
+                        (this.mini ? video_html : main_html) +
                     '</div></div>';
             }
 
@@ -3382,7 +3407,7 @@ Globals should be all caps
                 video_shadow = shadow,
                 mini_shadow = shadow,
                 thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2;
-            if (this.notif_type === 'mini') {
+            if (this.mini) {
                 shadow = 'none';
             }
 
@@ -3471,22 +3496,6 @@ Globals should be all caps
                         'opacity': '1.0',
                         'top': MPNotif.NOTIF_TOP + 'px'
                     },
-                '#mini': {
-                    'position': 'absolute',
-                    'right': '20px',
-                    'top': MPNotif.NOTIF_TOP + 'px',
-                    'width': this.notif_width + 'px',
-                    'height': MPNotif.NOTIF_HEIGHT_MINI * 2 + 'px',
-                    'margin-top': 20 - MPNotif.NOTIF_HEIGHT_MINI + 'px',
-                    'backface-visibility': 'hidden',
-                    'opacity': '0.0',
-                    'transform': 'rotateX(90deg)',
-                    'transition': 'opacity 0.3s, transform 0.3s'
-                },
-                    '#mini.visible': {
-                        'opacity': '1.0',
-                        'transform': 'rotateX(0deg)'
-                    },
                 '#thumbspacer': {
                     'height': MPNotif.THUMB_OFFSET + 'px'
                 },
@@ -3516,6 +3525,22 @@ Globals should be all caps
                     'z-index': '100',
                     'border-radius': MPNotif.THUMB_IMG_SIZE + 'px'
                 },
+                '#mini': {
+                    'position': 'absolute',
+                    'right': '20px',
+                    'top': MPNotif.NOTIF_TOP + 'px',
+                    'width': this.notif_width + 'px',
+                    'height': MPNotif.NOTIF_HEIGHT_MINI * 2 + 'px',
+                    'margin-top': 20 - MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                    'backface-visibility': 'hidden',
+                    'opacity': '0.0',
+                    'transform': 'rotateX(90deg)',
+                    'transition': 'opacity 0.3s, transform 0.3s'
+                },
+                    '#mini.visible': {
+                        'opacity': '1.0',
+                        'transform': 'rotateX(0deg)'
+                    },
                 '#mainbox': {
                     'border-radius': '4px',
                     'box-shadow': shadow,
@@ -3796,10 +3821,11 @@ Globals should be all caps
                 _.extend(notif_styles, {
                     '#mini #body': {
                         'display': 'inline',
-                        'zoom': '1'
+                        'zoom': '1',
+                        'border': '1px solid ' + this.style_vals.bg_hover
                     },
                     '#mini #body-text': {
-                        'padding': '10px'
+                        'padding': '20px'
                     },
                     '#mini #mini-icon': {
                         'display': 'none'
@@ -4099,7 +4125,7 @@ Globals should be all caps
                     }
                 ];
 
-            if (self.notif_type === 'mini') {
+            if (self.mini) {
                 var bg = self._get_el('bg'),
                     overlay = self._get_el('overlay');
                 bg.style.width = '100%';
