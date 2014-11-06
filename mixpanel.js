@@ -3756,6 +3756,7 @@ Globals should be all caps
                     'overflow': 'hidden',
                     'border-radius': '5px',
                     'box-shadow': video_shadow,
+                    'transform': 'translateZ(1px)', // webkit rendering bug http://stackoverflow.com/questions/18167981/clickable-link-area-unexpectedly-smaller-after-css-transform
                     'transition': 'opacity 0.2s, top 0.2s'
                 },
                     '#video.hidden': {
