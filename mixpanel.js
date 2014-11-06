@@ -3202,8 +3202,8 @@ Globals should be all caps
             return this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = {});
         };
 
-        MPNotif.prototype._ie_lte = function(version) {
-            return this.ie_ver && this.ie_ver <= version;
+        MPNotif.prototype._browser_lte = function(browser, version) {
+            return this.browser_versions[browser] && this.browser_versions[browser] <= version;
         };
 
         MPNotif.prototype._init_image_html = function() {
@@ -3721,7 +3721,7 @@ Globals should be all caps
             };
 
             // IE hacks
-            if (this._ie_lte(8)) {
+            if (this._browser_lte('ie', 8)) {
                 _.extend(notif_styles, {
                     '* html #mixpanel-notification-overlay': {
                         'position': 'absolute'
@@ -3734,7 +3734,7 @@ Globals should be all caps
                     }
                 });
             }
-            if (this._ie_lte(7)) {
+            if (this._browser_lte('ie', 7)) {
                 _.extend(notif_styles, {
                     '#mixpanel-notification-mini #mixpanel-notification-body': {
                         'display': 'inline',
@@ -3823,8 +3823,8 @@ Globals should be all caps
                 self.vimeo_video = vimeo_match[1];
             }
 
-            // IE <= 7: fall through to video link rather than embedded player
-            if (self._ie_lte(7)) {
+            // IE <= 7, FF <= 3: fall through to video link rather than embedded player
+            if (self._browser_lte('ie', 7) || self._browser_lte('firefox', 3)) {
                 self.show_video = false;
                 self.clickthrough = true;
             }
@@ -3931,7 +3931,7 @@ Globals should be all caps
             }
 
             // IE6/7 doesn't fire onload reliably
-            if (this._ie_lte(7)) {
+            if (this._browser_lte('ie', 7)) {
                 setTimeout(function() {
                     var imgs_loaded = true;
                     for (i = 0; i < img_objs.length; i++) {
@@ -3958,11 +3958,12 @@ Globals should be all caps
                 var match = navigator.userAgent.match(browser_ex);
                 return match && match[1];
             };
-            this.chrome_ver  = get_browser_version(/Chrome\/(\d+)/);
-            this.firefox_ver = get_browser_version(/Firefox\/(\d+)/);
-            this.ie_ver      = get_browser_version(/MSIE (\d+).+/);
-            if (!this.ie_ver && !(window.ActiveXObject) && "ActiveXObject" in window) {
-                this.ie_ver = 11;
+            this.browser_versions = {};
+            this.browser_versions['chrome']  = get_browser_version(/Chrome\/(\d+)/);
+            this.browser_versions['firefox'] = get_browser_version(/Firefox\/(\d+)/);
+            this.browser_versions['ie']      = get_browser_version(/MSIE (\d+).+/);
+            if (!this.browser_versions['ie'] && !(window.ActiveXObject) && "ActiveXObject" in window) {
+                this.browser_versions['ie'] = 11;
             }
 
             this.body_el = document.body || document.getElementsByTagName('body')[0];
@@ -3980,7 +3981,7 @@ Globals should be all caps
             }
 
             // detect CSS compatibility
-            var ie_ver = this.ie_ver;
+            var ie_ver = this.browser_versions['ie'];
             var sample_styles = document.createElement('div').style,
                 is_css_compatible = function(rule) {
                     if (rule in sample_styles) {
