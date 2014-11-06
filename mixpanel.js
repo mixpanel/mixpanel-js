@@ -3035,30 +3035,55 @@ Globals should be all caps
 
         MPNotif.prototype.dismiss = _.safewrap(function() {
             var exiting_el = this.showing_video ? this._get_el('video') : this._get_notification_display_el();
-            this._remove_class('bg', 'visible');
-            this._remove_class(exiting_el, 'visible');
-            setTimeout(this._remove_notification_el, 200);
-            // this._animate_els([
-            //     {
-            //         el:    this._get_el('bg'),
-            //         attr:  'opacity',
-            //         start: MPNotif.BG_OPACITY,
-            //         goal:  0.0
-            //     },
-            //     {
-            //         el:    exiting_el,
-            //         attr:  'opacity',
-            //         start: 1.0,
-            //         goal:  0.0
-            //     },
-            //     {
-            //         el:    exiting_el,
-            //         attr:  'top',
-            //         start: MPNotif.NOTIF_TOP,
-            //         goal:  MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP
-            //     }
-            // ], 150, this._remove_notification_el);
+            if (this.use_transitions) {
+                this._remove_class('bg', 'visible');
+                this._remove_class(exiting_el, 'visible');
+                setTimeout(this._remove_notification_el, 200);
+            } else {
+                this._animate_els([
+                    {
+                        el:    this._get_el('bg'),
+                        attr:  'opacity',
+                        start: MPNotif.BG_OPACITY,
+                        goal:  0.0
+                    },
+                    {
+                        el:    exiting_el,
+                        attr:  'opacity',
+                        start: 1.0,
+                        goal:  0.0
+                    },
+                    {
+                        el:    exiting_el,
+                        attr:  'top',
+                        start: MPNotif.NOTIF_TOP,
+                        goal:  MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP
+                    }
+                ], 150, this._remove_notification_el);
+            }
         });
+
+        MPNotif.prototype._add_class = function(el, class_name) {
+            if (typeof el === 'string') {
+                el = this._get_el(el);
+            }
+            if (!el.className) {
+                el.className = class_name;
+            } else if (!~(' ' + el.className + ' ').indexOf(' ' + class_name + ' ')) {
+                el.className += ' ' + class_name;
+            }
+        };
+        MPNotif.prototype._remove_class = function(el, class_name) {
+            if (typeof el === 'string') {
+                el = this._get_el(el);
+            }
+            if (el.className) {
+                el.className = (' ' + el.className + ' ')
+                    .replace(' ' + class_name + ' ', '')
+                    .replace(/^[\s\xA0]+/, '')
+                    .replace(/[\s\xA0]+$/, '');
+            }
+        };
 
         MPNotif.prototype._animate_els = _.safewrap(function(anims, mss, done_cb, start_time) {
             var self = this,
@@ -3104,28 +3129,6 @@ Globals should be all caps
             setTimeout(function() { self._animate_els(anims, mss, done_cb, start_time); }, 10);
         });
 
-        MPNotif.prototype._add_class = function(el, class_name) {
-            if (typeof el === 'string') {
-                el = this._get_el(el);
-            }
-            if (!el.className) {
-                el.className = class_name;
-            } else if (!~(' ' + el.className + ' ').indexOf(' ' + class_name + ' ')) {
-                el.className += ' ' + class_name;
-            }
-        };
-        MPNotif.prototype._remove_class = function(el, class_name) {
-            if (typeof el === 'string') {
-                el = this._get_el(el);
-            }
-            if (el.className) {
-                el.className = (' ' + el.className + ' ')
-                    .replace(' ' + class_name + ' ', '')
-                    .replace(/^[\s\xA0]+/, '')
-                    .replace(/[\s\xA0]+$/, '');
-            }
-        };
-
         MPNotif.prototype._attach_and_animate = _.safewrap(function() {
             var self = this;
 
@@ -3137,29 +3140,33 @@ Globals should be all caps
 
             this.body_el.appendChild(this.notification_el);
             setTimeout(function() {
-                self._add_class('bg', 'visible');
-                self._add_class(self._get_notification_display_el(), 'visible');
-                self._mark_as_shown();
-                // self._animate_els([
-                //     {
-                //         el:    self._get_el('bg'),
-                //         attr:  'opacity',
-                //         start: 0.0,
-                //         goal:  MPNotif.BG_OPACITY
-                //     },
-                //     {
-                //         el:    self._get_notification_display_el(),
-                //         attr:  'opacity',
-                //         start: 0.0,
-                //         goal:  1.0
-                //     },
-                //     {
-                //         el:    self._get_notification_display_el(),
-                //         attr:  'top',
-                //         start: MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP,
-                //         goal:  MPNotif.NOTIF_TOP
-                //     }
-                // ], 200, self._mark_as_shown);
+                var notif_el = self._get_notification_display_el();
+                if (self.use_transitions) {
+                    self._add_class('bg', 'visible');
+                    self._add_class(notif_el, 'visible');
+                    self._mark_as_shown();
+                } else {
+                    self._animate_els([
+                        {
+                            el:    self._get_el('bg'),
+                            attr:  'opacity',
+                            start: 0.0,
+                            goal:  MPNotif.BG_OPACITY
+                        },
+                        {
+                            el:    notif_el,
+                            attr:  'opacity',
+                            start: 0.0,
+                            goal:  1.0
+                        },
+                        {
+                            el:    notif_el,
+                            attr:  'top',
+                            start: MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP,
+                            goal:  MPNotif.NOTIF_TOP
+                        }
+                    ], 200, self._mark_as_shown);
+                }
             }, 1);
             _.register_event(self._get_el('cancel'), 'click', function(e) {
                 e.preventDefault();
@@ -3971,6 +3978,34 @@ Globals should be all caps
                     this.body_el.clientHeight, document.documentElement.clientHeight
                 );
             }
+
+            // detect CSS compatibility
+            var ie_ver = this.ie_ver;
+            var sample_styles = document.createElement('div').style,
+                is_css_compatible = function(rule) {
+                    if (rule in sample_styles) {
+                        return true;
+                    }
+                    if (!ie_ver) {
+                        rule = rule[0].toUpperCase() + rule.slice(1);
+                        var props = ['O' + rule, 'Webkit' + rule, 'Moz' + rule];
+                        for (var i = 0; i < props.length; i++) {
+                            if (props[i] in sample_styles) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+            this.use_transitions =
+                this.body_el &&
+                is_css_compatible('transition');
+            this.flip_animate =
+                (this.chrome_ver >= 33 || this.firefox_ver >= 15) &&
+                this.body_el &&
+                is_css_compatible('backfaceVisibility') &&
+                is_css_compatible('perspective') &&
+                is_css_compatible('transform');
         };
 
         MPNotif.prototype._switch_to_video = _.safewrap(function() {
