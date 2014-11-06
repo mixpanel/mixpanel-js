@@ -3038,6 +3038,7 @@ Globals should be all caps
             if (this.use_transitions) {
                 this._remove_class('bg', 'visible');
                 this._remove_class(exiting_el, 'visible');
+                this._add_class(exiting_el, 'hidden');
                 setTimeout(this._remove_notification_el, 200);
             } else {
                 this._animate_els([
@@ -3710,13 +3711,18 @@ Globals should be all caps
                     'width': (this.video_width - 1) + 'px',
                     'height': this.video_height + 'px',
                     'top': MPNotif.NOTIF_TOP + 'px',
-                    'margin-top': '25px',
+                    'margin-top': '100px',
                     'left': '50%',
                     'margin-left': Math.round(-this.video_width / 2) + 'px',
                     'overflow': 'hidden',
                     'border-radius': '5px',
-                    'box-shadow': video_shadow
+                    'box-shadow': video_shadow,
+                    'transition': 'opacity 0.2s, top 0.2s'
                 },
+                    '#mixpanel-notification-video.mixpanel-notification-hidden': {
+                        'opacity': '0.0',
+                        'top': this.video_height + 'px'
+                    },
                 '#mixpanel-notification-video-holder': {
                     'position': 'absolute',
                     'width': (this.video_width - 1) + 'px',
@@ -4071,13 +4077,13 @@ Globals should be all caps
                         goal:  -500
                     },
                     {
-                        el:    self._get_el('video'),
+                        el:    self._get_el('video-noflip'),
                         attr:  'opacity',
                         start: 0.0,
                         goal:  1.0
                     },
                     {
-                        el:    self._get_el('video'),
+                        el:    self._get_el('video-noflip'),
                         attr:  'top',
                         start: -self.video_height * 2,
                         goal:  0
