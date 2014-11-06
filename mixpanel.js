@@ -3145,7 +3145,9 @@ Globals should be all caps
             setTimeout(function() {
                 var notif_el = self._get_notification_display_el();
                 if (self.use_transitions) {
-                    self._add_class('bg', 'visible');
+                    if (self.notif_type !== 'mini') {
+                        self._add_class('bg', 'visible');
+                    }
                     self._add_class(notif_el, 'visible');
                     self._mark_as_shown();
                 } else {
@@ -3326,8 +3328,9 @@ Globals should be all caps
             var main_html = video_html + notification_html;
             if (this.flip_animate) {
                 main_html =
+                    (this.notif_type === 'mini' ? notification_html : '') +
                     '<div id="mixpanel-notification-flipcontainer"><div id="mixpanel-notification-flipper">' +
-                        main_html +
+                        (this.notif_type === 'mini' ? video_html : main_html) +
                     '</div></div>';
             }
             this.notification_el.innerHTML =
@@ -4093,10 +4096,13 @@ Globals should be all caps
             if (self.notif_type === 'mini') {
                 var bg = self._get_el('bg'),
                     overlay = self._get_el('overlay');
-                bg.style.opacity = '0.0';
                 bg.style.width = '100%';
                 bg.style.height = '100%';
                 overlay.style.width = '100%';
+
+                self._remove_class(self._get_notification_display_el(), 'visible');
+                self._add_class(bg, 'visible');
+
                 anims.push({
                     el:    self._get_el('bg'),
                     attr:  'opacity',
