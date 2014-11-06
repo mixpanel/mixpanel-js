@@ -3167,7 +3167,7 @@ Globals should be all caps
                         }
                     ], 200, self._mark_as_shown);
                 }
-            }, 1);
+            }, 100);
             _.register_event(self._get_el('cancel'), 'click', function(e) {
                 e.preventDefault();
                 self.dismiss();
@@ -3274,7 +3274,7 @@ Globals should be all caps
             } else {
                 // MINI notification
                 notification_html =
-                    '<div id="mixpanel-notification-mini" style="opacity:0.0;top:' + MPNotif.NOTIF_START_TOP + 'px;">' +
+                    '<div id="mixpanel-notification-mini">' +
                         '<div id="mixpanel-notification-mini-border"></div>' +
                         '<div id="mixpanel-notification-mainbox">' +
                             cancel_html +
@@ -3441,10 +3441,18 @@ Globals should be all caps
                 '#mixpanel-notification-mini': {
                     'position': 'absolute',
                     'right': '20px',
+                    'top': MPNotif.NOTIF_TOP + 'px',
                     'width': this.notif_width + 'px',
-                    'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
-                    'margin-top': '20px'
+                    'height': MPNotif.NOTIF_HEIGHT_MINI * 2 + 'px',
+                    'margin-top': 20 - MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                    'opacity': '0.0',
+                    'transform': 'rotateX(90deg)',
+                    'transition': 'opacity 0.3s, transform 0.3s'
                 },
+                    '#mixpanel-notification-mini.visible': {
+                        'opacity': '1.0',
+                        'transform': 'rotateX(0deg)'
+                    },
                 '#mixpanel-notification-thumbspacer': {
                     'height': MPNotif.THUMB_OFFSET + 'px'
                 },
@@ -3484,6 +3492,7 @@ Globals should be all caps
                 },
                     '#mixpanel-notification-mini #mixpanel-notification-mainbox': {
                         'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                        'margin-top': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                         'border-radius': '3px',
                         'transition': 'background-color 0.2s'
                     },
@@ -3493,6 +3502,7 @@ Globals should be all caps
                     'position': 'absolute',
                     'top': '-3px',
                     'left': '-3px',
+                    'margin-top': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                     'border-radius': '6px',
                     'opacity': '0.25',
                     'background-color': '#fff',
@@ -4000,7 +4010,8 @@ Globals should be all caps
                 };
             this.use_transitions =
                 this.body_el &&
-                is_css_compatible('transition');
+                is_css_compatible('transition') &&
+                is_css_compatible('transform');
             this.flip_animate =
                 (this.chrome_ver >= 33 || this.firefox_ver >= 15) &&
                 this.body_el &&
