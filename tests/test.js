@@ -1535,7 +1535,19 @@ mpmodule("in-app notification display");
             title: "hallo"
         });
         setTimeout(function() {
-            same($('#mixpanel-notification').length, 1);
+            same($('#mixpanel-notification-takeover').length, 1);
+            $('#mixpanel-notification-wrapper').remove();
+            start();
+        }, 2000);
+    });
+
+    asyncTest("mini notification with normal data adds itself to DOM", 1, function() {
+        mixpanel._show_notification({
+            body: "notification body test",
+            type: "mini"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification-mini').length, 1);
             $('#mixpanel-notification-wrapper').remove();
             start();
         }, 2000);
@@ -1548,7 +1560,7 @@ mpmodule("in-app notification display");
             title: "bad image title"
         });
         setTimeout(function() {
-            same($('#mixpanel-notification').length, 0);
+            same($('#mixpanel-notification-takeover').length, 0);
             start();
         }, 2000);
     });
@@ -1568,7 +1580,7 @@ mpmodule("in-app notification display");
             title: "bad image title"
         });
         setTimeout(function() {
-            same($('#mixpanel-notification').length, 1);
+            same($('#mixpanel-notification-takeover').length, 1);
             $('#mixpanel-notification-wrapper').remove();
             ok(_.isUndefined(window.injectedvar), 'window.injectedvar should not exist');
             start();
