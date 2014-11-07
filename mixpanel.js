@@ -3005,6 +3005,7 @@ Globals should be all caps
 
     var MPNotif = MixpanelLib._Notification;
 
+        MPNotif.ANIM_TIME         = 200;
         MPNotif.MARKUP_PREFIX     = 'mixpanel-notification';
         MPNotif.BG_OPACITY        = 0.6;
         MPNotif.NOTIF_TOP         = 25;
@@ -3041,7 +3042,7 @@ Globals should be all caps
                 this._remove_class('bg', 'visible');
                 this._remove_class(exiting_el, 'visible');
                 this._add_class(exiting_el, 'hidden');
-                setTimeout(this._remove_notification_el, 200);
+                setTimeout(this._remove_notification_el, MPNotif.ANIM_TIME);
             } else {
                 var notif_attr, notif_start, notif_goal;
                 if (this.mini) {
@@ -3072,7 +3073,7 @@ Globals should be all caps
                         start: notif_start,
                         goal:  notif_goal
                     }
-                ], 150, this._remove_notification_el);
+                ], MPNotif.ANIM_TIME, this._remove_notification_el);
             }
         });
 
@@ -3192,7 +3193,7 @@ Globals should be all caps
                             start: notif_start,
                             goal:  notif_goal
                         }
-                    ], 200, self._mark_as_shown);
+                    ], MPNotif.ANIM_TIME, self._mark_as_shown);
                 }
             }, 100);
             _.register_event(self._get_el('cancel'), 'click', function(e) {
@@ -3407,7 +3408,8 @@ Globals should be all caps
             var shadow = '0px 0px 35px 0px rgba(45, 49, 56, 0.7)',
                 video_shadow = shadow,
                 mini_shadow = shadow,
-                thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2;
+                thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2,
+                anim_seconds = (MPNotif.ANIM_TIME / 1000) + 's';
             if (this.mini) {
                 shadow = 'none';
             }
@@ -3463,7 +3465,7 @@ Globals should be all caps
                     'opacity': '0.0',
                     '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=60)', // IE8
                     'filter': 'alpha(opacity=60)', // IE5-7
-                    'transition': 'opacity 0.2s'
+                    'transition': 'opacity ' + anim_seconds
                 },
                     '#bg.visible': {
                         'opacity': MPNotif.BG_OPACITY
@@ -3492,7 +3494,7 @@ Globals should be all caps
                     'transform': 'rotateY(0deg)',
                     'opacity': '0.0',
                     'top': MPNotif.NOTIF_START_TOP + 'px',
-                    'transition': 'opacity 0.2s, top 0.2s'
+                    'transition': 'opacity ' + anim_seconds + ', top ' + anim_seconds
                  },
                     '#takeover.visible': {
                         'opacity': '1.0',
@@ -3555,7 +3557,7 @@ Globals should be all caps
                         'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                         'margin-top': MPNotif.NOTIF_HEIGHT_MINI + 'px',
                         'border-radius': '3px',
-                        'transition': 'background-color 0.2s'
+                        'transition': 'background-color ' + anim_seconds
                     },
                 '#mini-border': {
                     'height': (MPNotif.NOTIF_HEIGHT_MINI + 6) + 'px',
@@ -3578,7 +3580,7 @@ Globals should be all caps
                     'border-radius': '3px 0 0 3px',
                     'background-color': this.style_vals.bg_actions,
                     'background': 'linear-gradient(135deg, ' + this.style_vals.bg_light + ' 0%, ' + this.style_vals.bg_actions + ' 100%)',
-                    'transition': 'background-color 0.2s'
+                    'transition': 'background-color ' + anim_seconds
                 },
                 '#mini:hover #mini-icon': {
                     'background-color': this.style_vals.mini_hover
@@ -3653,7 +3655,7 @@ Globals should be all caps
                 },
                 '#tagline a': {
                     'color': this.style_vals.text_tagline,
-                    'transition': 'color 0.2s'
+                    'transition': 'color ' + anim_seconds
                 },
                 '#tagline a:hover': {
                     'color': this.style_vals.text_hover
@@ -3668,7 +3670,7 @@ Globals should be all caps
                     'margin': '12px 12px 0 0',
                     'box-sizing': 'content-box',
                     'cursor': 'pointer',
-                    'transition': 'background-color 0.2s'
+                    'transition': 'background-color ' + anim_seconds
                 },
                     '#mini #cancel': {
                         'margin': '7px 7px 0 0'
@@ -3692,7 +3694,7 @@ Globals should be all caps
                     'border-radius': '0 0 4px 4px',
                     'overflow': 'hidden',
                     'cursor': 'pointer',
-                    'transition': 'background-color 0.2s'
+                    'transition': 'background-color ' + anim_seconds
                 },
                 '#button-close': {
                     'display': 'inline-block',
@@ -3722,7 +3724,7 @@ Globals should be all caps
                     'overflow': 'hidden',
                     'word-wrap': 'break-word',
                     'color': this.style_vals.text_title,
-                    'transition': 'color 0.2s'
+                    'transition': 'color ' + anim_seconds
                 },
                 '#button:hover': {
                     'background-color': this.style_vals.bg_hover,
@@ -3752,7 +3754,7 @@ Globals should be all caps
                     'border-radius': '5px',
                     'box-shadow': video_shadow,
                     'transform': 'translateZ(1px)', // webkit rendering bug http://stackoverflow.com/questions/18167981/clickable-link-area-unexpectedly-smaller-after-css-transform
-                    'transition': 'opacity 0.2s, top 0.2s'
+                    'transition': 'opacity ' + anim_seconds + ', top ' + anim_seconds
                 },
                     '#video.hidden': {
                         'opacity': '0.0',
@@ -4158,9 +4160,9 @@ Globals should be all caps
             };
             if (self.flip_animate) {
                 self._add_class('flipper', 'flipped');
-                setTimeout(video_ready, 200);
+                setTimeout(video_ready, MPNotif.ANIM_TIME);
             } else {
-                self._animate_els(anims, 200, video_ready);
+                self._animate_els(anims, MPNotif.ANIM_TIME, video_ready);
             }
         });
 
