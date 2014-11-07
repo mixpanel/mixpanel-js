@@ -1541,6 +1541,18 @@ mpmodule("in-app notification display");
         }, 2000);
     });
 
+    asyncTest("mini notification with normal data adds itself to DOM", 1, function() {
+        mixpanel._show_notification({
+            body: "notification body test",
+            type: "mini"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification-mini').length, 1);
+            $('#mixpanel-notification-wrapper').remove();
+            start();
+        }, 2000);
+    });
+
     asyncTest("notification does not show when images don't load", 1, function() {
         mixpanel._show_notification({
             body: "bad image body test",
