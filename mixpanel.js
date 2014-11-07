@@ -3148,15 +3148,12 @@ Globals should be all caps
             var self = this;
 
             // no possibility to double-display
-            if (self.shown || self._get_shown_campaigns()[self.campaign_id]) {
+            if (this.shown || this._get_shown_campaigns()[this.campaign_id]) {
                 return;
             }
-            self.shown = true;
+            this.shown = true;
 
-            self.body_el.appendChild(self.notification_el);
-            if (self.yt_custom && window['YT'] && window['YT']['loaded']) {
-                self._yt_video_ready();
-            }
+            this.body_el.appendChild(this.notification_el);
             setTimeout(function() {
                 var notif_el = self._get_notification_display_el();
                 if (self.use_transitions) {
@@ -3325,9 +3322,9 @@ Globals should be all caps
             }
             if (this.youtube_video) {
                 video_src = '//www.youtube.com/embed/' + this.youtube_video +
-                    '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&loop=0&vq=hd1080';
+                    '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0&vq=hd1080';
                 if (this.yt_custom) {
-                    video_src += '&autoplay=0&enablejsapi=1&html5=1&controls=0';
+                    video_src += '&enablejsapi=1&html5=1&controls=0';
                     video_html =
                         '<div id="video-controls">' +
                             '<div id="video-progress" class="video-progress-el">' +
@@ -3336,24 +3333,21 @@ Globals should be all caps
                             '</div>' +
                             '<div id="video-time" class="video-progress-el"></div>' +
                         '</div>';
-                } else {
-                    video_src += '&autoplay=1';
                 }
             } else if (this.vimeo_video) {
                 video_src = '//player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
             }
             if (this.show_video) {
                 this.video_iframe =
-                    '<iframe id="video-frame" width="' + this.video_width + '" height="' + this.video_height + '" ' +
+                    '<iframe id="' + MPNotif.MARKUP_PREFIX + '-video-frame" ' +
+                        'width="' + this.video_width + '" height="' + this.video_height + '" ' +
                         ' src="' + video_src + '"' +
                         ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
                     '></iframe>';
                 video_html =
                     '<div id="video-' + (this.flip_animate ? '' : 'no') + 'flip">' +
                         '<div id="video">' +
-                            '<div id="video-holder">' +
-                                (this.yt_custom ? this.video_iframe : '') +
-                            '</div>' +
+                            '<div id="video-holder"></div>' +
                             video_html +
                         '</div>' +
                     '</div>';
@@ -4152,13 +4146,11 @@ Globals should be all caps
                 });
             }
 
-            if (!this.yt_custom) {
-                self._get_el('video-holder').innerHTML = self.video_iframe;
-            }
+            var video_el = self._get_el('video-holder');
+            video_el.innerHTML = self.video_iframe;
+
             var video_ready = function() {
-                if (self.yt_custom && self.yt_player) {
-                    self.yt_player['playVideo']();
-                } else if (window['YT'] && window['YT']['loaded']) {
+                if (window['YT'] && window['YT']['loaded']) {
                     self._yt_video_ready();
                 }
                 self.showing_video = true;
@@ -4199,8 +4191,8 @@ Globals should be all caps
             new window['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
                 'events': {
                     'onReady': function(event) {
-                        self.yt_player = event['target'];
-                        var video_duration = self.yt_player['getDuration'](),
+                        var ytplayer = event['target'],
+                            video_duration = ytplayer['getDuration'](),
                             pad = function(i) {
                                 return ('00' + i).slice(-2);
                             },
@@ -4213,17 +4205,14 @@ Globals should be all caps
                                 progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
                             };
                         update_video_time(0);
-                        if (self.showing_video) {
-                            self.yt_player['playVideo']();
-                        }
                         self._video_progress_checker = window.setInterval(function() {
-                            var current_time = self.yt_player['getCurrentTime']();
+                            var current_time = ytplayer['getCurrentTime']();
                             progress_bar.style.width = (current_time / video_duration * 100) + '%';
                             update_video_time(current_time);
                         }, 250);
                         _.register_event(progress_el, 'click', function(e) {
                             var clickx = Math.max(0, e.pageX - progress_el.getBoundingClientRect().left);
-                            self.yt_player['seekTo'](video_duration * clickx / progress_el.clientWidth, true);
+                            ytplayer['seekTo'](video_duration * clickx / progress_el.clientWidth, true);
                         });
                     }
                 }
