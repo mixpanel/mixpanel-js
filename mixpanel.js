@@ -3449,6 +3449,7 @@ Globals should be all caps
                     },
                 '#overlay a': {
                     'text-decoration': 'none',
+                    'text-transform': 'none',
                     'color': 'inherit'
                 },
                 '#bgwrapper': {
@@ -3714,7 +3715,7 @@ Globals should be all caps
                     'width': '30px',
                     'height': '60px',
                     'margin-left': '15px',
-                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-small.png)',
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-small.png)',
                     'background-repeat': 'no-repeat',
                     'background-position': '0px 15px'
                 },
