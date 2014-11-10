@@ -4337,6 +4337,7 @@ Globals should be all caps
             } else if (token) {
                 // intialize the main mixpanel lib
                 instance = create_mplib(token, config, PRIMARY_INSTANCE_NAME);
+                instance._loaded();
             }
 
             window[PRIMARY_INSTANCE_NAME] = mixpanel = instance;
