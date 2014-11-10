@@ -74,7 +74,7 @@ Globals should be all caps
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-    var HTTP_PROTOCOL     = (("https:" == document.location.protocol) ? "https://" : "http://"),
+    var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://"),
 
         LIB_VERSION = '2.3.0',
         SNIPPET_VERSION = (mixpanel && mixpanel['__SV']) || 0,
