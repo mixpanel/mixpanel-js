@@ -1,5 +1,5 @@
 /*
- * Mixpanel JS Library v2.3-beta
+ * Mixpanel JS Library v2.3.0
  *
  * Copyright 2012, Mixpanel, Inc. All Rights Reserved
  * http://mixpanel.com/
@@ -12,7 +12,7 @@
 
 // ==ClosureCompiler==
 // @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.2.min.js
+// @output_file_name mixpanel-2.3.min.js
 // ==/ClosureCompiler==
 
 /*
@@ -74,15 +74,19 @@ Globals should be all caps
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-    var   HTTP_PROTOCOL     = (("https:" == document.location.protocol) ? "https://" : "http://")
-        , SNIPPET_VERSION   = (mixpanel && mixpanel['__SV']) || 0
+    var HTTP_PROTOCOL     = (("https:" == document.location.protocol) ? "https://" : "http://"),
+
+        LIB_VERSION = '2.3.0',
+        SNIPPET_VERSION = (mixpanel && mixpanel['__SV']) || 0,
+
         // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
         // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-        , USE_XHR           = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest())
+        USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest()),
+
         // IE<10 does not support cross-origin XHR's but script tags
         // with defer won't block window.onload; ENQUEUE_REQUESTS
         // should only be true for Opera<12
-        , ENQUEUE_REQUESTS  = !USE_XHR && (userAgent.indexOf('MSIE') == -1) && (userAgent.indexOf('Mozilla') == -1);
+        ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') == -1) && (userAgent.indexOf('Mozilla') == -1);
 
 /*
  * Closure-level globals
@@ -1332,7 +1336,8 @@ Globals should be all caps
             }), {
                 '$screen_height': screen.height,
                 '$screen_width': screen.width,
-                'mp_lib': 'web'
+                'mp_lib': 'web',
+                '$lib_version': LIB_VERSION
             });
         },
 
