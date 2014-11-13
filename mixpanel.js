@@ -2974,7 +2974,7 @@ Globals should be all caps
         _.bind_instance_methods(this);
 
         this.mixpanel = mixpanel_instance;
-        this.cookie   = this.mixpanel.cookie;
+        this.cookie   = this.mixpanel['cookie'];
 
         this.campaign_id = _.escapeHTML(notif_data['id']);
         this.message_id  = _.escapeHTML(notif_data['message_id']);
@@ -3959,7 +3959,13 @@ Globals should be all caps
             }
         });
 
-        MPNotif.prototype._mark_as_shown = function() {
+        MPNotif.prototype._mark_as_shown = _.safewrap(function() {
+            // click on background to dismiss
+            var self = this;
+            _.register_event(self._get_el('bg'), 'click', function(e) {
+                self.dismiss();
+            });
+
             var get_style = function(el, style_name) {
                 var styles = {};
                 if (document.defaultView && document.defaultView.getComputedStyle) {
@@ -3981,24 +3987,18 @@ Globals should be all caps
                     this._track_event('$campaign_delivery');
 
                     // mark notification shown (mixpanel property)
-                    this.mixpanel.people.append({
-                        $campaigns: this.campaign_id,
-                        $notifications: {
-                            campaign_id: this.campaign_id,
-                            message_id:  this.message_id,
-                            type:        'web',
-                            time:        new Date()
+                    this.mixpanel['people']['append']({
+                        '$campaigns': this.campaign_id,
+                        '$notifications': {
+                            'campaign_id': this.campaign_id,
+                            'message_id':  this.message_id,
+                            'type':        'web',
+                            'time':        new Date()
                         }
                     });
                 }
             }
-
-            // click on background to dismiss
-            var self = this;
-            _.register_event(self._get_el('bg'), 'click', function(e) {
-                self.dismiss();
-            });
-        };
+        });
 
         MPNotif.prototype._preload_images = function(all_loaded_cb) {
             var self = this;
@@ -4173,11 +4173,11 @@ Globals should be all caps
 
         MPNotif.prototype._track_event = function(event_name, cb) {
             if (this.campaign_id) {
-                this.mixpanel.track(event_name, {
-                    campaign_id:     this.campaign_id,
-                    message_id:      this.message_id,
-                    message_type:    'web_inapp',
-                    message_subtype: this.notif_type
+                this.mixpanel['track'](event_name, {
+                    'campaign_id':     this.campaign_id,
+                    'message_id':      this.message_id,
+                    'message_type':    'web_inapp',
+                    'message_subtype': this.notif_type
                 }, cb);
             } else {
                 cb && cb.call();
