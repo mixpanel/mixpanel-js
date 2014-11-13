@@ -3449,6 +3449,8 @@ Globals should be all caps
                         'overflow': 'visible'
                     },
                 '#overlay a': {
+                    'width': 'initial',
+                    'padding': '0',
                     'text-decoration': 'none',
                     'text-transform': 'none',
                     'color': 'inherit'
