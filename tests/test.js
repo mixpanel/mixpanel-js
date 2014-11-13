@@ -1090,6 +1090,13 @@ xhrmodule("mixpanel._check_and_handle_notifications");
             mixpanel.test._check_and_handle_notifications(this.id);
             same(this.requests.length, num_requests, "_check_and_handle_notifications after identify should not make requests");
         });
+
+        test("_check_and_handle_notifications honors disable_notifications config", 1, function() {
+            mixpanel.test.set_config({disable_notifications: true});
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test.set_config({disable_notifications: false});
+            same(this.requests.length, 0, "_check_and_handle_notifications should not have fired off a request");
+        });
     } else {
         test("_check_and_handle_notifications makes a request", 1, function() {
             var num_scripts = $('script').length;
@@ -1118,6 +1125,18 @@ xhrmodule("mixpanel._check_and_handle_notifications");
                     same($('script').length, num_scripts, "_check_and_handle_notifications after identify should not make requests");
                     start();
                 }, 500);
+            }, 500);
+        });
+
+        test("_check_and_handle_notifications honors disable_notifications config", 1, function() {
+            var num_scripts = $('script').length;
+            mixpanel.test.set_config({disable_notifications: true});
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test.set_config({disable_notifications: false});
+            stop();
+            setTimeout(function() {
+                same($('script').length, num_scripts, "_check_and_handle_notifications should not have fired off a request");
+                start();
             }, 500);
         });
     }
