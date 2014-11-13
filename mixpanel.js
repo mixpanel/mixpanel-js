@@ -2564,12 +2564,12 @@ Globals should be all caps
 
         console.log("MIXPANEL NOTIFICATION CHECK");
 
-        data = {
-            verbose:     true,
-            version:     '1',
-            lib:         'web',
-            token:       this.get_config('token'),
-            distinct_id: distinct_id
+        var data = {
+            'verbose':     true,
+            'version':     '1',
+            'lib':         'web',
+            'token':       this.get_config('token'),
+            'distinct_id': distinct_id
         };
         var self = this;
         this._send_request(
