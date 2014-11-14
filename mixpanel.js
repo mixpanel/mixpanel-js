@@ -1,5 +1,5 @@
 /*
- * Mixpanel JS Library v2.3-beta
+ * Mixpanel JS Library v2.3.0
  *
  * Copyright 2012, Mixpanel, Inc. All Rights Reserved
  * http://mixpanel.com/
@@ -12,7 +12,7 @@
 
 // ==ClosureCompiler==
 // @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.2.min.js
+// @output_file_name mixpanel-2.3.min.js
 // ==/ClosureCompiler==
 
 /*
@@ -74,15 +74,19 @@ Globals should be all caps
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-    var   HTTP_PROTOCOL     = (("https:" == document.location.protocol) ? "https://" : "http://")
-        , SNIPPET_VERSION   = (mixpanel && mixpanel['__SV']) || 0
+    var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://"),
+
+        LIB_VERSION = '2.3.0',
+        SNIPPET_VERSION = (mixpanel && mixpanel['__SV']) || 0,
+
         // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
         // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-        , USE_XHR           = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest())
+        USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest()),
+
         // IE<10 does not support cross-origin XHR's but script tags
         // with defer won't block window.onload; ENQUEUE_REQUESTS
         // should only be true for Opera<12
-        , ENQUEUE_REQUESTS  = !USE_XHR && (userAgent.indexOf('MSIE') == -1) && (userAgent.indexOf('Mozilla') == -1);
+        ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') == -1) && (userAgent.indexOf('Mozilla') == -1);
 
 /*
  * Closure-level globals
@@ -1332,7 +1336,8 @@ Globals should be all caps
             }), {
                 '$screen_height': screen.height,
                 '$screen_width': screen.width,
-                'mp_lib': 'web'
+                'mp_lib': 'web',
+                '$lib_version': LIB_VERSION
             });
         },
 
@@ -2553,18 +2558,18 @@ Globals should be all caps
     };
 
     MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
-        if (this._flags.identify_called) {
+        if (this._flags.identify_called || this.get_config('disable_notifications')) {
             return;
         }
 
         console.log("MIXPANEL NOTIFICATION CHECK");
 
-        data = {
-            verbose:     true,
-            version:     '1',
-            lib:         'web',
-            token:       this.get_config('token'),
-            distinct_id: distinct_id
+        var data = {
+            'verbose':     true,
+            'version':     '1',
+            'lib':         'web',
+            'token':       this.get_config('token'),
+            'distinct_id': distinct_id
         };
         var self = this;
         this._send_request(
@@ -2969,7 +2974,7 @@ Globals should be all caps
         _.bind_instance_methods(this);
 
         this.mixpanel = mixpanel_instance;
-        this.cookie   = this.mixpanel.cookie;
+        this.cookie   = this.mixpanel['cookie'];
 
         this.campaign_id = _.escapeHTML(notif_data['id']);
         this.message_id  = _.escapeHTML(notif_data['message_id']);
@@ -3040,8 +3045,7 @@ Globals should be all caps
             var exiting_el = this.showing_video ? this._get_el('video') : this._get_notification_display_el();
             if (this.use_transitions) {
                 this._remove_class('bg', 'visible');
-                this._remove_class(exiting_el, 'visible');
-                this._add_class(exiting_el, 'hidden');
+                this._add_class(exiting_el, 'exiting');
                 setTimeout(this._remove_notification_el, MPNotif.ANIM_TIME);
             } else {
                 var notif_attr, notif_start, notif_goal;
@@ -3444,6 +3448,8 @@ Globals should be all caps
                         'overflow': 'visible'
                     },
                 '#overlay a': {
+                    'width': 'initial',
+                    'padding': '0',
                     'text-decoration': 'none',
                     'text-transform': 'none',
                     'color': 'inherit'
@@ -3500,6 +3506,10 @@ Globals should be all caps
                         'opacity': '1.0',
                         'top': MPNotif.NOTIF_TOP + 'px'
                     },
+                    '#takeover.exiting': {
+                        'opacity': '0.0',
+                        'top': MPNotif.NOTIF_START_TOP + 'px'
+                    },
                 '#thumbspacer': {
                     'height': MPNotif.THUMB_OFFSET + 'px'
                 },
@@ -3539,11 +3549,15 @@ Globals should be all caps
                     'backface-visibility': 'hidden',
                     'opacity': '0.0',
                     'transform': 'rotateX(90deg)',
-                    'transition': 'opacity 0.3s, transform 0.3s'
+                    'transition': 'opacity 0.3s, transform 0.3s, right 0.3s'
                 },
                     '#mini.visible': {
                         'opacity': '1.0',
                         'transform': 'rotateX(0deg)'
+                    },
+                    '#mini.exiting': {
+                        'opacity': '0.0',
+                        'right': '-150px'
                     },
                 '#mainbox': {
                     'border-radius': '4px',
@@ -3756,7 +3770,7 @@ Globals should be all caps
                     'transform': 'translateZ(1px)', // webkit rendering bug http://stackoverflow.com/questions/18167981/clickable-link-area-unexpectedly-smaller-after-css-transform
                     'transition': 'opacity ' + anim_seconds + ', top ' + anim_seconds
                 },
-                    '#video.hidden': {
+                    '#video.exiting': {
                         'opacity': '0.0',
                         'top': this.video_height + 'px'
                     },
@@ -3954,7 +3968,13 @@ Globals should be all caps
             }
         });
 
-        MPNotif.prototype._mark_as_shown = function() {
+        MPNotif.prototype._mark_as_shown = _.safewrap(function() {
+            // click on background to dismiss
+            var self = this;
+            _.register_event(self._get_el('bg'), 'click', function(e) {
+                self.dismiss();
+            });
+
             var get_style = function(el, style_name) {
                 var styles = {};
                 if (document.defaultView && document.defaultView.getComputedStyle) {
@@ -3976,24 +3996,18 @@ Globals should be all caps
                     this._track_event('$campaign_delivery');
 
                     // mark notification shown (mixpanel property)
-                    this.mixpanel.people.append({
-                        $campaigns: this.campaign_id,
-                        $notifications: {
-                            campaign_id: this.campaign_id,
-                            message_id:  this.message_id,
-                            type:        'web',
-                            time:        new Date()
+                    this.mixpanel['people']['append']({
+                        '$campaigns': this.campaign_id,
+                        '$notifications': {
+                            'campaign_id': this.campaign_id,
+                            'message_id':  this.message_id,
+                            'type':        'web',
+                            'time':        new Date()
                         }
                     });
                 }
             }
-
-            // click on background to dismiss
-            var self = this;
-            _.register_event(self._get_el('bg'), 'click', function(e) {
-                self.dismiss();
-            });
-        };
+        });
 
         MPNotif.prototype._preload_images = function(all_loaded_cb) {
             var self = this;
@@ -4137,7 +4151,7 @@ Globals should be all caps
                 bg.style.height = '100%';
                 overlay.style.width = '100%';
 
-                self._remove_class(self._get_notification_display_el(), 'visible');
+                self._add_class(self._get_notification_display_el(), 'exiting');
                 self._add_class(bg, 'visible');
 
                 anims.push({
@@ -4168,11 +4182,11 @@ Globals should be all caps
 
         MPNotif.prototype._track_event = function(event_name, cb) {
             if (this.campaign_id) {
-                this.mixpanel.track(event_name, {
-                    campaign_id:     this.campaign_id,
-                    message_id:      this.message_id,
-                    message_type:    'web_inapp',
-                    message_subtype: this.notif_type
+                this.mixpanel['track'](event_name, {
+                    'campaign_id':     this.campaign_id,
+                    'message_id':      this.message_id,
+                    'message_type':    'web_inapp',
+                    'message_subtype': this.notif_type
                 }, cb);
             } else {
                 cb && cb.call();
@@ -4332,6 +4346,7 @@ Globals should be all caps
             } else if (token) {
                 // intialize the main mixpanel lib
                 instance = create_mplib(token, config, PRIMARY_INSTANCE_NAME);
+                instance._loaded();
             }
 
             window[PRIMARY_INSTANCE_NAME] = mixpanel = instance;
