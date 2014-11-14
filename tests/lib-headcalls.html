@@ -7,12 +7,7 @@
         <script type="text/javascript" src="vendor/sinon.js?v=159"></script>
         <script type="text/javascript" src="vendor/underscore.js"></script>
         <script type="text/javascript" src="test.js"></script>
-        <style type="text/css">
-            #other-test {
-                float: right;
-                margin-right: 10px;
-            }
-        </style>
+        <link rel="stylesheet" type="text/css" href="tests.css">
         <script type="text/javascript" src="../mixpanel-jslib-snippet.js"></script>
         <script type="text/javascript">
             if (document.referrer) {
@@ -111,6 +106,9 @@
 
                 called_all_mixpanel_functions = true;
 
+                QUnit.done = function(details) {
+                    mixpanel.headtest.cookie.clear();
+                };
             }
         </script>
     </head>

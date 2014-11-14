@@ -1,5 +1,5 @@
 /*
- * Mixpanel JS Library v2.2.3
+ * Mixpanel JS Library v2.3.0
  *
  * Copyright 2012, Mixpanel, Inc. All Rights Reserved
  * http://mixpanel.com/
@@ -12,7 +12,7 @@
 
 // ==ClosureCompiler==
 // @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.2.min.js
+// @output_file_name mixpanel-2.3.min.js
 // ==/ClosureCompiler==
 
 /*
@@ -35,6 +35,7 @@ Globals should be all caps
  * minimize file size.
  */
     var   ArrayProto        = Array.prototype
+        , FuncProto         = Function.prototype
         , ObjProto          = Object.prototype
         , slice             = ArrayProto.slice
         , toString          = ObjProto.toString
@@ -59,20 +60,33 @@ Globals should be all caps
 // This key is deprecated, but we want to check for it to see whether aliasing is allowed.
 /** @const */       , PEOPLE_DISTINCT_ID_KEY    = "$people_distinct_id"
 /** @const */       , ALIAS_ID_KEY              = "__alias"
-/** @const */       , RESERVED_PROPERTIES       = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY];
+/** @const */       , CAMPAIGN_IDS_KEY          = "__cmpns"
+/** @const */       , RESERVED_PROPERTIES       = [
+                        SET_QUEUE_KEY,
+                        SET_ONCE_QUEUE_KEY,
+                        ADD_QUEUE_KEY,
+                        APPEND_QUEUE_KEY,
+                        PEOPLE_DISTINCT_ID_KEY,
+                        ALIAS_ID_KEY,
+                        CAMPAIGN_IDS_KEY
+                    ];
 
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-    var   HTTP_PROTOCOL     = (("https:" == document.location.protocol) ? "https://" : "http://")
-        , SNIPPET_VERSION   = (mixpanel && mixpanel['__SV']) || 0
+    var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://"),
+
+        LIB_VERSION = '2.3.0',
+        SNIPPET_VERSION = (mixpanel && mixpanel['__SV']) || 0,
+
         // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
         // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-        , USE_XHR           = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest())
+        USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest()),
+
         // IE<10 does not support cross-origin XHR's but script tags
         // with defer won't block window.onload; ENQUEUE_REQUESTS
         // should only be true for Opera<12
-        , ENQUEUE_REQUESTS  = !USE_XHR && (userAgent.indexOf('MSIE') == -1);
+        ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') == -1) && (userAgent.indexOf('Mozilla') == -1);
 
 /*
  * Closure-level globals
@@ -104,10 +118,35 @@ Globals should be all caps
     // Embed part of the Underscore Library
 
     (function() {
-        var nativeForEach = ArrayProto.forEach,
+        var nativeBind    = FuncProto.bind,
+            nativeForEach = ArrayProto.forEach,
             nativeIndexOf = ArrayProto.indexOf,
             nativeIsArray = Array.isArray,
             breaker = {};
+
+        _.bind = function (func, context) {
+            var args, bound;
+            if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
+            if (!_.isFunction(func)) throw new TypeError;
+            args = slice.call(arguments, 2);
+            return bound = function() {
+                if (!(this instanceof bound)) return func.apply(context, args.concat(slice.call(arguments)));
+                ctor.prototype = func.prototype;
+                var self = new ctor;
+                ctor.prototype = null;
+                var result = func.apply(self, args.concat(slice.call(arguments)));
+                if (Object(result) === result) return result;
+                return self;
+            };
+        };
+
+        _.bind_instance_methods = function(obj) {
+            for (var func in obj) {
+                if (typeof(obj[func]) === 'function') {
+                    obj[func] = _.bind(obj[func], obj);
+                }
+            }
+        };
 
         /**
          * @param {*=} obj
@@ -129,6 +168,19 @@ Globals should be all caps
                     }
                 }
             }
+        };
+
+        _.escapeHTML = function(s) {
+            var escaped = s;
+            if (escaped && _.isString(escaped)) {
+                escaped = escaped
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+            return escaped;
         };
 
         _.extend = function(obj) {
@@ -256,6 +308,22 @@ Globals should be all caps
             + pad(d.getUTCHours()) + ':'
             + pad(d.getUTCMinutes()) + ':'
             + pad(d.getUTCSeconds());
+    };
+
+    _.safewrap = function(f) {
+        return function() {
+            try {
+                f.apply(this, arguments);
+            } catch(e) {
+                console.critical('Implementation error. Please contact support@mixpanel.com.');
+            }
+        };
+    };
+
+    _.safewrap_class = function(klass, functions) {
+        for (var i = 0; i < functions.length; i++) {
+            klass.prototype[functions[i]] = _.safewrap(klass.prototype[functions[i]]);
+        }
     };
 
     _.strip_empty_properties = function(p) {
@@ -1268,7 +1336,8 @@ Globals should be all caps
             }), {
                 '$screen_height': screen.height,
                 '$screen_width': screen.width,
-                'mp_lib': 'web'
+                'mp_lib': 'web',
+                '$lib_version': LIB_VERSION
             });
         },
 
@@ -1560,6 +1629,7 @@ Globals should be all caps
 
     MixpanelCookie.prototype.save = function() {
         if (this.disabled) { return; }
+        this._expire_notification_campaigns();
         _.cookie.set(
             this.name,
             _.JSONEncode(this['props']),
@@ -1626,6 +1696,22 @@ Globals should be all caps
         if (prop in this['props']) {
             delete this['props'][prop];
             this.save();
+        }
+    };
+
+    MixpanelCookie.prototype._expire_notification_campaigns = function() {
+        var campaigns_shown = this['props'][CAMPAIGN_IDS_KEY],
+            EXPIRY_TIME = DEBUG ? 60 * 1000 : 60 * 60 * 1000; // 1 minute (DEBUG) / 1 hour (PDXN)
+        if (!campaigns_shown) {
+            return;
+        }
+        for (var campaign_id in campaigns_shown) {
+            if (1 * new Date() - campaigns_shown[campaign_id] > EXPIRY_TIME) {
+                delete campaigns_shown[campaign_id];
+            }
+        }
+        if (_.isEmptyObject(campaigns_shown)) {
+            delete this['props'][CAMPAIGN_IDS_KEY];
         }
     };
 
@@ -1974,6 +2060,7 @@ Globals should be all caps
 
         // needed to correctly format responses
         var verbose_mode = this.get_config('verbose');
+        if (data['verbose']) { verbose_mode = true; }
 
         if (this.get_config('test')) { data['test'] = 1; }
         if (verbose_mode) { data['verbose'] = 1; }
@@ -2327,6 +2414,7 @@ Globals should be all caps
             this.unregister(ALIAS_ID_KEY);
             this._register_single('distinct_id', unique_id);
         }
+        this._check_and_handle_notifications(unique_id);
         this._flags.identify_called = true;
         // Flush any queued up people requests
         this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback);
@@ -2467,6 +2555,37 @@ Globals should be all caps
             name = PRIMARY_INSTANCE_NAME + "." + name;
         }
         return name;
+    };
+
+    MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
+        if (this._flags.identify_called || this.get_config('disable_notifications')) {
+            return;
+        }
+
+        console.log("MIXPANEL NOTIFICATION CHECK");
+
+        var data = {
+            'verbose':     true,
+            'version':     '1',
+            'lib':         'web',
+            'token':       this.get_config('token'),
+            'distinct_id': distinct_id
+        };
+        var self = this;
+        this._send_request(
+            this.get_config('api_host') + '/decide/',
+            data,
+            this._prepare_callback(function(r) {
+                if (r['notifications'] && r['notifications'].length > 0) {
+                    self._show_notification.call(self, r['notifications'][0]);
+                }
+            })
+        );
+    };
+
+    MixpanelLib.prototype._show_notification = function(notification_data) {
+        var notification = new MPNotif(notification_data, this);
+        notification.show();
     };
 
     /**
@@ -2850,54 +2969,1325 @@ Globals should be all caps
         }
     };
 
+    // Internal class for notification display
+    MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
+        _.bind_instance_methods(this);
+
+        this.mixpanel = mixpanel_instance;
+        this.cookie   = this.mixpanel['cookie'];
+
+        this.campaign_id = _.escapeHTML(notif_data['id']);
+        this.message_id  = _.escapeHTML(notif_data['message_id']);
+
+        this.body            = (_.escapeHTML(notif_data['body']) || '').replace(/\n/g, '<br/>');
+        this.cta             = _.escapeHTML(notif_data['cta']) || 'Close';
+        this.dest_url        = _.escapeHTML(notif_data['cta_url']) || null;
+        this.image_url       = _.escapeHTML(notif_data['image_url']) || null;
+        this.notif_type      = _.escapeHTML(notif_data['type']) || 'takeover';
+        this.style           = _.escapeHTML(notif_data['style']) || 'light';
+        this.thumb_image_url = _.escapeHTML(notif_data['thumb_image_url']) || null;
+        this.title           = _.escapeHTML(notif_data['title']) || '';
+        this.video_url       = _.escapeHTML(notif_data['video_url']) || null;
+        this.video_width     = MPNotif.VIDEO_WIDTH;
+        this.video_height    = MPNotif.VIDEO_HEIGHT;
+
+        this.clickthrough = true;
+        if (!this.dest_url) {
+            this.dest_url = '#dismiss';
+            this.clickthrough = false;
+        }
+
+        this.mini = this.notif_type === 'mini';
+        if (!this.mini) {
+            this.notif_type = 'takeover';
+        }
+        this.notif_width = !this.mini ? MPNotif.NOTIF_WIDTH : MPNotif.NOTIF_WIDTH_MINI;
+
+        this._set_client_config();
+        this.imgs_to_preload = this._init_image_html();
+        this._init_video();
+    };
+
+    var MPNotif = MixpanelLib._Notification;
+
+        MPNotif.ANIM_TIME         = 200;
+        MPNotif.MARKUP_PREFIX     = 'mixpanel-notification';
+        MPNotif.BG_OPACITY        = 0.6;
+        MPNotif.NOTIF_TOP         = 25;
+        MPNotif.NOTIF_START_TOP   = 200;
+        MPNotif.NOTIF_WIDTH       = 388;
+        MPNotif.NOTIF_WIDTH_MINI  = 420;
+        MPNotif.NOTIF_HEIGHT_MINI = 85;
+        MPNotif.THUMB_BORDER_SIZE = 5;
+        MPNotif.THUMB_IMG_SIZE    = 60;
+        MPNotif.THUMB_OFFSET      = Math.round(MPNotif.THUMB_IMG_SIZE / 2);
+        MPNotif.VIDEO_WIDTH       = 595;
+        MPNotif.VIDEO_HEIGHT      = 334;
+
+        MPNotif.prototype.show = function() {
+            var self = this;
+            this._set_client_config();
+
+            // don't display until HTML body exists
+            if (!this.body_el) {
+                setTimeout(function() { self.show(); }, 300);
+                return;
+            }
+
+            this._init_styles();
+            this._init_notification_el();
+
+            // wait for any images to load before showing notification
+            this._preload_images(this._attach_and_animate);
+        };
+
+        MPNotif.prototype.dismiss = _.safewrap(function() {
+            var exiting_el = this.showing_video ? this._get_el('video') : this._get_notification_display_el();
+            if (this.use_transitions) {
+                this._remove_class('bg', 'visible');
+                this._add_class(exiting_el, 'exiting');
+                setTimeout(this._remove_notification_el, MPNotif.ANIM_TIME);
+            } else {
+                var notif_attr, notif_start, notif_goal;
+                if (this.mini) {
+                    notif_attr  = 'right';
+                    notif_start = 20;
+                    notif_goal  = -100;
+                } else {
+                    notif_attr  = 'top';
+                    notif_start = MPNotif.NOTIF_TOP;
+                    notif_goal  = MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP;
+                }
+                this._animate_els([
+                    {
+                        el:    this._get_el('bg'),
+                        attr:  'opacity',
+                        start: MPNotif.BG_OPACITY,
+                        goal:  0.0
+                    },
+                    {
+                        el:    exiting_el,
+                        attr:  'opacity',
+                        start: 1.0,
+                        goal:  0.0
+                    },
+                    {
+                        el:    exiting_el,
+                        attr:  notif_attr,
+                        start: notif_start,
+                        goal:  notif_goal
+                    }
+                ], MPNotif.ANIM_TIME, this._remove_notification_el);
+            }
+        });
+
+        MPNotif.prototype._add_class = _.safewrap(function(el, class_name) {
+            class_name = MPNotif.MARKUP_PREFIX + '-' + class_name;
+            if (typeof el === 'string') {
+                el = this._get_el(el);
+            }
+            if (!el.className) {
+                el.className = class_name;
+            } else if (!~(' ' + el.className + ' ').indexOf(' ' + class_name + ' ')) {
+                el.className += ' ' + class_name;
+            }
+        });
+        MPNotif.prototype._remove_class = _.safewrap(function(el, class_name) {
+            class_name = MPNotif.MARKUP_PREFIX + '-' + class_name;
+            if (typeof el === 'string') {
+                el = this._get_el(el);
+            }
+            if (el.className) {
+                el.className = (' ' + el.className + ' ')
+                    .replace(' ' + class_name + ' ', '')
+                    .replace(/^[\s\xA0]+/, '')
+                    .replace(/[\s\xA0]+$/, '');
+            }
+        });
+
+        MPNotif.prototype._animate_els = _.safewrap(function(anims, mss, done_cb, start_time) {
+            var self = this,
+                in_progress = false,
+                ai, anim,
+                cur_time = 1 * new Date(), time_diff;
+
+            start_time = start_time || cur_time;
+            time_diff = cur_time - start_time;
+
+            for (ai = 0; ai < anims.length; ai++) {
+                anim = anims[ai];
+                if (typeof anim.val === 'undefined') {
+                    anim.val = anim.start;
+                }
+                if (anim.val !== anim.goal) {
+                    in_progress = true;
+                    var anim_diff = anim.goal - anim.start,
+                        anim_dir = anim.goal >= anim.start ? 1 : -1;
+                    anim.val = anim.start + anim_diff * time_diff / mss;
+                    if (anim.attr !== 'opacity') {
+                        anim.val = Math.round(anim.val);
+                    }
+                    if ((anim_dir > 0 && anim.val >= anim.goal) || (anim_dir < 0 && anim.val <= anim.goal)) {
+                        anim.val = anim.goal;
+                    }
+                }
+            }
+            if (!in_progress) {
+                if (done_cb) {
+                    done_cb();
+                }
+                return;
+            }
+
+            for (ai = 0; ai < anims.length; ai++) {
+                anim = anims[ai];
+                if (anim.el) {
+                    var suffix = anim.attr === 'opacity' ? '' : 'px';
+                    anim.el.style[anim.attr] = String(anim.val) + suffix;
+                }
+            }
+            setTimeout(function() { self._animate_els(anims, mss, done_cb, start_time); }, 10);
+        });
+
+        MPNotif.prototype._attach_and_animate = _.safewrap(function() {
+            var self = this;
+
+            // no possibility to double-display
+            if (this.shown || this._get_shown_campaigns()[this.campaign_id]) {
+                return;
+            }
+            this.shown = true;
+
+            this.body_el.appendChild(this.notification_el);
+            setTimeout(function() {
+                var notif_el = self._get_notification_display_el();
+                if (self.use_transitions) {
+                    if (!self.mini) {
+                        self._add_class('bg', 'visible');
+                    }
+                    self._add_class(notif_el, 'visible');
+                    self._mark_as_shown();
+                } else {
+                    var notif_attr, notif_start, notif_goal;
+                    if (self.mini) {
+                        notif_attr  = 'right';
+                        notif_start = -100;
+                        notif_goal  = 20;
+                    } else {
+                        notif_attr  = 'top';
+                        notif_start = MPNotif.NOTIF_START_TOP + MPNotif.NOTIF_TOP;
+                        notif_goal  = MPNotif.NOTIF_TOP;
+                    }
+                    self._animate_els([
+                        {
+                            el:    self._get_el('bg'),
+                            attr:  'opacity',
+                            start: 0.0,
+                            goal:  MPNotif.BG_OPACITY
+                        },
+                        {
+                            el:    notif_el,
+                            attr:  'opacity',
+                            start: 0.0,
+                            goal:  1.0
+                        },
+                        {
+                            el:    notif_el,
+                            attr:  notif_attr,
+                            start: notif_start,
+                            goal:  notif_goal
+                        }
+                    ], MPNotif.ANIM_TIME, self._mark_as_shown);
+                }
+            }, 100);
+            _.register_event(self._get_el('cancel'), 'click', function(e) {
+                e.preventDefault();
+                self.dismiss();
+            });
+            var click_el = self._get_el('button') ||
+                           self._get_el('mini-content');
+            _.register_event(click_el, 'click', function(e) {
+                e.preventDefault();
+                if (self.show_video) {
+                    self._track_event('$campaign_open');
+                    self._switch_to_video();
+                } else {
+                    self.dismiss();
+                    if (self.clickthrough) {
+                        self._track_event('$campaign_open', function() {
+                            window.location.href = self.dest_url;
+                        });
+                    }
+                }
+            });
+        });
+
+        MPNotif.prototype._get_el = function(id) {
+            return document.getElementById(MPNotif.MARKUP_PREFIX + '-' + id);
+        };
+
+        MPNotif.prototype._get_notification_display_el = function() {
+            return this._get_el(this.notif_type);
+        };
+
+        MPNotif.prototype._get_shown_campaigns = function() {
+            return this.cookie['props'][CAMPAIGN_IDS_KEY] || (this.cookie['props'][CAMPAIGN_IDS_KEY] = {});
+        };
+
+        MPNotif.prototype._browser_lte = function(browser, version) {
+            return this.browser_versions[browser] && this.browser_versions[browser] <= version;
+        };
+
+        MPNotif.prototype._init_image_html = function() {
+            var imgs_to_preload = [];
+
+            if (!this.mini) {
+                if (this.image_url) {
+                    imgs_to_preload.push(this.image_url);
+                    this.img_html = '<img id="img" src="' + this.image_url + '"/>';
+                } else {
+                    this.img_html = '';
+                }
+                if (this.thumb_image_url) {
+                    imgs_to_preload.push(this.thumb_image_url);
+                    this.thumb_img_html =
+                        '<div id="thumbborder-wrapper"><div id="thumbborder"></div></div>' +
+                        '<img id="thumbnail"' +
+                            ' src="' + this.thumb_image_url + '"' +
+                            ' width="' + MPNotif.THUMB_IMG_SIZE + '"' +
+                            ' height="' + MPNotif.THUMB_IMG_SIZE + '"' +
+                        '/>' +
+                        '<div id="thumbspacer"></div>';
+                } else {
+                    this.thumb_img_html = '';
+                }
+            } else {
+                this.thumb_image_url = this.thumb_image_url || '//cdn.mxpnl.com/site_media/images/icons/notifications/mini-news-dark.png';
+                imgs_to_preload.push(this.thumb_image_url);
+            }
+
+            return imgs_to_preload;
+        };
+
+        MPNotif.prototype._init_notification_el = function() {
+            var notification_html = '',
+                video_src         = '',
+                video_html        = '',
+                cancel_html       = '<div id="cancel">' +
+                                        '<div id="cancel-icon"></div>' +
+                                    '</div>';
+
+            this.notification_el = document.createElement('div');
+            this.notification_el.id = MPNotif.MARKUP_PREFIX + '-wrapper';
+            if (!this.mini) {
+                // TAKEOVER notification
+                var close_html  = (this.clickthrough || this.show_video) ? '' : '<div id="button-close"></div>',
+                    play_html   = this.show_video ? '<div id="button-play"></div>' : '';
+                if (this._browser_lte('ie', 7)) {
+                    close_html = '';
+                    play_html = '';
+                }
+                notification_html =
+                    '<div id="takeover">' +
+                        this.thumb_img_html +
+                        '<div id="mainbox">' +
+                            cancel_html +
+                            '<div id="content">' +
+                                this.img_html +
+                                '<div id="title">' + this.title + '</div>' +
+                                '<div id="body">' + this.body + '</div>' +
+                                '<div id="tagline">' +
+                                    '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div id="button">' +
+                                close_html +
+                                '<a id="button-link" href="' + this.dest_url + '">' + this.cta + '</a>' +
+                                play_html +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+            } else {
+                // MINI notification
+                notification_html =
+                    '<div id="mini">' +
+                        '<div id="mainbox">' +
+                            cancel_html +
+                            '<div id="mini-content">' +
+                                '<div id="mini-icon">' +
+                                    '<div id="mini-icon-img"></div>' +
+                                '</div>' +
+                                '<div id="body">' +
+                                    '<div id="body-text"><div>' + this.body + '</div></div>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div id="mini-border"></div>' +
+                    '</div>';
+            }
+            if (this.youtube_video) {
+                video_src = '//www.youtube.com/embed/' + this.youtube_video +
+                    '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0&vq=hd1080';
+                if (this.yt_custom) {
+                    video_src += '&enablejsapi=1&html5=1&controls=0';
+                    video_html =
+                        '<div id="video-controls">' +
+                            '<div id="video-progress" class="video-progress-el">' +
+                                '<div id="video-progress-total" class="video-progress-el"></div>' +
+                                '<div id="video-elapsed" class="video-progress-el"></div>' +
+                            '</div>' +
+                            '<div id="video-time" class="video-progress-el"></div>' +
+                        '</div>';
+                }
+            } else if (this.vimeo_video) {
+                video_src = '//player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
+            }
+            if (this.show_video) {
+                this.video_iframe =
+                    '<iframe id="' + MPNotif.MARKUP_PREFIX + '-video-frame" ' +
+                        'width="' + this.video_width + '" height="' + this.video_height + '" ' +
+                        ' src="' + video_src + '"' +
+                        ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' +
+                    '></iframe>';
+                video_html =
+                    '<div id="video-' + (this.flip_animate ? '' : 'no') + 'flip">' +
+                        '<div id="video">' +
+                            '<div id="video-holder"></div>' +
+                            video_html +
+                        '</div>' +
+                    '</div>';
+            }
+            var main_html = video_html + notification_html;
+            if (this.flip_animate) {
+                main_html =
+                    (this.mini ? notification_html : '') +
+                    '<div id="flipcontainer"><div id="flipper">' +
+                        (this.mini ? video_html : main_html) +
+                    '</div></div>';
+            }
+
+            this.notification_el.innerHTML =
+                ('<div id="overlay" class="' + this.notif_type + '">' +
+                    '<div id="campaignid-' + this.campaign_id + '">' +
+                        '<div id="bgwrapper">' +
+                            '<div id="bg"></div>' +
+                            main_html +
+                        '</div>' +
+                    '</div>' +
+                '</div>')
+                .replace(/class=\"/g, 'class="' + MPNotif.MARKUP_PREFIX + '-')
+                .replace(/id=\"/g, 'id="' + MPNotif.MARKUP_PREFIX + '-');
+        };
+
+        MPNotif.prototype._init_styles = function() {
+            if (this.style === 'dark') {
+                this.style_vals = {
+                    bg:             '#1d1f25',
+                    bg_actions:     '#282b32',
+                    bg_hover:       '#3a4147',
+                    bg_light:       '#4a5157',
+                    border_gray:    '#32353c',
+                    cancel_opacity: '0.4',
+                    mini_hover:     '#2a3137',
+                    text_title:     '#fff',
+                    text_main:      '#9498a3',
+                    text_tagline:   '#464851',
+                    text_hover:     '#ddd'
+                };
+            } else {
+                this.style_vals = {
+                    bg:             '#fff',
+                    bg_actions:     '#e7eaee',
+                    bg_hover:       '#eceff3',
+                    bg_light:       '#f5f5f5',
+                    border_gray:    '#e4ecf2',
+                    cancel_opacity: '1.0',
+                    mini_hover:     '#fafafa',
+                    text_title:     '#5c6578',
+                    text_main:      '#8b949b',
+                    text_tagline:   '#ced9e6',
+                    text_hover:     '#7c8598'
+                };
+            }
+            var shadow = '0px 0px 35px 0px rgba(45, 49, 56, 0.7)',
+                video_shadow = shadow,
+                mini_shadow = shadow,
+                thumb_total_size = MPNotif.THUMB_IMG_SIZE + MPNotif.THUMB_BORDER_SIZE * 2,
+                anim_seconds = (MPNotif.ANIM_TIME / 1000) + 's';
+            if (this.mini) {
+                shadow = 'none';
+            }
+
+            // don't display on small viewports
+            var notif_media_queries = {},
+                min_width = MPNotif.NOTIF_WIDTH_MINI + 20;
+            notif_media_queries['@media only screen and (max-width: ' + (min_width - 1) + 'px)'] = {
+                '#overlay': {
+                    'display': 'none'
+                }
+            };
+            var notif_styles = {
+                '.flipped': {
+                    'transform': 'rotateY(180deg)'
+                },
+                '#overlay': {
+                    'position': 'fixed',
+                    'top': '0',
+                    'left': '0',
+                    'width': '100%',
+                    'height': '100%',
+                    'overflow': 'auto',
+                    'text-align': 'center',
+                    'z-index': '10000',
+                    'font-family': '"Helvetica", "Arial", sans-serif',
+                    '-webkit-font-smoothing': 'antialiased',
+                    '-moz-osx-font-smoothing': 'grayscale'
+                },
+                    '#overlay.mini': {
+                        'height': '0',
+                        'overflow': 'visible'
+                    },
+                '#overlay a': {
+                    'width': 'initial',
+                    'padding': '0',
+                    'text-decoration': 'none',
+                    'text-transform': 'none',
+                    'color': 'inherit'
+                },
+                '#bgwrapper': {
+                    'position': 'relative',
+                    'width': '100%',
+                    'height': '100%'
+                },
+                '#bg': {
+                    'position': 'fixed',
+                    'top': '0',
+                    'left': '0',
+                    'width': '100%',
+                    'height': '100%',
+                    'min-width': this.doc_width * 4 + 'px',
+                    'min-height': this.doc_height * 4 + 'px',
+                    'background-color': 'black',
+                    'opacity': '0.0',
+                    '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=60)', // IE8
+                    'filter': 'alpha(opacity=60)', // IE5-7
+                    'transition': 'opacity ' + anim_seconds
+                },
+                    '#bg.visible': {
+                        'opacity': MPNotif.BG_OPACITY
+                    },
+                    '.mini #bg': {
+                        'width': '0',
+                        'height': '0',
+                        'min-width': '0'
+                    },
+                '#flipcontainer': {
+                    'perspective': '1000px',
+                    'position': 'absolute',
+                    'width': '100%'
+                },
+                '#flipper': {
+                    'position': 'relative',
+                    'transform-style': 'preserve-3d',
+                    'transition': '0.3s'
+                },
+                '#takeover': {
+                    'position': 'absolute',
+                    'left': '50%',
+                    'width': MPNotif.NOTIF_WIDTH + 'px',
+                    'margin-left': Math.round(-MPNotif.NOTIF_WIDTH / 2) + 'px',
+                    'backface-visibility': 'hidden',
+                    'transform': 'rotateY(0deg)',
+                    'opacity': '0.0',
+                    'top': MPNotif.NOTIF_START_TOP + 'px',
+                    'transition': 'opacity ' + anim_seconds + ', top ' + anim_seconds
+                 },
+                    '#takeover.visible': {
+                        'opacity': '1.0',
+                        'top': MPNotif.NOTIF_TOP + 'px'
+                    },
+                    '#takeover.exiting': {
+                        'opacity': '0.0',
+                        'top': MPNotif.NOTIF_START_TOP + 'px'
+                    },
+                '#thumbspacer': {
+                    'height': MPNotif.THUMB_OFFSET + 'px'
+                },
+                '#thumbborder-wrapper': {
+                    'position': 'absolute',
+                    'top': (-MPNotif.THUMB_BORDER_SIZE) + 'px',
+                    'left': (MPNotif.NOTIF_WIDTH / 2 - MPNotif.THUMB_OFFSET - MPNotif.THUMB_BORDER_SIZE) + 'px',
+                    'width': thumb_total_size + 'px',
+                    'height': (thumb_total_size / 2) + 'px',
+                    'overflow': 'hidden'
+                },
+                '#thumbborder': {
+                    'position': 'absolute',
+                    'width': thumb_total_size + 'px',
+                    'height': thumb_total_size + 'px',
+                    'border-radius': thumb_total_size + 'px',
+                    'background-color': this.style_vals.bg_actions,
+                    'opacity': '0.5'
+                },
+                '#thumbnail': {
+                    'position': 'absolute',
+                    'top': '0px',
+                    'left': (MPNotif.NOTIF_WIDTH / 2 - MPNotif.THUMB_OFFSET) + 'px',
+                    'width': MPNotif.THUMB_IMG_SIZE + 'px',
+                    'height': MPNotif.THUMB_IMG_SIZE + 'px',
+                    'overflow': 'hidden',
+                    'z-index': '100',
+                    'border-radius': MPNotif.THUMB_IMG_SIZE + 'px'
+                },
+                '#mini': {
+                    'position': 'absolute',
+                    'right': '20px',
+                    'top': MPNotif.NOTIF_TOP + 'px',
+                    'width': this.notif_width + 'px',
+                    'height': MPNotif.NOTIF_HEIGHT_MINI * 2 + 'px',
+                    'margin-top': 20 - MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                    'backface-visibility': 'hidden',
+                    'opacity': '0.0',
+                    'transform': 'rotateX(90deg)',
+                    'transition': 'opacity 0.3s, transform 0.3s, right 0.3s'
+                },
+                    '#mini.visible': {
+                        'opacity': '1.0',
+                        'transform': 'rotateX(0deg)'
+                    },
+                    '#mini.exiting': {
+                        'opacity': '0.0',
+                        'right': '-150px'
+                    },
+                '#mainbox': {
+                    'border-radius': '4px',
+                    'box-shadow': shadow,
+                    'text-align': 'center',
+                    'background-color': this.style_vals.bg,
+                    'font-size': '14px',
+                    'color': this.style_vals.text_main
+                },
+                    '#mini #mainbox': {
+                        'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                        'margin-top': MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                        'border-radius': '3px',
+                        'transition': 'background-color ' + anim_seconds
+                    },
+                '#mini-border': {
+                    'height': (MPNotif.NOTIF_HEIGHT_MINI + 6) + 'px',
+                    'width': (MPNotif.NOTIF_WIDTH_MINI + 6) + 'px',
+                    'position': 'absolute',
+                    'top': '-3px',
+                    'left': '-3px',
+                    'margin-top': MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                    'border-radius': '6px',
+                    'opacity': '0.25',
+                    'background-color': '#fff',
+                    'z-index': '-1',
+                    'box-shadow': mini_shadow
+                },
+                '#mini-icon': {
+                    'position': 'relative',
+                    'display': 'inline-block',
+                    'width': '75px',
+                    'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                    'border-radius': '3px 0 0 3px',
+                    'background-color': this.style_vals.bg_actions,
+                    'background': 'linear-gradient(135deg, ' + this.style_vals.bg_light + ' 0%, ' + this.style_vals.bg_actions + ' 100%)',
+                    'transition': 'background-color ' + anim_seconds
+                },
+                '#mini:hover #mini-icon': {
+                    'background-color': this.style_vals.mini_hover
+                },
+                '#mini:hover #mainbox': {
+                    'background-color': this.style_vals.mini_hover
+                },
+                '#mini-icon-img': {
+                    'position': 'absolute',
+                    'background-image': 'url(' + this.thumb_image_url + ')',
+                    'width': '48px',
+                    'height': '48px',
+                    'top': '20px',
+                    'left': '12px'
+                },
+                '#content': {
+                    'padding': '30px 20px 0px 20px'
+                },
+                '#mini-content': {
+                    'text-align': 'left',
+                    'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                    'cursor': 'pointer'
+                },
+                '#img': {
+                    'width': '328px',
+                    'margin-top': '30px',
+                    'border-radius': '5px'
+                },
+                '#title': {
+                    'max-height': '600px',
+                    'overflow': 'hidden',
+                    'word-wrap': 'break-word',
+                    'padding': '25px 0px 20px 0px',
+                    'font-size': '19px',
+                    'font-weight': 'bold',
+                    'color': this.style_vals.text_title
+                },
+                '#body': {
+                    'max-height': '600px',
+                    'margin-bottom': '25px',
+                    'overflow': 'hidden',
+                    'word-wrap': 'break-word',
+                    'line-height': '21px',
+                    'font-size': '15px',
+                    'font-weight': 'normal',
+                    'text-align': 'left'
+                },
+                    '#mini #body': {
+                        'display': 'inline-block',
+                        'max-width': '250px',
+                        'margin': '0 0 0 30px',
+                        'height': MPNotif.NOTIF_HEIGHT_MINI + 'px',
+                        'font-size': '16px',
+                        'letter-spacing': '0.8px',
+                        'color': this.style_vals.text_title
+                    },
+                    '#mini #body-text': {
+                        'display': 'table',
+                        'height': MPNotif.NOTIF_HEIGHT_MINI + 'px'
+                    },
+                    '#mini #body-text div': {
+                        'display': 'table-cell',
+                        'vertical-align': 'middle'
+                    },
+                '#tagline': {
+                    'margin-bottom': '15px',
+                    'font-size': '10px',
+                    'font-weight': '600',
+                    'letter-spacing': '0.8px',
+                    'color': '#ccd7e0',
+                    'text-align': 'left'
+                },
+                '#tagline a': {
+                    'color': this.style_vals.text_tagline,
+                    'transition': 'color ' + anim_seconds
+                },
+                '#tagline a:hover': {
+                    'color': this.style_vals.text_hover
+                },
+                '#cancel': {
+                    'position': 'absolute',
+                    'right': '0',
+                    'width': '8px',
+                    'height': '8px',
+                    'padding': '10px',
+                    'border-radius': '20px',
+                    'margin': '12px 12px 0 0',
+                    'box-sizing': 'content-box',
+                    'cursor': 'pointer',
+                    'transition': 'background-color ' + anim_seconds
+                },
+                    '#mini #cancel': {
+                        'margin': '7px 7px 0 0'
+                    },
+                '#cancel-icon': {
+                    'width': '8px',
+                    'height': '8px',
+                    'overflow': 'hidden',
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/cancel-x.png)',
+                    'opacity': this.style_vals.cancel_opacity
+                },
+                '#cancel:hover': {
+                    'background-color': this.style_vals.bg_hover
+                },
+                '#button': {
+                    'display': 'block',
+                    'height': '60px',
+                    'line-height': '60px',
+                    'text-align': 'center',
+                    'background-color': this.style_vals.bg_actions,
+                    'border-radius': '0 0 4px 4px',
+                    'overflow': 'hidden',
+                    'cursor': 'pointer',
+                    'transition': 'background-color ' + anim_seconds
+                },
+                '#button-close': {
+                    'display': 'inline-block',
+                    'width': '9px',
+                    'height': '60px',
+                    'margin-right': '8px',
+                    'vertical-align': 'top',
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.style + '.png)',
+                    'background-repeat': 'no-repeat',
+                    'background-position': '0px 25px'
+                },
+                '#button-play': {
+                    'display': 'inline-block',
+                    'width': '30px',
+                    'height': '60px',
+                    'margin-left': '15px',
+                    'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-small.png)',
+                    'background-repeat': 'no-repeat',
+                    'background-position': '0px 15px'
+                },
+                'a#button-link': {
+                    'display': 'inline-block',
+                    'vertical-align': 'top',
+                    'text-align': 'center',
+                    'font-size': '17px',
+                    'font-weight': 'bold',
+                    'overflow': 'hidden',
+                    'word-wrap': 'break-word',
+                    'color': this.style_vals.text_title,
+                    'transition': 'color ' + anim_seconds
+                },
+                '#button:hover': {
+                    'background-color': this.style_vals.bg_hover,
+                    'color': this.style_vals.text_hover
+                },
+                '#button:hover a': {
+                    'color': this.style_vals.text_hover
+                },
+
+                '#video-noflip': {
+                    'position': 'relative',
+                    'top': (-this.video_height * 2) + 'px'
+                },
+                '#video-flip': {
+                    'backface-visibility': 'hidden',
+                    'transform': 'rotateY(180deg)'
+                },
+                '#video': {
+                    'position': 'absolute',
+                    'width': (this.video_width - 1) + 'px',
+                    'height': this.video_height + 'px',
+                    'top': MPNotif.NOTIF_TOP + 'px',
+                    'margin-top': '100px',
+                    'left': '50%',
+                    'margin-left': Math.round(-this.video_width / 2) + 'px',
+                    'overflow': 'hidden',
+                    'border-radius': '5px',
+                    'box-shadow': video_shadow,
+                    'transform': 'translateZ(1px)', // webkit rendering bug http://stackoverflow.com/questions/18167981/clickable-link-area-unexpectedly-smaller-after-css-transform
+                    'transition': 'opacity ' + anim_seconds + ', top ' + anim_seconds
+                },
+                    '#video.exiting': {
+                        'opacity': '0.0',
+                        'top': this.video_height + 'px'
+                    },
+                '#video-holder': {
+                    'position': 'absolute',
+                    'width': (this.video_width - 1) + 'px',
+                    'height': this.video_height + 'px',
+                    'overflow': 'hidden',
+                    'border-radius': '5px'
+                },
+                '#video-frame': {
+                    'margin-left': '-1px',
+                    'width': this.video_width + 'px'
+                },
+                '#video-controls': {
+                    'opacity': '0',
+                    'transition': 'opacity 0.5s'
+                },
+                '#video:hover #video-controls': {
+                    'opacity': '1.0'
+                },
+                '#video .video-progress-el': {
+                    'position': 'absolute',
+                    'bottom': '0',
+                    'height': '25px',
+                    'border-radius': '0 0 0 5px'
+                },
+                '#video-progress': {
+                    'width': '90%'
+                },
+                '#video-progress-total': {
+                    'width': '100%',
+                    'background-color': this.style_vals.bg,
+                    'opacity': '0.7'
+                },
+                '#video-elapsed': {
+                    'width': '0',
+                    'background-color': '#6cb6f5',
+                    'opacity': '0.9'
+                },
+                '#video #video-time': {
+                    'width': '10%',
+                    'right': '0',
+                    'font-size': '11px',
+                    'line-height': '25px',
+                    'color': this.style_vals.text_main,
+                    'background-color': '#666',
+                    'border-radius': '0 0 5px 0'
+                }
+            };
+
+            // IE hacks
+            if (this._browser_lte('ie', 8)) {
+                _.extend(notif_styles, {
+                    '* html #overlay': {
+                        'position': 'absolute'
+                    },
+                    '* html #bg': {
+                        'position': 'absolute'
+                    },
+                    'html, body': {
+                        'height': '100%'
+                    }
+                });
+            }
+            if (this._browser_lte('ie', 7)) {
+                _.extend(notif_styles, {
+                    '#mini #body': {
+                        'display': 'inline',
+                        'zoom': '1',
+                        'border': '1px solid ' + this.style_vals.bg_hover
+                    },
+                    '#mini #body-text': {
+                        'padding': '20px'
+                    },
+                    '#mini #mini-icon': {
+                        'display': 'none'
+                    }
+                });
+            }
+
+            // add vendor-prefixed style rules
+            var VENDOR_STYLES   = ['backface-visibility', 'border-radius', 'box-shadow', 'opacity',
+                                   'perspective', 'transform', 'transform-style', 'transition'],
+                VENDOR_PREFIXES = ['khtml', 'moz', 'ms', 'o', 'webkit'];
+            for (var selector in notif_styles) {
+                for (var si = 0; si < VENDOR_STYLES.length; si++) {
+                    var prop = VENDOR_STYLES[si];
+                    if (prop in notif_styles[selector]) {
+                        var val = notif_styles[selector][prop];
+                        for (var pi = 0; pi < VENDOR_PREFIXES.length; pi++) {
+                            notif_styles[selector]['-' + VENDOR_PREFIXES[pi] + '-' + prop] = val;
+                        }
+                    }
+                }
+            }
+
+            var inject_styles = function(styles, media_queries) {
+                var create_style_text = function(style_defs) {
+                    var st = '';
+                    for (var selector in style_defs) {
+                        var mp_selector = selector
+                            .replace(/#/g, '#' + MPNotif.MARKUP_PREFIX + '-')
+                            .replace(/\./g, '.' + MPNotif.MARKUP_PREFIX + '-');
+                        st += '\n' + mp_selector + ' {';
+                        var props = style_defs[selector];
+                        for (var k in props) {
+                            st += k + ':' + props[k] + ';';
+                        }
+                        st += '}';
+                    }
+                    return st;
+                };
+                var create_media_query_text = function(mq_defs) {
+                    var mqt = '';
+                    for (var mq in mq_defs) {
+                        mqt += '\n' + mq + ' {' + create_style_text(mq_defs[mq]) + '\n}';
+                    }
+                    return mqt;
+                }
+
+                var style_text = create_style_text(styles) + create_media_query_text(media_queries),
+                    head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
+                    style_el = document.createElement('style');
+                head_el.appendChild(style_el);
+                style_el.setAttribute('type', 'text/css');
+                if (style_el.styleSheet) { // IE
+                    style_el.styleSheet.cssText = style_text;
+                } else {
+                    style_el.textContent = style_text;
+                }
+            };
+            inject_styles(notif_styles, notif_media_queries);
+        };
+
+        MPNotif.prototype._init_video = _.safewrap(function() {
+            if (!this.video_url) {
+                return;
+            }
+            var self = this;
+
+            // Youtube iframe API compatibility
+            self.yt_custom = 'postMessage' in window;
+
+            // detect CSS compatibility
+            var sample_styles = document.createElement('div').style,
+                is_css_compatible = function(rule) {
+                    if (rule in sample_styles) {
+                        return true;
+                    }
+                    rule = rule[0].toUpperCase() + rule.slice(1);
+                    var props = ['O' + rule, 'ms' + rule, 'Webkit' + rule, 'Moz' + rule];
+                    for (var i = 0; i < props.length; i++) {
+                        if (props[i] in sample_styles) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+            self.dest_url = self.video_url;
+            var youtube_match = self.video_url.match(
+                    // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
+                    /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
+                ),
+                vimeo_match = self.video_url.match(
+                    /vimeo\.com\/.*?(\d+)/i
+                );
+            if (youtube_match) {
+                self.show_video = true;
+                self.youtube_video = youtube_match[1];
+
+                if (self.yt_custom) {
+                    window['onYouTubeIframeAPIReady'] = function() {
+                        if (self._get_el('video-frame')) {
+                            self._yt_video_ready();
+                        }
+                    };
+
+                    // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
+                    var tag = document.createElement('script');
+                    tag.src = "//www.youtube.com/iframe_api";
+                    var firstScriptTag = document.getElementsByTagName('script')[0];
+                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                }
+            } else if (vimeo_match) {
+                self.show_video = true;
+                self.vimeo_video = vimeo_match[1];
+            }
+
+            // IE <= 7, FF <= 3: fall through to video link rather than embedded player
+            if (self._browser_lte('ie', 7) || self._browser_lte('firefox', 3)) {
+                self.show_video = false;
+                self.clickthrough = true;
+            }
+        });
+
+        MPNotif.prototype._mark_as_shown = _.safewrap(function() {
+            // click on background to dismiss
+            var self = this;
+            _.register_event(self._get_el('bg'), 'click', function(e) {
+                self.dismiss();
+            });
+
+            var get_style = function(el, style_name) {
+                var styles = {};
+                if (document.defaultView && document.defaultView.getComputedStyle) {
+                    styles = document.defaultView.getComputedStyle(el, null); // FF3 requires both args
+                } else if (el.currentStyle) { // IE
+                    styles = el.currentStyle;
+                }
+                return styles[style_name];
+            };
+
+            if (this.campaign_id) {
+                var notif_el = this._get_el('overlay');
+                if (notif_el && get_style(notif_el, 'visibility') !== 'hidden' && get_style(notif_el, 'display') !== 'none') {
+                    // mark notification shown (local cache)
+                    this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
+                    this.cookie.save();
+
+                    // track delivery
+                    this._track_event('$campaign_delivery');
+
+                    // mark notification shown (mixpanel property)
+                    this.mixpanel['people']['append']({
+                        '$campaigns': this.campaign_id,
+                        '$notifications': {
+                            'campaign_id': this.campaign_id,
+                            'message_id':  this.message_id,
+                            'type':        'web',
+                            'time':        new Date()
+                        }
+                    });
+                }
+            }
+        });
+
+        MPNotif.prototype._preload_images = function(all_loaded_cb) {
+            var self = this;
+            if (this.imgs_to_preload.length === 0) {
+                all_loaded_cb();
+                return;
+            }
+
+            var preloaded_imgs = 0,
+                img_objs = [];
+            for (var i = 0; i < this.imgs_to_preload.length; i++) {
+                var img = new Image(),
+                    onload = function() {
+                        preloaded_imgs++;
+                        if (preloaded_imgs === self.imgs_to_preload.length && all_loaded_cb) {
+                            all_loaded_cb();
+                            all_loaded_cb = null;
+                        }
+                    };
+                img.onload = onload;
+                img.src = this.imgs_to_preload[i];
+                if (img.complete) {
+                    onload();
+                }
+                img_objs.push(img);
+            }
+
+            // IE6/7 doesn't fire onload reliably
+            if (this._browser_lte('ie', 7)) {
+                setTimeout(function() {
+                    var imgs_loaded = true;
+                    for (i = 0; i < img_objs.length; i++) {
+                        if (!img_objs[i].complete) {
+                            imgs_loaded = false;
+                        }
+                    }
+                    if (imgs_loaded && all_loaded_cb) {
+                        all_loaded_cb();
+                        all_loaded_cb = null;
+                    }
+                }, 500);
+            }
+        };
+
+        MPNotif.prototype._remove_notification_el = _.safewrap(function() {
+            window.clearInterval(this._video_progress_checker);
+            this.notification_el.style.visibility = 'hidden';
+            this.body_el.removeChild(this.notification_el);
+        });
+
+        MPNotif.prototype._set_client_config = function() {
+            var get_browser_version = function(browser_ex) {
+                var match = navigator.userAgent.match(browser_ex);
+                return match && match[1];
+            };
+            this.browser_versions = {};
+            this.browser_versions['chrome']  = get_browser_version(/Chrome\/(\d+)/);
+            this.browser_versions['firefox'] = get_browser_version(/Firefox\/(\d+)/);
+            this.browser_versions['ie']      = get_browser_version(/MSIE (\d+).+/);
+            if (!this.browser_versions['ie'] && !(window.ActiveXObject) && "ActiveXObject" in window) {
+                this.browser_versions['ie'] = 11;
+            }
+
+            this.body_el = document.body || document.getElementsByTagName('body')[0];
+            if (this.body_el) {
+                this.doc_width = Math.max(
+                    this.body_el.scrollWidth, document.documentElement.scrollWidth,
+                    this.body_el.offsetWidth, document.documentElement.offsetWidth,
+                    this.body_el.clientWidth, document.documentElement.clientWidth
+                );
+                this.doc_height = Math.max(
+                    this.body_el.scrollHeight, document.documentElement.scrollHeight,
+                    this.body_el.offsetHeight, document.documentElement.offsetHeight,
+                    this.body_el.clientHeight, document.documentElement.clientHeight
+                );
+            }
+
+            // detect CSS compatibility
+            var ie_ver = this.browser_versions['ie'];
+            var sample_styles = document.createElement('div').style,
+                is_css_compatible = function(rule) {
+                    if (rule in sample_styles) {
+                        return true;
+                    }
+                    if (!ie_ver) {
+                        rule = rule[0].toUpperCase() + rule.slice(1);
+                        var props = ['O' + rule, 'Webkit' + rule, 'Moz' + rule];
+                        for (var i = 0; i < props.length; i++) {
+                            if (props[i] in sample_styles) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+            this.use_transitions =
+                this.body_el &&
+                is_css_compatible('transition') &&
+                is_css_compatible('transform');
+            this.flip_animate =
+                (this.browser_versions['chrome'] >= 33 || this.browser_versions['firefox'] >= 15) &&
+                this.body_el &&
+                is_css_compatible('backfaceVisibility') &&
+                is_css_compatible('perspective') &&
+                is_css_compatible('transform');
+        };
+
+        MPNotif.prototype._switch_to_video = _.safewrap(function() {
+            var self = this,
+                anims = [
+                    {
+                        el:    self._get_notification_display_el(),
+                        attr:  'opacity',
+                        start: 1.0,
+                        goal:  0.0
+                    },
+                    {
+                        el:    self._get_notification_display_el(),
+                        attr:  'top',
+                        start: MPNotif.NOTIF_TOP,
+                        goal:  -500
+                    },
+                    {
+                        el:    self._get_el('video-noflip'),
+                        attr:  'opacity',
+                        start: 0.0,
+                        goal:  1.0
+                    },
+                    {
+                        el:    self._get_el('video-noflip'),
+                        attr:  'top',
+                        start: -self.video_height * 2,
+                        goal:  0
+                    }
+                ];
+
+            if (self.mini) {
+                var bg = self._get_el('bg'),
+                    overlay = self._get_el('overlay');
+                bg.style.width = '100%';
+                bg.style.height = '100%';
+                overlay.style.width = '100%';
+
+                self._add_class(self._get_notification_display_el(), 'exiting');
+                self._add_class(bg, 'visible');
+
+                anims.push({
+                    el:    self._get_el('bg'),
+                    attr:  'opacity',
+                    start: 0.0,
+                    goal:  MPNotif.BG_OPACITY
+                });
+            }
+
+            var video_el = self._get_el('video-holder');
+            video_el.innerHTML = self.video_iframe;
+
+            var video_ready = function() {
+                if (window['YT'] && window['YT']['loaded']) {
+                    self._yt_video_ready();
+                }
+                self.showing_video = true;
+                self._get_notification_display_el().style.visibility = 'hidden';
+            };
+            if (self.flip_animate) {
+                self._add_class('flipper', 'flipped');
+                setTimeout(video_ready, MPNotif.ANIM_TIME);
+            } else {
+                self._animate_els(anims, MPNotif.ANIM_TIME, video_ready);
+            }
+        });
+
+        MPNotif.prototype._track_event = function(event_name, cb) {
+            if (this.campaign_id) {
+                this.mixpanel['track'](event_name, {
+                    'campaign_id':     this.campaign_id,
+                    'message_id':      this.message_id,
+                    'message_type':    'web_inapp',
+                    'message_subtype': this.notif_type
+                }, cb);
+            } else {
+                cb && cb.call();
+            }
+        };
+
+        MPNotif.prototype._yt_video_ready = _.safewrap(function() {
+            var self = this;
+            if (self.video_inited) {
+                return;
+            }
+            self.video_inited = true;
+
+            var progress_bar  = self._get_el('video-elapsed'),
+                progress_time = self._get_el('video-time'),
+                progress_el   = self._get_el('video-progress');
+
+            new window['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
+                'events': {
+                    'onReady': function(event) {
+                        var ytplayer = event['target'],
+                            video_duration = ytplayer['getDuration'](),
+                            pad = function(i) {
+                                return ('00' + i).slice(-2);
+                            },
+                            update_video_time = function(current_time) {
+                                var secs = Math.round(video_duration - current_time),
+                                    mins = Math.floor(secs / 60),
+                                    hours = Math.floor(mins / 60);
+                                secs -= mins * 60;
+                                mins -= hours * 60;
+                                progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
+                            };
+                        update_video_time(0);
+                        self._video_progress_checker = window.setInterval(function() {
+                            var current_time = ytplayer['getCurrentTime']();
+                            progress_bar.style.width = (current_time / video_duration * 100) + '%';
+                            update_video_time(current_time);
+                        }, 250);
+                        _.register_event(progress_el, 'click', function(e) {
+                            var clickx = Math.max(0, e.pageX - progress_el.getBoundingClientRect().left);
+                            ytplayer['seekTo'](video_duration * clickx / progress_el.clientWidth, true);
+                        });
+                    }
+                }
+            });
+        });
+
     // EXPORTS (for closure compiler)
 
     // Underscore Exports
-    _['toArray']                                        = _.toArray;
-    _['isObject']                                       = _.isObject;
-    _['JSONEncode']                                     = _.JSONEncode;
-    _['JSONDecode']                                     = _.JSONDecode;
-    _['isBlockedUA']                                    = _.isBlockedUA;
-    _['isEmptyObject']                                  = _.isEmptyObject;
-    _['info']                                           = _.info;
-    _['info']['device']                                 = _.info.device;
-    _['info']['browser']                                = _.info.browser;
+    _['toArray']         = _.toArray;
+    _['isObject']        = _.isObject;
+    _['JSONEncode']      = _.JSONEncode;
+    _['JSONDecode']      = _.JSONDecode;
+    _['isBlockedUA']     = _.isBlockedUA;
+    _['isEmptyObject']   = _.isEmptyObject;
+    _['info']            = _.info;
+    _['info']['device']  = _.info.device;
+    _['info']['browser'] = _.info.browser;
 
     // MixpanelLib Exports
-    MixpanelLib.prototype['init']                       = MixpanelLib.prototype.init;
-    MixpanelLib.prototype['disable']                    = MixpanelLib.prototype.disable;
-    MixpanelLib.prototype['track']                      = MixpanelLib.prototype.track;
-    MixpanelLib.prototype['track_links']                = MixpanelLib.prototype.track_links;
-    MixpanelLib.prototype['track_forms']                = MixpanelLib.prototype.track_forms;
-    MixpanelLib.prototype['track_pageview']             = MixpanelLib.prototype.track_pageview;
-    MixpanelLib.prototype['register']                   = MixpanelLib.prototype.register;
-    MixpanelLib.prototype['register_once']              = MixpanelLib.prototype.register_once;
-    MixpanelLib.prototype['unregister']                 = MixpanelLib.prototype.unregister;
-    MixpanelLib.prototype['identify']                   = MixpanelLib.prototype.identify;
-    MixpanelLib.prototype['alias']                      = MixpanelLib.prototype.alias;
-    MixpanelLib.prototype['name_tag']                   = MixpanelLib.prototype.name_tag;
-    MixpanelLib.prototype['set_config']                 = MixpanelLib.prototype.set_config;
-    MixpanelLib.prototype['get_config']                 = MixpanelLib.prototype.get_config;
-    MixpanelLib.prototype['get_property']               = MixpanelLib.prototype.get_property;
-    MixpanelLib.prototype['get_distinct_id']            = MixpanelLib.prototype.get_distinct_id;
-    MixpanelLib.prototype['toString']                   = MixpanelLib.prototype.toString;
+    MixpanelLib.prototype['init']                            = MixpanelLib.prototype.init;
+    MixpanelLib.prototype['disable']                         = MixpanelLib.prototype.disable;
+    MixpanelLib.prototype['track']                           = MixpanelLib.prototype.track;
+    MixpanelLib.prototype['track_links']                     = MixpanelLib.prototype.track_links;
+    MixpanelLib.prototype['track_forms']                     = MixpanelLib.prototype.track_forms;
+    MixpanelLib.prototype['track_pageview']                  = MixpanelLib.prototype.track_pageview;
+    MixpanelLib.prototype['register']                        = MixpanelLib.prototype.register;
+    MixpanelLib.prototype['register_once']                   = MixpanelLib.prototype.register_once;
+    MixpanelLib.prototype['unregister']                      = MixpanelLib.prototype.unregister;
+    MixpanelLib.prototype['identify']                        = MixpanelLib.prototype.identify;
+    MixpanelLib.prototype['alias']                           = MixpanelLib.prototype.alias;
+    MixpanelLib.prototype['name_tag']                        = MixpanelLib.prototype.name_tag;
+    MixpanelLib.prototype['set_config']                      = MixpanelLib.prototype.set_config;
+    MixpanelLib.prototype['get_config']                      = MixpanelLib.prototype.get_config;
+    MixpanelLib.prototype['get_property']                    = MixpanelLib.prototype.get_property;
+    MixpanelLib.prototype['get_distinct_id']                 = MixpanelLib.prototype.get_distinct_id;
+    MixpanelLib.prototype['toString']                        = MixpanelLib.prototype.toString;
+    MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
+    MixpanelLib.prototype['_show_notification']              = MixpanelLib.prototype._show_notification;
 
     // MixpanelCookie Exports
-    MixpanelCookie.prototype['properties']              = MixpanelCookie.prototype.properties;
-    MixpanelCookie.prototype['update_search_keyword']   = MixpanelCookie.prototype.update_search_keyword;
-    MixpanelCookie.prototype['update_referrer_info']    = MixpanelCookie.prototype.update_referrer_info;
-    MixpanelCookie.prototype['get_cross_subdomain']     = MixpanelCookie.prototype.get_cross_subdomain;
-    MixpanelCookie.prototype['clear']                   = MixpanelCookie.prototype.clear;
+    MixpanelCookie.prototype['properties']            = MixpanelCookie.prototype.properties;
+    MixpanelCookie.prototype['update_search_keyword'] = MixpanelCookie.prototype.update_search_keyword;
+    MixpanelCookie.prototype['update_referrer_info']  = MixpanelCookie.prototype.update_referrer_info;
+    MixpanelCookie.prototype['get_cross_subdomain']   = MixpanelCookie.prototype.get_cross_subdomain;
+    MixpanelCookie.prototype['clear']                 = MixpanelCookie.prototype.clear;
 
     // MixpanelPeople Exports
-    MixpanelPeople.prototype['set']                     = MixpanelPeople.prototype.set;
-    MixpanelPeople.prototype['set_once']                = MixpanelPeople.prototype.set_once;
-    MixpanelPeople.prototype['increment']               = MixpanelPeople.prototype.increment;
-    MixpanelPeople.prototype['append']                  = MixpanelPeople.prototype.append;
-    MixpanelPeople.prototype['track_charge']            = MixpanelPeople.prototype.track_charge;
-    MixpanelPeople.prototype['clear_charges']           = MixpanelPeople.prototype.clear_charges;
-    MixpanelPeople.prototype['delete_user']             = MixpanelPeople.prototype.delete_user;
-    MixpanelPeople.prototype['toString']                = MixpanelPeople.prototype.toString;
+    MixpanelPeople.prototype['set']           = MixpanelPeople.prototype.set;
+    MixpanelPeople.prototype['set_once']      = MixpanelPeople.prototype.set_once;
+    MixpanelPeople.prototype['increment']     = MixpanelPeople.prototype.increment;
+    MixpanelPeople.prototype['append']        = MixpanelPeople.prototype.append;
+    MixpanelPeople.prototype['track_charge']  = MixpanelPeople.prototype.track_charge;
+    MixpanelPeople.prototype['clear_charges'] = MixpanelPeople.prototype.clear_charges;
+    MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user;
+    MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
+
+    _.safewrap_class(MixpanelCookie, ['_expire_notification_campaigns']);
+    _.safewrap_class(MixpanelLib,    ['identify', '_check_and_handle_notifications', '_show_notification']);
 
     // Initialization
     if (_.isUndefined(mixpanel)) {
@@ -2956,6 +4346,7 @@ Globals should be all caps
             } else if (token) {
                 // intialize the main mixpanel lib
                 instance = create_mplib(token, config, PRIMARY_INSTANCE_NAME);
+                instance._loaded();
             }
 
             window[PRIMARY_INSTANCE_NAME] = mixpanel = instance;

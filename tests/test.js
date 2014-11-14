@@ -243,17 +243,10 @@ window.test_async = function() {
     } else {
         var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
         $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
-
-        // ensure that the post-load tests run even if the lib loaded before the call to mixpanel.init
-        if (!window.TEST_MIXPANEL_STARTED) {
-            window.test_mixpanel(mixpanel);
-        }
     }
 };
 
 window.test_mixpanel = function(mixpanel) {
-
-window.TEST_MIXPANEL_STARTED = true;
 
 /* Tests to run once the lib is loaded on the page.
  */
@@ -1076,6 +1069,78 @@ mpmodule("mixpanel.push");
         same(mixpanel.cookie.props.value, value, "executed immediately");
     });
 
+xhrmodule("mixpanel._check_and_handle_notifications");
+
+    if (USE_XHR) {
+        test("_check_and_handle_notifications makes a request to decide/ server", 2, function() {
+            mixpanel.test._check_and_handle_notifications(this.id);
+            same(this.requests.length, 1, "_check_and_handle_notifications should have fired off a request");
+            ok(this.requests[0].url.match(/decide\//));
+        });
+
+        test("notifications are never checked again after identify()", 2, function() {
+            mixpanel.test.identify(this.id);
+            ok(this.requests.length >= 1, "identify should have fired off a request");
+
+            var num_requests = this.requests.length;
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test._check_and_handle_notifications(this.id);
+            same(this.requests.length, num_requests, "_check_and_handle_notifications after identify should not make requests");
+        });
+
+        test("_check_and_handle_notifications honors disable_notifications config", 1, function() {
+            mixpanel.test.set_config({disable_notifications: true});
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test.set_config({disable_notifications: false});
+            same(this.requests.length, 0, "_check_and_handle_notifications should not have fired off a request");
+        });
+    } else {
+        test("_check_and_handle_notifications makes a request", 1, function() {
+            var num_scripts = $('script').length;
+            mixpanel.test._check_and_handle_notifications(this.id);
+            stop();
+            setTimeout(function() {
+                same($('script').length, num_scripts + 1, "_check_and_handle_notifications should have fired off a request");
+                start();
+            }, 500);
+        });
+
+        test("notifications are never checked again after identify()", 2, function() {
+            var num_scripts = $('script').length;
+            mixpanel.test.identify(this.id);
+            stop();
+            setTimeout(function() {
+                ok($('script').length >= num_scripts + 1, "identify should have fired off a request");
+
+                num_scripts = $('script').length;
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                mixpanel.test._check_and_handle_notifications(this.id);
+                setTimeout(function() {
+                    same($('script').length, num_scripts, "_check_and_handle_notifications after identify should not make requests");
+                    start();
+                }, 500);
+            }, 500);
+        });
+
+        test("_check_and_handle_notifications honors disable_notifications config", 1, function() {
+            var num_scripts = $('script').length;
+            mixpanel.test.set_config({disable_notifications: true});
+            mixpanel.test._check_and_handle_notifications(this.id);
+            mixpanel.test.set_config({disable_notifications: false});
+            stop();
+            setTimeout(function() {
+                same($('script').length, num_scripts, "_check_and_handle_notifications should not have fired off a request");
+                start();
+            }, 500);
+        });
+    }
+
 mpmodule("mixpanel.people.set");
 
     test("set (basic functionality)", 6, function() {
@@ -1433,7 +1498,9 @@ mpmodule("mixpanel.people flushing");
 
         stop();
         setTimeout(function() {
-            same($('script').length, num_scripts, "No scripts added to page.");
+            // notification check results in extra script tag when !USE_XHR
+            var extra_scripts = USE_XHR ? 0 : 1;
+            same($('script').length, num_scripts + extra_scripts, "No scripts added to page.");
             start();
         }, 500);
     });
@@ -1470,6 +1537,66 @@ mpmodule("mixpanel.people.delete_user");
         mixpanel.test.identify(this.id);
         d = mixpanel.test.people.delete_user();
         same(d, { "$token": this.token, "$distinct_id": this.id, "$delete": this.id }, "Cannot delete user without valid distinct id");
+    });
+
+mpmodule("in-app notification display");
+
+    asyncTest("notification with normal data adds itself to DOM", 1, function() {
+        mixpanel._show_notification({
+            body: "notification body test",
+            title: "hallo"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification-takeover').length, 1);
+            $('#mixpanel-notification-wrapper').remove();
+            start();
+        }, 2000);
+    });
+
+    asyncTest("mini notification with normal data adds itself to DOM", 1, function() {
+        mixpanel._show_notification({
+            body: "notification body test",
+            type: "mini"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification-mini').length, 1);
+            $('#mixpanel-notification-wrapper').remove();
+            start();
+        }, 2000);
+    });
+
+    asyncTest("notification does not show when images don't load", 1, function() {
+        mixpanel._show_notification({
+            body: "bad image body test",
+            image_url: "http://notgonna.loadever.com/blablabla",
+            title: "bad image title"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification-takeover').length, 0);
+            start();
+        }, 2000);
+    });
+
+    test("calling _show_notification with bad data does not halt execution", 1, function() {
+        mixpanel.test._show_notification();
+        mixpanel.test._show_notification(15);
+        mixpanel.test._show_notification('hi');
+        mixpanel.test._show_notification({body: null});
+        mixpanel.test._show_notification({bla: 'bla'});
+        ok(true);
+    });
+
+    asyncTest("notification prevents script injection", 2, function() {
+        mixpanel._show_notification({
+            body: 'injection test</div><img src="nope" onerror="window.injectedvar=42;"/>',
+            title: "bad image title"
+        });
+        setTimeout(function() {
+            same($('#mixpanel-notification-takeover').length, 1);
+            $('#mixpanel-notification-wrapper').remove();
+            ok(_.isUndefined(window.injectedvar), 'window.injectedvar should not exist');
+            start();
+        }, 2000);
     });
 
 mpmodule("verbose output");
