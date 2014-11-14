@@ -3045,8 +3045,7 @@ Globals should be all caps
             var exiting_el = this.showing_video ? this._get_el('video') : this._get_notification_display_el();
             if (this.use_transitions) {
                 this._remove_class('bg', 'visible');
-                this._remove_class(exiting_el, 'visible');
-                this._add_class(exiting_el, 'hidden');
+                this._add_class(exiting_el, 'exiting');
                 setTimeout(this._remove_notification_el, MPNotif.ANIM_TIME);
             } else {
                 var notif_attr, notif_start, notif_goal;
@@ -3507,6 +3506,10 @@ Globals should be all caps
                         'opacity': '1.0',
                         'top': MPNotif.NOTIF_TOP + 'px'
                     },
+                    '#takeover.exiting': {
+                        'opacity': '0.0',
+                        'top': MPNotif.NOTIF_START_TOP + 'px'
+                    },
                 '#thumbspacer': {
                     'height': MPNotif.THUMB_OFFSET + 'px'
                 },
@@ -3546,11 +3549,15 @@ Globals should be all caps
                     'backface-visibility': 'hidden',
                     'opacity': '0.0',
                     'transform': 'rotateX(90deg)',
-                    'transition': 'opacity 0.3s, transform 0.3s'
+                    'transition': 'opacity 0.3s, transform 0.3s, right 0.3s'
                 },
                     '#mini.visible': {
                         'opacity': '1.0',
                         'transform': 'rotateX(0deg)'
+                    },
+                    '#mini.exiting': {
+                        'opacity': '0.0',
+                        'right': '-150px'
                     },
                 '#mainbox': {
                     'border-radius': '4px',
@@ -3763,7 +3770,7 @@ Globals should be all caps
                     'transform': 'translateZ(1px)', // webkit rendering bug http://stackoverflow.com/questions/18167981/clickable-link-area-unexpectedly-smaller-after-css-transform
                     'transition': 'opacity ' + anim_seconds + ', top ' + anim_seconds
                 },
-                    '#video.hidden': {
+                    '#video.exiting': {
                         'opacity': '0.0',
                         'top': this.video_height + 'px'
                     },
@@ -4144,7 +4151,7 @@ Globals should be all caps
                 bg.style.height = '100%';
                 overlay.style.width = '100%';
 
-                self._remove_class(self._get_notification_display_el(), 'visible');
+                self._add_class(self._get_notification_display_el(), 'exiting');
                 self._add_class(bg, 'visible');
 
                 anims.push({
