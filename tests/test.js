@@ -257,25 +257,6 @@ module("onload handler preserved");
         ok(old_handler_run, "Old onload handler was run");
     });
 
-mpmodule("mixpanel.identify");
-    test("identify with no params", 2, function() {
-        var errors = 0;
-        distinct_id = mixpanel.test.get_distinct_id();
-        if (window.console) {
-            var old_error = console.error;
-            console.error = function(msg) { 
-                errors++;
-                old_error.apply(this, arguments);
-            }
-        }
-        mixpanel.test.identify();
-        if (window.console) {
-            console.error = old_error;
-        }    
-        same(mixpanel.test.get_distinct_id(), distinct_id);
-        equal(errors, 0, "No errors were expected but some were encountered when calling identify with no arguments")
-    });
-
 mpmodule("mixpanel.track");
 
     asyncTest("check callback", 1, function() {
@@ -1429,6 +1410,24 @@ mpmodule("mixpanel.people.clear_charges");
     });
 
 mpmodule("mixpanel.people flushing");
+
+    test("identify with no params", 2, function() {
+        var errors = 0;
+        distinct_id = mixpanel.test.get_distinct_id();
+        if (window.console) {
+            var old_error = console.error;
+            console.error = function(msg) { 
+                errors++;
+                old_error.apply(this, arguments);
+            }
+        }
+        mixpanel.test.identify();
+        if (window.console) {
+            console.error = old_error;
+        }    
+        same(mixpanel.test.get_distinct_id(), distinct_id);
+        equal(errors, 0, "No errors were expected but some were encountered when calling identify with no arguments")
+    });
 
     test("identify flushes set queue", 4, function() {
         mixpanel.test.people.set("a", "b");

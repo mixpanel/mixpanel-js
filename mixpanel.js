@@ -2558,7 +2558,7 @@ Globals should be all caps
     };
 
     MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
-        if (this._flags.identify_called || this.get_config('disable_notifications')) {
+        if (!distinct_id || this._flags.identify_called || this.get_config('disable_notifications')) {
             return;
         }
 
