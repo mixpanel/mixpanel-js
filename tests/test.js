@@ -1073,8 +1073,9 @@ xhrmodule("mixpanel._check_and_handle_notifications");
 
     if (USE_XHR) {
         test("_check_and_handle_notifications makes a request to decide/ server", 2, function() {
+            var initial_requests = this.requests.length;
             mixpanel.test._check_and_handle_notifications(this.id);
-            same(this.requests.length, 1, "_check_and_handle_notifications should have fired off a request");
+            same(this.requests.length - initial_requests, 1, "_check_and_handle_notifications should have fired off a request");
             ok(this.requests[0].url.match(/decide\//));
         });
 
@@ -1092,10 +1093,11 @@ xhrmodule("mixpanel._check_and_handle_notifications");
         });
 
         test("_check_and_handle_notifications honors disable_notifications config", 1, function() {
+            var initial_requests = this.requests.length;
             mixpanel.test.set_config({disable_notifications: true});
             mixpanel.test._check_and_handle_notifications(this.id);
             mixpanel.test.set_config({disable_notifications: false});
-            same(this.requests.length, 0, "_check_and_handle_notifications should not have fired off a request");
+            same(this.requests.length - initial_requests, 0, "_check_and_handle_notifications should not have fired off a request");
         });
     } else {
         test("_check_and_handle_notifications makes a request", 1, function() {
