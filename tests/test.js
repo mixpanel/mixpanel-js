@@ -257,6 +257,25 @@ module("onload handler preserved");
         ok(old_handler_run, "Old onload handler was run");
     });
 
+mpmodule("mixpanel.identify");
+    test("identify with no params", 2, function() {
+        var errors = 0;
+        distinct_id = mixpanel.test.get_distinct_id();
+        if (window.console) {
+            var old_error = console.error;
+            console.error = function(msg) { 
+                errors++;
+                old_error.apply(this, arguments);
+            }
+        }
+        mixpanel.test.identify();
+        if (window.console) {
+            console.error = old_error;
+        }    
+        same(mixpanel.test.get_distinct_id(), distinct_id);
+        equal(errors, 0, "No errors were expected but some were encountered when calling identify with no arguments")
+    });
+
 mpmodule("mixpanel.track");
 
     asyncTest("check callback", 1, function() {
@@ -1427,6 +1446,22 @@ mpmodule("mixpanel.people flushing");
         });
     });
 
+    test("identify no params flushes set queue", 4, function() {
+        mixpanel.test.people.set("a", "b");
+        mixpanel.test.people.set("b", "c");
+
+        stop();
+        mixpanel.test.identify(undefined, function(resp, data) {
+            ok(resp == 1, "Successful write");
+            ok(contains_obj(data["$set"], { "a": "b", "b": "c" }));
+            same(mixpanel.test.cookie.props['__mps'], {}, "Queue is cleared after flushing");
+            // reload cookie to make sure it's persisted correctly
+            mixpanel.test.cookie.load();
+            same(mixpanel.test.cookie.props['__mps'], {}, "Empty queue is persisted");
+            start();
+        });
+    });
+    
     test("identify flushes set_once queue", 4, function() {
         mixpanel.test.people.set_once("a", "b");
         mixpanel.test.people.set_once("b", "c");

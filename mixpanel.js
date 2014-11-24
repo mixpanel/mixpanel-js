@@ -2414,7 +2414,7 @@ Globals should be all caps
             this.unregister(ALIAS_ID_KEY);
             this._register_single('distinct_id', unique_id);
         }
-        this._check_and_handle_notifications(unique_id);
+        this._check_and_handle_notifications(this.get_distinct_id());
         this._flags.identify_called = true;
         // Flush any queued up people requests
         this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback);
