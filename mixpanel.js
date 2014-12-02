@@ -3209,12 +3209,12 @@ Globals should be all caps
             _.register_event(click_el, 'click', function(e) {
                 e.preventDefault();
                 if (self.show_video) {
-                    self._track_event('$campaign_open');
+                    self._track_event('$campaign_open', {$resource_type: 'video'});
                     self._switch_to_video();
                 } else {
                     self.dismiss();
                     if (self.clickthrough) {
-                        self._track_event('$campaign_open', function() {
+                        self._track_event('$campaign_open', {$resource_type: 'link'}, function() {
                             window.location.href = self.dest_url;
                         });
                     }
@@ -4180,14 +4180,16 @@ Globals should be all caps
             }
         });
 
-        MPNotif.prototype._track_event = function(event_name, cb) {
+        MPNotif.prototype._track_event = function(event_name, properties, cb) {
             if (this.campaign_id) {
-                this.mixpanel['track'](event_name, {
+                properties = properties || {};
+                properties = _.extend(properties, {
                     'campaign_id':     this.campaign_id,
                     'message_id':      this.message_id,
                     'message_type':    'web_inapp',
                     'message_subtype': this.notif_type
-                }, cb);
+                });
+                this.mixpanel['track'](event_name, properties, cb);
             } else {
                 cb && cb.call();
             }
