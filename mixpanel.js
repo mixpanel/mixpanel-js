@@ -3209,12 +3209,12 @@ Globals should be all caps
             _.register_event(click_el, 'click', function(e) {
                 e.preventDefault();
                 if (self.show_video) {
-                    self._track_event('$campaign_open', {$resource_type: 'video'});
+                    self._track_event('$campaign_open', {'$resource_type': 'video'});
                     self._switch_to_video();
                 } else {
                     self.dismiss();
                     if (self.clickthrough) {
-                        self._track_event('$campaign_open', {$resource_type: 'link'}, function() {
+                        self._track_event('$campaign_open', {'$resource_type': 'link'}, function() {
                             window.location.href = self.dest_url;
                         });
                     }
