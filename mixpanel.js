@@ -3042,6 +3042,12 @@ Globals should be all caps
         };
 
         MPNotif.prototype.dismiss = _.safewrap(function() {
+            if (!this.marked_as_shown) {
+                // unexpected condition: user interacted with notif even though we didn't consider it
+                // visible (see _mark_as_shown()); send tracking signals to mark delivery
+                this._mark_delivery({'invisible': true});
+            }
+
             var exiting_el = this.showing_video ? this._get_el('video') : this._get_notification_display_el();
             if (this.use_transitions) {
                 this._remove_class('bg', 'visible');
@@ -3988,24 +3994,32 @@ Globals should be all caps
             if (this.campaign_id) {
                 var notif_el = this._get_el('overlay');
                 if (notif_el && get_style(notif_el, 'visibility') !== 'hidden' && get_style(notif_el, 'display') !== 'none') {
-                    // mark notification shown (local cache)
-                    this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
-                    this.cookie.save();
-
-                    // track delivery
-                    this._track_event('$campaign_delivery');
-
-                    // mark notification shown (mixpanel property)
-                    this.mixpanel['people']['append']({
-                        '$campaigns': this.campaign_id,
-                        '$notifications': {
-                            'campaign_id': this.campaign_id,
-                            'message_id':  this.message_id,
-                            'type':        'web',
-                            'time':        new Date()
-                        }
-                    });
+                    this._mark_delivery();
                 }
+            }
+        });
+
+        MPNotif.prototype._mark_delivery = _.safewrap(function(extra_props) {
+            if (!this.marked_as_shown) {
+                this.marked_as_shown = true;
+
+                // mark notification shown (local cache)
+                this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
+                this.cookie.save();
+
+                // track delivery
+                this._track_event('$campaign_delivery', extra_props);
+
+                // mark notification shown (mixpanel property)
+                this.mixpanel['people']['append']({
+                    '$campaigns': this.campaign_id,
+                    '$notifications': {
+                        'campaign_id': this.campaign_id,
+                        'message_id':  this.message_id,
+                        'type':        'web',
+                        'time':        new Date()
+                    }
+                });
             }
         });
 
