@@ -1506,7 +1506,12 @@ Globals should be all caps
     };
 
     LinkTracker.prototype.event_handler = function(evt, element, options) {
-        options.new_tab = (evt.which === 2 || evt.metaKey || element.target === "_blank");
+        options.new_tab = (
+            evt.which === 2 ||
+            evt.metaKey ||
+            evt.ctrlKey ||
+            element.target === "_blank"
+        );
         options.href = element.href;
 
         if (!options.new_tab) {
