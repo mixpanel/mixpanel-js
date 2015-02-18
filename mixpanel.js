@@ -2521,8 +2521,8 @@ Globals should be all caps
      *       // if you set upgrade to be true, the library will check for a
      *       // cookie from our old js library and import super
      *       // properties from it, then the old cookie is deleted
-     *       // The upgrade config option only works in the initialization, so
-     *       // make sure you set it when you create the library.
+     *       // The upgrade config option only works in the initialization,
+     *       // so make sure you set it when you create the library.
      *       upgrade:                    false
      *     }
      *
@@ -2702,14 +2702,15 @@ Globals should be all caps
      *
      *     mixpanel.people.increment('page_views', 1);
      *
-     *     // or, for convenience, if you're just incrementing a counter by 1, you can
-     *     // simply do
+     *     // or, for convenience, if you're just incrementing a counter by
+     *     // 1, you can simply do
      *     mixpanel.people.increment('page_views');
      *
      *     // to decrement a counter, pass a negative number
      *     mixpanel.people.increment('credits_left': -1);
      *
-     *     // like mixpanel.people.set(), you can increment multiple properties at once:
+     *     // like mixpanel.people.set(), you can increment multiple
+     *     // properties at once:
      *     mixpanel.people.increment({
      *         counter1: 1,
      *         counter2: 1
@@ -2755,7 +2756,8 @@ Globals should be all caps
      *     // append a value to a list, creating it if needed
      *     mixpanel.people.append('pages_visited', 'homepage');
      *
-     *     // like mixpanel.people.set(), you can append multiple properties at once:
+     *     // like mixpanel.people.set(), you can append multiple
+     *     // properties at once:
      *     mixpanel.people.append({
      *         list1: 'bob',
      *         list2: 123
@@ -2796,7 +2798,9 @@ Globals should be all caps
      *     mixpanel.people.track_charge(50);
      *
      *     // charge a user $30.50 on the 2nd of january
-     *     mixpanel.people.track_charge(30.50, { '$time': new Date('jan 1 2012') });
+     *     mixpanel.people.track_charge(30.50, {
+     *         '$time': new Date('jan 1 2012')
+     *     });
      *
      * @param {Number} amount The amount of money charged to the current user
      * @param {Object} [properties] An associative array of properties associated with the charge
