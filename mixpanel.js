@@ -4008,9 +4008,11 @@ Globals should be all caps
             if (!this.marked_as_shown) {
                 this.marked_as_shown = true;
 
-                // mark notification shown (local cache)
-                this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
-                this.cookie.save();
+                if (this.campaign_id) {
+                    // mark notification shown (local cache)
+                    this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
+                    this.cookie.save();
+                }
 
                 // track delivery
                 this._track_event('$campaign_delivery', extra_props);
