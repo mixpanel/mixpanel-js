@@ -25,7 +25,7 @@ If you wish to load the specific version downloaded in your Bower package, there
 <script>
   window.MIXPANEL_CUSTOM_LIB_URL = 'bower_components/mixpanel-js/mixpanel.js';
 </script>
-<script src="bower_components/mixpanel/mixpanel-jslib-snippet.min.js"></script>
+<script src="bower_components/mixpanel-js/mixpanel-jslib-snippet.min.js"></script>
 ```
 or
 
