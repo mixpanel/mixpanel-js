@@ -6,9 +6,8 @@ is available [here](https://mixpanel.com/help/reference/javascript).
 ## Alternative installation via Bower
 `mixpanel-js` is also available via front-end package manager [Bower](http://bower.io/). After installing Bower, fetch into your project's `bower_components` dir with:
 ```sh
-bower install git://github.com/mixpanel/mixpanel-js.git
+bower install mixpanel
 ```
-(TODO: update Bower address after registration as `mixpanel`)
 
 ### Using Bower to load the snippet
 You can then load the lib via the embed code (snippet) with a script reference:
