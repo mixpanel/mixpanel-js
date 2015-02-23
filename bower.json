@@ -1,5 +1,5 @@
 {
-  "name": "mixpanel-js",
+  "name": "mixpanel",
   "homepage": "https://github.com/mixpanel/mixpanel-js",
   "description": "Mixpanel JavaScript Library",
   "main": "mixpanel-jslib-snippet.js",
