@@ -2970,7 +2970,7 @@ Globals should be all caps
 
     // Flush queued engage operations - order does not matter,
     // and there are network level race conditions anyway
-    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) { // TODO fix callsites to include _union_callback
+    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
         var _this = this,
             $set_queue = _.extend({}, this._mixpanel.cookie._get_queue(SET_ACTION)),
             $set_once_queue = _.extend({}, this._mixpanel.cookie._get_queue(SET_ONCE_ACTION)),
