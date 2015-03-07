@@ -1360,13 +1360,18 @@ mpmodule("mixpanel.people.append");
 
 mpmodule("mixpanel.people.union");
 
-    test("union (basic functionality)", 4, function() {
-        var _union1 = { 'key': ['val1'] },
-            _union2 = { 'key1': ['val1', 'val2'], 'key2': ['val2'] },
+    test("union (basic functionality)", 7, function() {
+        var _union1 = {'key': ['val1']},
+            _union2 = {'key1': ['val1', 'val2'], 'key2': ['val2']},
+            _union3 = {'key': 'val1'},
+            _union4 = {'key1': ['val1', 'val2'], 'key2': 'val2'},
             i;
 
-        i = mixpanel.people.union('key', ['vals']);
-        same(i["$union"], { 'key': ['vals'] }, ".union() with two params works");
+        i = mixpanel.people.union('key', ['val']);
+        same(i["$union"], {'key': ['val']}, ".union() with two params works");
+
+        i = mixpanel.people.union('key', 'val');
+        same(i["$union"], {'key': ['val']}, ".union() with non-array val works");
 
         i = mixpanel.people.union(_union1);
         same(i["$union"], _union1, ".union() with an object (with only 1 key) works");
@@ -1374,14 +1379,20 @@ mpmodule("mixpanel.people.union");
         i = mixpanel.people.union(_union2);
         same(i["$union"], _union2, ".union() with an object (with multiple keys) works");
 
+        i = mixpanel.people.union(_union3);
+        same(i["$union"], {'key': ['val1']}, ".union() with an object (with 1 key and non-array val) works");
+
+        i = mixpanel.people.union(_union4);
+        same(i["$union"], {'key1': ['val1', 'val2'], 'key2': ['val2']}, ".union() with an object (with multiple keys and non-array val) works");
+
         mixpanel.test.identify(this.id);
         i = mixpanel.test.people.union(_union2);
         same(i, { "$distinct_id": this.id, "$token": this.token, "$union": _union2 }, "Basic union message works")
     });
 
     test("union queues and merges data", 4, function() {
-        var _union1 = { 'key1': ['val1.1'], 'key2': ['val1.2'], 'nonsense': 22 },
-            _union2 = { 'key1': ['val2.1'], 'key3': ['val2.3'], 'nonsense': 33 },
+        var _union1 = {'key1': ['val1.1'], 'key2': ['val1.2']},
+            _union2 = {'key1': ['val2.1'], 'key3': ['val2.3']},
             i;
 
         mixpanel.test.people.union(_union1, function(resp) {
@@ -1483,7 +1494,7 @@ mpmodule("mixpanel.people flushing");
         distinct_id = mixpanel.test.get_distinct_id();
         if (window.console) {
             var old_error = console.error;
-            console.error = function(msg) { 
+            console.error = function(msg) {
                 errors++;
                 old_error.apply(this, arguments);
             }
@@ -1491,7 +1502,7 @@ mpmodule("mixpanel.people flushing");
         mixpanel.test.identify();
         if (window.console) {
             console.error = old_error;
-        }    
+        }
         same(mixpanel.test.get_distinct_id(), distinct_id);
         equal(errors, 0, "No errors were expected but some were encountered when calling identify with no arguments")
     });
@@ -1527,7 +1538,7 @@ mpmodule("mixpanel.people flushing");
             start();
         });
     });
-    
+
     test("identify flushes set_once queue", 4, function() {
         mixpanel.test.people.set_once("a", "b");
         mixpanel.test.people.set_once("b", "c");
@@ -1594,7 +1605,7 @@ mpmodule("mixpanel.people flushing");
     });
 
     test("identify flushes union queue", 4, function() {
-        var _union1 = { 'key1': ['val1.1'], 'key2': ['val1.2'], 'nonsense': 22 },
+        var _union1 = {'key1': ['val1.1'], 'key2': 'val1.2'},
             i;
 
         mixpanel.test.people.union(_union1);
@@ -1630,19 +1641,22 @@ mpmodule("mixpanel.people flushing");
     // to the server.  By making sure the queue's are cleared right away
     // (before waiting for the server response), we can avoid this
     // issue.
-    test("identify clears out queues before server response", 6, function() {
+    test("identify clears out queues before server response", 8, function() {
         mixpanel.test.people.set("key", "val");
         mixpanel.test.people.increment("num");
         mixpanel.test.people.append("ary", 'val');
+        mixpanel.test.people.union("stuff", 'val');
 
         mixpanel.test.identify(this.id);
 
         same(mixpanel.test.cookie.props['__mpap'], []);
+        same(mixpanel.test.cookie.props['__mpu'], {});
         same(mixpanel.test.cookie.props['__mpa'], {});
         same(mixpanel.test.cookie.props['__mps'], {});
         // reload cookie to make sure it's persisted correctly
         mixpanel.test.cookie.load();
         same(mixpanel.test.cookie.props['__mpap'], []);
+        same(mixpanel.test.cookie.props['__mpu'], {});
         same(mixpanel.test.cookie.props['__mpa'], {});
         same(mixpanel.test.cookie.props['__mps'], {});
     });

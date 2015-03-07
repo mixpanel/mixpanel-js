@@ -2812,17 +2812,22 @@ Globals should be all caps
      *
      * ### Usage:
      *
-     *     // Merge the given list, creating it if needed
-     *     mixpanel.people.append('number_one_hits', ['Space Oddity', 'Under Pressure']);
+     *     // merge a value to a list, creating it if needed
+     *     mixpanel.people.union('pages_visited', 'homepage');
      *
      *     // like mixpanel.people.set(), you can append multiple properties at once:
-     *     mixpanel.people.append({
-     *         bowie_hits: ['Space Oddity', 'Under Pressure'],
-     *         queen_hits: ['Bohemian Rhapsody', 'Under Pressure']
+     *     mixpanel.people.union({
+     *         list1: 'bob',
+     *         list2: 123
+     *     });
+     *
+     *     // like mixpanel.people.append(), you can append multiple values to the same list:
+     *     mixpanel.people.union({
+     *         list1: ['bob', 'billy']
      *     });
      *
      * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
-     * @param {*} [value] A list to merge with the current value of the property.
+     * @param {*} [value] Value / values to merge with the given property
      * @param {Function} [callback] If provided, the callback will be called after the tracking event
      */
     MixpanelPeople.prototype.union = function(list_name, values, callback) {
@@ -2830,15 +2835,13 @@ Globals should be all caps
         var $union = {};
         if (_.isObject(list_name)) {
             _.each(list_name, function(v, k) {
-                if (k == '$distinct_id' || k == '$token') {
-                    return;
-                } else {
-                    $union[k] = v;
+                if (k !== '$distinct_id' && k !== '$token') {
+                    $union[k] = _.isArray(v) ? v : [v];
                 }
             });
             callback = values;
         } else {
-            $union[list_name] = values;
+            $union[list_name] = _.isArray(values) ? values : [values];
         }
         data[UNION_ACTION] = $union;
 
