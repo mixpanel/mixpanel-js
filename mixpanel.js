@@ -2647,13 +2647,10 @@ Globals should be all caps
         var $set = {};
         if (_.isObject(prop)) {
             _.each(prop, function(v, k) {
-                // We will get these ourselves
-                if (k == '$distinct_id' || k == '$token') {
-                    return;
-                } else {
+                if (!this._is_reserved_property(k)) {
                     $set[k] = v;
                 }
-            });
+            }, this);
             callback = to;
         } else {
             $set[prop] = to;
@@ -2700,13 +2697,10 @@ Globals should be all caps
         var $set_once = {};
         if (_.isObject(prop)) {
             _.each(prop, function(v, k) {
-                // We will get these ourselves
-                if (k == '$distinct_id' || k == '$token') {
-                    return;
-                } else {
+                if (!this._is_reserved_property(k)) {
                     $set_once[k] = v;
                 }
-            });
+            }, this);
             callback = to;
         } else {
             $set_once[prop] = to;
@@ -2745,15 +2739,15 @@ Globals should be all caps
         var $add = {};
         if (_.isObject(prop)) {
             _.each(prop, function(v, k) {
-                if (k == '$distinct_id' || k == '$token') {
-                    return;
-                } else if (isNaN(parseFloat(v))) {
-                    console.error("Invalid increment value passed to mixpanel.people.increment - must be a number");
-                    return;
-                } else {
-                    $add[k] = v;
+                if (!this._is_reserved_property(k)) {
+                    if (isNaN(parseFloat(v))) {
+                        console.error("Invalid increment value passed to mixpanel.people.increment - must be a number");
+                        return;
+                    } else {
+                        $add[k] = v;
+                    }
                 }
-            });
+            }, this);
             callback = by;
         } else {
             // convenience: mixpanel.people.increment('property'); will
@@ -2792,12 +2786,10 @@ Globals should be all caps
         var $append = {};
         if (_.isObject(list_name)) {
             _.each(list_name, function(v, k) {
-                if (k == '$distinct_id' || k == '$token') {
-                    return;
-                } else {
+                if (!this._is_reserved_property(k)) {
                     $append[k] = v;
                 }
-            });
+            }, this);
             callback = value;
         } else {
             $append[list_name] = value;
@@ -2835,10 +2827,10 @@ Globals should be all caps
         var $union = {};
         if (_.isObject(list_name)) {
             _.each(list_name, function(v, k) {
-                if (k !== '$distinct_id' && k !== '$token') {
+                if (!this._is_reserved_property(k)) {
                     $union[k] = _.isArray(v) ? v : [v];
                 }
-            });
+            }, this);
             callback = values;
         } else {
             $union[list_name] = _.isArray(values) ? values : [values];
@@ -3054,6 +3046,11 @@ Globals should be all caps
             _this._mixpanel.cookie.save();
         }
     };
+
+    MixpanelPeople.prototype._is_reserved_property = function(prop) {
+        return prop === '$distinct_id' || prop === '$token';
+    };
+
 
     // Internal class for notification display
     MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
