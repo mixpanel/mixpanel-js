@@ -1,5 +1,5 @@
 /*
- * Mixpanel JS Library v2.3.5
+ * Mixpanel JS Library v2.4.0
  *
  * Copyright 2012, Mixpanel, Inc. All Rights Reserved
  * http://mixpanel.com/
@@ -12,7 +12,7 @@
 
 // ==ClosureCompiler==
 // @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.3.min.js
+// @output_file_name mixpanel-2.4.min.js
 // ==/ClosureCompiler==
 
 /*
@@ -79,7 +79,7 @@ Globals should be all caps
  */
     var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://"),
 
-        LIB_VERSION = '2.3.5',
+        LIB_VERSION = '2.4.0',
         SNIPPET_VERSION = (mixpanel && mixpanel['__SV']) || 0,
 
         // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
