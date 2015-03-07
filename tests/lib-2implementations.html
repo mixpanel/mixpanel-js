@@ -21,6 +21,7 @@
             var mixpanel = [['register', { 'test_value': value }]];
             mixpanel.people = [function() { this.val_to_change = 42; }];
         </script>
+        <script>window.MIXPANEL_CUSTOM_LIB_URL = '../mixpanel.js';</script>
         <script type="text/javascript" src="../mixpanel-jslib-snippet.js"></script>
         <script type="text/javascript">
             // Test that the base lib is correctly initialized
