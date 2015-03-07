@@ -1121,11 +1121,12 @@ Globals should be all caps
                     continue; // Skip to next token
                 }
                 // Code to deal with attribute selectors
-                if (token.match(/^(\w*)\[(\w+)([=~\|\^\$\*]?)=?"?([^\]"]*)"?\]$/)) {
-                    var tagName = RegExp.$1;
-                    var attrName = RegExp.$2;
-                    var attrOperator = RegExp.$3;
-                    var attrValue = RegExp.$4;
+                var token_match = token.match(/^(\w*)\[(\w+)([=~\|\^\$\*]?)=?"?([^\]"]*)"?\]$/);
+                if (token_match) {
+                    var tagName = token_match[1];
+                    var attrName = token_match[2];
+                    var attrOperator = token_match[3];
+                    var attrValue = token_match[4];
                     if (!tagName) {
                         tagName = '*';
                     }
