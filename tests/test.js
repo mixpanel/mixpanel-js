@@ -1390,6 +1390,19 @@ mpmodule("mixpanel.people.union");
         same(i, { "$distinct_id": this.id, "$token": this.token, "$union": _union2 }, "Basic union message works")
     });
 
+    test("union calls provided callback", 2, function() {
+        var _union1 = {'key1': ['val1.1'], 'key2': ['val1.2']},
+            _union2 = {'key1': ['val2.1'], 'key3': ['val2.3']},
+            i;
+
+        mixpanel.test.people.union({'key': 'val'}, function(resp) {
+            same(resp, -1, "calls callback in 2-arg form");
+        });
+        mixpanel.test.people.union('key', 'val', function(resp) {
+            same(resp, -1, "calls callback in 3-arg form");
+        });
+    });
+
     test("union queues and merges data", 4, function() {
         var _union1 = {'key1': ['val1.1'], 'key2': ['val1.2']},
             _union2 = {'key1': ['val2.1'], 'key3': ['val2.3']},
