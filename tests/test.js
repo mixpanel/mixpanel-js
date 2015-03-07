@@ -1612,9 +1612,10 @@ mpmodule("mixpanel.people flushing");
         mixpanel.test.people.union("key2", ["val2.2"]);
 
         stop();
-        mixpanel.test.identify(this.id, function(){}, function(){}, function(){}, function() {}, function(resp, data) {
-            ok(resp == 1, "Successful write");
-            same(data["$union"], {'key1': ['val1.1'], 'key2':['val1.2', 'val2.2']});
+        var noop = function() {};
+        mixpanel.test.identify(this.id, noop, noop, noop, noop, function(resp, data) {
+            same(resp, 1, "Successful write");
+            same(data["$union"], {'key1': ['val1.1'], 'key2': ['val1.2', 'val2.2']});
             same(mixpanel.test.cookie.props['__mpu'], {}, 'Queue is cleared after flushing');
 
             mixpanel.test.cookie.load();
