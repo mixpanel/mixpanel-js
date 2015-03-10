@@ -2778,7 +2778,7 @@ Globals should be all caps
      *         list2: 123
      *     });
      *
-     * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
+     * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
      * @param {*} [value] An item to append to the list
      * @param {Function} [callback] If provided, the callback will be called after the tracking event
      */
@@ -2821,7 +2821,7 @@ Globals should be all caps
      *         list1: ['bob', 'billy']
      *     });
      *
-     * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
+     * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
      * @param {*} [value] Value / values to merge with the given property
      * @param {Function} [callback] If provided, the callback will be called after the tracking event
      */
