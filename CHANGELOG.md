@@ -1,3 +1,6 @@
+**2.4.0**
+- add `people.union()`
+
 **2.3.5**
 - notification caching fix
 
