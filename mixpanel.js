@@ -2808,13 +2808,15 @@ Globals should be all caps
      *     // merge a value to a list, creating it if needed
      *     mixpanel.people.union('pages_visited', 'homepage');
      *
-     *     // like mixpanel.people.set(), you can append multiple properties at once:
+     *     // like mixpanel.people.set(), you can append multiple
+     *     // properties at once:
      *     mixpanel.people.union({
      *         list1: 'bob',
      *         list2: 123
      *     });
      *
-     *     // like mixpanel.people.append(), you can append multiple values to the same list:
+     *     // like mixpanel.people.append(), you can append multiple
+     *     // values to the same list:
      *     mixpanel.people.union({
      *         list1: ['bob', 'billy']
      *     });
