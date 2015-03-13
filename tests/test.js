@@ -285,6 +285,12 @@ mpmodule("mixpanel.track");
         });
     });
 
+    test("Check token override works", 1, function() {
+        var props = {token: "HOPE SO"};
+        var data = mixpanel.test.track('test', props);
+        same(data.properties.token, "HOPE SO", 'token override worked');
+    });
+
     asyncTest("callback doesn't override", 1, function() {
         var result = [];
         mixpanel.test.track('test', {}, function(response) {
