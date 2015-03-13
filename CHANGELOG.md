@@ -1,3 +1,6 @@
+**2.4.1** (12 Mar 2015)
+- fix for minification issue in `track()` colliding `token` and `ad`
+
 **2.4.0** (10 Mar 2015)
 - add `people.union()` (thanks @mogstad)
 - remove refs to global RegExp object
