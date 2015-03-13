@@ -1,0 +1,27 @@
+{
+  "name": "mixpanel-js",
+  "version": "1.0.0",
+  "description": "The Mixpanel JavaScript Library is a set of methods attached to a global `mixpanel` object\r intended to be used by websites wishing to send data to Mixpanel projects. A full reference\r is available [here](https://mixpanel.com/help/reference/javascript).",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node testServer.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mixpanel/mixpanel-js.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mixpanel/mixpanel-js/issues"
+  },
+  "homepage": "https://github.com/mixpanel/mixpanel-js",
+  "devDependencies": {
+    "cookie-parser": "^1.3.4",
+    "express": "^4.12.2"
+  }
+}

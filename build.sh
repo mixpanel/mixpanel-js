@@ -12,3 +12,9 @@ java -jar $1 --js mixpanel.js --js_output_file mixpanel.min.js --compilation_lev
 java -jar $1 --js mixpanel-jslib-snippet.js --js_output_file mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
 
 java -jar $1 --js mixpanel-jslib-snippet.js --js_output_file mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../mixpanel.min.js"'
+
+if [ ! -d ./js ]; then
+mkdir -p ./js
+fi
+
+cp mixpanel*js ./js
