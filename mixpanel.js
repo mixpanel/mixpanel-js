@@ -1590,7 +1590,7 @@ Globals should be all caps
         }
 
         var storage = config.storage;
-        if (storage === 'localStorage'){
+        if (storage === 'localStorage' && window.localStorage){
             this.storage = _.localStorage;
         } else {
             this.storage = _.cookie;
