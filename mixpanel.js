@@ -950,6 +950,29 @@ Globals should be all caps
         }
     };
 
+    // _.localStorage
+    _.localStorage = {
+        get: function(name) {
+            return localStorage.getItem(name)
+        },
+
+        parse: function(name) {
+            var storedValue;
+            try {
+                storedValue = _.JSONDecode(_.localStorage.get(name)) || {};
+            } catch (err) {}
+            return storedValue;
+        },
+
+        set: function(name, value) {
+            localStorage.setItem(name, value);
+        },
+
+        remove: function(name) {
+            localStorage.removeItem(name);
+        }
+    };
+
     _.register_event = (function() {
         // written by Dean Edwards, 2005
         // with input from Tino Zijdel - crisp@xs4all.nl
@@ -1565,6 +1588,14 @@ Globals should be all caps
         } else {
             this.name = "mp_" + config['token'] + "_mixpanel";
         }
+
+        var storage = config.storage;
+        if (storage === 'localStorage'){
+            this.storage = _.localStorage;
+        } else {
+            this.storage = _.cookie;
+        }
+
         this.load();
         this.update_config(config);
         this.upgrade(config);
@@ -1585,7 +1616,7 @@ Globals should be all caps
     MixpanelCookie.prototype.load = function() {
         if (this.disabled) { return; }
 
-        var cookie = _.cookie.parse(this.name);
+        var cookie = this.storage.parse(this.name);
 
         if (cookie) {
             this['props'] = _.extend({}, cookie);
@@ -1604,11 +1635,11 @@ Globals should be all caps
                 old_cookie_name = should_upgrade;
             }
 
-            old_cookie = _.cookie.parse(old_cookie_name);
+            old_cookie = this.storage.parse(old_cookie_name);
 
             // remove the cookie
-            _.cookie.remove(old_cookie_name);
-            _.cookie.remove(old_cookie_name, true);
+            this.storage.remove(old_cookie_name);
+            this.storage.remove(old_cookie_name, true);
 
             if (old_cookie) {
                 this['props'] = _.extend(
@@ -1623,11 +1654,11 @@ Globals should be all caps
             // special case to handle people with cookies of the form
             // mp_TOKEN_INSTANCENAME from the first release of this library
             old_cookie_name = "mp_" + config['token'] + "_" + config['name'];
-            old_cookie = _.cookie.parse(old_cookie_name);
+            old_cookie = this.storage.parse(old_cookie_name);
 
             if (old_cookie) {
-                _.cookie.remove(old_cookie_name);
-                _.cookie.remove(old_cookie_name, true);
+                this.storage.remove(old_cookie_name);
+                this.storage.remove(old_cookie_name, true);
 
                 // Save the prop values that were in the cookie from before -
                 // this should only happen once as we delete the old one.
@@ -1639,7 +1670,7 @@ Globals should be all caps
     MixpanelCookie.prototype.save = function() {
         if (this.disabled) { return; }
         this._expire_notification_campaigns();
-        _.cookie.set(
+        this.storage.set(
             this.name,
             _.JSONEncode(this['props']),
             this.expire_days,
@@ -1650,8 +1681,8 @@ Globals should be all caps
 
     MixpanelCookie.prototype.remove = function() {
         // remove both domain and subdomain cookies
-        _.cookie.remove(this.name, false);
-        _.cookie.remove(this.name, true);
+        this.storage.remove(this.name, false);
+        this.storage.remove(this.name, true);
     };
 
     // removes the cookie and deletes all loaded data
