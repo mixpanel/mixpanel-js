@@ -2250,7 +2250,7 @@ Globals should be all caps
 
         // set defaults
         properties = properties || {};
-        properties['token'] = properties['token'] || this.get_config('token');
+        properties['token'] = this.get_config('token');
 
         // update cookie
         this['cookie'].update_search_keyword(document.referrer);
