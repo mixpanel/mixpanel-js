@@ -1,26 +1,24 @@
-var express = require('express');
+'use strict';
+
+var express      = require('express');
 var cookieParser = require('cookie-parser');
+var logger       = require('morgan');
+
 var app = express();
 
 app.use(cookieParser());
+app.use(logger('dev'));
 
-app.use('/tests', express.static(__dirname+"/tests"));
-app.use( express.static(__dirname+"/js"));
-
+app.use('/tests', express.static(__dirname + "/tests"));
 app.get('/tests/cookie_included/:cookieName', function (req, res) {
-    if (req.cookies && req.cookies[req.params.cookieName]){
+    if (req.cookies && req.cookies[req.params.cookieName]) {
         res.json(1);
-    }
-    else{
+    } else {
         res.json(0);
     }
 });
+app.use(express.static(__dirname));
 
 var server = app.listen(3000, function () {
-
-  var host = server.address().address;
-  var port = server.address().port;
-
-  console.log('Mixpanel test app listening at http://%s:%s', host, port);
-
+  console.log('Mixpanel test app listening on port %s', server.address().port);
 });
