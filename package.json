@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Browse to localhost:3000/tests\" && exit 1",
+    "test": "echo 'Browse to localhost:3000/tests'",
     "start": "node testServer.js"
   },
   "repository": {
