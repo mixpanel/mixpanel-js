@@ -266,6 +266,31 @@ mpmodule("mixpanel.track");
         });
     });
 
+    asyncTest("check no property name aliasing occurs during minify", 1, function() {
+        var ob = {};
+        var letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        _.each(letters, function(l1) {
+            ob[l1] = l1;
+            _.each(letters, function(l2) {
+                var pair = l1 + l2;
+                ob[pair] = pair;
+            });
+        });
+
+        var expect_ob = _.extend({}, ob);
+        expect_ob.token = this.token;
+        mixpanel.test.track('test', ob, function(response) {
+            deepEqual(ob, expect_ob, 'Nothing strange happened to properties');
+            start();
+        });
+    });
+
+    test("token property does not override configured token", 1, function() {
+        var props = {token: "HOPE NOT"};
+        var data = mixpanel.test.track('test', props);
+        same(data.properties.token, mixpanel.test.get_config('token'), 'Property did not override token');
+    });
+
     asyncTest("callback doesn't override", 1, function() {
         var result = [];
         mixpanel.test.track('test', {}, function(response) {
