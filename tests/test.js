@@ -285,10 +285,10 @@ mpmodule("mixpanel.track");
         });
     });
 
-    test("Check token override works", 1, function() {
-        var props = {token: "HOPE SO"};
+    test("token property does not override configured token", 1, function() {
+        var props = {token: "HOPE NOT"};
         var data = mixpanel.test.track('test', props);
-        same(data.properties.token, "HOPE SO", 'token override worked');
+        same(data.properties.token, mixpanel.test.get_config('token'), 'Property did not override token');
     });
 
     asyncTest("callback doesn't override", 1, function() {

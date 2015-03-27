@@ -1,3 +1,6 @@
+**2.4.2** (23 Mar 2015)
+- remove (undocumented) `token` property override in `track()`
+
 **2.4.1** (12 Mar 2015)
 - fix for minification issue in `track()` colliding `token` and `ad`
 
