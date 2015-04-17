@@ -666,6 +666,32 @@ if (!window.COOKIE_FAILURE_TEST) {
         });
 }
 
+if (window.localStorage) {
+    mpmodule("localStorage");
+
+        test("localStorage manipulation", 4, function() {
+            var storage = mixpanel._.localStorage,
+                name = "mp_test_storage",
+                content = "testing 1 2 3;2jf3f39*#%&*%@)(@%_@{}[]";
+
+            if (window.localStorage.getItem(name)) {
+                storage.remove(name);
+            }
+
+            notOk(!!window.localStorage.getItem(name), "test localStorage entry should not exist");
+
+            storage.set(name, content);
+
+            ok(!!window.localStorage.getItem(name), "test localStorage entry should exist");
+
+            equal(storage.get(name), content, "storage.get should return stored content");
+
+            storage.remove(name);
+
+            notOk(!!window.localStorage.getItem(name), "test localStorage entry should not exist");
+        });
+}
+
 mpmodule("mixpanel");
 
     test("constructor", window.COOKIE_FAILURE_TEST ? 2 : 3, function() {
