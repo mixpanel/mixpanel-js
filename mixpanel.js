@@ -1625,15 +1625,15 @@ Globals should be all caps
     };
 
     MixpanelStorage.prototype.upgrade = function(config) {
-        var should_upgrade = config['upgrade'],
+        var upgrade_from_old_lib = config['upgrade'],
             old_cookie_name,
             old_cookie;
 
-        if (should_upgrade) {
+        if (upgrade_from_old_lib) {
             old_cookie_name = "mp_super_properties";
             // Case where they had a custom cookie name before.
-            if (typeof(should_upgrade) === "string") {
-                old_cookie_name = should_upgrade;
+            if (typeof(upgrade_from_old_lib) === "string") {
+                old_cookie_name = upgrade_from_old_lib;
             }
 
             old_cookie = this.storage.parse(old_cookie_name);
@@ -1664,6 +1664,21 @@ Globals should be all caps
                 // Save the prop values that were in the cookie from before -
                 // this should only happen once as we delete the old one.
                 this.register_once(old_cookie);
+            }
+        }
+
+        if (config['upgrade_from_cookie']) {
+            if (config['storage'] !== 'localStorage') {
+                console.critical('Invalid Mixpanel configuration: upgrade_from_cookie can only be used in conjunction with localStorage');
+            } else if (this.storage === _.localStorage) { // skip if localStorage is unsupported
+                old_cookie = _.cookie.parse(this.name);
+
+                _.cookie.remove(this.name);
+                _.cookie.remove(this.name, true);
+
+                if (old_cookie) {
+                    this.register_once(old_cookie);
+                }
             }
         }
     };
