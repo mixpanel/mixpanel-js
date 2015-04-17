@@ -100,6 +100,7 @@ Globals should be all caps
               "api_host":                   HTTP_PROTOCOL + 'api.mixpanel.com'
             , "cross_subdomain_cookie":     true
             , "cookie_name":                ""
+            , "storage_name":               ""
             , "loaded":                     function() {}
             , "store_google":               true
             , "save_referrer":              true
@@ -1583,14 +1584,13 @@ Globals should be all caps
         this['props'] = {};
         this.campaign_params_saved = false;
 
-        if (config['cookie_name']) {
-            this.name = "mp_" + config['cookie_name'];
+        if (config['storage_name']) {
+            this.name = "mp_" + config['storage_name'];
         } else {
             this.name = "mp_" + config['token'] + "_mixpanel";
         }
 
-        var storage = config.storage;
-        if (storage === 'localStorage' && window.localStorage){
+        if (config['storage'] === 'localStorage' && window.localStorage) {
             this.storage = _.localStorage;
         } else {
             this.storage = _.cookie;
@@ -2584,7 +2584,12 @@ Globals should be all caps
     MixpanelLib.prototype.set_config = function(config) {
         if (_.isObject(config)) {
             _.extend(this['config'], config);
-            if (this['cookie']) { this['cookie'].update_config(this['config']); }
+            if (!this.get_config('storage_name')) {
+                this['config']['storage_name'] = this['config']['cookie_name'];
+            }
+            if (this['cookie']) {
+                this['cookie'].update_config(this['config']);
+            }
             DEBUG = DEBUG || this.get_config('debug');
         }
     };
