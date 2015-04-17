@@ -954,7 +954,7 @@ Globals should be all caps
     // _.localStorage
     _.localStorage = {
         get: function(name) {
-            return localStorage.getItem(name)
+            return window.localStorage.getItem(name)
         },
 
         parse: function(name) {
@@ -966,11 +966,11 @@ Globals should be all caps
         },
 
         set: function(name, value) {
-            localStorage.setItem(name, value);
+            window.localStorage.setItem(name, value);
         },
 
         remove: function(name) {
-            localStorage.removeItem(name);
+            window.localStorage.removeItem(name);
         }
     };
 
