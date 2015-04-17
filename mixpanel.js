@@ -1577,10 +1577,10 @@ Globals should be all caps
     };
 
     /**
-     * Mixpanel Cookie Object
+     * Mixpanel Storage Object
      * @constructor
      */
-    var MixpanelCookie = function(config) {
+    var MixpanelStorage = function(config) {
         this['props'] = {};
         this.campaign_params_saved = false;
 
@@ -1602,7 +1602,7 @@ Globals should be all caps
         this.save();
     };
 
-    MixpanelCookie.prototype.properties = function() {
+    MixpanelStorage.prototype.properties = function() {
         var p = {};
         // Filter out reserved properties
         _.each(this['props'], function(v, k) {
@@ -1613,7 +1613,7 @@ Globals should be all caps
         return p;
     };
 
-    MixpanelCookie.prototype.load = function() {
+    MixpanelStorage.prototype.load = function() {
         if (this.disabled) { return; }
 
         var cookie = this.storage.parse(this.name);
@@ -1623,7 +1623,7 @@ Globals should be all caps
         }
     };
 
-    MixpanelCookie.prototype.upgrade = function(config) {
+    MixpanelStorage.prototype.upgrade = function(config) {
         var should_upgrade = config['upgrade'],
             old_cookie_name,
             old_cookie;
@@ -1667,7 +1667,7 @@ Globals should be all caps
         }
     };
 
-    MixpanelCookie.prototype.save = function() {
+    MixpanelStorage.prototype.save = function() {
         if (this.disabled) { return; }
         this._expire_notification_campaigns();
         this.storage.set(
@@ -1679,7 +1679,7 @@ Globals should be all caps
         );
     };
 
-    MixpanelCookie.prototype.remove = function() {
+    MixpanelStorage.prototype.remove = function() {
         // remove both domain and subdomain cookies
         this.storage.remove(this.name, false);
         this.storage.remove(this.name, true);
@@ -1687,7 +1687,7 @@ Globals should be all caps
 
     // removes the cookie and deletes all loaded data
     // forced name for tests
-    MixpanelCookie.prototype.clear = function() {
+    MixpanelStorage.prototype.clear = function() {
         this.remove();
         this['props'] = {};
     };
@@ -1697,7 +1697,7 @@ Globals should be all caps
      * @param {*=} default_value
      * @param {number=} days
      */
-    MixpanelCookie.prototype.register_once = function(props, default_value, days) {
+    MixpanelStorage.prototype.register_once = function(props, default_value, days) {
         if (_.isObject(props)) {
             if (typeof(default_value) === 'undefined') { default_value = "None"; }
             this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
@@ -1719,7 +1719,7 @@ Globals should be all caps
      * @param {Object} props
      * @param {number=} days
      */
-    MixpanelCookie.prototype.register = function(props, days) {
+    MixpanelStorage.prototype.register = function(props, days) {
         if (_.isObject(props)) {
             this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
 
@@ -1732,14 +1732,14 @@ Globals should be all caps
         return false;
     };
 
-    MixpanelCookie.prototype.unregister = function(prop) {
+    MixpanelStorage.prototype.unregister = function(prop) {
         if (prop in this['props']) {
             delete this['props'][prop];
             this.save();
         }
     };
 
-    MixpanelCookie.prototype._expire_notification_campaigns = function() {
+    MixpanelStorage.prototype._expire_notification_campaigns = _.safewrap(function() {
         var campaigns_shown = this['props'][CAMPAIGN_IDS_KEY],
             EXPIRY_TIME = DEBUG ? 60 * 1000 : 60 * 60 * 1000; // 1 minute (DEBUG) / 1 hour (PDXN)
         if (!campaigns_shown) {
@@ -1753,21 +1753,21 @@ Globals should be all caps
         if (_.isEmptyObject(campaigns_shown)) {
             delete this['props'][CAMPAIGN_IDS_KEY];
         }
-    };
+    });
 
-    MixpanelCookie.prototype.update_campaign_params = function() {
+    MixpanelStorage.prototype.update_campaign_params = function() {
         if (!this.campaign_params_saved) {
             this.register_once(_.info.campaignParams());
             this.campaign_params_saved = true;
         }
     };
 
-    MixpanelCookie.prototype.update_search_keyword = function(referrer) {
+    MixpanelStorage.prototype.update_search_keyword = function(referrer) {
         this.register(_.info.searchInfo(referrer));
     };
 
     // EXPORTED METHOD, we test this directly.
-    MixpanelCookie.prototype.update_referrer_info = function(referrer) {
+    MixpanelStorage.prototype.update_referrer_info = function(referrer) {
         // If referrer doesn't exist, we want to note the fact that it was type-in traffic.
         this.register_once({
             "$initial_referrer": referrer || "$direct",
@@ -1775,7 +1775,7 @@ Globals should be all caps
         }, "");
     };
 
-    MixpanelCookie.prototype.get_referrer_info = function() {
+    MixpanelStorage.prototype.get_referrer_info = function() {
         return _.strip_empty_properties({
             '$initial_referrer': this['props']['$initial_referrer'],
             '$initial_referring_domain': this['props']['$initial_referring_domain']
@@ -1785,7 +1785,7 @@ Globals should be all caps
     // safely fills the passed in object with the cookies properties,
     // does not override any properties defined in both
     // returns the passed in object
-    MixpanelCookie.prototype.safe_merge = function(props) {
+    MixpanelStorage.prototype.safe_merge = function(props) {
         _.each(this['props'], function(val, prop) {
             if (!(prop in props)) {
                 props[prop] = val;
@@ -1795,21 +1795,21 @@ Globals should be all caps
         return props;
     };
 
-    MixpanelCookie.prototype.update_config = function(config) {
+    MixpanelStorage.prototype.update_config = function(config) {
         this.default_expiry = this.expire_days = config['cookie_expiration'];
         this.set_disabled(config['disable_cookie']);
         this.set_cross_subdomain(config['cross_subdomain_cookie']);
         this.set_secure(config['secure_cookie']);
     };
 
-    MixpanelCookie.prototype.set_disabled = function(disabled) {
+    MixpanelStorage.prototype.set_disabled = function(disabled) {
         this.disabled = disabled;
         if (this.disabled) {
             this.remove();
         }
     };
 
-    MixpanelCookie.prototype.set_cross_subdomain = function(cross_subdomain) {
+    MixpanelStorage.prototype.set_cross_subdomain = function(cross_subdomain) {
         if (cross_subdomain !== this.cross_subdomain) {
             this.cross_subdomain = cross_subdomain;
             this.remove();
@@ -1817,11 +1817,11 @@ Globals should be all caps
         }
     };
 
-    MixpanelCookie.prototype.get_cross_subdomain = function() {
+    MixpanelStorage.prototype.get_cross_subdomain = function() {
         return this.cross_subdomain;
     };
 
-    MixpanelCookie.prototype.set_secure = function(secure) {
+    MixpanelStorage.prototype.set_secure = function(secure) {
         if (secure !== this.secure) {
             this.secure = secure ? true : false;
             this.remove();
@@ -1829,7 +1829,7 @@ Globals should be all caps
         }
     };
 
-    MixpanelCookie.prototype._add_to_people_queue = function(queue, data) {
+    MixpanelStorage.prototype._add_to_people_queue = function(queue, data) {
         var q_key = this._get_queue_key(queue),
             q_data = data[queue],
             set_q = this._get_or_create_queue(SET_ACTION),
@@ -1889,7 +1889,7 @@ Globals should be all caps
         this.save();
     };
 
-    MixpanelCookie.prototype._pop_from_people_queue = function(queue, data) {
+    MixpanelStorage.prototype._pop_from_people_queue = function(queue, data) {
         var q = this._get_queue(queue);
         if (!_.isUndefined(q)) {
             _.each(data, function(v, k) {
@@ -1900,7 +1900,7 @@ Globals should be all caps
         }
     };
 
-    MixpanelCookie.prototype._get_queue_key = function(queue) {
+    MixpanelStorage.prototype._get_queue_key = function(queue) {
         if (queue === SET_ACTION) {
             return SET_QUEUE_KEY;
         } else if (queue === SET_ONCE_ACTION) {
@@ -1916,10 +1916,10 @@ Globals should be all caps
         }
     };
 
-    MixpanelCookie.prototype._get_queue = function(queue) {
+    MixpanelStorage.prototype._get_queue = function(queue) {
         return this['props'][this._get_queue_key(queue)];
     };
-    MixpanelCookie.prototype._get_or_create_queue = function(queue, default_val) {
+    MixpanelStorage.prototype._get_or_create_queue = function(queue, default_val) {
         var key = this._get_queue_key(queue),
             default_val = _.isUndefined(default_val) ? {} : default_val;
 
@@ -2032,7 +2032,7 @@ Globals should be all caps
             , "identify_called": false
         };
 
-        this['cookie'] = new MixpanelCookie(this['config']);
+        this['storage'] = this['cookie'] = new MixpanelStorage(this['config']);
         this.register_once({'distinct_id': _.UUID()}, "");
     };
 
@@ -4409,12 +4409,12 @@ Globals should be all caps
     MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
     MixpanelLib.prototype['_show_notification']              = MixpanelLib.prototype._show_notification;
 
-    // MixpanelCookie Exports
-    MixpanelCookie.prototype['properties']            = MixpanelCookie.prototype.properties;
-    MixpanelCookie.prototype['update_search_keyword'] = MixpanelCookie.prototype.update_search_keyword;
-    MixpanelCookie.prototype['update_referrer_info']  = MixpanelCookie.prototype.update_referrer_info;
-    MixpanelCookie.prototype['get_cross_subdomain']   = MixpanelCookie.prototype.get_cross_subdomain;
-    MixpanelCookie.prototype['clear']                 = MixpanelCookie.prototype.clear;
+    // MixpanelStorage Exports
+    MixpanelStorage.prototype['properties']            = MixpanelStorage.prototype.properties;
+    MixpanelStorage.prototype['update_search_keyword'] = MixpanelStorage.prototype.update_search_keyword;
+    MixpanelStorage.prototype['update_referrer_info']  = MixpanelStorage.prototype.update_referrer_info;
+    MixpanelStorage.prototype['get_cross_subdomain']   = MixpanelStorage.prototype.get_cross_subdomain;
+    MixpanelStorage.prototype['clear']                 = MixpanelStorage.prototype.clear;
 
     // MixpanelPeople Exports
     MixpanelPeople.prototype['set']           = MixpanelPeople.prototype.set;
@@ -4427,8 +4427,7 @@ Globals should be all caps
     MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user;
     MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
-    _.safewrap_class(MixpanelCookie, ['_expire_notification_campaigns']);
-    _.safewrap_class(MixpanelLib,    ['identify', '_check_and_handle_notifications', '_show_notification']);
+    _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
 
     // Initialization
     if (_.isUndefined(mixpanel)) {
