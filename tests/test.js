@@ -756,6 +756,41 @@ if (window.localStorage) {
                 "localStorage entry should not exist even after tracking/registering"
             );
         });
+
+        test("upgrade from cookie", 9, function() {
+            // populate cookie
+            var ut1 = mixpanel.init('UT_TOKEN', {}, 'ut1'),
+                storage_name = 'mp_UT_TOKEN_mixpanel';
+            ut1.register({'a': 'b'});
+            ok(cookie.exists(storage_name), "cookie should exist");
+
+            // init same project with localStorage
+            var ut2 = mixpanel.init('UT_TOKEN', {
+                storage: 'localStorage',
+                upgrade_from_cookie: true
+            }, 'ut2');
+            ut2.register({'c': 'd'});
+            ok(!!window.localStorage.getItem(storage_name), "localStorage entry should exist");
+
+            ok(contains_obj(ut2.storage.props, {'a': 'b'}), "upgrading from cookie should import props");
+            notOk(cookie.exists('mp_UT_TOKEN_mixpanel'), "upgrading from cookie should remove cookie");
+
+            // send track request from upgraded instance
+            stop();
+            var data = ut2.track('test', {'foo': 'bar'}, function(response) {
+                same(response, 1, "tracking still works");
+                start();
+            });
+            var dp = data.properties;
+
+            ok('token' in dp, "token included in properties");
+            ok(contains_obj(dp, {'a': 'b'}), "super properties transferred correctly");
+            ok(contains_obj(dp, {'c': 'd'}), "new super properties registered correctly");
+            ok(contains_obj(dp, {'foo': 'bar'}), "tracking properties sent correctly");
+
+            clearLibInstance(ut1);
+            clearLibInstance(ut2);
+        });
 }
 
 mpmodule("mixpanel");
