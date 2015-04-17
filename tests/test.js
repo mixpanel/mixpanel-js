@@ -678,17 +678,41 @@ if (window.localStorage) {
                 storage.remove(name);
             }
 
-            notOk(!!window.localStorage.getItem(name), "test localStorage entry should not exist");
+            notOk(!!window.localStorage.getItem(name), "localStorage entry should not exist");
 
             storage.set(name, content);
 
-            ok(!!window.localStorage.getItem(name), "test localStorage entry should exist");
+            ok(!!window.localStorage.getItem(name), "localStorage entry should exist");
 
             equal(storage.get(name), content, "storage.get should return stored content");
 
             storage.remove(name);
 
-            notOk(!!window.localStorage.getItem(name), "test localStorage entry should not exist");
+            notOk(!!window.localStorage.getItem(name), "localStorage entry should not exist");
+        });
+
+        test("storage name", 7, function() {
+            var token = "FJDIF",
+                name1 = "mp_" + token + "_mixpanel",
+                name2 = "mp_sn2";
+
+            notOk(!!window.localStorage.getItem(name1), "localStorage entry 1 should not exist");
+            mixpanel.init(token, {storage: 'localStorage'}, 'sn1');
+            ok(!!window.localStorage.getItem(name1), "localStorage entry 1 should exist");
+
+            notOk(!!window.localStorage.getItem(name2), "localStorage entry 2 should not exist");
+            mixpanel.init(token, {storage: 'localStorage', storage_name: 'sn2'}, 'sn2');
+            ok(!!window.localStorage.getItem(name2), "localStorage entry 2 should exist");
+            ok(!!window.localStorage.getItem(name1), "localStorage entry 1 should still exist");
+
+            mixpanel.sn1.storage.clear();
+            mixpanel.sn2.storage.clear();
+
+            notOk(!!window.localStorage.getItem(name1), "localStorage entry 1 should no longer exist");
+            notOk(!!window.localStorage.getItem(name2), "localStorage entry 2 should no longer exist");
+
+            clearLibInstance(mixpanel.sn1);
+            clearLibInstance(mixpanel.sn2);
         });
 }
 
