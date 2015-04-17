@@ -99,8 +99,8 @@ Globals should be all caps
         , DEFAULT_CONFIG    = {
               "api_host":                   HTTP_PROTOCOL + 'api.mixpanel.com'
             , "cross_subdomain_cookie":     true
-            , "cookie_name":                ""
             , "storage_name":               ""
+            , "cookie_name":                ""
             , "loaded":                     function() {}
             , "store_google":               true
             , "save_referrer":              true
@@ -112,6 +112,7 @@ Globals should be all caps
             , "track_links_timeout":        300
             , "cookie_expiration":          365
             , "upgrade":                    false
+            , "disable_storage":            false
             , "disable_cookie":             false
             , "secure_cookie":              false
             , "ip":                         true
@@ -954,7 +955,7 @@ Globals should be all caps
     // _.localStorage
     _.localStorage = {
         get: function(name) {
-            return window.localStorage.getItem(name)
+            return window.localStorage.getItem(name);
         },
 
         parse: function(name) {
@@ -1797,7 +1798,7 @@ Globals should be all caps
 
     MixpanelStorage.prototype.update_config = function(config) {
         this.default_expiry = this.expire_days = config['cookie_expiration'];
-        this.set_disabled(config['disable_cookie']);
+        this.set_disabled(config['disable_storage']);
         this.set_cross_subdomain(config['cross_subdomain_cookie']);
         this.set_secure(config['secure_cookie']);
     };
@@ -2584,9 +2585,14 @@ Globals should be all caps
     MixpanelLib.prototype.set_config = function(config) {
         if (_.isObject(config)) {
             _.extend(this['config'], config);
+
             if (!this.get_config('storage_name')) {
                 this['config']['storage_name'] = this['config']['cookie_name'];
             }
+            if (!this.get_config('disable_storage')) {
+                this['config']['disable_storage'] = this['config']['disable_cookie'];
+            }
+
             if (this['cookie']) {
                 this['cookie'].update_config(this['config']);
             }
