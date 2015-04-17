@@ -714,6 +714,48 @@ if (window.localStorage) {
             clearLibInstance(mixpanel.sn1);
             clearLibInstance(mixpanel.sn2);
         });
+
+        test("disable storage", 7, function() {
+            var sname = "mpl_should_not_exist";
+            window.localStorage.removeItem(sname);
+
+            mixpanel.init('Asdfja', {
+                storage: 'localStorage',
+                storage_name: sname,
+                disable_storage: true
+            }, 'ds1');
+
+            notOk(!!window.localStorage.getItem(sname), "localStorage entry should not exist");
+
+            var ds2 = mixpanel.init('Asdf', {
+                storage: 'localStorage',
+                storage_name: sname
+            }, 'ds2');
+            ds2.set_config({disable_storage: true});
+
+            notOk(!!window.localStorage.getItem(sname), "localStorage entry should not exist");
+
+            var props = {'a': 'b'};
+            ds2.register(props);
+
+            stop();
+            var data = ds2.track('test', {'c': 'd'}, function(response) {
+                same(response, 1, "tracking still works");
+                start();
+            });
+
+            var dp = data.properties;
+
+            ok('token' in dp, "token included in properties");
+
+            ok(contains_obj(dp, {'a': 'b', 'c': 'd'}), 'super properties included correctly');
+            ok(contains_obj(ds2.storage.props, props), "Super properties saved");
+
+            notOk(
+                !!window.localStorage.getItem(sname),
+                "localStorage entry should not exist even after tracking/registering"
+            );
+        });
 }
 
 mpmodule("mixpanel");
