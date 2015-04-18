@@ -1617,10 +1617,10 @@ Globals should be all caps
     MixpanelStorage.prototype.load = function() {
         if (this.disabled) { return; }
 
-        var cookie = this.storage.parse(this.name);
+        var entry = this.storage.parse(this.name);
 
-        if (cookie) {
-            this['props'] = _.extend({}, cookie);
+        if (entry) {
+            this['props'] = _.extend({}, entry);
         }
     };
 
@@ -1701,7 +1701,7 @@ Globals should be all caps
         this.storage.remove(this.name, true);
     };
 
-    // removes the cookie and deletes all loaded data
+    // removes the storage entry and deletes all loaded data
     // forced name for tests
     MixpanelStorage.prototype.clear = function() {
         this.remove();
