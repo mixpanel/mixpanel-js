@@ -781,8 +781,8 @@ if (window.localStorage) {
                 same(response, 1, "tracking still works");
                 start();
             });
-            var dp = data.properties;
 
+            var dp = data.properties;
             ok('token' in dp, "token included in properties");
             ok(contains_obj(dp, {'a': 'b'}), "super properties transferred correctly");
             ok(contains_obj(dp, {'c': 'd'}), "new super properties registered correctly");
@@ -790,6 +790,33 @@ if (window.localStorage) {
 
             clearLibInstance(ut1);
             clearLibInstance(ut2);
+        });
+
+        test("upgrade from non-existent cookie", 5, function() {
+            // populate cookie
+            var storage_name = 'upgrade_test2',
+                full_storage_name = 'mp_' + storage_name;
+            cookie.remove(full_storage_name);
+
+            var ut = mixpanel.init('UT_TOKEN', {
+                storage: 'localStorage',
+                storage_name: storage_name,
+                upgrade_from_cookie: true
+            }, 'ut2');
+            ok(!!window.localStorage.getItem(full_storage_name), "localStorage entry should exist");
+            notOk(cookie.exists(full_storage_name), "cookie should not exist");
+
+            stop();
+            var data = ut.track('test', {'foo': 'bar'}, function(response) {
+                same(response, 1, "tracking still works");
+                start();
+            });
+
+            var dp = data.properties;
+            ok('token' in dp, "token included in properties");
+            ok(contains_obj(dp, {'foo': 'bar'}), "tracking properties sent correctly");
+
+            clearLibInstance(ut);
         });
 }
 
