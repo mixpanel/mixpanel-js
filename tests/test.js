@@ -715,6 +715,17 @@ if (window.localStorage) {
             clearLibInstance(mixpanel.sn2);
         });
 
+        test("invalid persistence type", 2, function() {
+            var token = "invperstest",
+                name = "mp_" + token + "_mixpanel";
+
+            mixpanel.init(token, {persistence: 'blargh!!!'}, 'ipt1');
+            notOk(!!window.localStorage.getItem(name), "localStorage entry should not exist");
+            ok(cookie.exists(name), "Cookie should exist");
+
+            clearLibInstance(mixpanel.ipt1);
+        });
+
         test("disable persistence", 7, function() {
             var sname = "mpl_should_not_exist";
             window.localStorage.removeItem(sname);

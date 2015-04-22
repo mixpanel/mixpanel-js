@@ -100,6 +100,7 @@ Globals should be all caps
         , DEFAULT_CONFIG = {
               "api_host":               HTTP_PROTOCOL + 'api.mixpanel.com'
             , "cross_subdomain_cookie": true
+            , "persistence":            "cookie"
             , "persistence_name":       ""
             , "cookie_name":            ""
             , "loaded":                 function() {}
@@ -1592,7 +1593,13 @@ Globals should be all caps
             this.name = "mp_" + config['token'] + "_mixpanel";
         }
 
-        if (config['persistence'] === 'localStorage' && windowLocalStorage) {
+        this.storage_type = config['persistence'];
+        if (this.storage_type !== 'cookie' && this.storage_type !== 'localStorage') {
+            console.critical('Unknown persistence type "' + this.storage_type + '"; falling back to "cookie"');
+            this.storage_type = config['persistence'] = 'cookie';
+        }
+
+        if (this.storage_type === 'localStorage' && windowLocalStorage) {
             this.storage = _.localStorage;
         } else {
             this.storage = _.cookie;
@@ -1669,7 +1676,7 @@ Globals should be all caps
         }
 
         if (config['upgrade_from_cookie']) {
-            if (config['persistence'] !== 'localStorage') {
+            if (this.storage_type !== 'localStorage') {
                 console.critical('Invalid Mixpanel configuration: upgrade_from_cookie can only be used in conjunction with localStorage');
             } else if (this.storage === _.localStorage) { // skip if not using localStorage
                 old_cookie = _.cookie.parse(this.name);
