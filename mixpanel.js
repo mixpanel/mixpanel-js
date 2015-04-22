@@ -1671,7 +1671,7 @@ Globals should be all caps
         if (config['upgrade_from_cookie']) {
             if (config['persistence'] !== 'localStorage') {
                 console.critical('Invalid Mixpanel configuration: upgrade_from_cookie can only be used in conjunction with localStorage');
-            } else if (this.storage === _.localStorage) { // skip if localStorage is unsupported
+            } else if (this.storage === _.localStorage) { // skip if not using localStorage
                 old_cookie = _.cookie.parse(this.name);
 
                 _.cookie.remove(this.name);
