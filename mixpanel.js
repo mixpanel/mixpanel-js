@@ -34,16 +34,17 @@ Globals should be all caps
  * Saved references to long variable names, so that closure compiler can
  * minimize file size.
  */
-    var   ArrayProto        = Array.prototype
-        , FuncProto         = Function.prototype
-        , ObjProto          = Object.prototype
-        , slice             = ArrayProto.slice
-        , toString          = ObjProto.toString
-        , hasOwnProperty    = ObjProto.hasOwnProperty
-        , windowConsole     = window.console
-        , navigator         = window.navigator
-        , document          = window.document
-        , userAgent         = navigator.userAgent;
+    var   ArrayProto         = Array.prototype
+        , FuncProto          = Function.prototype
+        , ObjProto           = Object.prototype
+        , slice              = ArrayProto.slice
+        , toString           = ObjProto.toString
+        , hasOwnProperty     = ObjProto.hasOwnProperty
+        , windowConsole      = window.console
+        , windowLocalStorage = window.localStorage
+        , navigator          = window.navigator
+        , document           = window.document
+        , userAgent          = navigator.userAgent;
 
 /*
  * Constants
@@ -955,7 +956,7 @@ Globals should be all caps
     // _.localStorage
     _.localStorage = {
         get: function(name) {
-            return window.localStorage.getItem(name);
+            return windowLocalStorage.getItem(name);
         },
 
         parse: function(name) {
@@ -967,11 +968,11 @@ Globals should be all caps
         },
 
         set: function(name, value) {
-            window.localStorage.setItem(name, value);
+            windowLocalStorage.setItem(name, value);
         },
 
         remove: function(name) {
-            window.localStorage.removeItem(name);
+            windowLocalStorage.removeItem(name);
         }
     };
 
@@ -1591,7 +1592,7 @@ Globals should be all caps
             this.name = "mp_" + config['token'] + "_mixpanel";
         }
 
-        if (config['storage'] === 'localStorage' && window.localStorage) {
+        if (config['storage'] === 'localStorage' && windowLocalStorage) {
             this.storage = _.localStorage;
         } else {
             this.storage = _.cookie;
