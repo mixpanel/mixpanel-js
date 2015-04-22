@@ -73,7 +73,7 @@ function clearLibInstance(instance) {
     if (name === "mixpanel") {
         throw "Cannot clear main lib instance";
     }
-    instance.storage.clear();
+    instance.persistence.clear();
     delete mixpanel[name];
 }
 
@@ -110,7 +110,7 @@ var rand_name = function() {
 };
 
 var clear_super_properties = function(inst) {
-    (inst || mixpanel).storage.clear();
+    (inst || mixpanel).persistence.clear();
 };
 
 // does obj a contain all of obj b?
@@ -216,7 +216,7 @@ window.test_async = function() {
     };
 
     mixpanel.push(function() {
-        this.storage.clear();
+        this.persistence.clear();
     });
 
     mixpanel.track('test', {}, function(response, data) {
@@ -691,22 +691,22 @@ if (window.localStorage) {
             notOk(!!window.localStorage.getItem(name), "localStorage entry should not exist");
         });
 
-        test("storage name", 7, function() {
+        test("persistence name", 7, function() {
             var token = "FJDIF",
                 name1 = "mp_" + token + "_mixpanel",
                 name2 = "mp_sn2";
 
             notOk(!!window.localStorage.getItem(name1), "localStorage entry 1 should not exist");
-            mixpanel.init(token, {storage: 'localStorage'}, 'sn1');
+            mixpanel.init(token, {persistence: 'localStorage'}, 'sn1');
             ok(!!window.localStorage.getItem(name1), "localStorage entry 1 should exist");
 
             notOk(!!window.localStorage.getItem(name2), "localStorage entry 2 should not exist");
-            mixpanel.init(token, {storage: 'localStorage', storage_name: 'sn2'}, 'sn2');
+            mixpanel.init(token, {persistence: 'localStorage', persistence_name: 'sn2'}, 'sn2');
             ok(!!window.localStorage.getItem(name2), "localStorage entry 2 should exist");
             ok(!!window.localStorage.getItem(name1), "localStorage entry 1 should still exist");
 
-            mixpanel.sn1.storage.clear();
-            mixpanel.sn2.storage.clear();
+            mixpanel.sn1.persistence.clear();
+            mixpanel.sn2.persistence.clear();
 
             notOk(!!window.localStorage.getItem(name1), "localStorage entry 1 should no longer exist");
             notOk(!!window.localStorage.getItem(name2), "localStorage entry 2 should no longer exist");
@@ -715,23 +715,23 @@ if (window.localStorage) {
             clearLibInstance(mixpanel.sn2);
         });
 
-        test("disable storage", 7, function() {
+        test("disable persistence", 7, function() {
             var sname = "mpl_should_not_exist";
             window.localStorage.removeItem(sname);
 
             mixpanel.init('Asdfja', {
-                storage: 'localStorage',
-                storage_name: sname,
-                disable_storage: true
+                persistence: 'localStorage',
+                persistence_name: sname,
+                disable_persistence: true
             }, 'ds1');
 
             notOk(!!window.localStorage.getItem(sname), "localStorage entry should not exist");
 
             var ds2 = mixpanel.init('Asdf', {
-                storage: 'localStorage',
-                storage_name: sname
+                persistence: 'localStorage',
+                persistence_name: sname
             }, 'ds2');
-            ds2.set_config({disable_storage: true});
+            ds2.set_config({disable_persistence: true});
 
             notOk(!!window.localStorage.getItem(sname), "localStorage entry should not exist");
 
@@ -749,7 +749,7 @@ if (window.localStorage) {
             ok('token' in dp, "token included in properties");
 
             ok(contains_obj(dp, {'a': 'b', 'c': 'd'}), 'super properties included correctly');
-            ok(contains_obj(ds2.storage.props, props), "Super properties saved");
+            ok(contains_obj(ds2.persistence.props, props), "Super properties saved");
 
             notOk(
                 !!window.localStorage.getItem(sname),
@@ -760,19 +760,19 @@ if (window.localStorage) {
         test("upgrade from cookie", 9, function() {
             // populate cookie
             var ut1 = mixpanel.init('UT_TOKEN', {}, 'ut1'),
-                storage_name = 'mp_UT_TOKEN_mixpanel';
+                persistence_name = 'mp_UT_TOKEN_mixpanel';
             ut1.register({'a': 'b'});
-            ok(cookie.exists(storage_name), "cookie should exist");
+            ok(cookie.exists(persistence_name), "cookie should exist");
 
             // init same project with localStorage
             var ut2 = mixpanel.init('UT_TOKEN', {
-                storage: 'localStorage',
+                persistence: 'localStorage',
                 upgrade_from_cookie: true
             }, 'ut2');
             ut2.register({'c': 'd'});
-            ok(!!window.localStorage.getItem(storage_name), "localStorage entry should exist");
+            ok(!!window.localStorage.getItem(persistence_name), "localStorage entry should exist");
 
-            ok(contains_obj(ut2.storage.props, {'a': 'b'}), "upgrading from cookie should import props");
+            ok(contains_obj(ut2.persistence.props, {'a': 'b'}), "upgrading from cookie should import props");
             notOk(cookie.exists('mp_UT_TOKEN_mixpanel'), "upgrading from cookie should remove cookie");
 
             // send track request from upgraded instance
@@ -794,17 +794,17 @@ if (window.localStorage) {
 
         test("upgrade from non-existent cookie", 5, function() {
             // populate cookie
-            var storage_name = 'upgrade_test2',
-                full_storage_name = 'mp_' + storage_name;
-            cookie.remove(full_storage_name);
+            var persistence_name = 'upgrade_test2',
+                full_persistence_name = 'mp_' + persistence_name;
+            cookie.remove(full_persistence_name);
 
             var ut = mixpanel.init('UT_TOKEN', {
-                storage: 'localStorage',
-                storage_name: storage_name,
+                persistence: 'localStorage',
+                persistence_name: persistence_name,
                 upgrade_from_cookie: true
             }, 'ut2');
-            ok(!!window.localStorage.getItem(full_storage_name), "localStorage entry should exist");
-            notOk(cookie.exists(full_storage_name), "cookie should not exist");
+            ok(!!window.localStorage.getItem(full_persistence_name), "localStorage entry should exist");
+            notOk(cookie.exists(full_persistence_name), "cookie should not exist");
 
             stop();
             var data = ut.track('test', {'foo': 'bar'}, function(response) {
@@ -826,21 +826,21 @@ mpmodule("mixpanel");
         var token = 'ASDF',
             sp = { 'test': 'all' };
 
-        mixpanel.init(token, { storage_name: 'mpl_t2', track_pageview: false }, 'mpl');
+        mixpanel.init(token, { persistence_name: 'mpl_t2', track_pageview: false }, 'mpl');
 
         mixpanel.mpl.register(sp);
-        ok(contains_obj(mixpanel.mpl.storage.props, sp), "Super properties set correctly");
+        ok(contains_obj(mixpanel.mpl.persistence.props, sp), "Super properties set correctly");
 
-        // Recreate object - should pull super props from storage
-        mixpanel.init(token, { storage_name: 'mpl_t2', track_pageview: false }, 'mpl2');
+        // Recreate object - should pull super props from persistence
+        mixpanel.init(token, { persistence_name: 'mpl_t2', track_pageview: false }, 'mpl2');
         if (!window.COOKIE_FAILURE_TEST) {
-            ok(contains_obj(mixpanel.mpl2.storage.props, sp), "Super properties saved to storage");
+            ok(contains_obj(mixpanel.mpl2.persistence.props, sp), "Super properties saved to persistence");
         }
 
-        mixpanel.init(token, { storage_name: 'mpl_t', track_pageview: false }, 'mpl3');
-        var props = mixpanel.mpl3.storage.properties();
+        mixpanel.init(token, { persistence_name: 'mpl_t', track_pageview: false }, 'mpl3');
+        var props = mixpanel.mpl3.persistence.properties();
         delete props['distinct_id'];
-        same(props, {}, "Super properties shouldn't be loaded from mixpanel storage")
+        same(props, {}, "Super properties shouldn't be loaded from mixpanel persistence")
 
         clearLibInstance(mixpanel.mpl);
         clearLibInstance(mixpanel.mpl2);
@@ -864,28 +864,28 @@ mpmodule("mixpanel");
         // force properties to be created
         mixpanel.test.track_pageview();
 
-        ok(i_ref in mixpanel.test.storage.props, "initial referrer saved");
-        ok(i_ref_d in mixpanel.test.storage.props, "initial referring domain saved");
+        ok(i_ref in mixpanel.test.persistence.props, "initial referrer saved");
+        ok(i_ref_d in mixpanel.test.persistence.props, "initial referring domain saved");
 
-        // Clear storage so we can emulate missing referrer.
-        mixpanel.test.storage.clear();
-        mixpanel.test.storage.update_referrer_info("");
+        // Clear persistence so we can emulate missing referrer.
+        mixpanel.test.persistence.clear();
+        mixpanel.test.persistence.update_referrer_info("");
 
         // If referrer is missing, we want to mark it as None (type-in)
-        ok(mixpanel.test.storage.props[i_ref] === none_val, "emixpanel.testty referrer should mark $initial_referrer as None");
-        ok(mixpanel.test.storage.props[i_ref_d] === none_val, "emixpanel.testty referrer should mark $initial_referring_domain as None");
+        ok(mixpanel.test.persistence.props[i_ref] === none_val, "emixpanel.testty referrer should mark $initial_referrer as None");
+        ok(mixpanel.test.persistence.props[i_ref_d] === none_val, "emixpanel.testty referrer should mark $initial_referring_domain as None");
 
         var ref = "http://examixpanel.testle.com/a/b/?c=d";
         // Now we update, but the vals should remain None.
-        mixpanel.test.storage.update_referrer_info(ref);
-        equal(mixpanel.test.storage.props[i_ref], none_val, "$inital_referrer should remain None, even after getting a referrer");
-        equal(mixpanel.test.storage.props[i_ref_d], none_val, "$initial_referring_domain should remain None even after getting a referrer");
+        mixpanel.test.persistence.update_referrer_info(ref);
+        equal(mixpanel.test.persistence.props[i_ref], none_val, "$inital_referrer should remain None, even after getting a referrer");
+        equal(mixpanel.test.persistence.props[i_ref_d], none_val, "$initial_referring_domain should remain None even after getting a referrer");
 
-        // Clear storage so we can try a real domain
-        mixpanel.test.storage.clear();
-        mixpanel.test.storage.update_referrer_info(ref);
-        equal(mixpanel.test.storage.props[i_ref], ref, "Full referrer should be saved");
-        equal(mixpanel.test.storage.props[i_ref_d], "examixpanel.testle.com", "Just domain should be saved");
+        // Clear persistence so we can try a real domain
+        mixpanel.test.persistence.clear();
+        mixpanel.test.persistence.update_referrer_info(ref);
+        equal(mixpanel.test.persistence.props[i_ref], ref, "Full referrer should be saved");
+        equal(mixpanel.test.persistence.props[i_ref_d], "examixpanel.testle.com", "Just domain should be saved");
     });
 
     test("set_config", 2, function() {
@@ -897,7 +897,7 @@ mpmodule("mixpanel");
     test("get_property", 2, function() {
         var prop = "test_get_property", value = "23fj22j09jdlsa";
 
-        if (mixpanel.storage.props[prop]) { delete mixpanel.storage.props[prop]; }
+        if (mixpanel.persistence.props[prop]) { delete mixpanel.persistence.props[prop]; }
         ok(typeof(mixpanel.get_property(prop)) === 'undefined', "get_property returns undefined for unset properties");
 
         mixpanel.register({ "test_get_property": value });
@@ -920,23 +920,23 @@ mpmodule("mixpanel");
 
         for (var i = 0; i < test_data.length; i++) {
             clear_super_properties();
-            mixpanel.storage.update_search_keyword(test_data[i][1]);
+            mixpanel.persistence.update_search_keyword(test_data[i][1]);
             props["$search_engine"] = test_data[i][0];
-            same(mixpanel.storage.props, props, "Save search keyword parses query " + i);
+            same(mixpanel.persistence.props, props, "Save search keyword parses query " + i);
         }
     });
 
 mpmodule("super properties");
 
     var get_props_without_distinct_id = function(instance) {
-        return _.omit(instance.storage.properties(), 'distinct_id');
+        return _.omit(instance.persistence.properties(), 'distinct_id');
     };
 
     test("register", 2, function() {
         var props = {'hi': 'there'},
-            storage_props = get_props_without_distinct_id(mixpanel.test);
+            persisted_props = get_props_without_distinct_id(mixpanel.test);
 
-        same(storage_props, {}, "empty before setting");
+        same(persisted_props, {}, "empty before setting");
 
         mixpanel.test.register(props);
 
@@ -1195,7 +1195,7 @@ mpmodule("mixpanel.alias");
         notOk(old_id === new_id);
         mixpanel.test.alias(new_id);
         same(mixpanel.test.get_property(__alias), new_id, "identify should not delete the __alias key");
-        notOk(__alias in mixpanel.test.storage.properties())
+        notOk(__alias in mixpanel.test.persistence.properties())
     });
 
     test("alias not allowed when there is previous people distinct id", 2, function() {
@@ -1245,7 +1245,7 @@ mpmodule("mixpanel.push");
     var value = Math.random();
     test("instance function called", 1, function() {
         mixpanel.push(['register', { value: value }]);
-        same(mixpanel.storage.props.value, value, "executed immediately");
+        same(mixpanel.persistence.props.value, value, "executed immediately");
     });
 
 xhrmodule("mixpanel._check_and_handle_notifications");
@@ -1351,7 +1351,7 @@ mpmodule("mixpanel.people.set");
             same(resp, -1, "responded with 'queued'");
             start();
         });
-        ok(contains_obj(mixpanel.test.storage.props['__mps'], { a: 2 }), "queued set saved");
+        ok(contains_obj(mixpanel.test.persistence.props['__mps'], { a: 2 }), "queued set saved");
     });
 
     test("set hits server immediately if identified", 4, function() {
@@ -1407,7 +1407,7 @@ mpmodule("mixpanel.people.set_once");
             same(resp, -1, "responded with 'queued'");
             start();
         });
-        ok(contains_obj(mixpanel.test.storage.props['__mpso'], { a: 2 }), "queued set_once saved");
+        ok(contains_obj(mixpanel.test.persistence.props['__mpso'], { a: 2 }), "queued set_once saved");
     });
 
     test("set_once hits server immediately if identified", 4, function() {
@@ -1442,7 +1442,7 @@ mpmodule("mixpanel.people.set_once");
         s = mixpanel.test.people.set_once({ a: 3, b: 4 }, function(resp) {
             same(resp, -1, "responded with 'queued'");
         });
-        ok(contains_obj(mixpanel.test.storage.props['__mpso'], { a: 2, b: 4 }), "queued set_once call works correctly");
+        ok(contains_obj(mixpanel.test.persistence.props['__mpso'], { a: 2, b: 4 }), "queued set_once call works correctly");
     });
 
 mpmodule("mixpanel.people.increment");
@@ -1472,7 +1472,7 @@ mpmodule("mixpanel.people.increment");
             same(resp, -1, "responded with 'queued'");
             start();
         });
-        same(mixpanel.test.storage.props['__mpa'], { a: 2 }, "queued increment saved");
+        same(mixpanel.test.persistence.props['__mpa'], { a: 2 }, "queued increment saved");
     });
 
     test("increment hits server immediately if identified", 2, function() {
@@ -1523,7 +1523,7 @@ mpmodule("mixpanel.people.append");
             same(resp, -1, "responded with 'queued'");
             start();
         });
-        same(mixpanel.test.storage.props['__mpap'], [ { a: 2 } ], "queued append saved");
+        same(mixpanel.test.persistence.props['__mpap'], [ { a: 2 } ], "queued append saved");
     });
 
     test("append hits server immediately if identified", 2, function() {
@@ -1590,11 +1590,11 @@ mpmodule("mixpanel.people.union");
         mixpanel.test.people.union(_union1, function(resp) {
             same(resp, -1, "responded with 'queued'");
         });
-        same(mixpanel.test.storage.props['__mpu'], { 'key1': ['val1.1'], 'key2': ['val1.2']}, "queued union saved");
+        same(mixpanel.test.persistence.props['__mpu'], { 'key1': ['val1.1'], 'key2': ['val1.2']}, "queued union saved");
         mixpanel.test.people.union(_union2, function(resp) {
             same(resp, -1, "responded with 'queued'");
         });
-        same(mixpanel.test.storage.props['__mpu'], { 'key1': ['val1.1', 'val2.1'], 'key2': ['val1.2'], 'key3':['val2.3'] }, "queued union saved");
+        same(mixpanel.test.persistence.props['__mpu'], { 'key1': ['val1.1', 'val2.1'], 'key2': ['val1.2'], 'key3':['val2.3'] }, "queued union saved");
     });
 
     test("set after union clobbers union queue", 4, function() {
@@ -1610,8 +1610,8 @@ mpmodule("mixpanel.people.union");
             same(resp, -1, "responded with 'queued'");
         });
 
-        same(mixpanel.test.storage.props['__mpu'], {'key2': ['val2']}, "set after union empties union queue");
-        ok(contains_obj(mixpanel.test.storage.props['__mps'], {'key1': 'set_val'}), "set after union enqueues set");
+        same(mixpanel.test.persistence.props['__mpu'], {'key2': ['val2']}, "set after union empties union queue");
+        ok(contains_obj(mixpanel.test.persistence.props['__mps'], {'key1': 'set_val'}), "set after union enqueues set");
     });
 
     test("union sends immediately if identified", 2, function() {
@@ -1707,10 +1707,10 @@ mpmodule("mixpanel.people flushing");
         mixpanel.test.identify(this.id, function(resp, data) {
             ok(resp == 1, "Successful write");
             ok(contains_obj(data["$set"], { "a": "b", "b": "c" }));
-            same(mixpanel.test.storage.props['__mps'], {}, "Queue is cleared after flushing");
-            // reload storage to make sure it's persisted correctly
-            mixpanel.test.storage.load();
-            same(mixpanel.test.storage.props['__mps'], {}, "Empty queue is persisted");
+            same(mixpanel.test.persistence.props['__mps'], {}, "Queue is cleared after flushing");
+            // reload persistence to make sure it's persisted correctly
+            mixpanel.test.persistence.load();
+            same(mixpanel.test.persistence.props['__mps'], {}, "Empty queue is persisted");
             start();
         });
     });
@@ -1723,10 +1723,10 @@ mpmodule("mixpanel.people flushing");
         mixpanel.test.identify(undefined, function(resp, data) {
             ok(resp == 1, "Successful write");
             ok(contains_obj(data["$set"], { "a": "b", "b": "c" }));
-            same(mixpanel.test.storage.props['__mps'], {}, "Queue is cleared after flushing");
-            // reload storage to make sure it's persisted correctly
-            mixpanel.test.storage.load();
-            same(mixpanel.test.storage.props['__mps'], {}, "Empty queue is persisted");
+            same(mixpanel.test.persistence.props['__mps'], {}, "Queue is cleared after flushing");
+            // reload persistence to make sure it's persisted correctly
+            mixpanel.test.persistence.load();
+            same(mixpanel.test.persistence.props['__mps'], {}, "Empty queue is persisted");
             start();
         });
     });
@@ -1739,10 +1739,10 @@ mpmodule("mixpanel.people flushing");
         mixpanel.test.identify(this.id, function() {}, function() {}, function() {}, function(resp, data) {
             ok(resp == 1, "Successful write");
             ok(contains_obj(data["$set_once"], { "a": "b", "b": "c" }));
-            same(mixpanel.test.storage.props['__mpso'], {}, "Queue is cleared after flushing");
-            // reload storage to make sure it's persisted correctly
-            mixpanel.test.storage.load();
-            same(mixpanel.test.storage.props['__mpso'], {}, "Empty queue is persisted");
+            same(mixpanel.test.persistence.props['__mpso'], {}, "Queue is cleared after flushing");
+            // reload persistence to make sure it's persisted correctly
+            mixpanel.test.persistence.load();
+            same(mixpanel.test.persistence.props['__mpso'], {}, "Empty queue is persisted");
             start();
         });
     });
@@ -1756,10 +1756,10 @@ mpmodule("mixpanel.people flushing");
         mixpanel.test.identify(this.id, function() {}, function(resp, data) {
             ok(resp == 1, "Successful write");
             same(data, { "$token": _this.token, "$distinct_id": _this.id, "$add": { "a": 1, "b": 2 } });
-            same(mixpanel.test.storage.props['__mpa'], {}, "Queue is cleared after flushing");
-            // reload storage to make sure it's persisted correctly
-            mixpanel.test.storage.load();
-            same(mixpanel.test.storage.props['__mpa'], {}, "Empty queue is persisted");
+            same(mixpanel.test.persistence.props['__mpa'], {}, "Queue is cleared after flushing");
+            // reload persistence to make sure it's persisted correctly
+            mixpanel.test.persistence.load();
+            same(mixpanel.test.persistence.props['__mpa'], {}, "Empty queue is persisted");
             start();
         });
     });
@@ -1770,7 +1770,7 @@ mpmodule("mixpanel.people flushing");
         mixpanel.test.people.append({ 'b': 'asdf' });
         mixpanel.test.people.append("c", [1,2,3]);
 
-        same(mixpanel.test.storage.props[queue_name].length, 3, 'Queue has 3 elements before flushing');
+        same(mixpanel.test.persistence.props[queue_name].length, 3, 'Queue has 3 elements before flushing');
 
         stop(); stop(); stop();
         mixpanel.test.identify(this.id, function() {}, function() {}, function(resp, data) {
@@ -1787,10 +1787,10 @@ mpmodule("mixpanel.people flushing");
 
             run++;
             if (run == 3) {
-                same(mixpanel.test.storage.props[queue_name], [], "Queue is cleared after flushing");
-                // reload storage to make sure it's persisted correctly
-                mixpanel.test.storage.load();
-                same(mixpanel.test.storage.props[queue_name], [], "Empty queue is persisted");
+                same(mixpanel.test.persistence.props[queue_name], [], "Queue is cleared after flushing");
+                // reload persistence to make sure it's persisted correctly
+                mixpanel.test.persistence.load();
+                same(mixpanel.test.persistence.props[queue_name], [], "Empty queue is persisted");
             };
             start();
         });
@@ -1808,10 +1808,10 @@ mpmodule("mixpanel.people flushing");
         mixpanel.test.identify(this.id, noop, noop, noop, noop, function(resp, data) {
             same(resp, 1, "Successful write");
             same(data["$union"], {'key1': ['val1.1'], 'key2': ['val1.2', 'val2.2']});
-            same(mixpanel.test.storage.props['__mpu'], {}, 'Queue is cleared after flushing');
+            same(mixpanel.test.persistence.props['__mpu'], {}, 'Queue is cleared after flushing');
 
-            mixpanel.test.storage.load();
-            same(mixpanel.test.storage.props['__mpu'], {}, 'Empty queue is persisted');
+            mixpanel.test.persistence.load();
+            same(mixpanel.test.persistence.props['__mpu'], {}, 'Empty queue is persisted');
             start();
         });
     });
@@ -1842,16 +1842,16 @@ mpmodule("mixpanel.people flushing");
 
         mixpanel.test.identify(this.id);
 
-        same(mixpanel.test.storage.props['__mpap'], []);
-        same(mixpanel.test.storage.props['__mpu'], {});
-        same(mixpanel.test.storage.props['__mpa'], {});
-        same(mixpanel.test.storage.props['__mps'], {});
-        // reload storage to make sure it's persisted correctly
-        mixpanel.test.storage.load();
-        same(mixpanel.test.storage.props['__mpap'], []);
-        same(mixpanel.test.storage.props['__mpu'], {});
-        same(mixpanel.test.storage.props['__mpa'], {});
-        same(mixpanel.test.storage.props['__mps'], {});
+        same(mixpanel.test.persistence.props['__mpap'], []);
+        same(mixpanel.test.persistence.props['__mpu'], {});
+        same(mixpanel.test.persistence.props['__mpa'], {});
+        same(mixpanel.test.persistence.props['__mps'], {});
+        // reload persistence to make sure it's persisted correctly
+        mixpanel.test.persistence.load();
+        same(mixpanel.test.persistence.props['__mpap'], []);
+        same(mixpanel.test.persistence.props['__mpu'], {});
+        same(mixpanel.test.persistence.props['__mpa'], {});
+        same(mixpanel.test.persistence.props['__mps'], {});
     });
 
 mpmodule("mixpanel.people.delete_user");

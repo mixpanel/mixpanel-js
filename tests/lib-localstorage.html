@@ -38,8 +38,8 @@
 
             mixpanel.init("MIXPANEL_TOKEN",
             {
-                storage: "localStorage",
-                storage_name: "test",
+                persistence: "localStorage",
+                persistence_name: "test",
                 debug: true,
                 loaded: function(mixpanel) {
                     test_mixpanel(mixpanel);

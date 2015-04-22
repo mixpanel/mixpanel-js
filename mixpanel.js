@@ -95,30 +95,30 @@ Globals should be all caps
 /*
  * Closure-level globals
  */
-    var   _                 = {}
-        , DEBUG             = false
-        , DEFAULT_CONFIG    = {
-              "api_host":                   HTTP_PROTOCOL + 'api.mixpanel.com'
-            , "cross_subdomain_cookie":     true
-            , "storage_name":               ""
-            , "cookie_name":                ""
-            , "loaded":                     function() {}
-            , "store_google":               true
-            , "save_referrer":              true
-            , "test":                       false
-            , "verbose":                    false
-            , "img":                        false
-            , "track_pageview":             true
-            , "debug":                      false
-            , "track_links_timeout":        300
-            , "cookie_expiration":          365
-            , "upgrade":                    false
-            , "disable_storage":            false
-            , "disable_cookie":             false
-            , "secure_cookie":              false
-            , "ip":                         true
+    var   _ = {}
+        , DEBUG = false
+        , DEFAULT_CONFIG = {
+              "api_host":               HTTP_PROTOCOL + 'api.mixpanel.com'
+            , "cross_subdomain_cookie": true
+            , "persistence_name":       ""
+            , "cookie_name":            ""
+            , "loaded":                 function() {}
+            , "store_google":           true
+            , "save_referrer":          true
+            , "test":                   false
+            , "verbose":                false
+            , "img":                    false
+            , "track_pageview":         true
+            , "debug":                  false
+            , "track_links_timeout":    300
+            , "cookie_expiration":      365
+            , "upgrade":                false
+            , "disable_persistence":    false
+            , "disable_cookie":         false
+            , "secure_cookie":          false
+            , "ip":                     true
         }
-        , DOM_LOADED        = false;
+        , DOM_LOADED = false;
 
     // UNDERSCORE
     // Embed part of the Underscore Library
@@ -1579,20 +1579,20 @@ Globals should be all caps
     };
 
     /**
-     * Mixpanel Storage Object
+     * Mixpanel Persistence Object
      * @constructor
      */
-    var MixpanelStorage = function(config) {
+    var MixpanelPersistence = function(config) {
         this['props'] = {};
         this.campaign_params_saved = false;
 
-        if (config['storage_name']) {
-            this.name = "mp_" + config['storage_name'];
+        if (config['persistence_name']) {
+            this.name = "mp_" + config['persistence_name'];
         } else {
             this.name = "mp_" + config['token'] + "_mixpanel";
         }
 
-        if (config['storage'] === 'localStorage' && windowLocalStorage) {
+        if (config['persistence'] === 'localStorage' && windowLocalStorage) {
             this.storage = _.localStorage;
         } else {
             this.storage = _.cookie;
@@ -1604,7 +1604,7 @@ Globals should be all caps
         this.save();
     };
 
-    MixpanelStorage.prototype.properties = function() {
+    MixpanelPersistence.prototype.properties = function() {
         var p = {};
         // Filter out reserved properties
         _.each(this['props'], function(v, k) {
@@ -1615,7 +1615,7 @@ Globals should be all caps
         return p;
     };
 
-    MixpanelStorage.prototype.load = function() {
+    MixpanelPersistence.prototype.load = function() {
         if (this.disabled) { return; }
 
         var entry = this.storage.parse(this.name);
@@ -1625,7 +1625,7 @@ Globals should be all caps
         }
     };
 
-    MixpanelStorage.prototype.upgrade = function(config) {
+    MixpanelPersistence.prototype.upgrade = function(config) {
         var upgrade_from_old_lib = config['upgrade'],
             old_cookie_name,
             old_cookie;
@@ -1669,7 +1669,7 @@ Globals should be all caps
         }
 
         if (config['upgrade_from_cookie']) {
-            if (config['storage'] !== 'localStorage') {
+            if (config['persistence'] !== 'localStorage') {
                 console.critical('Invalid Mixpanel configuration: upgrade_from_cookie can only be used in conjunction with localStorage');
             } else if (this.storage === _.localStorage) { // skip if localStorage is unsupported
                 old_cookie = _.cookie.parse(this.name);
@@ -1684,7 +1684,7 @@ Globals should be all caps
         }
     };
 
-    MixpanelStorage.prototype.save = function() {
+    MixpanelPersistence.prototype.save = function() {
         if (this.disabled) { return; }
         this._expire_notification_campaigns();
         this.storage.set(
@@ -1696,7 +1696,7 @@ Globals should be all caps
         );
     };
 
-    MixpanelStorage.prototype.remove = function() {
+    MixpanelPersistence.prototype.remove = function() {
         // remove both domain and subdomain cookies
         this.storage.remove(this.name, false);
         this.storage.remove(this.name, true);
@@ -1704,7 +1704,7 @@ Globals should be all caps
 
     // removes the storage entry and deletes all loaded data
     // forced name for tests
-    MixpanelStorage.prototype.clear = function() {
+    MixpanelPersistence.prototype.clear = function() {
         this.remove();
         this['props'] = {};
     };
@@ -1714,7 +1714,7 @@ Globals should be all caps
      * @param {*=} default_value
      * @param {number=} days
      */
-    MixpanelStorage.prototype.register_once = function(props, default_value, days) {
+    MixpanelPersistence.prototype.register_once = function(props, default_value, days) {
         if (_.isObject(props)) {
             if (typeof(default_value) === 'undefined') { default_value = "None"; }
             this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
@@ -1736,7 +1736,7 @@ Globals should be all caps
      * @param {Object} props
      * @param {number=} days
      */
-    MixpanelStorage.prototype.register = function(props, days) {
+    MixpanelPersistence.prototype.register = function(props, days) {
         if (_.isObject(props)) {
             this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
 
@@ -1749,14 +1749,14 @@ Globals should be all caps
         return false;
     };
 
-    MixpanelStorage.prototype.unregister = function(prop) {
+    MixpanelPersistence.prototype.unregister = function(prop) {
         if (prop in this['props']) {
             delete this['props'][prop];
             this.save();
         }
     };
 
-    MixpanelStorage.prototype._expire_notification_campaigns = _.safewrap(function() {
+    MixpanelPersistence.prototype._expire_notification_campaigns = _.safewrap(function() {
         var campaigns_shown = this['props'][CAMPAIGN_IDS_KEY],
             EXPIRY_TIME = DEBUG ? 60 * 1000 : 60 * 60 * 1000; // 1 minute (DEBUG) / 1 hour (PDXN)
         if (!campaigns_shown) {
@@ -1772,19 +1772,19 @@ Globals should be all caps
         }
     });
 
-    MixpanelStorage.prototype.update_campaign_params = function() {
+    MixpanelPersistence.prototype.update_campaign_params = function() {
         if (!this.campaign_params_saved) {
             this.register_once(_.info.campaignParams());
             this.campaign_params_saved = true;
         }
     };
 
-    MixpanelStorage.prototype.update_search_keyword = function(referrer) {
+    MixpanelPersistence.prototype.update_search_keyword = function(referrer) {
         this.register(_.info.searchInfo(referrer));
     };
 
     // EXPORTED METHOD, we test this directly.
-    MixpanelStorage.prototype.update_referrer_info = function(referrer) {
+    MixpanelPersistence.prototype.update_referrer_info = function(referrer) {
         // If referrer doesn't exist, we want to note the fact that it was type-in traffic.
         this.register_once({
             "$initial_referrer": referrer || "$direct",
@@ -1792,7 +1792,7 @@ Globals should be all caps
         }, "");
     };
 
-    MixpanelStorage.prototype.get_referrer_info = function() {
+    MixpanelPersistence.prototype.get_referrer_info = function() {
         return _.strip_empty_properties({
             '$initial_referrer': this['props']['$initial_referrer'],
             '$initial_referring_domain': this['props']['$initial_referring_domain']
@@ -1802,7 +1802,7 @@ Globals should be all caps
     // safely fills the passed in object with stored properties,
     // does not override any properties defined in both
     // returns the passed in object
-    MixpanelStorage.prototype.safe_merge = function(props) {
+    MixpanelPersistence.prototype.safe_merge = function(props) {
         _.each(this['props'], function(val, prop) {
             if (!(prop in props)) {
                 props[prop] = val;
@@ -1812,21 +1812,21 @@ Globals should be all caps
         return props;
     };
 
-    MixpanelStorage.prototype.update_config = function(config) {
+    MixpanelPersistence.prototype.update_config = function(config) {
         this.default_expiry = this.expire_days = config['cookie_expiration'];
-        this.set_disabled(config['disable_storage']);
+        this.set_disabled(config['disable_persistence']);
         this.set_cross_subdomain(config['cross_subdomain_cookie']);
         this.set_secure(config['secure_cookie']);
     };
 
-    MixpanelStorage.prototype.set_disabled = function(disabled) {
+    MixpanelPersistence.prototype.set_disabled = function(disabled) {
         this.disabled = disabled;
         if (this.disabled) {
             this.remove();
         }
     };
 
-    MixpanelStorage.prototype.set_cross_subdomain = function(cross_subdomain) {
+    MixpanelPersistence.prototype.set_cross_subdomain = function(cross_subdomain) {
         if (cross_subdomain !== this.cross_subdomain) {
             this.cross_subdomain = cross_subdomain;
             this.remove();
@@ -1834,11 +1834,11 @@ Globals should be all caps
         }
     };
 
-    MixpanelStorage.prototype.get_cross_subdomain = function() {
+    MixpanelPersistence.prototype.get_cross_subdomain = function() {
         return this.cross_subdomain;
     };
 
-    MixpanelStorage.prototype.set_secure = function(secure) {
+    MixpanelPersistence.prototype.set_secure = function(secure) {
         if (secure !== this.secure) {
             this.secure = secure ? true : false;
             this.remove();
@@ -1846,7 +1846,7 @@ Globals should be all caps
         }
     };
 
-    MixpanelStorage.prototype._add_to_people_queue = function(queue, data) {
+    MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         var q_key = this._get_queue_key(queue),
             q_data = data[queue],
             set_q = this._get_or_create_queue(SET_ACTION),
@@ -1906,7 +1906,7 @@ Globals should be all caps
         this.save();
     };
 
-    MixpanelStorage.prototype._pop_from_people_queue = function(queue, data) {
+    MixpanelPersistence.prototype._pop_from_people_queue = function(queue, data) {
         var q = this._get_queue(queue);
         if (!_.isUndefined(q)) {
             _.each(data, function(v, k) {
@@ -1917,7 +1917,7 @@ Globals should be all caps
         }
     };
 
-    MixpanelStorage.prototype._get_queue_key = function(queue) {
+    MixpanelPersistence.prototype._get_queue_key = function(queue) {
         if (queue === SET_ACTION) {
             return SET_QUEUE_KEY;
         } else if (queue === SET_ONCE_ACTION) {
@@ -1933,10 +1933,10 @@ Globals should be all caps
         }
     };
 
-    MixpanelStorage.prototype._get_queue = function(queue) {
+    MixpanelPersistence.prototype._get_queue = function(queue) {
         return this['props'][this._get_queue_key(queue)];
     };
-    MixpanelStorage.prototype._get_or_create_queue = function(queue, default_val) {
+    MixpanelPersistence.prototype._get_or_create_queue = function(queue, default_val) {
         var key = this._get_queue_key(queue),
             default_val = _.isUndefined(default_val) ? {} : default_val;
 
@@ -2049,7 +2049,7 @@ Globals should be all caps
             , "identify_called": false
         };
 
-        this['storage'] = this['cookie'] = new MixpanelStorage(this['config']);
+        this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
         this.register_once({'distinct_id': _.UUID()}, "");
     };
 
@@ -2300,21 +2300,21 @@ Globals should be all caps
         properties = properties || {};
         properties['token'] = this.get_config('token');
 
-        // update storage
-        this['storage'].update_search_keyword(document.referrer);
+        // update persistence
+        this['persistence'].update_search_keyword(document.referrer);
 
-        if (this.get_config('store_google')) { this['storage'].update_campaign_params(); }
-        if (this.get_config('save_referrer')) { this['storage'].update_referrer_info(document.referrer); }
+        if (this.get_config('store_google')) { this['persistence'].update_campaign_params(); }
+        if (this.get_config('save_referrer')) { this['persistence'].update_referrer_info(document.referrer); }
 
         // note: extend writes to the first object, so lets make sure we
-        // don't write to the storage properties object and info
+        // don't write to the persistence properties object and info
         // properties object by passing in a new object
 
         // update properties with pageview info and super-properties
         properties = _.extend(
             {}
             , _.info.properties()
-            , this['storage'].properties()
+            , this['persistence'].properties()
             , properties
         );
 
@@ -2423,7 +2423,7 @@ Globals should be all caps
      * @param {Number} [days] How many days since the user's last visit to store the super properties
      */
     MixpanelLib.prototype.register = function(props, days) {
-        this['storage'].register(props, days);
+        this['persistence'].register(props, days);
     };
 
     /**
@@ -2440,7 +2440,7 @@ Globals should be all caps
      * @param {Number} [days] How many days since the users last visit to store the super properties
      */
     MixpanelLib.prototype.register_once = function(props, default_value, days) {
-        this['storage'].register_once(props, default_value, days);
+        this['persistence'].register_once(props, default_value, days);
     };
 
     /**
@@ -2449,7 +2449,7 @@ Globals should be all caps
      * @param {String} property The name of the super property to remove
      */
     MixpanelLib.prototype.unregister = function(property) {
-        this['storage'].unregister(property);
+        this['persistence'].unregister(property);
     };
 
     MixpanelLib.prototype._register_single = function(prop, value) {
@@ -2517,7 +2517,7 @@ Globals should be all caps
      * @param {String} [original] The current identifier being used for this user.
      */
     MixpanelLib.prototype.alias = function(alias, original) {
-        // If the $people_distinct_id key exists in storage, there has been a previous
+        // If the $people_distinct_id key exists in persistence, there has been a previous
         // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
         // this ID, as it will duplicate users.
         if (alias === this.get_property(PEOPLE_DISTINCT_ID_KEY)) {
@@ -2602,15 +2602,15 @@ Globals should be all caps
         if (_.isObject(config)) {
             _.extend(this['config'], config);
 
-            if (!this.get_config('storage_name')) {
-                this['config']['storage_name'] = this['config']['cookie_name'];
+            if (!this.get_config('persistence_name')) {
+                this['config']['persistence_name'] = this['config']['cookie_name'];
             }
-            if (!this.get_config('disable_storage')) {
-                this['config']['disable_storage'] = this['config']['disable_cookie'];
+            if (!this.get_config('disable_persistence')) {
+                this['config']['disable_persistence'] = this['config']['disable_cookie'];
             }
 
-            if (this['storage']) {
-                this['storage'].update_config(this['config']);
+            if (this['persistence']) {
+                this['persistence'].update_config(this['config']);
             }
             DEBUG = DEBUG || this.get_config('debug');
         }
@@ -2630,7 +2630,7 @@ Globals should be all caps
      * @param {String} property_name The name of the super property you want to retrieve
      */
     MixpanelLib.prototype.get_property = function(property_name) {
-        return this['storage']['props'][property_name];
+        return this['persistence']['props'][property_name];
     };
 
     MixpanelLib.prototype.toString = function() {
@@ -2717,13 +2717,13 @@ Globals should be all caps
 
         // make sure that the referrer info has been updated and saved
         if (this._get_config('save_referrer')) {
-            this._mixpanel['storage'].update_referrer_info(document.referrer);
+            this._mixpanel['persistence'].update_referrer_info(document.referrer);
         }
 
         // update $set object with default people properties
         $set = _.extend({}
             , _.info.people_properties()
-            , this._mixpanel['storage'].get_referrer_info()
+            , this._mixpanel['persistence'].get_referrer_info()
             , $set
         );
 
@@ -3015,15 +3015,15 @@ Globals should be all caps
     // Queue up engage operations if identify hasn't been called yet.
     MixpanelPeople.prototype._enqueue = function(data) {
         if (SET_ACTION in data) {
-            this._mixpanel['storage']._add_to_people_queue(SET_ACTION, data);
+            this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, data);
         } else if (SET_ONCE_ACTION in data) {
-            this._mixpanel['storage']._add_to_people_queue(SET_ONCE_ACTION, data);
+            this._mixpanel['persistence']._add_to_people_queue(SET_ONCE_ACTION, data);
         } else if (ADD_ACTION in data) {
-            this._mixpanel['storage']._add_to_people_queue(ADD_ACTION, data);
+            this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, data);
         } else if (APPEND_ACTION in data) {
-            this._mixpanel['storage']._add_to_people_queue(APPEND_ACTION, data);
+            this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, data);
         } else if (UNION_ACTION in data) {
-            this._mixpanel['storage']._add_to_people_queue(UNION_ACTION, data);
+            this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, data);
         } else {
             console.error("Invalid call to _enqueue():", data);
         }
@@ -3033,18 +3033,18 @@ Globals should be all caps
     // and there are network level race conditions anyway
     MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
         var _this = this,
-            $set_queue = _.extend({}, this._mixpanel['storage']._get_queue(SET_ACTION)),
-            $set_once_queue = _.extend({}, this._mixpanel['storage']._get_queue(SET_ONCE_ACTION)),
-            $add_queue = _.extend({}, this._mixpanel['storage']._get_queue(ADD_ACTION)),
-            $append_queue = this._mixpanel['storage']._get_queue(APPEND_ACTION),
-            $union_queue = _.extend({}, this._mixpanel['storage']._get_queue(UNION_ACTION));
+            $set_queue = _.extend({}, this._mixpanel['persistence']._get_queue(SET_ACTION)),
+            $set_once_queue = _.extend({}, this._mixpanel['persistence']._get_queue(SET_ONCE_ACTION)),
+            $add_queue = _.extend({}, this._mixpanel['persistence']._get_queue(ADD_ACTION)),
+            $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION),
+            $union_queue = _.extend({}, this._mixpanel['persistence']._get_queue(UNION_ACTION));
 
         if (!_.isUndefined($set_queue) && _.isObject($set_queue) && !_.isEmptyObject($set_queue)) {
-            _this._mixpanel['storage']._pop_from_people_queue(SET_ACTION, $set_queue);
+            _this._mixpanel['persistence']._pop_from_people_queue(SET_ACTION, $set_queue);
             this.set($set_queue, function(response, data) {
                 // on bad response, we want to add it back to the queue
                 if (response == 0) {
-                    _this._mixpanel['storage']._add_to_people_queue(SET_ACTION, $set_queue);
+                    _this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, $set_queue);
                 }
                 if (!_.isUndefined(_set_callback)) {
                     _set_callback(response, data);
@@ -3053,11 +3053,11 @@ Globals should be all caps
         }
 
         if (!_.isUndefined($set_once_queue) && _.isObject($set_once_queue) && !_.isEmptyObject($set_once_queue)) {
-            _this._mixpanel['storage']._pop_from_people_queue(SET_ONCE_ACTION, $set_once_queue);
+            _this._mixpanel['persistence']._pop_from_people_queue(SET_ONCE_ACTION, $set_once_queue);
             this.set_once($set_once_queue, function(response, data) {
                 // on bad response, we want to add it back to the queue
                 if (response == 0) {
-                    _this._mixpanel['storage']._add_to_people_queue(SET_ONCE_ACTION, $set_once_queue);
+                    _this._mixpanel['persistence']._add_to_people_queue(SET_ONCE_ACTION, $set_once_queue);
                 }
                 if (!_.isUndefined(_set_once_callback)) {
                     _set_once_callback(response, data);
@@ -3066,11 +3066,11 @@ Globals should be all caps
         }
 
         if (!_.isUndefined($add_queue) && _.isObject($add_queue) && !_.isEmptyObject($add_queue)) {
-            _this._mixpanel['storage']._pop_from_people_queue(ADD_ACTION, $add_queue);
+            _this._mixpanel['persistence']._pop_from_people_queue(ADD_ACTION, $add_queue);
             this.increment($add_queue, function(response, data) {
                 // on bad response, we want to add it back to the queue
                 if (response == 0) {
-                    _this._mixpanel['storage']._add_to_people_queue(ADD_ACTION, $add_queue);
+                    _this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, $add_queue);
                 }
                 if (!_.isUndefined(_add_callback)) {
                     _add_callback(response, data);
@@ -3079,11 +3079,11 @@ Globals should be all caps
         }
 
         if (!_.isUndefined($union_queue) && _.isObject($union_queue) && !_.isEmptyObject($union_queue)) {
-            _this._mixpanel['storage']._pop_from_people_queue(UNION_ACTION, $union_queue);
+            _this._mixpanel['persistence']._pop_from_people_queue(UNION_ACTION, $union_queue);
             this.union($union_queue, function(response, data) {
                 // on bad response, we want to add it back to the queue
                 if (response == 0) {
-                    _this._mixpanel['storage']._add_to_people_queue(UNION_ACTION, $union_queue);
+                    _this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, $union_queue);
                 }
                 if (!_.isUndefined(_union_callback)) {
                     _union_callback(response, data);
@@ -3098,13 +3098,13 @@ Globals should be all caps
                 var $append_item = $append_queue.pop();
                 _this.append($append_item, function(response, data) {
                     if (response == 0) {
-                        _this._mixpanel['storage']._add_to_people_queue(APPEND_ACTION, $append_item);
+                        _this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, $append_item);
                     }
                     if (!_.isUndefined(_append_callback)) { _append_callback(response, data); }
                 });
             };
             // Save the shortened append queue
-            _this._mixpanel['storage'].save();
+            _this._mixpanel['persistence'].save();
         }
     };
 
@@ -3117,8 +3117,8 @@ Globals should be all caps
     MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
         _.bind_instance_methods(this);
 
-        this.mixpanel = mixpanel_instance;
-        this.storage  = this.mixpanel['storage'];
+        this.mixpanel    = mixpanel_instance;
+        this.persistence = this.mixpanel['persistence'];
 
         this.campaign_id = _.escapeHTML(notif_data['id']);
         this.message_id  = _.escapeHTML(notif_data['message_id']);
@@ -3381,7 +3381,7 @@ Globals should be all caps
         };
 
         MPNotif.prototype._get_shown_campaigns = function() {
-            return this.storage['props'][CAMPAIGN_IDS_KEY] || (this.storage['props'][CAMPAIGN_IDS_KEY] = {});
+            return this.persistence['props'][CAMPAIGN_IDS_KEY] || (this.persistence['props'][CAMPAIGN_IDS_KEY] = {});
         };
 
         MPNotif.prototype._browser_lte = function(browser, version) {
@@ -4150,7 +4150,7 @@ Globals should be all caps
                 if (this.campaign_id) {
                     // mark notification shown (local cache)
                     this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
-                    this.storage.save();
+                    this.persistence.save();
                 }
 
                 // track delivery
@@ -4431,12 +4431,12 @@ Globals should be all caps
     MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
     MixpanelLib.prototype['_show_notification']              = MixpanelLib.prototype._show_notification;
 
-    // MixpanelStorage Exports
-    MixpanelStorage.prototype['properties']            = MixpanelStorage.prototype.properties;
-    MixpanelStorage.prototype['update_search_keyword'] = MixpanelStorage.prototype.update_search_keyword;
-    MixpanelStorage.prototype['update_referrer_info']  = MixpanelStorage.prototype.update_referrer_info;
-    MixpanelStorage.prototype['get_cross_subdomain']   = MixpanelStorage.prototype.get_cross_subdomain;
-    MixpanelStorage.prototype['clear']                 = MixpanelStorage.prototype.clear;
+    // MixpanelPersistence Exports
+    MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
+    MixpanelPersistence.prototype['update_search_keyword'] = MixpanelPersistence.prototype.update_search_keyword;
+    MixpanelPersistence.prototype['update_referrer_info']  = MixpanelPersistence.prototype.update_referrer_info;
+    MixpanelPersistence.prototype['get_cross_subdomain']   = MixpanelPersistence.prototype.get_cross_subdomain;
+    MixpanelPersistence.prototype['clear']                 = MixpanelPersistence.prototype.clear;
 
     // MixpanelPeople Exports
     MixpanelPeople.prototype['set']           = MixpanelPeople.prototype.set;
@@ -4457,7 +4457,7 @@ Globals should be all caps
         console.critical("'mixpanel' object not initialized. Ensure you are using the latest version of the Mixpanel JS Library along with the snippet we provide.");
         return;
     }
-    if (mixpanel['__loaded'] || (mixpanel['config'] && mixpanel['storage'])) {
+    if (mixpanel['__loaded'] || (mixpanel['config'] && mixpanel['persistence'])) {
         // lib has already been loaded at least once; we don't want to override the global object this time so bomb early
         console.error("Mixpanel library has already been downloaded at least once.");
         return;
