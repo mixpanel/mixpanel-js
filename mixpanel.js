@@ -1593,13 +1593,13 @@ Globals should be all caps
             this.name = "mp_" + config['token'] + "_mixpanel";
         }
 
-        this.storage_type = config['persistence'];
-        if (this.storage_type !== 'cookie' && this.storage_type !== 'localStorage') {
-            console.critical('Unknown persistence type "' + this.storage_type + '"; falling back to "cookie"');
-            this.storage_type = config['persistence'] = 'cookie';
+        var storage_type = config['persistence'];
+        if (storage_type !== 'cookie' && storage_type !== 'localStorage') {
+            console.critical('Unknown persistence type "' + storage_type + '"; falling back to "cookie"');
+            storage_type = config['persistence'] = 'cookie';
         }
 
-        if (this.storage_type === 'localStorage' && windowLocalStorage) {
+        if (storage_type === 'localStorage' && windowLocalStorage) {
             this.storage = _.localStorage;
         } else {
             this.storage = _.cookie;
@@ -1675,18 +1675,14 @@ Globals should be all caps
             }
         }
 
-        if (config['upgrade_from_cookie']) {
-            if (this.storage_type !== 'localStorage') {
-                console.critical('Invalid Mixpanel configuration: upgrade_from_cookie can only be used in conjunction with localStorage');
-            } else if (this.storage === _.localStorage) { // skip if not using localStorage
-                old_cookie = _.cookie.parse(this.name);
+        if (this.storage === _.localStorage) {
+            old_cookie = _.cookie.parse(this.name);
 
-                _.cookie.remove(this.name);
-                _.cookie.remove(this.name, true);
+            _.cookie.remove(this.name);
+            _.cookie.remove(this.name, true);
 
-                if (old_cookie) {
-                    this.register_once(old_cookie);
-                }
+            if (old_cookie) {
+                this.register_once(old_cookie);
             }
         }
     };

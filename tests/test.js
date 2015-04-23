@@ -776,10 +776,7 @@ if (window.localStorage) {
             ok(cookie.exists(persistence_name), "cookie should exist");
 
             // init same project with localStorage
-            var ut2 = mixpanel.init('UT_TOKEN', {
-                persistence: 'localStorage',
-                upgrade_from_cookie: true
-            }, 'ut2');
+            var ut2 = mixpanel.init('UT_TOKEN', {persistence: 'localStorage'}, 'ut2');
             ut2.register({'c': 'd'});
             ok(!!window.localStorage.getItem(persistence_name), "localStorage entry should exist");
 
@@ -811,8 +808,7 @@ if (window.localStorage) {
 
             var ut = mixpanel.init('UT_TOKEN', {
                 persistence: 'localStorage',
-                persistence_name: persistence_name,
-                upgrade_from_cookie: true
+                persistence_name: persistence_name
             }, 'ut2');
             ok(!!window.localStorage.getItem(full_persistence_name), "localStorage entry should exist");
             notOk(cookie.exists(full_persistence_name), "cookie should not exist");
