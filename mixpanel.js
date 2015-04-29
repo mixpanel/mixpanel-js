@@ -41,7 +41,6 @@ Globals should be all caps
         , toString           = ObjProto.toString
         , hasOwnProperty     = ObjProto.hasOwnProperty
         , windowConsole      = window.console
-        , windowLocalStorage = window.localStorage
         , navigator          = window.navigator
         , document           = window.document
         , userAgent          = navigator.userAgent;
@@ -957,7 +956,7 @@ Globals should be all caps
     // _.localStorage
     _.localStorage = {
         get: function(name) {
-            return windowLocalStorage.getItem(name);
+            return window.localStorage.getItem(name);
         },
 
         parse: function(name) {
@@ -969,11 +968,11 @@ Globals should be all caps
         },
 
         set: function(name, value) {
-            windowLocalStorage.setItem(name, value);
+            window.localStorage.setItem(name, value);
         },
 
         remove: function(name) {
-            windowLocalStorage.removeItem(name);
+            window.localStorage.removeItem(name);
         }
     };
 
@@ -1599,7 +1598,21 @@ Globals should be all caps
             storage_type = config['persistence'] = 'cookie';
         }
 
-        if (storage_type === 'localStorage' && windowLocalStorage) {
+        var localStorage_supported = function() {
+            try {
+                var key = '__mplssupport__',
+                    val = 'xyz';
+                _.localStorage.set(key, val);
+                if (_.localStorage.get(key) !== val) {
+                    return false;
+                }
+                _.localStorage.remove(key);
+            } catch (err) {
+                return false;
+            }
+            return true;
+        };
+        if (storage_type === 'localStorage' && localStorage_supported()) {
             this.storage = _.localStorage;
         } else {
             this.storage = _.cookie;
