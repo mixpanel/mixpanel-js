@@ -955,24 +955,40 @@ Globals should be all caps
 
     // _.localStorage
     _.localStorage = {
+        error: function(msg) {
+            console.error('localStorage error: ' + msg);
+        },
+
         get: function(name) {
-            return window.localStorage.getItem(name);
+            try {
+                return window.localStorage.getItem(name);
+            } catch (err) {
+                _.localStorage.error(err);
+            }
+            return null;
         },
 
         parse: function(name) {
-            var storedValue;
             try {
-                storedValue = _.JSONDecode(_.localStorage.get(name)) || {};
+                return _.JSONDecode(_.localStorage.get(name)) || {};
             } catch (err) {}
-            return storedValue;
+            return null;
         },
 
         set: function(name, value) {
-            window.localStorage.setItem(name, value);
+            try {
+                window.localStorage.setItem(name, value);
+            } catch (err) {
+                _.localStorage.error(err);
+            }
         },
 
         remove: function(name) {
-            window.localStorage.removeItem(name);
+            try {
+                window.localStorage.removeItem(name);
+            } catch (err) {
+                _.localStorage.error(err);
+            }
         }
     };
 
