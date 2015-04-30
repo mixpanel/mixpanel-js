@@ -34,16 +34,16 @@ Globals should be all caps
  * Saved references to long variable names, so that closure compiler can
  * minimize file size.
  */
-    var   ArrayProto         = Array.prototype
-        , FuncProto          = Function.prototype
-        , ObjProto           = Object.prototype
-        , slice              = ArrayProto.slice
-        , toString           = ObjProto.toString
-        , hasOwnProperty     = ObjProto.hasOwnProperty
-        , windowConsole      = window.console
-        , navigator          = window.navigator
-        , document           = window.document
-        , userAgent          = navigator.userAgent;
+    var   ArrayProto     = Array.prototype
+        , FuncProto      = Function.prototype
+        , ObjProto       = Object.prototype
+        , slice          = ArrayProto.slice
+        , toString       = ObjProto.toString
+        , hasOwnProperty = ObjProto.hasOwnProperty
+        , windowConsole  = window.console
+        , navigator      = window.navigator
+        , document       = window.document
+        , userAgent      = navigator.userAgent;
 
 /*
  * Constants
