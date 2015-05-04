@@ -2595,29 +2595,34 @@ Globals should be all caps
      * The default config is:
      *
      *     {
-     *       // super properties span subdomains
-     *       cross_subdomain_cookie:     true
-     *
-     *       // super properties cookie name
-     *       cookie_name:                ""
-     *
      *       // super properties cookie expiration (in days)
      *       cookie_expiration:          365
      *
-     *       // should we track a page view on page load
-     *       track_pageview:             true
+     *       // super properties span subdomains
+     *       cross_subdomain_cookie:     true
+     *
+     *       // if this is true, the mixpanel cookie or localStorage entry will
+     *       // be deleted, and no user persistence will take place
+     *       disable_persistence:        false
+     *
+     *       // type of persistent store for super properties (cookie/localStorage)
+     *       // if set to "localStorage", any existing mixpanel cookie value with the
+     *       // same persistence_name will be transferred to localStorage and deleted
+     *       persistence:                "cookie"
+     *
+     *       // name for super properties persistent store
+     *       persistence_name:           ""
+     *
+     *       // if this is true, mixpanel cookies will be marked as
+     *       // secure, meaning they will only be transmitted over https
+     *       secure_cookie:              false
      *
      *       // the amount of time track_links will
      *       // wait for Mixpanel's servers to respond
      *       track_links_timeout:        300
      *
-     *       // if this is true, the mixpanel cookie will be deleted,
-     *       // and no user persistence will take place
-     *       disable_cookie:             false
-     *
-     *       // if this is true, the mixpanel cookie will be marked as
-     *       // secure, meaning it will only be transmitted over https
-     *       secure_cookie:              false
+     *       // should we track a page view on page load
+     *       track_pageview:             true
      *
      *       // if you set upgrade to be true, the library will check for a
      *       // cookie from our old js library and import super
