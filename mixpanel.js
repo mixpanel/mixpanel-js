@@ -1615,18 +1615,22 @@ Globals should be all caps
         }
 
         var localStorage_supported = function() {
+            var supported = true;
             try {
                 var key = '__mplssupport__',
                     val = 'xyz';
                 _.localStorage.set(key, val);
                 if (_.localStorage.get(key) !== val) {
-                    return false;
+                    supported = false;
                 }
                 _.localStorage.remove(key);
             } catch (err) {
-                return false;
+                supported = false;
             }
-            return true;
+            if (!supported) {
+                console.error('localStorage unsupported; falling back to cookie store');
+            }
+            return supported;
         };
         if (storage_type === 'localStorage' && localStorage_supported()) {
             this.storage = _.localStorage;
