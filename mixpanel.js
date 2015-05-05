@@ -2605,13 +2605,14 @@ Globals should be all caps
      *       // super properties span subdomains
      *       cross_subdomain_cookie:     true
      *
-     *       // if this is true, the mixpanel cookie or localStorage entry will
-     *       // be deleted, and no user persistence will take place
+     *       // if this is true, the mixpanel cookie or localStorage entry
+     *       // will be deleted, and no user persistence will take place
      *       disable_persistence:        false
      *
-     *       // type of persistent store for super properties (cookie/localStorage)
-     *       // if set to "localStorage", any existing mixpanel cookie value with the
-     *       // same persistence_name will be transferred to localStorage and deleted
+     *       // type of persistent store for super properties (cookie/
+     *       // localStorage) if set to "localStorage", any existing
+     *       // mixpanel cookie value with the same persistence_name
+     *       // will be transferred to localStorage and deleted
      *       persistence:                "cookie"
      *
      *       // name for super properties persistent store
@@ -2628,8 +2629,8 @@ Globals should be all caps
      *       // should we track a page view on page load
      *       track_pageview:             true
      *
-     *       // if you set upgrade to be true, the library will check for a
-     *       // cookie from our old js library and import super
+     *       // if you set upgrade to be true, the library will check for
+     *       // a cookie from our old js library and import super
      *       // properties from it, then the old cookie is deleted
      *       // The upgrade config option only works in the initialization,
      *       // so make sure you set it when you create the library.
