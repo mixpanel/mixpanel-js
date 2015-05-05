@@ -1,3 +1,7 @@
+**2.5.0** (5 May 2015)
+- add support for localStorage alternative to cookie store (thanks to @sandorfr for initial PR)
+- automatically upgrade from existing cookies when localStorage is used
+
 **2.4.2** (23 Mar 2015)
 - remove (undocumented) `token` property override in `track()`
 
