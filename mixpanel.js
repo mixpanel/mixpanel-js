@@ -1346,10 +1346,10 @@ Globals should be all caps
                 "Mozilla":           /rv:([^)]+)/
             };
             var regex = versionRegexs[browser];
-            if (regex == undefined) return "";
+            if (regex == undefined) return undefined;
             var matches = userAgent.match(regex);
-            if(!matches) return "";
-            return browser + " " + matches[matches.length - 1];
+            if(!matches) return undefined;
+            return parseFloat(matches[matches.length - 1]);
         },
 
         os: function() {
@@ -1402,11 +1402,11 @@ Globals should be all caps
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
                 '$browser': _.info.browser(userAgent, navigator.vendor, window.opera),
-                '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera),
                 '$referrer': document.referrer,
                 '$referring_domain': _.info.referringDomain(document.referrer),
                 '$device': _.info.device(userAgent)
             }), {
+                '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera),
                 '$screen_height': screen.height,
                 '$screen_width': screen.width,
                 'mp_lib': 'web',
@@ -1415,9 +1415,10 @@ Globals should be all caps
         },
 
         people_properties: function() {
-            return _.strip_empty_properties({
+            return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
-                '$browser': _.info.browser(userAgent, navigator.vendor, window.opera),
+                '$browser': _.info.browser(userAgent, navigator.vendor, window.opera)
+            }), {
                 '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera)
             });
         },
