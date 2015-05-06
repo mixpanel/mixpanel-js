@@ -854,8 +854,8 @@ mpmodule("mixpanel");
         clearLibInstance(mixpanel.mpl3);
     });
 
-    test("info properties included", 5, function() {
-        var info_props = "$os $browser $referrer $referring_domain mp_lib".split(' ');
+    test("info properties included", 6, function() {
+        var info_props = "$os $browser $browser_version $referrer $referring_domain mp_lib".split(' ');
 
         var data = mixpanel.test.track("check info props");
         _.each(info_props, function(prop) {
@@ -1375,8 +1375,8 @@ mpmodule("mixpanel.people.set");
         ok(contains_obj(s['$set'], { 'a': 3 }));
     });
 
-    test("set (info props included)", 4, function() {
-        var info_props = "$os $browser $initial_referrer $initial_referring_domain".split(' ');
+    test("set (info props included)", 5, function() {
+        var info_props = "$os $browser $browser_version $initial_referrer $initial_referring_domain".split(' ');
 
         var data = mixpanel.people.set('key1', 'test');
 
@@ -1431,8 +1431,8 @@ mpmodule("mixpanel.people.set_once");
         ok(contains_obj(s['$set_once'], { 'a': 3 }));
     });
 
-    test("set_once (info props not included)", 4, function() {
-        var info_props = "$os $browser $initial_referrer $initial_referring_domain".split(' ');
+    test("set_once (info props not included)", 5, function() {
+        var info_props = "$os $browser $browser_version $initial_referrer $initial_referring_domain".split(' ');
 
         var data = mixpanel.people.set_once('key1', 'test');
 

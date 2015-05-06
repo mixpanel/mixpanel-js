@@ -1326,6 +1326,32 @@ Globals should be all caps
             }
         },
 
+        /**
+         * This function detects which browser version (eg. "Chrome 42") is
+         * running this script.
+         */
+        browserVersion: function(userAgent, vendor, opera) {
+            var browser = _.info.browser(userAgent, vendor, opera);
+            var versionRegexs = {
+                "Chrome":            /Chrome\/([\d]+)/,
+                "Chrome iOS":        /Chrome\/([\d]+)/,
+                "Safari":            /Safari\/([\d]+)/,
+                "Mobile Safari":     /Safari\/([\d]+)/,
+                "Opera":             /Opera\/([\d]+)/,
+                "Firefox":           /Firefox\/([\d]+)/,
+                "Konqueror":         /Konqueror:([\d]+)/,
+                "BlackBerry":        /BlackBerry ([\d]+)/,
+                "Android Mobile":    /android\s([\d]+)/,
+                "Internet Explorer": /(rv:|MSIE )([^)]+)/,
+                "Mozilla":           /rv:([^)]+)/
+            };
+            var regex = versionRegexs[browser];
+            if (regex == undefined) return "";
+            var matches = userAgent.match(regex);
+            if(!matches) return "";
+            return browser + " " + matches[matches.length - 1];
+        },
+
         os: function() {
             var a = userAgent;
             if (/Windows/i.test(a)) {
@@ -1376,6 +1402,7 @@ Globals should be all caps
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
                 '$browser': _.info.browser(userAgent, navigator.vendor, window.opera),
+                '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera),
                 '$referrer': document.referrer,
                 '$referring_domain': _.info.referringDomain(document.referrer),
                 '$device': _.info.device(userAgent)
@@ -1390,7 +1417,8 @@ Globals should be all caps
         people_properties: function() {
             return _.strip_empty_properties({
                 '$os': _.info.os(),
-                '$browser': _.info.browser(userAgent, navigator.vendor, window.opera)
+                '$browser': _.info.browser(userAgent, navigator.vendor, window.opera),
+                '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera)
             });
         },
 
