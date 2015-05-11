@@ -1347,9 +1347,13 @@ Globals should be all caps
                 "Mozilla":           /rv:([^)]+)/
             };
             var regex = versionRegexs[browser];
-            if (regex == undefined) return undefined;
+            if (regex == undefined) {
+                return null;
+            }
             var matches = userAgent.match(regex);
-            if(!matches) return undefined;
+            if (!matches) {
+                return null;
+            }
             return parseFloat(matches[matches.length - 1]);
         },
 
