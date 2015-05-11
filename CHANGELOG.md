@@ -1,3 +1,6 @@
+**2.5.1** (11 May 2015)
+- automatically track browser version (thanks @D1plo1d)
+
 **2.5.0** (5 May 2015)
 - add support for localStorage alternative to cookie store (thanks to @sandorfr for initial PR)
 - automatically upgrade from existing cookies when localStorage is used
