@@ -1,5 +1,5 @@
 /*
- * Mixpanel JS Library v2.5.0
+ * Mixpanel JS Library v2.5.1
  *
  * Copyright 2012, Mixpanel, Inc. All Rights Reserved
  * http://mixpanel.com/
@@ -79,7 +79,7 @@ Globals should be all caps
  */
     var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://"),
 
-        LIB_VERSION = '2.5.0',
+        LIB_VERSION = '2.5.1',
         SNIPPET_VERSION = (mixpanel && mixpanel['__SV']) || 0,
 
         // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
