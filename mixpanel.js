@@ -1336,8 +1336,8 @@ Globals should be all caps
             var versionRegexs = {
                 "Chrome":            /Chrome\/([\d]+)/,
                 "Chrome iOS":        /Chrome\/([\d]+)/,
-                "Safari":            /Safari\/([\d]+)/,
-                "Mobile Safari":     /Safari\/([\d]+)/,
+                "Safari":            /Version\/([\d]+)/,
+                "Mobile Safari":     /Version\/([\d]+)/,
                 "Opera":             /Opera\/([\d]+)/,
                 "Firefox":           /Firefox\/([\d]+)/,
                 "Konqueror":         /Konqueror:([\d]+)/,
