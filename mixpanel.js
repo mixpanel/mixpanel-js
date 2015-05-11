@@ -1329,6 +1329,7 @@ Globals should be all caps
         /**
          * This function detects which browser version (eg. "Chrome 42") is
          * running this script.
+         * User agent strings from: http://www.useragentstring.com/pages/useragentstring.php
          */
         browserVersion: function(userAgent, vendor, opera) {
             var browser = _.info.browser(userAgent, vendor, opera);
