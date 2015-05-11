@@ -1334,17 +1334,17 @@ Globals should be all caps
         browserVersion: function(userAgent, vendor, opera) {
             var browser = _.info.browser(userAgent, vendor, opera);
             var versionRegexs = {
-                "Chrome":            /Chrome\/([\d]+)/,
-                "Chrome iOS":        /Chrome\/([\d]+)/,
-                "Safari":            /Version\/([\d]+)/,
-                "Mobile Safari":     /Version\/([\d]+)/,
-                "Opera":             /Opera\/([\d]+)/,
-                "Firefox":           /Firefox\/([\d]+)/,
-                "Konqueror":         /Konqueror:([\d]+)/,
-                "BlackBerry":        /BlackBerry ([\d]+)/,
-                "Android Mobile":    /android\s([\d]+)/,
-                "Internet Explorer": /(rv:|MSIE )([^)]+)/,
-                "Mozilla":           /rv:([^)]+)/
+                "Chrome":            /Chrome\/(\d+(\.\d+)?)/,
+                "Chrome iOS":        /Chrome\/(\d+(\.\d+)?)/,
+                "Safari":            /Version\/(\d+(\.\d+)?)/,
+                "Mobile Safari":     /Version\/(\d+(\.\d+)?)/,
+                "Opera":             /Opera\/(\d+(\.\d+)?)/,
+                "Firefox":           /Firefox\/(\d+(\.\d+)?)/,
+                "Konqueror":         /Konqueror:(\d+(\.\d+)?)/,
+                "BlackBerry":        /BlackBerry (\d+(\.\d+)?)/,
+                "Android Mobile":    /android\s(\d+(\.\d+)?)/,
+                "Internet Explorer": /(rv:|MSIE )(\d+(\.\d+)?)/,
+                "Mozilla":           /rv:(\d+(\.\d+)?)/
             };
             var regex = versionRegexs[browser];
             if (regex == undefined) {
@@ -1354,7 +1354,7 @@ Globals should be all caps
             if (!matches) {
                 return null;
             }
-            return parseFloat(matches[matches.length - 1]);
+            return parseFloat(matches[matches.length - 2]);
         },
 
         os: function() {
