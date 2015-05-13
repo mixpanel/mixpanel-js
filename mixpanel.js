@@ -2612,9 +2612,9 @@ Globals should be all caps
      * Multiple aliases can map to the same original ID, but not vice-versa. Aliases can also be chained - the
      * following is a valid scenario:
      *
-     *      mixpanel.alias("new_id", "existing_id");
-     *      ...
-     *      mixpanel.alias("newer_id", "new_id");
+     *     mixpanel.alias("new_id", "existing_id");
+     *     ...
+     *     mixpanel.alias("newer_id", "new_id");
      *
      * If the original ID is not passed in, we will use the current distinct_id - probably the auto-generated GUID.
      * 
