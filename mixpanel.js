@@ -2060,14 +2060,14 @@ Globals should be all caps
     // Initialization methods
 
     /**
-     * This function initialize a new instance of the Mixpanel tracking object.
+     * This function initializes a new instance of the Mixpanel tracking object.
      * All new instances are added to the main mixpanel object as sub properties (such as
-     * mixpanel.your_library_name) and also returned by this function.  If you wanted
-     * to define a second instance on the page you would do it like so:
+     * mixpanel.your_library_name) and also returned by this function. To define a
+     * second instance on the page, you would call:
      *
      *      mixpanel.init("new token", { your: "config" }, "library_name")
      *
-     * and use it like this:
+     * and use it like so:
      *
      *      mixpanel.library_name.track(...)
      *
@@ -2325,8 +2325,8 @@ Globals should be all caps
      * array of event names, those events will be disabled, but other
      * events will continue to be tracked.
      *
-     * Note: this function doesn't stop regular mixpanel functions from
-     * firing such as register and name_tag.
+     * Note: this function does not stop other mixpanel functions from
+     * firing, such as register() or people.set().
      *
      * @param {Array} [events] An array of event names to disable
      */
@@ -2339,15 +2339,15 @@ Globals should be all caps
     };
 
     /**
-     * Track an event.  This is the most important Mixpanel function and
-     * the one you will be using the most.
+     * Track an event.  This is the most important and
+     * most frequently used Mixpanel function.
      *
      * ### Usage:
      *
      *     // track an event named "Registered"
      *     mixpanel.track("Registered", {"Gender": "Male", "Age": 21});
      *
-     * For tracking link clicks or form submissions, see mixpanel.track_links or mixpanel.track_forms.
+     * To track link clicks or form submissions, see track_links() or track_forms().
      *
      * @param {String} event_name The name of the event. This can be anything the user does - "Button Click", "Sign Up", "Item Purchased", etc.
      * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
@@ -2437,10 +2437,10 @@ Globals should be all caps
      * servers to respond. If they have not responded by that time
      * it will head to the link without ensuring that your event
      * has been tracked.  To configure this timeout please see the
-     * mixpanel.set_config docs below.
+     * set_config() documentation below.
      *
      * If you pass a function in as the properties argument, the
-     * function will receive the DOMElement which triggered the
+     * function will receive the DOMElement that triggered the
      * event as an argument.  You are expected to return an object
      * from the function; any properties defined on this object
      * will be sent to mixpanel as event properties.
@@ -2455,7 +2455,7 @@ Globals should be all caps
     };
 
     /**
-     * Tracks form submissions. Selector must be a valid query.
+     * Track form submissions. Selector must be a valid query.
      *
      * ### Usage:
      *
@@ -2468,10 +2468,10 @@ Globals should be all caps
      * servers to respond, if they have not responded by that time
      * it will head to the link without ensuring that your event
      * has been tracked.  To configure this timeout please see the
-     * mixpanel.set_config docs below.
+     * set_config() documentation below.
      *
      * If you pass a function in as the properties argument, the
-     * function will receive the DOMElement which triggered the
+     * function will receive the DOMElement that triggered the
      * event as an argument.  You are expected to return an object
      * from the function; any properties defined on this object
      * will be sent to mixpanel as event properties.
@@ -2489,6 +2489,17 @@ Globals should be all caps
      * Register a set of super properties, which are included with all
      * events.  This will overwrite previous super property values.
      *
+     * ### Usage:
+     *
+     *     // register "Gender" as a super property
+     *     mixpanel.register('Gender', 'Female');
+     *
+     *     // register several super properties when a user signs up
+     *     mixpanel.register({
+     *         'Email': 'jdoe@example.com',
+     *         'Account Type': 'Free'
+     *     });
+     *
      * @param {Object} properties An associative array of properties to store about the user
      * @param {Number} [days] How many days since the user's last visit to store the super properties
      */
@@ -2499,6 +2510,10 @@ Globals should be all caps
     /**
      * Register a set of super properties only once.  This will not
      * overwrite previous super property values, unlike register().
+     *
+     * ### Usage:
+     *     
+     *     mixpanel.register_once('First Login Date', new Date());
      *
      * ### Notes:
      *
@@ -2529,18 +2544,25 @@ Globals should be all caps
     };
 
     /**
-     * Identify a user with a unique id.  All subsequent
-     * actions caused by this user will be tied to this identity.  This
+     * Identify a user with a unique ID.  All subsequent
+     * actions caused by this user will be tied to this unique ID.  This
      * property is used to track unique visitors.  If the method is
      * never called, then unique visitors will be identified by a UUID
      * generated the first time they visit the site.
      *
-     * ### Note:
+     * ### Notes:
      *
      * You can call this function to overwrite a previously set
      * unique id for the current user.  Mixpanel cannot translate
-     * between ids at this time, so when you change a users id
+     * between ids at this time, so when you change a user's id
      * they will appear to be a new user.
+     *
+     * identify() should not be called to link anonymous activity to 
+     * subsequent activity when a unique id is first assigned. 
+     * Use alias() when a unique id is first assigned (registration), and  
+     * use identify() to identify the user with that unique id on an ongoing 
+     * basis (e.g., each time a user logs in after registering). 
+     * Do not call identify() at the same time as alias().
      *
      * @param {String} unique_id A string that uniquely identifies a user
      */
@@ -2566,7 +2588,7 @@ Globals should be all caps
 
     /**
      * Returns the current distinct id of the user. This is either the id automatically
-     * generated by the library or the id that has been passed by a call to mixpanel.identify
+     * generated by the library or the id that has been passed by a call to identify().
      */
     MixpanelLib.prototype.get_distinct_id = function() {
         return this.get_property('distinct_id');
@@ -2582,6 +2604,13 @@ Globals should be all caps
      *      mixpanel.alias("newer_id", "new_id");
      *
      * If the original ID is not passed in, we will use the current distinct_id - probably the auto-generated GUID.
+     * 
+     * ### Notes:
+     *     
+     * Best practice is to call alias() when a unique ID is first created for a user 
+     * (e.g., when a user first registers for an account and provides an email address).
+     * alias() should never be called more than once for a given user, except to 
+     * chain a newer ID to a previously new ID, as described above.
      *
      * @param {String} alias A unique identifier that you want to use for this user in the future.
      * @param {String} [original] The current identifier being used for this user.
@@ -2701,7 +2730,7 @@ Globals should be all caps
 
     /**
      * Returns the value of the super property named property_name. If no such
-     * property is set, get_property will return the undefined value.
+     * property is set, get_property() will return the undefined value.
      *
      * @param {String} property_name The name of the super property you want to retrieve
      */
@@ -2810,6 +2839,8 @@ Globals should be all caps
 
     /*
      * Set properties on a user record, only if they do not yet exist.
+     * This will not overwrite previous people property values, unlike 
+     * people.set().
      *
      * ### Usage:
      *
@@ -2862,7 +2893,7 @@ Globals should be all caps
      *     // properties at once:
      *     mixpanel.people.increment({
      *         counter1: 1,
-     *         counter2: 1
+     *         counter2: 6
      *     });
      *
      * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
@@ -2935,7 +2966,8 @@ Globals should be all caps
     };
 
     /*
-     * Merge a given list with a list-valued people analytics property.
+     * Merge a given list with a list-valued people analytics property,
+     * excluding duplicate values.
      *
      * ### Usage:
      *
@@ -2979,7 +3011,7 @@ Globals should be all caps
 
     /*
      * Record that you have charged the current user a certain amount
-     * of money. Charges recorded with track_charge will appear in the
+     * of money. Charges recorded with track_charge() will appear in the
      * Mixpanel revenue report.
      *
      * ### Usage:
