@@ -2062,14 +2062,14 @@ Globals should be all caps
     /**
      * This function initializes a new instance of the Mixpanel tracking object.
      * All new instances are added to the main mixpanel object as sub properties (such as
-     * mixpanel.your_library_name) and also returned by this function. To define a
+     * mixpanel.library_name) and also returned by this function. To define a
      * second instance on the page, you would call:
      *
-     *      mixpanel.init("new token", { your: "config" }, "library_name")
+     *     mixpanel.init("new token", { your: "config" }, "library_name");
      *
      * and use it like so:
      *
-     *      mixpanel.library_name.track(...)
+     *     mixpanel.library_name.track(...);
      *
      * @param {String} token   Your Mixpanel API token
      * @param {Object} [config]  A dictionary of config options to override
@@ -2269,7 +2269,7 @@ Globals should be all caps
      * (and are thus stored in an array so they can be called later)
      *
      * Note: we fire off all the mixpanel function calls && user defined
-     * functions BEFORE we fire off mixpanel tracking calls.  This is so
+     * functions BEFORE we fire off mixpanel tracking calls. This is so
      * identify/register/set_config calls can properly modify early
      * tracking calls.
      *
@@ -2320,8 +2320,8 @@ Globals should be all caps
     };
 
     /**
-     * Disable events on the Mixpanel object.  If passed no arguments,
-     * this function disables tracking of any event.  If passed an
+     * Disable events on the Mixpanel object. If passed no arguments,
+     * this function disables tracking of any event. If passed an
      * array of event names, those events will be disabled, but other
      * events will continue to be tracked.
      *
@@ -2339,8 +2339,8 @@ Globals should be all caps
     };
 
     /**
-     * Track an event.  This is the most important and
-     * most frequently used Mixpanel function.
+     * Track an event. This is the most important and
+     * frequently used Mixpanel function.
      *
      * ### Usage:
      *
@@ -2423,7 +2423,7 @@ Globals should be all caps
     };
 
     /**
-     * Track clicks on a set of document elements.  Selector must be a
+     * Track clicks on a set of document elements. Selector must be a
      * valid query. Elements must exist on the page at the time track_links is called.
      *
      * ### Usage:
@@ -2487,7 +2487,7 @@ Globals should be all caps
 
     /**
      * Register a set of super properties, which are included with all
-     * events.  This will overwrite previous super property values.
+     * events. This will overwrite previous super property values.
      *
      * ### Usage:
      *
@@ -2508,7 +2508,7 @@ Globals should be all caps
     };
 
     /**
-     * Register a set of super properties only once.  This will not
+     * Register a set of super properties only once. This will not
      * overwrite previous super property values, unlike register().
      *
      * ### Usage:
@@ -2545,23 +2545,23 @@ Globals should be all caps
     };
 
     /**
-     * Identify a user with a unique ID.  All subsequent
-     * actions caused by this user will be tied to this unique ID.  This
-     * property is used to track unique visitors.  If the method is
+     * Identify a user with a unique ID. All subsequent
+     * actions caused by this user will be tied to this unique ID. This
+     * property is used to track unique visitors. If the method is
      * never called, then unique visitors will be identified by a UUID
      * generated the first time they visit the site.
      *
      * ### Notes:
      *
      * You can call this function to overwrite a previously set
-     * unique id for the current user.  Mixpanel cannot translate
-     * between ids at this time, so when you change a user's id
+     * unique id for the current user. Mixpanel cannot translate
+     * between ids at this time, so when you change a user's ID
      * they will appear to be a new user.
      *
      * identify() should not be called to link anonymous activity to 
-     * subsequent activity when a unique id is first assigned. 
-     * Use alias() when a unique id is first assigned (registration), and  
-     * use identify() to identify the user with that unique id on an ongoing 
+     * subsequent activity when a unique ID is first assigned. 
+     * Use alias() when a unique ID is first assigned (registration), and  
+     * use identify() to identify the user with that unique ID on an ongoing 
      * basis (e.g., each time a user logs in after registering). 
      * Do not call identify() at the same time as alias().
      *
@@ -2597,7 +2597,11 @@ Globals should be all caps
      * init() has a loaded function available to handle this automatically. For example:
      *
      *     // set distinct_id after the mixpanel library has loaded
-     *     mixpanel.init("YOUR PROJECT TOKEN", {loaded: function(){distinct_id = mixpanel.get_distinct_id();}}); 
+     *     mixpanel.init("YOUR PROJECT TOKEN", {
+     *         loaded: function() {
+     *             distinct_id = mixpanel.get_distinct_id();
+     *         }
+     *     }); 
      */
     MixpanelLib.prototype.get_distinct_id = function() {
         return this.get_property('distinct_id');
@@ -2605,8 +2609,8 @@ Globals should be all caps
 
     /**
      * Create an alias, which Mixpanel will use to link two distinct_ids going forward (not retroactively).
-     *  Multiple aliases can map to the same original ID, but not vice-versa. Aliases can also be chained - the
-     *  following is a valid scenario:
+     * Multiple aliases can map to the same original ID, but not vice-versa. Aliases can also be chained - the
+     * following is a valid scenario:
      *
      *      mixpanel.alias("new_id", "existing_id");
      *      ...
@@ -2616,7 +2620,7 @@ Globals should be all caps
      * 
      * ### Notes:
      *     
-     * Best practice is to call alias() when a unique ID is first created for a user 
+     * The best practice is to call alias() when a unique ID is first created for a user 
      * (e.g., when a user first registers for an account and provides an email address).
      * alias() should never be called more than once for a given user, except to 
      * chain a newer ID to a previously new ID, as described above.
@@ -2651,9 +2655,9 @@ Globals should be all caps
     };
 
     /**
-     * Provide a string to recognize the user by.  The string passed to
+     * Provide a string to recognize the user by. The string passed to
      * this method will appear in the Mixpanel Streams product rather
-     * than an automatically generated name.  Name tags do not have to
+     * than an automatically generated name. Name tags do not have to
      * be unique.
      *
      * This value will only be included in Streams data.
@@ -2747,7 +2751,11 @@ Globals should be all caps
      * init() has a loaded function available to handle this automatically. For example:
      *
      *     // grab value for "user_id" after the mixpanel library has loaded
-     *     mixpanel.init("YOUR PROJECT TOKEN", {loaded: function(){user_id = mixpanel.get_property("user_id");}});
+     *     mixpanel.init("YOUR PROJECT TOKEN", {
+     *         loaded: function() {
+     *             user_id = mixpanel.get_property("user_id");
+     *         }
+     *     });
      *
      * @param {String} property_name The name of the super property you want to retrieve
      */
@@ -2856,7 +2864,7 @@ Globals should be all caps
 
     /*
      * Set properties on a user record, only if they do not yet exist.
-     * This will not overwrite previous people property values, unlike 
+     * This will not overwrite previous people property values, unlike
      * people.set().
      *
      * ### Usage:
