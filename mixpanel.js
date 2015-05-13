@@ -2554,8 +2554,8 @@ Globals should be all caps
      * ### Notes:
      *
      * You can call this function to overwrite a previously set
-     * unique id for the current user. Mixpanel cannot translate
-     * between ids at this time, so when you change a user's ID
+     * unique ID for the current user. Mixpanel cannot translate
+     * between IDs at this time, so when you change a user's ID
      * they will appear to be a new user.
      *
      * identify() should not be called to link anonymous activity to 
