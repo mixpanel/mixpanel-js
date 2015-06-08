@@ -855,7 +855,7 @@ mpmodule("mixpanel");
     });
 
     test("info properties included", 6, function() {
-        var info_props = "$os $browser $browser_version $referrer $referring_domain mp_lib".split(' ');
+        var info_props = "$os $browser $url $browser_version $referrer $referring_domain mp_lib".split(' ');
 
         var data = mixpanel.test.track("check info props");
         _.each(info_props, function(prop) {
