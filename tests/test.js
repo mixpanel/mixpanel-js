@@ -854,8 +854,8 @@ mpmodule("mixpanel");
         clearLibInstance(mixpanel.mpl3);
     });
 
-    test("info properties included", 6, function() {
-        var info_props = "$os $browser $browser_version $referrer $referring_domain mp_lib".split(' ');
+    test("info properties included", 7, function() {
+        var info_props = "$os $browser $current_url $browser_version $referrer $referring_domain mp_lib".split(' ');
 
         var data = mixpanel.test.track("check info props");
         _.each(info_props, function(prop) {
@@ -893,6 +893,14 @@ mpmodule("mixpanel");
         mixpanel.test.persistence.update_referrer_info(ref);
         equal(mixpanel.test.persistence.props[i_ref], ref, "Full referrer should be saved");
         equal(mixpanel.test.persistence.props[i_ref_d], "examixpanel.testle.com", "Just domain should be saved");
+    });
+
+    test("current url set correctly", 2, function() { 
+        var current_url = "$current_url";
+        var event = mixpanel.test.track("check current url");
+        var props = event.properties;
+        ok(current_url in props, "current url in props");
+        equal(props[current_url], window.location.href, "current url is properly set");
     });
 
     test("set_config", 2, function() {

@@ -1411,6 +1411,7 @@ Globals should be all caps
                 '$referring_domain': _.info.referringDomain(document.referrer),
                 '$device': _.info.device(userAgent)
             }), {
+                '$current_url': window.location.href,
                 '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera),
                 '$screen_height': screen.height,
                 '$screen_width': screen.width,
