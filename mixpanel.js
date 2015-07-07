@@ -2513,7 +2513,7 @@ Globals should be all caps
      * overwrite previous super property values, unlike register().
      *
      * ### Usage:
-     *     
+     *
      *     // register a super property for the first time only
      *     mixpanel.register_once('First Login Date', new Date());
      *
@@ -2559,11 +2559,11 @@ Globals should be all caps
      * between IDs at this time, so when you change a user's ID
      * they will appear to be a new user.
      *
-     * identify() should not be called to link anonymous activity to 
-     * subsequent activity when a unique ID is first assigned. 
-     * Use alias() when a unique ID is first assigned (registration), and  
-     * use identify() to identify the user with that unique ID on an ongoing 
-     * basis (e.g., each time a user logs in after registering). 
+     * identify() should not be called to link anonymous activity to
+     * subsequent activity when a unique ID is first assigned.
+     * Use alias() when a unique ID is first assigned (registration), and
+     * use identify() to identify the user with that unique ID on an ongoing
+     * basis (e.g., each time a user logs in after registering).
      * Do not call identify() at the same time as alias().
      *
      * @param {String} unique_id A string that uniquely identifies a user
@@ -2602,7 +2602,7 @@ Globals should be all caps
      *         loaded: function() {
      *             distinct_id = mixpanel.get_distinct_id();
      *         }
-     *     }); 
+     *     });
      */
     MixpanelLib.prototype.get_distinct_id = function() {
         return this.get_property('distinct_id');
@@ -2618,12 +2618,12 @@ Globals should be all caps
      *     mixpanel.alias("newer_id", "new_id");
      *
      * If the original ID is not passed in, we will use the current distinct_id - probably the auto-generated GUID.
-     * 
+     *
      * ### Notes:
-     *     
-     * The best practice is to call alias() when a unique ID is first created for a user 
+     *
+     * The best practice is to call alias() when a unique ID is first created for a user
      * (e.g., when a user first registers for an account and provides an email address).
-     * alias() should never be called more than once for a given user, except to 
+     * alias() should never be called more than once for a given user, except to
      * chain a newer ID to a previously new ID, as described above.
      *
      * @param {String} alias A unique identifier that you want to use for this user in the future.
@@ -4534,15 +4534,16 @@ Globals should be all caps
     // EXPORTS (for closure compiler)
 
     // Underscore Exports
-    _['toArray']         = _.toArray;
-    _['isObject']        = _.isObject;
-    _['JSONEncode']      = _.JSONEncode;
-    _['JSONDecode']      = _.JSONDecode;
-    _['isBlockedUA']     = _.isBlockedUA;
-    _['isEmptyObject']   = _.isEmptyObject;
-    _['info']            = _.info;
-    _['info']['device']  = _.info.device;
-    _['info']['browser'] = _.info.browser;
+    _['toArray']            = _.toArray;
+    _['isObject']           = _.isObject;
+    _['JSONEncode']         = _.JSONEncode;
+    _['JSONDecode']         = _.JSONDecode;
+    _['isBlockedUA']        = _.isBlockedUA;
+    _['isEmptyObject']      = _.isEmptyObject;
+    _['info']               = _.info;
+    _['info']['device']     = _.info.device;
+    _['info']['browser']    = _.info.browser;
+    _['info']['properties'] = _.info.properties;
 
     // MixpanelLib Exports
     MixpanelLib.prototype['init']                            = MixpanelLib.prototype.init;

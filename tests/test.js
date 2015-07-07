@@ -854,7 +854,7 @@ mpmodule("mixpanel");
         clearLibInstance(mixpanel.mpl3);
     });
 
-    test("info properties included", 6, function() {
+    test("info properties included", 7, function() {
         var info_props = "$os $browser $current_url $browser_version $referrer $referring_domain mp_lib".split(' ');
 
         var data = mixpanel.test.track("check info props");
