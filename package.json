@@ -7,8 +7,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo 'Browse to localhost:3000/tests'",
-    "start": "node testServer.js"
+    "start": "pushd examples; python -m SimpleHTTPServer; popd",
+    "test": "echo 'Browse to localhost:3000/tests' && node testServer.js"
   },
   "repository": {
     "type": "git",
