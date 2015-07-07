@@ -1,3 +1,7 @@
+**2.5.2** (7 Jul 2015)
+- automatically track current url
+- expose info.properties
+
 **2.5.1** (11 May 2015)
 - automatically track browser version (thanks @D1plo1d)
 
