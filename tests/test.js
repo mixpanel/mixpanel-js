@@ -895,6 +895,14 @@ mpmodule("mixpanel");
         equal(mixpanel.test.persistence.props[i_ref_d], "examixpanel.testle.com", "Just domain should be saved");
     });
 
+    test("current url set correctly", 2, function() {
+        var current_url = "$current_url";
+        var event = mixpanel.test.track("check current url");
+        var props = event.properties;
+        ok(current_url in props, "current url in props");
+        equal(props[current_url], window.location.href, "current url is properly set");
+    });
+
     test("set_config", 2, function() {
         ok(!mixpanel.config.test, "test isn't set already");
         mixpanel.set_config({ test: 1 });
