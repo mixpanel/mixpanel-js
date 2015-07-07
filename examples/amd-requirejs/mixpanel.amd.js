@@ -1,0 +1,1 @@
+../../build/mixpanel.amd.js

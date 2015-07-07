@@ -1,0 +1,13 @@
+{
+  "name": "mixpanel-amd-requirejs",
+  "version": "1.0.0",
+  "description": "Mixpanel example: AMD/RequireJS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "dev@mixpanel.com",
+  "license": "Apache-2.0",
+  "dependencies": {
+  }
+}
