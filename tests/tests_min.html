@@ -16,23 +16,9 @@
         <h2 id="qunit-userAgent"></h2>
         <ol id="qunit-tests"></ol>
         <div id="qunit-fixture"></div>
+        <script type="text/javascript" src="redirect-unless-referrer.js"></script>
         <script type="text/javascript" src="../mixpanel-jslib-snippet.min.test.js"></script>
         <script type="text/javascript">
-            function redirect(url) {
-                if (/MSIE (\d+\.\d+);/.test(navigator.userAgent)){
-                    var referLink = document.createElement('a');
-                    referLink.href = url;
-                    document.body.appendChild(referLink);
-                    referLink.click();
-                } else {
-                    window.location = url;
-                }
-            }
-
-            if (!document.referrer) {
-                // force referrer for tests
-                redirect(window.location + "?ref");
-            }
             $('#qunit-tests').addClass('hidepass')
 
             mixpanel.init("MIXPANEL_TOKEN",
