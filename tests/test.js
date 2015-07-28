@@ -32,6 +32,18 @@ var mpmodule = function(module_name, extra_setup, extra_teardown) {
                 clearLibInstance(mixpanel.test);
             }
 
+            // Necessary because the alias tests can't clean up after themselves, as there is no callback.
+            _.each(document.cookie.split(';'), function(c) {
+                var name = c.split('=')[0].replace(/^\s+|\s+$/g, '');
+                if (name.match(/mp_test_\d+_mixpanel$/)) {
+                    if (window.console) {
+                        console.log("removing cookie:", name);
+                    }
+                    cookie.remove(name);
+                    cookie.remove(name, true);
+                }
+            });
+
             if (extra_teardown) { extra_teardown.call(this); }
         }
     });
@@ -160,15 +172,19 @@ var cookie = {
     }
 };
 
-var wait = function(condition, callback, error_timeout) {
-    var start = new Date().getTime();
-    var f = function() {
-        if (typeof(error_timeout) !== "undefined" && new Date().getTime() - start >= error_timeout) { return callback(true); }
-
-        if (!condition()) { setTimeout(f, 100); }
-        else { callback(false); }
-    }
-    f();
+var untilDone = function(func) {
+    var timeout = setTimeout(function() {
+        ok(false, 'timed out');
+        start();
+    }, 5000);
+    var interval;
+    interval = setInterval(function() {
+        func(function() {
+            clearTimeout(timeout);
+            clearInterval(interval);
+            start();
+        });
+    }, 20);
 };
 
 function simulateEvent(element, type) {
@@ -230,14 +246,14 @@ window.test_async = function() {
     if (!lib_loaded) {
         module("async tracking");
 
-            test("priority functions", 2, function() {
-                stop();
-
-                wait(function() { return test1.properties !== null; }, function() {
-                    var p = test1.properties;
-                    same(p.mp_name_tag, test1.name, "name_tag should fire before track");
-                    same(p.distinct_id, test1.id, "identify should fire before track");
-                    start();
+            asyncTest("priority functions", 2, function() {
+                untilDone(function(done) {
+                    if (test1.properties !== null) {
+                        var p = test1.properties;
+                        same(p.mp_name_tag, test1.name, "name_tag should fire before track");
+                        same(p.distinct_id, test1.id, "identify should fire before track");
+                        done();
+                    }
                 });
             });
     } else {
@@ -300,19 +316,24 @@ mpmodule("mixpanel.track");
             result.push(2);
         });
 
-        setTimeout(function() {
-            function i(n) { return _.include(result, n); }
-            ok(i(1) && i(2), 'both callbacks executed.');
-            start();
-        }, 3000);
+        untilDone(function(done) {
+            function i (n) {
+                return _.include(result, n);
+            }
+
+            if (i(1) && i(2)) {
+                ok('both callbacks executed.');
+                done();
+            }
+        });
     });
 
     test("ip is honored", 2, function() {
-        mixpanel.test.set_config({ img: true });
+        mixpanel.test.set_config({img: true});
         mixpanel.test.track("ip enabled");
 
         var with_ip = $('img').get(-1);
-        mixpanel.test.set_config({ ip: 0 });
+        mixpanel.test.set_config({ip: 0});
         mixpanel.test.track("ip disabled");
         var without_ip = $('img').get(-1);
 
@@ -366,7 +387,7 @@ mpmodule("mixpanel.track");
 
         stop();
 
-        mixpanel.test.set_config({ img: true });
+        mixpanel.test.set_config({img: true});
         mixpanel.test.track("image tracking");
 
         if (window.console) {
@@ -378,10 +399,11 @@ mpmodule("mixpanel.track");
             }, "dom tracking should be disabled");
         }
 
-        wait(function() { return initial_image_count + 1 == $('img').length; }, function(timeout_fired) {
-            notOk(timeout_fired, "image tracking added an image to the page");
-            start();
-        }, 10000);
+        untilDone(function(done) {
+            if (initial_image_count + 1 === $('img').length) {
+                done();
+            }
+        });
     });
 
     test("should truncate properties to 255 characters", 7, function() {
@@ -1298,42 +1320,46 @@ xhrmodule("mixpanel._check_and_handle_notifications");
             var num_scripts = $('script').length;
             mixpanel.test._check_and_handle_notifications(this.id);
             stop();
-            setTimeout(function() {
-                same($('script').length, num_scripts + 1, "_check_and_handle_notifications should have fired off a request");
-                start();
-            }, 500);
+            untilDone(function(done) {
+                if ($('script').length === num_scripts + 1) {
+                    ok("_check_and_handle_notifications fired off a request")
+                    done();
+                }
+            });
         });
 
-        test("notifications are never checked again after identify()", 2, function() {
+        asyncTest("notifications are never checked again after identify()", 2, function() {
             var num_scripts = $('script').length;
             mixpanel.test.identify(this.id);
-            stop();
-            setTimeout(function() {
-                ok($('script').length >= num_scripts + 1, "identify should have fired off a request");
+            untilDone(function(done) {
+                if ($('script').length >= num_scripts + 1) {
+                    ok("identify fired off a request");
 
-                num_scripts = $('script').length;
-                mixpanel.test._check_and_handle_notifications(this.id);
-                mixpanel.test._check_and_handle_notifications(this.id);
-                mixpanel.test._check_and_handle_notifications(this.id);
-                mixpanel.test._check_and_handle_notifications(this.id);
-                mixpanel.test._check_and_handle_notifications(this.id);
-                setTimeout(function() {
-                    same($('script').length, num_scripts, "_check_and_handle_notifications after identify should not make requests");
-                    start();
-                }, 500);
-            }, 500);
+                    num_scripts = $('script').length;
+                    mixpanel.test._check_and_handle_notifications(this.id);
+                    mixpanel.test._check_and_handle_notifications(this.id);
+                    mixpanel.test._check_and_handle_notifications(this.id);
+                    mixpanel.test._check_and_handle_notifications(this.id);
+                    mixpanel.test._check_and_handle_notifications(this.id);
+                    setTimeout(function() {
+                        same($('script').length, num_scripts, "_check_and_handle_notifications after identify should not make requests");
+                        done();
+                    }, 500); // TODO: remove the 500 ms wait
+                }
+            });
         });
 
-        test("_check_and_handle_notifications honors disable_notifications config", 1, function() {
+        asyncTest("_check_and_handle_notifications honors disable_notifications config", 1, function() {
             var num_scripts = $('script').length;
             mixpanel.test.set_config({disable_notifications: true});
             mixpanel.test._check_and_handle_notifications(this.id);
             mixpanel.test.set_config({disable_notifications: false});
-            stop();
-            setTimeout(function() {
-                same($('script').length, num_scripts, "_check_and_handle_notifications should not have fired off a request");
-                start();
-            }, 500);
+            untilDone(function(done) {
+                if ($('script').length === num_scripts) {
+                    ok("_check_and_handle_notifications did not fire off a request");
+                    done();
+                }
+            });
         });
     }
 
@@ -1834,7 +1860,6 @@ mpmodule("mixpanel.people flushing");
     test("identify does not make a request if nothing is queued", 1, function() {
         var num_scripts = $('script').length;
         mixpanel.test.identify(this.id);
-
         stop();
         setTimeout(function() {
             // notification check results in extra script tag when !USE_XHR
@@ -1888,11 +1913,13 @@ mpmodule("in-app notification display");
             body: "notification body test",
             title: "hallo"
         });
-        setTimeout(function() {
-            same($('#mixpanel-notification-takeover').length, 1);
-            $('#mixpanel-notification-wrapper').remove();
-            start();
-        }, 2000);
+        untilDone(function(done) {
+            if ($('#mixpanel-notification-takeover').length === 1) {
+                $('#mixpanel-notification-wrapper').remove();
+                ok('success');
+                done();
+            }
+        });
     });
 
     asyncTest("mini notification with normal data adds itself to DOM", 1, function() {
@@ -1900,23 +1927,26 @@ mpmodule("in-app notification display");
             body: "notification body test",
             type: "mini"
         });
-        setTimeout(function() {
-            same($('#mixpanel-notification-mini').length, 1);
-            $('#mixpanel-notification-wrapper').remove();
-            start();
-        }, 2000);
+        untilDone(function(done) {
+            if ($('#mixpanel-notification-mini').length === 1) {
+                $('#mixpanel-notification-wrapper').remove();
+                ok('success');
+                done();
+            }
+        });
     });
 
-    asyncTest("notification does not show when images don't load", 1, function() {
+    test("notification does not show when images don't load", 1, function() {
         mixpanel._show_notification({
             body: "bad image body test",
             image_url: "http://notgonna.loadever.com/blablabla",
             title: "bad image title"
         });
+        stop();
         setTimeout(function() {
-            same($('#mixpanel-notification-takeover').length, 0);
+            ok($('#mixpanel-notification-takeover').length === 0);
             start();
-        }, 2000);
+        }, 500);
     });
 
     test("calling _show_notification with bad data does not halt execution", 1, function() {
@@ -1928,17 +1958,18 @@ mpmodule("in-app notification display");
         ok(true);
     });
 
-    asyncTest("notification prevents script injection", 2, function() {
+    asyncTest("notification prevents script injection", 1, function() {
         mixpanel._show_notification({
             body: 'injection test</div><img src="nope" onerror="window.injectedvar=42;"/>',
             title: "bad image title"
         });
-        setTimeout(function() {
-            same($('#mixpanel-notification-takeover').length, 1);
-            $('#mixpanel-notification-wrapper').remove();
-            ok(_.isUndefined(window.injectedvar), 'window.injectedvar should not exist');
-            start();
-        }, 2000);
+        untilDone(function(done) {
+            if ($('#mixpanel-notification-takeover').length === 1) {
+                $('#mixpanel-notification-wrapper').remove();
+                ok(_.isUndefined(window.injectedvar), 'window.injectedvar should not exist');
+                done();
+            }
+        });
     });
 
 mpmodule("verbose output");
@@ -2138,20 +2169,6 @@ if (USE_XHR) {
             this.requests[0].respond(500, { 'Content-Length': resp.length }, resp);
         });
 }
-
-// Necessary because the alias tests can't clean up after themselves, as there is no callback.
-setTimeout(function() {
-    _.each(document.cookie.split(';'), function(c) {
-        var name = c.split('=')[0].replace(/^\s+|\s+$/g, '');
-        if (name.match(/mp_test_\d+_mixpanel$/)) {
-            if (window.console) {
-                console.log("removing cookie:", name);
-            }
-            cookie.remove(name);
-            cookie.remove(name, true);
-        }
-    });
-}, 5000);
 
 }, 10);
 };
