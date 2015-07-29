@@ -235,6 +235,7 @@ window.test_async = function() {
         this.persistence.clear();
     });
 
+    mixpanel.time_event('test');
     mixpanel.track('test', {}, function(response, data) {
         test1.properties = data.properties;
     });
@@ -246,12 +247,13 @@ window.test_async = function() {
     if (!lib_loaded) {
         module("async tracking");
 
-            asyncTest("priority functions", 2, function() {
+            asyncTest("priority functions", 3, function() {
                 untilDone(function(done) {
                     if (test1.properties !== null) {
                         var p = test1.properties;
                         same(p.mp_name_tag, test1.name, "name_tag should fire before track");
                         same(p.distinct_id, test1.id, "identify should fire before track");
+                        ok(!_.isUndefined(p.$duration), "duration should be set");
                         done();
                     }
                 });
@@ -434,6 +436,19 @@ mpmodule("mixpanel.track");
 
         same(data.properties.$screen_height, screen.height);
         same(data.properties.$screen_width, screen.width);
+    });
+
+mpmodule("mixpanel.time_event", function () {
+    this.clock = sinon.useFakeTimers();
+}, function () {
+    this.clock.restore();
+});
+
+    test("it sets $duration to the elapsed time between time_event and track", 1, function() {
+        mixpanel.test.time_event('test');
+        this.clock.tick(123);
+        var data = mixpanel.test.track('test');
+        same(data.properties.$duration, 0.123);
     });
 
 mpmodule("json");

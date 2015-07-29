@@ -63,6 +63,7 @@ Globals should be all caps
 /** @const */       , PEOPLE_DISTINCT_ID_KEY    = "$people_distinct_id"
 /** @const */       , ALIAS_ID_KEY              = "__alias"
 /** @const */       , CAMPAIGN_IDS_KEY          = "__cmpns"
+/** @const */       , EVENT_TIMERS_KEY          = "__timers"
 /** @const */       , RESERVED_PROPERTIES       = [
                         SET_QUEUE_KEY,
                         SET_ONCE_QUEUE_KEY,
@@ -71,7 +72,8 @@ Globals should be all caps
                         UNION_QUEUE_KEY,
                         PEOPLE_DISTINCT_ID_KEY,
                         ALIAS_ID_KEY,
-                        CAMPAIGN_IDS_KEY
+                        CAMPAIGN_IDS_KEY,
+                        EVENT_TIMERS_KEY
                     ];
 
 /*
@@ -2014,6 +2016,23 @@ Globals should be all caps
         return this['props'][key] || (this['props'][key] = default_val);
     };
 
+    MixpanelPersistence.prototype.set_event_timer = function(event_name, timestamp) {
+        var timers = this['props'][EVENT_TIMERS_KEY] || {};
+        timers[event_name] = timestamp;
+        this['props'][EVENT_TIMERS_KEY] = timers;
+        this.save();
+    };
+
+    MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
+        var timers = this['props'][EVENT_TIMERS_KEY] || {};
+        var timestamp = timers[event_name];
+        if (!_.isUndefined(timestamp)) {
+            delete this['props'][EVENT_TIMERS_KEY][event_name];
+            this.save();
+        }
+        return timestamp;
+    };
+
     /**
      * create_mplib(token:string, config:object, name:string)
      *
@@ -2360,9 +2379,7 @@ Globals should be all caps
             return;
         }
 
-        if (_.isBlockedUA(userAgent)
-        ||  this._flags.disable_all_events
-        ||  _.include(this.__disabled_events, event_name)) {
+        if (this._event_is_disabled(event_name)) {
             if (typeof(callback) !== 'undefined') { callback(0); }
             return;
         }
@@ -2370,6 +2387,13 @@ Globals should be all caps
         // set defaults
         properties = properties || {};
         properties['token'] = this.get_config('token');
+
+        // set $duration if time_event was previously called for this event
+        var start_timestamp = this['persistence'].remove_event_timer(event_name);
+        if (!_.isUndefined(start_timestamp)) {
+            var duration_in_ms = new Date().getTime() - start_timestamp;
+            properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
+        }
 
         // update persistence
         this['persistence'].update_search_keyword(document.referrer);
@@ -2484,6 +2508,33 @@ Globals should be all caps
      */
     MixpanelLib.prototype.track_forms = function() {
         return this._track_dom.call(this, FormTracker, arguments);
+    };
+
+    /**
+     * Time an event
+     *
+     * ### Usage:
+     *
+     *     // time an event named "Registered"
+     *     mixpanel.time_event("Registered");
+     *     mixpanel.track("Registered", {"Gender": "Male", "Age": 21});
+     *
+     * To record the time until an event is triggered and to automatically send that time as a property when the event is sent.
+     *
+     * @param {String} event_name The name of the event.  A $duration property containing the number of seconds between
+     * the time_event call and the track call will be added to the next event with this name.
+     */
+    MixpanelLib.prototype.time_event = function(event_name) {
+        if (typeof(event_name) === "undefined") {
+            console.error("No event name provided to mixpanel.time_event");
+            return;
+        }
+
+        if (this._event_is_disabled(event_name)) {
+            return;
+        }
+
+        this['persistence'].set_event_timer(event_name,  new Date().getTime());
     };
 
     /**
@@ -2770,6 +2821,12 @@ Globals should be all caps
             name = PRIMARY_INSTANCE_NAME + "." + name;
         }
         return name;
+    };
+
+    MixpanelLib.prototype._event_is_disabled = function(event_name) {
+        return _.isBlockedUA(userAgent)
+            || this._flags.disable_all_events
+            || _.include(this.__disabled_events, event_name);
     };
 
     MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
@@ -4548,6 +4605,7 @@ Globals should be all caps
     // MixpanelLib Exports
     MixpanelLib.prototype['init']                            = MixpanelLib.prototype.init;
     MixpanelLib.prototype['disable']                         = MixpanelLib.prototype.disable;
+    MixpanelLib.prototype['time_event']                      = MixpanelLib.prototype.time_event;
     MixpanelLib.prototype['track']                           = MixpanelLib.prototype.track;
     MixpanelLib.prototype['track_links']                     = MixpanelLib.prototype.track_links;
     MixpanelLib.prototype['track_forms']                     = MixpanelLib.prototype.track_forms;
