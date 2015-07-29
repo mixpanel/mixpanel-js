@@ -1302,6 +1302,8 @@ Globals should be all caps
                 return 'BlackBerry';
             } else if (_.includes(user_agent, "FBIOS")) {
                 return "Facebook Mobile";
+            } else if (_.includes(user_agent, "Edge")) {
+            	return "Microsoft Edge";
             } else if (_.includes(user_agent, "Chrome")) {
                 return "Chrome";
             } else if (_.includes(user_agent, "CriOS")) {
@@ -1344,7 +1346,8 @@ Globals should be all caps
                 "BlackBerry":        /BlackBerry (\d+(\.\d+)?)/,
                 "Android Mobile":    /android\s(\d+(\.\d+)?)/,
                 "Internet Explorer": /(rv:|MSIE )(\d+(\.\d+)?)/,
-                "Mozilla":           /rv:(\d+(\.\d+)?)/
+                "Mozilla":           /rv:(\d+(\.\d+)?)/,
+                "Edge":              /Edge\/(\d+(\.\d+)?)/
             };
             var regex = versionRegexs[browser];
             if (regex == undefined) {
