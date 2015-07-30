@@ -2547,7 +2547,7 @@ Globals should be all caps
      * ### Usage:
      *
      *     // register "Gender" as a super property
-     *     mixpanel.register('Gender', 'Female');
+     *     mixpanel.register({'Gender': 'Female'});
      *
      *     // register several super properties when a user signs up
      *     mixpanel.register({
@@ -2569,7 +2569,9 @@ Globals should be all caps
      * ### Usage:
      *
      *     // register a super property for the first time only
-     *     mixpanel.register_once('First Login Date', new Date());
+     *     mixpanel.register_once({
+     *         'First Login Date': new Date().toISOString()
+     *     });
      *
      * ### Notes:
      *
