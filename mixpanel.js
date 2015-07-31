@@ -878,7 +878,7 @@ Globals should be all caps
     _.HTTPBuildQuery = function(formdata, arg_separator) {
         var key, use_val, use_key, tmp_arr = [];
 
-        if (typeof(arg_separator) === "undefined") {
+        if (_.isUndefined(arg_separator)) {
             arg_separator = '&';
         }
 
@@ -2096,7 +2096,7 @@ Globals should be all caps
      * @param {String} [name]    The name for the new mixpanel instance that you want created
      */
     MixpanelLib.prototype.init = function (token, config, name) {
-        if (typeof(name) === "undefined") {
+        if (_.isUndefined(name)) {
             console.error("You must name your new library: init(token, config, name)");
             return;
         }
@@ -2374,7 +2374,7 @@ Globals should be all caps
      * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
      */
     MixpanelLib.prototype.track = function(event_name, properties, callback) {
-        if (typeof(event_name) === "undefined") {
+        if (_.isUndefined(event_name)) {
             console.error("No event name provided to mixpanel.track");
             return;
         }
@@ -2443,7 +2443,7 @@ Globals should be all caps
      * @api private
      */
     MixpanelLib.prototype.track_pageview = function(page) {
-        if (typeof(page) === "undefined") { page = document.location.href; }
+        if (_.isUndefined(page)) { page = document.location.href; }
         this.track("mp_page_view", _.info.pageviewInfo(page));
     };
 
@@ -2525,7 +2525,7 @@ Globals should be all caps
      * the time_event call and the track call will be added to the next event with this name.
      */
     MixpanelLib.prototype.time_event = function(event_name) {
-        if (typeof(event_name) === "undefined") {
+        if (_.isUndefined(event_name)) {
             console.error("No event name provided to mixpanel.time_event");
             return;
         }
