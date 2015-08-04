@@ -2519,10 +2519,11 @@ Globals should be all caps
      *     mixpanel.time_event("Registered");
      *     mixpanel.track("Registered", {"Gender": "Male", "Age": 21});
      *
-     * To record the time until an event is triggered and to automatically send that time as a property when the event is sent.
+     * When called for a particular event name, the next track call for that event
+     * name will include the elapsed time between the 'time_event' and 'track'
+     * calls. This value is stored as seconds in the '$duration' property.
      *
-     * @param {String} event_name The name of the event.  A $duration property containing the number of seconds between
-     * the time_event call and the track call will be added to the next event with this name.
+     * @param {String} event_name The name of the event.
      */
     MixpanelLib.prototype.time_event = function(event_name) {
         if (_.isUndefined(event_name)) {
