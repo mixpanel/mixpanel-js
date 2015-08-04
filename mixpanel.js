@@ -1338,7 +1338,7 @@ Globals should be all caps
                 "Chrome iOS":        /Chrome\/(\d+(\.\d+)?)/,
                 "Safari":            /Version\/(\d+(\.\d+)?)/,
                 "Mobile Safari":     /Version\/(\d+(\.\d+)?)/,
-                "Opera":             /Opera\/(\d+(\.\d+)?)/,
+                "Opera":             /(Opera|OPR)\/(\d+(\.\d+)?)/,
                 "Firefox":           /Firefox\/(\d+(\.\d+)?)/,
                 "Konqueror":         /Konqueror:(\d+(\.\d+)?)/,
                 "BlackBerry":        /BlackBerry (\d+(\.\d+)?)/,
