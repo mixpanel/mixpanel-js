@@ -1,3 +1,7 @@
+**2.6.0** (5 Aug 2015)
+- add `time_event` method
+- update snippet to load mixpanel correctly from cdn when file is opened locally
+
 **2.5.2** (7 Jul 2015)
 - automatically track current url
 - expose info.properties
