@@ -2511,7 +2511,9 @@ Globals should be all caps
     };
 
     /**
-     * Time an event
+     * Time an event by including the time between this call and a
+     * later 'track' call for the same event in the properties sent
+     * with the event.
      *
      * ### Usage:
      *
