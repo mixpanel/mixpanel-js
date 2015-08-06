@@ -69,8 +69,13 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
         script.type = "text/javascript";
         script.async = true;
 
-        var protocol = (document.location.protocol === "https:" ? "https:" : "http:");
-        script.src = typeof MIXPANEL_CUSTOM_LIB_URL !== 'undefined' ? MIXPANEL_CUSTOM_LIB_URL : protocol + MIXPANEL_LIB_URL;
+        if (typeof MIXPANEL_CUSTOM_LIB_URL !== 'undefined') {
+            script.src = MIXPANEL_CUSTOM_LIB_URL;
+        } else if (document.location.protocol === 'file:' && MIXPANEL_LIB_URL.match(/'^\/\/'/)) {
+            script.src = 'https:' + MIXPANEL_LIB_URL;
+        } else {
+            script.src = MIXPANEL_LIB_URL;
+        }
 
         first_script = document.getElementsByTagName("script")[0];
         first_script.parentNode.insertBefore(script, first_script);
