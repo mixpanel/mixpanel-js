@@ -1295,7 +1295,7 @@ Globals should be all caps
          */
         browser: function(user_agent, vendor, opera) {
             var vendor = vendor || ''; // vendor is undefined for at least IE9
-            if (opera) {
+            if (opera || /(OPR)/i.test(navigator.userAgent)) {
                 if (_.includes(user_agent, "Mini")) {
                     return "Opera Mini";
                 }
@@ -1346,7 +1346,7 @@ Globals should be all caps
                 "Chrome iOS":        /Chrome\/(\d+(\.\d+)?)/,
                 "Safari":            /Version\/(\d+(\.\d+)?)/,
                 "Mobile Safari":     /Version\/(\d+(\.\d+)?)/,
-                "Opera":             /Opera\/(\d+(\.\d+)?)/,
+                "Opera":             /(Opera|OPR)\/(\d+(\.\d+)?)/,
                 "Firefox":           /Firefox\/(\d+(\.\d+)?)/,
                 "Konqueror":         /Konqueror:(\d+(\.\d+)?)/,
                 "BlackBerry":        /BlackBerry (\d+(\.\d+)?)/,
