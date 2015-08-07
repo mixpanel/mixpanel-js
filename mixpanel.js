@@ -1302,6 +1302,10 @@ Globals should be all caps
                 return "Opera";
             } else if (/(BlackBerry|PlayBook|BB10)/i.test(user_agent)) {
                 return 'BlackBerry';
+            } else if (_.includes(user_agent, "IEMobile") || _.includes(user_agent, "WPDesktop")) {
+                return "Internet Explorer Mobile";
+            } else if (_.includes(user_agent, "Edge")) {
+                return "Microsoft Edge";
             } else if (_.includes(user_agent, "FBIOS")) {
                 return "Facebook Mobile";
             } else if (_.includes(user_agent, "Chrome")) {
@@ -1336,6 +1340,8 @@ Globals should be all caps
         browserVersion: function(userAgent, vendor, opera) {
             var browser = _.info.browser(userAgent, vendor, opera);
             var versionRegexs = {
+                "Internet Explorer Mobile": /rv:(\d+(\.\d+)?)/,
+                "Microsoft Edge":    /Edge\/(\d+(\.\d+)?)/,
                 "Chrome":            /Chrome\/(\d+(\.\d+)?)/,
                 "Chrome iOS":        /Chrome\/(\d+(\.\d+)?)/,
                 "Safari":            /Version\/(\d+(\.\d+)?)/,
@@ -1362,7 +1368,7 @@ Globals should be all caps
         os: function() {
             var a = userAgent;
             if (/Windows/i.test(a)) {
-                if (/Phone/.test(a)) { return 'Windows Mobile'; }
+                if (/Phone/.test(a) || /WPDesktop/.test(a)) { return 'Windows Phone'; }
                 return 'Windows';
             } else if (/(iPhone|iPad|iPod)/.test(a)) {
                 return 'iOS';
@@ -1384,12 +1390,12 @@ Globals should be all caps
                 return 'iPad';
             } else if (/iPod/.test(user_agent)) {
                 return 'iPod Touch';
+            } else if (/Windows Phone/i.test(user_agent) || /WPDesktop/.test(user_agent)) {
+                return 'Windows Phone';
             } else if (/iPhone/.test(user_agent)) {
                 return 'iPhone';
             } else if (/(BlackBerry|PlayBook|BB10)/i.test(user_agent)) {
                 return 'BlackBerry';
-            } else if (/Windows Phone/i.test(user_agent)) {
-                return 'Windows Phone';
             } else if (/Android/.test(user_agent)) {
                 return 'Android';
             } else {
