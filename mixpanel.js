@@ -2512,7 +2512,9 @@ Globals should be all caps
      * Register a set of super properties only once. This will not
      * overwrite previous super property values, unlike register().
      *
-     * ### Usage: * *     // register a super property for the first time only
+     * ### Usage:
+     *
+     *     // register a super property for the first time only
      *     mixpanel.register_once({
      *         'First Login Date': new Date().toISOString()
      *     });
