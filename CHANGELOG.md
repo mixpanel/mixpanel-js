@@ -1,3 +1,7 @@
+**2.6.1** (7 Aug 2015)
+- improve browser/OS detection for MS Edge and IE Mobile (thanks @bohanyang) and Opera
+- handle relative URLs better in snippet loader
+
 **2.6.0** (5 Aug 2015)
 - add `time_event` method
 - update snippet to load mixpanel correctly from cdn when file is opened locally
