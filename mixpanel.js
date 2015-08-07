@@ -1341,18 +1341,18 @@ Globals should be all caps
             var browser = _.info.browser(userAgent, vendor, opera);
             var versionRegexs = {
                 "Internet Explorer Mobile": /rv:(\d+(\.\d+)?)/,
-                "Microsoft Edge":    /Edge\/(\d+(\.\d+)?)/,
-                "Chrome":            /Chrome\/(\d+(\.\d+)?)/,
-                "Chrome iOS":        /Chrome\/(\d+(\.\d+)?)/,
-                "Safari":            /Version\/(\d+(\.\d+)?)/,
-                "Mobile Safari":     /Version\/(\d+(\.\d+)?)/,
-                "Opera":             /(Opera|OPR)\/(\d+(\.\d+)?)/,
-                "Firefox":           /Firefox\/(\d+(\.\d+)?)/,
-                "Konqueror":         /Konqueror:(\d+(\.\d+)?)/,
-                "BlackBerry":        /BlackBerry (\d+(\.\d+)?)/,
-                "Android Mobile":    /android\s(\d+(\.\d+)?)/,
-                "Internet Explorer": /(rv:|MSIE )(\d+(\.\d+)?)/,
-                "Mozilla":           /rv:(\d+(\.\d+)?)/
+                "Microsoft Edge":           /Edge\/(\d+(\.\d+)?)/,
+                "Chrome":                   /Chrome\/(\d+(\.\d+)?)/,
+                "Chrome iOS":               /Chrome\/(\d+(\.\d+)?)/,
+                "Safari":                   /Version\/(\d+(\.\d+)?)/,
+                "Mobile Safari":            /Version\/(\d+(\.\d+)?)/,
+                "Opera":                    /(Opera|OPR)\/(\d+(\.\d+)?)/,
+                "Firefox":                  /Firefox\/(\d+(\.\d+)?)/,
+                "Konqueror":                /Konqueror:(\d+(\.\d+)?)/,
+                "BlackBerry":               /BlackBerry (\d+(\.\d+)?)/,
+                "Android Mobile":           /android\s(\d+(\.\d+)?)/,
+                "Internet Explorer":        /(rv:|MSIE )(\d+(\.\d+)?)/,
+                "Mozilla":                  /rv:(\d+(\.\d+)?)/
             };
             var regex = versionRegexs[browser];
             if (regex == undefined) {

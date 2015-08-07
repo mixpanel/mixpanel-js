@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 if [ -z "$1" ]; then
     COMPILER=vendor/closure-compiler/compiler.jar
 else
