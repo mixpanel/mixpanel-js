@@ -1,3 +1,6 @@
+**2.6.2** (11 Aug 2015)
+- fix relative URL handling in snippet loader
+
 **2.6.1** (7 Aug 2015)
 - improve browser/OS detection for MS Edge and IE Mobile (thanks @bohanyang) and Opera
 - handle relative URLs better in snippet loader

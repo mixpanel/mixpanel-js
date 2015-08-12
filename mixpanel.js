@@ -81,7 +81,7 @@ Globals should be all caps
  */
     var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://"),
 
-        LIB_VERSION = '2.6.1',
+        LIB_VERSION = '2.6.2',
         SNIPPET_VERSION = (mixpanel && mixpanel['__SV']) || 0,
 
         // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
