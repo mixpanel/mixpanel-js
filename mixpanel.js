@@ -1386,12 +1386,12 @@ Globals should be all caps
         },
 
         device: function(user_agent) {
-            if (/iPad/.test(user_agent)) {
+            if (/Windows Phone/i.test(user_agent) || /WPDesktop/.test(user_agent)) {
+                return 'Windows Phone';
+            } else if (/iPad/.test(user_agent)) {
                 return 'iPad';
             } else if (/iPod/.test(user_agent)) {
                 return 'iPod Touch';
-            } else if (/Windows Phone/i.test(user_agent) || /WPDesktop/.test(user_agent)) {
-                return 'Windows Phone';
             } else if (/iPhone/.test(user_agent)) {
                 return 'iPhone';
             } else if (/(BlackBerry|PlayBook|BB10)/i.test(user_agent)) {
