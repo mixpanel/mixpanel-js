@@ -1,0 +1,1 @@
+../../build/mixpanel.umd.js
