@@ -1,3 +1,7 @@
+**2.6.3** (11 Sep 2015)
+- better Windows Phone detection
+- enable JS strict mode
+
 **2.6.2** (11 Aug 2015)
 - fix relative URL handling in snippet loader
 
