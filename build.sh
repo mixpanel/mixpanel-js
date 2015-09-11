@@ -1,5 +1,6 @@
 #!/bin/bash
 
+./node_modules/.bin/rollup -i src/loader-module.js -f amd -o build/mixpanel.amd.js
 ./node_modules/.bin/rollup -i src/loader-module.js -f cjs -o build/mixpanel.cjs.js
 ./node_modules/.bin/browserify src/loader-globals.js -t [ babelify --compact false ] --outfile build/mixpanel.globals.js
 
