@@ -2,6 +2,7 @@
 
 ./node_modules/.bin/rollup -i src/loader-module.js -f amd -o build/mixpanel.amd.js
 ./node_modules/.bin/rollup -i src/loader-module.js -f cjs -o build/mixpanel.cjs.js
+./node_modules/.bin/rollup -i src/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel
 ./node_modules/.bin/browserify src/loader-globals.js -t [ babelify --compact false ] --outfile build/mixpanel.globals.js
 
 if [ -z "$1" ]; then
