@@ -29,6 +29,7 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 (function (mixpanel) {
+'use strict';
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -4742,6 +4743,17 @@ Globals should be all caps
         });
     }
 
+    function do_scroll_check() {
+        try {
+            document.documentElement.doScroll("left");
+        } catch(e) {
+            setTimeout(do_scroll_check, 1);
+            return;
+        }
+
+        dom_loaded_handler();
+    };
+
     if (document.addEventListener) {
         if (document.readyState == "complete") {
             // safari 4 can fire the DOMContentLoaded event before loading all
@@ -4763,17 +4775,6 @@ Globals should be all caps
         } catch(e) {}
 
         if (document.documentElement.doScroll && toplevel) {
-            function do_scroll_check() {
-                try {
-                    document.documentElement.doScroll("left");
-                } catch(e) {
-                    setTimeout(do_scroll_check, 1);
-                    return;
-                }
-
-                dom_loaded_handler();
-            };
-
             do_scroll_check();
         }
     }
