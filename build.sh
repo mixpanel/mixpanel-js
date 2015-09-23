@@ -19,6 +19,6 @@ java -jar $COMPILER --js mixpanel-jslib-snippet.js --js_output_file mixpanel-jsl
 
 java -jar $COMPILER --js mixpanel-jslib-snippet.js --js_output_file mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../mixpanel.min.js"'
 
-pushd examples/commonjs-browserify; npm run build; popd
-pushd examples/es2015-babelify; npm run build; popd
-pushd examples/umd-webpack; npm run build; popd
+pushd examples/commonjs-browserify; npm install && npm run build; popd
+pushd examples/es2015-babelify; npm install && npm run build; popd
+pushd examples/umd-webpack; npm install && npm run build; popd
