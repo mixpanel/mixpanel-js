@@ -2991,7 +2991,7 @@ var global_context = bootstrap_options.global_context,
      *     mixpanel.people.increment('page_views');
      *
      *     // to decrement a counter, pass a negative number
-     *     mixpanel.people.increment('credits_left': -1);
+     *     mixpanel.people.increment('credits_left', -1);
      *
      *     // like mixpanel.people.set(), you can increment multiple
      *     // properties at once:

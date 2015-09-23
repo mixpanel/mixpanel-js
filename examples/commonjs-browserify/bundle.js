@@ -1,4 +1,14 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var mixpanel = require('./mixpanel.cjs.js');
+
+mixpanel.init("FAKE_TOKEN", {
+    debug: true,
+    loaded: function() {
+        alert("Mixpanel loaded successfully via Browserify/CommonJS");
+    }
+});
+
+},{"./mixpanel.cjs.js":2}],2:[function(require,module,exports){
 'use strict';
 
 /*
@@ -2992,7 +3002,7 @@ var global_context = bootstrap_options.global_context,
      *     mixpanel.people.increment('page_views');
      *
      *     // to decrement a counter, pass a negative number
-     *     mixpanel.people.increment('credits_left': -1);
+     *     mixpanel.people.increment('credits_left', -1);
      *
      *     // like mixpanel.people.set(), you can increment multiple
      *     // properties at once:
@@ -4830,14 +4840,4 @@ bootstrap_sdk({
 var loader_module = mpglobal.mixpanel;
 
 module.exports = loader_module;
-},{}],2:[function(require,module,exports){
-var mixpanel = require('./mixpanel.cjs.js');
-
-mixpanel.init("FAKE_TOKEN", {
-    debug: true,
-    loaded: function() {
-        alert("Mixpanel loaded successfully via Browserify/CommonJS");
-    }
-});
-
-},{"./mixpanel.cjs.js":1}]},{},[2]);
+},{}]},{},[1]);
