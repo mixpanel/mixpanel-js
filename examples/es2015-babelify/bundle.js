@@ -33,25 +33,21 @@ module.exports = exports['default'];
 
 },{"./mixpanel-core":3}],3:[function(require,module,exports){
 /*
-* Mixpanel JS Library
-*
-* Copyright 2012, Mixpanel, Inc. All Rights Reserved
-* http://mixpanel.com/
-*
-* Includes portions of Underscore.js
-* http://documentcloud.github.com/underscore/
-* (c) 2011 Jeremy Ashkenas, DocumentCloud Inc.
-* Released under the MIT License.
-*/
+ * Mixpanel JS Library
+ *
+ * Copyright 2012, Mixpanel, Inc. All Rights Reserved
+ * http://mixpanel.com/
+ *
+ * Includes portions of Underscore.js
+ * http://documentcloud.github.com/underscore/
+ * (c) 2011 Jeremy Ashkenas, DocumentCloud Inc.
+ * Released under the MIT License.
+ */
 
 // ==ClosureCompiler==
 // @compilation_level ADVANCED_OPTIMIZATIONS
 // @output_file_name mixpanel-2.6.min.js
 // ==/ClosureCompiler==
-
-/*
-Will export window.mixpanel
-*/
 
 /*
 SIMPLE STYLE GUIDE:
@@ -68,9 +64,13 @@ Globals should be all caps
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.init_as_module = init_as_module;
 exports.init_from_snippet = init_from_snippet;
-var mixpanel_master, global_context, init_type;
+exports.init_as_module = init_as_module;
+var init_type, // MODULE or SNIPPET loader
+mixpanel_master; // main mixpanel instance / object
+
+var INIT_MODULE = 0,
+    INIT_SNIPPET = 1;
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -139,8 +139,8 @@ USE_XHR = window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest(),
 ENQUEUE_REQUESTS = !USE_XHR && userAgent.indexOf('MSIE') == -1 && userAgent.indexOf('Mozilla') == -1;
 
 /*
-* Closure-level globals
-*/
+ * Module-level globals
+ */
 var _ = {},
     DEBUG = false,
     DEFAULT_CONFIG = {
@@ -1063,11 +1063,11 @@ _.register_event = (function () {
     // https://gist.github.com/1930440
 
     /**
-    * @param {Object} element
-    * @param {string} type
-    * @param {function(...[*])} handler
-    * @param {boolean=} oldSchool
-    */
+     * @param {Object} element
+     * @param {string} type
+     * @param {function(...[*])} handler
+     * @param {boolean=} oldSchool
+     */
     var register_event = function register_event(element, type, handler, oldSchool) {
         if (!element) {
             console.error("No valid element provided to register_event");
@@ -2125,7 +2125,7 @@ var create_mplib = function create_mplib(token, config, name) {
     var instance,
         target = name === PRIMARY_INSTANCE_NAME ? mixpanel_master : mixpanel_master[name];
 
-    if (target && init_type === 'module') {
+    if (target && init_type === INIT_MODULE) {
         instance = target;
     } else {
         if (target && !_.isArray(target)) {
@@ -4668,7 +4668,10 @@ var override_mp_init_func = function override_mp_init_func() {
                 instances[PRIMARY_INSTANCE_NAME] = instance;
             }
 
-            global_context[PRIMARY_INSTANCE_NAME] = mixpanel_master = instance;
+            mixpanel_master = instance;
+            if (init_type === INIT_SNIPPET) {
+                window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+            }
             extend_mp();
         }
     };
@@ -4731,24 +4734,9 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
     _.register_event(window, 'load', dom_loaded_handler, true);
 };
 
-function init_as_module() {
-    mixpanel_master = window['mixpanel'] || [];
-    global_context = {};
-    init_type = 'module';
-
-    override_mp_init_func();
-    mixpanel_master['init']();
-    global_context[PRIMARY_INSTANCE_NAME] = mixpanel_master = new MixpanelLib();
-    override_mp_init_func();
-    add_dom_loaded_handler();
-
-    return mixpanel_master;
-}
-
 function init_from_snippet() {
-    mixpanel_master = window['mixpanel'];
-    global_context = window;
-    init_type = 'snippet';
+    init_type = INIT_SNIPPET;
+    mixpanel_master = window[PRIMARY_INSTANCE_NAME];
 
     // Initialization
     if (_.isUndefined(mixpanel_master)) {
@@ -4770,12 +4758,8 @@ function init_from_snippet() {
 
     // Load instances of the Mixpanel Library
     _.each(mixpanel_master['_i'], function (item) {
-        var name, instance;
         if (item && _.isArray(item)) {
-            name = item[item.length - 1];
-            instance = create_mplib.apply(this, item);
-
-            instances[name] = instance;
+            instances[item[item.length - 1]] = create_mplib.apply(this, item);
         }
     });
 
@@ -4789,5 +4773,20 @@ function init_from_snippet() {
 
     add_dom_loaded_handler();
 }
+
+;
+
+function init_as_module() {
+    init_type = INIT_MODULE;
+    mixpanel_master = new MixpanelLib();
+
+    override_mp_init_func();
+    mixpanel_master['init']();
+    add_dom_loaded_handler();
+
+    return mixpanel_master;
+}
+
+;
 
 },{}]},{},[1]);

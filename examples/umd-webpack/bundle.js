@@ -68,25 +68,21 @@
 	}(this, function () { 'use strict';
 
 	    /*
-	    * Mixpanel JS Library
-	    *
-	    * Copyright 2012, Mixpanel, Inc. All Rights Reserved
-	    * http://mixpanel.com/
-	    *
-	    * Includes portions of Underscore.js
-	    * http://documentcloud.github.com/underscore/
-	    * (c) 2011 Jeremy Ashkenas, DocumentCloud Inc.
-	    * Released under the MIT License.
-	    */
+	     * Mixpanel JS Library
+	     *
+	     * Copyright 2012, Mixpanel, Inc. All Rights Reserved
+	     * http://mixpanel.com/
+	     *
+	     * Includes portions of Underscore.js
+	     * http://documentcloud.github.com/underscore/
+	     * (c) 2011 Jeremy Ashkenas, DocumentCloud Inc.
+	     * Released under the MIT License.
+	     */
 
 	    // ==ClosureCompiler==
 	    // @compilation_level ADVANCED_OPTIMIZATIONS
 	    // @output_file_name mixpanel-2.6.min.js
 	    // ==/ClosureCompiler==
-
-	    /*
-	    Will export window.mixpanel
-	    */
 
 	    /*
 	    SIMPLE STYLE GUIDE:
@@ -98,9 +94,10 @@
 	    Globals should be all caps
 	    */
 
-	    var mixpanel_master;
-	    var global_context;
 	    var init_type;
+	    var mixpanel_master;
+	    var INIT_MODULE  = 0;
+	    var INIT_SNIPPET = 1;
 	    var ArrayProto     = Array.prototype;
 	    var FuncProto      = Function.prototype;
 	    var ObjProto       = Object.prototype;
@@ -1047,11 +1044,11 @@
 	        // https://gist.github.com/1930440
 
 	        /**
-	        * @param {Object} element
-	        * @param {string} type
-	        * @param {function(...[*])} handler
-	        * @param {boolean=} oldSchool
-	        */
+	         * @param {Object} element
+	         * @param {string} type
+	         * @param {function(...[*])} handler
+	         * @param {boolean=} oldSchool
+	         */
 	        var register_event = function(element, type, handler, oldSchool) {
 	            if (!element) {
 	                console.error("No valid element provided to register_event");
@@ -2095,7 +2092,7 @@
 	        var instance,
 	            target = (name === PRIMARY_INSTANCE_NAME) ? mixpanel_master : mixpanel_master[name];
 
-	        if (target && init_type === 'module') {
+	        if (target && init_type === INIT_MODULE) {
 	            instance = target;
 	        } else {
 	            if (target && !_.isArray(target)) {
@@ -4738,7 +4735,10 @@
 	                    instances[PRIMARY_INSTANCE_NAME] = instance;
 	                }
 
-	                global_context[PRIMARY_INSTANCE_NAME] = mixpanel_master = instance;
+	                mixpanel_master = instance;
+	                if (init_type === INIT_SNIPPET) {
+	                    window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+	                }
 	                extend_mp();
 	            }
 	        };
@@ -4800,14 +4800,11 @@
 	    };
 
 	    function init_as_module() {
-	        mixpanel_master = window['mixpanel'] || [];
-	        global_context = {};
-	        init_type = 'module';
+	        init_type = INIT_MODULE;
+	        mixpanel_master = new MixpanelLib();
 
 	        override_mp_init_func();
 	        mixpanel_master['init']();
-	        global_context[PRIMARY_INSTANCE_NAME] = mixpanel_master = new MixpanelLib();
-	        override_mp_init_func();
 	        add_dom_loaded_handler();
 
 	        return mixpanel_master;
