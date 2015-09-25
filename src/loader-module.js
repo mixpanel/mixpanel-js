@@ -1,13 +1,5 @@
-import { bootstrap_sdk } from './mixpanel-core';
+import { init_as_module } from './mixpanel-core';
 
-var mpglobal = {
-    mixpanel: window['mixpanel'] || []
-};
+var mixpanel = init_as_module();
 
-bootstrap_sdk({
-    global_context: mpglobal,
-    mixpanel: mpglobal.mixpanel,
-    init_type: 'module'
-});
-
-export default mpglobal.mixpanel;
+export default mixpanel;

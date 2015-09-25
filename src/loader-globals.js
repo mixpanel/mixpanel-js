@@ -1,7 +1,3 @@
-import { bootstrap_sdk } from './mixpanel-core';
+import { init_from_snippet } from './mixpanel-core';
 
-bootstrap_sdk({
-    global_context: window,
-    mixpanel: window['mixpanel'],
-    init_type: 'snippet'
-});
+init_from_snippet();
