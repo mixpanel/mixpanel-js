@@ -29,8 +29,8 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 
-var mixpanel_master,
-    init_type;
+var init_type,       // MODULE or SNIPPET loader
+    mixpanel_master; // main mixpanel instance / object
 
 var INIT_MODULE  = 0,
     INIT_SNIPPET = 1;
@@ -4763,8 +4763,8 @@ var add_dom_loaded_handler = function() {
 };
 
 export function init_from_snippet() {
-    mixpanel_master = window[PRIMARY_INSTANCE_NAME];
     init_type = INIT_SNIPPET;
+    mixpanel_master = window[PRIMARY_INSTANCE_NAME];
 
     // Initialization
     if (_.isUndefined(mixpanel_master)) {
@@ -4803,13 +4803,11 @@ export function init_from_snippet() {
 };
 
 export function init_as_module() {
-    mixpanel_master = window['mixpanel'] || [];
     init_type = INIT_MODULE;
+    mixpanel_master = new MixpanelLib();
 
     override_mp_init_func();
     mixpanel_master['init']();
-    mixpanel_master = new MixpanelLib();
-    override_mp_init_func();
     add_dom_loaded_handler();
 
     return mixpanel_master;
