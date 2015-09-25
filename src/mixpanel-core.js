@@ -4762,19 +4762,6 @@ var add_dom_loaded_handler = function() {
     _.register_event(window, 'load', dom_loaded_handler, true);
 };
 
-export function init_as_module() {
-    mixpanel_master = window['mixpanel'] || [];
-    init_type = INIT_MODULE;
-
-    override_mp_init_func();
-    mixpanel_master['init']();
-    mixpanel_master = new MixpanelLib();
-    override_mp_init_func();
-    add_dom_loaded_handler();
-
-    return mixpanel_master;
-}
-
 export function init_from_snippet() {
     mixpanel_master = window[PRIMARY_INSTANCE_NAME];
     init_type = INIT_SNIPPET;
@@ -4813,4 +4800,17 @@ export function init_from_snippet() {
     });
 
     add_dom_loaded_handler();
-}
+};
+
+export function init_as_module() {
+    mixpanel_master = window['mixpanel'] || [];
+    init_type = INIT_MODULE;
+
+    override_mp_init_func();
+    mixpanel_master['init']();
+    mixpanel_master = new MixpanelLib();
+    override_mp_init_func();
+    add_dom_loaded_handler();
+
+    return mixpanel_master;
+};
