@@ -30,8 +30,10 @@ Globals should be all caps
 */
 
 var mixpanel_master,
-    global_context,
     init_type;
+
+var INIT_MODULE  = 0,
+    INIT_SNIPPET = 1;
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -2053,7 +2055,7 @@ var create_mplib = function(token, config, name) {
     var instance,
         target = (name === PRIMARY_INSTANCE_NAME) ? mixpanel_master : mixpanel_master[name];
 
-    if (target && init_type === 'module') {
+    if (target && init_type === INIT_MODULE) {
         instance = target;
     } else {
         if (target && !_.isArray(target)) {
@@ -4696,7 +4698,10 @@ var override_mp_init_func = function() {
                 instances[PRIMARY_INSTANCE_NAME] = instance;
             }
 
-            global_context[PRIMARY_INSTANCE_NAME] = mixpanel_master = instance;
+            mixpanel_master = instance;
+            if (init_type === INIT_SNIPPET) {
+                window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+            }
             extend_mp();
         }
     };
@@ -4759,12 +4764,11 @@ var add_dom_loaded_handler = function() {
 
 export function init_as_module() {
     mixpanel_master = window['mixpanel'] || [];
-    global_context = {};
-    init_type = 'module';
+    init_type = INIT_MODULE;
 
     override_mp_init_func();
     mixpanel_master['init']();
-    global_context[PRIMARY_INSTANCE_NAME] = mixpanel_master = new MixpanelLib();
+    mixpanel_master = new MixpanelLib();
     override_mp_init_func();
     add_dom_loaded_handler();
 
@@ -4772,9 +4776,8 @@ export function init_as_module() {
 }
 
 export function init_from_snippet() {
-    mixpanel_master = window['mixpanel'];
-    global_context = window;
-    init_type = 'snippet';
+    mixpanel_master = window[PRIMARY_INSTANCE_NAME];
+    init_type = INIT_SNIPPET;
 
     // Initialization
     if (_.isUndefined(mixpanel_master)) {
@@ -4796,12 +4799,8 @@ export function init_from_snippet() {
 
     // Load instances of the Mixpanel Library
     _.each(mixpanel_master['_i'], function(item) {
-        var name, instance;
         if (item && _.isArray(item)) {
-            name = item[item.length-1];
-            instance = create_mplib.apply(this, item);
-
-            instances[name] = instance;
+            instances[item[item.length-1]] = create_mplib.apply(this, item);
         }
     });
 
