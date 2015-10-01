@@ -1,4 +1,4 @@
-import mixpanel from './mixpanel.es6';
+import mixpanel from '../../src/loader-module';
 
 mixpanel.init("FAKE_TOKEN", {
     debug: true,

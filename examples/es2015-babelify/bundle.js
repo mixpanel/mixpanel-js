@@ -3,21 +3,21 @@
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-var _mixpanelEs6 = require('./mixpanel.es6');
+var _srcLoaderModule = require('../../src/loader-module');
 
-var _mixpanelEs62 = _interopRequireDefault(_mixpanelEs6);
+var _srcLoaderModule2 = _interopRequireDefault(_srcLoaderModule);
 
-_mixpanelEs62['default'].init("FAKE_TOKEN", {
+_srcLoaderModule2['default'].init("FAKE_TOKEN", {
     debug: true,
     loaded: function loaded() {
-        _mixpanelEs62['default'].track('loaded() callback works but is unnecessary');
+        _srcLoaderModule2['default'].track('loaded() callback works but is unnecessary');
         alert("Mixpanel loaded successfully via ES2015 Modules/Babelify");
     }
 });
 
-_mixpanelEs62['default'].track('Tracking after mixpanel.init');
+_srcLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"./mixpanel.es6":2}],2:[function(require,module,exports){
+},{"../../src/loader-module":2}],2:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
