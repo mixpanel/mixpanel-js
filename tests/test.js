@@ -1,5 +1,7 @@
 (function() {
 
+var mixpanel; // don't use window.mixpanel, use instance passed to test_mixpanel()
+
 var old_onload = window.onload;
 var old_handler_run = false;
 window.onload = function() {
@@ -10,6 +12,7 @@ window.onload = function() {
 
 var _jsc = [];
 var mpmodule = function(module_name, extra_setup, extra_teardown) {
+
     module(module_name, {
         setup: function() {
             this.token = rand_name();
@@ -220,10 +223,12 @@ function date_to_ISO(d) {
         + pad(d.getUTCSeconds());
 }
 
-window.test_async = function() {
+window.test_async = function(mixpanel_test_lib) {
     /* Tests for async/snippet behavior (prior to load).
      * Make sure we re-order args, etc.
      */
+
+    mixpanel = mixpanel_test_lib;
 
     var test1 = {
         id: "asjief32f",
@@ -264,11 +269,13 @@ window.test_async = function() {
     }
 };
 
-window.test_mixpanel = function(mixpanel) {
+window.test_mixpanel = function(mixpanel_test_lib) {
 
 /* Tests to run once the lib is loaded on the page.
  */
 setTimeout( function() {
+
+mixpanel = mixpanel_test_lib;
 
 module("onload handler preserved");
     test("User Onload handlers are preserved", 1, function() {
