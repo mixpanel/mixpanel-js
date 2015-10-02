@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="vendor/qunit.css" type="text/css" media="screen">
+        <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+        <script type="text/javascript" src="vendor/jquery.qunit.js?v=159"></script>
+        <script>
+            // https://forum.jquery.com/topic/are-qunit-and-requirejs-compatible
+            QUnit.config.autostart = false;
+        </script>
+        <script type="text/javascript" src="vendor/sinon.js?v=159"></script>
+        <script type="text/javascript" src="vendor/underscore.js"></script>
+        <script type="text/javascript" src="test.js"></script>
+        <link rel="stylesheet" type="text/css" href="tests.css">
+    </head>
+    <body>
+        <h1 id="qunit-header">mixpanel loaded via AMD / RequireJS <a id="other-test" href="/tests/">other tests</a></h1>
+        <h2 id="qunit-banner"></h2>
+        <div id="qunit-testrunner-toolbar"></div>
+        <h2 id="qunit-userAgent"></h2>
+        <ol id="qunit-tests"></ol>
+        <div id="qunit-fixture"></div>
+        <script type="text/javascript" src="redirect-unless-referrer.js"></script>
+        <script data-main="module-amd.js" src="vendor/require.js"></script>
+    </body>
+</html>
