@@ -1,3 +1,6 @@
+**2.7.0** (2 Oct 2015)
+- support for snippetless synchronous loading via Browserify/Webpack/RequireJS/etc.
+
 **2.6.3** (11 Sep 2015)
 - better Windows Phone detection
 - enable JS strict mode
