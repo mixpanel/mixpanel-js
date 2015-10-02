@@ -4656,6 +4656,7 @@ var override_mp_init_func = function() {
                 mixpanel_master[name] = instances[name] = create_mplib(token, config, name);
                 mixpanel_master[name]._loaded();
             }
+            return mixpanel_master[name];
         } else {
             var instance = mixpanel_master;
 
