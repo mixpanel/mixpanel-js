@@ -12,7 +12,7 @@
 
 // ==ClosureCompiler==
 // @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.6.min.js
+// @output_file_name mixpanel-2.7.min.js
 // ==/ClosureCompiler==
 
 /*
@@ -82,7 +82,7 @@ var   ArrayProto     = Array.prototype
  */
 var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://"),
 
-    LIB_VERSION = '2.6.3',
+    LIB_VERSION = '2.7.0',
 
     // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
     // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials

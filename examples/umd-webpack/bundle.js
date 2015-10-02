@@ -81,7 +81,7 @@
 
 	    // ==ClosureCompiler==
 	    // @compilation_level ADVANCED_OPTIMIZATIONS
-	    // @output_file_name mixpanel-2.6.min.js
+	    // @output_file_name mixpanel-2.7.min.js
 	    // ==/ClosureCompiler==
 
 	    /*
@@ -135,7 +135,7 @@
 	                            EVENT_TIMERS_KEY
 	                        ];
 	    var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://");
-	    var LIB_VERSION = '2.6.3';
+	    var LIB_VERSION = '2.7.0';
 	    var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 	    var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') == -1) && (userAgent.indexOf('Mozilla') == -1);
 	    var _ = {};
