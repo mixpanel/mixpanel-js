@@ -93,8 +93,8 @@ function clearLibInstance(instance) {
 }
 
 var append_fixture = function(a) {
-    $('#qunit-fixture').append(a);
-}
+    return $(a).appendTo('#qunit-fixture');
+};
 
 var ele_with_class = function() {
     var name = rand_name();
@@ -102,7 +102,7 @@ var ele_with_class = function() {
     var a = $("<a></a>").attr("class", name).attr("href","#");
     append_fixture(a);
     return { e: a.get(0), class_name: class_name, name: name };
-}
+};
 
 var form_with_class = function() {
     var name = rand_name();
@@ -110,15 +110,15 @@ var form_with_class = function() {
     var f = $("<form>").attr("class", name);
     append_fixture(f);
     return { e: f.get(0), class_name: class_name, name: name };
-}
+};
 
-var ele_with_id = function() {
+var link_with_id = function() {
     var name = rand_name();
     var id = "#" + name;
     var a = $("<a></a>").attr("id", name).attr("href","#");
     append_fixture(a);
     return { e: $(id).get(0), id: id, name: name };
-}
+};
 
 var rand_name = function() {
     return "test_" + Math.floor(Math.random() * 10000000);
@@ -1137,8 +1137,8 @@ module("mixpanel.track_links");
 
     // callsError may fail if there is no console, so we can't expect 1 tests
     test("gracefully fails on invalid query", function() {
-        var e1 = ele_with_id(),
-            e2 = ele_with_id();
+        var e1 = link_with_id(),
+            e2 = link_with_id();
 
         mixpanel.track_links("a" + e1.id, "this should work");
 
@@ -1169,6 +1169,48 @@ module("mixpanel.track_links");
         }
 
         svg.remove();
+    });
+
+    asyncTest("accepts a DOM element as the query", 1, function() {
+        var link = $('<a>', {href: '#test'})[0];
+
+        mixpanel.track_links(link, "testing url property", {}, function() {
+            start();
+            ok(1===1, "track_links callback was fired");
+            return false;
+        });
+
+        simulateMouseClick(link);
+    });
+
+    asyncTest("accepts a jquery list of elements as the query", 2, function() {
+        var $link_one = $('<a>');
+        var $link_two = $('<a>');
+
+        var $links = $link_one.add($link_two);
+        equal($links.length, 2);
+        mixpanel.track_links($links, "testing url property", {}, function() {
+            start();
+            ok(1===1, "track_links callback was fired");
+            return false;
+        });
+
+        simulateMouseClick($link_two[0]);
+    });
+
+    asyncTest("accepts an iterable list of DOM elements as the query", 2, function() {
+        var first_link = link_with_id();
+        var second_link = link_with_id();
+
+        var links = document.querySelectorAll(first_link.id + ',' + second_link.id);
+        equal(links.length, 2);
+        mixpanel.track_links(links, "testing url property", {}, function() {
+            start();
+            ok(1===1, "track_links callback was fired");
+            return false;
+        });
+
+        simulateMouseClick(first_link.e);
     });
 
 module("mixpanel.track_forms");
@@ -1202,6 +1244,48 @@ module("mixpanel.track_forms");
         });
 
         simulateEvent(e1.e, 'submit');
+    });
+
+    asyncTest("accepts a DOM element as the query", 1, function() {
+        var form = form_with_class();
+
+        mixpanel.track_forms(form.e, "form_submitted", {}, function() {
+            start();
+            ok(1===1, "track_forms callback was fired");
+            return false; // this stops the browser from going to the link location
+        });
+
+        simulateEvent(form.e, 'submit');
+    });
+
+    asyncTest("accepts an jquery list as the query", 2, function() {
+        var $form_one = $('<form>');
+        var $form_two = $('<form>');
+
+        var $forms = $form_one.add($form_two);
+        equal($forms.length, 2);
+        mixpanel.track_forms($forms, "form_submitted", {}, function() {
+            start();
+            ok(1===1, "track_forms callback was fired");
+            return false; // this stops the browser from going to the link location
+        });
+
+        simulateEvent($form_two[0], 'submit');
+    });
+
+    asyncTest("accepts a list of DOM elements as the query", 2, function() {
+        var form_one = form_with_class();
+        var form_two = form_with_class();
+
+        var forms = document.querySelectorAll(form_one.class_name + ',' + form_two.class_name);
+        equal(forms.length, 2);
+        mixpanel.track_forms(forms, "form_submitted", {}, function() {
+            start();
+            ok(1===1, "track_forms callback was fired");
+            return false; // this stops the browser from going to the link location
+        });
+
+        simulateEvent(form_two.e, 'submit');
     });
 
 mpmodule("mixpanel.alias");
