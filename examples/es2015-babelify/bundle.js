@@ -338,6 +338,10 @@ _.isNumber = function (obj) {
     return toString.call(obj) == '[object Number]';
 };
 
+_.isElement = function (obj) {
+    return !!(obj && obj.nodeType === 1);
+};
+
 _.encodeDates = function (obj) {
     _.each(obj, function (v, k) {
         if (_.isDate(v)) {
@@ -1314,7 +1318,15 @@ _.dom_query = (function () {
         return currentContext;
     };
 
-    return getElementsBySelector;
+    return function (query) {
+        if (_.isElement(query)) {
+            return [query];
+        } else if (_.isObject(query) && !_.isUndefined(query.length)) {
+            return query;
+        } else {
+            return getElementsBySelector.call(this, query);
+        }
+    };
 })();
 
 _.info = {
@@ -1583,7 +1595,7 @@ DomTracker.prototype.init = function (mixpanel_instance) {
 };
 
 /**
- * @param {string} query
+ * @param {Object|string} query
  * @param {string} event_name
  * @param {Object=} properties
  * @param {function(...[*])=} user_callback
@@ -2573,7 +2585,7 @@ MixpanelLib.prototype.track_pageview = function (page) {
  * will be sent to mixpanel as event properties.
  *
  * @type {Function}
- * @param {String} query A valid DOM query
+ * @param {Object|String} query A valid DOM query, element or jQuery-esque list
  * @param {String} event_name The name of the event to track
  * @param {Object|Function} [properties] A properties object or function that returns a dictionary of properties when passed a DOMElement
  */
@@ -2604,7 +2616,7 @@ MixpanelLib.prototype.track_links = function () {
  * will be sent to mixpanel as event properties.
  *
  * @type {Function}
- * @param {String} query  A valid DOM query
+ * @param {Object|String} query A valid DOM query, element or jQuery-esque list
  * @param {String} event_name The name of the event to track
  * @param {Object|Function} [properties] This can be a set of properties, or a function that returns a set of properties after being passed a DOMElement
  */
