@@ -1,3 +1,6 @@
+**2.7.1** (9 Oct 2015)
+- `property_blacklist` config option to prevent sending specified props in `track()`
+
 **2.7.0** (2 Oct 2015)
 - support for snippetless synchronous loading via Browserify/Webpack/RequireJS/etc.
 

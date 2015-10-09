@@ -28,6 +28,8 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 
+var LIB_VERSION = '2.7.1';
+
 var init_type;
 var mixpanel_master;
 var INIT_MODULE  = 0;
@@ -69,7 +71,6 @@ var RESERVED_PROPERTIES       = [
                         EVENT_TIMERS_KEY
                     ];
 var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://");
-var LIB_VERSION = '2.7.0';
 var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') == -1) && (userAgent.indexOf('Mozilla') == -1);
 var _ = {};
@@ -95,6 +96,7 @@ var DEFAULT_CONFIG = {
         , "disable_cookie":         false
         , "secure_cookie":          false
         , "ip":                     true
+        , "property_blacklist":     []
     };
 var DOM_LOADED = false;
 // UNDERSCORE
@@ -2399,6 +2401,15 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
         , properties
     );
 
+    var property_blacklist = this.get_config('property_blacklist');
+    if (_.isArray(property_blacklist)) {
+        _.each(property_blacklist, function(blacklisted_prop) {
+            delete properties[blacklisted_prop];
+        });
+    } else {
+        console.error('Invalid value for property_blacklist config: ' + property_blacklist);
+    }
+
     var data = {
           'event': event_name
         , 'properties': properties
@@ -2736,6 +2747,10 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *
  *       // name for super properties persistent store
  *       persistence_name:           ""
+ *
+ *       // names of properties/superproperties which should never
+ *       // be sent with track() calls
+ *       property_blacklist:         []
  *
  *       // if this is true, mixpanel cookies will be marked as
  *       // secure, meaning they will only be transmitted over https

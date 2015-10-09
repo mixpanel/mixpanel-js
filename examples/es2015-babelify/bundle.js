@@ -66,9 +66,10 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.init_from_snippet = init_from_snippet;
 exports.init_as_module = init_as_module;
+var LIB_VERSION = '2.7.1';
+
 var init_type, // MODULE or SNIPPET loader
 mixpanel_master; // main mixpanel instance / object
-
 var INIT_MODULE = 0,
     INIT_SNIPPET = 1;
 
@@ -127,7 +128,6 @@ var ArrayProto = Array.prototype,
  * Dynamic... constants? Is that an oxymoron?
  */
 var HTTP_PROTOCOL = "https:" == document.location.protocol ? "https://" : "http://",
-    LIB_VERSION = '2.7.0',
 
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
@@ -163,7 +163,8 @@ var _ = {},
     "disable_persistence": false,
     "disable_cookie": false,
     "secure_cookie": false,
-    "ip": true
+    "ip": true,
+    "property_blacklist": []
 },
     DOM_LOADED = false;
 
@@ -2517,6 +2518,15 @@ MixpanelLib.prototype.track = function (event_name, properties, callback) {
     // update properties with pageview info and super-properties
     properties = _.extend({}, _.info.properties(), this['persistence'].properties(), properties);
 
+    var property_blacklist = this.get_config('property_blacklist');
+    if (_.isArray(property_blacklist)) {
+        _.each(property_blacklist, function (blacklisted_prop) {
+            delete properties[blacklisted_prop];
+        });
+    } else {
+        console.error('Invalid value for property_blacklist config: ' + property_blacklist);
+    }
+
     var data = {
         'event': event_name,
         'properties': properties
@@ -2852,6 +2862,10 @@ MixpanelLib.prototype.name_tag = function (name_tag) {
  *
  *       // name for super properties persistent store
  *       persistence_name:           ""
+ *
+ *       // names of properties/superproperties which should never
+ *       // be sent with track() calls
+ *       property_blacklist:         []
  *
  *       // if this is true, mixpanel cookies will be marked as
  *       // secure, meaning they will only be transmitted over https
