@@ -350,6 +350,22 @@ mpmodule("mixpanel.track");
         ok(without_ip.src.indexOf('ip=0') > 0, '_send_request should send ip=0 when the config ip=false');
     });
 
+    test("properties on blacklist are not sent", 4, function() {
+        mixpanel.test.set_config({
+            property_blacklist: ['$current_url', '$referrer', 'blacklisted_custom_prop']
+        });
+
+        var data = mixpanel.test.track('test', {
+            blacklisted_custom_prop: 'foo',
+            other_custom_prop: 'bar'
+        });
+
+        isUndefined(data.properties.$current_url, 'Blacklisted default prop was not removed');
+        isUndefined(data.properties.$referrer, 'Blacklisted default prop was not removed');
+        isUndefined(data.properties.blacklisted_custom_prop, 'Blacklisted custom prop was not removed');
+        same(data.properties.other_custom_prop, 'bar', 'Non-blacklisted custom prop was removed');
+    });
+
     test("disable() disables all tracking from firing", 2, function() {
         stop(); stop();
 
