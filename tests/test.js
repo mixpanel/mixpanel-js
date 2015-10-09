@@ -360,10 +360,10 @@ mpmodule("mixpanel.track");
             other_custom_prop: 'bar'
         });
 
-        isUndefined(data.properties.$current_url, 'Blacklisted default prop was not removed');
-        isUndefined(data.properties.$referrer, 'Blacklisted default prop was not removed');
-        isUndefined(data.properties.blacklisted_custom_prop, 'Blacklisted custom prop was not removed');
-        same(data.properties.other_custom_prop, 'bar', 'Non-blacklisted custom prop was removed');
+        isUndefined(data.properties.$current_url, 'Blacklisted default prop should be removed');
+        isUndefined(data.properties.$referrer, 'Blacklisted default prop should be removed');
+        isUndefined(data.properties.blacklisted_custom_prop, 'Blacklisted custom prop should be removed');
+        same(data.properties.other_custom_prop, 'bar', 'Non-blacklisted custom prop should not be removed');
     });
 
     test("disable() disables all tracking from firing", 2, function() {
