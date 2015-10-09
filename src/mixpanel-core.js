@@ -118,6 +118,7 @@ var   _ = {}
         , "disable_cookie":         false
         , "secure_cookie":          false
         , "ip":                     true
+        , "property_blacklist":     []
     }
     , DOM_LOADED = false;
 
@@ -2423,6 +2424,10 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
         , properties
     );
 
+    _.each(this.get_config('property_blacklist'), function(blacklisted_prop) {
+        delete properties[blacklisted_prop];
+    });
+
     var data = {
           'event': event_name
         , 'properties': properties
@@ -2760,6 +2765,10 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *
  *       // name for super properties persistent store
  *       persistence_name:           ""
+ *
+ *       // names of properties/superproperties which should never
+ *       // be sent with track() calls
+ *       property_blacklist:         []
  *
  *       // if this is true, mixpanel cookies will be marked as
  *       // secure, meaning they will only be transmitted over https
