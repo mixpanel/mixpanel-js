@@ -25,9 +25,10 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 
+var LIB_VERSION = '2.7.0';
+
 var init_type,       // MODULE or SNIPPET loader
     mixpanel_master; // main mixpanel instance / object
-
 var INIT_MODULE  = 0,
     INIT_SNIPPET = 1;
 
@@ -81,8 +82,6 @@ var   ArrayProto     = Array.prototype
  * Dynamic... constants? Is that an oxymoron?
  */
 var HTTP_PROTOCOL = (("https:" == document.location.protocol) ? "https://" : "http://"),
-
-    LIB_VERSION = '2.7.0',
 
     // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
     // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
