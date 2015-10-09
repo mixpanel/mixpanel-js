@@ -2424,9 +2424,14 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
         , properties
     );
 
-    _.each(this.get_config('property_blacklist'), function(blacklisted_prop) {
-        delete properties[blacklisted_prop];
-    });
+    var property_blacklist = this.get_config('property_blacklist');
+    if (_.isArray(property_blacklist)) {
+        _.each(property_blacklist, function(blacklisted_prop) {
+            delete properties[blacklisted_prop];
+        });
+    } else {
+        console.error('Invalid value for property_blacklist config: ' + property_blacklist);
+    }
 
     var data = {
           'event': event_name
