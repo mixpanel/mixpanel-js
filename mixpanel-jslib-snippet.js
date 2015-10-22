@@ -65,20 +65,22 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
         // Snippet version, used to fail on new features w/ old snippet
         mixpanel['__SV'] = 1.2;
 
-        script = document.createElement("script");
-        script.type = "text/javascript";
-        script.async = true;
+        if (typeof MIXPANEL_DISABLE_LIB_INJECTION === 'undefined' || !MIXPANEL_DISABLE_LIB_INJECTION) {
+            script = document.createElement("script");
+            script.type = "text/javascript";
+            script.async = true;
 
-        if (typeof MIXPANEL_CUSTOM_LIB_URL !== 'undefined') {
-            script.src = MIXPANEL_CUSTOM_LIB_URL;
-        } else if (document.location.protocol === 'file:' && MIXPANEL_LIB_URL.match(/^\/\//)) {
-            script.src = 'https:' + MIXPANEL_LIB_URL;
-        } else {
-            script.src = MIXPANEL_LIB_URL;
+            if (typeof MIXPANEL_CUSTOM_LIB_URL !== 'undefined') {
+                script.src = MIXPANEL_CUSTOM_LIB_URL;
+            } else if (document.location.protocol === 'file:' && MIXPANEL_LIB_URL.match(/^\/\//)) {
+                script.src = 'https:' + MIXPANEL_LIB_URL;
+            } else {
+                script.src = MIXPANEL_LIB_URL;
+            }
+
+            first_script = document.getElementsByTagName("script")[0];
+            first_script.parentNode.insertBefore(script, first_script);
         }
-
-        first_script = document.getElementsByTagName("script")[0];
-        first_script.parentNode.insertBefore(script, first_script);
     }
 // Pass in current Mixpanel object if it exists (for ppl like Optimizely)
 })(document, window['mixpanel'] || []);
