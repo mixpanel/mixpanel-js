@@ -1,3 +1,6 @@
+**2.7.2** (4 Dec 2015)
+- full support for NPM installation
+
 **2.7.1** (9 Oct 2015)
 - `property_blacklist` config option to prevent sending specified props in `track()`
 

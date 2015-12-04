@@ -66,7 +66,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.init_from_snippet = init_from_snippet;
 exports.init_as_module = init_as_module;
-var LIB_VERSION = '2.7.1';
+var LIB_VERSION = '2.7.2';
 
 var init_type, // MODULE or SNIPPET loader
 mixpanel_master; // main mixpanel instance / object
