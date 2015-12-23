@@ -1419,7 +1419,7 @@ _.info = {
             "Internet Explorer Mobile": /rv:(\d+(\.\d+)?)/,
             "Microsoft Edge": /Edge\/(\d+(\.\d+)?)/,
             "Chrome": /Chrome\/(\d+(\.\d+)?)/,
-            "Chrome iOS": /Chrome\/(\d+(\.\d+)?)/,
+            "Chrome iOS": /CriOS\/(\d+(\.\d+)?)/,
             "Safari": /Version\/(\d+(\.\d+)?)/,
             "Mobile Safari": /Version\/(\d+(\.\d+)?)/,
             "Opera": /(Opera|OPR)\/(\d+(\.\d+)?)/,
