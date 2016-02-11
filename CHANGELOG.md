@@ -1,3 +1,19 @@
+**2.7.2** (4 Dec 2015)
+- full support for NPM installation
+
+**2.7.1** (9 Oct 2015)
+- `property_blacklist` config option to prevent sending specified props in `track()`
+
+**2.7.0** (2 Oct 2015)
+- support for snippetless synchronous loading via Browserify/Webpack/RequireJS/etc.
+
+**2.6.3** (11 Sep 2015)
+- better Windows Phone detection
+- enable JS strict mode
+
+**2.6.2** (11 Aug 2015)
+- fix relative URL handling in snippet loader
+
 **2.6.1** (7 Aug 2015)
 - improve browser/OS detection for MS Edge and IE Mobile (thanks @bohanyang) and Opera
 - handle relative URLs better in snippet loader

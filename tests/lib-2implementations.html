@@ -4,6 +4,10 @@
         <link rel="stylesheet" href="vendor/qunit.css" type="text/css" media="screen">
         <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
         <script type="text/javascript" src="vendor/jquery.qunit.js?v=159"></script>
+        <script>
+            // load test cases before telling QUnit to start to avoid race conditions
+            QUnit.config.autostart = false;
+        </script>
         <script type="text/javascript" src="vendor/sinon.js?v=159"></script>
         <script type="text/javascript" src="vendor/underscore.js"></script>
         <script type="text/javascript" src="test.js"></script>
@@ -66,6 +70,8 @@
                             start();
                         });
                     });
+
+                    QUnit.start();
                 }
             }, "additional");
             if (!lib_loaded) {

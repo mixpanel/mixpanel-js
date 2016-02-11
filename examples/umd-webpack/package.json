@@ -1,0 +1,15 @@
+{
+  "name": "mixpanel-umd-webpack",
+  "version": "1.0.0",
+  "description": "Mixpanel example: UMD/Webpack",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack index.js bundle.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "dev@mixpanel.com",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "webpack": "^1.12.2"
+  }
+}

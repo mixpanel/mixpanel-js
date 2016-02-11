@@ -1,5 +1,7 @@
 (function() {
 
+var mixpanel; // don't use window.mixpanel, use instance passed to test_mixpanel()
+
 var old_onload = window.onload;
 var old_handler_run = false;
 window.onload = function() {
@@ -10,6 +12,7 @@ window.onload = function() {
 
 var _jsc = [];
 var mpmodule = function(module_name, extra_setup, extra_teardown) {
+
     module(module_name, {
         setup: function() {
             this.token = rand_name();
@@ -220,10 +223,12 @@ function date_to_ISO(d) {
         + pad(d.getUTCSeconds());
 }
 
-window.test_async = function() {
+window.test_async = function(mixpanel_test_lib) {
     /* Tests for async/snippet behavior (prior to load).
      * Make sure we re-order args, etc.
      */
+
+    mixpanel = mixpanel_test_lib;
 
     var test1 = {
         id: "asjief32f",
@@ -264,11 +269,13 @@ window.test_async = function() {
     }
 };
 
-window.test_mixpanel = function(mixpanel) {
+window.test_mixpanel = function(mixpanel_test_lib) {
 
 /* Tests to run once the lib is loaded on the page.
  */
 setTimeout( function() {
+
+mixpanel = mixpanel_test_lib;
 
 module("onload handler preserved");
     test("User Onload handlers are preserved", 1, function() {
@@ -341,6 +348,22 @@ mpmodule("mixpanel.track");
 
         ok(with_ip.src.indexOf('ip=1') > 0, '_send_request should send ip=1 by default');
         ok(without_ip.src.indexOf('ip=0') > 0, '_send_request should send ip=0 when the config ip=false');
+    });
+
+    test("properties on blacklist are not sent", 4, function() {
+        mixpanel.test.set_config({
+            property_blacklist: ['$current_url', '$referrer', 'blacklisted_custom_prop']
+        });
+
+        var data = mixpanel.test.track('test', {
+            blacklisted_custom_prop: 'foo',
+            other_custom_prop: 'bar'
+        });
+
+        isUndefined(data.properties.$current_url, 'Blacklisted default prop should be removed');
+        isUndefined(data.properties.$referrer, 'Blacklisted default prop should be removed');
+        isUndefined(data.properties.blacklisted_custom_prop, 'Blacklisted custom prop should be removed');
+        same(data.properties.other_custom_prop, 'bar', 'Non-blacklisted custom prop should not be removed');
     });
 
     test("disable() disables all tracking from firing", 2, function() {
