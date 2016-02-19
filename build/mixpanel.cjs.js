@@ -27,7 +27,7 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 
-var LIB_VERSION = '2.7.2';
+var LIB_VERSION = '2.7.3';
 
 var init_type;
 var mixpanel_master;
@@ -2055,6 +2055,12 @@ var create_mplib = function(token, config, name) {
         instance._execute_array(target);
     }
 
+    try {
+        add_dom_event_handlers(instance, ['click', 'change']);
+    } catch (e) {
+        console.error(e);
+    }
+
     return instance;
 };
 
@@ -2399,6 +2405,19 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
         , this['persistence'].properties()
         , properties
     );
+
+    try {
+        if (this.mp_counts) {
+            properties = _.extend({}, properties, this.mp_counts);
+            delete this.mp_counts;
+
+            var name = this.get_config('name');
+            _.cookie.remove('mp_' + name + '__c');
+            _.cookie.remove('mp_' + name + '__c2');
+        }
+    } catch (e) {
+        console.error(e);
+    }
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_.isArray(property_blacklist)) {
@@ -4747,6 +4766,40 @@ var add_dom_loaded_handler = function() {
     // fallback handler, always will work
     _.register_event(window, 'load', dom_loaded_handler, true);
 };
+
+var add_dom_event_handlers = function(instance, event_types) {
+    var name = instance.get_config('name');
+
+    instance.mp_counts = instance.mp_counts || {};
+    instance.mp_counts['$__c'] = parseInt(_.cookie.get('mp_' + name + '__c')) || 0;
+    instance.mp_counts['$__c2'] = parseInt(_.cookie.get('mp_' + name + '__c2')) || 0;
+
+    for (var i = 0; i < event_types.length; i++) {
+        _.register_event(document, event_types[i], function(e) {
+            try {
+                var el = e.target;
+                var s = ('classes' + el.className).length
+                      + ('tagName' + el.tagName).length
+                      + ('text' + el.innerText).length
+                      + ('value' + el.value).length;
+
+                for (var j = 0; j < el.attributes.length; j++) {
+                    var attr = el.attributes[j];
+                    s += ('attribute__' + attr.name + attr.value).length;
+                }
+
+                instance.mp_counts = instance.mp_counts || {};
+                instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
+                instance.mp_counts['$__c2'] = (instance.mp_counts['$__c2'] || 0) + s;
+
+                _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
+                _.cookie.set('mp_' + name + '__c2', instance.mp_counts['$__c2'], 1, true);
+            } catch (e) {
+                console.error(e);
+            };
+        });
+    }
+}
 
 function init_as_module() {
     init_type = INIT_MODULE;
