@@ -2431,7 +2431,7 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
     );
 
     try {
-        if (this.mp_counts) {
+        if (this.mp_counts && event_name !== "mp_page_view" && event_name !== "$create_alias") {
             properties = _.extend({}, properties, this.mp_counts);
             delete this.mp_counts;
 
