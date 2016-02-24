@@ -25,7 +25,7 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 
-var LIB_VERSION = '2.7.3';
+var LIB_VERSION = '2.7.4';
 
 var init_type,       // MODULE or SNIPPET loader
     mixpanel_master; // main mixpanel instance / object

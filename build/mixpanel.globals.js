@@ -27,7 +27,7 @@
     Globals should be all caps
     */
 
-    var LIB_VERSION = '2.7.3';
+    var LIB_VERSION = '2.7.4';
 
     var init_type;
     var mixpanel_master;
