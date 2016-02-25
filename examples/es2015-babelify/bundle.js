@@ -66,7 +66,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.init_from_snippet = init_from_snippet;
 exports.init_as_module = init_as_module;
-var LIB_VERSION = '2.7.4';
+var LIB_VERSION = '2.7.5';
 
 var init_type, // MODULE or SNIPPET loader
 mixpanel_master; // main mixpanel instance / object
@@ -4773,25 +4773,14 @@ var add_dom_event_handlers = function add_dom_event_handlers(instance, event_typ
 
     instance.mp_counts = instance.mp_counts || {};
     instance.mp_counts['$__c'] = parseInt(_.cookie.get('mp_' + name + '__c')) || 0;
-    instance.mp_counts['$__c2'] = parseInt(_.cookie.get('mp_' + name + '__c2')) || 0;
 
     for (var i = 0; i < event_types.length; i++) {
         _.register_event(document, event_types[i], function (e) {
             try {
-                var el = e.target;
-                var s = ('classes' + el.className).length + ('tagName' + el.tagName).length + ('text' + el.innerText).length + ('value' + el.value).length;
-
-                for (var j = 0; j < el.attributes.length; j++) {
-                    var attr = el.attributes[j];
-                    s += ('attribute__' + attr.name + attr.value).length;
-                }
-
                 instance.mp_counts = instance.mp_counts || {};
                 instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
-                instance.mp_counts['$__c2'] = (instance.mp_counts['$__c2'] || 0) + s;
 
                 _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
-                _.cookie.set('mp_' + name + '__c2', instance.mp_counts['$__c2'], 1, true);
             } catch (e) {
                 console.error(e);
             };
