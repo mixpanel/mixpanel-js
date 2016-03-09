@@ -27,7 +27,7 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 
-var LIB_VERSION = '2.7.6';
+var LIB_VERSION = '2.7.7';
 
 var init_type;
 var mixpanel_master;
