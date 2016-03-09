@@ -25,7 +25,7 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 
-var LIB_VERSION = '2.7.6';
+var LIB_VERSION = '2.7.7';
 
 var init_type,       // MODULE or SNIPPET loader
     mixpanel_master; // main mixpanel instance / object
@@ -2433,11 +2433,11 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
     try {
         if (this.mp_counts && event_name !== "mp_page_view" && event_name !== "$create_alias") {
             properties = _.extend({}, properties, this.mp_counts);
-            delete this.mp_counts;
+            this.mp_counts = {};
+            this.mp_counts['$__c'] = 0;
 
             var name = this.get_config('name');
-            _.cookie.remove('mp_' + name + '__c');
-            _.cookie.remove('mp_' + name + '__c2');
+            _.cookie.set('mp_' + name + '__c', 0, 1, true);
         }
     } catch (e) {
         console.error(e);

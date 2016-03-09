@@ -2476,11 +2476,11 @@
 	        try {
 	            if (this.mp_counts && event_name !== "mp_page_view" && event_name !== "$create_alias") {
 	                properties = _.extend({}, properties, this.mp_counts);
-	                delete this.mp_counts;
+	                this.mp_counts = {};
+	                this.mp_counts['$__c'] = 0;
 
 	                var name = this.get_config('name');
-	                _.cookie.remove('mp_' + name + '__c');
-	                _.cookie.remove('mp_' + name + '__c2');
+	                _.cookie.set('mp_' + name + '__c', 0, 1, true);
 	            }
 	        } catch (e) {
 	            console.error(e);
