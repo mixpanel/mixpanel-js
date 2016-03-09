@@ -1,7 +1,7 @@
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
     typeof define === 'function' && define.amd ? define(factory) :
-    global.mixpanel = factory();
+    (global.mixpanel = factory());
 }(this, function () { 'use strict';
 
     /*
@@ -31,7 +31,7 @@
     Globals should be all caps
     */
 
-    var LIB_VERSION = '2.7.5';
+    var LIB_VERSION = '2.7.6';
 
     var init_type;
     var mixpanel_master;
@@ -4777,13 +4777,18 @@
         instance.mp_counts = instance.mp_counts || {};
         instance.mp_counts['$__c'] = parseInt(_.cookie.get('mp_' + name + '__c')) || 0;
 
+        var increment_count = function() {
+            instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
+            _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
+        }
+
+        increment_count();
+
         for (var i = 0; i < event_types.length; i++) {
             _.register_event(document, event_types[i], function(e) {
                 try {
                     instance.mp_counts = instance.mp_counts || {};
-                    instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
-
-                    _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
+                    increment_count();
                 } catch (e) {
                     console.error(e);
                 };
@@ -4800,7 +4805,7 @@
         add_dom_loaded_handler();
 
         return mixpanel_master;
-    }
+    };
 
     var mixpanel = init_as_module();
 

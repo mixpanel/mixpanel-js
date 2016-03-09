@@ -66,7 +66,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.init_from_snippet = init_from_snippet;
 exports.init_as_module = init_as_module;
-var LIB_VERSION = '2.7.5';
+var LIB_VERSION = '2.7.6';
 
 var init_type, // MODULE or SNIPPET loader
 mixpanel_master; // main mixpanel instance / object
@@ -4774,13 +4774,18 @@ var add_dom_event_handlers = function add_dom_event_handlers(instance, event_typ
     instance.mp_counts = instance.mp_counts || {};
     instance.mp_counts['$__c'] = parseInt(_.cookie.get('mp_' + name + '__c')) || 0;
 
+    var increment_count = function increment_count() {
+        instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
+        _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
+    };
+
+    increment_count();
+
     for (var i = 0; i < event_types.length; i++) {
         _.register_event(document, event_types[i], function (e) {
             try {
                 instance.mp_counts = instance.mp_counts || {};
-                instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
-
-                _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
+                increment_count();
             } catch (e) {
                 console.error(e);
             };

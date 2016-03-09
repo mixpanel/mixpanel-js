@@ -1,3 +1,6 @@
+**2.7.3 - 2.7.6** (9 Mar 2016)
+- collect stats for internal capacity planning
+
 **2.7.2** (4 Dec 2015)
 - full support for NPM installation
 
