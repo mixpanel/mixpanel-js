@@ -2166,6 +2166,29 @@ mpmodule('user agent parser');
             ok(mixpanel._.isBlockedUA(ua));
         });
     });
+    
+mpmodule("mixpanel.reset");
+
+    test('reset generates new distinct_id', 1, function() {
+        var id = '1234',
+            instance = mixpanel.init('token');            
+        
+        mixpanel.identify(id);    
+        mixpanel.reset();
+        
+        notEqual(id, mixpanel.get_distinct_id());
+    });
+    
+    test('reset clears super properties', 1, function() {
+        var instance = mixpanel.init('token'),
+            properties = { foo: 1 };
+        
+        mixpanel.register(properties);
+        mixpanel.reset();
+        
+        var propertiesAfterReset = mixpanel.persistence.properties();
+        notEqual(properties.foo, propertiesAfterReset.foo);
+    });
 
 if( /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent) ) {
     mpmodule("mobile tests");
