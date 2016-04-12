@@ -2130,12 +2130,12 @@ MixpanelLib.prototype.init = function (token, config, name) {
 };
 
 /**
- * This function clears super properties by clearing persistence 
+ * This function clears super properties by clearing persistence
  * and generates a new distinct_id for the mixpanel instance.
  */
 MixpanelLib.prototype.reset = function() {
     this.persistence.clear();
-    this.identify(_.UUID());
+    this.register_once({'distinct_id': _.UUID()}, "");
 };
 
 // mixpanel._init(token:string, config:object, name:string)
