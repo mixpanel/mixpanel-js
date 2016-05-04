@@ -2080,7 +2080,7 @@ var create_mplib = function(token, config, name) {
     }
 
     try {
-        add_dom_event_handlers(instance, ['click', 'change']);
+        add_dom_event_handlers(instance);
     } catch (e) {
         console.error(e);
     }
@@ -2435,9 +2435,15 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
             properties = _.extend({}, properties, this.mp_counts);
             this.mp_counts = {};
             this.mp_counts['$__c'] = 0;
+            this.mp_counts['$__c3'] = 0;
+            this.mp_counts['$__c4'] = 0;
+            this.mp_counts['$__c5'] = 0;
 
             var name = this.get_config('name');
             _.cookie.set('mp_' + name + '__c', 0, 1, true);
+            _.cookie.set('mp_' + name + '__c3', 0, 1, true);
+            _.cookie.set('mp_' + name + '__c4', 0, 1, true);
+            _.cookie.set('mp_' + name + '__c5', 0, 1, true);
         }
     } catch (e) {
         console.error(e);
@@ -4791,51 +4797,93 @@ var add_dom_loaded_handler = function() {
     _.register_event(window, 'load', dom_loaded_handler, true);
 };
 
-var add_dom_event_handlers = function(instance, event_types) {
+var add_dom_event_handlers = function(instance) {
     var name = instance.get_config('name');
 
     instance.mp_counts = instance.mp_counts || {};
     instance.mp_counts['$__c'] = parseInt(_.cookie.get('mp_' + name + '__c')) || 0;
-    instance.mp_counts['$__c2'] = parseInt(_.cookie.get('mp_' + name + '__c2')) || 0;
+    instance.mp_counts['$__c3'] = parseInt(_.cookie.get('mp_' + name + '__c3')) || 0;
+    instance.mp_counts['$__c4'] = parseInt(_.cookie.get('mp_' + name + '__c4')) || 0;
+    instance.mp_counts['$__c5'] = parseInt(_.cookie.get('mp_' + name + '__c5')) || 0;
 
-    var increment_count = function() {
-        instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + level;
-        instance.mp_counts['$__c2'] = (instance.mp_counts['$__c2'] || 0) + s;
+    var increment_count = function(els, size, filtered_size) {
+        instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
+        instance.mp_counts['$__c3'] = (instance.mp_counts['$__c3'] || 0) + size;
+        instance.mp_counts['$__c4'] = (instance.mp_counts['$__c4'] || 0) + filtered_size;
+        instance.mp_counts['$__c5'] = (instance.mp_counts['$__c5'] || 0) + els;
         _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
-        _.cookie.set('mp_' + name + '__c2', instance.mp_counts['$__c2'], 1, true);
+        _.cookie.set('mp_' + name + '__c3', instance.mp_counts['$__c3'], 1, true);
+        _.cookie.set('mp_' + name + '__c4', instance.mp_counts['$__c4'], 1, true);
+        _.cookie.set('mp_' + name + '__c5', instance.mp_counts['$__c5'], 1, true);
     }
 
-    increment_count();
-
-    for (var i = 0; i < event_types.length; i++) {
-        _.register_event(document, event_types[i], function(e) {
-            try {
-                var level = 0;
-                var el = e.target;
-                while (el !== document.body) {
-                    level++;
-                    var s = ('classes' + el.className).length
-                        + ('tagName' + el.tagName).length
-                        + ('value' + el.value).length;
-
-                    if (level === 0) {
-                        s += ('text' + el.textContent).length
-                    }
-
-                    for (var j = 0; j < el.attributes.length; j++) {
-                        var attr = el.attributes[j];
-                        s += ('attribute__' + attr.name + attr.value).length;
-                    }
-                    el = e.parentNode;
-                }
-
-                instance.mp_counts = instance.mp_counts || {};
-                increment_count();
-            } catch (e) {
-                console.error(e);
+    var process = function(target, filter) {
+        var processed = [];
+        var element = target;
+        while (element && element !== document.body) {
+            var props = {
+              'attributes': [],
+              'classes': typeof element['className'] === 'string' ? element['className'].split(' ') : [],
+              'id': element['id'],
+              'tagName': element['tagName'],
+              'textContent': element === target ? element['textContent'].trim() : ''
             };
-        });
+
+            for (var i = 0; i < (element['attributes'] || []).length; i++) {
+                var attr = element['attributes'][i];
+                var attrsToFilter = ['id', 'class'];
+                if (filter) {
+                  attrsToFilter = attrsToFilter.concat(['href', 'title', 'style', 'for', 'value', 'checked', 'selected']);
+                }
+                if (attrsToFilter.indexOf(attr['name']) === -1) {
+                    props['attributes'].push({
+                        'name': attr['name'],
+                        'value': attr['value']
+                    });
+                }
+            }
+
+            var nthOfType = 1;
+            var nthChild = 1;
+            var curNode = element;
+            while (curNode['previousElementSibling']) {
+                curNode = curNode['previousElementSibling'];
+                nthChild++;
+                if (curNode['tagName'] === element['tagName']) {
+                    nthOfType++;
+                }
+            }
+            props['nthChild'] = nthChild;
+            props['nthOfType'] = nthOfType;
+            processed.push(props);
+            element = element.parentNode;
+        }
+        return processed;
+    };
+
+    var evtCallback = function(e) {
+        try {
+            var processed = process(e.target);
+            var processed_filtered = process(e.target, true);
+            var size = JSON.stringify(processed).length;
+            var size_filtered = JSON.stringify(processed_filtered).length;
+            instance.mp_counts = instance.mp_counts || {};
+            increment_count(processed.length, size, size_filtered);
+        } catch (e) {
+          console.error(e);
+        };
     }
+    _.register_event(document, 'submit', evtCallback);
+    _.register_event(document, 'change', evtCallback);
+    var mousedownTarget = null;
+    _.register_event(document, 'mousedown', function(e) {
+      mousedownTarget = e.target;
+    });
+    _.register_event(document, 'mouseup', function(e) {
+      if (e.target === mousedownTarget) {
+        evtCallback(e);
+      }
+    });
 }
 
 export function init_from_snippet() {
