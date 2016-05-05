@@ -4803,7 +4803,7 @@ var add_dom_event_handlers = function(instance) {
               'classes': typeof element['className'] === 'string' ? element['className'].split(' ') : [],
               'id': element['id'],
               'tagName': element['tagName'],
-              'textContent': element === target ? element['textContent'].trim() : ''
+              'textContent': element === target ? element['textContent'].trim().substring(0, 255) : ''
             };
 
             for (var i = 0; i < (element['attributes'] || []).length; i++) {
