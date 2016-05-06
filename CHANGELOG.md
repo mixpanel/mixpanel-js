@@ -1,4 +1,4 @@
-**2.7.3 - 2.7.8** (9 Mar 2016)
+**2.7.3 - 2.7.9** (9 Mar 2016)
 - collect stats for internal capacity planning
 
 **2.7.2** (4 Dec 2015)
