@@ -2243,29 +2243,41 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
             img.src = url;
         document.body.appendChild(img);
     } else if (USE_XHR) {
-        var req = new XMLHttpRequest();
-        req.open("GET", url, true);
-        // send the mp_optout cookie
-        // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
-        req.withCredentials = true;
-        req.onreadystatechange = function (e) {
-            if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
-                if (req.status === 200) {
-                    if (callback) {
-                        if (verbose_mode) { callback(_.JSONDecode(req.responseText)); }
-                        else { callback(Number(req.responseText)); }
-                    }
-                } else {
-                    var error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
-                    console.error(error);
-                    if (callback) {
-                        if (verbose_mode) { callback({ status: 0, error: error }); }
-                        else { callback(0); }
+        try {
+            var req = new XMLHttpRequest();
+            req.open("GET", url, true);
+            // send the mp_optout cookie
+            // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
+            req.withCredentials = true;
+            req.onreadystatechange = function (e) {
+                if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
+                    if (req.status === 200) {
+                        if (callback) {
+                            if (verbose_mode) {
+                                callback(_.JSONDecode(req.responseText));
+                            }
+                            else {
+                                callback(Number(req.responseText));
+                            }
+                        }
+                    } else {
+                        var error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                        console.error(error);
+                        if (callback) {
+                            if (verbose_mode) {
+                                callback({status: 0, error: error});
+                            }
+                            else {
+                                callback(0);
+                            }
+                        }
                     }
                 }
-            }
-        };
-        req.send(null);
+            };
+            req.send(null);
+        } catch (e) {
+            console.error(e);
+        }
     } else {
         var script = document.createElement("script");
             script.type = "text/javascript";
@@ -4872,7 +4884,7 @@ function init_as_module() {
     add_dom_loaded_handler();
 
     return mixpanel_master;
-};
+}
 
 var mixpanel = init_as_module();
 
