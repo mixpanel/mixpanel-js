@@ -2129,6 +2129,15 @@ MixpanelLib.prototype.init = function (token, config, name) {
     return instance;
 };
 
+/**
+ * This function clears super properties by clearing persistence
+ * and generates a new distinct_id for the mixpanel instance.
+ */
+MixpanelLib.prototype.reset = function() {
+    this.persistence.clear();
+    this.register_once({'distinct_id': _.UUID()}, "");
+};
+
 // mixpanel._init(token:string, config:object, name:string)
 //
 // This function sets up the current instance of the mixpanel
@@ -4658,6 +4667,7 @@ _['info']['properties'] = _.info.properties;
 
 // MixpanelLib Exports
 MixpanelLib.prototype['init']                            = MixpanelLib.prototype.init;
+MixpanelLib.prototype['reset']                           = MixpanelLib.prototype.reset;
 MixpanelLib.prototype['disable']                         = MixpanelLib.prototype.disable;
 MixpanelLib.prototype['time_event']                      = MixpanelLib.prototype.time_event;
 MixpanelLib.prototype['track']                           = MixpanelLib.prototype.track;
