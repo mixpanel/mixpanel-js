@@ -1312,6 +1312,8 @@ _.info = {
             return "Chrome";
         } else if (_.includes(user_agent, "CriOS")) {
             return "Chrome iOS";
+        } else if (_.includes(user_agent, "FxiOS")) {
+            return "Firefox iOS";
         } else if (_.includes(vendor, "Apple")) {
             if (_.includes(user_agent, "Mobile")) {
                 return "Mobile Safari";
@@ -1348,6 +1350,7 @@ _.info = {
             "Mobile Safari":            /Version\/(\d+(\.\d+)?)/,
             "Opera":                    /(Opera|OPR)\/(\d+(\.\d+)?)/,
             "Firefox":                  /Firefox\/(\d+(\.\d+)?)/,
+            "Firefox iOS":              /FxiOS\/(\d+(\.\d+)?)/,
             "Konqueror":                /Konqueror:(\d+(\.\d+)?)/,
             "BlackBerry":               /BlackBerry (\d+(\.\d+)?)/,
             "Android Mobile":           /android\s(\d+(\.\d+)?)/,
