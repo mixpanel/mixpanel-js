@@ -2129,15 +2129,6 @@ MixpanelLib.prototype.init = function (token, config, name) {
     return instance;
 };
 
-/**
- * This function clears super properties by clearing persistence
- * and generates a new distinct_id for the mixpanel instance.
- */
-MixpanelLib.prototype.reset = function() {
-    this.persistence.clear();
-    this.register_once({'distinct_id': _.UUID()}, "");
-};
-
 // mixpanel._init(token:string, config:object, name:string)
 //
 // This function sets up the current instance of the mixpanel
@@ -2696,6 +2687,15 @@ MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callbac
     this._flags.identify_called = true;
     // Flush any queued up people requests
     this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback);
+};
+
+/**
+ * Clears super properties and generates a new random distinct_id for this instance.
+ * Useful for clearing data when a user logs out.
+ */
+MixpanelLib.prototype.reset = function() {
+    this.persistence.clear();
+    this.register_once({'distinct_id': _.UUID()}, "");
 };
 
 /**
