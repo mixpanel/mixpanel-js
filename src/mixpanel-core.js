@@ -12,7 +12,7 @@
 
 // ==ClosureCompiler==
 // @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.7.min.js
+// @output_file_name mixpanel-2.8.min.js
 // ==/ClosureCompiler==
 
 /*
@@ -25,7 +25,7 @@ this.__x == private - only use within the class
 Globals should be all caps
 */
 
-var LIB_VERSION = '2.7.9';
+var LIB_VERSION = '2.8.0';
 
 var init_type,       // MODULE or SNIPPET loader
     mixpanel_master; // main mixpanel instance / object

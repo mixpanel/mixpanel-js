@@ -46,7 +46,7 @@ module.exports = exports['default'];
 
 // ==ClosureCompiler==
 // @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.7.min.js
+// @output_file_name mixpanel-2.8.min.js
 // ==/ClosureCompiler==
 
 /*
@@ -66,7 +66,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.init_from_snippet = init_from_snippet;
 exports.init_as_module = init_as_module;
-var LIB_VERSION = '2.7.9';
+var LIB_VERSION = '2.8.0';
 
 var init_type, // MODULE or SNIPPET loader
 mixpanel_master; // main mixpanel instance / object
@@ -337,6 +337,10 @@ _.isDate = function (obj) {
 
 _.isNumber = function (obj) {
     return toString.call(obj) == '[object Number]';
+};
+
+_.isElement = function (obj) {
+    return !!(obj && obj.nodeType === 1);
 };
 
 _.encodeDates = function (obj) {
@@ -1315,7 +1319,15 @@ _.dom_query = (function () {
         return currentContext;
     };
 
-    return getElementsBySelector;
+    return function (query) {
+        if (_.isElement(query)) {
+            return [query];
+        } else if (_.isObject(query) && !_.isUndefined(query.length)) {
+            return query;
+        } else {
+            return getElementsBySelector.call(this, query);
+        }
+    };
 })();
 
 _.info = {
@@ -1388,6 +1400,8 @@ _.info = {
             return "Chrome";
         } else if (_.includes(user_agent, "CriOS")) {
             return "Chrome iOS";
+        } else if (_.includes(user_agent, "FxiOS")) {
+            return "Firefox iOS";
         } else if (_.includes(vendor, "Apple")) {
             if (_.includes(user_agent, "Mobile")) {
                 return "Mobile Safari";
@@ -1419,11 +1433,12 @@ _.info = {
             "Internet Explorer Mobile": /rv:(\d+(\.\d+)?)/,
             "Microsoft Edge": /Edge\/(\d+(\.\d+)?)/,
             "Chrome": /Chrome\/(\d+(\.\d+)?)/,
-            "Chrome iOS": /Chrome\/(\d+(\.\d+)?)/,
+            "Chrome iOS": /CriOS\/(\d+(\.\d+)?)/,
             "Safari": /Version\/(\d+(\.\d+)?)/,
             "Mobile Safari": /Version\/(\d+(\.\d+)?)/,
             "Opera": /(Opera|OPR)\/(\d+(\.\d+)?)/,
             "Firefox": /Firefox\/(\d+(\.\d+)?)/,
+            "Firefox iOS": /FxiOS\/(\d+(\.\d+)?)/,
             "Konqueror": /Konqueror:(\d+(\.\d+)?)/,
             "BlackBerry": /BlackBerry (\d+(\.\d+)?)/,
             "Android Mobile": /android\s(\d+(\.\d+)?)/,
@@ -1584,7 +1599,7 @@ DomTracker.prototype.init = function (mixpanel_instance) {
 };
 
 /**
- * @param {string} query
+ * @param {Object|string} query
  * @param {string} event_name
  * @param {Object=} properties
  * @param {function(...[*])=} user_callback
@@ -2349,36 +2364,40 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
         img.src = url;
         document.body.appendChild(img);
     } else if (USE_XHR) {
-        var req = new XMLHttpRequest();
-        req.open("GET", url, true);
-        // send the mp_optout cookie
-        // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
-        req.withCredentials = true;
-        req.onreadystatechange = function (e) {
-            if (req.readyState === 4) {
-                // XMLHttpRequest.DONE == 4, except in safari 4
-                if (req.status === 200) {
-                    if (callback) {
-                        if (verbose_mode) {
-                            callback(_.JSONDecode(req.responseText));
-                        } else {
-                            callback(Number(req.responseText));
+        try {
+            var req = new XMLHttpRequest();
+            req.open("GET", url, true);
+            // send the mp_optout cookie
+            // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
+            req.withCredentials = true;
+            req.onreadystatechange = function (e) {
+                if (req.readyState === 4) {
+                    // XMLHttpRequest.DONE == 4, except in safari 4
+                    if (req.status === 200) {
+                        if (callback) {
+                            if (verbose_mode) {
+                                callback(_.JSONDecode(req.responseText));
+                            } else {
+                                callback(Number(req.responseText));
+                            }
                         }
-                    }
-                } else {
-                    var error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
-                    console.error(error);
-                    if (callback) {
-                        if (verbose_mode) {
-                            callback({ status: 0, error: error });
-                        } else {
-                            callback(0);
+                    } else {
+                        var error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                        console.error(error);
+                        if (callback) {
+                            if (verbose_mode) {
+                                callback({ status: 0, error: error });
+                            } else {
+                                callback(0);
+                            }
                         }
                     }
                 }
-            }
-        };
-        req.send(null);
+            };
+            req.send(null);
+        } catch (e) {
+            console.error(e);
+        }
     } else {
         var script = document.createElement("script");
         script.type = "text/javascript";
@@ -2608,7 +2627,7 @@ MixpanelLib.prototype.track_pageview = function (page) {
  * will be sent to mixpanel as event properties.
  *
  * @type {Function}
- * @param {String} query A valid DOM query
+ * @param {Object|String} query A valid DOM query, element or jQuery-esque list
  * @param {String} event_name The name of the event to track
  * @param {Object|Function} [properties] A properties object or function that returns a dictionary of properties when passed a DOMElement
  */
@@ -2639,7 +2658,7 @@ MixpanelLib.prototype.track_links = function () {
  * will be sent to mixpanel as event properties.
  *
  * @type {Function}
- * @param {String} query  A valid DOM query
+ * @param {Object|String} query A valid DOM query, element or jQuery-esque list
  * @param {String} event_name The name of the event to track
  * @param {Object|Function} [properties] This can be a set of properties, or a function that returns a set of properties after being passed a DOMElement
  */
@@ -2779,6 +2798,15 @@ MixpanelLib.prototype.identify = function (unique_id, _set_callback, _add_callba
     this._flags.identify_called = true;
     // Flush any queued up people requests
     this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback);
+};
+
+/**
+ * Clears super properties and generates a new random distinct_id for this instance.
+ * Useful for clearing data when a user logs out.
+ */
+MixpanelLib.prototype.reset = function () {
+    this['persistence'].clear();
+    this.register_once({ 'distinct_id': _.UUID() }, "");
 };
 
 /**
@@ -4631,6 +4659,7 @@ _['info']['properties'] = _.info.properties;
 
 // MixpanelLib Exports
 MixpanelLib.prototype['init'] = MixpanelLib.prototype.init;
+MixpanelLib.prototype['reset'] = MixpanelLib.prototype.reset;
 MixpanelLib.prototype['disable'] = MixpanelLib.prototype.disable;
 MixpanelLib.prototype['time_event'] = MixpanelLib.prototype.time_event;
 MixpanelLib.prototype['track'] = MixpanelLib.prototype.track;
