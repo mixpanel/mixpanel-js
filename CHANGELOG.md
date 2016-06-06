@@ -1,3 +1,9 @@
+**2.8.0** (6 Jun 2016)
+- `track_links()` and `track_forms()` can now take raw elements or element lists in addition to query selectors
+- add `reset()` method to handle logout flow (thanks @stefansedich)
+- catch exceptions during `_send_request()` (thanks @feychenie)
+- fix user agent detection/reporting for Chrome iOS and Firefox iOS
+
 **2.7.3 - 2.7.9** (9 Mar 2016)
 - collect stats for internal capacity planning
 
