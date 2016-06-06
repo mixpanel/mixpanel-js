@@ -2719,7 +2719,7 @@ MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callbac
  * Useful for clearing data when a user logs out.
  */
 MixpanelLib.prototype.reset = function() {
-    this.persistence.clear();
+    this['persistence'].clear();
     this.register_once({'distinct_id': _.UUID()}, "");
 };
 
