@@ -2720,6 +2720,7 @@ MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callbac
  */
 MixpanelLib.prototype.reset = function() {
     this['persistence'].clear();
+    this._flags.identify_called = false;
     this.register_once({'distinct_id': _.UUID()}, "");
 };
 

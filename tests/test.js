@@ -2274,6 +2274,47 @@ mpmodule("mixpanel.reset");
         notEqual(properties.foo, propertiesAfterReset.foo);
     });
 
+    test("people updates are queued again after reset", 4, function() {
+        mixpanel.test.identify('foo');
+
+        // hits server immediately when identified
+        stop();
+        s = mixpanel.test.people.set({ y: 6 }, function(resp) {
+            same(resp, 1, "responded with 'success'");
+            start();
+        });
+        ok(contains_obj(s['$set'], { 'y': 6 }));
+
+        mixpanel.test.reset();
+
+        // queues after reset
+        stop();
+        s = mixpanel.test.people.set({ x: 5 }, function(resp) {
+            same(resp, -1, "responded with 'queued'");
+            start();
+        });
+        ok(contains_obj(mixpanel.test.persistence.props['__mps'], { x: 5 }), "queued set saved");
+    });
+
+    test("identify after reset flushes queues", 5, function() {
+        mixpanel.test.identify('foo');
+        mixpanel.test.reset();
+
+        mixpanel.test.people.set({ "b": "c" });
+        ok(contains_obj(mixpanel.test.persistence.props['__mps'], { "b": "c" }), "queued set saved");
+
+        stop();
+        mixpanel.test.identify("bar", function(resp, data) {
+            ok(resp == 1, "Successful write");
+            ok(contains_obj(data["$set"], { "b": "c" }));
+            same(mixpanel.test.persistence.props['__mps'], {}, "Queue is cleared after flushing");
+            // reload persistence to make sure it's persisted correctly
+            mixpanel.test.persistence.load();
+            same(mixpanel.test.persistence.props['__mps'], {}, "Empty queue is persisted");
+            start();
+        });
+    });
+
 if( /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent) ) {
     mpmodule("mobile tests");
         test("device property included", 1, function() {
