@@ -1,3 +1,6 @@
+**2.8.1** (7 Jun 2016)
+- make `people` methods queue again between `reset()` and `identify()`
+
 **2.8.0** (6 Jun 2016)
 - `track_links()` and `track_forms()` can now take raw elements or element lists in addition to query selectors
 - add `reset()` method to handle logout flow (thanks @stefansedich)
