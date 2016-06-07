@@ -2254,23 +2254,21 @@ mpmodule('user agent parser');
 mpmodule("mixpanel.reset");
 
     test('reset generates new distinct_id', 1, function() {
-        var id = '1234',
-            instance = mixpanel.init('token');
+        var id = '1234';
 
-        mixpanel.identify(id);
-        mixpanel.reset();
+        mixpanel.test.identify(id);
+        mixpanel.test.reset();
 
-        notEqual(id, mixpanel.get_distinct_id());
+        notEqual(id, mixpanel.test.get_distinct_id());
     });
 
     test('reset clears super properties', 1, function() {
-        var instance = mixpanel.init('token'),
-            properties = { foo: 1 };
+        var properties = { foo: 1 };
 
-        mixpanel.register(properties);
-        mixpanel.reset();
+        mixpanel.test.register(properties);
+        mixpanel.test.reset();
 
-        var propertiesAfterReset = mixpanel.persistence.properties();
+        var propertiesAfterReset = mixpanel.test.persistence.properties();
         notEqual(properties.foo, propertiesAfterReset.foo);
     });
 
