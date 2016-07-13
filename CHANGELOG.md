@@ -1,3 +1,6 @@
+**2.8.2** (12 Jul 2016)
+- reduce internal stats collection
+
 **2.8.1** (7 Jun 2016)
 - make `people` methods queue again between `reset()` and `identify()`
 
