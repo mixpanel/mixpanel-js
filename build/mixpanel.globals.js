@@ -27,7 +27,7 @@
     Globals should be all caps
     */
 
-    var LIB_VERSION = '2.8.1';
+    var LIB_VERSION = '2.8.2';
 
     var init_type;
     var mixpanel_master;
@@ -2436,15 +2436,9 @@
                 properties = _.extend({}, properties, this.mp_counts);
                 this.mp_counts = {};
                 this.mp_counts['$__c'] = 0;
-                this.mp_counts['$__c3'] = 0;
-                this.mp_counts['$__c4'] = 0;
-                this.mp_counts['$__c5'] = 0;
 
                 var name = this.get_config('name');
                 _.cookie.set('mp_' + name + '__c', 0, 1, true);
-                _.cookie.set('mp_' + name + '__c3', 0, 1, true);
-                _.cookie.set('mp_' + name + '__c4', 0, 1, true);
-                _.cookie.set('mp_' + name + '__c5', 0, 1, true);
             }
         } catch (e) {
             console.error(e);
@@ -4814,73 +4808,16 @@
 
         instance.mp_counts = instance.mp_counts || {};
         instance.mp_counts['$__c'] = parseInt(_.cookie.get('mp_' + name + '__c')) || 0;
-        instance.mp_counts['$__c3'] = parseInt(_.cookie.get('mp_' + name + '__c3')) || 0;
-        instance.mp_counts['$__c4'] = parseInt(_.cookie.get('mp_' + name + '__c4')) || 0;
-        instance.mp_counts['$__c5'] = parseInt(_.cookie.get('mp_' + name + '__c5')) || 0;
 
-        var increment_count = function(els, size, filtered_size) {
+        var increment_count = function() {
             instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
-            instance.mp_counts['$__c3'] = (instance.mp_counts['$__c3'] || 0) + size;
-            instance.mp_counts['$__c4'] = (instance.mp_counts['$__c4'] || 0) + filtered_size;
-            instance.mp_counts['$__c5'] = (instance.mp_counts['$__c5'] || 0) + els;
             _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
-            _.cookie.set('mp_' + name + '__c3', instance.mp_counts['$__c3'], 1, true);
-            _.cookie.set('mp_' + name + '__c4', instance.mp_counts['$__c4'], 1, true);
-            _.cookie.set('mp_' + name + '__c5', instance.mp_counts['$__c5'], 1, true);
         }
 
-        var process = function(target, filter) {
-            var processed = [];
-            var element = target;
-            while (element && element !== document.body) {
-                var props = {
-                  'attributes': [],
-                  'classes': typeof element['className'] === 'string' ? element['className'].split(' ') : [],
-                  'id': element['id'],
-                  'tagName': element['tagName'],
-                  'textContent': element === target ? element['textContent'].trim().substring(0, 255) : ''
-                };
-
-                for (var i = 0; i < (element['attributes'] || []).length; i++) {
-                    var attr = element['attributes'][i];
-                    var attrsToFilter = ['id', 'class'];
-                    if (filter) {
-                      attrsToFilter = attrsToFilter.concat(['href', 'title', 'style', 'for', 'value', 'checked', 'selected']);
-                    }
-                    if (attrsToFilter.indexOf(attr['name']) === -1) {
-                        props['attributes'].push({
-                            'name': attr['name'],
-                            'value': attr['value']
-                        });
-                    }
-                }
-
-                var nthOfType = 1;
-                var nthChild = 1;
-                var curNode = element;
-                while (curNode['previousElementSibling']) {
-                    curNode = curNode['previousElementSibling'];
-                    nthChild++;
-                    if (curNode['tagName'] === element['tagName']) {
-                        nthOfType++;
-                    }
-                }
-                props['nthChild'] = nthChild;
-                props['nthOfType'] = nthOfType;
-                processed.push(props);
-                element = element.parentNode;
-            }
-            return processed;
-        };
-
-        var evtCallback = function(e) {
+        var evtCallback = function() {
             try {
-                var processed = process(e.target);
-                var processed_filtered = process(e.target, true);
-                var size = JSON.stringify(processed).length;
-                var size_filtered = JSON.stringify(processed_filtered).length;
                 instance.mp_counts = instance.mp_counts || {};
-                increment_count(processed.length, size, size_filtered);
+                increment_count();
             } catch (e) {
               console.error(e);
             };
