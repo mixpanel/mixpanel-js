@@ -1,3 +1,6 @@
+**2.9.0** (19 Jul 2016)
+- Autotrack: easy and automatic data collection (disabled by default)
+
 **2.8.2** (12 Jul 2016)
 - reduce internal stats collection
 
@@ -5,6 +8,7 @@
 - make `people` methods queue again between `reset()` and `identify()`
 
 **2.8.0** (6 Jun 2016)
+- Collect everything dev
 - `track_links()` and `track_forms()` can now take raw elements or element lists in addition to query selectors
 - add `reset()` method to handle logout flow (thanks @stefansedich)
 - catch exceptions during `_send_request()` (thanks @feychenie)

@@ -49,11 +49,11 @@
 
                         document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/" + cdomain + secure;
                     };
-                    test_mixpanel(mixpanel);
+                    testMixpanel(mixpanel);
                 }
             });
 
-            test_async(mixpanel);
+            testAsync(mixpanel);
         </script>
     </body>
 </html>

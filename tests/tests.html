@@ -7,6 +7,7 @@
         <script type="text/javascript" src="vendor/sinon.js?v=159"></script>
         <script type="text/javascript" src="vendor/underscore.js"></script>
         <script type="text/javascript" src="test.js"></script>
+        <script type="text/javascript" src="test-ce.js"></script>
         <link rel="stylesheet" type="text/css" href="tests.css">
     </head>
     <body>
@@ -19,19 +20,6 @@
         <script>window.MIXPANEL_CUSTOM_LIB_URL = '../mixpanel.js';</script>
         <script type="text/javascript" src="redirect-unless-referrer.js"></script>
         <script type="text/javascript" src="../mixpanel-jslib-snippet.js"></script>
-        <script>
-            $('#qunit-tests').addClass('hidepass')
-            mixpanel.init("MIXPANEL_TOKEN",
-            {
-                cookie_name: "test",
-                reset_cookie: true,
-                debug: true,
-                loaded: function(mixpanel) {
-                    test_mixpanel(mixpanel);
-                }
-            });
-
-            test_async(mixpanel);
-        </script>
+        <script type="text/javascript" src="./run-tests.js"></script>
     </body>
 </html>
