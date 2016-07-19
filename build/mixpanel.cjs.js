@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.0'
+    LIB_VERSION: '2.9.1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1979,6 +1979,8 @@ var ce = {
                     }, this._getDefaultProperties('pageview')));
 
                     this._addDomEventHandlers(instance);
+                } else {
+                    instance['__autotrack_enabled'] = false;
                 }
             }, this);
 
@@ -2193,7 +2195,7 @@ var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAg
 var DEFAULT_CONFIG = {
     'api_host':               HTTP_PROTOCOL + 'api.mixpanel.com',
     'app_host':               HTTP_PROTOCOL + 'mixpanel.com',
-    'autotrack':              false,
+    'autotrack':              true,
     'cdn':                    HTTP_PROTOCOL + 'cdn.mxpnl.com',
     'cross_subdomain_cookie': true,
     'persistence':            'cookie',
@@ -2815,12 +2817,15 @@ var create_mplib = function(token, config, name) {
     // global debug to be true
     Config.DEBUG = Config.DEBUG || instance.get_config('debug');
 
+    instance['__autotrack_enabled'] = instance.get_config('autotrack');
     if (instance.get_config('autotrack')) {
-        var num_buckets = 10;
-        var num_enabled_buckets = 10;
+        var num_buckets = 100;
+        var num_enabled_buckets = 25;
         if (!ce.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
+            instance['__autotrack_enabled'] = false;
             console$1.log('Not in active bucket: disabling Automatic Event Collection.');
         } else if (!ce.isBrowserSupported()) {
+            instance['__autotrack_enabled'] = false;
             console$1.log('Disabling Automatic Event Collection because this browser is not supported');
         } else {
             ce.init(instance);
