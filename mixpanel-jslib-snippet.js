@@ -9,6 +9,25 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
 (function(document, mixpanel){
     // Only stub out if this is the first time running the snippet.
     if (!mixpanel['__SV']) {
+        var win = window;
+
+        // grab the hash params for ce editor immediately in case
+        // host website changes hash after init
+        try {
+          var getHashParam, matches, state, loc = win.location, hash = loc.hash;
+          getHashParam = function(hash, param) {
+              matches = hash.match(new RegExp(param + '=([^&]*)'));
+              return matches ? matches[1] : null;
+          };
+          if (hash && getHashParam(hash, 'state')) {
+              state = JSON.parse(decodeURIComponent(getHashParam(hash, 'state')));
+              if (state['action'] === 'mpeditor') {
+                win.sessionStorage.setItem('_mpcehash', hash);
+                history.replaceState(state['desiredHash'] || '', document.title, loc.pathname + loc.search); // remove ce editor hash
+              }
+          }
+        } catch (e) {}
+
         var script, first_script, gen_fn, functions, i, lib_name = "mixpanel";
         window[lib_name] = mixpanel;
 

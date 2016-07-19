@@ -1,10 +1,10 @@
 #!/bin/bash
 
 echo 'Building module and globals bundles'
-./node_modules/.bin/rollup -i src/loader-module.js -f amd -o build/mixpanel.amd.js
-./node_modules/.bin/rollup -i src/loader-module.js -f cjs -o build/mixpanel.cjs.js
-./node_modules/.bin/rollup -i src/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel
-./node_modules/.bin/rollup -i src/loader-globals.js -f iife -o build/mixpanel.globals.js -n mixpanel
+./node_modules/.bin/rollup -i src/loader-module.js -f amd -o build/mixpanel.amd.js -c rollup.config.js
+./node_modules/.bin/rollup -i src/loader-module.js -f cjs -o build/mixpanel.cjs.js -c rollup.config.js
+./node_modules/.bin/rollup -i src/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel -c rollup.config.js
+./node_modules/.bin/rollup -i src/loader-globals.js -f iife -o build/mixpanel.globals.js -n mixpanel -c rollup.config.js
 
 echo 'Minifying globals build and snippets'
 if [ -z "$1" ]; then
