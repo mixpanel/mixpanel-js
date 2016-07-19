@@ -1,3 +1,6 @@
+**2.9.0** (19 Jul 2016)
+- Autotrack: easy and automatic data collection (disabled by default)
+
 **2.8.2** (12 Jul 2016)
 - reduce internal stats collection
 
