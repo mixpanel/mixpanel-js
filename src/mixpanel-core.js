@@ -711,7 +711,7 @@ var create_mplib = function(token, config, name) {
     instance['__autotrack_enabled'] = instance.get_config('autotrack');
     if (instance.get_config('autotrack')) {
         var num_buckets = 100;
-        var num_enabled_buckets = 25;
+        var num_enabled_buckets = 100;
         if (!ce.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
             instance['__autotrack_enabled'] = false;
             console.log('Not in active bucket: disabling Automatic Event Collection.');
