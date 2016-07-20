@@ -377,7 +377,7 @@ var ce = {
         }
     },
 
-    _editorParamsFromHash: function(instance, hash, updateHash) {
+    _editorParamsFromHash: function(instance, hash) {
         var editorParams;
         try {
             var state = _.getHashParam(hash, 'state');
@@ -395,14 +395,12 @@ var ce = {
             };
             window.sessionStorage.setItem('editorParams', JSON.stringify(editorParams));
 
-            if (updateHash) {
-                if (state.desiredHash) {
-                    window.location.hash = state.desiredHash;
-                } else if (window.history) {
-                    history.replaceState('', document.title, window.location.pathname + window.location.search); // completely remove hash
-                } else {
-                    window.location.hash = ''; // clear hash (but leaves # unfortunately)
-                }
+            if (state.desiredHash) {
+                window.location.hash = state.desiredHash;
+            } else if (window.history) {
+                history.replaceState('', document.title, window.location.pathname + window.location.search); // completely remove hash
+            } else {
+                window.location.hash = ''; // clear hash (but leaves # unfortunately)
             }
         } catch (e) {
             console.error('Unable to parse data from hash', e);
@@ -427,9 +425,10 @@ var ce = {
         var editorParams;
 
         if (parseFromUrl) { // happens if they are initializing the editor using an old snippet
-            editorParams = this._editorParamsFromHash(instance, window.location.hash, true);
+            editorParams = this._editorParamsFromHash(instance, window.location.hash);
         } else if (parseFromStorage) { // happens if they are initialized the editor and using the new snippet
-            editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'), false);
+            editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'));
+            window.sessionStorage.removeItem('_mpcehash');
         } else { // get credentials from sessionStorage from a previous initialzation
             editorParams = JSON.parse(window.sessionStorage.getItem('editorParams') || '{}');
         }
@@ -448,10 +447,11 @@ var ce = {
         if (!this._editorLoaded) {
             this._editorLoaded = true;
             var editorUrl;
+            var cacheBuster = '?_ts=' + (new Date()).getTime();
             if (Config.DEBUG) {
-                editorUrl = instance.get_config('app_host') + '/site_media/compiled/reports/collect-everything/editor.js';
+                editorUrl = instance.get_config('app_host') + '/site_media/compiled/reports/collect-everything/editor.js' + cacheBuster;
             } else {
-                editorUrl = instance.get_config('app_host') + '/site_media/bundle-webpack/reports/collect-everything/editor.min.js';
+                editorUrl = instance.get_config('app_host') + '/site_media/bundle-webpack/reports/collect-everything/editor.min.js' + cacheBuster;
             }
             this._loadScript(editorUrl, function() {
                 window['mp_load_editor'](editorParams);
@@ -459,15 +459,6 @@ var ce = {
             return true;
         }
         return false;
-    },
-
-    closeEditor: function(redirectURL) {
-        window.sessionStorage.setItem('editorParams', '{}');
-        if (redirectURL) {
-            window.location = redirectURL;
-        } else {
-            window.location.reload(false);
-        }
     },
 
     // this is a mechanism to ramp up CE with no server-side interaction.
