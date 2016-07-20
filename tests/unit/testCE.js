@@ -712,12 +712,16 @@ describe('Collect Everything system', function() {
               return null;
             }
           },
+          removeItem: function(k) {
+            delete _storage[k];
+          },
         },
       };
       sandbox = sinon.sandbox.create();
       sandbox.stub(ce, '_loadEditor');
       sandbox.spy(window.sessionStorage, 'setItem');
       sandbox.spy(window.sessionStorage, 'getItem');
+      sandbox.spy(window.sessionStorage, 'removeItem');
 
       lib.get_config = sandbox.stub();
       lib.get_config.withArgs('token').returns('test_token');
@@ -777,6 +781,8 @@ describe('Collect Everything system', function() {
       expect(ce._loadEditor.calledWith(lib, editorParams)).to.equal(true);
       expect(window.sessionStorage.setItem.callCount).to.equal(2);
       expect(window.sessionStorage.setItem.calledWith('editorParams', JSON.stringify(editorParams))).to.equal(true);
+      expect(window.sessionStorage.removeItem.callCount).to.equal(1);
+      expect(window.sessionStorage.removeItem.calledWith('_mpcehash'));
     });
 
     it('should NOT initialize the visual editor when the activation query param does not exist', function() {
