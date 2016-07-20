@@ -1,3 +1,9 @@
+**2.9.2** (19 Jul 2016)
+- Autotrack: enabled by default for 100% of projects (still no automatic data collection however)
+
+**2.9.1** (19 Jul 2016)
+- Autotrack: enabled by default for 25% of projects (still no automatic data collection however)
+
 **2.9.0** (19 Jul 2016)
 - Autotrack: easy and automatic data collection (disabled by default)
 
