@@ -741,10 +741,6 @@ var create_mplib = function(token, config, name) {
     return instance;
 };
 
-MixpanelLib.prototype.close_editor = function(redirectURL) {
-    ce.closeEditor(redirectURL);
-};
-
 // Initialization methods
 
 /**
@@ -3320,7 +3316,6 @@ MixpanelLib.prototype['get_distinct_id']                 = MixpanelLib.prototype
 MixpanelLib.prototype['toString']                        = MixpanelLib.prototype.toString;
 MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
 MixpanelLib.prototype['_show_notification']              = MixpanelLib.prototype._show_notification;
-MixpanelLib.prototype['close_editor']                    = MixpanelLib.prototype.close_editor;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
