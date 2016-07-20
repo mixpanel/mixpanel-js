@@ -360,6 +360,8 @@ var ce = {
                     }, this._getDefaultProperties('pageview')));
 
                     this._addDomEventHandlers(instance);
+                } else {
+                    instance['__autotrack_enabled'] = false;
                 }
             }, this);
 

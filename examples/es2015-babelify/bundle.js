@@ -503,6 +503,8 @@ var ce = {
                     }, this._getDefaultProperties('pageview')));
 
                     this._addDomEventHandlers(instance);
+                } else {
+                    instance['__autotrack_enabled'] = false;
                 }
             }, this);
 
@@ -645,7 +647,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.0'
+    LIB_VERSION: '2.9.1'
 };
 
 exports['default'] = Config;
@@ -759,7 +761,7 @@ var ENQUEUE_REQUESTS = !USE_XHR && _utils.userAgent.indexOf('MSIE') === -1 && _u
 var DEFAULT_CONFIG = {
     'api_host': HTTP_PROTOCOL + 'api.mixpanel.com',
     'app_host': HTTP_PROTOCOL + 'mixpanel.com',
-    'autotrack': false,
+    'autotrack': true,
     'cdn': HTTP_PROTOCOL + 'cdn.mxpnl.com',
     'cross_subdomain_cookie': true,
     'persistence': 'cookie',
@@ -1378,12 +1380,15 @@ var create_mplib = function create_mplib(token, config, name) {
     // global debug to be true
     _config2['default'].DEBUG = _config2['default'].DEBUG || instance.get_config('debug');
 
+    instance['__autotrack_enabled'] = instance.get_config('autotrack');
     if (instance.get_config('autotrack')) {
-        var num_buckets = 10;
-        var num_enabled_buckets = 10;
+        var num_buckets = 100;
+        var num_enabled_buckets = 25;
         if (!_ce.ce.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
+            instance['__autotrack_enabled'] = false;
             _utils.console.log('Not in active bucket: disabling Automatic Event Collection.');
         } else if (!_ce.ce.isBrowserSupported()) {
+            instance['__autotrack_enabled'] = false;
             _utils.console.log('Disabling Automatic Event Collection because this browser is not supported');
         } else {
             _ce.ce.init(instance);

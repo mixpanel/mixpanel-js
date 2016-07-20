@@ -24,21 +24,26 @@
                 }
             }
 
-            test("Testing click", 4, function() {
-                var trackSpy = sinon.spy(mixpanel, trackKey);
-                var ceTrackSpy = sinon.spy(mixpanelCE, trackKey);
-                var aTag = document.createElement('a');
-                document.body.appendChild(aTag);
-                simulateEvent(aTag, 'click');
-                ok(trackSpy.notCalled, "Clicking a link does not fire an event for non CE lib");
-                ok(ceTrackSpy.calledOnce, "Clicking a link fires an event for CE lib");
+            if (mixpanelCE['__autotrack_enabled']) {
+                test("Testing click", 4, function() {
+                    var trackSpy = sinon.spy(mixpanel, trackKey);
+                    var ceTrackSpy = sinon.spy(mixpanelCE, trackKey);
+                    var aTag = document.createElement('a');
+                    document.body.appendChild(aTag);
+                    simulateEvent(aTag, 'click');
+                    ok(trackSpy.notCalled, "Clicking a link does not fire an event for non CE lib");
+                    ok(ceTrackSpy.calledOnce, "Clicking a link fires an event for CE lib");
 
-                var args = ceTrackSpy.args[0];
-                var event = args[0];
-                var props = args[1];
-                ok(event === "$web_event", "Event is '$web_event'");
-                ok(props['$el_tag_name'] === "A", "Tracked element's tag name is 'A'");
-            });
+                    var args = ceTrackSpy.args[0];
+                    var event = args[0];
+                    var props = args[1];
+                    ok(event === "$web_event", "Event is '$web_event'");
+                    ok(props['$el_tag_name'] === "A", "Tracked element's tag name is 'A'");
+                });
+            } else {
+              var warning = 'autotrack is disabled, not running autotrack tests';
+              $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
+            }
         }, 10000); // there's a race condition where CE isn't enabled until decide responds so we need to wait for that
     };
 })();
