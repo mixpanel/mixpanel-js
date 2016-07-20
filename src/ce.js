@@ -448,10 +448,11 @@ var ce = {
         if (!this._editorLoaded) {
             this._editorLoaded = true;
             var editorUrl;
+            var cacheBuster = '?_ts=' + (new Date()).getTime();
             if (Config.DEBUG) {
-                editorUrl = instance.get_config('app_host') + '/site_media/compiled/reports/collect-everything/editor.js';
+                editorUrl = instance.get_config('app_host') + '/site_media/compiled/reports/collect-everything/editor.js' + cacheBuster;
             } else {
-                editorUrl = instance.get_config('app_host') + '/site_media/bundle-webpack/reports/collect-everything/editor.min.js';
+                editorUrl = instance.get_config('app_host') + '/site_media/bundle-webpack/reports/collect-everything/editor.min.js' + cacheBuster;
             }
             this._loadScript(editorUrl, function() {
                 window['mp_load_editor'](editorParams);
