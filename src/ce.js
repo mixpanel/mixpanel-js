@@ -461,15 +461,6 @@ var ce = {
         return false;
     },
 
-    closeEditor: function(redirectURL) {
-        window.sessionStorage.setItem('editorParams', '{}');
-        if (redirectURL) {
-            window.location = redirectURL;
-        } else {
-            window.location.reload(false);
-        }
-    },
-
     // this is a mechanism to ramp up CE with no server-side interaction.
     // when CE is active, every page load results in a decide request. we
     // need to gently ramp this up so we don't overload decide. this decides

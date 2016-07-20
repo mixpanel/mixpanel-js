@@ -706,7 +706,11 @@ describe('Collect Everything system', function() {
             _storage[k] = v;
           },
           getItem: function(k) {
-            return _storage[k];
+            if (_storage.hasOwnProperty(k)) {
+              return _storage[k];
+            } else {
+              return null;
+            }
           },
         },
       };
@@ -756,7 +760,7 @@ describe('Collect Everything system', function() {
     });
 
     it('should initialize the visual editor when the hash state contains action "mpeditor"', function() {
-      window.location.href = `https://mixpanel.com/${hash}`;
+      window.location.href = 'https://mixpanel.com/';
       window.location.hash = `#${hash}`;
       ce._maybeLoadEditor(lib);
       expect(ce._loadEditor.calledOnce).to.equal(true);
@@ -766,7 +770,7 @@ describe('Collect Everything system', function() {
     });
 
     it('should initialize the visual editor when the hash was parsed by the snippet', function() {
-      window.location.href = `https://mixpanel.com/`;
+      window.location.href = 'https://mixpanel.com/';
       window.sessionStorage.setItem('_mpcehash', `#${hash}`);
       ce._maybeLoadEditor(lib);
       expect(ce._loadEditor.calledOnce).to.equal(true);
@@ -824,24 +828,6 @@ describe('Collect Everything system', function() {
       ce._loadEditor(lib, 'accessToken');
       const loaded = ce._loadEditor(lib, 'accessToken');
       expect(loaded).to.equal(false);
-    });
-
-    it('should remove all editor data from session and reload the page when closed with no redirect url', function() {
-      ce._editorLoaded = false;
-      ce._loadEditor(lib, 'accessToken');
-      ce.closeEditor();
-      expect(window.sessionStorage.setItem.callCount).to.equal(1);
-      expect(window.sessionStorage.setItem.calledWithExactly('editorParams', '{}')).to.equal(true);
-      expect(window.location.reload.calledWithExactly(false)).to.equal(true);
-    });
-
-    it('should remove all editor data from session and redirect to the passed-in url', function() {
-      ce._editorLoaded = false;
-      ce._loadEditor(lib, 'accessToken');
-      ce.closeEditor('https://mixpanel.com');
-      expect(window.sessionStorage.setItem.callCount).to.equal(1);
-      expect(window.sessionStorage.setItem.calledWithExactly('editorParams', '{}')).to.equal(true);
-      expect(window.location).to.equal('https://mixpanel.com');
     });
   });
 
