@@ -647,7 +647,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.1'
+    LIB_VERSION: '2.9.2'
 };
 
 exports['default'] = Config;
@@ -1383,7 +1383,7 @@ var create_mplib = function create_mplib(token, config, name) {
     instance['__autotrack_enabled'] = instance.get_config('autotrack');
     if (instance.get_config('autotrack')) {
         var num_buckets = 100;
-        var num_enabled_buckets = 25;
+        var num_enabled_buckets = 100;
         if (!_ce.ce.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
             instance['__autotrack_enabled'] = false;
             _utils.console.log('Not in active bucket: disabling Automatic Event Collection.');
