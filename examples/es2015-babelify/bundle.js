@@ -517,7 +517,7 @@ var ce = {
         }
     },
 
-    _editorParamsFromHash: function _editorParamsFromHash(instance, hash, updateHash) {
+    _editorParamsFromHash: function _editorParamsFromHash(instance, hash) {
         var editorParams;
         try {
             var state = _utils._.getHashParam(hash, 'state');
@@ -535,15 +535,13 @@ var ce = {
             };
             window.sessionStorage.setItem('editorParams', JSON.stringify(editorParams));
 
-            if (updateHash) {
-                if (state.desiredHash) {
-                    window.location.hash = state.desiredHash;
-                } else if (window.history) {
-                    history.replaceState('', document.title, window.location.pathname + window.location.search); // completely remove hash
-                } else {
-                        window.location.hash = ''; // clear hash (but leaves # unfortunately)
-                    }
-            }
+            if (state['desiredHash']) {
+                window.location.hash = state['desiredHash'];
+            } else if (window.history) {
+                history.replaceState('', document.title, window.location.pathname + window.location.search); // completely remove hash
+            } else {
+                    window.location.hash = ''; // clear hash (but leaves # unfortunately)
+                }
         } catch (e) {
             console.error('Unable to parse data from hash', e);
         }
@@ -568,10 +566,11 @@ var ce = {
 
         if (parseFromUrl) {
             // happens if they are initializing the editor using an old snippet
-            editorParams = this._editorParamsFromHash(instance, window.location.hash, true);
+            editorParams = this._editorParamsFromHash(instance, window.location.hash);
         } else if (parseFromStorage) {
             // happens if they are initialized the editor and using the new snippet
-            editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'), false);
+            editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'));
+            window.sessionStorage.removeItem('_mpcehash');
         } else {
             // get credentials from sessionStorage from a previous initialzation
             editorParams = JSON.parse(window.sessionStorage.getItem('editorParams') || '{}');
@@ -591,10 +590,11 @@ var ce = {
         if (!this._editorLoaded) {
             this._editorLoaded = true;
             var editorUrl;
+            var cacheBuster = '?_ts=' + new Date().getTime();
             if (_config2['default'].DEBUG) {
-                editorUrl = instance.get_config('app_host') + '/site_media/compiled/reports/collect-everything/editor.js';
+                editorUrl = instance.get_config('app_host') + '/site_media/compiled/reports/collect-everything/editor.js' + cacheBuster;
             } else {
-                editorUrl = instance.get_config('app_host') + '/site_media/bundle-webpack/reports/collect-everything/editor.min.js';
+                editorUrl = instance.get_config('app_host') + '/site_media/bundle-webpack/reports/collect-everything/editor.min.js' + cacheBuster;
             }
             this._loadScript(editorUrl, function () {
                 window['mp_load_editor'](editorParams);
@@ -602,15 +602,6 @@ var ce = {
             return true;
         }
         return false;
-    },
-
-    closeEditor: function closeEditor(redirectURL) {
-        window.sessionStorage.setItem('editorParams', '{}');
-        if (redirectURL) {
-            window.location = redirectURL;
-        } else {
-            window.location.reload(false);
-        }
     },
 
     // this is a mechanism to ramp up CE with no server-side interaction.
@@ -647,7 +638,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.2'
+    LIB_VERSION: '2.9.3'
 };
 
 exports['default'] = Config;
@@ -1411,10 +1402,6 @@ var create_mplib = function create_mplib(token, config, name) {
     }
 
     return instance;
-};
-
-MixpanelLib.prototype.close_editor = function (redirectURL) {
-    _ce.ce.closeEditor(redirectURL);
 };
 
 // Initialization methods
@@ -3879,7 +3866,6 @@ MixpanelLib.prototype['get_distinct_id'] = MixpanelLib.prototype.get_distinct_id
 MixpanelLib.prototype['toString'] = MixpanelLib.prototype.toString;
 MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
 MixpanelLib.prototype['_show_notification'] = MixpanelLib.prototype._show_notification;
-MixpanelLib.prototype['close_editor'] = MixpanelLib.prototype.close_editor;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties'] = MixpanelPersistence.prototype.properties;
