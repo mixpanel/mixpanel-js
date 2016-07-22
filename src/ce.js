@@ -244,7 +244,7 @@ var ce = {
         if (!isNaN(secondsToDisable) && secondsToDisable > 0) {
             var disableUntil = _.timestamp() + (secondsToDisable * 1000);
             console.log('disabling CE for ' + secondsToDisable + ' seconds (from ' + _.timestamp() + ' until ' + disableUntil + ')');
-            _.cookie.set(DISABLE_COOKIE, true, secondsToDisable, true);
+            _.cookie.set_seconds(DISABLE_COOKIE, true, secondsToDisable, true);
         }
     },
 

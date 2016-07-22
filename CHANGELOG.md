@@ -1,3 +1,6 @@
+**2.9.4** (22 Jul 2016)
+- Cookie setting fix: return cookie setting function to its previous functionality of using days instead of seconds
+
 **2.9.3** (19 Jul 2016)
 - Autotrack: small tweaks
 

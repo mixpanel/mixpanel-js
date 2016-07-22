@@ -844,7 +844,7 @@ describe('Collect Everything system', function() {
 
     it('should not track when the cookie is set', function() {
       const cookie = {};
-      _.cookie.set = sinon.spy((cookieKey, val, expireySeconds, cross_subdomain) => {
+      _.cookie.set_seconds = sinon.spy((cookieKey, val, expireySeconds, cross_subdomain) => {
         cookie[cookieKey] = val;
         setTimeout(() => delete cookie[cookieKey], expireySeconds * 1000);
       });
@@ -854,7 +854,7 @@ describe('Collect Everything system', function() {
       ce._addDomEventHandlers({});
       ce.checkForBackoff({getResponseHeader: () => 1});
 
-      expect(_.cookie.set.calledWith(DISABLE_COOKIE, true, 1, true)).to.equal(true);
+      expect(_.cookie.set_seconds.calledWith(DISABLE_COOKIE, true, 1, true)).to.equal(true);
 
       // test immediatelya after
       expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(true);
