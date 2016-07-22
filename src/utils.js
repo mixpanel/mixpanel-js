@@ -949,7 +949,7 @@ _.cookie = {
         return cookie;
     },
 
-    set: function(name, value, seconds, cross_subdomain, is_secure) {
+    set_seconds: function(name, value, seconds, cross_subdomain, is_secure) {
         var cdomain = '',
             expires = '',
             secure = '';
@@ -964,6 +964,29 @@ _.cookie = {
         if (seconds) {
             var date = new Date();
             date.setTime(date.getTime() + (seconds * 1000));
+            expires = '; expires=' + date.toGMTString();
+        }
+
+        if (is_secure) {
+            secure = '; secure';
+        }
+
+        document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+    },
+
+    set: function(name, value, days, cross_subdomain, is_secure) {
+        var cdomain = '', expires = '', secure = '';
+
+        if (cross_subdomain) {
+            var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i),
+                domain = matches ? matches[0] : '';
+
+            cdomain   = ((domain) ? '; domain=.' + domain : '');
+        }
+
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
             expires = '; expires=' + date.toGMTString();
         }
 
