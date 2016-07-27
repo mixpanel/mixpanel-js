@@ -248,11 +248,17 @@ var ce = {
         } else {
             target = e.target;
         }
-        if (target.nodeType && target.nodeType === Node.TEXT_NODE) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
+
+        // specifying these locally here since some websites override the global Node var
+        // ex: https://www.codingame.com/
+        var ELEMENT_NODE = 1;
+        var TEXT_NODE = 3;
+
+        if (target.nodeType && target.nodeType === TEXT_NODE) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
             target = target.parentNode;
         }
 
-        if (target === document || target === document.body || target.nodeType !== Node.ELEMENT_NODE) {
+        if (target === document || target === document.body || target.nodeType !== ELEMENT_NODE) {
             return;
         }
 
