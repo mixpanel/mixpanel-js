@@ -119,47 +119,37 @@ describe('Collect Everything system', function() {
     });
 
     it('should contain the proper tag name', function() {
-      const props = ce._getPropertiesFromElement(div, true);
+      const props = ce._getPropertiesFromElement(div);
       expect(props['tag_name']).to.equal('DIV');
     });
 
     it('should contain class list', function() {
-      const props = ce._getPropertiesFromElement(div, true);
+      const props = ce._getPropertiesFromElement(div);
       expect(props['classes']).to.deep.equal(['class1', 'class2', 'class3']);
     });
 
-    it('should contain element text when includeTextContent is true', function() {
-      const props = ce._getPropertiesFromElement(div, true);
-      expect(props['text']).to.equal('my sweet inner text');
-    });
-
-    it('should NOT contain element text when includeTextContent is false', function() {
-      const props = ce._getPropertiesFromElement(div, false);
-      expect(props['text']).to.equal(undefined);
-    });
-
     it('should contain input value', function() {
-      const props = ce._getPropertiesFromElement(input, true);
+      const props = ce._getPropertiesFromElement(input);
       expect(props['value']).to.equal('test val');
     });
 
     it('should strip hidden input value', function() {
-      const props = ce._getPropertiesFromElement(hidden, true);
+      const props = ce._getPropertiesFromElement(hidden);
       expect(props['value']).to.equal('[stripped]');
     });
 
     it('should strip password input value', function() {
-      const props = ce._getPropertiesFromElement(password, true);
+      const props = ce._getPropertiesFromElement(password);
       expect(props['value']).to.equal('[stripped]');
     });
 
     it('should contain nth-of-type', function() {
-      const props = ce._getPropertiesFromElement(div, true);
+      const props = ce._getPropertiesFromElement(div);
       expect(props['nth_of_type']).to.equal(2);
     });
 
     it('should contain nth-child', function() {
-      const props = ce._getPropertiesFromElement(password, true);
+      const props = ce._getPropertiesFromElement(password);
       expect(props['nth_child']).to.equal(6);
     });
   });
@@ -348,6 +338,22 @@ describe('Collect Everything system', function() {
         '$form_field__myTextArea': 'I have questions',
       });
     });
+
+    it('does not track fields with no name or id', function() {
+      const formHtml = `
+        <input type="text" name="name" value="name"/>
+        <input type="text" id="id" value="id"/>
+        <input type="text" value="nothing"/>
+      `;
+      const form = document.createElement('form');
+      form.innerHTML = formHtml;
+      const formFieldProps = ce._getFormFieldProperties(form);
+      expect(formFieldProps).to.deep.equal({
+        '$form_field__name': 'name',
+        '$form_field__id': 'id',
+      });
+    });
+
   });
 
   describe('isBrowserSupported', function() {
@@ -511,6 +517,13 @@ describe('Collect Everything system', function() {
   describe('_trackEvent', function() {
     let lib, sandbox;
 
+    const getTrackedProps = function(trackSpy) {
+      const trackArgs = trackSpy.args[0];
+      const event = trackArgs[0];
+      const props = trackArgs[1];
+      return props;
+    };
+
     beforeEach(function() {
       sandbox = sinon.sandbox.create();
       sandbox.spy(ce, '_getFormFieldProperties');
@@ -524,8 +537,9 @@ describe('Collect Everything system', function() {
       sandbox.restore();
     });
 
-    it('should track a click event with parent and grandparent els', function() {
+    it('includes necessary metadata as properties when tracking an event', function() {
       const elTarget = document.createElement('a');
+      elTarget.setAttribute('href', 'http://test.com');
       const elParent = document.createElement('span');
       elParent.appendChild(elTarget);
       const elGrandparent = document.createElement('div');
@@ -545,9 +559,88 @@ describe('Collect Everything system', function() {
       expect(event).to.equal('$web_event');
       expect(props['$event_type']).to.equal('click');
       expect(props).to.have.property('$host', 'mixpanel.com');
-      expect(props).to.have.property('$el_tag_name', 'A');
+      expect(props).to.have.property('$el_attr__href', 'http://test.com');
       expect(props['$elements'][1]).to.have.property('tag_name', 'SPAN');
       expect(props['$elements'][2]).to.have.property('tag_name', 'DIV');
+    });
+
+    it('gets the href attribute from parent anchor tags', function() {
+      const elTarget = document.createElement('span');
+      const elParent = document.createElement('span');
+      elParent.appendChild(elTarget);
+      const elGrandparent = document.createElement('a');
+      elGrandparent.setAttribute('href', 'http://test.com');
+      elGrandparent.appendChild(elParent);
+      const e = {
+        target: elTarget,
+        type: 'click',
+      }
+      ce._trackEvent(e, lib);
+      const props = getTrackedProps(lib.track);
+      expect(props).to.have.property('$el_attr__href', 'http://test.com');
+    });
+
+    it('correctly identifies and formats text content', function() {
+      const dom = `
+      <div>
+        <span id='span1'>Some text</span>
+        <div>
+          <div>
+            <div>
+              <img src='' id='img1'/>
+              <div>
+                <img src='' id='img2'/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span id='span2'>
+        Some super duper really long
+        Text with new lines that we'll strip out
+        and also we will want to make this text
+        shorter since it's not likely people really care
+        about text content that's super long and it
+        also takes up more space and bandwidth.
+        Some super duper really long
+        Text with new lines that we'll strip out
+        and also we will want to make this text
+        shorter since it's not likely people really care
+        about text content that's super long and it
+        also takes up more space and bandwidth.
+      </span>
+
+      `
+      document.body.innerHTML = dom;
+      const span2 = document.getElementById('span2');
+      const img1 = document.getElementById('img1');
+      const img2 = document.getElementById('img2');
+
+      const e1 = {
+        target: span2,
+        type: 'click',
+      }
+      ce._trackEvent(e1, lib);
+      const props1 = getTrackedProps(lib.track);
+      expect(props1).to.have.property('$el_text', 'Some super duper really long Text with new lines that we\'ll strip out and also we will want to make this text shorter since it\'s not likely people really care about text content that\'s super long and it also takes up more space and bandwidth. Some super d');
+      lib.track.reset();
+
+      const e2 = {
+        target: img1,
+        type: 'click',
+      }
+      ce._trackEvent(e2, lib);
+      const props2 = getTrackedProps(lib.track);
+      expect(props2).to.have.property('$el_text', 'Some text');
+      lib.track.reset();
+
+      const e3 = {
+        target: img2,
+        type: 'click',
+      }
+      ce._trackEvent(e3, lib);
+      const props3 = getTrackedProps(lib.track);
+      expect(props3).to.not.have.property('$el_text');
     });
 
     it('should track a submit event with form field props', function() {
@@ -558,9 +651,28 @@ describe('Collect Everything system', function() {
       ce._trackEvent(e, lib);
       expect(ce._getFormFieldProperties.calledOnce).to.equal(true);
       expect(lib.track.calledOnce).to.equal(true);
-      const trackArgs = lib.track.args[0];
-      const props = trackArgs[1];
+      const props = getTrackedProps(lib.track);
       expect(props['$event_type']).to.equal('submit');
+    });
+
+    it('should track a click event inside a form with form field props', function() {
+      var form = document.createElement('form');
+      var link = document.createElement('a');
+      var input = document.createElement('input');
+      input.name = 'test input';
+      input.value = 'test val';
+      form.appendChild(link);
+      form.appendChild(input);
+      const e = {
+        target: link,
+        type: 'click',
+      }
+      ce._trackEvent(e, lib);
+      expect(ce._getFormFieldProperties.calledOnce).to.equal(true);
+      expect(ce._getFormFieldProperties.returned({'$form_field__test input': 'test val'})).to.equal(true);
+      expect(lib.track.calledOnce).to.equal(true);
+      const props = getTrackedProps(lib.track);
+      expect(props['$event_type']).to.equal('click');
     });
 
     it('should never track an element with `mp-no-track` class', function() {

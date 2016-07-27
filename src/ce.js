@@ -1,5 +1,3 @@
-import {nearestInteractiveElement} from 'mixpanel-js-utils';
-
 import Config from './config';
 import { _ } from './utils';
 
@@ -31,17 +29,11 @@ var ce = {
         }
     },
 
-    _getPropertiesFromElement: function(elem, includeTextContent) {
-        includeTextContent = !!includeTextContent;
+    _getPropertiesFromElement: function(elem) {
         var props = {
             'classes': elem.className.split(' '),
             'tag_name': elem.tagName
         };
-
-        if (includeTextContent) {
-            // The "replace" here is a replacement for "trim," which some old browsers don't have
-            props['text'] = elem.textContent.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '').substring(0, 255);
-        }
 
         if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
             props['value'] = this._getFormFieldValue(elem);
@@ -264,27 +256,6 @@ var ce = {
             return;
         }
 
-
-        // The actual target element might be some <span> inside a button or anchor tag.
-        // We use the 'nearestInteractiveElement' to attempt to detect the
-        // element that is actually interesting (i.e. interactable)
-        // that way the top level properties are more consistent and
-        // more likely to be what our customers expect to see
-        //
-        // E.g <a href="some_page.html"><span>Hello <span style="font-weight: bold">You</span></span></a>
-        // If that is clicked, an inner span is likely the e.target but it's more likely our customers
-        // care about the click on the anchor tag. 'nearestInteractElement' will return the anchor tag given
-        // one of those spans.
-        var calculatedTarget = nearestInteractiveElement(target);
-
-        // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
-        var targetClasses = (target.className || '').split(' ');
-        var calculatedTargetClasses = (calculatedTarget.className || '').split(' ');
-        var classes = targetClasses.concat(calculatedTargetClasses);
-        if (_.includes(classes, 'mp-no-track')) {
-            return;
-        }
-
         var targetElementList = [target];
         var curEl = target;
         while (curEl.parentNode && curEl.parentNode !== document.body) {
@@ -293,37 +264,52 @@ var ce = {
         }
 
         var elementsJson = [];
+        var href, elementText, form, explicitNoTrack = false;
         if (this._shouldTrackDomEvent(target, e)) {
             _.each(targetElementList, function(el, idx) {
-                elementsJson.push(this._getPropertiesFromElement(el, idx === 0));
+                // if the element or a parent element is an anchor tag
+                // include the href as a property
+                if (el.tagName.toLowerCase() === 'a') {
+                    href = el.getAttribute('href');
+                } else if (el.tagName.toLowerCase() === 'form') {
+                    form = el;
+                }
+                // crawl up to max of 5 nodes to populate text content
+                if (!elementText && idx < 5 && el.textContent) {
+                    var textContent = _.trim(el.textContent);
+                    if (textContent) {
+                        elementText = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+                    }
+                }
+
+                // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
+                var classes = (el.className || '').split(' ');
+                if (_.includes(classes, 'mp-no-track')) {
+                    explicitNoTrack = true;
+                }
+
+                elementsJson.push(this._getPropertiesFromElement(el));
             }, this);
 
-            var calculatedTargetProps = this._getPropertiesFromElement(calculatedTarget, true);
-            var calculatedTargetIdx = targetElementList.indexOf(calculatedTarget);
-            var propsToIgnore = ['attr__class', 'nth_child', 'nth_of_type'];
-            var elProps = {};
-            for (var prop in calculatedTargetProps) {
-                if (propsToIgnore.indexOf(prop) === -1) {
-                    elProps['$el_' + prop] = calculatedTargetProps[prop];
-                }
-            }
-
-            var formFieldProps = {};
-            if (e.type === 'submit' && e.target.tagName.toLowerCase() === 'form') {
-                formFieldProps = this._getFormFieldProperties(e.target);
+            if (explicitNoTrack) {
+                return false;
             }
 
             var props = _.extend(
                 this._getDefaultProperties(e.type),
                 {
-                    '$calculatedElementIdx': calculatedTargetIdx,
-                    '$elements':  elementsJson
+                    '$elements':  elementsJson,
+                    '$el_attr__href': href,
+                    '$el_text': elementText
                 },
-                elProps,
-                formFieldProps,
                 this._getCustomProperties(targetElementList)
             );
+
+            if (form && (e.type === 'submit' || e.type === 'click')) {
+                _.extend(props, this._getFormFieldProperties(form));
+            }
             instance.track('$web_event', props);
+            return true;
         }
     },
 
