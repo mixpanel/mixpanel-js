@@ -38,7 +38,7 @@
                     var event = args[0];
                     var props = args[1];
                     ok(event === "$web_event", "Event is '$web_event'");
-                    ok(props['$el_tag_name'] === "A", "Tracked element's tag name is 'A'");
+                    ok(props['$elements'][0]['tag_name'] === "A", "Tracked element's tag name is 'A'");
                 });
             } else {
               var warning = 'autotrack is disabled, not running autotrack tests';

@@ -17,118 +17,7 @@ _srcLoaderModule2['default'].init("FAKE_TOKEN", {
 
 _srcLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loader-module":5}],2:[function(require,module,exports){
-'use strict';
-
-var elementHasOwnHandler = function elementHasOwnHandler(element) {
-    var tests = [function (node) {
-        return ['form', 'input', 'select', 'textarea', 'submit', 'a'].indexOf(node.tagName.toLowerCase()) > -1;
-    }, function (node) {
-        // for onclick properties and attributes
-        return node.onclick || node.getAttribute('onclick');
-    }, function (node) {
-        return !!(window.jQuery._data || window.jQuery.data)(node, 'events');
-    }, function (node) {
-        // jquery 1.3.x and 1.4x
-        return node.getAttribute('data-events');
-    }, function (node) {
-        // jquery 1.5.x
-        for (var i = 0; i < window.Event.observers.length; i++) {
-            var observer = window.Event.observers[i];
-            if ((observer || [])[0] === node) {
-                return true;
-            }
-        }
-        return false;
-    }, function (node) {
-        // jquery 1.6 to 1.6.0.3
-        return window.Event.cache[node._eventId || node._prototypeEventID[0]].click[0];
-    }];
-
-    for (var i = 0; i < tests.length; i++) {
-        var test = tests[i];
-        try {
-            if (test(element)) {
-                return true;
-            }
-        } catch (e) {}
-    }
-    return false;
-};
-
-var nearestInteractiveElement = function nearestInteractiveElement(element, cache) {
-    /*** Don't mess with this stuff without testing the changes on IE8 first, it's very brittle ***/
-    if (cache && cache[element] && cache[element].element === element) {
-        return cache[element].closest;
-    }
-    var tagName = element.tagName.toLowerCase();
-    if (tagName === 'html' || tagName === 'head') {
-        return null;
-    }
-
-    // next, try to find the closest element that seems interactive
-    var child = void 0,
-        closest = void 0;
-    var candidate = element;
-    var visited_candidates = [];
-
-    do {
-        visited_candidates.push(candidate);
-
-        // skip candidates that don't accept pointer events
-        if (candidate.style['pointer-events'] === 'none') {
-            child = candidate;
-            candidate = candidate.parentElement;
-            continue;
-        }
-
-        // if the cursor becomes default, assume that the child was clickable
-        if (child) {
-            var candidateStyles = window.getComputedStyle(candidate);
-            var childStyles = window.getComputedStyle(child);
-            var cursor = candidateStyles.cursor;
-            if ((cursor === 'default' || cursor === 'auto') && cursor !== childStyles.cursor) {
-                closest = child;
-                break;
-            }
-        }
-
-        // if there are data- attributes we assume that it's used for something interactive
-        var attrs = candidate.attributes;
-        for (var i = 0; i < attrs.length; i++) {
-            if (/^data\-/.test(attrs[i].name)) {
-                closest = candidate;
-                break;
-            }
-        }
-
-        // if the element has its own click handler, it is almost certainly clickable
-        if (elementHasOwnHandler(candidate)) {
-            closest = candidate;
-            break;
-        }
-
-        child = candidate;
-        candidate = candidate.parentElement;
-    } while (candidate && candidate.tagName.toLowerCase() !== 'body');
-
-    if (cache && closest) {
-        for (var _i = 0; _i < visited_candidates.length; _i++) {
-            var _candidate = visited_candidates[_i];
-            cache[_candidate] = closest;
-        }
-        cache[element] = {
-            closest: closest,
-            element: element
-        };
-    }
-
-    return closest || element;
-};
-
-exports.elementHasOwnHandler = elementHasOwnHandler;
-exports.nearestInteractiveElement = nearestInteractiveElement;
-},{}],3:[function(require,module,exports){
+},{"../../src/loader-module":4}],2:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -137,8 +26,6 @@ Object.defineProperty(exports, '__esModule', {
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-var _mixpanelJsUtils = require('mixpanel-js-utils');
-
 var _config = require('./config');
 
 var _config2 = _interopRequireDefault(_config);
@@ -146,6 +33,11 @@ var _config2 = _interopRequireDefault(_config);
 var _utils = require('./utils');
 
 var DISABLE_COOKIE = '__mpced';
+
+// specifying these locally here since some websites override the global Node var
+// ex: https://www.codingame.com/
+var ELEMENT_NODE = 1;
+var TEXT_NODE = 3;
 
 var ce = {
     _previousElementSibling: function _previousElementSibling(el) {
@@ -173,17 +65,11 @@ var ce = {
         }
     },
 
-    _getPropertiesFromElement: function _getPropertiesFromElement(elem, includeTextContent) {
-        includeTextContent = !!includeTextContent;
+    _getPropertiesFromElement: function _getPropertiesFromElement(elem) {
         var props = {
             'classes': elem.className.split(' '),
             'tag_name': elem.tagName
         };
-
-        if (includeTextContent) {
-            // The "replace" here is a replacement for "trim," which some old browsers don't have
-            props['text'] = elem.textContent.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '').substring(0, 255);
-        }
 
         if (_utils._.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
             props['value'] = this._getFormFieldValue(elem);
@@ -210,11 +96,14 @@ var ce = {
     },
 
     _shouldTrackDomEvent: function _shouldTrackDomEvent(element, event) {
-        if (!(element && typeof element === 'object')) {
+        if (!element || element === document || element === document.body || element.nodeType !== ELEMENT_NODE) {
             return false;
         }
         var tag = element.tagName.toLowerCase();
         switch (tag) {
+            case 'html':
+            case 'body':
+                return false;
             case 'form':
                 return event.type === 'submit';
             case 'input':
@@ -402,68 +291,65 @@ var ce = {
         } else {
             target = e.target;
         }
-        if (target.nodeType && target.nodeType === Node.TEXT_NODE) {
+
+        if (target.nodeType === TEXT_NODE) {
             // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
             target = target.parentNode;
         }
 
-        if (target === document || target === document.body || target.nodeType !== Node.ELEMENT_NODE) {
-            return;
-        }
-
-        // The actual target element might be some <span> inside a button or anchor tag.
-        // We use the 'nearestInteractiveElement' to attempt to detect the
-        // element that is actually interesting (i.e. interactable)
-        // that way the top level properties are more consistent and
-        // more likely to be what our customers expect to see
-        //
-        // E.g <a href="some_page.html"><span>Hello <span style="font-weight: bold">You</span></span></a>
-        // If that is clicked, an inner span is likely the e.target but it's more likely our customers
-        // care about the click on the anchor tag. 'nearestInteractElement' will return the anchor tag given
-        // one of those spans.
-        var calculatedTarget = (0, _mixpanelJsUtils.nearestInteractiveElement)(target);
-
-        // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
-        var targetClasses = (target.className || '').split(' ');
-        var calculatedTargetClasses = (calculatedTarget.className || '').split(' ');
-        var classes = targetClasses.concat(calculatedTargetClasses);
-        if (_utils._.includes(classes, 'mp-no-track')) {
-            return;
-        }
-
-        var targetElementList = [target];
-        var curEl = target;
-        while (curEl.parentNode && curEl.parentNode !== document.body) {
-            targetElementList.push(curEl.parentNode);
-            curEl = curEl.parentNode;
-        }
-
-        var elementsJson = [];
         if (this._shouldTrackDomEvent(target, e)) {
-            _utils._.each(targetElementList, function (el, idx) {
-                elementsJson.push(this._getPropertiesFromElement(el, idx === 0));
-            }, this);
-
-            var calculatedTargetProps = this._getPropertiesFromElement(calculatedTarget, true);
-            var calculatedTargetIdx = targetElementList.indexOf(calculatedTarget);
-            var propsToIgnore = ['attr__class', 'nth_child', 'nth_of_type'];
-            var elProps = {};
-            for (var prop in calculatedTargetProps) {
-                if (propsToIgnore.indexOf(prop) === -1) {
-                    elProps['$el_' + prop] = calculatedTargetProps[prop];
-                }
+            var targetElementList = [target];
+            var curEl = target;
+            while (curEl.parentNode && curEl.parentNode !== document.body) {
+                targetElementList.push(curEl.parentNode);
+                curEl = curEl.parentNode;
             }
 
-            var formFieldProps = {};
-            if (e.type === 'submit' && e.target.tagName.toLowerCase() === 'form') {
-                formFieldProps = this._getFormFieldProperties(e.target);
+            var elementsJson = [];
+            var href,
+                elementText,
+                form,
+                explicitNoTrack = false;
+            _utils._.each(targetElementList, function (el, idx) {
+                // if the element or a parent element is an anchor tag
+                // include the href as a property
+                if (el.tagName.toLowerCase() === 'a') {
+                    href = el.getAttribute('href');
+                } else if (el.tagName.toLowerCase() === 'form') {
+                    form = el;
+                }
+                // crawl up to max of 5 nodes to populate text content
+                if (!elementText && idx < 5 && el.textContent) {
+                    var textContent = _utils._.trim(el.textContent);
+                    if (textContent) {
+                        elementText = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+                    }
+                }
+
+                // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
+                var classes = (el.className || '').split(' ');
+                if (_utils._.includes(classes, 'mp-no-track')) {
+                    explicitNoTrack = true;
+                }
+
+                elementsJson.push(this._getPropertiesFromElement(el));
+            }, this);
+
+            if (explicitNoTrack) {
+                return false;
             }
 
             var props = _utils._.extend(this._getDefaultProperties(e.type), {
-                '$calculatedElementIdx': calculatedTargetIdx,
-                '$elements': elementsJson
-            }, elProps, formFieldProps, this._getCustomProperties(targetElementList));
+                '$elements': elementsJson,
+                '$el_attr__href': href,
+                '$el_text': elementText
+            }, this._getCustomProperties(targetElementList));
+
+            if (form && (e.type === 'submit' || e.type === 'click')) {
+                _utils._.extend(props, this._getFormFieldProperties(form));
+            }
             instance.track('$web_event', props);
+            return true;
         }
     },
 
@@ -630,7 +516,7 @@ _utils._.safewrap_instance_methods(ce);
 exports.DISABLE_COOKIE = DISABLE_COOKIE;
 exports.ce = ce;
 
-},{"./config":4,"./utils":7,"mixpanel-js-utils":2}],4:[function(require,module,exports){
+},{"./config":3,"./utils":6}],3:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -638,13 +524,13 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.4'
+    LIB_VERSION: '2.9.5'
 };
 
 exports['default'] = Config;
 module.exports = exports['default'];
 
-},{}],5:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -659,7 +545,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)();
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"./mixpanel-core":6}],6:[function(require,module,exports){
+},{"./mixpanel-core":5}],5:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -4075,7 +3961,7 @@ function init_as_module() {
     return mixpanel_master;
 }
 
-},{"./ce":3,"./config":4,"./utils":7}],7:[function(require,module,exports){
+},{"./ce":2,"./config":3,"./utils":6}],6:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -4121,7 +4007,12 @@ var nativeBind = FuncProto.bind,
     nativeIsArray = Array.isArray,
     breaker = {};
 
-var _ = {};
+var _ = {
+    trim: function trim(str) {
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
+        return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
+    }
+};
 
 // Console override
 var console = {
@@ -5625,4 +5516,4 @@ exports._ = _;
 exports.userAgent = userAgent;
 exports.console = console;
 
-},{"./config":4}]},{},[1]);
+},{"./config":3}]},{},[1]);
