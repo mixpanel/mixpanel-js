@@ -78,7 +78,7 @@ describe('Collect Everything system', function() {
       })).to.equal(false);
     });
 
-    ['input', 'select', 'textarea'].forEach(tagName => {
+    ['html', 'input', 'select', 'textarea'].forEach(tagName => {
       it('should NOT track click on ' + tagName, function() {
         expect(_shouldTrackDomEvent(document.createElement(tagName), {
           type: 'click',

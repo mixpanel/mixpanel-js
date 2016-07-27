@@ -3,6 +3,11 @@ import { _ } from './utils';
 
 var DISABLE_COOKIE = '__mpced';
 
+// specifying these locally here since some websites override the global Node var
+// ex: https://www.codingame.com/
+var ELEMENT_NODE = 1;
+var TEXT_NODE = 3;
+
 var ce = {
     _previousElementSibling: function(el) {
         if (el.previousElementSibling) {
@@ -59,11 +64,14 @@ var ce = {
     },
 
     _shouldTrackDomEvent: function(element, event) {
-        if (!(element && typeof(element) === 'object')) {
+        if (!element || element === document || element === document.body || element.nodeType !== ELEMENT_NODE) {
             return false;
         }
         var tag = element.tagName.toLowerCase();
         switch (tag) {
+            case 'html':
+            case 'body':
+                return false;
             case 'form':
                 return event.type === 'submit';
             case 'input':
@@ -249,29 +257,20 @@ var ce = {
             target = e.target;
         }
 
-        // specifying these locally here since some websites override the global Node var
-        // ex: https://www.codingame.com/
-        var ELEMENT_NODE = 1;
-        var TEXT_NODE = 3;
-
-        if (target.nodeType && target.nodeType === TEXT_NODE) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
+        if (target.nodeType === TEXT_NODE) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
             target = target.parentNode;
         }
 
-        if (target === document || target === document.body || target.nodeType !== ELEMENT_NODE) {
-            return;
-        }
-
-        var targetElementList = [target];
-        var curEl = target;
-        while (curEl.parentNode && curEl.parentNode !== document.body) {
-            targetElementList.push(curEl.parentNode);
-            curEl = curEl.parentNode;
-        }
-
-        var elementsJson = [];
-        var href, elementText, form, explicitNoTrack = false;
         if (this._shouldTrackDomEvent(target, e)) {
+            var targetElementList = [target];
+            var curEl = target;
+            while (curEl.parentNode && curEl.parentNode !== document.body) {
+                targetElementList.push(curEl.parentNode);
+                curEl = curEl.parentNode;
+            }
+
+            var elementsJson = [];
+            var href, elementText, form, explicitNoTrack = false;
             _.each(targetElementList, function(el, idx) {
                 // if the element or a parent element is an anchor tag
                 // include the href as a property
