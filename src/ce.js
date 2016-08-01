@@ -249,6 +249,7 @@ var ce = {
     },
 
     _getEventTarget: function(e) {
+        // https://developer.mozilla.org/en-US/docs/Web/API/Event/target#Compatibility_notes
         if (typeof e.target === 'undefined') {
             return e.srcElement;
         } else {
@@ -320,6 +321,8 @@ var ce = {
         }
     },
 
+    // only reason is to stub for unit tests
+    // since you can't override window.location props
     _navigate: function(href) {
         window.location.href = href;
     },
@@ -348,7 +351,7 @@ var ce = {
                             var href = evt.target.href;
                             return function() {
                                 if (!evt.defaultPreventedAfterMixpanelHandler) {
-                                    that._navigate(href); // proxy window.location.href so we can stub for tseting
+                                    that._navigate(href);
                                 }
                             };
                         }(e));
