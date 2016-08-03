@@ -40,8 +40,9 @@ var ce = {
             'tag_name': elem.tagName
         };
 
-        if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
-            props['value'] = this._getFormFieldValue(elem);
+        var form_field_value = this._getFormFieldValue(elem);
+        if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase()) && form_field_value !== '[stripped]') {
+            props[ 'value'] = form_field_value;
         }
 
         _.each(elem.attributes, function(attr) {
@@ -198,7 +199,7 @@ var ce = {
             if (name !== null) {
                 name = '$form_field__' + name;
                 var val = this._getFormFieldValue(field);
-                if (val !== undefined) {
+                if (val !== undefined && val !== '[stripped]') {
                     var prevFieldVal = formFieldProps[name];
                     if (prevFieldVal !== undefined) { // combine values for inputs of same name
                         formFieldProps[name] = [].concat(prevFieldVal, val);
