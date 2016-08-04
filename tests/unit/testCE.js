@@ -537,6 +537,52 @@ describe('Collect Everything system', function() {
       sandbox.restore();
     });
 
+    it('should add the custom property when an element matching any of the event selectors is clicked', function() {
+      lib = {
+        _send_request: sandbox.spy((url, params, callback) => callback({
+          config: {
+            enable_collect_everything: true
+          },
+          custom_properties: [{event_selectors: ['.event-element-1', '.event-element-2'], css_selector: '.property-element', name: 'my property name'}]
+        })),
+        _prepare_callback: sandbox.spy(callback => callback),
+        get_config: sandbox.spy(function(key) {
+          switch (key) {
+            case 'decide_host':
+              return 'https://test.com';
+            case 'token':
+              return 'testtoken';
+          }
+        }),
+        token: 'testtoken',
+        track: sandbox.spy()
+      };
+      ce.init(lib);
+
+      const eventElement1 = document.createElement('div');
+      const eventElement2 = document.createElement('div');
+      const propertyElement = document.createElement('div');
+      eventElement1.className = 'event-element-1';
+      eventElement2.className = 'event-element-2';
+      propertyElement.className = 'property-element';
+      propertyElement.textContent = 'my property value';
+      document.body.appendChild(eventElement1);
+      document.body.appendChild(eventElement2);
+      document.body.appendChild(propertyElement);
+
+      simulateClick(eventElement1);
+      simulateClick(eventElement2);
+      expect(lib.track.callCount).to.equal(3); // 2 + 1 for the pageview event
+      const trackArgs1 = lib.track.args[1];
+      const trackArgs2 = lib.track.args[2];
+      const eventType1 = trackArgs1[1]['my property name'];
+      const eventType2 = trackArgs2[1]['my property name'];
+      expect(eventType1).to.equal('my property value');
+      expect(eventType2).to.equal('my property value');
+      lib.track.reset();
+      delete lib._send_request;
+    });
+
     it('includes necessary metadata as properties when tracking an event', function() {
       const elTarget = document.createElement('a');
       elTarget.setAttribute('href', 'http://test.com');
