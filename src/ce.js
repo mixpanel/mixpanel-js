@@ -40,9 +40,9 @@ var ce = {
             'tag_name': elem.tagName
         };
 
-        var form_field_value = this._getFormFieldValue(elem);
-        if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase()) && this._includeProperty(elem, value)) {
-            props[ 'value'] = form_field_value;
+        var formFieldValue = this._getFormFieldValue(elem);
+        if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase()) && this._includeProperty(elem, formFieldValue)) {
+            props['value'] = formFieldValue;
         }
 
         _.each(elem.attributes, function(attr) {
@@ -135,7 +135,7 @@ var ce = {
 
     _includeProperty: function(input, value) {
         var classes = (input.className || '').split(' ');
-        if (_.includes(classes, 'mp-always-include-value')) { // never sanitize inputs with class "mp-never-strip-value"
+        if (_.includes(classes, 'mp-always-include-value')) {
             return true;
         }
 
@@ -170,7 +170,6 @@ var ce = {
             }
         }
 
-        // return unmodified value
         return true;
     },
 
@@ -197,7 +196,7 @@ var ce = {
             if (name !== null) {
                 name = '$form_field__' + name;
                 var val = this._getFormFieldValue(field);
-                if (this._includeProperty(field, value) && val !== undefined) {
+                if (this._includeProperty(field, val) && val !== undefined) {
                     var prevFieldVal = formFieldProps[name];
                     if (prevFieldVal !== undefined) { // combine values for inputs of same name
                         formFieldProps[name] = [].concat(prevFieldVal, val);
