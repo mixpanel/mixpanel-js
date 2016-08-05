@@ -1000,6 +1000,9 @@ _.cookie = {
         }
 
         document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+        return {
+            expires_date: date
+        };
     },
 
     remove: function(name, cross_subdomain) {
