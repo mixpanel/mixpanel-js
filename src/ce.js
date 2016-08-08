@@ -41,7 +41,7 @@ var ce = {
         };
 
         var formFieldValue = this._getFormFieldValue(elem);
-        if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase()) && this._includeProperty(elem, formFieldValue)) {
+        if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase()) && formFieldValue !== null) {
             props['value'] = formFieldValue;
         }
 
@@ -186,7 +186,7 @@ var ce = {
                 val = field.value || field.textContent;
                 break;
         }
-        return val;
+        return this._includeProperty(field, val) ? val : null;
     },
 
     _getFormFieldProperties: function(form) {
@@ -196,7 +196,7 @@ var ce = {
             if (name !== null) {
                 name = '$form_field__' + name;
                 var val = this._getFormFieldValue(field);
-                if (this._includeProperty(field, val) && val !== undefined) {
+                if (val !== undefined && val !== null) {
                     var prevFieldVal = formFieldProps[name];
                     if (prevFieldVal !== undefined) { // combine values for inputs of same name
                         formFieldProps[name] = [].concat(prevFieldVal, val);
