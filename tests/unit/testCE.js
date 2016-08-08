@@ -220,11 +220,19 @@ describe('Collect Everything system', function() {
       input = document.createElement('input');
     });
 
+    it('should return false when the value is null', function() {
+      input.type = 'password';
+      input.className = 'test1 test2';
+      input.value = 'force included password';
+      expect(ce._includeProperty(input, null)).to.equal(false);
+    });
+
     it('should always include inputs with class "mp-always-include-value"', function() {
       input.type = 'password';
       input.className = 'test1 mp-always-include-value test2';
       input.value = 'force included password';
       expect(ce._includeProperty(input, input.value)).to.equal(true);
+      expect(ce._includeProperty(input, null)).to.equal(true);
     });
 
     it('should sanitize inputs with class "mp-always-strip-value"', function() {

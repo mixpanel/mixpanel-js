@@ -40,9 +40,11 @@ var ce = {
             'tag_name': elem.tagName
         };
 
-        var formFieldValue = this._getFormFieldValue(elem);
-        if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase()) && formFieldValue !== null) {
-            props['value'] = formFieldValue;
+        if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
+            var formFieldValue = this._getFormFieldValue(elem);
+            if (this._includeProperty(elem, formFieldValue)) {
+                props['value'] = formFieldValue;
+            }
         }
 
         _.each(elem.attributes, function(attr) {
@@ -137,6 +139,14 @@ var ce = {
         var classes = (input.className || '').split(' ');
         if (_.includes(classes, 'mp-always-include-value')) {
             return true;
+        }
+
+        if (_.includes(classes, 'mp-always-strip-value')) {
+            return false;
+        }
+
+        if (value === null) {
+            return false;
         }
 
         // don't include hidden or password fields
