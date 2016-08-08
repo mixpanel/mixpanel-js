@@ -9,7 +9,6 @@ jsdom({
   url: 'https://mixpanel.com/about/?query=param'
 });
 
-let clock = sinon.useFakeTimers();
 
 const triggerMouseEvent = function(node, eventType) {
   node.dispatchEvent(new MouseEvent(eventType, {
@@ -745,9 +744,22 @@ describe('Collect Everything system', function() {
     const lib = {
       track: sinon.spy()
     };
+
+    let navigateSpy;
+
     before(function() {
       document.title = 'test page';
       ce._addDomEventHandlers(lib);
+      navigateSpy = sinon.spy(ce, '_navigate');
+    });
+
+    beforeEach(function() {
+      navigateSpy.reset();
+      lib.track.reset();
+    });
+
+    after(function() {
+      navigateSpy.restore();
     });
 
     it('should track click events', function() {
@@ -764,6 +776,36 @@ describe('Collect Everything system', function() {
       expect(eventType2).to.equal('click');
       lib.track.reset();
     });
+
+    it('should delay navigation on link clicks', function(done) {
+      const a = document.createElement('a');
+      a.href = 'http://test.com';
+      document.body.appendChild(a);
+      simulateClick(a);
+      expect(lib.track.calledOnce).to.equal(true);
+      expect(navigateSpy.callCount).to.equal(0);
+      setTimeout(function() {
+        expect(navigateSpy.calledWithExactly('http://test.com'));
+        done();
+      }, 301);
+    });
+
+    it('should respect preventDefault on link clicks', function(done) {
+      const a = document.createElement('a');
+      a.href = 'http://test.com';
+      document.body.appendChild(a);
+      document.body.addEventListener('click', function(e) {
+        e.preventDefault();
+      });
+      simulateClick(a);
+      expect(lib.track.calledOnce).to.equal(true);
+      expect(navigateSpy.callCount).to.equal(0);
+      setTimeout(function() {
+        expect(navigateSpy.callCount).to.equal(0);
+        done();
+      }, 301);
+    });
+
   });
 
   describe('init', function() {
@@ -852,6 +894,8 @@ describe('Collect Everything system', function() {
   describe('_maybeLoadEditor', function() {
     let _window, hash, editorParams, sandbox, lib = {};
     beforeEach(function() {
+      this.clock = sinon.useFakeTimers();
+
       _window = window;
       const _storage = {};
       window = {
@@ -918,6 +962,7 @@ describe('Collect Everything system', function() {
     afterEach(function() {
       window = _window;
       sandbox.restore();
+      this.clock.restore();
     });
 
     it('should initialize the visual editor when the hash state contains action "mpeditor"', function() {
@@ -996,7 +1041,11 @@ describe('Collect Everything system', function() {
 
   describe('track backoff', function() {
     beforeEach(function() {
-      clock = sinon.useFakeTimers();
+      this.clock = sinon.useFakeTimers();
+    });
+
+    after(function() {
+      this.clock.restore();
     });
 
     it('should not track when the cookie is set', function() {
@@ -1019,13 +1068,13 @@ describe('Collect Everything system', function() {
       expect(ce._trackEvent.called).to.equal(false);
 
       // test 1 millisecond before expiration
-      clock.tick(999);
+      this.clock.tick(999);
       expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(true);
       simulateClick(document.body);
       expect(ce._trackEvent.called).to.equal(false);
 
       // test at expiration
-      clock.tick(1);
+      this.clock.tick(1);
       expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(null);
       simulateClick(document.body);
       expect(ce._trackEvent.called).to.equal(true);
