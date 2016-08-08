@@ -134,12 +134,12 @@ describe('Collect Everything system', function() {
 
     it('should strip hidden input value', function() {
       const props = ce._getPropertiesFromElement(hidden);
-      expect(props['value']).to.equal('[stripped]');
+      expect(props['value']).to.equal(undefined);
     });
 
     it('should strip password input value', function() {
       const props = ce._getPropertiesFromElement(password);
-      expect(props['value']).to.equal('[stripped]');
+      expect(props['value']).to.equal(undefined);
     });
 
     it('should contain nth-of-type', function() {
@@ -166,7 +166,7 @@ describe('Collect Everything system', function() {
       const input = document.createElement('input');
       input.setAttribute('type', 'checkbox');
       input.value = 'checkbox val';
-      expect(ce._getInputValue(input)).to.equal(undefined);
+      expect(ce._getInputValue(input)).to.equal(null);
       input.checked = true;
       expect(ce._getInputValue(input)).to.deep.equal(['checkbox val']);
     });
@@ -175,7 +175,7 @@ describe('Collect Everything system', function() {
       const input = document.createElement('input');
       input.setAttribute('type', 'radio');
       input.value = 'radio val';
-      expect(ce._getInputValue(input)).to.equal(undefined);
+      expect(ce._getInputValue(input)).to.equal(null);
       input.checked = true;
       expect(ce._getInputValue(input)).to.equal('radio val');
     });
@@ -212,37 +212,45 @@ describe('Collect Everything system', function() {
     });
   });
 
-  describe('_sanitizeInputValue', function() {
+  describe('_includeProperty', function() {
     let input;
 
     beforeEach(function() {
       input = document.createElement('input');
     });
 
-    it('should never sanitize inputs with class "mp-never-strip-value"', function() {
+    it('should return false when the value is null', function() {
       input.type = 'password';
-      input.className = 'test1 mp-never-strip-value test2';
+      input.className = 'test1 test2';
       input.value = 'force included password';
-      expect(ce._sanitizeInputValue(input, input.value)).to.equal('force included password');
+      expect(ce._includeProperty(input, null)).to.equal(false);
+    });
+
+    it('should always include inputs with class "mp-always-include-value"', function() {
+      input.type = 'password';
+      input.className = 'test1 mp-always-include-value test2';
+      input.value = 'force included password';
+      expect(ce._includeProperty(input, input.value)).to.equal(true);
+      expect(ce._includeProperty(input, null)).to.equal(true);
     });
 
     it('should sanitize inputs with class "mp-always-strip-value"', function() {
       input.type = 'text';
       input.className = 'test1 mp-always-strip-value test2';
       input.value = 'force sanitized';
-      expect(ce._sanitizeInputValue(input, input.value)).to.equal('[stripped]');
+      expect(ce._includeProperty(input, input.value)).to.equal(false);
     });
 
     it('should sanitize hidden fields', function() {
       input.type = 'hidden';
       input.value = 'hidden val';
-      expect(ce._sanitizeInputValue(input, input.value)).to.equal('[stripped]');
+      expect(ce._includeProperty(input, input.value)).to.equal(false);
     });
 
     it('should sanitize password fields', function() {
       input.type = 'password';
       input.value = 'password val';
-      expect(ce._sanitizeInputValue(input, input.value)).to.equal('[stripped]');
+      expect(ce._includeProperty(input, input.value)).to.equal(false);
     });
 
     it('should sanitize fields with sensitive names', function() {
@@ -266,7 +274,7 @@ describe('Collect Everything system', function() {
       input.value = 'should be strippedl';
       sensitiveNames.forEach(name => {
         input.name = name;
-        expect(ce._sanitizeInputValue(input, input.value)).to.equal('[stripped]');
+        expect(ce._includeProperty(input, input.value)).to.equal(false);
       });
     });
 
@@ -275,20 +283,20 @@ describe('Collect Everything system', function() {
       // one for each type on http://www.getcreditcardnumbers.com/
       const validCCNumbers = ['3419-881002-84912', '30148420855976', '5183792099737678', '6011-5100-8788-7057', '180035601937848', '180072512946394', '4556617778508'];
       validCCNumbers.forEach(num => {
-        expect(ce._sanitizeInputValue(input, num)).to.equal('[stripped]');
+        expect(ce._includeProperty(input, num)).to.equal(false);
       });
     });
 
     it('should strip social security numbers', function() {
       input.type = 'text';
       input.value = '123-45-6789';
-      expect(ce._sanitizeInputValue(input, input.value)).to.equal('[stripped]');
+      expect(ce._includeProperty(input, input.value)).to.equal(false);
     });
 
     it('should return the original value for non-sensitive inputs', function() {
       input.type = 'text';
       input.value = 'Josh';
-      expect(ce._sanitizeInputValue(input, input.value)).to.equal('Josh');
+      expect(ce._includeProperty(input, input.value)).to.equal(true);
     });
 
     it('should return the original value for multi selects', function() {
@@ -302,7 +310,7 @@ describe('Collect Everything system', function() {
       select.appendChild(option2);
       option1.setAttribute('selected', true);
       option2.setAttribute('selected', true);
-      expect(ce._sanitizeInputValue(input, ce._getSelectValue(select))).to.deep.equal(['1', '2']);
+      expect(ce._includeProperty(input, ce._getSelectValue(select))).to.equal(true);
     });
   });
 
