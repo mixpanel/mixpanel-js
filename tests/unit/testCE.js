@@ -220,7 +220,7 @@ describe('Collect Everything system', function() {
       input = document.createElement('input');
     });
 
-    it('should never sanitize inputs with class "mp-always-include-value"', function() {
+    it('should always include inputs with class "mp-always-include-value"', function() {
       input.type = 'password';
       input.className = 'test1 mp-always-include-value test2';
       input.value = 'force included password';
