@@ -101,7 +101,7 @@ var ce = {
     },
 
     _getInputValue: function(input) {
-        var value;
+        var value = null;
         var type = input.type.toLowerCase();
         switch(type) {
             case 'checkbox':
@@ -206,7 +206,7 @@ var ce = {
             if (name !== null) {
                 name = '$form_field__' + name;
                 var val = this._getFormFieldValue(field);
-                if (val !== undefined && val !== null) {
+                if (this._includeProperty(field, val)) {
                     var prevFieldVal = formFieldProps[name];
                     if (prevFieldVal !== undefined) { // combine values for inputs of same name
                         formFieldProps[name] = [].concat(prevFieldVal, val);

@@ -167,7 +167,7 @@ describe('Collect Everything system', function() {
       const input = document.createElement('input');
       input.setAttribute('type', 'checkbox');
       input.value = 'checkbox val';
-      expect(ce._getInputValue(input)).to.equal(undefined);
+      expect(ce._getInputValue(input)).to.equal(null);
       input.checked = true;
       expect(ce._getInputValue(input)).to.deep.equal(['checkbox val']);
     });
@@ -176,7 +176,7 @@ describe('Collect Everything system', function() {
       const input = document.createElement('input');
       input.setAttribute('type', 'radio');
       input.value = 'radio val';
-      expect(ce._getInputValue(input)).to.equal(undefined);
+      expect(ce._getInputValue(input)).to.equal(null);
       input.checked = true;
       expect(ce._getInputValue(input)).to.equal('radio val');
     });
