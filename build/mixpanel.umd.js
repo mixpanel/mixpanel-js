@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.9.5'
+        LIB_VERSION: '2.9.6'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1588,7 +1588,10 @@
             };
 
             if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
-                props['value'] = this._getFormFieldValue(elem);
+                var formFieldValue = this._getFormFieldValue(elem);
+                if (this._includeProperty(elem, formFieldValue)) {
+                    props['value'] = formFieldValue;
+                }
             }
 
             _.each(elem.attributes, function(attr) {
@@ -1645,7 +1648,7 @@
         },
 
         _getInputValue: function(input) {
-            var value;
+            var value = null;
             var type = input.type.toLowerCase();
             switch(type) {
                 case 'checkbox':
@@ -1679,28 +1682,34 @@
             return value;
         },
 
-        _sanitizeInputValue: function(input, value) {
+        _includeProperty: function(input, value) {
             var classes = (input.className || '').split(' ');
-            if (_.includes(classes, 'mp-never-strip-value')) { // never sanitize inputs with class "mp-never-strip-value"
-                return value;
-            } else if (_.includes(classes, 'mp-always-strip-value')) { // always sanitize fields with class "mp-always-strip-value"
-                return '[stripped]';
+            if (_.includes(classes, 'mp-always-include-value')) {
+                return true;
+            }
+
+            if (_.includes(classes, 'mp-always-strip-value')) {
+                return false;
+            }
+
+            if (value === null) {
+                return false;
             }
 
             // don't include hidden or password fields
             var type = input.type || '';
             switch(type.toLowerCase()) {
                 case 'hidden':
-                    return '[stripped]';
+                    return false;
                 case 'password':
-                    return '[stripped]';
+                    return false;
             }
 
             // filter out data from fields that look like sensitive fields
             var name = input.name || input.id || '';
             var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
             if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
-                return '[stripped]';
+                return false;
             }
 
             if (typeof value === 'string') {
@@ -1708,18 +1717,17 @@
                 // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
                 var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
                 if (ccRegex.test((value || '').replace(/[\- ]/g, ''))) {
-                    return '[stripped]';
+                    return false;
                 }
 
                 // check to see if input value looks like a social security number
                 var ssnRegex = /(^\d{3}-?\d{2}-?\d{4}$)/;
                 if (ssnRegex.test(value)) {
-                    return '[stripped]';
+                    return false;
                 }
             }
 
-            // return unmodified value
-            return value;
+            return true;
         },
 
         _getFormFieldValue: function(field) {
@@ -1735,7 +1743,7 @@
                     val = field.value || field.textContent;
                     break;
             }
-            return this._sanitizeInputValue(field, val);
+            return this._includeProperty(field, val) ? val : null;
         },
 
         _getFormFieldProperties: function(form) {
@@ -1745,7 +1753,7 @@
                 if (name !== null) {
                     name = '$form_field__' + name;
                     var val = this._getFormFieldValue(field);
-                    if (val !== undefined) {
+                    if (this._includeProperty(field, val)) {
                         var prevFieldVal = formFieldProps[name];
                         if (prevFieldVal !== undefined) { // combine values for inputs of same name
                             formFieldProps[name] = [].concat(prevFieldVal, val);
