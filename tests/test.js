@@ -607,8 +607,9 @@
 
                 test("cookie set (expiration time)", 1, function() {
                     var today = (new Date()).getDate();
-                    var data = mixpanel._.cookie.set("cookie name", "cookie val", 1);
-                    equal(today + 1, data.expires_date.getDate(), "the third parameter for expiration should be in 'days'");
+                    var new_cookie_data = mixpanel._.cookie.set("cookie name", "cookie val", 1);
+                    var expiry_GMT = new_cookie_data.match(/; expires=(.*);/, new_cookie_data)[1];
+                    equal(today + 1, new Date(Date.parse(expiry_GMT)).getDate(), "the third parameter for expiration should be in 'days'");
                 });
 
                 test("cookie name", 6, function() {

@@ -999,10 +999,9 @@ _.cookie = {
             secure = '; secure';
         }
 
-        document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
-        return {
-            expires_date: date
-        };
+        var new_cookie_val = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+        document.cookie = new_cookie_val;
+        return new_cookie_val;
     },
 
     remove: function(name, cross_subdomain) {
