@@ -580,7 +580,6 @@ describe('Collect Everything system', function() {
       expect(eventType1).to.equal('my property value');
       expect(eventType2).to.equal('my property value');
       lib.track.reset();
-      delete lib._send_request;
     });
 
     it('includes necessary metadata as properties when tracking an event', function() {
