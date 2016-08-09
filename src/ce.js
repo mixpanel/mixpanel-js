@@ -143,13 +143,15 @@ var ce = {
     },
 
     _includeProperty: function(input, value) {
-        var classes = this._getClassName(input).split(' ');
-        if (_.includes(classes, 'mp-always-include-value')) {
-            return true;
+        for (var curEl = input; curEl.parentNode && curEl !== document.body; curEl = curEl.parentNode) {
+            var classes = this._getClassName(curEl).split(' ');
+            if (_.includes(classes, 'mp-sensitive') || _.includes(classes, 'mp-no-track')) {
+                return false;
+            }
         }
 
-        if (_.includes(classes, 'mp-always-strip-value')) {
-            return false;
+        if (_.includes(this._getClassName(input).split(' '), 'mp-include')) {
+            return true;
         }
 
         if (value === null) {
