@@ -25,9 +25,7 @@ describe('Collect Everything system', function() {
   before(function() {
     // jsdom doesn't have support for local/session storage
     // add support using this node implementation
-    var LocalStorage = nodeLocalStorage.LocalStorage;
-    var localStorage = new LocalStorage('./tmpSessionStorage');
-    window.sessionStorage = localStorage;
+    window.sessionStorage = nodeLocalStorage.LocalStorage('./tmpSessionStorage');
   });
 
   beforeEach(function() {
@@ -610,6 +608,7 @@ describe('Collect Everything system', function() {
       elGrandparent.appendChild(elParent);
       const elGreatGrandparent = document.createElement('table');
       elGreatGrandparent.appendChild(elGrandparent);
+      document.body.appendChild(elGreatGrandparent);
       const e = {
         target: elTarget,
         type: 'click',
@@ -626,6 +625,7 @@ describe('Collect Everything system', function() {
       expect(props).to.have.property('$el_attr__href', 'http://test.com');
       expect(props['$elements'][1]).to.have.property('tag_name', 'SPAN');
       expect(props['$elements'][2]).to.have.property('tag_name', 'DIV');
+      expect(props['$elements'][props['$elements'].length - 1]).to.have.property('tag_name', 'BODY');
     });
 
     it('gets the href attribute from parent anchor tags', function() {
