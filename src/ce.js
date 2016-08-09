@@ -45,7 +45,7 @@ var ce = {
     _getPropertiesFromElement: function(elem) {
         var props = {
             'classes': this._getClassName(elem).split(' '),
-            'tag_name': elem.tagName
+            'tag_name': elem.tagName.toLowerCase()
         };
 
         if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
