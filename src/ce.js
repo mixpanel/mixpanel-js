@@ -15,7 +15,7 @@ var ce = {
         } else {
             do {
                 el = el.previousSibling;
-            } while (el && el.nodeType !== 1);
+            } while (el && el.nodeType !== ELEMENT_NODE);
             return el;
         }
     },
@@ -75,13 +75,12 @@ var ce = {
     },
 
     _shouldTrackDomEvent: function(element, event) {
-        if (!element || element === document || element === document.body || element.nodeType !== ELEMENT_NODE) {
+        if (!element || element === document || element === document.body.parentNode || element.nodeType !== ELEMENT_NODE) {
             return false;
         }
         var tag = element.tagName.toLowerCase();
         switch (tag) {
             case 'html':
-            case 'body':
                 return false;
             case 'form':
                 return event.type === 'submit';
@@ -283,7 +282,7 @@ var ce = {
         if (this._shouldTrackDomEvent(target, e)) {
             var targetElementList = [target];
             var curEl = target;
-            while (curEl.parentNode && curEl.parentNode !== document.body) {
+            while (curEl.parentNode && curEl !== document.body) {
                 targetElementList.push(curEl.parentNode);
                 curEl = curEl.parentNode;
             }
