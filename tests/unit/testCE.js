@@ -223,10 +223,15 @@ describe('Collect Everything system', function() {
   });
 
   describe('_includeProperty', function() {
-    let input;
+    let input, parent1, parent2;
 
     beforeEach(function() {
       input = document.createElement('input');
+      parent1 = document.createElement('div');
+      parent2 = document.createElement('div');
+      parent1.appendChild(input);
+      parent2.appendChild(parent1);
+      document.body.appendChild(parent2);
     });
 
     it('should return false when the value is null', function() {
@@ -236,34 +241,43 @@ describe('Collect Everything system', function() {
       expect(ce._includeProperty(input, null)).to.equal(false);
     });
 
-    it('should always include inputs with class "mp-always-include-value"', function() {
+    it('should include sensitive inputs with class "mp-include"', function() {
       input.type = 'password';
-      input.className = 'test1 mp-always-include-value test2';
-      input.value = 'force included password';
-      expect(ce._includeProperty(input, input.value)).to.equal(true);
+      input.className = 'test1 mp-include test2';
+      expect(ce._includeProperty(input, 'some password')).to.equal(true);
       expect(ce._includeProperty(input, null)).to.equal(true);
     });
 
-    it('should sanitize inputs with class "mp-always-strip-value"', function() {
+    it('should never include inputs with class "mp-sensitive"', function() {
       input.type = 'text';
-      input.className = 'test1 mp-always-strip-value test2';
-      input.value = 'force sanitized';
-      expect(ce._includeProperty(input, input.value)).to.equal(false);
+      input.className = 'test1 mp-include mp-sensitive test2';
+      expect(ce._includeProperty(input, 'some value')).to.equal(false);
+      expect(ce._includeProperty(input, null)).to.equal(false);
     });
 
-    it('should sanitize hidden fields', function() {
+    it('should not include elements with class "mp-no-track" as properties', function() {
+      input.type = 'text';
+      input.className = 'test1 mp-no-track test2';
+      expect(ce._includeProperty(input, 'some value')).to.equal(false);
+    });
+
+    it('should not include elements with a parent that have class "mp-no-track" as properties', function() {
+      parent2.className = 'mp-no-track';
+      input.type = 'text';
+      expect(ce._includeProperty(input, 'some value')).to.equal(false);
+    });
+
+    it('should not include hidden fields', function() {
       input.type = 'hidden';
-      input.value = 'hidden val';
-      expect(ce._includeProperty(input, input.value)).to.equal(false);
+      expect(ce._includeProperty(input, 'some value')).to.equal(false);
     });
 
-    it('should sanitize password fields', function() {
+    it('should not include password fields', function() {
       input.type = 'password';
-      input.value = 'password val';
-      expect(ce._includeProperty(input, input.value)).to.equal(false);
+      expect(ce._includeProperty(input, 'some value')).to.equal(false);
     });
 
-    it('should sanitize fields with sensitive names', function() {
+    it('should not include fields with sensitive names', function() {
       const sensitiveNames = [
         'cc_name',
         'card-num',
@@ -281,14 +295,13 @@ describe('Collect Everything system', function() {
         'SsN',
       ];
       input.type = 'text';
-      input.value = 'should be strippedl';
       sensitiveNames.forEach(name => {
         input.name = name;
-        expect(ce._includeProperty(input, input.value)).to.equal(false);
+        expect(ce._includeProperty(input, 'some value')).to.equal(false);
       });
     });
 
-    it('should strip numbers that look like valid credit cards', function() {
+    it('should not include numbers that look like valid credit cards', function() {
       input.type = 'text';
       // one for each type on http://www.getcreditcardnumbers.com/
       const validCCNumbers = ['3419-881002-84912', '30148420855976', '5183792099737678', '6011-5100-8788-7057', '180035601937848', '180072512946394', '4556617778508'];
@@ -297,30 +310,16 @@ describe('Collect Everything system', function() {
       });
     });
 
-    it('should strip social security numbers', function() {
+    it('should not include values that look like social security numbers', function() {
       input.type = 'text';
       input.value = '123-45-6789';
       expect(ce._includeProperty(input, input.value)).to.equal(false);
     });
 
-    it('should return the original value for non-sensitive inputs', function() {
+    it('should include non-sensitive inputs', function() {
       input.type = 'text';
       input.value = 'Josh';
       expect(ce._includeProperty(input, input.value)).to.equal(true);
-    });
-
-    it('should return the original value for multi selects', function() {
-      const select = document.createElement('select');
-      const option1 = document.createElement('option');
-      const option2 = document.createElement('option');
-      select.setAttribute('multiple', true);
-      option1.value = '1';
-      option2.value = '2';
-      select.appendChild(option1);
-      select.appendChild(option2);
-      option1.setAttribute('selected', true);
-      option2.setAttribute('selected', true);
-      expect(ce._includeProperty(input, ce._getSelectValue(select))).to.equal(true);
     });
   });
 
