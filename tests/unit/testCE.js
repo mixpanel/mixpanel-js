@@ -129,7 +129,7 @@ describe('Collect Everything system', function() {
 
     it('should contain the proper tag name', function() {
       const props = ce._getPropertiesFromElement(div);
-      expect(props['tag_name']).to.equal('DIV');
+      expect(props['tag_name']).to.equal('div');
     });
 
     it('should contain class list', function() {
@@ -623,9 +623,9 @@ describe('Collect Everything system', function() {
       expect(props['$event_type']).to.equal('click');
       expect(props).to.have.property('$host', 'mixpanel.com');
       expect(props).to.have.property('$el_attr__href', 'http://test.com');
-      expect(props['$elements'][1]).to.have.property('tag_name', 'SPAN');
-      expect(props['$elements'][2]).to.have.property('tag_name', 'DIV');
-      expect(props['$elements'][props['$elements'].length - 1]).to.have.property('tag_name', 'BODY');
+      expect(props['$elements'][1]).to.have.property('tag_name', 'span');
+      expect(props['$elements'][2]).to.have.property('tag_name', 'div');
+      expect(props['$elements'][props['$elements'].length - 1]).to.have.property('tag_name', 'body');
     });
 
     it('gets the href attribute from parent anchor tags', function() {
