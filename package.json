@@ -38,6 +38,7 @@
     "mocha": "^2.4.5",
     "mocha-jsdom": "^1.1.0",
     "morgan": "^1.5.2",
+    "node-localstorage": "^1.3.0",
     "precommit-hook": "^3.0.0",
     "rollup": "^0.25.4",
     "rollup-plugin-npm": "^1.4.0",

@@ -34,9 +34,17 @@ var ce = {
         }
     },
 
+    _getClassName: function(elem) {
+        if (elem.tagName.toLowerCase() === 'svg') {
+            return elem.className.baseVal || elem.getAttribute('class') || '';
+        } else {
+            return elem.className || '';
+        }
+    },
+
     _getPropertiesFromElement: function(elem) {
         var props = {
-            'classes': elem.className.split(' '),
+            'classes': this._getClassName(elem).split(' '),
             'tag_name': elem.tagName
         };
 
@@ -136,7 +144,7 @@ var ce = {
     },
 
     _includeProperty: function(input, value) {
-        var classes = (input.className || '').split(' ');
+        var classes = this._getClassName(input).split(' ');
         if (_.includes(classes, 'mp-always-include-value')) {
             return true;
         }
@@ -299,7 +307,7 @@ var ce = {
                 }
 
                 // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
-                var classes = (el.className || '').split(' ');
+                var classes = this._getClassName(el).split(' ');
                 if (_.includes(classes, 'mp-no-track')) {
                     explicitNoTrack = true;
                 }

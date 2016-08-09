@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import jsdom from 'mocha-jsdom';
 import sinon from 'sinon';
+import nodeLocalStorage from 'node-localstorage';
 
 import { DISABLE_COOKIE, ce } from '../../src/ce';
 import { _ } from '../../src/utils';
@@ -8,7 +9,6 @@ import { _ } from '../../src/utils';
 jsdom({
   url: 'https://mixpanel.com/about/?query=param'
 });
-
 
 const triggerMouseEvent = function(node, eventType) {
   node.dispatchEvent(new MouseEvent(eventType, {
@@ -22,6 +22,18 @@ const simulateClick = function(el) {
 }
 
 describe('Collect Everything system', function() {
+  before(function() {
+    // jsdom doesn't have support for local/session storage
+    // add support using this node implementation
+    var LocalStorage = nodeLocalStorage.LocalStorage;
+    var localStorage = new LocalStorage('./tmpSessionStorage');
+    window.sessionStorage = localStorage;
+  });
+
+  beforeEach(function() {
+    window.sessionStorage.clear();
+  });
+
   describe('_shouldTrackDomEvent', function() {
     const _shouldTrackDomEvent = ce._shouldTrackDomEvent;
 
@@ -900,32 +912,10 @@ describe('Collect Everything system', function() {
   });
 
   describe('_maybeLoadEditor', function() {
-    let _window, hash, editorParams, sandbox, lib = {};
+    let hash, editorParams, sandbox, lib = {};
     beforeEach(function() {
       this.clock = sinon.useFakeTimers();
 
-      _window = window;
-      const _storage = {};
-      window = {
-        location: {
-          hash: '',
-        },
-        sessionStorage: {
-          setItem: function(k, v) {
-            _storage[k] = v;
-          },
-          getItem: function(k) {
-            if (_storage.hasOwnProperty(k)) {
-              return _storage[k];
-            } else {
-              return null;
-            }
-          },
-          removeItem: function(k) {
-            delete _storage[k];
-          },
-        },
-      };
       sandbox = sinon.sandbox.create();
       sandbox.stub(ce, '_loadEditor');
       sandbox.spy(window.sessionStorage, 'setItem');
@@ -968,7 +958,6 @@ describe('Collect Everything system', function() {
     });
 
     afterEach(function() {
-      window = _window;
       sandbox.restore();
       this.clock.restore();
     });
@@ -1013,15 +1002,7 @@ describe('Collect Everything system', function() {
       lib.get_config = sandbox.stub();
       lib.get_config.withArgs('app_host').returns('mixpanel.com');
       lib.get_config.withArgs('token').returns('token');
-      window = {
-        location: {
-          reload: sinon.spy(),
-        },
-        mp_load_editor: sandbox.spy(),
-        sessionStorage: {
-          setItem: sinon.spy(),
-        },
-      };
+      window.mp_load_editor = sandbox.spy();
     });
 
     afterEach(function() {
