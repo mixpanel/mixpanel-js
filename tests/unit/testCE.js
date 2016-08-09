@@ -97,7 +97,7 @@ describe('Collect Everything system', function() {
   });
 
   describe('_getPropertiesFromElement', function() {
-    let div, div2, input, hidden, password;
+    let div, div2, input, sensitiveInput, hidden, password;
     before(function() {
       div = document.createElement('div');
       div.className = 'class1 class2 class3'
@@ -105,6 +105,10 @@ describe('Collect Everything system', function() {
 
       input = document.createElement('input');
       input.value = 'test val';
+
+      sensitiveInput = document.createElement('input');
+      sensitiveInput.value = 'test val';
+      sensitiveInput.className = 'mp-sensitive';
 
       hidden = document.createElement('input');
       hidden.setAttribute('type', 'hidden');
@@ -123,6 +127,7 @@ describe('Collect Everything system', function() {
       div2.appendChild(divSibling2);
       div2.appendChild(div);
       div2.appendChild(input);
+      div2.appendChild(sensitiveInput);
       div2.appendChild(hidden);
       div2.appendChild(password);
     });
@@ -142,6 +147,11 @@ describe('Collect Everything system', function() {
       expect(props['value']).to.equal('test val');
     });
 
+    it('should strip input value with class "mp-sensitive"', function() {
+      const props = ce._getPropertiesFromElement(sensitiveInput);
+      expect(props['value']).to.equal(undefined);
+    });
+
     it('should strip hidden input value', function() {
       const props = ce._getPropertiesFromElement(hidden);
       expect(props['value']).to.equal(undefined);
@@ -159,7 +169,7 @@ describe('Collect Everything system', function() {
 
     it('should contain nth-child', function() {
       const props = ce._getPropertiesFromElement(password);
-      expect(props['nth_child']).to.equal(6);
+      expect(props['nth_child']).to.equal(7);
     });
   });
 
