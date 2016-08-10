@@ -1976,6 +1976,7 @@
                     'bookmarkletMode': !!state['bookmarkletMode'],
                     'projectId': state['projectId'],
                     'projectToken': state['token'],
+                    'readOnly': state['readOnly'],
                     'userFlags': state['userFlags'],
                     'userId': state['userId']
                 };

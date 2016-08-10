@@ -934,6 +934,7 @@ describe('Collect Everything system', function() {
         action: 'mpeditor',
         desiredHash: '#myhash',
         projectId: 3,
+        readOnly: false,
         token: 'test_token',
         userFlags,
         userId: 12345,
@@ -950,6 +951,7 @@ describe('Collect Everything system', function() {
         bookmarkletMode: false,
         projectId: 3,
         projectToken: 'test_token',
+        readOnly: false,
         userFlags,
         userId: 12345,
       };
