@@ -1,3 +1,4 @@
+import os from 'os';
 import { expect } from 'chai';
 import jsdom from 'mocha-jsdom';
 import sinon from 'sinon';
@@ -25,7 +26,7 @@ describe('Collect Everything system', function() {
   before(function() {
     // jsdom doesn't have support for local/session storage
     // add support using this node implementation
-    window.sessionStorage = nodeLocalStorage.LocalStorage('./tmpSessionStorage');
+    window.sessionStorage = nodeLocalStorage.LocalStorage(os.tmpdir() + '/tmpSessionStorage');
   });
 
   beforeEach(function() {
