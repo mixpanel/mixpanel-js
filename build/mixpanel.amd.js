@@ -1001,7 +1001,9 @@ define(function () { 'use strict';
                 secure = '; secure';
             }
 
-            document$1.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+            var new_cookie_val = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+            document$1.cookie = new_cookie_val;
+            return new_cookie_val;
         },
 
         remove: function(name, cross_subdomain) {
@@ -1799,15 +1801,18 @@ define(function () { 'use strict';
             }
         },
 
-        _trackEvent: function(e, instance) {
-            /*** Don't mess with this code without running IE8 tests on it ***/
-            var target;
+        _getEventTarget: function(e) {
+            // https://developer.mozilla.org/en-US/docs/Web/API/Event/target#Compatibility_notes
             if (typeof e.target === 'undefined') {
-                target = e.srcElement;
+                return e.srcElement;
             } else {
-                target = e.target;
+                return e.target;
             }
+        },
 
+        _trackEvent: function(e, instance, callback) {
+            /*** Don't mess with this code without running IE8 tests on it ***/
+            var target = this._getEventTarget(e);
             if (target.nodeType === TEXT_NODE) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
                 target = target.parentNode;
             }
@@ -1864,16 +1869,54 @@ define(function () { 'use strict';
                 if (form && (e.type === 'submit' || e.type === 'click')) {
                     _.extend(props, this._getFormFieldProperties(form));
                 }
-                instance.track('$web_event', props);
+                instance.track('$web_event', props, callback);
                 return true;
             }
+        },
+
+        // only reason is to stub for unit tests
+        // since you can't override window.location props
+        _navigate: function(href) {
+            window.location.href = href;
         },
 
         _addDomEventHandlers: function(instance) {
             var handler = _.bind(function(e) {
                 if (_.cookie.parse(DISABLE_COOKIE) !== true) {
                     e = e || window.event;
-                    this._trackEvent(e, instance);
+                    var callback = function(){};
+
+                    // special case anchor tags to wait for mixpanel track to complete
+                    var element = this._getEventTarget(e);
+                    if (!e.defaultPrevented && element.tagName.toLowerCase() === 'a' && element.href) {
+                        if (!(e.which === 2 || e.metaKey || e.ctrlKey || element.target === '_blank')) { // if not opening in a new tab
+                            e.preventDefault();
+
+                            // allow other handlers to preventDefault
+                            e.preventDefault = function() {
+                                e.defaultPreventedAfterMixpanelHandler = true;
+                            };
+
+                            // setup a callback to navigate to the anchor's href after
+                            // track is complete OR 300ms whichever comes first.
+                            var that = this;
+                            callback = (function(evt) {
+                                var href = evt.target.href;
+                                return function() {
+                                    if (!evt.defaultPreventedAfterMixpanelHandler) {
+                                        that._navigate(href);
+                                    }
+                                };
+                            }(e));
+
+                            // fallback in case track is too slow
+                            setTimeout(function() {
+                                callback();
+                            }, 300);
+                        }
+                    }
+
+                    this._trackEvent(e, instance, callback);
                 }
             }, this);
             _.register_event(document, 'submit', handler, false, true);
@@ -1932,6 +1975,7 @@ define(function () { 'use strict';
                     'bookmarkletMode': !!state['bookmarkletMode'],
                     'projectId': state['projectId'],
                     'projectToken': state['token'],
+                    'readOnly': state['readOnly'],
                     'userFlags': state['userFlags'],
                     'userId': state['userId']
                 };
