@@ -289,15 +289,18 @@ var ce = {
         }
     },
 
-    _trackEvent: function _trackEvent(e, instance) {
-        /*** Don't mess with this code without running IE8 tests on it ***/
-        var target;
+    _getEventTarget: function _getEventTarget(e) {
+        // https://developer.mozilla.org/en-US/docs/Web/API/Event/target#Compatibility_notes
         if (typeof e.target === 'undefined') {
-            target = e.srcElement;
+            return e.srcElement;
         } else {
-            target = e.target;
+            return e.target;
         }
+    },
 
+    _trackEvent: function _trackEvent(e, instance, callback) {
+        /*** Don't mess with this code without running IE8 tests on it ***/
+        var target = this._getEventTarget(e);
         if (target.nodeType === TEXT_NODE) {
             // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
             target = target.parentNode;
@@ -354,16 +357,55 @@ var ce = {
             if (form && (e.type === 'submit' || e.type === 'click')) {
                 _utils._.extend(props, this._getFormFieldProperties(form));
             }
-            instance.track('$web_event', props);
+            instance.track('$web_event', props, callback);
             return true;
         }
+    },
+
+    // only reason is to stub for unit tests
+    // since you can't override window.location props
+    _navigate: function _navigate(href) {
+        window.location.href = href;
     },
 
     _addDomEventHandlers: function _addDomEventHandlers(instance) {
         var handler = _utils._.bind(function (e) {
             if (_utils._.cookie.parse(DISABLE_COOKIE) !== true) {
                 e = e || window.event;
-                this._trackEvent(e, instance);
+                var callback = function callback() {};
+
+                // special case anchor tags to wait for mixpanel track to complete
+                var element = this._getEventTarget(e);
+                if (!e.defaultPrevented && element.tagName.toLowerCase() === 'a' && element.href) {
+                    if (!(e.which === 2 || e.metaKey || e.ctrlKey || element.target === '_blank')) {
+                        // if not opening in a new tab
+                        e.preventDefault();
+
+                        // allow other handlers to preventDefault
+                        e.preventDefault = function () {
+                            e.defaultPreventedAfterMixpanelHandler = true;
+                        };
+
+                        // setup a callback to navigate to the anchor's href after
+                        // track is complete OR 300ms whichever comes first.
+                        var that = this;
+                        callback = (function (evt) {
+                            var href = evt.target.href;
+                            return function () {
+                                if (!evt.defaultPreventedAfterMixpanelHandler) {
+                                    that._navigate(href);
+                                }
+                            };
+                        })(e);
+
+                        // fallback in case track is too slow
+                        setTimeout(function () {
+                            callback();
+                        }, 300);
+                    }
+                }
+
+                this._trackEvent(e, instance, callback);
             }
         }, this);
         _utils._.register_event(document, 'submit', handler, false, true);
@@ -422,6 +464,7 @@ var ce = {
                 'bookmarkletMode': !!state['bookmarkletMode'],
                 'projectId': state['projectId'],
                 'projectToken': state['token'],
+                'readOnly': state['readOnly'],
                 'userFlags': state['userFlags'],
                 'userId': state['userId']
             };
@@ -4976,7 +5019,9 @@ _.cookie = {
             secure = '; secure';
         }
 
-        document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+        var new_cookie_val = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+        document.cookie = new_cookie_val;
+        return new_cookie_val;
     },
 
     remove: function remove(name, cross_subdomain) {
