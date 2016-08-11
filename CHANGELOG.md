@@ -1,8 +1,10 @@
+**2.9.7** (11 Aug 2016)
+- Don't attach property keys of stripped values to events
+- Tests
+
 **2.9.6** (8 Aug 2016)
 Autotrack:
 - Delay navigation on link clicks for better tracking
-- Don't attach property keys of stripped values to events
-- Tests
 
 **2.9.5** (27 Jul 2016)
 - Autotrack: remove dependency on nearestInteractiveElement and fix a few autotrack edge cases
