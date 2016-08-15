@@ -1,4 +1,12 @@
+**2.9.8** (15 Aug 2016)
+Autotrack:
+- Properly handle getting class names from SVGs
+- Add readOnly parameter for Autotrack editor
+- Reconstruct Autotrack editor URL to avoid build issue
+- More tests
+
 **2.9.7** (11 Aug 2016)
+Autotrack:
 - Don't attach property keys of stripped values to events
 - Tests
 

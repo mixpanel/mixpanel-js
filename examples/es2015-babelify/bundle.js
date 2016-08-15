@@ -46,7 +46,7 @@ var ce = {
         } else {
             do {
                 el = el.previousSibling;
-            } while (el && el.nodeType !== 1);
+            } while (el && el.nodeType !== ELEMENT_NODE);
             return el;
         }
     },
@@ -65,10 +65,18 @@ var ce = {
         }
     },
 
+    _getClassName: function _getClassName(elem) {
+        if (elem.tagName.toLowerCase() === 'svg') {
+            return elem.className.baseVal || elem.getAttribute('class') || '';
+        } else {
+            return elem.className || '';
+        }
+    },
+
     _getPropertiesFromElement: function _getPropertiesFromElement(elem) {
         var props = {
-            'classes': elem.className.split(' '),
-            'tag_name': elem.tagName
+            'classes': this._getClassName(elem).split(' '),
+            'tag_name': elem.tagName.toLowerCase()
         };
 
         if (_utils._.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
@@ -99,13 +107,12 @@ var ce = {
     },
 
     _shouldTrackDomEvent: function _shouldTrackDomEvent(element, event) {
-        if (!element || element === document || element === document.body || element.nodeType !== ELEMENT_NODE) {
+        if (!element || element === document || element === document.body.parentNode || element.nodeType !== ELEMENT_NODE) {
             return false;
         }
         var tag = element.tagName.toLowerCase();
         switch (tag) {
             case 'html':
-            case 'body':
                 return false;
             case 'form':
                 return event.type === 'submit';
@@ -168,13 +175,15 @@ var ce = {
     },
 
     _includeProperty: function _includeProperty(input, value) {
-        var classes = (input.className || '').split(' ');
-        if (_utils._.includes(classes, 'mp-always-include-value')) {
-            return true;
+        for (var curEl = input; curEl.parentNode && curEl !== document.body; curEl = curEl.parentNode) {
+            var classes = this._getClassName(curEl).split(' ');
+            if (_utils._.includes(classes, 'mp-sensitive') || _utils._.includes(classes, 'mp-no-track')) {
+                return false;
+            }
         }
 
-        if (_utils._.includes(classes, 'mp-always-strip-value')) {
-            return false;
+        if (_utils._.includes(this._getClassName(input).split(' '), 'mp-include')) {
+            return true;
         }
 
         if (value === null) {
@@ -309,7 +318,7 @@ var ce = {
         if (this._shouldTrackDomEvent(target, e)) {
             var targetElementList = [target];
             var curEl = target;
-            while (curEl.parentNode && curEl.parentNode !== document.body) {
+            while (curEl.parentNode && curEl !== document.body) {
                 targetElementList.push(curEl.parentNode);
                 curEl = curEl.parentNode;
             }
@@ -336,7 +345,7 @@ var ce = {
                 }
 
                 // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
-                var classes = (el.className || '').split(' ');
+                var classes = this._getClassName(el).split(' ');
                 if (_utils._.includes(classes, 'mp-no-track')) {
                     explicitNoTrack = true;
                 }
@@ -526,10 +535,11 @@ var ce = {
             this._editorLoaded = true;
             var editorUrl;
             var cacheBuster = '?_ts=' + new Date().getTime();
+            var siteMedia = instance.get_config('app_host') + '/site_media';
             if (_config2['default'].DEBUG) {
-                editorUrl = instance.get_config('app_host') + '/site_media/compiled/reports/collect-everything/editor.js' + cacheBuster;
+                editorUrl = siteMedia + '/compiled/reports/collect-everything/editor.js' + cacheBuster;
             } else {
-                editorUrl = instance.get_config('app_host') + '/site_media/bundle-webpack/reports/collect-everything/editor.min.js' + cacheBuster;
+                editorUrl = siteMedia + '/bundle-webpack/reports/collect-everything/editor.min.js' + cacheBuster;
             }
             this._loadScript(editorUrl, function () {
                 window['mp_load_editor'](editorParams);
@@ -573,7 +583,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.7'
+    LIB_VERSION: '2.9.8'
 };
 
 exports['default'] = Config;
