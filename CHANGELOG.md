@@ -1,3 +1,7 @@
+**2.9.10** (16 Aug 2016)
+Autotrack:
+- Bugfix: use indexOf instead of startsWith
+
 **2.9.9** (16 Aug 2016)
 Autotrack:
 - Do not delay navigation when the href is just a hash
