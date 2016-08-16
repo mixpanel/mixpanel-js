@@ -353,7 +353,7 @@ var ce = {
                 // special case anchor tags to wait for mixpanel track to complete
                 var element = this._getEventTarget(e);
                 var href = element.tagName.toLowerCase() === 'a' && element.getAttribute('href');
-                var willNavigate = href && !href.startsWith('#') && !href.startsWith('/#');
+                var willNavigate = href && !(href.indexOf('#') === 0 || href.indexOf('/#') === 0);
                 if (!e.defaultPrevented && willNavigate) {
                     if (!(e.which === 2 || e.metaKey || e.ctrlKey || element.target === '_blank')) { // if not opening in a new tab
                         e.preventDefault();
