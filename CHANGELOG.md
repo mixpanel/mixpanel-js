@@ -1,3 +1,7 @@
+**2.9.9** (16 Aug 2016)
+Autotrack:
+- Do not delay navigation when the href is just a hash
+
 **2.9.8** (15 Aug 2016)
 Autotrack:
 - Properly handle getting class names from SVGs

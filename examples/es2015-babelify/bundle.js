@@ -385,7 +385,9 @@ var ce = {
 
                 // special case anchor tags to wait for mixpanel track to complete
                 var element = this._getEventTarget(e);
-                if (!e.defaultPrevented && element.tagName.toLowerCase() === 'a' && element.href) {
+                var href = element.tagName.toLowerCase() === 'a' && element.getAttribute('href');
+                var willNavigate = href && !href.startsWith('#') && !href.startsWith('/#');
+                if (!e.defaultPrevented && willNavigate) {
                     if (!(e.which === 2 || e.metaKey || e.ctrlKey || element.target === '_blank')) {
                         // if not opening in a new tab
                         e.preventDefault();
@@ -583,7 +585,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.8'
+    LIB_VERSION: '2.9.9'
 };
 
 exports['default'] = Config;
