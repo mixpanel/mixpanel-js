@@ -679,19 +679,31 @@ var INIT_SNIPPET = 1;
 /** @const */var EVENT_TIMERS_KEY = '__timers';
 /** @const */var RESERVED_PROPERTIES = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, UNION_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY, CAMPAIGN_IDS_KEY, EVENT_TIMERS_KEY];
 
+var documentExists = function documentExists() {
+    return typeof document !== 'undefined' && document;
+};
+
+var windowExists = function windowExists() {
+    return typeof window !== 'undefined' && window;
+};
+
+var userAgentExists = function userAgentExists() {
+    return typeof _utils.userAgent !== 'undefined' && _utils.userAgent;
+};
+
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-var HTTP_PROTOCOL = 'https:' === document.location.protocol ? 'https://' : 'http://';
+var HTTP_PROTOCOL = documentExists() && 'https:' === document.location.protocol ? 'https://' : 'http://';
 
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-var USE_XHR = window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
+var USE_XHR = windowExists() && window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
 
 // IE<10 does not support cross-origin XHR's but script tags
 // with defer won't block window.onload; ENQUEUE_REQUESTS
 // should only be true for Opera<12
-var ENQUEUE_REQUESTS = !USE_XHR && _utils.userAgent.indexOf('MSIE') === -1 && _utils.userAgent.indexOf('Mozilla') === -1;
+var ENQUEUE_REQUESTS = !USE_XHR && userAgentExists() && _utils.userAgent.indexOf('MSIE') === -1 && userAgentExists() && _utils.userAgent.indexOf('Mozilla') === -1;
 
 /*
  * Module-level globals
@@ -3908,7 +3920,7 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
         dom_loaded_handler();
     }
 
-    if (document.addEventListener) {
+    if (documentExists() && document.addEventListener) {
         if (document.readyState === 'complete') {
             // safari 4 can fire the DOMContentLoaded event before loading all
             // external JS (including this file). you will see some copypasta
@@ -3918,7 +3930,7 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
         } else {
             document.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
         }
-    } else if (document.attachEvent) {
+    } else if (documentExists() && document.attachEvent) {
         // IE
         document.attachEvent('onreadystatechange', dom_loaded_handler);
 
@@ -3936,7 +3948,9 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
     }
 
     // fallback handler, always will work
-    _utils._.register_event(window, 'load', dom_loaded_handler, true);
+    if (windowExists()) {
+        _utils._.register_event(window, 'load', dom_loaded_handler, true);
+    }
 };
 
 var add_dom_event_counting_handlers = function add_dom_event_counting_handlers(instance) {
