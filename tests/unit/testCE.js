@@ -820,6 +820,32 @@ describe('Collect Everything system', function() {
       }, 301);
     });
 
+    it('should not delay navigation when href starts with #', function(done) {
+      const a = document.createElement('a');
+      a.href = '#some-hash';
+      document.body.appendChild(a);
+      simulateClick(a);
+      expect(lib.track.calledOnce).to.equal(true);
+      expect(navigateSpy.callCount).to.equal(0);
+      setTimeout(function() {
+        expect(navigateSpy.callCount).to.equal(0);
+        done();
+      }, 301);
+    });
+
+    it('should not delay navigation when href starts with /#', function(done) {
+      const a = document.createElement('a');
+      a.href = '/#/some-hash';
+      document.body.appendChild(a);
+      simulateClick(a);
+      expect(lib.track.calledOnce).to.equal(true);
+      expect(navigateSpy.callCount).to.equal(0);
+      setTimeout(function() {
+        expect(navigateSpy.callCount).to.equal(0);
+        done();
+      }, 301);
+    });
+
     it('should respect preventDefault on link clicks', function(done) {
       const a = document.createElement('a');
       a.href = 'http://test.com';
