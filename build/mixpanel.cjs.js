@@ -2145,19 +2145,31 @@ var INIT_SNIPPET = 1;
     EVENT_TIMERS_KEY
 ];
 
+var documentExists = function() {
+  return typeof document !== 'undefined' && document;
+};
+
+var windowExists = function() {
+  return typeof window !== 'undefined' && window;
+};
+
+var userAgentExists = function() {
+  return typeof userAgent !== 'undefined' && userAgent;
+};
+
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-var HTTP_PROTOCOL = (('https:' === document.location.protocol) ? 'https://' : 'http://');
+var HTTP_PROTOCOL = ((documentExists() &&'https:' === document.location.protocol) ? 'https://' : 'http://');
 
     // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
     // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
+var USE_XHR = ( windowExists() && window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 
     // IE<10 does not support cross-origin XHR's but script tags
     // with defer won't block window.onload; ENQUEUE_REQUESTS
     // should only be true for Opera<12
-var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
+var ENQUEUE_REQUESTS = !USE_XHR && (userAgentExists() && userAgent.indexOf('MSIE') === -1) && (userAgentExists() && userAgent.indexOf('Mozilla') === -1);
 
 /*
  * Module-level globals
@@ -5486,7 +5498,7 @@ var add_dom_loaded_handler = function() {
         dom_loaded_handler();
     }
 
-    if (document.addEventListener) {
+    if (documentExists() && document.addEventListener) {
         if (document.readyState === 'complete') {
             // safari 4 can fire the DOMContentLoaded event before loading all
             // external JS (including this file). you will see some copypasta
@@ -5496,7 +5508,7 @@ var add_dom_loaded_handler = function() {
         } else {
             document.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
         }
-    } else if (document.attachEvent) {
+    } else if (documentExists() && document.attachEvent) {
         // IE
         document.attachEvent('onreadystatechange', dom_loaded_handler);
 
@@ -5514,7 +5526,9 @@ var add_dom_loaded_handler = function() {
     }
 
     // fallback handler, always will work
-    _.register_event(window, 'load', dom_loaded_handler, true);
+    if(windowExists()) {
+      _.register_event(window, 'load', dom_loaded_handler, true);
+    }
 };
 
 var add_dom_event_counting_handlers = function(instance) {
