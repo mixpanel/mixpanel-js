@@ -1326,7 +1326,7 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * basis (e.g., each time a user logs in after registering).
  * Do not call identify() at the same time as alias().
  *
- * @param {String} unique_id A string that uniquely identifies a user
+ * @param {String} [unique_id] A string that uniquely identifies a user. If no string is provided, the distinct_id currently in the cookie or local storage will be used.
  */
 MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
     // Optional Parameters
