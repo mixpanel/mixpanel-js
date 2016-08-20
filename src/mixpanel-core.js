@@ -1371,7 +1371,7 @@ MixpanelLib.prototype.reset = function() {
  *
  *     // set distinct_id after the mixpanel library has loaded
  *     mixpanel.init('YOUR PROJECT TOKEN', {
- *         loaded: function() {
+ *         loaded: function(mixpanel) {
  *             distinct_id = mixpanel.get_distinct_id();
  *         }
  *     });
@@ -1529,7 +1529,7 @@ MixpanelLib.prototype.get_config = function(prop_name) {
  *
  *     // grab value for 'user_id' after the mixpanel library has loaded
  *     mixpanel.init('YOUR PROJECT TOKEN', {
- *         loaded: function() {
+ *         loaded: function(mixpanel) {
  *             user_id = mixpanel.get_property('user_id');
  *         }
  *     });
