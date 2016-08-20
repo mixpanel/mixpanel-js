@@ -3409,7 +3409,9 @@
      * basis (e.g., each time a user logs in after registering).
      * Do not call identify() at the same time as alias().
      *
-     * @param {String} unique_id A string that uniquely identifies a user
+     * @param {String} [unique_id] A string that uniquely identifies a user.
+     * If not provided, the distinct_id currently in the persistent store
+     * (cookie or localStorage) will be used.
      */
     MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
         // Optional Parameters
@@ -3452,7 +3454,7 @@
      *
      *     // set distinct_id after the mixpanel library has loaded
      *     mixpanel.init('YOUR PROJECT TOKEN', {
-     *         loaded: function() {
+     *         loaded: function(mixpanel) {
      *             distinct_id = mixpanel.get_distinct_id();
      *         }
      *     });
@@ -3610,7 +3612,7 @@
      *
      *     // grab value for 'user_id' after the mixpanel library has loaded
      *     mixpanel.init('YOUR PROJECT TOKEN', {
-     *         loaded: function() {
+     *         loaded: function(mixpanel) {
      *             user_id = mixpanel.get_property('user_id');
      *         }
      *     });
