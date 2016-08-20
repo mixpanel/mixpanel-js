@@ -1823,7 +1823,7 @@
             }
         },
 
-        _trackEvent: function(e, instance, callback) {
+        _trackEvent: function(e, instance) {
             /*** Don't mess with this code without running IE8 tests on it ***/
             var target = this._getEventTarget(e);
             if (target.nodeType === TEXT_NODE) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
@@ -1882,7 +1882,7 @@
                 if (form && (e.type === 'submit' || e.type === 'click')) {
                     _.extend(props, this._getFormFieldProperties(form));
                 }
-                instance.track('$web_event', props, callback);
+                instance.track('$web_event', props);
                 return true;
             }
         },
@@ -1897,41 +1897,7 @@
             var handler = _.bind(function(e) {
                 if (_.cookie.parse(DISABLE_COOKIE) !== true) {
                     e = e || window.event;
-                    var callback = function(){};
-
-                    // special case anchor tags to wait for mixpanel track to complete
-                    var element = this._getEventTarget(e);
-                    var href = element.tagName.toLowerCase() === 'a' && element.getAttribute('href');
-                    var willNavigate = href && !(href.indexOf('#') === 0 || href.indexOf('/#') === 0);
-                    if (!e.defaultPrevented && willNavigate) {
-                        if (!(e.which === 2 || e.metaKey || e.ctrlKey || element.target === '_blank')) { // if not opening in a new tab
-                            e.preventDefault();
-
-                            // allow other handlers to preventDefault
-                            e.preventDefault = function() {
-                                e.defaultPreventedAfterMixpanelHandler = true;
-                            };
-
-                            // setup a callback to navigate to the anchor's href after
-                            // track is complete OR 300ms whichever comes first.
-                            var that = this;
-                            callback = (function(evt) {
-                                var href = evt.target.href;
-                                return function() {
-                                    if (!evt.defaultPreventedAfterMixpanelHandler) {
-                                        that._navigate(href);
-                                    }
-                                };
-                            }(e));
-
-                            // fallback in case track is too slow
-                            setTimeout(function() {
-                                callback();
-                            }, 300);
-                        }
-                    }
-
-                    this._trackEvent(e, instance, callback);
+                    this._trackEvent(e, instance);
                 }
             }, this);
             _.register_event(document, 'submit', handler, false, true);
@@ -1989,6 +1955,7 @@
                     'appHost': instance.get_config('app_host'),
                     'bookmarkletMode': !!state['bookmarkletMode'],
                     'projectId': state['projectId'],
+                    'projectOwnerId': state['projectOwnerId'],
                     'projectToken': state['token'],
                     'readOnly': state['readOnly'],
                     'userFlags': state['userFlags'],
