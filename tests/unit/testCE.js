@@ -814,6 +814,7 @@ describe('Collect Everything system', function() {
     beforeEach(function() {
       sandbox = sinon.sandbox.create();
       sandbox.spy(ce, '_addDomEventHandlers');
+      ce._initializedTokens = [];
       _maybeLoadEditorStub = sandbox.stub(ce, '_maybeLoadEditor').returns(false);
       lib = {
         _prepare_callback: sandbox.spy(callback => callback),
@@ -856,6 +857,25 @@ describe('Collect Everything system', function() {
       lib._send_request = sandbox.spy((url, params, callback) => callback({config: {enable_collect_everything: false}}));
       ce.init(lib);
       expect(ce._addDomEventHandlers.calledOnce).to.equal(false);
+    });
+
+    it('should NOT call _addDomEventHandlders when the token has already been initialized', function() {
+      var lib2 = Object.assign({}, lib);
+      var lib3 = Object.assign({token: 'anotherproject'}, lib);
+      lib3.get_config = sandbox.spy(function(key) {
+          switch (key) {
+            case 'decide_host':
+              return 'https://test.com';
+            case 'token':
+              return 'anotherproject';
+          }
+        }),
+      ce.init(lib);
+      expect(ce._addDomEventHandlers.callCount).to.equal(1);
+      ce.init(lib2);
+      expect(ce._addDomEventHandlers.callCount).to.equal(1);
+      ce.init(lib3);
+      expect(ce._addDomEventHandlers.callCount).to.equal(2);
     });
 
     it('should call instance._send_request', function() {

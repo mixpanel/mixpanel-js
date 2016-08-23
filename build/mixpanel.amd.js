@@ -2,7 +2,7 @@ define(function () { 'use strict';
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.9.12'
+        LIB_VERSION: '2.9.13'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1554,6 +1554,8 @@ define(function () { 'use strict';
     var TEXT_NODE = 3;
 
     var ce = {
+        _initializedTokens: [],
+
         _previousElementSibling: function(el) {
             if (el.previousElementSibling) {
                 return el.previousElementSibling;
@@ -1910,9 +1912,17 @@ define(function () { 'use strict';
                 return;
             }
 
-            if (!this._maybeLoadEditor(instance)) { // don't collect everything  when the editor is enabled
+            var token = instance.get_config('token');
+            if (this._initializedTokens.indexOf(token) > -1) {
+                console.log('autotrack already initialized for token "' + token + '"');
+                return;
+            }
+            this._initializedTokens.push(token);
+
+            if (!this._maybeLoadEditor(instance)) { // don't autotrack actions when the editor is enabled
                 var parseDecideResponse = _.bind(function(response) {
                     if (response && response['config'] && response['config']['enable_collect_everything'] === true) {
+
                         if (response['custom_properties']) {
                             this._customProperties = response['custom_properties'];
                         }
@@ -1922,6 +1932,7 @@ define(function () { 'use strict';
                         }, this._getDefaultProperties('pageview')));
 
                         this._addDomEventHandlers(instance);
+
                     } else {
                         instance['__autotrack_enabled'] = false;
                     }
@@ -1932,7 +1943,7 @@ define(function () { 'use strict';
                         'verbose': true,
                         'version': '1',
                         'lib': 'web',
-                        'token': instance.get_config('token')
+                        'token': token
                     },
                     instance._prepare_callback(parseDecideResponse)
                 );
