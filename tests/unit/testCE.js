@@ -933,10 +933,11 @@ describe('Collect Everything system', function() {
       }
       const state = {
         action: 'mpeditor',
+        appHost: 'test_app_host',
         desiredHash: '#myhash',
         projectId: 3,
-        readOnly: false,
         projectOwnerId: 722725,
+        readOnly: false,
         token: 'test_token',
         userFlags,
         userId: 12345,
