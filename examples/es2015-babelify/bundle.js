@@ -40,6 +40,8 @@ var ELEMENT_NODE = 1;
 var TEXT_NODE = 3;
 
 var ce = {
+    _initializedTokens: [],
+
     _previousElementSibling: function _previousElementSibling(el) {
         if (el.previousElementSibling) {
             return el.previousElementSibling;
@@ -400,10 +402,18 @@ var ce = {
             return;
         }
 
+        var token = instance.get_config('token');
+        if (this._initializedTokens.indexOf(token) > -1) {
+            console.log('autotrack already initialized for token "' + token + '"');
+            return;
+        }
+        this._initializedTokens.push(token);
+
         if (!this._maybeLoadEditor(instance)) {
-            // don't collect everything  when the editor is enabled
+            // don't autotrack actions when the editor is enabled
             var parseDecideResponse = _utils._.bind(function (response) {
                 if (response && response['config'] && response['config']['enable_collect_everything'] === true) {
+
                     if (response['custom_properties']) {
                         this._customProperties = response['custom_properties'];
                     }
@@ -422,7 +432,7 @@ var ce = {
                 'verbose': true,
                 'version': '1',
                 'lib': 'web',
-                'token': instance.get_config('token')
+                'token': token
             }, instance._prepare_callback(parseDecideResponse));
         }
     },
@@ -551,7 +561,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.12'
+    LIB_VERSION: '2.9.13'
 };
 
 exports['default'] = Config;
