@@ -414,7 +414,7 @@ var ce = {
             editorParams = {
                 'accessToken': _.getHashParam(hash, 'access_token'),
                 'accessTokenExpiresAt': (new Date()).getTime() + (Number(expiresInSeconds) * 1000),
-                'appHost': instance.get_config('app_host'),
+                'appHost': state['appHost'],
                 'bookmarkletMode': !!state['bookmarkletMode'],
                 'projectId': state['projectId'],
                 'projectOwnerId': state['projectOwnerId'],
