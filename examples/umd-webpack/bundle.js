@@ -69,7 +69,7 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.9.13'
+	        LIB_VERSION: '2.9.14'
 	    };
 
 	    // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2026,7 +2026,7 @@
 	                editorParams = {
 	                    'accessToken': _.getHashParam(hash, 'access_token'),
 	                    'accessTokenExpiresAt': (new Date()).getTime() + (Number(expiresInSeconds) * 1000),
-	                    'appHost': instance.get_config('app_host'),
+	                    'appHost': state['appHost'],
 	                    'bookmarkletMode': !!state['bookmarkletMode'],
 	                    'projectId': state['projectId'],
 	                    'projectOwnerId': state['projectOwnerId'],

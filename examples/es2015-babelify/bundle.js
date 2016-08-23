@@ -446,7 +446,7 @@ var ce = {
             editorParams = {
                 'accessToken': _utils._.getHashParam(hash, 'access_token'),
                 'accessTokenExpiresAt': new Date().getTime() + Number(expiresInSeconds) * 1000,
-                'appHost': instance.get_config('app_host'),
+                'appHost': state['appHost'],
                 'bookmarkletMode': !!state['bookmarkletMode'],
                 'projectId': state['projectId'],
                 'projectOwnerId': state['projectOwnerId'],
@@ -561,7 +561,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.13'
+    LIB_VERSION: '2.9.14'
 };
 
 exports['default'] = Config;

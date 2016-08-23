@@ -1,3 +1,7 @@
+**2.9.14** (23 Aug 2016)
+Autotrack:
+- Bugfix: Pass appHost from the editor entry so the editor always uses the right appHost
+
 **2.9.13** (23 Aug 2016)
 Autotrack:
 - Bugfix: Only allow one instance of autotrack to be enabled per project token
