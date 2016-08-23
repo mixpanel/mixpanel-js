@@ -1,3 +1,7 @@
+**2.9.11/12** (20 Aug 2016)
+Autotrack:
+- Bugfix: Revert delay navigation changes introduced in 2.9.9
+
 **2.9.10** (16 Aug 2016)
 Autotrack:
 - Bugfix: use indexOf instead of startsWith
