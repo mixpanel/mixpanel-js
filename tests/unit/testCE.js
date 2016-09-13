@@ -933,7 +933,6 @@ describe('Collect Everything system', function() {
       }
       const state = {
         action: 'mpeditor',
-        appHost: 'test_app_host',
         desiredHash: '#myhash',
         projectId: 3,
         projectOwnerId: 722725,
@@ -950,7 +949,6 @@ describe('Collect Everything system', function() {
       editorParams = {
         accessToken: 'test_access_token',
         accessTokenExpiresAt: 3600000,
-        appHost: 'test_app_host',
         bookmarkletMode: false,
         projectId: 3,
         projectOwnerId: 722725,
