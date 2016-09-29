@@ -37,10 +37,13 @@ var ce = {
     },
 
     _getClassName: function(elem) {
-        if (elem.tagName.toLowerCase() === 'svg') {
-            return elem.className.baseVal || elem.getAttribute('class') || '';
-        } else {
-            return elem.className || '';
+        switch(typeof elem.className) {
+            case 'string':
+                return elem.className;
+            case 'object': // handle cases where className might be SVGAnimatedString or some other type
+                return elem.className.baseVal || elem.getAttribute('class') || '';
+            default: // future proof
+                return '';
         }
     },
 
