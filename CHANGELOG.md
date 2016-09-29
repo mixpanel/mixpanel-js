@@ -1,3 +1,7 @@
+**2.9.15** (28 Sep 2016)
+Autotrack:
+- Bugfix: Handle SVG class names properly, remove appHost param 
+
 **2.9.14** (23 Aug 2016)
 Autotrack:
 - Bugfix: Pass appHost from the editor entry so the editor always uses the right appHost
