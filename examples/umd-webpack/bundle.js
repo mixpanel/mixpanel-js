@@ -69,7 +69,7 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.9.14'
+	        LIB_VERSION: '2.9.15'
 	    };
 
 	    // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1649,10 +1649,13 @@
 	        },
 
 	        _getClassName: function(elem) {
-	            if (elem.tagName.toLowerCase() === 'svg') {
-	                return elem.className.baseVal || elem.getAttribute('class') || '';
-	            } else {
-	                return elem.className || '';
+	            switch(typeof elem.className) {
+	                case 'string':
+	                    return elem.className;
+	                case 'object': // handle cases where className might be SVGAnimatedString or some other type
+	                    return elem.className.baseVal || elem.getAttribute('class') || '';
+	                default: // future proof
+	                    return '';
 	            }
 	        },
 
@@ -2026,7 +2029,6 @@
 	                editorParams = {
 	                    'accessToken': _.getHashParam(hash, 'access_token'),
 	                    'accessTokenExpiresAt': (new Date()).getTime() + (Number(expiresInSeconds) * 1000),
-	                    'appHost': state['appHost'],
 	                    'bookmarkletMode': !!state['bookmarkletMode'],
 	                    'projectId': state['projectId'],
 	                    'projectOwnerId': state['projectOwnerId'],
