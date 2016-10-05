@@ -1620,7 +1620,7 @@
 	    var ELEMENT_NODE = 1;
 	    var TEXT_NODE = 3;
 
-	    var ce = {
+	    var autotrack = {
 	        _initializedTokens: [],
 
 	        _previousElementSibling: function(el) {
@@ -1691,8 +1691,17 @@
 	            return props;
 	        },
 
+	        /*
+	         * Due to potential reference descrepencies (such as the webcomponents.js polyfill)
+	         * We want to match tagNames instead of specific reference because something like element === document.body
+	         * won't always work because element might not be a native element.
+	         */
+	        _isTag: function(el, tag) {
+	            return el && el.tagName && el.tagName.toLowerCase() === tag.toLowerCase();
+	        },
+
 	        _shouldTrackDomEvent: function(element, event) {
-	            if (!element || element === document || element === document.body.parentNode || element.nodeType !== ELEMENT_NODE) {
+	            if (!element || this._isTag(element, 'html') || element.nodeType !== ELEMENT_NODE) {
 	                return false;
 	            }
 	            var tag = element.tagName.toLowerCase();
@@ -1760,7 +1769,7 @@
 	        },
 
 	        _includeProperty: function(input, value) {
-	            for (var curEl = input; curEl.parentNode && curEl !== document.body; curEl = curEl.parentNode) {
+	            for (var curEl = input; curEl.parentNode && !this._isTag(curEl, 'body'); curEl = curEl.parentNode) {
 	                var classes = this._getClassName(curEl).split(' ');
 	                if (_.includes(classes, 'mp-sensitive') || _.includes(classes, 'mp-no-track')) {
 	                    return false;
@@ -1901,7 +1910,7 @@
 	            if (this._shouldTrackDomEvent(target, e)) {
 	                var targetElementList = [target];
 	                var curEl = target;
-	                while (curEl.parentNode && curEl !== document.body) {
+	                while (curEl.parentNode && !this._isTag(curEl, 'body')) {
 	                    targetElementList.push(curEl.parentNode);
 	                    curEl = curEl.parentNode;
 	                }
@@ -2126,8 +2135,8 @@
 	        }
 	    };
 
-	    _.bind_instance_methods(ce);
-	    _.safewrap_instance_methods(ce);
+	    _.bind_instance_methods(autotrack);
+	    _.safewrap_instance_methods(autotrack);
 
 	    /*
 	     * Mixpanel JS Library
@@ -2838,14 +2847,14 @@
 	        if (instance.get_config('autotrack')) {
 	            var num_buckets = 100;
 	            var num_enabled_buckets = 100;
-	            if (!ce.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
+	            if (!autotrack.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
 	                instance['__autotrack_enabled'] = false;
 	                console$1.log('Not in active bucket: disabling Automatic Event Collection.');
-	            } else if (!ce.isBrowserSupported()) {
+	            } else if (!autotrack.isBrowserSupported()) {
 	                instance['__autotrack_enabled'] = false;
 	                console$1.log('Disabling Automatic Event Collection because this browser is not supported');
 	            } else {
-	                ce.init(instance);
+	                autotrack.init(instance);
 	            }
 
 	            try {
@@ -3048,7 +3057,7 @@
 	                req.onreadystatechange = function () {
 	                    if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
 	                        if (url.indexOf('api.mixpanel.com/track') !== -1) {
-	                            ce.checkForBackoff(req);
+	                            autotrack.checkForBackoff(req);
 	                        }
 	                        if (req.status === 200) {
 	                            if (callback) {

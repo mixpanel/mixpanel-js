@@ -39,7 +39,7 @@ var DISABLE_COOKIE = '__mpced';
 var ELEMENT_NODE = 1;
 var TEXT_NODE = 3;
 
-var ce = {
+var autotrack = {
     _initializedTokens: [],
 
     _previousElementSibling: function _previousElementSibling(el) {
@@ -113,8 +113,17 @@ var ce = {
         return props;
     },
 
+    /*
+     * Due to potential reference descrepencies (such as the webcomponents.js polyfill)
+     * We want to match tagNames instead of specific reference because something like element === document.body
+     * won't always work because element might not be a native element.
+     */
+    _isTag: function _isTag(el, tag) {
+        return el && el.tagName && el.tagName.toLowerCase() === tag.toLowerCase();
+    },
+
     _shouldTrackDomEvent: function _shouldTrackDomEvent(element, event) {
-        if (!element || element === document || element === document.body.parentNode || element.nodeType !== ELEMENT_NODE) {
+        if (!element || this._isTag(element, 'html') || element.nodeType !== ELEMENT_NODE) {
             return false;
         }
         var tag = element.tagName.toLowerCase();
@@ -182,7 +191,7 @@ var ce = {
     },
 
     _includeProperty: function _includeProperty(input, value) {
-        for (var curEl = input; curEl.parentNode && curEl !== document.body; curEl = curEl.parentNode) {
+        for (var curEl = input; curEl.parentNode && !this._isTag(curEl, 'body'); curEl = curEl.parentNode) {
             var classes = this._getClassName(curEl).split(' ');
             if (_utils._.includes(classes, 'mp-sensitive') || _utils._.includes(classes, 'mp-no-track')) {
                 return false;
@@ -325,7 +334,7 @@ var ce = {
         if (this._shouldTrackDomEvent(target, e)) {
             var targetElementList = [target];
             var curEl = target;
-            while (curEl.parentNode && curEl !== document.body) {
+            while (curEl.parentNode && !this._isTag(curEl, 'body')) {
                 targetElementList.push(curEl.parentNode);
                 curEl = curEl.parentNode;
             }
@@ -551,11 +560,11 @@ var ce = {
     }
 };
 
-_utils._.bind_instance_methods(ce);
-_utils._.safewrap_instance_methods(ce);
+_utils._.bind_instance_methods(autotrack);
+_utils._.safewrap_instance_methods(autotrack);
 
 exports.DISABLE_COOKIE = DISABLE_COOKIE;
-exports.ce = ce;
+exports.autotrack = autotrack;
 
 },{"./config":3,"./utils":6}],3:[function(require,module,exports){
 'use strict';
@@ -604,7 +613,7 @@ var _config2 = _interopRequireDefault(_config);
 
 var _utils = require('./utils');
 
-var _ce = require('./ce');
+var _autotrack = require('./autotrack');
 
 /*
  * Mixpanel JS Library
@@ -1302,14 +1311,14 @@ var create_mplib = function create_mplib(token, config, name) {
     if (instance.get_config('autotrack')) {
         var num_buckets = 100;
         var num_enabled_buckets = 100;
-        if (!_ce.ce.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
+        if (!_autotrack.autotrack.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
             instance['__autotrack_enabled'] = false;
             _utils.console.log('Not in active bucket: disabling Automatic Event Collection.');
-        } else if (!_ce.ce.isBrowserSupported()) {
+        } else if (!_autotrack.autotrack.isBrowserSupported()) {
             instance['__autotrack_enabled'] = false;
             _utils.console.log('Disabling Automatic Event Collection because this browser is not supported');
         } else {
-            _ce.ce.init(instance);
+            _autotrack.autotrack.init(instance);
         }
 
         try {
@@ -1521,7 +1530,7 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
                 if (req.readyState === 4) {
                     // XMLHttpRequest.DONE == 4, except in safari 4
                     if (url.indexOf('api.mixpanel.com/track') !== -1) {
-                        _ce.ce.checkForBackoff(req);
+                        _autotrack.autotrack.checkForBackoff(req);
                     }
                     if (req.status === 200) {
                         if (callback) {
@@ -4002,7 +4011,7 @@ function init_as_module() {
     return mixpanel_master;
 }
 
-},{"./ce":2,"./config":3,"./utils":6}],6:[function(require,module,exports){
+},{"./autotrack":2,"./config":3,"./utils":6}],6:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
