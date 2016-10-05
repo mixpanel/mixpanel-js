@@ -114,7 +114,7 @@ var autotrack = {
     },
 
     /*
-     * Due to potential reference descrepencies (such as the webcomponents.js polyfill)
+     * Due to potential reference discrepancies (such as the webcomponents.js polyfill)
      * We want to match tagNames instead of specific reference because something like element === document.body
      * won't always work because element might not be a native element.
      */
@@ -574,7 +574,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.9.15'
+    LIB_VERSION: '2.9.16'
 };
 
 exports['default'] = Config;

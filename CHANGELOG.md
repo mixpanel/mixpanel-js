@@ -1,3 +1,7 @@
+**2.9.16** (5 Oct 2016)
+Autotrack:
+- Bugfix: Check tagNames instead of element references
+
 **2.9.15** (28 Sep 2016)
 Autotrack:
 - Bugfix: Handle SVG class names properly, remove appHost param 
