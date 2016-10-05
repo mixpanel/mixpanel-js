@@ -4,7 +4,7 @@ import jsdom from 'mocha-jsdom';
 import sinon from 'sinon';
 import nodeLocalStorage from 'node-localstorage';
 
-import { DISABLE_COOKIE, ce } from '../../src/ce';
+import { DISABLE_COOKIE, autotrack } from '../../src/autotrack';
 import { _ } from '../../src/utils';
 
 jsdom({
@@ -34,7 +34,7 @@ describe('Collect Everything system', function() {
   });
 
   describe('_shouldTrackDomEvent', function() {
-    const _shouldTrackDomEvent = ce._shouldTrackDomEvent;
+    const _shouldTrackDomEvent = autotrack._shouldTrackDomEvent;
 
     it('should track "submit" on forms', function() {
       expect(_shouldTrackDomEvent(document.createElement('form'), {
@@ -134,42 +134,42 @@ describe('Collect Everything system', function() {
     });
 
     it('should contain the proper tag name', function() {
-      const props = ce._getPropertiesFromElement(div);
+      const props = autotrack._getPropertiesFromElement(div);
       expect(props['tag_name']).to.equal('div');
     });
 
     it('should contain class list', function() {
-      const props = ce._getPropertiesFromElement(div);
+      const props = autotrack._getPropertiesFromElement(div);
       expect(props['classes']).to.deep.equal(['class1', 'class2', 'class3']);
     });
 
     it('should contain input value', function() {
-      const props = ce._getPropertiesFromElement(input);
+      const props = autotrack._getPropertiesFromElement(input);
       expect(props['value']).to.equal('test val');
     });
 
     it('should strip input value with class "mp-sensitive"', function() {
-      const props = ce._getPropertiesFromElement(sensitiveInput);
+      const props = autotrack._getPropertiesFromElement(sensitiveInput);
       expect(props['value']).to.equal(undefined);
     });
 
     it('should strip hidden input value', function() {
-      const props = ce._getPropertiesFromElement(hidden);
+      const props = autotrack._getPropertiesFromElement(hidden);
       expect(props['value']).to.equal(undefined);
     });
 
     it('should strip password input value', function() {
-      const props = ce._getPropertiesFromElement(password);
+      const props = autotrack._getPropertiesFromElement(password);
       expect(props['value']).to.equal(undefined);
     });
 
     it('should contain nth-of-type', function() {
-      const props = ce._getPropertiesFromElement(div);
+      const props = autotrack._getPropertiesFromElement(div);
       expect(props['nth_of_type']).to.equal(2);
     });
 
     it('should contain nth-child', function() {
-      const props = ce._getPropertiesFromElement(password);
+      const props = autotrack._getPropertiesFromElement(password);
       expect(props['nth_child']).to.equal(7);
     });
   });
@@ -179,7 +179,7 @@ describe('Collect Everything system', function() {
       const input = document.createElement('input');
       input.setAttribute('type', 'text');
       input.value = 'text val';
-      const val = ce._getInputValue(input);
+      const val = autotrack._getInputValue(input);
       expect(val).to.equal('text val');
     });
 
@@ -187,18 +187,18 @@ describe('Collect Everything system', function() {
       const input = document.createElement('input');
       input.setAttribute('type', 'checkbox');
       input.value = 'checkbox val';
-      expect(ce._getInputValue(input)).to.equal(null);
+      expect(autotrack._getInputValue(input)).to.equal(null);
       input.checked = true;
-      expect(ce._getInputValue(input)).to.deep.equal(['checkbox val']);
+      expect(autotrack._getInputValue(input)).to.deep.equal(['checkbox val']);
     });
 
     it('should return the value of an input radio button if it is checked', function() {
       const input = document.createElement('input');
       input.setAttribute('type', 'radio');
       input.value = 'radio val';
-      expect(ce._getInputValue(input)).to.equal(null);
+      expect(autotrack._getInputValue(input)).to.equal(null);
       input.checked = true;
-      expect(ce._getInputValue(input)).to.equal('radio val');
+      expect(autotrack._getInputValue(input)).to.equal('radio val');
     });
   });
 
@@ -211,9 +211,9 @@ describe('Collect Everything system', function() {
       option2.value = '2';
       select.appendChild(option1);
       select.appendChild(option2);
-      expect(ce._getSelectValue(select)).to.equal('1');
+      expect(autotrack._getSelectValue(select)).to.equal('1');
       option2.setAttribute('selected', true);
-      expect(ce._getSelectValue(select)).to.equal('2');
+      expect(autotrack._getSelectValue(select)).to.equal('2');
     });
 
     it('should return a list of selected values when multiple is enabled', function() {
@@ -225,11 +225,11 @@ describe('Collect Everything system', function() {
       option2.value = '2';
       select.appendChild(option1);
       select.appendChild(option2);
-      expect(ce._getSelectValue(select)).to.deep.equal([]);
+      expect(autotrack._getSelectValue(select)).to.deep.equal([]);
       option1.setAttribute('selected', true);
-      expect(ce._getSelectValue(select)).to.deep.equal(['1']);
+      expect(autotrack._getSelectValue(select)).to.deep.equal(['1']);
       option2.setAttribute('selected', true);
-      expect(ce._getSelectValue(select)).to.deep.equal(['1', '2']);
+      expect(autotrack._getSelectValue(select)).to.deep.equal(['1', '2']);
     });
   });
 
@@ -249,43 +249,43 @@ describe('Collect Everything system', function() {
       input.type = 'password';
       input.className = 'test1 test2';
       input.value = 'force included password';
-      expect(ce._includeProperty(input, null)).to.equal(false);
+      expect(autotrack._includeProperty(input, null)).to.equal(false);
     });
 
     it('should include sensitive inputs with class "mp-include"', function() {
       input.type = 'password';
       input.className = 'test1 mp-include test2';
-      expect(ce._includeProperty(input, 'some password')).to.equal(true);
-      expect(ce._includeProperty(input, null)).to.equal(true);
+      expect(autotrack._includeProperty(input, 'some password')).to.equal(true);
+      expect(autotrack._includeProperty(input, null)).to.equal(true);
     });
 
     it('should never include inputs with class "mp-sensitive"', function() {
       input.type = 'text';
       input.className = 'test1 mp-include mp-sensitive test2';
-      expect(ce._includeProperty(input, 'some value')).to.equal(false);
-      expect(ce._includeProperty(input, null)).to.equal(false);
+      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeProperty(input, null)).to.equal(false);
     });
 
     it('should not include elements with class "mp-no-track" as properties', function() {
       input.type = 'text';
       input.className = 'test1 mp-no-track test2';
-      expect(ce._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
     });
 
     it('should not include elements with a parent that have class "mp-no-track" as properties', function() {
       parent2.className = 'mp-no-track';
       input.type = 'text';
-      expect(ce._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
     });
 
     it('should not include hidden fields', function() {
       input.type = 'hidden';
-      expect(ce._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
     });
 
     it('should not include password fields', function() {
       input.type = 'password';
-      expect(ce._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
     });
 
     it('should not include fields with sensitive names', function() {
@@ -308,7 +308,7 @@ describe('Collect Everything system', function() {
       input.type = 'text';
       sensitiveNames.forEach(name => {
         input.name = name;
-        expect(ce._includeProperty(input, 'some value')).to.equal(false);
+        expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
       });
     });
 
@@ -317,20 +317,20 @@ describe('Collect Everything system', function() {
       // one for each type on http://www.getcreditcardnumbers.com/
       const validCCNumbers = ['3419-881002-84912', '30148420855976', '5183792099737678', '6011-5100-8788-7057', '180035601937848', '180072512946394', '4556617778508'];
       validCCNumbers.forEach(num => {
-        expect(ce._includeProperty(input, num)).to.equal(false);
+        expect(autotrack._includeProperty(input, num)).to.equal(false);
       });
     });
 
     it('should not include values that look like social security numbers', function() {
       input.type = 'text';
       input.value = '123-45-6789';
-      expect(ce._includeProperty(input, input.value)).to.equal(false);
+      expect(autotrack._includeProperty(input, input.value)).to.equal(false);
     });
 
     it('should include non-sensitive inputs', function() {
       input.type = 'text';
       input.value = 'Josh';
-      expect(ce._includeProperty(input, input.value)).to.equal(true);
+      expect(autotrack._includeProperty(input, input.value)).to.equal(true);
     });
   });
 
@@ -355,7 +355,7 @@ describe('Collect Everything system', function() {
       `;
       const form = document.createElement('form');
       form.innerHTML = formHtml;
-      const formFieldProps = ce._getFormFieldProperties(form);
+      const formFieldProps = autotrack._getFormFieldProperties(form);
       expect(formFieldProps).to.deep.equal({
         '$form_field__name': 'Test name',
         '$form_field__color': 'red',
@@ -374,7 +374,7 @@ describe('Collect Everything system', function() {
       `;
       const form = document.createElement('form');
       form.innerHTML = formHtml;
-      const formFieldProps = ce._getFormFieldProperties(form);
+      const formFieldProps = autotrack._getFormFieldProperties(form);
       expect(formFieldProps).to.deep.equal({
         '$form_field__name': 'name',
         '$form_field__id': 'id',
@@ -395,21 +395,21 @@ describe('Collect Everything system', function() {
 
     it('should return true if document.querySelectorAll is a function', function() {
       document.querySelectorAll = function() {};
-      expect(ce.isBrowserSupported()).to.equal(true);
+      expect(autotrack.isBrowserSupported()).to.equal(true);
     });
 
     it('should return false if document.querySelectorAll is not a function', function() {
       document.querySelectorAll = undefined;
-      expect(ce.isBrowserSupported()).to.equal(false);
+      expect(autotrack.isBrowserSupported()).to.equal(false);
     });
   });
 
   describe('enabledForProject', function() {
     it('should enable ce for the project with token "d" when 5 buckets are enabled out of 10', function() {
-      expect(ce.enabledForProject('d', 10, 5)).to.equal(true);
+      expect(autotrack.enabledForProject('d', 10, 5)).to.equal(true);
     });
     it('should NOT enable ce for the project with token "a" when 5 buckets are enabled out of 10', function() {
-      expect(ce.enabledForProject('a', 10, 5)).to.equal(false);
+      expect(autotrack.enabledForProject('a', 10, 5)).to.equal(false);
     });
   });
 
@@ -420,7 +420,7 @@ describe('Collect Everything system', function() {
       const child = document.createElement('div');
       div.appendChild(sibling);
       div.appendChild(child);
-      expect(ce._previousElementSibling(child)).to.equal(sibling);
+      expect(autotrack._previousElementSibling(child)).to.equal(sibling);
     });
 
     it('should return the first child and not the immediately previous sibling (text)', function() {
@@ -430,7 +430,7 @@ describe('Collect Everything system', function() {
       div.appendChild(sibling);
       div.appendChild(document.createTextNode('some text'));
       div.appendChild(child);
-      expect(ce._previousElementSibling(child)).to.equal(sibling);
+      expect(autotrack._previousElementSibling(child)).to.equal(sibling);
     });
 
     it('should return null when the previous sibling is a text node', function() {
@@ -438,7 +438,7 @@ describe('Collect Everything system', function() {
       const child = document.createElement('div');
       div.appendChild(document.createTextNode('some text'));
       div.appendChild(child);
-      expect(ce._previousElementSibling(child)).to.equal(null);
+      expect(autotrack._previousElementSibling(child)).to.equal(null);
     });
   });
 
@@ -450,7 +450,7 @@ describe('Collect Everything system', function() {
     it('should insert the given script before the one already on the page', function() {
       document.body.appendChild(document.createElement('script'));
       const callback = _ => _;
-      ce._loadScript('https://fake_url', callback);
+      autotrack._loadScript('https://fake_url', callback);
       const scripts = document.getElementsByTagName('script');
       const new_script = scripts[0];
 
@@ -462,7 +462,7 @@ describe('Collect Everything system', function() {
 
     it('should add the script to the page when there aren\'t any preexisting scripts on the page', function() {
       const callback = _ => _;
-      ce._loadScript('https://fake_url', callback);
+      autotrack._loadScript('https://fake_url', callback);
       const scripts = document.getElementsByTagName('script');
       const new_script = scripts[0];
 
@@ -475,7 +475,7 @@ describe('Collect Everything system', function() {
 
   describe('_getDefaultProperties', function() {
     it('should return the default properties', function() {
-      expect(ce._getDefaultProperties('test')).to.deep.equal({
+      expect(autotrack._getDefaultProperties('test')).to.deep.equal({
         '$event_type': 'test',
         '$ce_version': 1,
         '$host': 'mixpanel.com',
@@ -514,7 +514,7 @@ describe('Collect Everything system', function() {
       document.body.appendChild(prop1);
       document.body.appendChild(prop2);
 
-      ce._customProperties = [
+      autotrack._customProperties = [
         {
           name: 'Custom Property 1',
           css_selector: 'div._mp_test_property_1',
@@ -529,14 +529,14 @@ describe('Collect Everything system', function() {
     });
 
     it('should return custom properties for only matching element selectors', function() {
-      customProps = ce._getCustomProperties([trackedElem]);
+      customProps = autotrack._getCustomProperties([trackedElem]);
       expect(customProps).to.deep.equal({
         'Custom Property 1': 'Test prop 1'
       });
     });
 
     it('should return no custom properties for elements that do not match an event selector', function() {
-      noCustomProps = ce._getCustomProperties([untrackedElem]);
+      noCustomProps = autotrack._getCustomProperties([untrackedElem]);
       expect(noCustomProps).to.deep.equal({});
     });
   });
@@ -553,7 +553,7 @@ describe('Collect Everything system', function() {
 
     beforeEach(function() {
       sandbox = sinon.sandbox.create();
-      sandbox.spy(ce, '_getFormFieldProperties');
+      sandbox.spy(autotrack, '_getFormFieldProperties');
       lib = {
         _ceElementTextProperties: [],
         track: sandbox.spy(),
@@ -584,7 +584,7 @@ describe('Collect Everything system', function() {
         token: 'testtoken',
         track: sandbox.spy()
       };
-      ce.init(lib);
+      autotrack.init(lib);
 
       const eventElement1 = document.createElement('div');
       const eventElement2 = document.createElement('div');
@@ -623,8 +623,8 @@ describe('Collect Everything system', function() {
         target: elTarget,
         type: 'click',
       }
-      ce._trackEvent(e, lib);
-      expect(ce._getFormFieldProperties.callCount).to.equal(0);
+      autotrack._trackEvent(e, lib);
+      expect(autotrack._getFormFieldProperties.callCount).to.equal(0);
       expect(lib.track.calledOnce).to.equal(true);
       const trackArgs = lib.track.args[0];
       const event = trackArgs[0];
@@ -649,7 +649,7 @@ describe('Collect Everything system', function() {
         target: elTarget,
         type: 'click',
       }
-      ce._trackEvent(e, lib);
+      autotrack._trackEvent(e, lib);
       const props = getTrackedProps(lib.track);
       expect(props).to.have.property('$el_attr__href', 'http://test.com');
     });
@@ -694,7 +694,7 @@ describe('Collect Everything system', function() {
         target: span2,
         type: 'click',
       }
-      ce._trackEvent(e1, lib);
+      autotrack._trackEvent(e1, lib);
       const props1 = getTrackedProps(lib.track);
       expect(props1).to.have.property('$el_text', 'Some super duper really long Text with new lines that we\'ll strip out and also we will want to make this text shorter since it\'s not likely people really care about text content that\'s super long and it also takes up more space and bandwidth. Some super d');
       lib.track.reset();
@@ -703,7 +703,7 @@ describe('Collect Everything system', function() {
         target: img1,
         type: 'click',
       }
-      ce._trackEvent(e2, lib);
+      autotrack._trackEvent(e2, lib);
       const props2 = getTrackedProps(lib.track);
       expect(props2).to.have.property('$el_text', 'Some text');
       lib.track.reset();
@@ -712,7 +712,7 @@ describe('Collect Everything system', function() {
         target: img2,
         type: 'click',
       }
-      ce._trackEvent(e3, lib);
+      autotrack._trackEvent(e3, lib);
       const props3 = getTrackedProps(lib.track);
       expect(props3).to.not.have.property('$el_text');
     });
@@ -722,8 +722,8 @@ describe('Collect Everything system', function() {
         target: document.createElement('form'),
         type: 'submit',
       }
-      ce._trackEvent(e, lib);
-      expect(ce._getFormFieldProperties.calledOnce).to.equal(true);
+      autotrack._trackEvent(e, lib);
+      expect(autotrack._getFormFieldProperties.calledOnce).to.equal(true);
       expect(lib.track.calledOnce).to.equal(true);
       const props = getTrackedProps(lib.track);
       expect(props['$event_type']).to.equal('submit');
@@ -741,9 +741,9 @@ describe('Collect Everything system', function() {
         target: link,
         type: 'click',
       }
-      ce._trackEvent(e, lib);
-      expect(ce._getFormFieldProperties.calledOnce).to.equal(true);
-      expect(ce._getFormFieldProperties.returned({'$form_field__test input': 'test val'})).to.equal(true);
+      autotrack._trackEvent(e, lib);
+      expect(autotrack._getFormFieldProperties.calledOnce).to.equal(true);
+      expect(autotrack._getFormFieldProperties.returned({'$form_field__test input': 'test val'})).to.equal(true);
       expect(lib.track.calledOnce).to.equal(true);
       const props = getTrackedProps(lib.track);
       expect(props['$event_type']).to.equal('click');
@@ -753,19 +753,19 @@ describe('Collect Everything system', function() {
       const a = document.createElement('a');
       const span = document.createElement('span');
       a.appendChild(span);
-      ce._trackEvent({target: a, type: 'click'}, lib);
+      autotrack._trackEvent({target: a, type: 'click'}, lib);
       expect(lib.track.calledOnce).to.equal(true);
       lib.track.reset();
 
-      ce._trackEvent({target: span, type: 'click'}, lib);
+      autotrack._trackEvent({target: span, type: 'click'}, lib);
       expect(lib.track.calledOnce).to.equal(true);
       lib.track.reset();
 
       a.className = 'test1 mp-no-track test2';
-      ce._trackEvent({target: a, type: 'click'}, lib);
+      autotrack._trackEvent({target: a, type: 'click'}, lib);
       expect(lib.track.callCount).to.equal(0);
 
-      ce._trackEvent({target: span, type: 'click'}, lib);
+      autotrack._trackEvent({target: span, type: 'click'}, lib);
       expect(lib.track.callCount).to.equal(0);
     });
   });
@@ -779,8 +779,8 @@ describe('Collect Everything system', function() {
 
     before(function() {
       document.title = 'test page';
-      ce._addDomEventHandlers(lib);
-      navigateSpy = sinon.spy(ce, '_navigate');
+      autotrack._addDomEventHandlers(lib);
+      navigateSpy = sinon.spy(autotrack, '_navigate');
     });
 
     beforeEach(function() {
@@ -813,9 +813,9 @@ describe('Collect Everything system', function() {
     let lib, sandbox, _maybeLoadEditorStub;
     beforeEach(function() {
       sandbox = sinon.sandbox.create();
-      sandbox.spy(ce, '_addDomEventHandlers');
-      ce._initializedTokens = [];
-      _maybeLoadEditorStub = sandbox.stub(ce, '_maybeLoadEditor').returns(false);
+      sandbox.spy(autotrack, '_addDomEventHandlers');
+      autotrack._initializedTokens = [];
+      _maybeLoadEditorStub = sandbox.stub(autotrack, '_maybeLoadEditor').returns(false);
       lib = {
         _prepare_callback: sandbox.spy(callback => callback),
         _send_request: sandbox.spy((url, params, callback) => callback({config: {enable_collect_everything: true}})),
@@ -837,26 +837,26 @@ describe('Collect Everything system', function() {
     });
 
     it('should call _addDomEventHandlders', function() {
-      ce.init(lib);
-      expect(ce._addDomEventHandlers.calledOnce).to.equal(true);
+      autotrack.init(lib);
+      expect(autotrack._addDomEventHandlers.calledOnce).to.equal(true);
     });
 
     it('should NOT call _addDomEventHandlders if the decide request fails', function() {
       lib._send_request = sandbox.spy((url, params, callback) => callback({status: 0, error: "Bad HTTP status: 400 Bad Request"}));
-      ce.init(lib);
-      expect(ce._addDomEventHandlers.called).to.equal(false);
+      autotrack.init(lib);
+      expect(autotrack._addDomEventHandlers.called).to.equal(false);
     });
 
     it('should NOT call _addDomEventHandlders when loading editor', function() {
       _maybeLoadEditorStub.returns(true);
-      ce.init(lib);
-      expect(ce._addDomEventHandlers.calledOnce).to.equal(false);
+      autotrack.init(lib);
+      expect(autotrack._addDomEventHandlers.calledOnce).to.equal(false);
     });
 
     it('should NOT call _addDomEventHandlders when enable_collect_everything is "false"', function() {
       lib._send_request = sandbox.spy((url, params, callback) => callback({config: {enable_collect_everything: false}}));
-      ce.init(lib);
-      expect(ce._addDomEventHandlers.calledOnce).to.equal(false);
+      autotrack.init(lib);
+      expect(autotrack._addDomEventHandlers.calledOnce).to.equal(false);
     });
 
     it('should NOT call _addDomEventHandlders when the token has already been initialized', function() {
@@ -870,16 +870,16 @@ describe('Collect Everything system', function() {
               return 'anotherproject';
           }
         }),
-      ce.init(lib);
-      expect(ce._addDomEventHandlers.callCount).to.equal(1);
-      ce.init(lib2);
-      expect(ce._addDomEventHandlers.callCount).to.equal(1);
-      ce.init(lib3);
-      expect(ce._addDomEventHandlers.callCount).to.equal(2);
+      autotrack.init(lib);
+      expect(autotrack._addDomEventHandlers.callCount).to.equal(1);
+      autotrack.init(lib2);
+      expect(autotrack._addDomEventHandlers.callCount).to.equal(1);
+      autotrack.init(lib3);
+      expect(autotrack._addDomEventHandlers.callCount).to.equal(2);
     });
 
-    it('should call instance._send_request', function() {
-      ce.init(lib);
+    it('should call instanautotrack._send_request', function() {
+      autotrack.init(lib);
       expect(lib._send_request.calledOnce).to.equal(true);
       expect(lib._send_request.calledWith('https://test.com/decide/', {
         'verbose': true,
@@ -890,7 +890,7 @@ describe('Collect Everything system', function() {
     });
 
     it('should track pageview event', function() {
-      ce.init(lib);
+      autotrack.init(lib);
       expect(lib.track.calledOnce).to.equal(true);
       const trackArgs = lib.track.args[0];
       const event = trackArgs[0];
@@ -906,9 +906,9 @@ describe('Collect Everything system', function() {
     });
 
     it('should check whether to load the editor', function() {
-      ce.init(lib);
-      expect(ce._maybeLoadEditor.calledOnce).to.equal(true);
-      expect(ce._maybeLoadEditor.calledWith(lib)).to.equal(true);
+      autotrack.init(lib);
+      expect(autotrack._maybeLoadEditor.calledOnce).to.equal(true);
+      expect(autotrack._maybeLoadEditor.calledWith(lib)).to.equal(true);
     });
   });
 
@@ -918,7 +918,7 @@ describe('Collect Everything system', function() {
       this.clock = sinon.useFakeTimers();
 
       sandbox = sinon.sandbox.create();
-      sandbox.stub(ce, '_loadEditor');
+      sandbox.stub(autotrack, '_loadEditor');
       sandbox.spy(window.sessionStorage, 'setItem');
       sandbox.spy(window.sessionStorage, 'getItem');
       sandbox.spy(window.sessionStorage, 'removeItem');
@@ -969,9 +969,9 @@ describe('Collect Everything system', function() {
     it('should initialize the visual editor when the hash state contains action "mpeditor"', function() {
       window.location.href = 'https://mixpanel.com/';
       window.location.hash = `#${hash}`;
-      ce._maybeLoadEditor(lib);
-      expect(ce._loadEditor.calledOnce).to.equal(true);
-      expect(ce._loadEditor.calledWith(lib, editorParams)).to.equal(true);
+      autotrack._maybeLoadEditor(lib);
+      expect(autotrack._loadEditor.calledOnce).to.equal(true);
+      expect(autotrack._loadEditor.calledWith(lib, editorParams)).to.equal(true);
       expect(window.sessionStorage.setItem.callCount).to.equal(1);
       expect(window.sessionStorage.setItem.calledWith('editorParams', JSON.stringify(editorParams))).to.equal(true);
     });
@@ -979,9 +979,9 @@ describe('Collect Everything system', function() {
     it('should initialize the visual editor when the hash was parsed by the snippet', function() {
       window.location.href = 'https://mixpanel.com/';
       window.sessionStorage.setItem('_mpcehash', `#${hash}`);
-      ce._maybeLoadEditor(lib);
-      expect(ce._loadEditor.calledOnce).to.equal(true);
-      expect(ce._loadEditor.calledWith(lib, editorParams)).to.equal(true);
+      autotrack._maybeLoadEditor(lib);
+      expect(autotrack._loadEditor.calledOnce).to.equal(true);
+      expect(autotrack._loadEditor.calledWith(lib, editorParams)).to.equal(true);
       expect(window.sessionStorage.setItem.callCount).to.equal(2);
       expect(window.sessionStorage.setItem.calledWith('editorParams', JSON.stringify(editorParams))).to.equal(true);
       expect(window.sessionStorage.removeItem.callCount).to.equal(1);
@@ -990,8 +990,8 @@ describe('Collect Everything system', function() {
 
     it('should NOT initialize the visual editor when the activation query param does not exist', function() {
       window.location.href = 'https://mixpanel.com/';
-      ce._maybeLoadEditor(lib);
-      expect(ce._loadEditor.calledOnce).to.equal(false);
+      autotrack._maybeLoadEditor(lib);
+      expect(autotrack._loadEditor.calledOnce).to.equal(false);
     });
   });
 
@@ -1000,9 +1000,9 @@ describe('Collect Everything system', function() {
     let sandbox;
 
     beforeEach(function() {
-      ce._editorLoaded = false;
+      autotrack._editorLoaded = false;
       sandbox = sinon.sandbox.create();
-      sandbox.stub(ce, '_loadScript', (path, callback) => callback());
+      sandbox.stub(autotrack, '_loadScript', (path, callback) => callback());
       lib.get_config = sandbox.stub();
       lib.get_config.withArgs('app_host').returns('mixpanel.com');
       lib.get_config.withArgs('token').returns('token');
@@ -1019,15 +1019,15 @@ describe('Collect Everything system', function() {
         expiresAt: 'expiresAt',
         apiKey: 'apiKey',
       };
-      const loaded = ce._loadEditor(lib, editorParams);
+      const loaded = autotrack._loadEditor(lib, editorParams);
       expect(window.mp_load_editor.calledOnce).to.equal(true);
       expect(window.mp_load_editor.calledWithExactly(editorParams)).to.equal(true);
       expect(loaded).to.equal(true);
     });
 
     it('should NOT load if previously loaded', function() {
-      ce._loadEditor(lib, 'accessToken');
-      const loaded = ce._loadEditor(lib, 'accessToken');
+      autotrack._loadEditor(lib, 'accessToken');
+      const loaded = autotrack._loadEditor(lib, 'accessToken');
       expect(loaded).to.equal(false);
     });
   });
@@ -1048,29 +1048,29 @@ describe('Collect Everything system', function() {
         setTimeout(() => delete cookie[cookieKey], expireySeconds * 1000);
       });
       _.cookie.parse = sinon.spy(cookieKey => JSON.parse(cookie[cookieKey] || null));
-      sinon.spy(ce, '_trackEvent');
+      sinon.spy(autotrack, '_trackEvent');
 
-      ce._addDomEventHandlers({});
-      ce.checkForBackoff({getResponseHeader: () => 1});
+      autotrack._addDomEventHandlers({});
+      autotrack.checkForBackoff({getResponseHeader: () => 1});
 
       expect(_.cookie.set_seconds.calledWith(DISABLE_COOKIE, true, 1, true)).to.equal(true);
 
       // test immediatelya after
       expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(true);
       simulateClick(document.body);
-      expect(ce._trackEvent.called).to.equal(false);
+      expect(autotrack._trackEvent.called).to.equal(false);
 
       // test 1 millisecond before expiration
       this.clock.tick(999);
       expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(true);
       simulateClick(document.body);
-      expect(ce._trackEvent.called).to.equal(false);
+      expect(autotrack._trackEvent.called).to.equal(false);
 
       // test at expiration
       this.clock.tick(1);
       expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(null);
       simulateClick(document.body);
-      expect(ce._trackEvent.called).to.equal(true);
+      expect(autotrack._trackEvent.called).to.equal(true);
     });
   });
 });

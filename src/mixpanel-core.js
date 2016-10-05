@@ -1,7 +1,7 @@
 /* eslint camelcase: "off" */
 import Config from './config';
 import { _, console, userAgent } from './utils';
-import { ce } from './ce';
+import { autotrack } from './autotrack';
 
 /*
  * Mixpanel JS Library
@@ -712,14 +712,14 @@ var create_mplib = function(token, config, name) {
     if (instance.get_config('autotrack')) {
         var num_buckets = 100;
         var num_enabled_buckets = 100;
-        if (!ce.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
+        if (!autotrack.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
             instance['__autotrack_enabled'] = false;
             console.log('Not in active bucket: disabling Automatic Event Collection.');
-        } else if (!ce.isBrowserSupported()) {
+        } else if (!autotrack.isBrowserSupported()) {
             instance['__autotrack_enabled'] = false;
             console.log('Disabling Automatic Event Collection because this browser is not supported');
         } else {
-            ce.init(instance);
+            autotrack.init(instance);
         }
 
         try {
@@ -922,7 +922,7 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
             req.onreadystatechange = function () {
                 if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
                     if (url.indexOf('api.mixpanel.com/track') !== -1) {
-                        ce.checkForBackoff(req);
+                        autotrack.checkForBackoff(req);
                     }
                     if (req.status === 200) {
                         if (callback) {
