@@ -1209,6 +1209,18 @@
                 same(get_props_without_distinct_id(mixpanel.test), props, "properties set properly");
             });
 
+            test('register_page_lifecycle', 3, function() {
+                var props = {
+                    'hi': 'there'
+                };
+
+                same(get_props_without_distinct_id(mixpanel.test), {}, "empty before setting");
+
+                mixpanel.test.register_page_lifecycle(props);
+
+                same(get_props_without_distinct_id(mixpanel.test), props, "properties set properly");
+            });
+
             test("register_once", 3, function() {
                 var props = {
                         'hi': 'there'
