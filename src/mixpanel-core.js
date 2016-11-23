@@ -452,6 +452,20 @@ MixpanelPersistence.prototype.register = function(props, days) {
     return false;
 };
 
+/**
+ * Registers a property that stays during the webpage lifecycle, getting cleared
+ * upon navigation or refresh
+ *
+ * @param {Object} props
+ */
+MixpanelPersistence.prototype.register_page_lifecycle = function(props) {
+    if (!_.isObject(props)) {
+        return false;
+    }
+    _.extend(this['props'], props);
+    return true;
+};
+
 MixpanelPersistence.prototype.unregister = function(prop) {
     if (prop in this['props']) {
         delete this['props'][prop];
