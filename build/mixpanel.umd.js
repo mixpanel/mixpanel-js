@@ -3633,7 +3633,7 @@
 
         var data = {
             'verbose':     true,
-            'version':     '1',
+            'version':     '2',
             'lib':         'web',
             'token':       this.get_config('token'),
             'distinct_id': distinct_id
@@ -4110,15 +4110,17 @@
 
         this.body            = (_.escapeHTML(notif_data['body']) || '').replace(/\n/g, '<br/>');
         this.cta             = _.escapeHTML(notif_data['cta']) || 'Close';
-        this.dest_url        = _.escapeHTML(notif_data['cta_url']) || null;
-        this.image_url       = _.escapeHTML(notif_data['image_url']) || null;
         this.notif_type      = _.escapeHTML(notif_data['type']) || 'takeover';
         this.style           = _.escapeHTML(notif_data['style']) || 'light';
-        this.thumb_image_url = _.escapeHTML(notif_data['thumb_image_url']) || null;
         this.title           = _.escapeHTML(notif_data['title']) || '';
-        this.video_url       = _.escapeHTML(notif_data['video_url']) || null;
         this.video_width     = MPNotif.VIDEO_WIDTH;
         this.video_height    = MPNotif.VIDEO_HEIGHT;
+
+        // These fields are url-sanitized in the backend already.
+        this.dest_url        = notif_data['cta_url'] || null;
+        this.image_url       = notif_data['image_url'] || null;
+        this.thumb_image_url = notif_data['thumb_image_url'] || null;
+        this.video_url       = notif_data['video_url'] || null;
 
         this.clickthrough = true;
         if (!this.dest_url) {

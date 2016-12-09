@@ -1,10 +1,13 @@
+**2.9.17** (8 Dec 2016)
+- In-app notifications now fetch pre-sanitized/url-encoded URLs from the Mixpanel API
+
 **2.9.16** (5 Oct 2016)
 Autotrack:
 - Bugfix: Check tagNames instead of element references
 
 **2.9.15** (28 Sep 2016)
 Autotrack:
-- Bugfix: Handle SVG class names properly, remove appHost param 
+- Bugfix: Handle SVG class names properly, remove appHost param
 
 **2.9.14** (23 Aug 2016)
 Autotrack:

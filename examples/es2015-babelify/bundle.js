@@ -2165,7 +2165,7 @@ MixpanelLib.prototype._check_and_handle_notifications = function (distinct_id) {
 
     var data = {
         'verbose': true,
-        'version': '1',
+        'version': '2',
         'lib': 'web',
         'token': this.get_config('token'),
         'distinct_id': distinct_id
@@ -2628,15 +2628,17 @@ MixpanelLib._Notification = function (notif_data, mixpanel_instance) {
 
     this.body = (_utils._.escapeHTML(notif_data['body']) || '').replace(/\n/g, '<br/>');
     this.cta = _utils._.escapeHTML(notif_data['cta']) || 'Close';
-    this.dest_url = _utils._.escapeHTML(notif_data['cta_url']) || null;
-    this.image_url = _utils._.escapeHTML(notif_data['image_url']) || null;
     this.notif_type = _utils._.escapeHTML(notif_data['type']) || 'takeover';
     this.style = _utils._.escapeHTML(notif_data['style']) || 'light';
-    this.thumb_image_url = _utils._.escapeHTML(notif_data['thumb_image_url']) || null;
     this.title = _utils._.escapeHTML(notif_data['title']) || '';
-    this.video_url = _utils._.escapeHTML(notif_data['video_url']) || null;
     this.video_width = MPNotif.VIDEO_WIDTH;
     this.video_height = MPNotif.VIDEO_HEIGHT;
+
+    // These fields are url-sanitized in the backend already.
+    this.dest_url = notif_data['cta_url'] || null;
+    this.image_url = notif_data['image_url'] || null;
+    this.thumb_image_url = notif_data['thumb_image_url'] || null;
+    this.video_url = notif_data['video_url'] || null;
 
     this.clickthrough = true;
     if (!this.dest_url) {
