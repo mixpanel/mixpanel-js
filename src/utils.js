@@ -27,7 +27,7 @@ var ArrayProto = Array.prototype,
     windowConsole = win.console,
     navigator = win.navigator,
     document = win.document,
-    userAgent = navigator.userAgent;
+    userAgent = 'OBUA UCBrowser/8.6.0.199 Mobile';
 
 var nativeBind = FuncProto.bind,
     nativeForEach = ArrayProto.forEach,
@@ -1392,6 +1392,8 @@ _.info = {
             return 'Chrome';
         } else if (_.includes(user_agent, 'CriOS')) {
             return 'Chrome iOS';
+        } else if (_.includes(user_agent, 'UCWEB') || _.includes(user_agent, 'UCBrowser')) {
+            return 'UC Browser';
         } else if (_.includes(user_agent, 'FxiOS')) {
             return 'Firefox iOS';
         } else if (_.includes(vendor, 'Apple')) {
@@ -1414,6 +1416,7 @@ _.info = {
         }
     },
 
+
     /**
      * This function detects which browser version is running this script,
      * parsing major and minor version (e.g., 42.1). User agent strings from:
@@ -1426,6 +1429,7 @@ _.info = {
             'Microsoft Edge': /Edge\/(\d+(\.\d+)?)/,
             'Chrome': /Chrome\/(\d+(\.\d+)?)/,
             'Chrome iOS': /CriOS\/(\d+(\.\d+)?)/,
+            'UC Browser' : /(UC\s?Browser)[\/\s]?([\w\.]+)/,
             'Safari': /Version\/(\d+(\.\d+)?)/,
             'Mobile Safari': /Version\/(\d+(\.\d+)?)/,
             'Opera': /(Opera|OPR)\/(\d+(\.\d+)?)/,
@@ -1447,6 +1451,8 @@ _.info = {
         }
         return parseFloat(matches[matches.length - 2]);
     },
+    console.log(browser),
+    console.log(browserVersion),
 
     os: function() {
         var a = userAgent;
