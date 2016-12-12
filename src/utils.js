@@ -27,7 +27,7 @@ var ArrayProto = Array.prototype,
     windowConsole = win.console,
     navigator = win.navigator,
     document = win.document,
-    userAgent = 'OBUA UCBrowser/8.6.0.199 Mobile';
+    userAgent = navigator.userAgent;
 
 var nativeBind = FuncProto.bind,
     nativeForEach = ArrayProto.forEach,
@@ -1416,7 +1416,6 @@ _.info = {
         }
     },
 
-
     /**
      * This function detects which browser version is running this script,
      * parsing major and minor version (e.g., 42.1). User agent strings from:
@@ -1451,8 +1450,6 @@ _.info = {
         }
         return parseFloat(matches[matches.length - 2]);
     },
-    console.log(browser),
-    console.log(browserVersion),
 
     os: function() {
         var a = userAgent;
