@@ -1428,7 +1428,7 @@ _.info = {
             'Microsoft Edge': /Edge\/(\d+(\.\d+)?)/,
             'Chrome': /Chrome\/(\d+(\.\d+)?)/,
             'Chrome iOS': /CriOS\/(\d+(\.\d+)?)/,
-            'UC Browser' : /(UC\s?Browser)[\/\s]?([\w\.]+)/,
+            'UC Browser' : /(UCBrowser|UCWEB)\/(\d+(\.\d+)?)/,
             'Safari': /Version\/(\d+(\.\d+)?)/,
             'Mobile Safari': /Version\/(\d+(\.\d+)?)/,
             'Opera': /(Opera|OPR)\/(\d+(\.\d+)?)/,
