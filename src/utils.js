@@ -1392,6 +1392,8 @@ _.info = {
             return 'Chrome';
         } else if (_.includes(user_agent, 'CriOS')) {
             return 'Chrome iOS';
+        } else if (_.includes(user_agent, 'UCWEB') || _.includes(user_agent, 'UCBrowser')) {
+            return 'UC Browser';
         } else if (_.includes(user_agent, 'FxiOS')) {
             return 'Firefox iOS';
         } else if (_.includes(vendor, 'Apple')) {
@@ -1426,6 +1428,7 @@ _.info = {
             'Microsoft Edge': /Edge\/(\d+(\.\d+)?)/,
             'Chrome': /Chrome\/(\d+(\.\d+)?)/,
             'Chrome iOS': /CriOS\/(\d+(\.\d+)?)/,
+            'UC Browser' : /(UCBrowser|UCWEB)\/(\d+(\.\d+)?)/,
             'Safari': /Version\/(\d+(\.\d+)?)/,
             'Mobile Safari': /Version\/(\d+(\.\d+)?)/,
             'Opera': /(Opera|OPR)\/(\d+(\.\d+)?)/,
