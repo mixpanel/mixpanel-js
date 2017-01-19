@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.9.17'
+        LIB_VERSION: '2.10.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1398,6 +1398,8 @@
                 return 'Chrome';
             } else if (_.includes(user_agent, 'CriOS')) {
                 return 'Chrome iOS';
+            } else if (_.includes(user_agent, 'UCWEB') || _.includes(user_agent, 'UCBrowser')) {
+                return 'UC Browser';
             } else if (_.includes(user_agent, 'FxiOS')) {
                 return 'Firefox iOS';
             } else if (_.includes(vendor, 'Apple')) {
@@ -1432,6 +1434,7 @@
                 'Microsoft Edge': /Edge\/(\d+(\.\d+)?)/,
                 'Chrome': /Chrome\/(\d+(\.\d+)?)/,
                 'Chrome iOS': /CriOS\/(\d+(\.\d+)?)/,
+                'UC Browser' : /(UCBrowser|UCWEB)\/(\d+(\.\d+)?)/,
                 'Safari': /Version\/(\d+(\.\d+)?)/,
                 'Mobile Safari': /Version\/(\d+(\.\d+)?)/,
                 'Opera': /(Opera|OPR)\/(\d+(\.\d+)?)/,

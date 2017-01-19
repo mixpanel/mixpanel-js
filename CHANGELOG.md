@@ -1,3 +1,6 @@
+**2.10.0** (19 Jan 2017)
+- Identify UC Browser automatically
+
 **2.9.17** (8 Dec 2016)
 - In-app notifications now fetch pre-sanitized/url-encoded URLs from the Mixpanel API
 
