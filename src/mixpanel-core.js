@@ -921,9 +921,6 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
             req.withCredentials = true;
             req.onreadystatechange = function () {
                 if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
-                    if (url.indexOf('api.mixpanel.com/track') !== -1) {
-                        autotrack.checkForBackoff(req);
-                    }
                     if (req.status === 200) {
                         if (callback) {
                             if (verbose_mode) {

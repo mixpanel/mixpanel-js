@@ -4,7 +4,7 @@ import jsdom from 'mocha-jsdom';
 import sinon from 'sinon';
 import nodeLocalStorage from 'node-localstorage';
 
-import { DISABLE_COOKIE, autotrack } from '../../src/autotrack';
+import { autotrack } from '../../src/autotrack';
 import { _ } from '../../src/utils';
 
 jsdom({
@@ -1029,48 +1029,6 @@ describe('Collect Everything system', function() {
       autotrack._loadEditor(lib, 'accessToken');
       const loaded = autotrack._loadEditor(lib, 'accessToken');
       expect(loaded).to.equal(false);
-    });
-  });
-
-  describe('track backoff', function() {
-    beforeEach(function() {
-      this.clock = sinon.useFakeTimers();
-    });
-
-    after(function() {
-      this.clock.restore();
-    });
-
-    it('should not track when the cookie is set', function() {
-      const cookie = {};
-      _.cookie.set_seconds = sinon.spy((cookieKey, val, expireySeconds, cross_subdomain) => {
-        cookie[cookieKey] = val;
-        setTimeout(() => delete cookie[cookieKey], expireySeconds * 1000);
-      });
-      _.cookie.parse = sinon.spy(cookieKey => JSON.parse(cookie[cookieKey] || null));
-      sinon.spy(autotrack, '_trackEvent');
-
-      autotrack._addDomEventHandlers({});
-      autotrack.checkForBackoff({getResponseHeader: () => 1});
-
-      expect(_.cookie.set_seconds.calledWith(DISABLE_COOKIE, true, 1, true)).to.equal(true);
-
-      // test immediatelya after
-      expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(true);
-      simulateClick(document.body);
-      expect(autotrack._trackEvent.called).to.equal(false);
-
-      // test 1 millisecond before expiration
-      this.clock.tick(999);
-      expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(true);
-      simulateClick(document.body);
-      expect(autotrack._trackEvent.called).to.equal(false);
-
-      // test at expiration
-      this.clock.tick(1);
-      expect(_.cookie.parse(DISABLE_COOKIE)).to.equal(null);
-      simulateClick(document.body);
-      expect(autotrack._trackEvent.called).to.equal(true);
     });
   });
 });
