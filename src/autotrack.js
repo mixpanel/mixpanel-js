@@ -1,8 +1,6 @@
 import Config from './config';
 import { _ } from './utils';
 
-var DISABLE_COOKIE = '__mpced';
-
 // specifying these locally here since some websites override the global Node var
 // ex: https://www.codingame.com/
 var ELEMENT_NODE = 1;
@@ -269,16 +267,6 @@ var autotrack = {
         return props;
     },
 
-    checkForBackoff: function(resp) {
-        // temporarily stop CE for X seconds if the 'X-MP-CE-Backoff' header says to
-        var secondsToDisable = parseInt(resp.getResponseHeader('X-MP-CE-Backoff'));
-        if (!isNaN(secondsToDisable) && secondsToDisable > 0) {
-            var disableUntil = _.timestamp() + (secondsToDisable * 1000);
-            console.log('disabling CE for ' + secondsToDisable + ' seconds (from ' + _.timestamp() + ' until ' + disableUntil + ')');
-            _.cookie.set_seconds(DISABLE_COOKIE, true, secondsToDisable, true);
-        }
-    },
-
     _getEventTarget: function(e) {
         // https://developer.mozilla.org/en-US/docs/Web/API/Event/target#Compatibility_notes
         if (typeof e.target === 'undefined') {
@@ -360,10 +348,8 @@ var autotrack = {
 
     _addDomEventHandlers: function(instance) {
         var handler = _.bind(function(e) {
-            if (_.cookie.parse(DISABLE_COOKIE) !== true) {
-                e = e || window.event;
-                this._trackEvent(e, instance);
-            }
+            e = e || window.event;
+            this._trackEvent(e, instance);
         }, this);
         _.register_event(document, 'submit', handler, false, true);
         _.register_event(document, 'change', handler, false, true);
@@ -526,4 +512,4 @@ var autotrack = {
 _.bind_instance_methods(autotrack);
 _.safewrap_instance_methods(autotrack);
 
-export { DISABLE_COOKIE, autotrack };
+export { autotrack };
