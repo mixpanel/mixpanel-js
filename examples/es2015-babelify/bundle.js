@@ -32,8 +32,6 @@ var _config2 = _interopRequireDefault(_config);
 
 var _utils = require('./utils');
 
-var DISABLE_COOKIE = '__mpced';
-
 // specifying these locally here since some websites override the global Node var
 // ex: https://www.codingame.com/
 var ELEMENT_NODE = 1;
@@ -304,16 +302,6 @@ var autotrack = {
         return props;
     },
 
-    checkForBackoff: function checkForBackoff(resp) {
-        // temporarily stop CE for X seconds if the 'X-MP-CE-Backoff' header says to
-        var secondsToDisable = parseInt(resp.getResponseHeader('X-MP-CE-Backoff'));
-        if (!isNaN(secondsToDisable) && secondsToDisable > 0) {
-            var disableUntil = _utils._.timestamp() + secondsToDisable * 1000;
-            console.log('disabling CE for ' + secondsToDisable + ' seconds (from ' + _utils._.timestamp() + ' until ' + disableUntil + ')');
-            _utils._.cookie.set_seconds(DISABLE_COOKIE, true, secondsToDisable, true);
-        }
-    },
-
     _getEventTarget: function _getEventTarget(e) {
         // https://developer.mozilla.org/en-US/docs/Web/API/Event/target#Compatibility_notes
         if (typeof e.target === 'undefined') {
@@ -395,10 +383,8 @@ var autotrack = {
 
     _addDomEventHandlers: function _addDomEventHandlers(instance) {
         var handler = _utils._.bind(function (e) {
-            if (_utils._.cookie.parse(DISABLE_COOKIE) !== true) {
-                e = e || window.event;
-                this._trackEvent(e, instance);
-            }
+            e = e || window.event;
+            this._trackEvent(e, instance);
         }, this);
         _utils._.register_event(document, 'submit', handler, false, true);
         _utils._.register_event(document, 'change', handler, false, true);
@@ -563,7 +549,6 @@ var autotrack = {
 _utils._.bind_instance_methods(autotrack);
 _utils._.safewrap_instance_methods(autotrack);
 
-exports.DISABLE_COOKIE = DISABLE_COOKIE;
 exports.autotrack = autotrack;
 
 },{"./config":3,"./utils":6}],3:[function(require,module,exports){
@@ -574,7 +559,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.10.0'
+    LIB_VERSION: '2.11.0'
 };
 
 exports['default'] = Config;
@@ -1529,9 +1514,6 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
             req.onreadystatechange = function () {
                 if (req.readyState === 4) {
                     // XMLHttpRequest.DONE == 4, except in safari 4
-                    if (url.indexOf('api.mixpanel.com/track') !== -1) {
-                        _autotrack.autotrack.checkForBackoff(req);
-                    }
                     if (req.status === 200) {
                         if (callback) {
                             if (verbose_mode) {
