@@ -69,7 +69,7 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.10.0'
+	        LIB_VERSION: '2.11.0'
 	    };
 
 	    // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1616,8 +1616,6 @@
 	    _['info']['browser']    = _.info.browser;
 	    _['info']['properties'] = _.info.properties;
 
-	    var DISABLE_COOKIE = '__mpced';
-
 	    // specifying these locally here since some websites override the global Node var
 	    // ex: https://www.codingame.com/
 	    var ELEMENT_NODE = 1;
@@ -1884,16 +1882,6 @@
 	            return props;
 	        },
 
-	        checkForBackoff: function(resp) {
-	            // temporarily stop CE for X seconds if the 'X-MP-CE-Backoff' header says to
-	            var secondsToDisable = parseInt(resp.getResponseHeader('X-MP-CE-Backoff'));
-	            if (!isNaN(secondsToDisable) && secondsToDisable > 0) {
-	                var disableUntil = _.timestamp() + (secondsToDisable * 1000);
-	                console.log('disabling CE for ' + secondsToDisable + ' seconds (from ' + _.timestamp() + ' until ' + disableUntil + ')');
-	                _.cookie.set_seconds(DISABLE_COOKIE, true, secondsToDisable, true);
-	            }
-	        },
-
 	        _getEventTarget: function(e) {
 	            // https://developer.mozilla.org/en-US/docs/Web/API/Event/target#Compatibility_notes
 	            if (typeof e.target === 'undefined') {
@@ -1975,10 +1963,8 @@
 
 	        _addDomEventHandlers: function(instance) {
 	            var handler = _.bind(function(e) {
-	                if (_.cookie.parse(DISABLE_COOKIE) !== true) {
-	                    e = e || window.event;
-	                    this._trackEvent(e, instance);
-	                }
+	                e = e || window.event;
+	                this._trackEvent(e, instance);
 	            }, this);
 	            _.register_event(document, 'submit', handler, false, true);
 	            _.register_event(document, 'change', handler, false, true);
@@ -3059,9 +3045,6 @@
 	                req.withCredentials = true;
 	                req.onreadystatechange = function () {
 	                    if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
-	                        if (url.indexOf('api.mixpanel.com/track') !== -1) {
-	                            autotrack.checkForBackoff(req);
-	                        }
 	                        if (req.status === 200) {
 	                            if (callback) {
 	                                if (verbose_mode) {
