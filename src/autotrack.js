@@ -468,11 +468,9 @@ var autotrack = {
         }
     },
 
-    // only load the codeless event editor once, even if there are multiple instances of MixpanelLib
-    _editorLoaded: false,
     _loadEditor: function(instance, editorParams) {
-        if (!this._editorLoaded) {
-            this._editorLoaded = true;
+        if (!window._mpEditorLoaded) { // only load the codeless event editor once, even if there are multiple instances of MixpanelLib
+            window._mpEditorLoaded = true;
             var editorUrl;
             var cacheBuster = '?_ts=' + (new Date()).getTime();
             var siteMedia = instance.get_config('app_host') + '/site_media';
