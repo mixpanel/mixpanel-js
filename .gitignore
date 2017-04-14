@@ -1,4 +1,8 @@
 node_modules
+npm-debug.log
 .idea
+.jshintignore
+.jshintrc
+*.swp
 *.ps1
 *.bundle.js
