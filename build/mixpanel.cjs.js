@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.11.0'
+    LIB_VERSION: '2.11.1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -385,7 +385,7 @@ _.JSONEncode = (function() {
     return function(mixed_val) {
         var value = mixed_val;
         var quote = function(string) {
-            var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
+            var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g; // eslint-disable-line no-control-regex
             var meta = { // table of character substitutions
                 '\b': '\\b',
                 '\t': '\\t',
@@ -1990,37 +1990,39 @@ var autotrack = {
      * 3. From session storage under the key `editorParams` if the editor was initialized on a previous page
      */
     _maybeLoadEditor: function(instance) {
-        var parseFromUrl = false;
-        if (_.getHashParam(window.location.hash, 'state')) {
-            var state = _.getHashParam(window.location.hash, 'state');
-            state = JSON.parse(decodeURIComponent(state));
-            parseFromUrl = state['action'] === 'mpeditor';
-        }
-        var parseFromStorage = !!window.sessionStorage.getItem('_mpcehash');
-        var editorParams;
+        try {
+            var parseFromUrl = false;
+            if (_.getHashParam(window.location.hash, 'state')) {
+                var state = _.getHashParam(window.location.hash, 'state');
+                state = JSON.parse(decodeURIComponent(state));
+                parseFromUrl = state['action'] === 'mpeditor';
+            }
+            var parseFromStorage = !!window.sessionStorage.getItem('_mpcehash');
+            var editorParams;
 
-        if (parseFromUrl) { // happens if they are initializing the editor using an old snippet
-            editorParams = this._editorParamsFromHash(instance, window.location.hash);
-        } else if (parseFromStorage) { // happens if they are initialized the editor and using the new snippet
-            editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'));
-            window.sessionStorage.removeItem('_mpcehash');
-        } else { // get credentials from sessionStorage from a previous initialzation
-            editorParams = JSON.parse(window.sessionStorage.getItem('editorParams') || '{}');
-        }
+            if (parseFromUrl) { // happens if they are initializing the editor using an old snippet
+                editorParams = this._editorParamsFromHash(instance, window.location.hash);
+            } else if (parseFromStorage) { // happens if they are initialized the editor and using the new snippet
+                editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'));
+                window.sessionStorage.removeItem('_mpcehash');
+            } else { // get credentials from sessionStorage from a previous initialzation
+                editorParams = JSON.parse(window.sessionStorage.getItem('editorParams') || '{}');
+            }
 
-        if (editorParams['projectToken'] && instance.get_config('token') === editorParams['projectToken']) {
-            this._loadEditor(instance, editorParams);
-            return true;
-        } else {
+            if (editorParams['projectToken'] && instance.get_config('token') === editorParams['projectToken']) {
+                this._loadEditor(instance, editorParams);
+                return true;
+            } else {
+                return false;
+            }
+        } catch (e) {
             return false;
         }
     },
 
-    // only load the codeless event editor once, even if there are multiple instances of MixpanelLib
-    _editorLoaded: false,
     _loadEditor: function(instance, editorParams) {
-        if (!this._editorLoaded) {
-            this._editorLoaded = true;
+        if (!window['_mpEditorLoaded']) { // only load the codeless event editor once, even if there are multiple instances of MixpanelLib
+            window['_mpEditorLoaded'] = true;
             var editorUrl;
             var cacheBuster = '?_ts=' + (new Date()).getTime();
             var siteMedia = instance.get_config('app_host') + '/site_media';
