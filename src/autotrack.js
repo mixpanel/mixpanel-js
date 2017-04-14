@@ -442,28 +442,32 @@ var autotrack = {
      * 3. From session storage under the key `editorParams` if the editor was initialized on a previous page
      */
     _maybeLoadEditor: function(instance) {
-        var parseFromUrl = false;
-        if (_.getHashParam(window.location.hash, 'state')) {
-            var state = _.getHashParam(window.location.hash, 'state');
-            state = JSON.parse(decodeURIComponent(state));
-            parseFromUrl = state['action'] === 'mpeditor';
-        }
-        var parseFromStorage = !!window.sessionStorage.getItem('_mpcehash');
-        var editorParams;
+        try {
+            var parseFromUrl = false;
+            if (_.getHashParam(window.location.hash, 'state')) {
+                var state = _.getHashParam(window.location.hash, 'state');
+                state = JSON.parse(decodeURIComponent(state));
+                parseFromUrl = state['action'] === 'mpeditor';
+            }
+            var parseFromStorage = !!window.sessionStorage.getItem('_mpcehash');
+            var editorParams;
 
-        if (parseFromUrl) { // happens if they are initializing the editor using an old snippet
-            editorParams = this._editorParamsFromHash(instance, window.location.hash);
-        } else if (parseFromStorage) { // happens if they are initialized the editor and using the new snippet
-            editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'));
-            window.sessionStorage.removeItem('_mpcehash');
-        } else { // get credentials from sessionStorage from a previous initialzation
-            editorParams = JSON.parse(window.sessionStorage.getItem('editorParams') || '{}');
-        }
+            if (parseFromUrl) { // happens if they are initializing the editor using an old snippet
+                editorParams = this._editorParamsFromHash(instance, window.location.hash);
+            } else if (parseFromStorage) { // happens if they are initialized the editor and using the new snippet
+                editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'));
+                window.sessionStorage.removeItem('_mpcehash');
+            } else { // get credentials from sessionStorage from a previous initialzation
+                editorParams = JSON.parse(window.sessionStorage.getItem('editorParams') || '{}');
+            }
 
-        if (editorParams['projectToken'] && instance.get_config('token') === editorParams['projectToken']) {
-            this._loadEditor(instance, editorParams);
-            return true;
-        } else {
+            if (editorParams['projectToken'] && instance.get_config('token') === editorParams['projectToken']) {
+                this._loadEditor(instance, editorParams);
+                return true;
+            } else {
+                return false;
+            }
+        } catch (e) {
             return false;
         }
     },
