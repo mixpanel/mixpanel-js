@@ -993,6 +993,20 @@ describe('Collect Everything system', function() {
       autotrack._maybeLoadEditor(lib);
       expect(autotrack._loadEditor.calledOnce).to.equal(false);
     });
+
+    it('should return false when parsing invalid JSON from fragment state', function() {
+      const hashParams = {
+        access_token: 'test_access_token',
+        state: "literally",
+        expires_in: 3600,
+      };
+      hash = Object.keys(hashParams).map(k => `${k}=${hashParams[k]}`).join('&');
+      window.location.hash = `#${hash}`;
+      window.location.href = 'https://mixpanel.com/';
+      var spy = sinon.spy(autotrack, "_maybeLoadEditor");
+      spy(lib);
+      expect(spy.returned(false)).to.equal(true);
+    });
   });
 
   describe('load and close editor', function() {
