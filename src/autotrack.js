@@ -1,4 +1,3 @@
-import Config from './config';
 import { _ } from './utils';
 
 // specifying these locally here since some websites override the global Node var
@@ -392,7 +391,7 @@ var autotrack = {
             }, this);
 
             instance._send_request(
-                instance.get_config('decide_host') + '/decide/', {
+                instance.get_config('api_host') + '/decide/', {
                     'verbose': true,
                     'version': '1',
                     'lib': 'web',
@@ -478,7 +477,7 @@ var autotrack = {
             var editorUrl;
             var cacheBuster = '?_ts=' + (new Date()).getTime();
             var siteMedia = instance.get_config('app_host') + '/site_media';
-            if (Config.DEBUG) {
+            if (instance.get_config('app_host').indexOf('.dev.mixpanel.org') > -1) {
                 editorUrl = siteMedia + '/compiled/reports/collect-everything/editor.js' + cacheBuster;
             } else {
                 editorUrl = siteMedia + '/bundle-webpack/reports/collect-everything/editor.min.js' + cacheBuster;

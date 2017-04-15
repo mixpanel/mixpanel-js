@@ -109,7 +109,6 @@ var DEFAULT_CONFIG = {
     'ip':                     true,
     'property_blacklist':     []
 };
-DEFAULT_CONFIG['decide_host'] = DEFAULT_CONFIG['api_host'];
 
 var DOM_LOADED = false;
 
@@ -1565,7 +1564,7 @@ MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
     };
     var self = this;
     this._send_request(
-        this.get_config('decide_host') + '/decide/',
+        this.get_config('api_host') + '/decide/',
         data,
         this._prepare_callback(function(r) {
             if (r['notifications'] && r['notifications'].length > 0) {

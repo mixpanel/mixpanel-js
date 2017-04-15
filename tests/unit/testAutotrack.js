@@ -575,7 +575,7 @@ describe('Collect Everything system', function() {
         _prepare_callback: sandbox.spy(callback => callback),
         get_config: sandbox.spy(function(key) {
           switch (key) {
-            case 'decide_host':
+            case 'api_host':
               return 'https://test.com';
             case 'token':
               return 'testtoken';
@@ -821,7 +821,7 @@ describe('Collect Everything system', function() {
         _send_request: sandbox.spy((url, params, callback) => callback({config: {enable_collect_everything: true}})),
         get_config: sandbox.spy(function(key) {
           switch (key) {
-            case 'decide_host':
+            case 'api_host':
               return 'https://test.com';
             case 'token':
               return 'testtoken';
@@ -864,7 +864,7 @@ describe('Collect Everything system', function() {
       var lib3 = Object.assign({token: 'anotherproject'}, lib);
       lib3.get_config = sandbox.spy(function(key) {
           switch (key) {
-            case 'decide_host':
+            case 'api_host':
               return 'https://test.com';
             case 'token':
               return 'anotherproject';
@@ -878,7 +878,7 @@ describe('Collect Everything system', function() {
       expect(autotrack._addDomEventHandlers.callCount).to.equal(2);
     });
 
-    it('should call instanautotrack._send_request', function() {
+    it('should call instance._send_request', function() {
       autotrack.init(lib);
       expect(lib._send_request.calledOnce).to.equal(true);
       expect(lib._send_request.calledWith('https://test.com/decide/', {
