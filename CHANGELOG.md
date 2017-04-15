@@ -1,3 +1,13 @@
+**2.12.0** (17 Apr 2017)
+- Remove "decide_host" config option
+- Bug fix for autotrack editor path
+
+**2.11.1** (14 Apr 2017)
+- Autotrack bug fixes
+
+**2.11.0** (16 Feb 2017)
+- Remove autotrack backoff functionality
+
 **2.10.0** (19 Jan 2017)
 - Identify UC Browser automatically
 
