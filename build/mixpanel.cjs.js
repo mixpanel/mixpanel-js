@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.11.1'
+    LIB_VERSION: '2.12.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1940,7 +1940,7 @@ var autotrack = {
             }, this);
 
             instance._send_request(
-                instance.get_config('decide_host') + '/decide/', {
+                instance.get_config('api_host') + '/decide/', {
                     'verbose': true,
                     'version': '1',
                     'lib': 'web',
@@ -2026,7 +2026,7 @@ var autotrack = {
             var editorUrl;
             var cacheBuster = '?_ts=' + (new Date()).getTime();
             var siteMedia = instance.get_config('app_host') + '/site_media';
-            if (Config.DEBUG) {
+            if (instance.get_config('app_host').indexOf('.dev.mixpanel.org') > -1) {
                 editorUrl = siteMedia + '/compiled/reports/collect-everything/editor.js' + cacheBuster;
             } else {
                 editorUrl = siteMedia + '/bundle-webpack/reports/collect-everything/editor.min.js' + cacheBuster;
@@ -2168,7 +2168,6 @@ var DEFAULT_CONFIG = {
     'ip':                     true,
     'property_blacklist':     []
 };
-DEFAULT_CONFIG['decide_host'] = DEFAULT_CONFIG['api_host'];
 
 var DOM_LOADED = false;
 
@@ -3624,7 +3623,7 @@ MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
     };
     var self = this;
     this._send_request(
-        this.get_config('decide_host') + '/decide/',
+        this.get_config('api_host') + '/decide/',
         data,
         this._prepare_callback(function(r) {
             if (r['notifications'] && r['notifications'].length > 0) {
