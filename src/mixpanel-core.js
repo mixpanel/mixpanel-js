@@ -1616,18 +1616,6 @@ MixpanelPeople.prototype.set = function(prop, to, callback) {
         $set[prop] = to;
     }
 
-    // make sure that the referrer info has been updated and saved
-    if (this._get_config('save_referrer')) {
-        this._mixpanel['persistence'].update_referrer_info(document.referrer);
-    }
-
-    // update $set object with default people properties
-    $set = _.extend(
-        {},
-        _.info.people_properties(),
-        this._mixpanel['persistence'].get_referrer_info(),
-        $set
-    );
 
     data[SET_ACTION] = $set;
 
@@ -1668,6 +1656,20 @@ MixpanelPeople.prototype.set_once = function(prop, to, callback) {
     } else {
         $set_once[prop] = to;
     }
+
+    // make sure that the referrer info has been updated and saved
+    if (this._get_config('save_referrer')) {
+        this._mixpanel['persistence'].update_referrer_info(document.referrer);
+    }
+
+    // update $set object with default people properties
+    $set = _.extend(
+        {},
+        _.info.people_properties(),
+        this._mixpanel['persistence'].get_referrer_info(),
+        $set
+    );
+
     data[SET_ONCE_ACTION] = $set_once;
     return this._send_request(data, callback);
 };
