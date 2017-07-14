@@ -5,7 +5,8 @@ import Config from './config';
 var win;
 if (typeof(window) === 'undefined') {
     win = {
-        navigator: {}
+        navigator: { userAgent: '' },
+        document: { location: {} }
     };
 } else {
     win = window;
@@ -1547,4 +1548,4 @@ _['info']['device']     = _.info.device;
 _['info']['browser']    = _.info.browser;
 _['info']['properties'] = _.info.properties;
 
-export { _, userAgent, console };
+export { _, userAgent, console, win as window, document };

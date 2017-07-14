@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { _, console, userAgent } from './utils';
+import { _, console, userAgent, window, document } from './utils';
 import { autotrack } from './autotrack';
 
 /*
