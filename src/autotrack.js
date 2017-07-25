@@ -474,14 +474,9 @@ var autotrack = {
     _loadEditor: function(instance, editorParams) {
         if (!window['_mpEditorLoaded']) { // only load the codeless event editor once, even if there are multiple instances of MixpanelLib
             window['_mpEditorLoaded'] = true;
-            var editorUrl;
-            var cacheBuster = '?_ts=' + (new Date()).getTime();
-            var siteMedia = instance.get_config('app_host') + '/site_media';
-            if (instance.get_config('app_host').indexOf('.dev.mixpanel.org') > -1) {
-                editorUrl = siteMedia + '/compiled/reports/collect-everything/editor.js' + cacheBuster;
-            } else {
-                editorUrl = siteMedia + '/bundle-webpack/reports/collect-everything/editor.min.js' + cacheBuster;
-            }
+            var editorUrl = instance.get_config('app_host')
+              + '/js-bundle/reports/collect-everything/editor.js?_ts='
+              + (new Date()).getTime();
             this._loadScript(editorUrl, function() {
                 window['mp_load_editor'](editorParams);
             });
