@@ -302,7 +302,7 @@ var autotrack = {
                 }
                 // crawl up to max of 5 nodes to populate text content
                 if (!elementText && idx < 5 && el.textContent) {
-                    var textContent = _.trim(el.textContent);
+                    var textContent = el.textContent.trim();
                     if (textContent) {
                         elementText = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
                     }
@@ -346,10 +346,10 @@ var autotrack = {
     },
 
     _addDomEventHandlers: function(instance) {
-        var handler = _.bind(function(e) {
+        var handler = function(e) {
             e = e || window.event;
             this._trackEvent(e, instance);
-        }, this);
+        }.bind(this);
         _.register_event(document, 'submit', handler, false, true);
         _.register_event(document, 'change', handler, false, true);
         _.register_event(document, 'click', handler, false, true);
@@ -372,7 +372,7 @@ var autotrack = {
         this._initializedTokens.push(token);
 
         if (!this._maybeLoadEditor(instance)) { // don't autotrack actions when the editor is enabled
-            var parseDecideResponse = _.bind(function(response) {
+            var parseDecideResponse = function(response) {
                 if (response && response['config'] && response['config']['enable_collect_everything'] === true) {
 
                     if (response['custom_properties']) {
@@ -388,7 +388,7 @@ var autotrack = {
                 } else {
                     instance['__autotrack_enabled'] = false;
                 }
-            }, this);
+            }.bind(this);
 
             instance._send_request(
                 instance.get_config('api_host') + '/decide/', {
