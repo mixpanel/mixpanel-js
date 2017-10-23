@@ -1,3 +1,6 @@
+**2.13.0** (25 July 2017)
+- Update autotrack editor js path to reflect asset restructuring
+
 **2.12.0** (17 Apr 2017)
 - Remove "decide_host" config option
 - Bug fix for autotrack editor path
