@@ -58,7 +58,8 @@ If you originally installed Mixpanel via Bower at its previous home ([https://gi
 
 ## Running tests
 - Install development dependencies: `npm install`
-- Start test server: `npm test`
+- Run unit tests: `npm test`
+- Start test server for browser tests: `npm run integration_test`
 - Browse to [http://localhost:3000/tests/](http://localhost:3000/tests/) and choose a scenario to run
 
 In the future we plan to automate the last step with a headless browser to streamline development (although
