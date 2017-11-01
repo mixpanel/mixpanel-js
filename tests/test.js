@@ -1797,6 +1797,27 @@
                 });
             });
 
+            mpmodule("mixpanel.people.unset");
+
+                test("unset (basic functionality)", 6, function() {
+                    var req_data;
+
+                    req_data = mixpanel.people.unset('key1');
+                    same(req_data['$unset'], ['key1'], '.unset() a single value works');
+
+                    req_data = mixpanel.people.unset(['key1']);
+                    same(req_data['$unset'], ['key1'], '.unset() a single-value array works');
+
+                    req_data = mixpanel.people.unset(['key1', 'key2']);
+                    same(req_data['$unset'], ['key1', 'key2'], '.unset() a multi-value array works');
+
+                    mixpanel.test.identify(this.id);
+                    req_data = mixpanel.test.people.unset(['foo', 'bar']);
+                    same(req_data['$distinct_id'], this.id);
+                    same(req_data['$token'], this.token);
+                    same(req_data['$unset'], ['foo', 'bar']);
+                });
+
             mpmodule("mixpanel.people.set_once");
 
             test("set_once (basic functionality)", 6, function() {
