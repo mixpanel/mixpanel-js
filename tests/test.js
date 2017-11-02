@@ -1824,7 +1824,9 @@
                         same(resp, -1, "responded with 'queued'");
                         start();
                     });
-                    same(mixpanel.test.persistence.props['__mpus'], ['a'], "queued unset saved");
+                    ok(contains_obj(mixpanel.test.persistence.props['__mpus'], {
+                        a: true
+                    }), "queued unset saved");
                 });
 
             mpmodule("mixpanel.people.set_once");

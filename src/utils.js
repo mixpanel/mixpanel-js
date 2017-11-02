@@ -208,6 +208,17 @@ _.toArray = function(iterable) {
     return _.values(iterable);
 };
 
+_.keys = function(obj) {
+    var results = [];
+    if (obj === null) {
+        return results;
+    }
+    _.each(obj, function(value, key) {
+        results[results.length] = key;
+    });
+    return results;
+};
+
 _.values = function(obj) {
     var results = [];
     if (obj === null) {

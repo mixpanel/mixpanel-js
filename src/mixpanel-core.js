@@ -556,7 +556,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         q_data = data[queue],
         set_q = this._get_or_create_queue(SET_ACTION),
         set_once_q = this._get_or_create_queue(SET_ONCE_ACTION),
-        unset_q = this._get_or_create_queue(UNSET_ACTION, []),
+        unset_q = this._get_or_create_queue(UNSET_ACTION),
         add_q = this._get_or_create_queue(ADD_ACTION),
         union_q = this._get_or_create_queue(UNION_ACTION),
         append_q = this._get_or_create_queue(APPEND_ACTION, []);
@@ -594,7 +594,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
                 }
             });
 
-            unset_q.push(prop);
+            unset_q[prop] = true;
 
         });
     } else if (q_key === ADD_QUEUE_KEY) {
@@ -2035,9 +2035,9 @@ MixpanelPeople.prototype._flush = function(
         });
     }
 
-    if (!_.isUndefined($unset_queue) && _.isArray($unset_queue) && $unset_queue.length > 0) {
+    if (!_.isUndefined($unset_queue) && _.isObject($unset_queue) && !_.isEmptyObject($unset_queue)) {
         _this._mixpanel['persistence']._pop_from_people_queue(UNSET_ACTION, $unset_queue);
-        this.set($unset_queue, function(response, data) {
+        this.unset(_.keys($unset_queue), function(response, data) {
             // on bad response, we want to add it back to the queue
             if (response === 0) {
                 _this._mixpanel['persistence']._add_to_people_queue(UNSET_ACTION, $unset_queue);
