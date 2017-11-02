@@ -1829,6 +1829,20 @@
                     }), "queued unset saved");
                 });
 
+                test("unset hits server immediately if identified", 4, function() {
+                    mixpanel.test.identify(this.id);
+
+                    stop();
+                    req_data = mixpanel.test.people.unset('a', function(resp) {
+                        same(resp, 1, "responded with 'success'");
+                        start();
+                    });
+
+                    same(req_data['$distinct_id'], this.id, '$distinct_id pulled out correctly');
+                    same(req_data['$token'], this.token, '$token pulled out correctly');
+                    same(req_data['$unset'], ['a']);
+                });
+
             mpmodule("mixpanel.people.set_once");
 
             test("set_once (basic functionality)", 6, function() {
