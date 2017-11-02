@@ -562,8 +562,6 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         append_q = this._get_or_create_queue(APPEND_ACTION, []);
 
     if (q_key === SET_QUEUE_KEY) {
-// TODO override enqueued unset actions
-
         // Update the set queue - we can override any existing values
         _.extend(set_q, q_data);
         // if there was a pending increment, override it
@@ -572,6 +570,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         // if there was a pending union, override it
         // with the set.
         this._pop_from_people_queue(UNION_ACTION, q_data);
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === SET_ONCE_QUEUE_KEY) {
         // only queue the data if there is not already a set_once call for it.
         _.each(q_data, function(v, k) {
@@ -579,6 +578,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
                 set_once_q[k] = v;
             }
         });
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === UNSET_QUEUE_KEY) {
         _.each(q_data, function(prop) {
 
@@ -612,6 +612,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
                 add_q[k] += v;
             }
         }, this);
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === UNION_QUEUE_KEY) {
         _.each(q_data, function(v, k) {
             if (_.isArray(v)) {
@@ -622,8 +623,10 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
                 union_q[k] = union_q[k].concat(v);
             }
         });
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === APPEND_QUEUE_KEY) {
         append_q.push(q_data);
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     }
 
     console.log('MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):');
