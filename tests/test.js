@@ -1818,6 +1818,15 @@
                     same(req_data['$unset'], ['foo', 'bar']);
                 });
 
+                test("unset queues data", 2, function() {
+                    stop();
+                    mixpanel.test.people.unset('a', function(resp) {
+                        same(resp, -1, "responded with 'queued'");
+                        start();
+                    });
+                    same(mixpanel.test.persistence.props['__mpus'], ['a'], "queued unset saved");
+                });
+
             mpmodule("mixpanel.people.set_once");
 
             test("set_once (basic functionality)", 6, function() {
