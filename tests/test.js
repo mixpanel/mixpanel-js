@@ -1797,6 +1797,26 @@
                 });
             });
 
+            test("set overrides previously queued unset calls", 6, function() {
+                mixpanel.test.people.unset('a', function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                });
+                ok(contains_obj(mixpanel.test.persistence.props['__mpus'], {
+                    a: true
+                }), "queued unset saved");
+                notOk('a' in mixpanel.test.persistence.props['__mps'], "unset prop not in set queue");
+
+                mixpanel.test.people.set({
+                    a: 2
+                }, function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                });
+                ok(contains_obj(mixpanel.test.persistence.props['__mps'], {
+                    a: 2,
+                }), "queued set call works correctly");
+                notOk('a' in mixpanel.test.persistence.props['__mpus'], "set overrides previously queued unset");
+            });
+
             mpmodule("mixpanel.people.unset");
 
                 test("unset (basic functionality)", 6, function() {
@@ -1984,6 +2004,26 @@
                     a: 2,
                     b: 4
                 }), "queued set_once call works correctly");
+            });
+
+            test("set_once overrides previously queued unset calls", 6, function() {
+                mixpanel.test.people.unset('a', function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                });
+                ok(contains_obj(mixpanel.test.persistence.props['__mpus'], {
+                    a: true
+                }), "queued unset saved");
+                notOk('a' in mixpanel.test.persistence.props['__mpso'], "unset prop not in set_once queue");
+
+                mixpanel.test.people.set_once({
+                    a: 2
+                }, function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                });
+                ok(contains_obj(mixpanel.test.persistence.props['__mpso'], {
+                    a: 2,
+                }), "queued set_once call works correctly");
+                notOk('a' in mixpanel.test.persistence.props['__mpus'], "set overrides previously queued unset");
             });
 
             mpmodule("mixpanel.people.increment");
