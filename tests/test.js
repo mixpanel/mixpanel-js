@@ -1843,6 +1843,25 @@
                     same(req_data['$unset'], ['a']);
                 });
 
+                test("unset does not undo reserved properties", 5, function() {
+                    var req_data = mixpanel.people.unset('$distinct_id');
+                    same(req_data['$unset'], []);
+
+                    var req_data = mixpanel.people.unset(['$distinct_id']);
+                    same(req_data['$unset'], []);
+
+                    var req_data = mixpanel.people.unset('$token');
+                    same(req_data['$unset'], []);
+
+                    mixpanel.test.identify(this.id);
+                    stop();
+                    req_data = mixpanel.test.people.unset('$distinct_id', function(resp) {
+                        same(resp, 0, "responded with 'failure'");
+                        start();
+                    });
+                    same(req_data['$unset'], []);
+                });
+
             mpmodule("mixpanel.people.set_once");
 
             test("set_once (basic functionality)", 6, function() {
