@@ -1862,6 +1862,25 @@
                     same(req_data['$unset'], []);
                 });
 
+                test("queued unset overrides previously queued set calls", 5, function() {
+                    mixpanel.test.people.set({
+                        a: 2
+                    }, function(resp) {
+                        same(resp, -1, "responded with 'queued'");
+                    });
+                    ok(contains_obj(mixpanel.test.persistence.props['__mps'], {
+                        a: 2,
+                    }), "queued set call works correctly");
+
+                    mixpanel.test.people.unset('a', function(resp) {
+                        same(resp, -1, "responded with 'queued'");
+                    });
+                    ok(contains_obj(mixpanel.test.persistence.props['__mpus'], {
+                        a: true
+                    }), "queued unset saved");
+                    notOk('a' in mixpanel.test.persistence.props['__mps'], "removed previously queued prop");
+                });
+
             mpmodule("mixpanel.people.set_once");
 
             test("set_once (basic functionality)", 6, function() {
