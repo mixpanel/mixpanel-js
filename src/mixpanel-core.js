@@ -1999,83 +1999,41 @@ MixpanelPeople.prototype._enqueue = function(data) {
     }
 };
 
+MixpanelPeople.prototype._flush_one_queue = function(action, action_method, callback, queue_to_params_fn) {
+    var _this = this;
+    var queued_data = _.extend({}, this._mixpanel['persistence']._get_queue(action));
+    var action_params = queued_data;
+
+    if (!_.isUndefined(queued_data) && _.isObject(queued_data) && !_.isEmptyObject(queued_data)) {
+        _this._mixpanel['persistence']._pop_from_people_queue(action, queued_data);
+        if (queue_to_params_fn) {
+            action_params = queue_to_params_fn(queued_data);
+        }
+        action_method.call(_this, action_params, function(response, data) {
+            // on bad response, we want to add it back to the queue
+            if (response === 0) {
+                _this._mixpanel['persistence']._add_to_people_queue(action, queued_data);
+            }
+            if (!_.isUndefined(callback)) {
+                callback(response, data);
+            }
+        });
+    }
+};
+
 // Flush queued engage operations - order does not matter,
 // and there are network level race conditions anyway
 MixpanelPeople.prototype._flush = function(
     _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback
 ) {
     var _this = this;
-    var $set_queue = _.extend({}, this._mixpanel['persistence']._get_queue(SET_ACTION));
-    var $set_once_queue = _.extend({}, this._mixpanel['persistence']._get_queue(SET_ONCE_ACTION));
-    var $unset_queue = _.extend({}, this._mixpanel['persistence']._get_queue(UNSET_ACTION));
-    var $add_queue = _.extend({}, this._mixpanel['persistence']._get_queue(ADD_ACTION));
     var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);
-    var $union_queue = _.extend({}, this._mixpanel['persistence']._get_queue(UNION_ACTION));
 
-    if (!_.isUndefined($set_queue) && _.isObject($set_queue) && !_.isEmptyObject($set_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(SET_ACTION, $set_queue);
-        this.set($set_queue, function(response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, $set_queue);
-            }
-            if (!_.isUndefined(_set_callback)) {
-                _set_callback(response, data);
-            }
-        });
-    }
-
-    if (!_.isUndefined($set_once_queue) && _.isObject($set_once_queue) && !_.isEmptyObject($set_once_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(SET_ONCE_ACTION, $set_once_queue);
-        this.set_once($set_once_queue, function(response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(SET_ONCE_ACTION, $set_once_queue);
-            }
-            if (!_.isUndefined(_set_once_callback)) {
-                _set_once_callback(response, data);
-            }
-        });
-    }
-
-    if (!_.isUndefined($unset_queue) && _.isObject($unset_queue) && !_.isEmptyObject($unset_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(UNSET_ACTION, $unset_queue);
-        this.unset(_.keys($unset_queue), function(response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(UNSET_ACTION, $unset_queue);
-            }
-            if (!_.isUndefined(_unset_callback)) {
-                _unset_callback(response, data);
-            }
-        });
-    }
-
-    if (!_.isUndefined($add_queue) && _.isObject($add_queue) && !_.isEmptyObject($add_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(ADD_ACTION, $add_queue);
-        this.increment($add_queue, function(response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, $add_queue);
-            }
-            if (!_.isUndefined(_add_callback)) {
-                _add_callback(response, data);
-            }
-        });
-    }
-
-    if (!_.isUndefined($union_queue) && _.isObject($union_queue) && !_.isEmptyObject($union_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(UNION_ACTION, $union_queue);
-        this.union($union_queue, function(response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, $union_queue);
-            }
-            if (!_.isUndefined(_union_callback)) {
-                _union_callback(response, data);
-            }
-        });
-    }
+    this._flush_one_queue(SET_ACTION, this.set, _set_callback);
+    this._flush_one_queue(SET_ONCE_ACTION, this.set_once, _set_once_callback);
+    this._flush_one_queue(UNSET_ACTION, this.unset, _unset_callback, function(queue) { return _.keys(queue); });
+    this._flush_one_queue(ADD_ACTION, this.increment, _add_callback);
+    this._flush_one_queue(UNION_ACTION, this.union, _union_callback);
 
     // we have to fire off each $append individually since there is
     // no concat method server side
