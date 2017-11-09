@@ -549,7 +549,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.13.0'
+    LIB_VERSION: '2.14.0'
 };
 
 exports['default'] = Config;
@@ -628,11 +628,13 @@ var INIT_SNIPPET = 1;
 /** @const */var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */var SET_QUEUE_KEY = '__mps';
 /** @const */var SET_ONCE_QUEUE_KEY = '__mpso';
+/** @const */var UNSET_QUEUE_KEY = '__mpus';
 /** @const */var ADD_QUEUE_KEY = '__mpa';
 /** @const */var APPEND_QUEUE_KEY = '__mpap';
 /** @const */var UNION_QUEUE_KEY = '__mpu';
 /** @const */var SET_ACTION = '$set';
 /** @const */var SET_ONCE_ACTION = '$set_once';
+/** @const */var UNSET_ACTION = '$unset';
 /** @const */var ADD_ACTION = '$add';
 /** @const */var APPEND_ACTION = '$append';
 /** @const */var UNION_ACTION = '$union';
@@ -641,16 +643,16 @@ var INIT_SNIPPET = 1;
 /** @const */var ALIAS_ID_KEY = '__alias';
 /** @const */var CAMPAIGN_IDS_KEY = '__cmpns';
 /** @const */var EVENT_TIMERS_KEY = '__timers';
-/** @const */var RESERVED_PROPERTIES = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, UNION_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY, CAMPAIGN_IDS_KEY, EVENT_TIMERS_KEY];
+/** @const */var RESERVED_PROPERTIES = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, UNSET_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, UNION_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY, CAMPAIGN_IDS_KEY, EVENT_TIMERS_KEY];
 
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-var HTTP_PROTOCOL = 'https:' === document.location.protocol ? 'https://' : 'http://';
+var HTTP_PROTOCOL = 'https:' === _utils.document.location.protocol ? 'https://' : 'http://';
 
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-var USE_XHR = window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
+var USE_XHR = _utils.window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
 
 // IE<10 does not support cross-origin XHR's but script tags
 // with defer won't block window.onload; ENQUEUE_REQUESTS
@@ -729,7 +731,7 @@ DomTracker.prototype.track = function (query, event_name, properties, user_callb
             that.event_handler(e, this, options);
 
             // in case the mixpanel servers don't get back to us in time
-            window.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
+            _utils.window.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
 
             // fire the tracking event
             that.mp.track(event_name, props, that.track_callback(user_callback, props, options));
@@ -813,7 +815,7 @@ LinkTracker.prototype.after_track_handler = function (props, options) {
     }
 
     setTimeout(function () {
-        window.location = options.href;
+        _utils.window.location = options.href;
     }, 0);
 };
 
@@ -996,7 +998,7 @@ MixpanelPersistence.prototype.register_once = function (props, default_value, da
         this.expire_days = typeof days === 'undefined' ? this.default_expiry : days;
 
         _utils._.each(props, function (val, prop) {
-            if (!this['props'][prop] || this['props'][prop] === default_value) {
+            if (!this['props'].hasOwnProperty(prop) || this['props'][prop] === default_value) {
                 this['props'][prop] = val;
             }
         }, this);
@@ -1127,6 +1129,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function (queue, data) {
         q_data = data[queue],
         set_q = this._get_or_create_queue(SET_ACTION),
         set_once_q = this._get_or_create_queue(SET_ONCE_ACTION),
+        unset_q = this._get_or_create_queue(UNSET_ACTION),
         add_q = this._get_or_create_queue(ADD_ACTION),
         union_q = this._get_or_create_queue(UNION_ACTION),
         append_q = this._get_or_create_queue(APPEND_ACTION, []);
@@ -1140,12 +1143,31 @@ MixpanelPersistence.prototype._add_to_people_queue = function (queue, data) {
         // if there was a pending union, override it
         // with the set.
         this._pop_from_people_queue(UNION_ACTION, q_data);
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === SET_ONCE_QUEUE_KEY) {
         // only queue the data if there is not already a set_once call for it.
         _utils._.each(q_data, function (v, k) {
             if (!(k in set_once_q)) {
                 set_once_q[k] = v;
             }
+        });
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
+    } else if (q_key === UNSET_QUEUE_KEY) {
+        _utils._.each(q_data, function (prop) {
+
+            // undo previously-queued actions on this key
+            _utils._.each([set_q, set_once_q, add_q, union_q], function (enqueued_obj) {
+                if (prop in enqueued_obj) {
+                    delete enqueued_obj[prop];
+                }
+            });
+            _utils._.each(append_q, function (append_obj) {
+                if (prop in append_obj) {
+                    delete append_obj[prop];
+                }
+            });
+
+            unset_q[prop] = true;
         });
     } else if (q_key === ADD_QUEUE_KEY) {
         _utils._.each(q_data, function (v, k) {
@@ -1162,6 +1184,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function (queue, data) {
                 add_q[k] += v;
             }
         }, this);
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === UNION_QUEUE_KEY) {
         _utils._.each(q_data, function (v, k) {
             if (_utils._.isArray(v)) {
@@ -1172,8 +1195,10 @@ MixpanelPersistence.prototype._add_to_people_queue = function (queue, data) {
                 union_q[k] = union_q[k].concat(v);
             }
         });
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === APPEND_QUEUE_KEY) {
         append_q.push(q_data);
+        this._pop_from_people_queue(UNSET_ACTION, q_data);
     }
 
     _utils.console.log('MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):');
@@ -1198,6 +1223,8 @@ MixpanelPersistence.prototype._get_queue_key = function (queue) {
         return SET_QUEUE_KEY;
     } else if (queue === SET_ONCE_ACTION) {
         return SET_ONCE_QUEUE_KEY;
+    } else if (queue === UNSET_ACTION) {
+        return UNSET_QUEUE_KEY;
     } else if (queue === ADD_ACTION) {
         return ADD_QUEUE_KEY;
     } else if (queue === APPEND_ACTION) {
@@ -1490,9 +1517,9 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
     url += '?' + _utils._.HTTPBuildQuery(data);
 
     if ('img' in data) {
-        var img = document.createElement('img');
+        var img = _utils.document.createElement('img');
         img.src = url;
-        document.body.appendChild(img);
+        _utils.document.body.appendChild(img);
     } else if (USE_XHR) {
         try {
             var req = new XMLHttpRequest();
@@ -1529,12 +1556,12 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
             _utils.console.error(e);
         }
     } else {
-        var script = document.createElement('script');
+        var script = _utils.document.createElement('script');
         script.type = 'text/javascript';
         script.async = true;
         script.defer = true;
         script.src = url;
-        var s = document.getElementsByTagName('script')[0];
+        var s = _utils.document.getElementsByTagName('script')[0];
         s.parentNode.insertBefore(script, s);
     }
 };
@@ -1659,13 +1686,13 @@ MixpanelLib.prototype.track = function (event_name, properties, callback) {
     }
 
     // update persistence
-    this['persistence'].update_search_keyword(document.referrer);
+    this['persistence'].update_search_keyword(_utils.document.referrer);
 
     if (this.get_config('store_google')) {
         this['persistence'].update_campaign_params();
     }
     if (this.get_config('save_referrer')) {
-        this['persistence'].update_referrer_info(document.referrer);
+        this['persistence'].update_referrer_info(_utils.document.referrer);
     }
 
     // note: extend writes to the first object, so lets make sure we
@@ -1723,7 +1750,7 @@ MixpanelLib.prototype.track = function (event_name, properties, callback) {
  */
 MixpanelLib.prototype.track_pageview = function (page) {
     if (_utils._.isUndefined(page)) {
-        page = document.location.href;
+        page = _utils.document.location.href;
     }
     this.track('mp_page_view', _utils._.info.pageviewInfo(page));
 };
@@ -1905,13 +1932,14 @@ MixpanelLib.prototype._register_single = function (prop, value) {
  *
  * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
-MixpanelLib.prototype.identify = function (unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
+MixpanelLib.prototype.identify = function (unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback) {
     // Optional Parameters
     //  _set_callback:function  A callback to be run if and when the People set queue is flushed
     //  _add_callback:function  A callback to be run if and when the People add queue is flushed
     //  _append_callback:function  A callback to be run if and when the People append queue is flushed
     //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
+    //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
 
     // identify only changes the distinct id if it doesn't match either the existing or the alias;
     // if it's new, blow away the alias as well.
@@ -1922,7 +1950,7 @@ MixpanelLib.prototype.identify = function (unique_id, _set_callback, _add_callba
     this._check_and_handle_notifications(this.get_distinct_id());
     this._flags.identify_called = true;
     // Flush any queued up people requests
-    this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback);
+    this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback);
 };
 
 /**
@@ -2193,7 +2221,7 @@ MixpanelPeople.prototype.set = function (prop, to, callback) {
 
     // make sure that the referrer info has been updated and saved
     if (this._get_config('save_referrer')) {
-        this._mixpanel['persistence'].update_referrer_info(document.referrer);
+        this._mixpanel['persistence'].update_referrer_info(_utils.document.referrer);
     }
 
     // update $set object with default people properties
@@ -2239,6 +2267,37 @@ MixpanelPeople.prototype.set_once = function (prop, to, callback) {
         $set_once[prop] = to;
     }
     data[SET_ONCE_ACTION] = $set_once;
+    return this._send_request(data, callback);
+};
+
+/*
+ * Unset properties on a user record (permanently removes the properties and their values from a profile).
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.unset('gender');
+ *
+ *     // or unset multiple properties at once
+ *     mixpanel.people.unset(['gender', 'Company']);
+ *
+ * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.unset = function (prop, callback) {
+    var data = {};
+    var $unset = [];
+    if (!_utils._.isArray(prop)) {
+        prop = [prop];
+    }
+
+    _utils._.each(prop, function (k) {
+        if (!this._is_reserved_property(k)) {
+            $unset.push(k);
+        }
+    }, this);
+
+    data[UNSET_ACTION] = $unset;
+
     return this._send_request(data, callback);
 };
 
@@ -2489,6 +2548,8 @@ MixpanelPeople.prototype._enqueue = function (data) {
         this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, data);
     } else if (SET_ONCE_ACTION in data) {
         this._mixpanel['persistence']._add_to_people_queue(SET_ONCE_ACTION, data);
+    } else if (UNSET_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(UNSET_ACTION, data);
     } else if (ADD_ACTION in data) {
         this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, data);
     } else if (APPEND_ACTION in data) {
@@ -2500,67 +2561,41 @@ MixpanelPeople.prototype._enqueue = function (data) {
     }
 };
 
+MixpanelPeople.prototype._flush_one_queue = function (action, action_method, callback, queue_to_params_fn) {
+    var _this = this;
+    var queued_data = _utils._.extend({}, this._mixpanel['persistence']._get_queue(action));
+    var action_params = queued_data;
+
+    if (!_utils._.isUndefined(queued_data) && _utils._.isObject(queued_data) && !_utils._.isEmptyObject(queued_data)) {
+        _this._mixpanel['persistence']._pop_from_people_queue(action, queued_data);
+        if (queue_to_params_fn) {
+            action_params = queue_to_params_fn(queued_data);
+        }
+        action_method.call(_this, action_params, function (response, data) {
+            // on bad response, we want to add it back to the queue
+            if (response === 0) {
+                _this._mixpanel['persistence']._add_to_people_queue(action, queued_data);
+            }
+            if (!_utils._.isUndefined(callback)) {
+                callback(response, data);
+            }
+        });
+    }
+};
+
 // Flush queued engage operations - order does not matter,
 // and there are network level race conditions anyway
-MixpanelPeople.prototype._flush = function (_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
+MixpanelPeople.prototype._flush = function (_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback) {
     var _this = this;
-    var $set_queue = _utils._.extend({}, this._mixpanel['persistence']._get_queue(SET_ACTION));
-    var $set_once_queue = _utils._.extend({}, this._mixpanel['persistence']._get_queue(SET_ONCE_ACTION));
-    var $add_queue = _utils._.extend({}, this._mixpanel['persistence']._get_queue(ADD_ACTION));
     var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);
-    var $union_queue = _utils._.extend({}, this._mixpanel['persistence']._get_queue(UNION_ACTION));
 
-    if (!_utils._.isUndefined($set_queue) && _utils._.isObject($set_queue) && !_utils._.isEmptyObject($set_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(SET_ACTION, $set_queue);
-        this.set($set_queue, function (response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, $set_queue);
-            }
-            if (!_utils._.isUndefined(_set_callback)) {
-                _set_callback(response, data);
-            }
-        });
-    }
-
-    if (!_utils._.isUndefined($set_once_queue) && _utils._.isObject($set_once_queue) && !_utils._.isEmptyObject($set_once_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(SET_ONCE_ACTION, $set_once_queue);
-        this.set_once($set_once_queue, function (response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(SET_ONCE_ACTION, $set_once_queue);
-            }
-            if (!_utils._.isUndefined(_set_once_callback)) {
-                _set_once_callback(response, data);
-            }
-        });
-    }
-
-    if (!_utils._.isUndefined($add_queue) && _utils._.isObject($add_queue) && !_utils._.isEmptyObject($add_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(ADD_ACTION, $add_queue);
-        this.increment($add_queue, function (response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, $add_queue);
-            }
-            if (!_utils._.isUndefined(_add_callback)) {
-                _add_callback(response, data);
-            }
-        });
-    }
-
-    if (!_utils._.isUndefined($union_queue) && _utils._.isObject($union_queue) && !_utils._.isEmptyObject($union_queue)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(UNION_ACTION, $union_queue);
-        this.union($union_queue, function (response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, $union_queue);
-            }
-            if (!_utils._.isUndefined(_union_callback)) {
-                _union_callback(response, data);
-            }
-        });
-    }
+    this._flush_one_queue(SET_ACTION, this.set, _set_callback);
+    this._flush_one_queue(SET_ONCE_ACTION, this.set_once, _set_once_callback);
+    this._flush_one_queue(UNSET_ACTION, this.unset, _unset_callback, function (queue) {
+        return _utils._.keys(queue);
+    });
+    this._flush_one_queue(ADD_ACTION, this.increment, _add_callback);
+    this._flush_one_queue(UNION_ACTION, this.union, _union_callback);
 
     // we have to fire off each $append individually since there is
     // no concat method server side
@@ -2835,7 +2870,7 @@ MPNotif.prototype._attach_and_animate = _utils._.safewrap(function () {
             self.dismiss();
             if (self.clickthrough) {
                 self._track_event('$campaign_open', { '$resource_type': 'link' }, function () {
-                    window.location.href = self.dest_url;
+                    _utils.window.location.href = self.dest_url;
                 });
             }
         }
@@ -2843,7 +2878,7 @@ MPNotif.prototype._attach_and_animate = _utils._.safewrap(function () {
 });
 
 MPNotif.prototype._get_el = function (id) {
-    return document.getElementById(MPNotif.MARKUP_PREFIX + '-' + id);
+    return _utils.document.getElementById(MPNotif.MARKUP_PREFIX + '-' + id);
 };
 
 MPNotif.prototype._get_notification_display_el = function () {
@@ -2888,7 +2923,7 @@ MPNotif.prototype._init_notification_el = function () {
     var video_html = '';
     var cancel_html = '<div id="cancel">' + '<div id="cancel-icon"></div>' + '</div>';
 
-    this.notification_el = document.createElement('div');
+    this.notification_el = _utils.document.createElement('div');
     this.notification_el.id = MPNotif.MARKUP_PREFIX + '-wrapper';
     if (!this.mini) {
         // TAKEOVER notification
@@ -3435,8 +3470,8 @@ MPNotif.prototype._init_styles = function () {
         };
 
         var style_text = create_style_text(styles) + create_media_query_text(media_queries),
-            head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
-            style_el = document.createElement('style');
+            head_el = _utils.document.head || _utils.document.getElementsByTagName('head')[0] || _utils.document.documentElement,
+            style_el = _utils.document.createElement('style');
         head_el.appendChild(style_el);
         style_el.setAttribute('type', 'text/css');
         if (style_el.styleSheet) {
@@ -3456,7 +3491,7 @@ MPNotif.prototype._init_video = _utils._.safewrap(function () {
     var self = this;
 
     // Youtube iframe API compatibility
-    self.yt_custom = 'postMessage' in window;
+    self.yt_custom = 'postMessage' in _utils.window;
 
     self.dest_url = self.video_url;
     var youtube_match = self.video_url.match(
@@ -3468,16 +3503,16 @@ MPNotif.prototype._init_video = _utils._.safewrap(function () {
         self.youtube_video = youtube_match[1];
 
         if (self.yt_custom) {
-            window['onYouTubeIframeAPIReady'] = function () {
+            _utils.window['onYouTubeIframeAPIReady'] = function () {
                 if (self._get_el('video-frame')) {
                     self._yt_video_ready();
                 }
             };
 
             // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
-            var tag = document.createElement('script');
+            var tag = _utils.document.createElement('script');
             tag.src = '//www.youtube.com/iframe_api';
-            var firstScriptTag = document.getElementsByTagName('script')[0];
+            var firstScriptTag = _utils.document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
     } else if (vimeo_match) {
@@ -3501,8 +3536,8 @@ MPNotif.prototype._mark_as_shown = _utils._.safewrap(function () {
 
     var get_style = function get_style(el, style_name) {
         var styles = {};
-        if (document.defaultView && document.defaultView.getComputedStyle) {
-            styles = document.defaultView.getComputedStyle(el, null); // FF3 requires both args
+        if (_utils.document.defaultView && _utils.document.defaultView.getComputedStyle) {
+            styles = _utils.document.defaultView.getComputedStyle(el, null); // FF3 requires both args
         } else if (el.currentStyle) {
                 // IE
                 styles = el.currentStyle;
@@ -3588,7 +3623,7 @@ MPNotif.prototype._preload_images = function (all_loaded_cb) {
 };
 
 MPNotif.prototype._remove_notification_el = _utils._.safewrap(function () {
-    window.clearInterval(this._video_progress_checker);
+    _utils.window.clearInterval(this._video_progress_checker);
     this.notification_el.style.visibility = 'hidden';
     this.body_el.removeChild(this.notification_el);
 });
@@ -3602,19 +3637,19 @@ MPNotif.prototype._set_client_config = function () {
     this.browser_versions['chrome'] = get_browser_version(/Chrome\/(\d+)/);
     this.browser_versions['firefox'] = get_browser_version(/Firefox\/(\d+)/);
     this.browser_versions['ie'] = get_browser_version(/MSIE (\d+).+/);
-    if (!this.browser_versions['ie'] && !window.ActiveXObject && 'ActiveXObject' in window) {
+    if (!this.browser_versions['ie'] && !_utils.window.ActiveXObject && 'ActiveXObject' in _utils.window) {
         this.browser_versions['ie'] = 11;
     }
 
-    this.body_el = document.body || document.getElementsByTagName('body')[0];
+    this.body_el = _utils.document.body || _utils.document.getElementsByTagName('body')[0];
     if (this.body_el) {
-        this.doc_width = Math.max(this.body_el.scrollWidth, document.documentElement.scrollWidth, this.body_el.offsetWidth, document.documentElement.offsetWidth, this.body_el.clientWidth, document.documentElement.clientWidth);
-        this.doc_height = Math.max(this.body_el.scrollHeight, document.documentElement.scrollHeight, this.body_el.offsetHeight, document.documentElement.offsetHeight, this.body_el.clientHeight, document.documentElement.clientHeight);
+        this.doc_width = Math.max(this.body_el.scrollWidth, _utils.document.documentElement.scrollWidth, this.body_el.offsetWidth, _utils.document.documentElement.offsetWidth, this.body_el.clientWidth, _utils.document.documentElement.clientWidth);
+        this.doc_height = Math.max(this.body_el.scrollHeight, _utils.document.documentElement.scrollHeight, this.body_el.offsetHeight, _utils.document.documentElement.offsetHeight, this.body_el.clientHeight, _utils.document.documentElement.clientHeight);
     }
 
     // detect CSS compatibility
     var ie_ver = this.browser_versions['ie'];
-    var sample_styles = document.createElement('div').style,
+    var sample_styles = _utils.document.createElement('div').style,
         is_css_compatible = function is_css_compatible(rule) {
         if (rule in sample_styles) {
             return true;
@@ -3680,7 +3715,7 @@ MPNotif.prototype._switch_to_video = _utils._.safewrap(function () {
     video_el.innerHTML = self.video_iframe;
 
     var video_ready = function video_ready() {
-        if (window['YT'] && window['YT']['loaded']) {
+        if (_utils.window['YT'] && _utils.window['YT']['loaded']) {
             self._yt_video_ready();
         }
         self.showing_video = true;
@@ -3720,7 +3755,7 @@ MPNotif.prototype._yt_video_ready = _utils._.safewrap(function () {
         progress_time = self._get_el('video-time'),
         progress_el = self._get_el('video-progress');
 
-    new window['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
+    new _utils.window['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
         'events': {
             'onReady': function onReady(event) {
                 var ytplayer = event['target'],
@@ -3737,7 +3772,7 @@ MPNotif.prototype._yt_video_ready = _utils._.safewrap(function () {
                     progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
                 };
                 update_video_time(0);
-                self._video_progress_checker = window.setInterval(function () {
+                self._video_progress_checker = _utils.window.setInterval(function () {
                     var current_time = ytplayer['getCurrentTime']();
                     progress_bar.style.width = current_time / video_duration * 100 + '%';
                     update_video_time(current_time);
@@ -3786,6 +3821,7 @@ MixpanelPersistence.prototype['clear'] = MixpanelPersistence.prototype.clear;
 // MixpanelPeople Exports
 MixpanelPeople.prototype['set'] = MixpanelPeople.prototype.set;
 MixpanelPeople.prototype['set_once'] = MixpanelPeople.prototype.set_once;
+MixpanelPeople.prototype['unset'] = MixpanelPeople.prototype.unset;
 MixpanelPeople.prototype['increment'] = MixpanelPeople.prototype.increment;
 MixpanelPeople.prototype['append'] = MixpanelPeople.prototype.append;
 MixpanelPeople.prototype['union'] = MixpanelPeople.prototype.union;
@@ -3835,7 +3871,7 @@ var override_mp_init_func = function override_mp_init_func() {
 
             mixpanel_master = instance;
             if (init_type === INIT_SNIPPET) {
-                window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+                _utils.window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
             }
             extend_mp();
         }
@@ -3861,7 +3897,7 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
 
     function do_scroll_check() {
         try {
-            document.documentElement.doScroll('left');
+            _utils.document.documentElement.doScroll('left');
         } catch (e) {
             setTimeout(do_scroll_check, 1);
             return;
@@ -3870,35 +3906,35 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
         dom_loaded_handler();
     }
 
-    if (document.addEventListener) {
-        if (document.readyState === 'complete') {
+    if (_utils.document.addEventListener) {
+        if (_utils.document.readyState === 'complete') {
             // safari 4 can fire the DOMContentLoaded event before loading all
             // external JS (including this file). you will see some copypasta
             // on the internet that checks for 'complete' and 'loaded', but
             // 'loaded' is an IE thing
             dom_loaded_handler();
         } else {
-            document.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
+            _utils.document.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
         }
-    } else if (document.attachEvent) {
+    } else if (_utils.document.attachEvent) {
         // IE
-        document.attachEvent('onreadystatechange', dom_loaded_handler);
+        _utils.document.attachEvent('onreadystatechange', dom_loaded_handler);
 
         // check to make sure we arn't in a frame
         var toplevel = false;
         try {
-            toplevel = window.frameElement === null;
+            toplevel = _utils.window.frameElement === null;
         } catch (e) {
             // noop
         }
 
-        if (document.documentElement.doScroll && toplevel) {
+        if (_utils.document.documentElement.doScroll && toplevel) {
             do_scroll_check();
         }
     }
 
     // fallback handler, always will work
-    _utils._.register_event(window, 'load', dom_loaded_handler, true);
+    _utils._.register_event(_utils.window, 'load', dom_loaded_handler, true);
 };
 
 var add_dom_event_counting_handlers = function add_dom_event_counting_handlers(instance) {
@@ -3920,13 +3956,13 @@ var add_dom_event_counting_handlers = function add_dom_event_counting_handlers(i
             _utils.console.error(e);
         }
     };
-    _utils._.register_event(document, 'submit', evtCallback);
-    _utils._.register_event(document, 'change', evtCallback);
+    _utils._.register_event(_utils.document, 'submit', evtCallback);
+    _utils._.register_event(_utils.document, 'change', evtCallback);
     var mousedownTarget = null;
-    _utils._.register_event(document, 'mousedown', function (e) {
+    _utils._.register_event(_utils.document, 'mousedown', function (e) {
         mousedownTarget = e.target;
     });
-    _utils._.register_event(document, 'mouseup', function (e) {
+    _utils._.register_event(_utils.document, 'mouseup', function (e) {
         if (e.target === mousedownTarget) {
             evtCallback(e);
         }
@@ -3935,7 +3971,7 @@ var add_dom_event_counting_handlers = function add_dom_event_counting_handlers(i
 
 function init_from_snippet() {
     init_type = INIT_SNIPPET;
-    mixpanel_master = window[PRIMARY_INSTANCE_NAME];
+    mixpanel_master = _utils.window[PRIMARY_INSTANCE_NAME];
 
     // Initialization
     if (_utils._.isUndefined(mixpanel_master)) {
@@ -4001,11 +4037,12 @@ var _config2 = _interopRequireDefault(_config);
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 var win;
 if (typeof window === 'undefined') {
-    win = {
-        navigator: {}
+    exports.window = win = {
+        navigator: { userAgent: '' },
+        document: { location: {} }
     };
 } else {
-    win = window;
+    exports.window = win = window;
 }
 
 /*
@@ -4198,6 +4235,17 @@ _.toArray = function (iterable) {
     return _.values(iterable);
 };
 
+_.keys = function (obj) {
+    var results = [];
+    if (obj === null) {
+        return results;
+    }
+    _.each(obj, function (value, key) {
+        results[results.length] = key;
+    });
+    return results;
+};
+
 _.values = function (obj) {
     var results = [];
     if (obj === null) {
@@ -4308,7 +4356,10 @@ _.safewrap = function (f) {
         try {
             return f.apply(this, arguments);
         } catch (e) {
-            console.critical('Implementation error. Please contact support@mixpanel.com.');
+            console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
+            if (_config2['default'].DEBUG) {
+                console.critical(e);
+            }
         }
     };
 };
@@ -5461,6 +5512,8 @@ _.info = {
             return 'Mac OS X';
         } else if (/Linux/.test(a)) {
             return 'Linux';
+        } else if (/CrOS/.test(a)) {
+            return 'Chrome OS';
         } else {
             return '';
         }
@@ -5543,5 +5596,7 @@ _['info']['properties'] = _.info.properties;
 exports._ = _;
 exports.userAgent = userAgent;
 exports.console = console;
+exports.window = win;
+exports.document = document;
 
 },{"./config":3}]},{},[1]);

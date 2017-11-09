@@ -69,14 +69,15 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.13.0'
+	        LIB_VERSION: '2.14.0'
 	    };
 
 	    // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 	    var win;
 	    if (typeof(window) === 'undefined') {
 	        win = {
-	            navigator: {}
+	            navigator: { userAgent: '' },
+	            document: { location: {} }
 	        };
 	    } else {
 	        win = window;
@@ -277,6 +278,17 @@
 	        return _.values(iterable);
 	    };
 
+	    _.keys = function(obj) {
+	        var results = [];
+	        if (obj === null) {
+	            return results;
+	        }
+	        _.each(obj, function(value, key) {
+	            results[results.length] = key;
+	        });
+	        return results;
+	    };
+
 	    _.values = function(obj) {
 	        var results = [];
 	        if (obj === null) {
@@ -392,7 +404,10 @@
 	            try {
 	                return f.apply(this, arguments);
 	            } catch (e) {
-	                console$1.critical('Implementation error. Please contact support@mixpanel.com.');
+	                console$1.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
+	                if (Config.DEBUG){
+	                    console$1.critical(e);
+	                }
 	            }
 	        };
 	    };
@@ -1537,6 +1552,8 @@
 	                return 'Mac OS X';
 	            } else if (/Linux/.test(a)) {
 	                return 'Linux';
+	            } else if (/CrOS/.test(a)) {
+	                return 'Chrome OS';
 	            } else {
 	                return '';
 	            }
@@ -2162,11 +2179,13 @@
 	    /** @const */   var PRIMARY_INSTANCE_NAME     = 'mixpanel';
 	    /** @const */   var SET_QUEUE_KEY             = '__mps';
 	    /** @const */   var SET_ONCE_QUEUE_KEY        = '__mpso';
+	    /** @const */   var UNSET_QUEUE_KEY           = '__mpus';
 	    /** @const */   var ADD_QUEUE_KEY             = '__mpa';
 	    /** @const */   var APPEND_QUEUE_KEY          = '__mpap';
 	    /** @const */   var UNION_QUEUE_KEY           = '__mpu';
 	    /** @const */   var SET_ACTION                = '$set';
 	    /** @const */   var SET_ONCE_ACTION           = '$set_once';
+	    /** @const */   var UNSET_ACTION              = '$unset';
 	    /** @const */   var ADD_ACTION                = '$add';
 	    /** @const */   var APPEND_ACTION             = '$append';
 	    /** @const */   var UNION_ACTION              = '$union';
@@ -2178,6 +2197,7 @@
 	    /** @const */   var RESERVED_PROPERTIES       = [
 	        SET_QUEUE_KEY,
 	        SET_ONCE_QUEUE_KEY,
+	        UNSET_QUEUE_KEY,
 	        ADD_QUEUE_KEY,
 	        APPEND_QUEUE_KEY,
 	        UNION_QUEUE_KEY,
@@ -2190,11 +2210,11 @@
 	    /*
 	     * Dynamic... constants? Is that an oxymoron?
 	     */
-	    var HTTP_PROTOCOL = (('https:' === document.location.protocol) ? 'https://' : 'http://');
+	    var HTTP_PROTOCOL = (('https:' === document$1.location.protocol) ? 'https://' : 'http://');
 
 	        // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 	        // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-	    var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
+	    var USE_XHR = (win.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 
 	        // IE<10 does not support cross-origin XHR's but script tags
 	        // with defer won't block window.onload; ENQUEUE_REQUESTS
@@ -2273,7 +2293,7 @@
 	                that.event_handler(e, this, options);
 
 	                // in case the mixpanel servers don't get back to us in time
-	                window.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
+	                win.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
 
 	                // fire the tracking event
 	                that.mp.track(event_name, props, that.track_callback(user_callback, props, options));
@@ -2356,7 +2376,7 @@
 	        if (options.new_tab) { return; }
 
 	        setTimeout(function() {
-	            window.location = options.href;
+	            win.location = options.href;
 	        }, 0);
 	    };
 
@@ -2543,7 +2563,7 @@
 	            this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
 
 	            _.each(props, function(val, prop) {
-	                if (!this['props'][prop] || this['props'][prop] === default_value) {
+	                if (!this['props'].hasOwnProperty(prop) || this['props'][prop] === default_value) {
 	                    this['props'][prop] = val;
 	                }
 	            }, this);
@@ -2674,6 +2694,7 @@
 	            q_data = data[queue],
 	            set_q = this._get_or_create_queue(SET_ACTION),
 	            set_once_q = this._get_or_create_queue(SET_ONCE_ACTION),
+	            unset_q = this._get_or_create_queue(UNSET_ACTION),
 	            add_q = this._get_or_create_queue(ADD_ACTION),
 	            union_q = this._get_or_create_queue(UNION_ACTION),
 	            append_q = this._get_or_create_queue(APPEND_ACTION, []);
@@ -2687,12 +2708,32 @@
 	            // if there was a pending union, override it
 	            // with the set.
 	            this._pop_from_people_queue(UNION_ACTION, q_data);
+	            this._pop_from_people_queue(UNSET_ACTION, q_data);
 	        } else if (q_key === SET_ONCE_QUEUE_KEY) {
 	            // only queue the data if there is not already a set_once call for it.
 	            _.each(q_data, function(v, k) {
 	                if (!(k in set_once_q)) {
 	                    set_once_q[k] = v;
 	                }
+	            });
+	            this._pop_from_people_queue(UNSET_ACTION, q_data);
+	        } else if (q_key === UNSET_QUEUE_KEY) {
+	            _.each(q_data, function(prop) {
+
+	                // undo previously-queued actions on this key
+	                _.each([set_q, set_once_q, add_q, union_q], function(enqueued_obj) {
+	                    if (prop in enqueued_obj) {
+	                        delete enqueued_obj[prop];
+	                    }
+	                });
+	                _.each(append_q, function(append_obj) {
+	                    if (prop in append_obj) {
+	                        delete append_obj[prop];
+	                    }
+	                });
+
+	                unset_q[prop] = true;
+
 	            });
 	        } else if (q_key === ADD_QUEUE_KEY) {
 	            _.each(q_data, function(v, k) {
@@ -2709,6 +2750,7 @@
 	                    add_q[k] += v;
 	                }
 	            }, this);
+	            this._pop_from_people_queue(UNSET_ACTION, q_data);
 	        } else if (q_key === UNION_QUEUE_KEY) {
 	            _.each(q_data, function(v, k) {
 	                if (_.isArray(v)) {
@@ -2719,8 +2761,10 @@
 	                    union_q[k] = union_q[k].concat(v);
 	                }
 	            });
+	            this._pop_from_people_queue(UNSET_ACTION, q_data);
 	        } else if (q_key === APPEND_QUEUE_KEY) {
 	            append_q.push(q_data);
+	            this._pop_from_people_queue(UNSET_ACTION, q_data);
 	        }
 
 	        console$1.log('MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):');
@@ -2745,6 +2789,8 @@
 	            return SET_QUEUE_KEY;
 	        } else if (queue === SET_ONCE_ACTION) {
 	            return SET_ONCE_QUEUE_KEY;
+	        } else if (queue === UNSET_ACTION) {
+	            return UNSET_QUEUE_KEY;
 	        } else if (queue === ADD_ACTION) {
 	            return ADD_QUEUE_KEY;
 	        } else if (queue === APPEND_ACTION) {
@@ -3029,9 +3075,9 @@
 	        url += '?' + _.HTTPBuildQuery(data);
 
 	        if ('img' in data) {
-	            var img = document.createElement('img');
+	            var img = document$1.createElement('img');
 	            img.src = url;
-	            document.body.appendChild(img);
+	            document$1.body.appendChild(img);
 	        } else if (USE_XHR) {
 	            try {
 	                var req = new XMLHttpRequest();
@@ -3067,12 +3113,12 @@
 	                console$1.error(e);
 	            }
 	        } else {
-	            var script = document.createElement('script');
+	            var script = document$1.createElement('script');
 	            script.type = 'text/javascript';
 	            script.async = true;
 	            script.defer = true;
 	            script.src = url;
-	            var s = document.getElementsByTagName('script')[0];
+	            var s = document$1.getElementsByTagName('script')[0];
 	            s.parentNode.insertBefore(script, s);
 	        }
 	    };
@@ -3194,10 +3240,10 @@
 	        }
 
 	        // update persistence
-	        this['persistence'].update_search_keyword(document.referrer);
+	        this['persistence'].update_search_keyword(document$1.referrer);
 
 	        if (this.get_config('store_google')) { this['persistence'].update_campaign_params(); }
-	        if (this.get_config('save_referrer')) { this['persistence'].update_referrer_info(document.referrer); }
+	        if (this.get_config('save_referrer')) { this['persistence'].update_referrer_info(document$1.referrer); }
 
 	        // note: extend writes to the first object, so lets make sure we
 	        // don't write to the persistence properties object and info
@@ -3263,7 +3309,7 @@
 	     */
 	    MixpanelLib.prototype.track_pageview = function(page) {
 	        if (_.isUndefined(page)) {
-	            page = document.location.href;
+	            page = document$1.location.href;
 	        }
 	        this.track('mp_page_view', _.info.pageviewInfo(page));
 	    };
@@ -3445,13 +3491,16 @@
 	     *
 	     * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
 	     */
-	    MixpanelLib.prototype.identify = function(unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
+	    MixpanelLib.prototype.identify = function(
+	        unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback
+	    ) {
 	        // Optional Parameters
 	        //  _set_callback:function  A callback to be run if and when the People set queue is flushed
 	        //  _add_callback:function  A callback to be run if and when the People add queue is flushed
 	        //  _append_callback:function  A callback to be run if and when the People append queue is flushed
 	        //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
 	        //  _union_callback:function  A callback to be run if and when the People union queue is flushed
+	        //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
 
 	        // identify only changes the distinct id if it doesn't match either the existing or the alias;
 	        // if it's new, blow away the alias as well.
@@ -3462,7 +3511,7 @@
 	        this._check_and_handle_notifications(this.get_distinct_id());
 	        this._flags.identify_called = true;
 	        // Flush any queued up people requests
-	        this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback);
+	        this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback);
 	    };
 
 	    /**
@@ -3739,7 +3788,7 @@
 
 	        // make sure that the referrer info has been updated and saved
 	        if (this._get_config('save_referrer')) {
-	            this._mixpanel['persistence'].update_referrer_info(document.referrer);
+	            this._mixpanel['persistence'].update_referrer_info(document$1.referrer);
 	        }
 
 	        // update $set object with default people properties
@@ -3790,6 +3839,37 @@
 	            $set_once[prop] = to;
 	        }
 	        data[SET_ONCE_ACTION] = $set_once;
+	        return this._send_request(data, callback);
+	    };
+
+	    /*
+	     * Unset properties on a user record (permanently removes the properties and their values from a profile).
+	     *
+	     * ### Usage:
+	     *
+	     *     mixpanel.people.unset('gender');
+	     *
+	     *     // or unset multiple properties at once
+	     *     mixpanel.people.unset(['gender', 'Company']);
+	     *
+	     * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
+	     * @param {Function} [callback] If provided, the callback will be called after the tracking event
+	     */
+	    MixpanelPeople.prototype.unset = function(prop, callback) {
+	        var data = {};
+	        var $unset = [];
+	        if (!_.isArray(prop)) {
+	            prop = [prop];
+	        }
+
+	        _.each(prop, function(k) {
+	            if (!this._is_reserved_property(k)) {
+	                $unset.push(k);
+	            }
+	        }, this);
+
+	        data[UNSET_ACTION] = $unset;
+
 	        return this._send_request(data, callback);
 	    };
 
@@ -4044,6 +4124,8 @@
 	            this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, data);
 	        } else if (SET_ONCE_ACTION in data) {
 	            this._mixpanel['persistence']._add_to_people_queue(SET_ONCE_ACTION, data);
+	        } else if (UNSET_ACTION in data) {
+	            this._mixpanel['persistence']._add_to_people_queue(UNSET_ACTION, data);
 	        } else if (ADD_ACTION in data) {
 	            this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, data);
 	        } else if (APPEND_ACTION in data) {
@@ -4055,67 +4137,41 @@
 	        }
 	    };
 
+	    MixpanelPeople.prototype._flush_one_queue = function(action, action_method, callback, queue_to_params_fn) {
+	        var _this = this;
+	        var queued_data = _.extend({}, this._mixpanel['persistence']._get_queue(action));
+	        var action_params = queued_data;
+
+	        if (!_.isUndefined(queued_data) && _.isObject(queued_data) && !_.isEmptyObject(queued_data)) {
+	            _this._mixpanel['persistence']._pop_from_people_queue(action, queued_data);
+	            if (queue_to_params_fn) {
+	                action_params = queue_to_params_fn(queued_data);
+	            }
+	            action_method.call(_this, action_params, function(response, data) {
+	                // on bad response, we want to add it back to the queue
+	                if (response === 0) {
+	                    _this._mixpanel['persistence']._add_to_people_queue(action, queued_data);
+	                }
+	                if (!_.isUndefined(callback)) {
+	                    callback(response, data);
+	                }
+	            });
+	        }
+	    };
+
 	    // Flush queued engage operations - order does not matter,
 	    // and there are network level race conditions anyway
-	    MixpanelPeople.prototype._flush = function(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback) {
+	    MixpanelPeople.prototype._flush = function(
+	        _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback
+	    ) {
 	        var _this = this;
-	        var $set_queue = _.extend({}, this._mixpanel['persistence']._get_queue(SET_ACTION));
-	        var $set_once_queue = _.extend({}, this._mixpanel['persistence']._get_queue(SET_ONCE_ACTION));
-	        var $add_queue = _.extend({}, this._mixpanel['persistence']._get_queue(ADD_ACTION));
 	        var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);
-	        var $union_queue = _.extend({}, this._mixpanel['persistence']._get_queue(UNION_ACTION));
 
-	        if (!_.isUndefined($set_queue) && _.isObject($set_queue) && !_.isEmptyObject($set_queue)) {
-	            _this._mixpanel['persistence']._pop_from_people_queue(SET_ACTION, $set_queue);
-	            this.set($set_queue, function(response, data) {
-	                // on bad response, we want to add it back to the queue
-	                if (response === 0) {
-	                    _this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, $set_queue);
-	                }
-	                if (!_.isUndefined(_set_callback)) {
-	                    _set_callback(response, data);
-	                }
-	            });
-	        }
-
-	        if (!_.isUndefined($set_once_queue) && _.isObject($set_once_queue) && !_.isEmptyObject($set_once_queue)) {
-	            _this._mixpanel['persistence']._pop_from_people_queue(SET_ONCE_ACTION, $set_once_queue);
-	            this.set_once($set_once_queue, function(response, data) {
-	                // on bad response, we want to add it back to the queue
-	                if (response === 0) {
-	                    _this._mixpanel['persistence']._add_to_people_queue(SET_ONCE_ACTION, $set_once_queue);
-	                }
-	                if (!_.isUndefined(_set_once_callback)) {
-	                    _set_once_callback(response, data);
-	                }
-	            });
-	        }
-
-	        if (!_.isUndefined($add_queue) && _.isObject($add_queue) && !_.isEmptyObject($add_queue)) {
-	            _this._mixpanel['persistence']._pop_from_people_queue(ADD_ACTION, $add_queue);
-	            this.increment($add_queue, function(response, data) {
-	                // on bad response, we want to add it back to the queue
-	                if (response === 0) {
-	                    _this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, $add_queue);
-	                }
-	                if (!_.isUndefined(_add_callback)) {
-	                    _add_callback(response, data);
-	                }
-	            });
-	        }
-
-	        if (!_.isUndefined($union_queue) && _.isObject($union_queue) && !_.isEmptyObject($union_queue)) {
-	            _this._mixpanel['persistence']._pop_from_people_queue(UNION_ACTION, $union_queue);
-	            this.union($union_queue, function(response, data) {
-	                // on bad response, we want to add it back to the queue
-	                if (response === 0) {
-	                    _this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, $union_queue);
-	                }
-	                if (!_.isUndefined(_union_callback)) {
-	                    _union_callback(response, data);
-	                }
-	            });
-	        }
+	        this._flush_one_queue(SET_ACTION, this.set, _set_callback);
+	        this._flush_one_queue(SET_ONCE_ACTION, this.set_once, _set_once_callback);
+	        this._flush_one_queue(UNSET_ACTION, this.unset, _unset_callback, function(queue) { return _.keys(queue); });
+	        this._flush_one_queue(ADD_ACTION, this.increment, _add_callback);
+	        this._flush_one_queue(UNION_ACTION, this.union, _union_callback);
 
 	        // we have to fire off each $append individually since there is
 	        // no concat method server side
@@ -4397,7 +4453,7 @@
 	                self.dismiss();
 	                if (self.clickthrough) {
 	                    self._track_event('$campaign_open', {'$resource_type': 'link'}, function() {
-	                        window.location.href = self.dest_url;
+	                        win.location.href = self.dest_url;
 	                    });
 	                }
 	            }
@@ -4405,7 +4461,7 @@
 	    });
 
 	    MPNotif.prototype._get_el = function(id) {
-	        return document.getElementById(MPNotif.MARKUP_PREFIX + '-' + id);
+	        return document$1.getElementById(MPNotif.MARKUP_PREFIX + '-' + id);
 	    };
 
 	    MPNotif.prototype._get_notification_display_el = function() {
@@ -4459,7 +4515,7 @@
 	                                        '<div id="cancel-icon"></div>' +
 	                                    '</div>';
 
-	        this.notification_el = document.createElement('div');
+	        this.notification_el = document$1.createElement('div');
 	        this.notification_el.id = MPNotif.MARKUP_PREFIX + '-wrapper';
 	        if (!this.mini) {
 	            // TAKEOVER notification
@@ -5075,8 +5131,8 @@
 	            };
 
 	            var style_text = create_style_text(styles) + create_media_query_text(media_queries),
-	                head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
-	                style_el = document.createElement('style');
+	                head_el = document$1.head || document$1.getElementsByTagName('head')[0] || document$1.documentElement,
+	                style_el = document$1.createElement('style');
 	            head_el.appendChild(style_el);
 	            style_el.setAttribute('type', 'text/css');
 	            if (style_el.styleSheet) { // IE
@@ -5095,7 +5151,7 @@
 	        var self = this;
 
 	        // Youtube iframe API compatibility
-	        self.yt_custom = 'postMessage' in window;
+	        self.yt_custom = 'postMessage' in win;
 
 	        self.dest_url = self.video_url;
 	        var youtube_match = self.video_url.match(
@@ -5110,16 +5166,16 @@
 	            self.youtube_video = youtube_match[1];
 
 	            if (self.yt_custom) {
-	                window['onYouTubeIframeAPIReady'] = function() {
+	                win['onYouTubeIframeAPIReady'] = function() {
 	                    if (self._get_el('video-frame')) {
 	                        self._yt_video_ready();
 	                    }
 	                };
 
 	                // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
-	                var tag = document.createElement('script');
+	                var tag = document$1.createElement('script');
 	                tag.src = '//www.youtube.com/iframe_api';
-	                var firstScriptTag = document.getElementsByTagName('script')[0];
+	                var firstScriptTag = document$1.getElementsByTagName('script')[0];
 	                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 	            }
 	        } else if (vimeo_match) {
@@ -5143,8 +5199,8 @@
 
 	        var get_style = function(el, style_name) {
 	            var styles = {};
-	            if (document.defaultView && document.defaultView.getComputedStyle) {
-	                styles = document.defaultView.getComputedStyle(el, null); // FF3 requires both args
+	            if (document$1.defaultView && document$1.defaultView.getComputedStyle) {
+	                styles = document$1.defaultView.getComputedStyle(el, null); // FF3 requires both args
 	            } else if (el.currentStyle) { // IE
 	                styles = el.currentStyle;
 	            }
@@ -5229,7 +5285,7 @@
 	    };
 
 	    MPNotif.prototype._remove_notification_el = _.safewrap(function() {
-	        window.clearInterval(this._video_progress_checker);
+	        win.clearInterval(this._video_progress_checker);
 	        this.notification_el.style.visibility = 'hidden';
 	        this.body_el.removeChild(this.notification_el);
 	    });
@@ -5243,27 +5299,27 @@
 	        this.browser_versions['chrome']  = get_browser_version(/Chrome\/(\d+)/);
 	        this.browser_versions['firefox'] = get_browser_version(/Firefox\/(\d+)/);
 	        this.browser_versions['ie']      = get_browser_version(/MSIE (\d+).+/);
-	        if (!this.browser_versions['ie'] && !(window.ActiveXObject) && 'ActiveXObject' in window) {
+	        if (!this.browser_versions['ie'] && !(win.ActiveXObject) && 'ActiveXObject' in win) {
 	            this.browser_versions['ie'] = 11;
 	        }
 
-	        this.body_el = document.body || document.getElementsByTagName('body')[0];
+	        this.body_el = document$1.body || document$1.getElementsByTagName('body')[0];
 	        if (this.body_el) {
 	            this.doc_width = Math.max(
-	                    this.body_el.scrollWidth, document.documentElement.scrollWidth,
-	                    this.body_el.offsetWidth, document.documentElement.offsetWidth,
-	                    this.body_el.clientWidth, document.documentElement.clientWidth
+	                    this.body_el.scrollWidth, document$1.documentElement.scrollWidth,
+	                    this.body_el.offsetWidth, document$1.documentElement.offsetWidth,
+	                    this.body_el.clientWidth, document$1.documentElement.clientWidth
 	                );
 	            this.doc_height = Math.max(
-	                    this.body_el.scrollHeight, document.documentElement.scrollHeight,
-	                    this.body_el.offsetHeight, document.documentElement.offsetHeight,
-	                    this.body_el.clientHeight, document.documentElement.clientHeight
+	                    this.body_el.scrollHeight, document$1.documentElement.scrollHeight,
+	                    this.body_el.offsetHeight, document$1.documentElement.offsetHeight,
+	                    this.body_el.clientHeight, document$1.documentElement.clientHeight
 	                );
 	        }
 
 	        // detect CSS compatibility
 	        var ie_ver = this.browser_versions['ie'];
-	        var sample_styles = document.createElement('div').style,
+	        var sample_styles = document$1.createElement('div').style,
 	            is_css_compatible = function(rule) {
 	                if (rule in sample_styles) {
 	                    return true;
@@ -5340,7 +5396,7 @@
 	        video_el.innerHTML = self.video_iframe;
 
 	        var video_ready = function() {
-	            if (window['YT'] && window['YT']['loaded']) {
+	            if (win['YT'] && win['YT']['loaded']) {
 	                self._yt_video_ready();
 	            }
 	            self.showing_video = true;
@@ -5380,7 +5436,7 @@
 	            progress_time = self._get_el('video-time'),
 	            progress_el   = self._get_el('video-progress');
 
-	        new window['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
+	        new win['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
 	            'events': {
 	                'onReady': function(event) {
 	                    var ytplayer = event['target'],
@@ -5397,7 +5453,7 @@
 	                            progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
 	                        };
 	                    update_video_time(0);
-	                    self._video_progress_checker = window.setInterval(function() {
+	                    self._video_progress_checker = win.setInterval(function() {
 	                        var current_time = ytplayer['getCurrentTime']();
 	                        progress_bar.style.width = (current_time / video_duration * 100) + '%';
 	                        update_video_time(current_time);
@@ -5446,6 +5502,7 @@
 	    // MixpanelPeople Exports
 	    MixpanelPeople.prototype['set']           = MixpanelPeople.prototype.set;
 	    MixpanelPeople.prototype['set_once']      = MixpanelPeople.prototype.set_once;
+	    MixpanelPeople.prototype['unset']         = MixpanelPeople.prototype.unset;
 	    MixpanelPeople.prototype['increment']     = MixpanelPeople.prototype.increment;
 	    MixpanelPeople.prototype['append']        = MixpanelPeople.prototype.append;
 	    MixpanelPeople.prototype['union']         = MixpanelPeople.prototype.union;
@@ -5493,7 +5550,7 @@
 
 	                mixpanel_master = instance;
 	                if (init_type === INIT_SNIPPET) {
-	                    window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+	                    win[PRIMARY_INSTANCE_NAME] = mixpanel_master;
 	                }
 	                extend_mp();
 	            }
@@ -5517,7 +5574,7 @@
 
 	        function do_scroll_check() {
 	            try {
-	                document.documentElement.doScroll('left');
+	                document$1.documentElement.doScroll('left');
 	            } catch(e) {
 	                setTimeout(do_scroll_check, 1);
 	                return;
@@ -5526,35 +5583,35 @@
 	            dom_loaded_handler();
 	        }
 
-	        if (document.addEventListener) {
-	            if (document.readyState === 'complete') {
+	        if (document$1.addEventListener) {
+	            if (document$1.readyState === 'complete') {
 	                // safari 4 can fire the DOMContentLoaded event before loading all
 	                // external JS (including this file). you will see some copypasta
 	                // on the internet that checks for 'complete' and 'loaded', but
 	                // 'loaded' is an IE thing
 	                dom_loaded_handler();
 	            } else {
-	                document.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
+	                document$1.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
 	            }
-	        } else if (document.attachEvent) {
+	        } else if (document$1.attachEvent) {
 	            // IE
-	            document.attachEvent('onreadystatechange', dom_loaded_handler);
+	            document$1.attachEvent('onreadystatechange', dom_loaded_handler);
 
 	            // check to make sure we arn't in a frame
 	            var toplevel = false;
 	            try {
-	                toplevel = window.frameElement === null;
+	                toplevel = win.frameElement === null;
 	            } catch(e) {
 	                // noop
 	            }
 
-	            if (document.documentElement.doScroll && toplevel) {
+	            if (document$1.documentElement.doScroll && toplevel) {
 	                do_scroll_check();
 	            }
 	        }
 
 	        // fallback handler, always will work
-	        _.register_event(window, 'load', dom_loaded_handler, true);
+	        _.register_event(win, 'load', dom_loaded_handler, true);
 	    };
 
 	    var add_dom_event_counting_handlers = function(instance) {
@@ -5576,13 +5633,13 @@
 	                console$1.error(e);
 	            }
 	        };
-	        _.register_event(document, 'submit', evtCallback);
-	        _.register_event(document, 'change', evtCallback);
+	        _.register_event(document$1, 'submit', evtCallback);
+	        _.register_event(document$1, 'change', evtCallback);
 	        var mousedownTarget = null;
-	        _.register_event(document, 'mousedown', function(e) {
+	        _.register_event(document$1, 'mousedown', function(e) {
 	            mousedownTarget = e.target;
 	        });
-	        _.register_event(document, 'mouseup', function(e) {
+	        _.register_event(document$1, 'mouseup', function(e) {
 	            if (e.target === mousedownTarget) {
 	                evtCallback(e);
 	            }
