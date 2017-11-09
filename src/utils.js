@@ -336,9 +336,8 @@ _.safewrap = function(f) {
         } catch (e) {
             console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
             if (Config.DEBUG){
-                console.log(e);
+                console.critical(e);
             }
-
         }
     };
 };
