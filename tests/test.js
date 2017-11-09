@@ -1209,7 +1209,7 @@
                 same(get_props_without_distinct_id(mixpanel.test), props, "properties set properly");
             });
 
-            test("register_once", 3, function() {
+            test("register_once", 4, function() {
                 var props = {
                         'hi': 'there'
                     },
@@ -1227,7 +1227,7 @@
 
                 mixpanel.test.register_once({falsey: 0});
                 mixpanel.test.register_once({falsey: 1});
-                same(get_props_without_distinct_id(mixpanel.test), {falsey: 0}, "register_once doesn't override already-set falsey value");
+                ok(contains_obj(get_props_without_distinct_id(mixpanel.test), {falsey: 0}), "register_once doesn't override already-set falsey value");
             });
 
             test("identify", 1, function() {
