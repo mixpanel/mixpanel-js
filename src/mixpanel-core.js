@@ -425,7 +425,7 @@ MixpanelPersistence.prototype.register_once = function(props, default_value, day
         this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
 
         _.each(props, function(val, prop) {
-            if (!this['props'][prop] || this['props'][prop] === default_value) {
+            if (!this['props'].hasOwnProperty(prop) || this['props'][prop] === default_value) {
                 this['props'][prop] = val;
             }
         }, this);
