@@ -1479,6 +1479,8 @@ _.info = {
             return 'Mac OS X';
         } else if (/Linux/.test(a)) {
             return 'Linux';
+        } else if (/CrOS/.test(a)) {
+            return 'Chrome OS';
         } else {
             return '';
         }
