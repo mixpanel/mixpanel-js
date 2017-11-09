@@ -1220,12 +1220,14 @@
                 same(get_props_without_distinct_id(mixpanel.test), {}, "empty before setting");
 
                 mixpanel.test.register_once(props);
-
                 same(get_props_without_distinct_id(mixpanel.test), props, "properties set properly");
 
                 mixpanel.test.register_once(props1);
-
                 same(get_props_without_distinct_id(mixpanel.test), props, "register_once doesn't override already set super property");
+
+                mixpanel.test.register_once({falsey: 0});
+                mixpanel.test.register_once({falsey: 1});
+                same(get_props_without_distinct_id(mixpanel.test), {falsey: 0}, "register_once doesn't override already-set falsey value");
             });
 
             test("identify", 1, function() {
