@@ -68,4 +68,4 @@ In the future we plan to automate the last step with a headless browser to strea
 Mixpanel production releases are tested against a large matrix of browsers and operating systems).
 
 ## Thanks
-For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich
+For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx

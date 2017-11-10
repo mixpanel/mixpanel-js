@@ -1,4 +1,11 @@
-**2.13.0** (25 July 2017)
+**2.14.0** (10 Nov 2017)
+- Add `people.unset()`
+- Identify Chrome OS (for $os property)
+- Bugfix: `register_once()` no longer overwrites previously-registered but falsey values
+- Stub parts of DOM API when loading in non-browser environments (thanks @gfx)
+- Log full "Implementation error" exceptions when DEBUG mode is on
+
+**2.13.0** (25 Jul 2017)
 - Update autotrack editor js path to reflect asset restructuring
 
 **2.12.0** (17 Apr 2017)
