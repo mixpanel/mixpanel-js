@@ -784,7 +784,7 @@ var create_mplib = function(token, config, name) {
  *     mixpanel.library_name.track(...);
  *
  * @param {String} token   Your Mixpanel API token
- * @param {Object} [config]  A dictionary of config options to override
+ * @param {Object} [config]  A dictionary of config options to override. <a href="https://github.com/mixpanel/mixpanel-js/blob/8b2e1f7b/src/mixpanel-core.js#L87-L110">See a list of default config options</a>.
  * @param {String} [name]    The name for the new mixpanel instance that you want created
  */
 MixpanelLib.prototype.init = function (token, config, name) {
@@ -1331,11 +1331,10 @@ MixpanelLib.prototype._register_single = function(prop, value) {
 };
 
 /**
- * Identify a user with a unique ID. All subsequent
- * actions caused by this user will be tied to this unique ID. This
- * property is used to track unique visitors. If the method is
- * never called, then unique visitors will be identified by a UUID
- * generated the first time they visit the site.
+ * Identify a user with a unique ID instead of a Mixpanel
+ * randomly generated distinct_id. If the method is never called,
+ * then unique visitors will be identified by a UUID generated
+ * the first time they visit the site.
  *
  * ### Notes:
  *
@@ -1344,12 +1343,18 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * between IDs at this time, so when you change a user's ID
  * they will appear to be a new user.
  *
- * identify() should not be called to link anonymous activity to
- * subsequent activity when a unique ID is first assigned.
- * Use alias() when a unique ID is first assigned (registration), and
- * use identify() to identify the user with that unique ID on an ongoing
- * basis (e.g., each time a user logs in after registering).
- * Do not call identify() at the same time as alias().
+ * When used alone, mixpanel.identify will change the user's
+ * distinct_id to the unique ID provided. When used in tandem
+ * with mixpanel.alias, it will allow you to identify based on
+ * unique ID and map that back to the original, anonymous
+ * distinct_id given to the user upon her first arrival to your
+ * site (thus connecting anonymous pre-signup activity to
+ * post-signup activity). Though the two work together, do not
+ * call identify() at the same time as alias(). Calling the two
+ * at the same time can cause a race condition, so it is best
+ * practice to call identify on the original, anonymous ID
+ * right after you've aliased it.
+ * <a href="https://mixpanel.com/help/questions/articles/how-should-i-handle-my-user-identity-with-the-mixpanel-javascript-library">Learn more about how mixpanel.identify and mixpanel.alias can be used</a>.
  *
  * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
@@ -1480,9 +1485,17 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // super properties span subdomains
  *       cross_subdomain_cookie:     true
  *
+ *       // debug mode
+ *       debug:                      false
+ *
  *       // if this is true, the mixpanel cookie or localStorage entry
  *       // will be deleted, and no user persistence will take place
  *       disable_persistence:        false
+ *
+ *       // if this is true, Mixpanel will automatically determine
+ *       // City, Region and Country data using the IP address of
+ *       //the client
+ *       ip:                         true
  *
  *       // type of persistent store for super properties (cookie/
  *       // localStorage) if set to 'localStorage', any existing
