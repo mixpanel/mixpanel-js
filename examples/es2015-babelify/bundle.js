@@ -648,8 +648,6 @@ var INIT_SNIPPET = 1;
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-var HTTP_PROTOCOL = 'https:' === _utils.document.location.protocol ? 'https://' : 'http://';
-
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
 var USE_XHR = _utils.window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
@@ -663,10 +661,10 @@ var ENQUEUE_REQUESTS = !USE_XHR && _utils.userAgent.indexOf('MSIE') === -1 && _u
  * Module-level globals
  */
 var DEFAULT_CONFIG = {
-    'api_host': HTTP_PROTOCOL + 'api.mixpanel.com',
-    'app_host': HTTP_PROTOCOL + 'mixpanel.com',
+    'api_host': 'https://api.mixpanel.com',
+    'app_host': 'https://mixpanel.com',
     'autotrack': true,
-    'cdn': HTTP_PROTOCOL + 'cdn.mxpnl.com',
+    'cdn': 'https://cdn.mxpnl.com',
     'cross_subdomain_cookie': true,
     'persistence': 'cookie',
     'persistence_name': '',
