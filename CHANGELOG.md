@@ -1,3 +1,6 @@
+**2.15.0** (17 Jan 2018)
+- Always track over HTTPS.
+
 **2.14.0** (10 Nov 2017)
 - Add `people.unset()`
 - Identify Chrome OS (for $os property)
