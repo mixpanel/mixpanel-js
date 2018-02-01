@@ -1620,16 +1620,20 @@
                 'tag_name': elem.tagName.toLowerCase()
             };
 
-            if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
-                var formFieldValue = this._getFormFieldValue(elem);
-                if (this._includeProperty(elem, formFieldValue)) {
-                    props['value'] = formFieldValue;
+            if (this._includeField(elem)) {
+                if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
+                    var formFieldValue = this._getFormFieldValue(elem);
+                    if (this._includeFieldValue(formFieldValue)) {
+                        props['value'] = formFieldValue;
+                    }
                 }
-            }
 
-            _.each(elem.attributes, function(attr) {
-                props['attr__' + attr.name] = attr.value;
-            });
+                _.each(elem.attributes, function(attr) {
+                    if (this._includeFieldValue(attr.value)) {
+                        props['attr__' + attr.name] = attr.value;
+                    }
+                }, this);
+            }
 
             var nthChild = 1;
             var nthOfType = 1;
@@ -1723,7 +1727,7 @@
             return value;
         },
 
-        _includeProperty: function(input, value) {
+        _includeField: function(input) {
             for (var curEl = input; curEl.parentNode && !this._isTag(curEl, 'body'); curEl = curEl.parentNode) {
                 var classes = this._getClassName(curEl).split(' ');
                 if (_.includes(classes, 'mp-sensitive') || _.includes(classes, 'mp-no-track')) {
@@ -1733,10 +1737,6 @@
 
             if (_.includes(this._getClassName(input).split(' '), 'mp-include')) {
                 return true;
-            }
-
-            if (value === null) {
-                return false;
             }
 
             // don't include hidden or password fields
@@ -1752,6 +1752,14 @@
             var name = input.name || input.id || '';
             var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
             if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
+                return false;
+            }
+
+            return true;
+        },
+
+        _includeFieldValue: function(value) {
+            if (value === null) {
                 return false;
             }
 
@@ -1786,7 +1794,7 @@
                     val = field.value || field.textContent;
                     break;
             }
-            return this._includeProperty(field, val) ? val : null;
+            return this._includeField(field) && this._includeFieldValue(val) ? val : null;
         },
 
         _getFormFieldProperties: function(form) {
@@ -1796,7 +1804,7 @@
                 if (name !== null) {
                     name = '$form_field__' + name;
                     var val = this._getFormFieldValue(field);
-                    if (this._includeProperty(field, val)) {
+                    if (this._includeField(field) && this._includeFieldValue(val)) {
                         var prevFieldVal = formFieldProps[name];
                         if (prevFieldVal !== undefined) { // combine values for inputs of same name
                             formFieldProps[name] = [].concat(prevFieldVal, val);
