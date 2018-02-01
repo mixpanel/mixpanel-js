@@ -233,7 +233,7 @@ describe('Collect Everything system', function() {
     });
   });
 
-  describe('_includeProperty', function() {
+  describe('_includeField', function() {
     let input, parent1, parent2;
 
     beforeEach(function() {
@@ -245,47 +245,38 @@ describe('Collect Everything system', function() {
       document.body.appendChild(parent2);
     });
 
-    it('should return false when the value is null', function() {
-      input.type = 'password';
-      input.className = 'test1 test2';
-      input.value = 'force included password';
-      expect(autotrack._includeProperty(input, null)).to.equal(false);
-    });
-
     it('should include sensitive inputs with class "mp-include"', function() {
       input.type = 'password';
       input.className = 'test1 mp-include test2';
-      expect(autotrack._includeProperty(input, 'some password')).to.equal(true);
-      expect(autotrack._includeProperty(input, null)).to.equal(true);
+      expect(autotrack._includeField(input)).to.equal(true);
     });
 
     it('should never include inputs with class "mp-sensitive"', function() {
       input.type = 'text';
       input.className = 'test1 mp-include mp-sensitive test2';
-      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
-      expect(autotrack._includeProperty(input, null)).to.equal(false);
+      expect(autotrack._includeField(input)).to.equal(false);
     });
 
     it('should not include elements with class "mp-no-track" as properties', function() {
       input.type = 'text';
       input.className = 'test1 mp-no-track test2';
-      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeField(input)).to.equal(false);
     });
 
     it('should not include elements with a parent that have class "mp-no-track" as properties', function() {
       parent2.className = 'mp-no-track';
       input.type = 'text';
-      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeField(input)).to.equal(false);
     });
 
     it('should not include hidden fields', function() {
       input.type = 'hidden';
-      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeField(input)).to.equal(false);
     });
 
     it('should not include password fields', function() {
       input.type = 'password';
-      expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
+      expect(autotrack._includeField(input)).to.equal(false);
     });
 
     it('should not include fields with sensitive names', function() {
@@ -308,29 +299,31 @@ describe('Collect Everything system', function() {
       input.type = 'text';
       sensitiveNames.forEach(name => {
         input.name = name;
-        expect(autotrack._includeProperty(input, 'some value')).to.equal(false);
+        expect(autotrack._includeField(input)).to.equal(false);
       });
-    });
-
-    it('should not include numbers that look like valid credit cards', function() {
-      input.type = 'text';
-      // one for each type on http://www.getcreditcardnumbers.com/
-      const validCCNumbers = ['3419-881002-84912', '30148420855976', '5183792099737678', '6011-5100-8788-7057', '180035601937848', '180072512946394', '4556617778508'];
-      validCCNumbers.forEach(num => {
-        expect(autotrack._includeProperty(input, num)).to.equal(false);
-      });
-    });
-
-    it('should not include values that look like social security numbers', function() {
-      input.type = 'text';
-      input.value = '123-45-6789';
-      expect(autotrack._includeProperty(input, input.value)).to.equal(false);
     });
 
     it('should include non-sensitive inputs', function() {
       input.type = 'text';
-      input.value = 'Josh';
-      expect(autotrack._includeProperty(input, input.value)).to.equal(true);
+      expect(autotrack._includeField(input)).to.equal(true);
+    });
+  });
+
+  describe('_includeFieldValue', function() {
+    it('should return false when the value is null', function() {
+      expect(autotrack._includeFieldValue(null)).to.equal(false);
+    });
+
+    it('should not include numbers that look like valid credit cards', function() {
+      // one for each type on http://www.getcreditcardnumbers.com/
+      const validCCNumbers = ['3419-881002-84912', '30148420855976', '5183792099737678', '6011-5100-8788-7057', '180035601937848', '180072512946394', '4556617778508'];
+      validCCNumbers.forEach(num => {
+        expect(autotrack._includeFieldValue(num)).to.equal(false);
+      });
+    });
+
+    it('should not include values that look like social security numbers', function() {
+      expect(autotrack._includeFieldValue('123-45-6789')).to.equal(false);
     });
   });
 
@@ -380,7 +373,6 @@ describe('Collect Everything system', function() {
         '$form_field__id': 'id',
       });
     });
-
   });
 
   describe('isBrowserSupported', function() {
