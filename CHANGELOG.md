@@ -1,3 +1,6 @@
+**2.16.0** (1 Feb 2018)
+- Prevent Autotrack collecting attrs from password or hidden fields
+
 **2.15.0** (17 Jan 2018)
 - Always track over HTTPS.
 
