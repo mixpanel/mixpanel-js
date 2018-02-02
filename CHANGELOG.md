@@ -1,3 +1,6 @@
+**2.17.0** (2 Feb 2018)
+- Bug fix for Autotrack inadvertently removing form.inputs in certain cases
+
 **2.16.0** (1 Feb 2018)
 - Prevent Autotrack collecting attrs from password or hidden fields
 
