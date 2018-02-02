@@ -1737,18 +1737,22 @@ var autotrack = {
 
         // don't include hidden or password fields
         var type = input.type || '';
-        switch(type.toLowerCase()) {
-            case 'hidden':
-                return false;
-            case 'password':
-                return false;
+        if (typeof type === 'string') { // it's possible for input.type to be a DOM element if input is a form with a child input[name="type"]
+            switch(type.toLowerCase()) {
+                case 'hidden':
+                    return false;
+                case 'password':
+                    return false;
+            }
         }
 
         // filter out data from fields that look like sensitive fields
         var name = input.name || input.id || '';
-        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
-        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
-            return false;
+        if (typeof name === 'string') { // it's possible for input.name or input.id to be a DOM element if input is a form with a child input[name="name"]
+            var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
+            if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
+                return false;
+            }
         }
 
         return true;
