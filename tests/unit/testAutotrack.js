@@ -307,6 +307,39 @@ describe('Collect Everything system', function() {
       input.type = 'text';
       expect(autotrack._includeField(input)).to.equal(true);
     });
+
+    // See https://github.com/mixpanel/mixpanel-js/issues/165
+    // Under specific circumstances a bug caused .replace to be called on a DOM element
+    // instead of a string, removing the element from the page. Ensure this issue is mitigated.
+    it("shouldn't inadvertently replace DOM nodes", function() {
+      // setup
+      let wasReplaceCalled;
+      input.replace = () => {
+        wasReplaceCalled = true;
+      };
+
+      // test
+      wasReplaceCalled = false;
+      parent1.name = input;
+      autotrack._includeField(parent1); // previously this would cause input.replace to be called
+      expect(wasReplaceCalled).to.equal(false);
+      parent1.name = undefined;
+
+      wasReplaceCalled = false;
+      parent1.id = input;
+      autotrack._includeField(parent2); // previously this would cause input.replace to be called
+      expect(wasReplaceCalled).to.equal(false);
+      parent1.id = undefined;
+
+      wasReplaceCalled = false;
+      parent1.type = input;
+      autotrack._includeField(parent2); // previously this would cause input.replace to be called
+      expect(wasReplaceCalled).to.equal(false);
+      parent1.type = undefined;
+
+      // cleanup
+      input.replace = undefined;
+    });
   });
 
   describe('_includeFieldValue', function() {
