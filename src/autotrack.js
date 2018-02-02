@@ -1,9 +1,14 @@
 import { _ } from './utils';
-
-// specifying these locally here since some websites override the global Node var
-// ex: https://www.codingame.com/
-var ELEMENT_NODE = 1;
-var TEXT_NODE = 3;
+import {
+    getClassName,
+    getSafeText,
+    isElementNode,
+    isTag,
+    isTextNode,
+    shouldTrackDomEvent,
+    shouldTrackElement,
+    shouldTrackValue
+} from './autotrack-utils';
 
 var autotrack = {
     _initializedTokens: [],
@@ -14,7 +19,7 @@ var autotrack = {
         } else {
             do {
                 el = el.previousSibling;
-            } while (el && el.nodeType !== ELEMENT_NODE);
+            } while (el && !isElementNode(el));
             return el;
         }
     },
@@ -33,36 +38,18 @@ var autotrack = {
         }
     },
 
-    _getClassName: function(elem) {
-        switch(typeof elem.className) {
-            case 'string':
-                return elem.className;
-            case 'object': // handle cases where className might be SVGAnimatedString or some other type
-                return elem.className.baseVal || elem.getAttribute('class') || '';
-            default: // future proof
-                return '';
-        }
-    },
-
     _getPropertiesFromElement: function(elem) {
         var props = {
-            'classes': this._getClassName(elem).split(' '),
+            'classes': getClassName(elem).split(' '),
             'tag_name': elem.tagName.toLowerCase()
         };
 
-        if (this._includeField(elem)) {
-            if (_.includes(['input', 'select', 'textarea'], elem.tagName.toLowerCase())) {
-                var formFieldValue = this._getFormFieldValue(elem);
-                if (this._includeFieldValue(formFieldValue)) {
-                    props['value'] = formFieldValue;
-                }
-            }
-
+        if (shouldTrackElement(elem)) {
             _.each(elem.attributes, function(attr) {
-                if (this._includeFieldValue(attr.value)) {
+                if (shouldTrackValue(attr.value)) {
                     props['attr__' + attr.name] = attr.value;
                 }
-            }, this);
+            });
         }
 
         var nthChild = 1;
@@ -80,39 +67,6 @@ var autotrack = {
         return props;
     },
 
-    /*
-     * Due to potential reference discrepancies (such as the webcomponents.js polyfill)
-     * We want to match tagNames instead of specific reference because something like element === document.body
-     * won't always work because element might not be a native element.
-     */
-    _isTag: function(el, tag) {
-        return el && el.tagName && el.tagName.toLowerCase() === tag.toLowerCase();
-    },
-
-    _shouldTrackDomEvent: function(element, event) {
-        if (!element || this._isTag(element, 'html') || element.nodeType !== ELEMENT_NODE) {
-            return false;
-        }
-        var tag = element.tagName.toLowerCase();
-        switch (tag) {
-            case 'html':
-                return false;
-            case 'form':
-                return event.type === 'submit';
-            case 'input':
-                if (['button', 'submit'].indexOf(element.getAttribute('type')) === -1) {
-                    return event.type === 'change';
-                } else {
-                    return event.type === 'click';
-                }
-            case 'select':
-            case 'textarea':
-                return event.type === 'change';
-            default:
-                return event.type === 'click';
-        }
-    },
-
     _getDefaultProperties: function(eventType) {
         return {
             '$event_type': eventType,
@@ -122,142 +76,19 @@ var autotrack = {
         };
     },
 
-    _getInputValue: function(input) {
-        var value = null;
-        var type = input.type.toLowerCase();
-        switch(type) {
-            case 'checkbox':
-                if (input.checked) {
-                    value = [input.value];
-                }
-                break;
-            case 'radio':
-                if (input.checked) {
-                    value = input.value;
-                }
-                break;
-            default:
-                value = input.value;
-                break;
-        }
-        return value;
-    },
-
-    _getSelectValue: function(select) {
-        var value;
-        if (select.multiple) {
-            var values = [];
-            _.each(select.querySelectorAll('[selected]'), function(option) {
-                values.push(option.value);
-            });
-            value = values;
-        } else {
-            value = select.value;
-        }
-        return value;
-    },
-
-    _includeField: function(input) {
-        for (var curEl = input; curEl.parentNode && !this._isTag(curEl, 'body'); curEl = curEl.parentNode) {
-            var classes = this._getClassName(curEl).split(' ');
-            if (_.includes(classes, 'mp-sensitive') || _.includes(classes, 'mp-no-track')) {
-                return false;
-            }
-        }
-
-        if (_.includes(this._getClassName(input).split(' '), 'mp-include')) {
-            return true;
-        }
-
-        // don't include hidden or password fields
-        var type = input.type || '';
-        if (typeof type === 'string') { // it's possible for input.type to be a DOM element if input is a form with a child input[name="type"]
-            switch(type.toLowerCase()) {
-                case 'hidden':
-                    return false;
-                case 'password':
-                    return false;
-            }
-        }
-
-        // filter out data from fields that look like sensitive fields
-        var name = input.name || input.id || '';
-        if (typeof name === 'string') { // it's possible for input.name or input.id to be a DOM element if input is a form with a child input[name="name"]
-            var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
-            if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
-                return false;
-            }
-        }
-
-        return true;
-    },
-
-    _includeFieldValue: function(value) {
-        if (value === null) {
-            return false;
-        }
-
-        if (typeof value === 'string') {
-            // check to see if input value looks like a credit card number
-            // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
-            var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
-            if (ccRegex.test((value || '').replace(/[\- ]/g, ''))) {
-                return false;
-            }
-
-            // check to see if input value looks like a social security number
-            var ssnRegex = /(^\d{3}-?\d{2}-?\d{4}$)/;
-            if (ssnRegex.test(value)) {
-                return false;
-            }
-        }
-
-        return true;
-    },
-
-    _getFormFieldValue: function(field) {
-        var val;
-        switch(field.tagName.toLowerCase()) {
-            case 'input':
-                val = this._getInputValue(field);
-                break;
-            case 'select':
-                val = this._getSelectValue(field);
-                break;
-            default:
-                val = field.value || field.textContent;
-                break;
-        }
-        return this._includeField(field) && this._includeFieldValue(val) ? val : null;
-    },
-
-    _getFormFieldProperties: function(form) {
-        var formFieldProps = {};
-        _.each(form.elements, function(field) {
-            var name = field.getAttribute('name') || field.getAttribute('id');
-            if (name !== null) {
-                name = '$form_field__' + name;
-                var val = this._getFormFieldValue(field);
-                if (this._includeField(field) && this._includeFieldValue(val)) {
-                    var prevFieldVal = formFieldProps[name];
-                    if (prevFieldVal !== undefined) { // combine values for inputs of same name
-                        formFieldProps[name] = [].concat(prevFieldVal, val);
-                    } else {
-                        formFieldProps[name] = val;
-                    }
-                }
-            }
-        }, this);
-        return formFieldProps;
-    },
-
     _extractCustomPropertyValue: function(customProperty) {
         var propValues = [];
         _.each(document.querySelectorAll(customProperty['css_selector']), function(matchedElem) {
+            var value;
+
             if (['input', 'select'].indexOf(matchedElem.tagName.toLowerCase()) > -1) {
-                propValues.push(matchedElem['value']);
+                value = matchedElem['value'];
             } else if (matchedElem['textContent']) {
-                propValues.push(matchedElem['textContent']);
+                value = matchedElem['textContent'];
+            }
+
+            if (shouldTrackValue(value)) {
+                propValues.push(value);
             }
         });
         return propValues.join(', ');
@@ -269,7 +100,7 @@ var autotrack = {
             _.each(customProperty['event_selectors'], function(eventSelector) {
                 var eventElements = document.querySelectorAll(eventSelector);
                 _.each(eventElements, function(eventElement) {
-                    if (_.includes(targetElementList, eventElement)) {
+                    if (_.includes(targetElementList, eventElement) && shouldTrackElement(eventElement)) {
                         props[customProperty['name']] = this._extractCustomPropertyValue(customProperty);
                     }
                 }, this);
@@ -290,38 +121,32 @@ var autotrack = {
     _trackEvent: function(e, instance) {
         /*** Don't mess with this code without running IE8 tests on it ***/
         var target = this._getEventTarget(e);
-        if (target.nodeType === TEXT_NODE) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
+        if (isTextNode(target)) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
             target = target.parentNode;
         }
 
-        if (this._shouldTrackDomEvent(target, e)) {
+        if (shouldTrackDomEvent(target, e)) {
             var targetElementList = [target];
             var curEl = target;
-            while (curEl.parentNode && !this._isTag(curEl, 'body')) {
+            while (curEl.parentNode && !isTag(curEl, 'body')) {
                 targetElementList.push(curEl.parentNode);
                 curEl = curEl.parentNode;
             }
 
             var elementsJson = [];
-            var href, elementText, form, explicitNoTrack = false;
-            _.each(targetElementList, function(el, idx) {
+            var href, explicitNoTrack = false;
+            _.each(targetElementList, function(el) {
+                var shouldTrackEl = shouldTrackElement(el);
+
                 // if the element or a parent element is an anchor tag
                 // include the href as a property
                 if (el.tagName.toLowerCase() === 'a') {
                     href = el.getAttribute('href');
-                } else if (el.tagName.toLowerCase() === 'form') {
-                    form = el;
-                }
-                // crawl up to max of 5 nodes to populate text content
-                if (!elementText && idx < 5 && el.textContent) {
-                    var textContent = _.trim(el.textContent);
-                    if (textContent) {
-                        elementText = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
-                    }
+                    href = shouldTrackEl && shouldTrackValue(href) && href;
                 }
 
                 // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
-                var classes = this._getClassName(el).split(' ');
+                var classes = getClassName(el).split(' ');
                 if (_.includes(classes, 'mp-no-track')) {
                     explicitNoTrack = true;
                 }
@@ -331,6 +156,15 @@ var autotrack = {
 
             if (explicitNoTrack) {
                 return false;
+            }
+
+            // only populate text content from target element (not parents)
+            // to prevent text within a sensitive element from being collected
+            // as part of a parent's el.textContent
+            var elementText;
+            var safeElementText = getSafeText(target);
+            if (safeElementText && safeElementText.length) {
+                elementText = safeElementText;
             }
 
             var props = _.extend(
@@ -343,9 +177,6 @@ var autotrack = {
                 this._getCustomProperties(targetElementList)
             );
 
-            if (form && (e.type === 'submit' || e.type === 'click')) {
-                _.extend(props, this._getFormFieldProperties(form));
-            }
             instance.track('$web_event', props);
             return true;
         }

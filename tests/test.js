@@ -606,10 +606,14 @@
                 });
 
                 test("cookie set (expiration time)", 1, function() {
-                    var today = (new Date()).getDate();
+                    var tomorrow = new Date();
+                    tomorrow.setTime(tomorrow.getTime() + (24 * 60 * 60 * 1000));
+
                     var new_cookie_data = mixpanel._.cookie.set("cookie name", "cookie val", 1);
-                    var expiry_GMT = new_cookie_data.match(/; expires=(.*);/, new_cookie_data)[1];
-                    equal(today + 1, new Date(Date.parse(expiry_GMT)).getDate(), "the third parameter for expiration should be in 'days'");
+                    var expiry = new_cookie_data.match(/; expires=(.*);/, new_cookie_data)[1];
+                    expiry = new Date(Date.parse(expiry));
+
+                    equal(expiry.getDate(), tomorrow.getDate(), "the third parameter for expiration should be in 'days'");
                 });
 
                 test("cookie name", 6, function() {

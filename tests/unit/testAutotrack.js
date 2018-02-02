@@ -7,10 +7,6 @@ import nodeLocalStorage from 'node-localstorage';
 import { autotrack } from '../../src/autotrack';
 import { _ } from '../../src/utils';
 
-jsdom({
-  url: 'https://mixpanel.com/about/?query=param'
-});
-
 const triggerMouseEvent = function(node, eventType) {
   node.dispatchEvent(new MouseEvent(eventType, {
     bubbles: true,
@@ -22,7 +18,11 @@ const simulateClick = function(el) {
   triggerMouseEvent(el, "click");
 }
 
-describe('Collect Everything system', function() {
+describe('Autotrack system', function() {
+  jsdom({
+    url: 'https://mixpanel.com/about/?query=param'
+  });
+
   before(function() {
     // jsdom doesn't have support for local/session storage
     // add support using this node implementation
@@ -31,70 +31,6 @@ describe('Collect Everything system', function() {
 
   beforeEach(function() {
     window.sessionStorage.clear();
-  });
-
-  describe('_shouldTrackDomEvent', function() {
-    const _shouldTrackDomEvent = autotrack._shouldTrackDomEvent;
-
-    it('should track "submit" on forms', function() {
-      expect(_shouldTrackDomEvent(document.createElement('form'), {
-        type: 'submit',
-      })).to.equal(true);
-    });
-
-    ['input', 'select', 'textarea'].forEach(tagName => {
-      it('should track "change" on ' + tagName, function() {
-        expect(_shouldTrackDomEvent(document.createElement(tagName), {
-          type: 'change',
-        })).to.equal(true);
-      });
-    });
-
-    ['div', 'sPan', 'A', 'strong', 'table'].forEach(tagName => {
-      it('should track "click" on ' + tagName.toLowerCase() + 's', function() {
-        expect(_shouldTrackDomEvent(document.createElement(tagName), {
-          type: 'click',
-        })).to.equal(true);
-      });
-    });
-
-    it('should track "click" on buttons', function() {
-      const button1 = document.createElement('button');
-      const button2 = document.createElement('input');
-      button2.setAttribute('type', 'button');
-      const button3 = document.createElement('input');
-      button3.setAttribute('type', 'submit');
-      [button1, button2, button3].forEach(button => {
-        expect(_shouldTrackDomEvent(button, {
-          type: 'click',
-        })).to.equal(true);
-      });
-    });
-    it('should protect against bad inputs', function() {
-      expect(_shouldTrackDomEvent(null, {
-        type: 'click',
-      })).to.equal(false);
-      expect(_shouldTrackDomEvent(undefined, {
-        type: 'click',
-      })).to.equal(false);
-      expect(_shouldTrackDomEvent("div", {
-        type: 'click',
-      })).to.equal(false);
-    });
-
-    it('should NOT track click on forms', function() {
-      expect(_shouldTrackDomEvent(document.createElement('form'), {
-        type: 'click',
-      })).to.equal(false);
-    });
-
-    ['html', 'input', 'select', 'textarea'].forEach(tagName => {
-      it('should NOT track click on ' + tagName, function() {
-        expect(_shouldTrackDomEvent(document.createElement(tagName), {
-          type: 'click',
-        })).to.equal(false);
-      });
-    });
   });
 
   describe('_getPropertiesFromElement', function() {
@@ -111,11 +47,11 @@ describe('Collect Everything system', function() {
       sensitiveInput.value = 'test val';
       sensitiveInput.className = 'mp-sensitive';
 
-      hidden = document.createElement('input');
+      hidden = document.createElement('div');
       hidden.setAttribute('type', 'hidden');
       hidden.value = 'hidden val';
 
-      password = document.createElement('input');
+      password = document.createElement('div');
       password.setAttribute('type', 'password');
       password.value = 'password val';
 
@@ -143,22 +79,22 @@ describe('Collect Everything system', function() {
       expect(props['classes']).to.deep.equal(['class1', 'class2', 'class3']);
     });
 
-    it('should contain input value', function() {
+    it('should not collect input value', function() {
       const props = autotrack._getPropertiesFromElement(input);
-      expect(props['value']).to.equal('test val');
+      expect(props['value']).to.equal(undefined);
     });
 
-    it('should strip input value with class "mp-sensitive"', function() {
+    it('should strip element value with class "mp-sensitive"', function() {
       const props = autotrack._getPropertiesFromElement(sensitiveInput);
       expect(props['value']).to.equal(undefined);
     });
 
-    it('should strip hidden input value', function() {
+    it('should strip hidden element value', function() {
       const props = autotrack._getPropertiesFromElement(hidden);
       expect(props['value']).to.equal(undefined);
     });
 
-    it('should strip password input value', function() {
+    it('should strip password element value', function() {
       const props = autotrack._getPropertiesFromElement(password);
       expect(props['value']).to.equal(undefined);
     });
@@ -171,240 +107,6 @@ describe('Collect Everything system', function() {
     it('should contain nth-child', function() {
       const props = autotrack._getPropertiesFromElement(password);
       expect(props['nth_child']).to.equal(7);
-    });
-  });
-
-  describe('_getInputValue', function() {
-    it('should return the value of an input text field', function() {
-      const input = document.createElement('input');
-      input.setAttribute('type', 'text');
-      input.value = 'text val';
-      const val = autotrack._getInputValue(input);
-      expect(val).to.equal('text val');
-    });
-
-    it('should return the value of an input checkbox field only if it is checked', function() {
-      const input = document.createElement('input');
-      input.setAttribute('type', 'checkbox');
-      input.value = 'checkbox val';
-      expect(autotrack._getInputValue(input)).to.equal(null);
-      input.checked = true;
-      expect(autotrack._getInputValue(input)).to.deep.equal(['checkbox val']);
-    });
-
-    it('should return the value of an input radio button if it is checked', function() {
-      const input = document.createElement('input');
-      input.setAttribute('type', 'radio');
-      input.value = 'radio val';
-      expect(autotrack._getInputValue(input)).to.equal(null);
-      input.checked = true;
-      expect(autotrack._getInputValue(input)).to.equal('radio val');
-    });
-  });
-
-  describe('_getSelectValue', function() {
-    it('should return the selected value of a select menu', function() {
-      const select = document.createElement('select');
-      const option1 = document.createElement('option');
-      const option2 = document.createElement('option');
-      option1.value = '1';
-      option2.value = '2';
-      select.appendChild(option1);
-      select.appendChild(option2);
-      expect(autotrack._getSelectValue(select)).to.equal('1');
-      option2.setAttribute('selected', true);
-      expect(autotrack._getSelectValue(select)).to.equal('2');
-    });
-
-    it('should return a list of selected values when multiple is enabled', function() {
-      const select = document.createElement('select');
-      const option1 = document.createElement('option');
-      const option2 = document.createElement('option');
-      select.setAttribute('multiple', true);
-      option1.value = '1';
-      option2.value = '2';
-      select.appendChild(option1);
-      select.appendChild(option2);
-      expect(autotrack._getSelectValue(select)).to.deep.equal([]);
-      option1.setAttribute('selected', true);
-      expect(autotrack._getSelectValue(select)).to.deep.equal(['1']);
-      option2.setAttribute('selected', true);
-      expect(autotrack._getSelectValue(select)).to.deep.equal(['1', '2']);
-    });
-  });
-
-  describe('_includeField', function() {
-    let input, parent1, parent2;
-
-    beforeEach(function() {
-      input = document.createElement('input');
-      parent1 = document.createElement('div');
-      parent2 = document.createElement('div');
-      parent1.appendChild(input);
-      parent2.appendChild(parent1);
-      document.body.appendChild(parent2);
-    });
-
-    it('should include sensitive inputs with class "mp-include"', function() {
-      input.type = 'password';
-      input.className = 'test1 mp-include test2';
-      expect(autotrack._includeField(input)).to.equal(true);
-    });
-
-    it('should never include inputs with class "mp-sensitive"', function() {
-      input.type = 'text';
-      input.className = 'test1 mp-include mp-sensitive test2';
-      expect(autotrack._includeField(input)).to.equal(false);
-    });
-
-    it('should not include elements with class "mp-no-track" as properties', function() {
-      input.type = 'text';
-      input.className = 'test1 mp-no-track test2';
-      expect(autotrack._includeField(input)).to.equal(false);
-    });
-
-    it('should not include elements with a parent that have class "mp-no-track" as properties', function() {
-      parent2.className = 'mp-no-track';
-      input.type = 'text';
-      expect(autotrack._includeField(input)).to.equal(false);
-    });
-
-    it('should not include hidden fields', function() {
-      input.type = 'hidden';
-      expect(autotrack._includeField(input)).to.equal(false);
-    });
-
-    it('should not include password fields', function() {
-      input.type = 'password';
-      expect(autotrack._includeField(input)).to.equal(false);
-    });
-
-    it('should not include fields with sensitive names', function() {
-      const sensitiveNames = [
-        'cc_name',
-        'card-num',
-        'ccnum',
-        'credit-card_number',
-        'credit_card[number]',
-        'csc num',
-        'CVC',
-        'Expiration',
-        'password',
-        'security code',
-        'seccode',
-        'security number',
-        'social sec',
-        'SsN',
-      ];
-      input.type = 'text';
-      sensitiveNames.forEach(name => {
-        input.name = name;
-        expect(autotrack._includeField(input)).to.equal(false);
-      });
-    });
-
-    it('should include non-sensitive inputs', function() {
-      input.type = 'text';
-      expect(autotrack._includeField(input)).to.equal(true);
-    });
-
-    // See https://github.com/mixpanel/mixpanel-js/issues/165
-    // Under specific circumstances a bug caused .replace to be called on a DOM element
-    // instead of a string, removing the element from the page. Ensure this issue is mitigated.
-    it("shouldn't inadvertently replace DOM nodes", function() {
-      // setup
-      let wasReplaceCalled;
-      input.replace = () => {
-        wasReplaceCalled = true;
-      };
-
-      // test
-      wasReplaceCalled = false;
-      parent1.name = input;
-      autotrack._includeField(parent1); // previously this would cause input.replace to be called
-      expect(wasReplaceCalled).to.equal(false);
-      parent1.name = undefined;
-
-      wasReplaceCalled = false;
-      parent1.id = input;
-      autotrack._includeField(parent2); // previously this would cause input.replace to be called
-      expect(wasReplaceCalled).to.equal(false);
-      parent1.id = undefined;
-
-      wasReplaceCalled = false;
-      parent1.type = input;
-      autotrack._includeField(parent2); // previously this would cause input.replace to be called
-      expect(wasReplaceCalled).to.equal(false);
-      parent1.type = undefined;
-
-      // cleanup
-      input.replace = undefined;
-    });
-  });
-
-  describe('_includeFieldValue', function() {
-    it('should return false when the value is null', function() {
-      expect(autotrack._includeFieldValue(null)).to.equal(false);
-    });
-
-    it('should not include numbers that look like valid credit cards', function() {
-      // one for each type on http://www.getcreditcardnumbers.com/
-      const validCCNumbers = ['3419-881002-84912', '30148420855976', '5183792099737678', '6011-5100-8788-7057', '180035601937848', '180072512946394', '4556617778508'];
-      validCCNumbers.forEach(num => {
-        expect(autotrack._includeFieldValue(num)).to.equal(false);
-      });
-    });
-
-    it('should not include values that look like social security numbers', function() {
-      expect(autotrack._includeFieldValue('123-45-6789')).to.equal(false);
-    });
-  });
-
-  describe('_getFormFieldProperties', function() {
-    it('should return a property for each form field', function() {
-      const formHtml = `
-        <input type="text" name="name" placeholder="your name" value="Test name"/>
-        <input type="radio" name="color" value="red" checked/> red <input type="radio" name="color" value="blue" /> blue
-        <input type="checkbox" name="contact" value="phone" checked/> phone <input type="checkbox" name="contact" value="email" checked/> email
-        <select name="city">
-            <option value="ft-worth">Fort Worth</option>
-            <option value="dallas" selected>Dallas</option>
-        </select>
-        <select name="cities-visited" multiple>
-            <option value="ft-worth" selected>Fort Worth</option>
-            <option value="dallas">Dallas</option>
-            <option value="sf" selected>San Francisco</option>
-            <option value="nyc">New York City</option>
-        </select>
-        <textarea id="myTextArea">I have questions</textarea>
-        <input type="submit" value="Submit">
-      `;
-      const form = document.createElement('form');
-      form.innerHTML = formHtml;
-      const formFieldProps = autotrack._getFormFieldProperties(form);
-      expect(formFieldProps).to.deep.equal({
-        '$form_field__name': 'Test name',
-        '$form_field__color': 'red',
-        '$form_field__contact': [ 'phone', 'email' ],
-        '$form_field__city': 'dallas',
-        '$form_field__cities-visited': [ 'ft-worth', 'sf' ],
-        '$form_field__myTextArea': 'I have questions',
-      });
-    });
-
-    it('does not track fields with no name or id', function() {
-      const formHtml = `
-        <input type="text" name="name" value="name"/>
-        <input type="text" id="id" value="id"/>
-        <input type="text" value="nothing"/>
-      `;
-      const form = document.createElement('form');
-      form.innerHTML = formHtml;
-      const formFieldProps = autotrack._getFormFieldProperties(form);
-      expect(formFieldProps).to.deep.equal({
-        '$form_field__name': 'name',
-        '$form_field__id': 'id',
-      });
     });
   });
 
@@ -516,6 +218,12 @@ describe('Collect Everything system', function() {
     let trackedElem;
     let trackedElemChild;
     let untrackedElem;
+    let sensitiveInput;
+    let sensitiveDiv;
+    let prop1;
+    let prop2;
+    let prop3;
+
     before(function() {
       trackedElem = document.createElement('div');
       trackedElem.className = 'ce_event';
@@ -526,18 +234,31 @@ describe('Collect Everything system', function() {
       untrackedElem = document.createElement('div');
       untrackedElem.className = 'untracked_event';
 
-      const prop1 = document.createElement('div');
+      sensitiveInput = document.createElement('input');
+      sensitiveInput.className = 'sensitive_event';
+
+      sensitiveDiv = document.createElement('div');
+      sensitiveDiv.className = 'sensitive_event';
+
+      prop1 = document.createElement('div');
       prop1.className = '_mp_test_property_1';
       prop1.innerHTML = 'Test prop 1';
 
-      const prop2 = document.createElement('div');
+      prop2 = document.createElement('div');
       prop2.className = '_mp_test_property_2';
       prop2.innerHTML = 'Test prop 2';
 
+      prop3 = document.createElement('div');
+      prop3.className = '_mp_test_property_3';
+      prop3.innerHTML = 'Test prop 3';
+
       document.body.appendChild(untrackedElem);
       document.body.appendChild(trackedElem);
+      document.body.appendChild(sensitiveInput);
+      document.body.appendChild(sensitiveDiv);
       document.body.appendChild(prop1);
       document.body.appendChild(prop2);
+      document.body.appendChild(prop3);
 
       autotrack._customProperties = [
         {
@@ -549,6 +270,11 @@ describe('Collect Everything system', function() {
           name: 'Custom Property 2',
           css_selector: 'div._mp_test_property_2',
           event_selectors: ['.event_with_no_element'],
+        },
+        {
+          name: 'Custom Property 3',
+          css_selector: 'div._mp_test_property_3',
+          event_selectors: ['.sensitive_event'],
         },
       ];
     });
@@ -564,6 +290,103 @@ describe('Collect Everything system', function() {
       noCustomProps = autotrack._getCustomProperties([untrackedElem]);
       expect(noCustomProps).to.deep.equal({});
     });
+
+    it('should return no custom properties for sensitive elements', function() {
+      // test password field
+      sensitiveInput.setAttribute('type', 'password');
+      noCustomProps = autotrack._getCustomProperties([sensitiveInput]);
+      expect(noCustomProps).to.deep.equal({});
+      // verify that tracking the sensitive element along with another element only collects
+      // the non-sensitive element's custom properties
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveInput]);
+      expect(customProps).to.deep.equal({'Custom Property 1': 'Test prop 1'});
+
+      // test hidden field
+      sensitiveInput.setAttribute('type', 'hidden');
+      noCustomProps = autotrack._getCustomProperties([sensitiveInput]);
+      expect(noCustomProps).to.deep.equal({});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveInput]);
+      expect(customProps).to.deep.equal({'Custom Property 1': 'Test prop 1'});
+
+      // test field with sensitive-looking name
+      sensitiveInput.setAttribute('type', '');
+      sensitiveInput.setAttribute('name', 'cc'); // cc assumed to indicate credit card field
+      noCustomProps = autotrack._getCustomProperties([sensitiveInput]);
+      expect(noCustomProps).to.deep.equal({});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveInput]);
+      expect(customProps).to.deep.equal({'Custom Property 1': 'Test prop 1'});
+
+      // test field with sensitive-looking id
+      sensitiveInput.setAttribute('name', '');
+      sensitiveInput.setAttribute('id', 'cc'); // cc assumed to indicate credit card field
+      noCustomProps = autotrack._getCustomProperties([sensitiveInput]);
+      expect(noCustomProps).to.deep.equal({});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveInput]);
+      expect(customProps).to.deep.equal({'Custom Property 1': 'Test prop 1'});
+
+      // clean up
+      sensitiveInput.setAttribute('type', '');
+      sensitiveInput.setAttribute('name', '');
+      sensitiveInput.setAttribute('id', '');
+    });
+
+    it('should return no custom properties for element with sensitive values', function() {
+      // verify the base case DOES track the custom property
+      customProps = autotrack._getCustomProperties([sensitiveDiv]);
+      expect(customProps).to.deep.equal({'Custom Property 3': 'Test prop 3'});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveDiv]);
+      expect(customProps).to.deep.equal({
+        'Custom Property 1': 'Test prop 1',
+        'Custom Property 3': 'Test prop 3',
+      });
+
+      // test values that look like credit card numbers
+      prop3.innerHTML = '4111111111111111'; // valid credit card number
+      noCustomProps = autotrack._getCustomProperties([sensitiveDiv]);
+      expect(noCustomProps).to.deep.equal({'Custom Property 3': ''});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveDiv]);
+      expect(customProps).to.deep.equal({
+        'Custom Property 1': 'Test prop 1',
+        'Custom Property 3': '',
+      });
+      prop3.innerHTML = '5105-1051-0510-5100'; // valid credit card number
+      noCustomProps = autotrack._getCustomProperties([sensitiveDiv]);
+      expect(noCustomProps).to.deep.equal({'Custom Property 3': ''});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveDiv]);
+      expect(customProps).to.deep.equal({
+        'Custom Property 1': 'Test prop 1',
+        'Custom Property 3': '',
+      });
+      prop3.innerHTML = '1235-8132-1345-5891'; // invalid credit card number
+      noCustomProps = autotrack._getCustomProperties([sensitiveDiv]);
+      expect(noCustomProps).to.deep.equal({'Custom Property 3': '1235-8132-1345-5891'});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveDiv]);
+      expect(customProps).to.deep.equal({
+        'Custom Property 1': 'Test prop 1',
+        'Custom Property 3': '1235-8132-1345-5891',
+      });
+
+      // test values that look like social-security numbers
+      prop3.innerHTML = '123-58-1321'; // valid SSN
+      noCustomProps = autotrack._getCustomProperties([sensitiveDiv]);
+      expect(noCustomProps).to.deep.equal({'Custom Property 3': ''});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveDiv]);
+      expect(customProps).to.deep.equal({
+        'Custom Property 1': 'Test prop 1',
+        'Custom Property 3': '',
+      });
+      prop3.innerHTML = '1235-81-321'; // invalid SSN
+      noCustomProps = autotrack._getCustomProperties([sensitiveDiv]);
+      expect(noCustomProps).to.deep.equal({'Custom Property 3': '1235-81-321'});
+      customProps = autotrack._getCustomProperties([trackedElem, sensitiveDiv]);
+      expect(customProps).to.deep.equal({
+        'Custom Property 1': 'Test prop 1',
+        'Custom Property 3': '1235-81-321',
+      });
+
+      // clean up
+      prop3.innerHTML = 'Test prop 3';
+    });
   });
 
   describe('_trackEvent', function() {
@@ -578,7 +401,6 @@ describe('Collect Everything system', function() {
 
     beforeEach(function() {
       sandbox = sinon.sandbox.create();
-      sandbox.spy(autotrack, '_getFormFieldProperties');
       lib = {
         _ceElementTextProperties: [],
         track: sandbox.spy(),
@@ -649,7 +471,6 @@ describe('Collect Everything system', function() {
         type: 'click',
       }
       autotrack._trackEvent(e, lib);
-      expect(autotrack._getFormFieldProperties.callCount).to.equal(0);
       expect(lib.track.calledOnce).to.equal(true);
       const trackArgs = lib.track.args[0];
       const event = trackArgs[0];
@@ -670,13 +491,67 @@ describe('Collect Everything system', function() {
       const elGrandparent = document.createElement('a');
       elGrandparent.setAttribute('href', 'http://test.com');
       elGrandparent.appendChild(elParent);
-      const e = {
+      autotrack._trackEvent({
         target: elTarget,
         type: 'click',
-      }
-      autotrack._trackEvent(e, lib);
-      const props = getTrackedProps(lib.track);
-      expect(props).to.have.property('$el_attr__href', 'http://test.com');
+      }, lib);
+      expect(getTrackedProps(lib.track)).to.have.property('$el_attr__href', 'http://test.com');
+    });
+
+    it('does not track href attribute values from password elements', function() {
+      const elTarget = document.createElement('span');
+      const elParent = document.createElement('span');
+      elParent.appendChild(elTarget);
+      const elGrandparent = document.createElement('a');
+      elGrandparent.appendChild(elParent);
+      elGrandparent.setAttribute('type', 'password');
+      autotrack._trackEvent({
+        target: elTarget,
+        type: 'click',
+      }, lib);
+      expect(getTrackedProps(lib.track)).to.have.property('$el_attr__href', false);
+    });
+
+    it('does not track href attribute values from hidden elements', function() {
+      const elTarget = document.createElement('span');
+      const elParent = document.createElement('span');
+      elParent.appendChild(elTarget);
+      const elGrandparent = document.createElement('a');
+      elGrandparent.appendChild(elParent);
+      elGrandparent.setAttribute('type', 'hidden');
+      autotrack._trackEvent({
+        target: elTarget,
+        type: 'click',
+      }, lib);
+      expect(getTrackedProps(lib.track)).to.have.property('$el_attr__href', false);
+    });
+
+    it('does not track href attribute values that look like credit card numbers', function() {
+      const elTarget = document.createElement('span');
+      const elParent = document.createElement('span');
+      elParent.appendChild(elTarget);
+      const elGrandparent = document.createElement('a');
+      elGrandparent.appendChild(elParent);
+      elGrandparent.setAttribute('href', '4111111111111111');
+      autotrack._trackEvent({
+        target: elTarget,
+        type: 'click',
+      }, lib);
+      expect(getTrackedProps(lib.track)).to.have.property('$el_attr__href', false);
+    });
+
+    it('does not track href attribute values that look like social-security numbers', function() {
+      const elTarget = document.createElement('span');
+      const elParent = document.createElement('span');
+      elParent.appendChild(elTarget);
+      const elGrandparent = document.createElement('a');
+      elGrandparent.appendChild(elParent);
+      elGrandparent.setAttribute('href', '123-58-1321');
+      autotrack._trackEvent({
+        target: elTarget,
+        type: 'click',
+      }, lib);
+      expect(getTrackedProps(lib.track)).to.have.property('$el_attr__href', false);
     });
 
     it('correctly identifies and formats text content', function() {
@@ -709,8 +584,9 @@ describe('Collect Everything system', function() {
         also takes up more space and bandwidth.
       </span>
 
-      `
+      `;
       document.body.innerHTML = dom;
+      const span1 = document.getElementById('span1');
       const span2 = document.getElementById('span2');
       const img1 = document.getElementById('img1');
       const img2 = document.getElementById('img2');
@@ -725,7 +601,7 @@ describe('Collect Everything system', function() {
       lib.track.reset();
 
       const e2 = {
-        target: img1,
+        target: span1,
         type: 'click',
       }
       autotrack._trackEvent(e2, lib);
@@ -742,13 +618,62 @@ describe('Collect Everything system', function() {
       expect(props3).to.not.have.property('$el_text');
     });
 
+    it('does not track sensitive text content', function() {
+      const dom = `
+      <div>
+        <span id='span1'> Why 123-58-1321 hello there</span>
+      </div>
+      <span id='span2'>
+        4111111111111111
+        Why hello there
+      </span>
+      <span id='span3'>
+        Why hello there
+        5105-1051-0510-5100
+      </span>
+      `; // ^ valid credit card and social security numbers
+
+      document.body.innerHTML = dom;
+      const span1 = document.getElementById('span1');
+      const span2 = document.getElementById('span2');
+      const span3 = document.getElementById('span3');
+
+      const e1 = {
+        target: span1,
+        type: 'click',
+      }
+      autotrack._trackEvent(e1, lib);
+      const props1 = getTrackedProps(lib.track);
+      expect(props1).to.have.property('$el_text');
+      expect(props1['$el_text']).to.match(/Why\s+hello\s+there/);
+      lib.track.reset();
+
+      const e2 = {
+        target: span2,
+        type: 'click',
+      }
+      autotrack._trackEvent(e2, lib);
+      const props2 = getTrackedProps(lib.track);
+      expect(props2).to.have.property('$el_text');
+      expect(props2['$el_text']).to.match(/Why\s+hello\s+there/);
+      lib.track.reset();
+
+      const e3 = {
+        target: span3,
+        type: 'click',
+      }
+      autotrack._trackEvent(e3, lib);
+      const props3 = getTrackedProps(lib.track);
+      expect(props3).to.have.property('$el_text');
+      expect(props3['$el_text']).to.match(/Why\s+hello\s+there/);
+    });
+
     it('should track a submit event with form field props', function() {
       const e = {
         target: document.createElement('form'),
         type: 'submit',
       }
       autotrack._trackEvent(e, lib);
-      expect(autotrack._getFormFieldProperties.calledOnce).to.equal(true);
       expect(lib.track.calledOnce).to.equal(true);
       const props = getTrackedProps(lib.track);
       expect(props['$event_type']).to.equal('submit');
@@ -767,8 +692,6 @@ describe('Collect Everything system', function() {
         type: 'click',
       }
       autotrack._trackEvent(e, lib);
-      expect(autotrack._getFormFieldProperties.calledOnce).to.equal(true);
-      expect(autotrack._getFormFieldProperties.returned({'$form_field__test input': 'test val'})).to.equal(true);
       expect(lib.track.calledOnce).to.equal(true);
       const props = getTrackedProps(lib.track);
       expect(props['$event_type']).to.equal('click');
