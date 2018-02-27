@@ -1,3 +1,7 @@
+**2.18.0** (27 Feb 2018)
+- Prevent Autotrack collecting attrs from input, textarea, select, contenteditable elements
+- Change Autotrack $el_text property to not contain text of the target element's children
+
 **2.17.0** (2 Feb 2018)
 - Bug fix for Autotrack inadvertently removing form.inputs in certain cases
 
