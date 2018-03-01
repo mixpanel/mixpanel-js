@@ -6,7 +6,14 @@ var win;
 if (typeof(window) === 'undefined') {
     win = {
         navigator: { userAgent: '' },
-        document: { location: {} }
+        document: {
+            location: {
+                hostname: '',
+                href: ''
+            },
+            referrer: ''
+        },
+        screen: { width: 0, height: 0 }
     };
 } else {
     win = window;
@@ -28,6 +35,8 @@ var ArrayProto = Array.prototype,
     windowConsole = win.console,
     navigator = win.navigator,
     document = win.document,
+    windowOpera = win.opera,
+    screen = win.screen,
     userAgent = navigator.userAgent;
 
 var nativeBind = FuncProto.bind,
@@ -1519,13 +1528,13 @@ _.info = {
     properties: function() {
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
-            '$browser': _.info.browser(userAgent, navigator.vendor, window.opera),
+            '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
             '$referrer': document.referrer,
             '$referring_domain': _.info.referringDomain(document.referrer),
             '$device': _.info.device(userAgent)
         }), {
-            '$current_url': window.location.href,
-            '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera),
+            '$current_url': document.location.href,
+            '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
             '$screen_height': screen.height,
             '$screen_width': screen.width,
             'mp_lib': 'web',
@@ -1536,9 +1545,9 @@ _.info = {
     people_properties: function() {
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
-            '$browser': _.info.browser(userAgent, navigator.vendor, window.opera)
+            '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera)
         }), {
-            '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera)
+            '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera)
         });
     },
 
@@ -1546,7 +1555,7 @@ _.info = {
         return _.strip_empty_properties({
             'mp_page': page,
             'mp_referrer': document.referrer,
-            'mp_browser': _.info.browser(userAgent, navigator.vendor, window.opera),
+            'mp_browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
             'mp_platform': _.info.os()
         });
     }
