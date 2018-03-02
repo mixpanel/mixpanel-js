@@ -4,16 +4,17 @@ import Config from './config';
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 var win;
 if (typeof(window) === 'undefined') {
+    var loc = {
+        hostname: ''
+    };
     win = {
         navigator: { userAgent: '' },
         document: {
-            location: {
-                hostname: '',
-                href: ''
-            },
+            location: loc,
             referrer: ''
         },
-        screen: { width: 0, height: 0 }
+        screen: { width: 0, height: 0 },
+        location: loc
     };
 } else {
     win = window;
@@ -1533,7 +1534,7 @@ _.info = {
             '$referring_domain': _.info.referringDomain(document.referrer),
             '$device': _.info.device(userAgent)
         }), {
-            '$current_url': document.location.href,
+            '$current_url': win.location.href,
             '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
             '$screen_height': screen.height,
             '$screen_width': screen.width,
