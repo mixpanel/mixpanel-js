@@ -530,12 +530,10 @@ _.JSONDecode = (function() { // https://github.com/douglascrockford/JSON-js/blob
         },
         text,
         error = function(m) {
-            throw {
-                name: 'SyntaxError',
-                message: m,
-                at: at,
-                text: text
-            };
+            var e = new SyntaxError(m);
+            e.at = at;
+            e.text = text;
+            throw e;
         },
         next = function(c) {
             // If a c parameter is provided, verify that it matches the current character.

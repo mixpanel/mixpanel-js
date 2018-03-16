@@ -950,7 +950,14 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
                     if (req.status === 200) {
                         if (callback) {
                             if (verbose_mode) {
-                                callback(_.JSONDecode(req.responseText));
+                                var response;
+                                try {
+                                    response = _.JSONDecode(req.responseText);
+                                } catch (e) {
+                                    console.error(e);
+                                    return;
+                                }
+                                callback(response);
                             } else {
                                 callback(Number(req.responseText));
                             }
