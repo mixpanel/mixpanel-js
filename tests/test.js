@@ -925,7 +925,7 @@
                         persistence: 'blargh!!!'
                     }, 'ipt1');
                     notOk(!!window.localStorage.getItem(name), "localStorage entry should not exist");
-                    ok(cookie.exists(name), "Cookie should exist");
+                    ok(cookie.exists(name) || mixpanel._.cookie.failure_mode, "Cookie should exist");
 
                     clearLibInstance(mixpanel.ipt1);
                 });
@@ -987,7 +987,7 @@
                     ut1.register({
                         'a': 'b'
                     });
-                    ok(cookie.exists(persistence_name), "cookie should exist");
+                    ok(cookie.exists(persistence_name) || mixpanel._.cookie.failure_mode, "cookie should exist");
 
                     // init same project with localStorage
                     var ut2 = mixpanel.init('UT_TOKEN', {
@@ -1000,7 +1000,7 @@
 
                     ok(contains_obj(ut2.persistence.props, {
                         'a': 'b'
-                    }), "upgrading from cookie should import props");
+                    }) || mixpanel._.cookie.failure_mode, "upgrading from cookie should import props");
                     notOk(cookie.exists('mp_UT_TOKEN_mixpanel'), "upgrading from cookie should remove cookie");
 
                     // send track request from upgraded instance
@@ -1016,7 +1016,7 @@
                     ok('token' in dp, "token included in properties");
                     ok(contains_obj(dp, {
                         'a': 'b'
-                    }), "super properties transferred correctly");
+                    }) || mixpanel._.cookie.failure_mode, "super properties transferred correctly");
                     ok(contains_obj(dp, {
                         'c': 'd'
                     }), "new super properties registered correctly");

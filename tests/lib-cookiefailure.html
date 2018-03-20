@@ -49,6 +49,7 @@
 
                         document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/" + cdomain + secure;
                     };
+                    mixpanel._.cookie.failure_mode = true;
                     testMixpanel(mixpanel);
                 }
             });
