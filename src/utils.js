@@ -525,7 +525,11 @@ _.JSONEncode = (function() {
     };
 })();
 
-_.JSONDecode = (function() { // https://github.com/douglascrockford/JSON-js/blob/master/json_parse.js
+/**
+ * From https://github.com/douglascrockford/JSON-js/blob/master/json_parse.js
+ * Slightly modified to throw a real Error rather than a POJO
+ */
+_.JSONDecode = (function() {
     var at, // The index of the current character
         ch, // The current character
         escapee = {
