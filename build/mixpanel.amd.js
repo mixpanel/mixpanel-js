@@ -2,15 +2,23 @@ define(function () { 'use strict';
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.18.0'
+        LIB_VERSION: '2.19.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
     var win;
     if (typeof(window) === 'undefined') {
+        var loc = {
+            hostname: ''
+        };
         win = {
             navigator: { userAgent: '' },
-            document: { location: {} }
+            document: {
+                location: loc,
+                referrer: ''
+            },
+            screen: { width: 0, height: 0 },
+            location: loc
         };
     } else {
         win = window;
@@ -32,6 +40,8 @@ define(function () { 'use strict';
     var windowConsole = win.console;
     var navigator$1 = win.navigator;
     var document$1 = win.document;
+    var windowOpera = win.opera;
+    var screen = win.screen;
     var userAgent = navigator$1.userAgent;
     var nativeBind = FuncProto.bind;
     var nativeForEach = ArrayProto.forEach;
@@ -517,7 +527,11 @@ define(function () { 'use strict';
         };
     })();
 
-    _.JSONDecode = (function() { // https://github.com/douglascrockford/JSON-js/blob/master/json_parse.js
+    /**
+     * From https://github.com/douglascrockford/JSON-js/blob/master/json_parse.js
+     * Slightly modified to throw a real Error rather than a POJO
+     */
+    _.JSONDecode = (function() {
         var at, // The index of the current character
             ch, // The current character
             escapee = {
@@ -532,12 +546,10 @@ define(function () { 'use strict';
             },
             text,
             error = function(m) {
-                throw {
-                    name: 'SyntaxError',
-                    message: m,
-                    at: at,
-                    text: text
-                };
+                var e = new SyntaxError(m);
+                e.at = at;
+                e.text = text;
+                throw e;
             },
             next = function(c) {
                 // If a c parameter is provided, verify that it matches the current character.
@@ -1521,13 +1533,13 @@ define(function () { 'use strict';
         properties: function() {
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
-                '$browser': _.info.browser(userAgent, navigator$1.vendor, window.opera),
+                '$browser': _.info.browser(userAgent, navigator$1.vendor, windowOpera),
                 '$referrer': document$1.referrer,
                 '$referring_domain': _.info.referringDomain(document$1.referrer),
                 '$device': _.info.device(userAgent)
             }), {
-                '$current_url': window.location.href,
-                '$browser_version': _.info.browserVersion(userAgent, navigator$1.vendor, window.opera),
+                '$current_url': win.location.href,
+                '$browser_version': _.info.browserVersion(userAgent, navigator$1.vendor, windowOpera),
                 '$screen_height': screen.height,
                 '$screen_width': screen.width,
                 'mp_lib': 'web',
@@ -1538,9 +1550,9 @@ define(function () { 'use strict';
         people_properties: function() {
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
-                '$browser': _.info.browser(userAgent, navigator$1.vendor, window.opera)
+                '$browser': _.info.browser(userAgent, navigator$1.vendor, windowOpera)
             }), {
-                '$browser_version': _.info.browserVersion(userAgent, navigator$1.vendor, window.opera)
+                '$browser_version': _.info.browserVersion(userAgent, navigator$1.vendor, windowOpera)
             });
         },
 
@@ -1548,7 +1560,7 @@ define(function () { 'use strict';
             return _.strip_empty_properties({
                 'mp_page': page,
                 'mp_referrer': document$1.referrer,
-                'mp_browser': _.info.browser(userAgent, navigator$1.vendor, window.opera),
+                'mp_browser': _.info.browser(userAgent, navigator$1.vendor, windowOpera),
                 'mp_platform': _.info.os()
             });
         }
@@ -3045,7 +3057,14 @@ define(function () { 'use strict';
                         if (req.status === 200) {
                             if (callback) {
                                 if (verbose_mode) {
-                                    callback(_.JSONDecode(req.responseText));
+                                    var response;
+                                    try {
+                                        response = _.JSONDecode(req.responseText);
+                                    } catch (e) {
+                                        console$1.error(e);
+                                        return;
+                                    }
+                                    callback(response);
                                 } else {
                                     callback(Number(req.responseText));
                                 }

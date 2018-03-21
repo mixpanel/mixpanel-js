@@ -594,7 +594,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.18.0'
+    LIB_VERSION: '2.19.0'
 };
 
 exports['default'] = Config;
@@ -1576,7 +1576,14 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
                     if (req.status === 200) {
                         if (callback) {
                             if (verbose_mode) {
-                                callback(_utils._.JSONDecode(req.responseText));
+                                var response;
+                                try {
+                                    response = _utils._.JSONDecode(req.responseText);
+                                } catch (e) {
+                                    _utils.console.error(e);
+                                    return;
+                                }
+                                callback(response);
                             } else {
                                 callback(Number(req.responseText));
                             }
@@ -4093,9 +4100,17 @@ var _config2 = _interopRequireDefault(_config);
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 var win;
 if (typeof window === 'undefined') {
+    var loc = {
+        hostname: ''
+    };
     exports.window = win = {
         navigator: { userAgent: '' },
-        document: { location: {} }
+        document: {
+            location: loc,
+            referrer: ''
+        },
+        screen: { width: 0, height: 0 },
+        location: loc
     };
 } else {
     exports.window = win = window;
@@ -4115,6 +4130,8 @@ var ArrayProto = Array.prototype,
     windowConsole = win.console,
     navigator = win.navigator,
     document = win.document,
+    windowOpera = win.opera,
+    screen = win.screen,
     userAgent = navigator.userAgent;
 
 var nativeBind = FuncProto.bind,
@@ -4582,8 +4599,11 @@ _.JSONEncode = (function () {
     };
 })();
 
+/**
+ * From https://github.com/douglascrockford/JSON-js/blob/master/json_parse.js
+ * Slightly modified to throw a real Error rather than a POJO
+ */
 _.JSONDecode = (function () {
-    // https://github.com/douglascrockford/JSON-js/blob/master/json_parse.js
     var at,
         // The index of the current character
     ch,
@@ -4600,12 +4620,10 @@ _.JSONDecode = (function () {
     },
         text,
         error = function error(m) {
-        throw {
-            name: 'SyntaxError',
-            message: m,
-            at: at,
-            text: text
-        };
+        var e = new SyntaxError(m);
+        e.at = at;
+        e.text = text;
+        throw e;
     },
         next = function next(c) {
         // If a c parameter is provided, verify that it matches the current character.
@@ -5604,13 +5622,13 @@ _.info = {
     properties: function properties() {
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
-            '$browser': _.info.browser(userAgent, navigator.vendor, window.opera),
+            '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
             '$referrer': document.referrer,
             '$referring_domain': _.info.referringDomain(document.referrer),
             '$device': _.info.device(userAgent)
         }), {
-            '$current_url': window.location.href,
-            '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera),
+            '$current_url': win.location.href,
+            '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
             '$screen_height': screen.height,
             '$screen_width': screen.width,
             'mp_lib': 'web',
@@ -5621,9 +5639,9 @@ _.info = {
     people_properties: function people_properties() {
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
-            '$browser': _.info.browser(userAgent, navigator.vendor, window.opera)
+            '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera)
         }), {
-            '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, window.opera)
+            '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera)
         });
     },
 
@@ -5631,7 +5649,7 @@ _.info = {
         return _.strip_empty_properties({
             'mp_page': page,
             'mp_referrer': document.referrer,
-            'mp_browser': _.info.browser(userAgent, navigator.vendor, window.opera),
+            'mp_browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
             'mp_platform': _.info.os()
         });
     }
