@@ -1,3 +1,7 @@
+**2.19.0** (21 Mar 2018)
+- Clean up handling of JSONDecode errors (thanks @pkaminski)
+- Expand server-side `window` polyfill for loading the lib without errors in Node.js
+
 **2.18.0** (27 Feb 2018)
 - Prevent Autotrack collecting attrs from input, textarea, select, contenteditable elements
 - Change Autotrack $el_text property to not contain text of the target element's children
