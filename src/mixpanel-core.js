@@ -1,8 +1,8 @@
 import Config from './config';
 import { _, console, userAgent, window, document } from './utils';
 import { autotrack } from './autotrack';
-import DomTracker from './dom-tracker';
 import LinkTracker from './link-tracker';
+import FormTracker from './form-tracker';
 import {
     optIn,
     optOut,
@@ -126,27 +126,6 @@ var DEFAULT_CONFIG = {
 };
 
 var DOM_LOADED = false;
-
-/**
- * FormTracker Object
- * @constructor
- * @extends DomTracker
- */
-var FormTracker = function() {
-    this.override_event = 'submit';
-};
-_.inherit(FormTracker, DomTracker);
-
-FormTracker.prototype.event_handler = function(evt, element, options) {
-    options.element = element;
-    evt.preventDefault();
-};
-
-FormTracker.prototype.after_track_handler = function(props, options) {
-    setTimeout(function() {
-        options.element.submit();
-    }, 0);
-};
 
 /**
  * Mixpanel Persistence Object
