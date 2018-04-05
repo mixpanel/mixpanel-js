@@ -79,29 +79,29 @@ MixpanelPersistence.prototype.upgrade = function(config) {
 
     if (upgrade_from_old_lib) {
         old_cookie_name = 'mp_super_properties';
-    // Case where they had a custom cookie name before.
+        // Case where they had a custom cookie name before.
         if (typeof(upgrade_from_old_lib) === 'string') {
             old_cookie_name = upgrade_from_old_lib;
         }
 
         old_cookie = this.storage.parse(old_cookie_name);
 
-    // remove the cookie
+        // remove the cookie
         this.storage.remove(old_cookie_name);
         this.storage.remove(old_cookie_name, true);
 
         if (old_cookie) {
             this['props'] = _.extend(
-        this['props'],
-        old_cookie['all'],
-        old_cookie['events']
-      );
+                this['props'],
+                old_cookie['all'],
+                old_cookie['events']
+            );
         }
     }
 
     if (!config['cookie_name'] && config['name'] !== 'mixpanel') {
-    // special case to handle people with cookies of the form
-    // mp_TOKEN_INSTANCENAME from the first release of this library
+        // special case to handle people with cookies of the form
+        // mp_TOKEN_INSTANCENAME from the first release of this library
         old_cookie_name = 'mp_' + config['token'] + '_' + config['name'];
         old_cookie = this.storage.parse(old_cookie_name);
 
@@ -109,8 +109,8 @@ MixpanelPersistence.prototype.upgrade = function(config) {
             this.storage.remove(old_cookie_name);
             this.storage.remove(old_cookie_name, true);
 
-      // Save the prop values that were in the cookie from before -
-      // this should only happen once as we delete the old one.
+            // Save the prop values that were in the cookie from before -
+            // this should only happen once as we delete the old one.
             this.register_once(old_cookie);
         }
     }
@@ -140,7 +140,7 @@ MixpanelPersistence.prototype.save = function() {
 };
 
 MixpanelPersistence.prototype.remove = function() {
-  // remove both domain and subdomain cookies
+    // remove both domain and subdomain cookies
     this.storage.remove(this.name, false);
     this.storage.remove(this.name, true);
 };
@@ -302,17 +302,17 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         append_q = this._get_or_create_queue(APPEND_ACTION, []);
 
     if (q_key === SET_QUEUE_KEY) {
-    // Update the set queue - we can override any existing values
+        // Update the set queue - we can override any existing values
         _.extend(set_q, q_data);
-    // if there was a pending increment, override it
-    // with the set.
+        // if there was a pending increment, override it
+        // with the set.
         this._pop_from_people_queue(ADD_ACTION, q_data);
-    // if there was a pending union, override it
-    // with the set.
+        // if there was a pending union, override it
+        // with the set.
         this._pop_from_people_queue(UNION_ACTION, q_data);
         this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === SET_ONCE_QUEUE_KEY) {
-    // only queue the data if there is not already a set_once call for it.
+        // only queue the data if there is not already a set_once call for it.
         _.each(q_data, function(v, k) {
             if (!(k in set_once_q)) {
                 set_once_q[k] = v;
@@ -322,7 +322,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
     } else if (q_key === UNSET_QUEUE_KEY) {
         _.each(q_data, function(prop) {
 
-      // undo previously-queued actions on this key
+            // undo previously-queued actions on this key
             _.each([set_q, set_once_q, add_q, union_q], function(enqueued_obj) {
                 if (prop in enqueued_obj) {
                     delete enqueued_obj[prop];

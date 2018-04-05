@@ -13,8 +13,7 @@ import {
     hasOptedIn,
     hasOptedOut,
     clearOptInOut,
-    addOptOutCheckMixpanelLib,
-    addOptOutCheckMixpanelPeople
+    addOptOutCheckMixpanelLib
 } from './gdpr-utils';
 
 /*
@@ -1054,53 +1053,53 @@ MixpanelLib.prototype._show_notification = function(notification_data) {
 
 // perform some housekeeping around GDPR persistence of opt-in/out state
 MixpanelLib.prototype._init_gdpr_persistence = function() {
-  var is_localStorage_requested = this.get_config('opt_out_tracking_persistence_type') === 'localStorage';
+    var is_localStorage_requested = this.get_config('opt_out_tracking_persistence_type') === 'localStorage';
 
-  // try to convert opt-in/out cookies to localStorage if possible
-  if (is_localStorage_requested && _.localStorage.is_supported()) {
-    if (!this.has_opted_in_tracking() && this.has_opted_in_tracking({'persistence_type': 'cookie'})) {
-      this.opt_in_tracking();
+    // try to convert opt-in/out cookies to localStorage if possible
+    if (is_localStorage_requested && _.localStorage.is_supported()) {
+        if (!this.has_opted_in_tracking() && this.has_opted_in_tracking({'persistence_type': 'cookie'})) {
+            this.opt_in_tracking();
+        }
+        if (!this.has_opted_out_tracking() && this.has_opted_out_tracking({'persistence_type': 'cookie'})) {
+            this.opt_out_tracking();
+        }
+        this.clear_opt_in_out_tracking({'persistence_type': 'cookie'});
     }
-    if (!this.has_opted_out_tracking() && this.has_opted_out_tracking({'persistence_type': 'cookie'})) {
-      this.opt_out_tracking();
-    }
-    this.clear_opt_in_out_tracking({'persistence_type': 'cookie'});
-  }
 
-  // check whether we should opt out by default and update persistence accordingly
-  if (this.get_config('opt_out_tracking_by_default') || _.cookie.get('mp_optout')) {
-    _.cookie.remove('mp_optout');
-    this.opt_out_tracking();
-  }
-  this._update_persistence();
+    // check whether we should opt out by default and update persistence accordingly
+    if (this.get_config('opt_out_tracking_by_default') || _.cookie.get('mp_optout')) {
+        _.cookie.remove('mp_optout');
+        this.opt_out_tracking();
+    }
+    this._update_persistence();
 };
 
 // call a base gdpr function after constructing the appropriate token and options args
 MixpanelLib.prototype._call_gdpr_func = function(func, options) {
-  options = _.extend({
-    'track': _.bind(this.track, this),
-    'persistence_type': this.get_config('opt_out_tracking_persistence_type'),
-    'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
-    'cookie_expiration': this.get_config('cookie_expiration'),
-    'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
-    'secure_cookie': this.get_config('secure_cookie')
-  }, options);
+    options = _.extend({
+        'track': _.bind(this.track, this),
+        'persistence_type': this.get_config('opt_out_tracking_persistence_type'),
+        'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
+        'cookie_expiration': this.get_config('cookie_expiration'),
+        'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
+        'secure_cookie': this.get_config('secure_cookie')
+    }, options);
 
-  // check if localStorage can be used for recording opt out status, fall back to cookie if not
-  if (!_.localStorage.is_supported()) {
-    options['persistence_type'] = 'cookie';
-  }
+    // check if localStorage can be used for recording opt out status, fall back to cookie if not
+    if (!_.localStorage.is_supported()) {
+        options['persistence_type'] = 'cookie';
+    }
 
-  return func(this.get_config('token'), {
-    track: options['track'],
-    trackEventName: options['track_event_name'],
-    trackProperties: options['track_properties'],
-    persistenceType: options['persistence_type'],
-    persistencePrefix: options['cookie_prefix'],
-    cookieExpiration: options['cookie_expiration'],
-    crossSubdomainCookie: options['cross_subdomain_cookie'],
-    secureCookie: options['secure_cookie']
-  });
+    return func(this.get_config('token'), {
+        track: options['track'],
+        trackEventName: options['track_event_name'],
+        trackProperties: options['track_properties'],
+        persistenceType: options['persistence_type'],
+        persistencePrefix: options['cookie_prefix'],
+        cookieExpiration: options['cookie_expiration'],
+        crossSubdomainCookie: options['cross_subdomain_cookie'],
+        secureCookie: options['secure_cookie']
+    });
 };
 
 /**
@@ -1132,8 +1131,8 @@ MixpanelLib.prototype._call_gdpr_func = function(func, options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.opt_in_tracking = function(options) {
-  this._call_gdpr_func(optIn, options);
-  this._update_persistence();
+    this._call_gdpr_func(optIn, options);
+    this._update_persistence();
 };
 
 /**
@@ -1159,15 +1158,15 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.opt_out_tracking = function(options) {
-  // delete use and clear charges since these methods may be disabled by opt-out
-  options = _.extend({'delete_user': true}, options);
-  if (options['delete_user'] && this['people'] && this['people']._identify_called()) {
-    this['people'].delete_user();
-    this['people'].clear_charges();
-  }
+    // delete use and clear charges since these methods may be disabled by opt-out
+    options = _.extend({'delete_user': true}, options);
+    if (options['delete_user'] && this['people'] && this['people']._identify_called()) {
+        this['people'].delete_user();
+        this['people'].clear_charges();
+    }
 
-  this._call_gdpr_func(optOut, options);
-  this._update_persistence();
+    this._call_gdpr_func(optOut, options);
+    this._update_persistence();
 };
 
 /**
@@ -1184,7 +1183,7 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
  * @returns {boolean} current opt-in status
  */
 MixpanelLib.prototype.has_opted_in_tracking = function(options) {
-  return this._call_gdpr_func(hasOptedIn, options);
+    return this._call_gdpr_func(hasOptedIn, options);
 };
 
 /**
@@ -1201,7 +1200,7 @@ MixpanelLib.prototype.has_opted_in_tracking = function(options) {
  * @returns {boolean} current opt-out status
  */
 MixpanelLib.prototype.has_opted_out_tracking = function(options) {
-  return this._call_gdpr_func(hasOptedOut, options);
+    return this._call_gdpr_func(hasOptedOut, options);
 };
 
 /**
@@ -1227,12 +1226,9 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
-  this._call_gdpr_func(clearOptInOut, options);
-  this._update_persistence();
+    this._call_gdpr_func(clearOptInOut, options);
+    this._update_persistence();
 };
-
-// Internal class for notification display
-MixpanelLib._Notification = MPNotif;
 
 // EXPORTS (for closure compiler)
 

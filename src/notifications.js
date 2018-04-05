@@ -346,7 +346,7 @@ MPNotif.prototype._init_notification_el = function() {
             '</div>' +
           '</div>';
     } else {
-    // MINI notification
+        // MINI notification
         notification_html =
           '<div id="mini">' +
             '<div id="mainbox">' +

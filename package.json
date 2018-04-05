@@ -43,6 +43,7 @@
     "request": "2.88.0",
     "rollup": "0.25.8",
     "rollup-plugin-npm": "1.4.0",
+    "rollup-plugin-virtual": "1.0.1",
     "sinon": "4.4.2",
     "webpack": "1.12.2"
   },

@@ -52,11 +52,11 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
 
     // update $set object with default people properties
     $set = _.extend(
-    {},
-    _.info.people_properties(),
-    this._mixpanel['persistence'].get_referrer_info(),
-    $set
-  );
+        {},
+        _.info.people_properties(),
+        this._mixpanel['persistence'].get_referrer_info(),
+        $set
+    );
 
     data[SET_ACTION] = $set;
 
