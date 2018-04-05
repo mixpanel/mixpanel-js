@@ -2,6 +2,7 @@ import Config from './config';
 import { _, console, userAgent, window, document } from './utils';
 import { autotrack } from './autotrack';
 import DomTracker from './dom-tracker';
+import LinkTracker from './link-tracker';
 import {
     optIn,
     optOut,
@@ -125,46 +126,6 @@ var DEFAULT_CONFIG = {
 };
 
 var DOM_LOADED = false;
-
-/**
- * LinkTracker Object
- * @constructor
- * @extends DomTracker
- */
-var LinkTracker = function() {
-    this.override_event = 'click';
-};
-_.inherit(LinkTracker, DomTracker);
-
-LinkTracker.prototype.create_properties = function(properties, element) {
-    var props = LinkTracker.superclass.create_properties.apply(this, arguments);
-
-    if (element.href) { props['url'] = element.href; }
-
-    return props;
-};
-
-LinkTracker.prototype.event_handler = function(evt, element, options) {
-    options.new_tab = (
-        evt.which === 2 ||
-        evt.metaKey ||
-        evt.ctrlKey ||
-        element.target === '_blank'
-    );
-    options.href = element.href;
-
-    if (!options.new_tab) {
-        evt.preventDefault();
-    }
-};
-
-LinkTracker.prototype.after_track_handler = function(props, options) {
-    if (options.new_tab) { return; }
-
-    setTimeout(function() {
-        window.location = options.href;
-    }, 0);
-};
 
 /**
  * FormTracker Object
