@@ -318,13 +318,12 @@
         if (!lib_loaded) {
             module("async tracking");
 
-            asyncTest("priority functions", 4, function() {
+            asyncTest("priority functions", 3, function() {
                 untilDone(function(done) {
                     if (test1.properties !== null) {
                         var p = test1.properties;
                         same(p.mp_name_tag, test1.name, "name_tag should fire before track");
                         same(p.distinct_id, test1.id, "identify should fire before track");
-                        ok(!_.isUndefined(p['$__c']), "we should always set the $__c prop if autotrack is enabled");
                         ok(!_.isUndefined(p.$duration), "duration should be set");
                         done();
                     }
