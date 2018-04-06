@@ -1,3 +1,6 @@
+**2.20.0** (6 Apr 2018)
+- Remove obsolete autotrack event count metrics
+
 **2.19.0** (21 Mar 2018)
 - Clean up handling of JSONDecode errors (thanks @pkaminski)
 - Expand server-side `window` polyfill for loading the lib without errors in Node.js
