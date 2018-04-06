@@ -2854,12 +2854,6 @@ var create_mplib = function(token, config, name) {
         } else {
             autotrack.init(instance);
         }
-
-        try {
-            add_dom_event_counting_handlers(instance);
-        } catch (e) {
-            console$1.error(e);
-        }
     }
 
     // if target is not defined, we called init after the lib already
@@ -3230,18 +3224,6 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
         this['persistence'].properties(),
         properties
     );
-
-    try {
-        if (this.get_config('autotrack') && event_name !== 'mp_page_view' && event_name !== '$create_alias') {
-            // The point of $__c is to count how many clicks occur per tracked event. Since we're
-            // tracking an event in this function, we need to reset the $__c value.
-            properties = _.extend({}, properties, this.mp_counts);
-            this.mp_counts = {'$__c': 0};
-            _.cookie.set('mp_' + this.get_config('name') + '__c', 0, 1, true);
-        }
-    } catch (e) {
-        console$1.error(e);
-    }
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_.isArray(property_blacklist)) {
@@ -5599,38 +5581,6 @@ var add_dom_loaded_handler = function() {
 
     // fallback handler, always will work
     _.register_event(win, 'load', dom_loaded_handler, true);
-};
-
-var add_dom_event_counting_handlers = function(instance) {
-    var name = instance.get_config('name');
-
-    instance.mp_counts = instance.mp_counts || {};
-    instance.mp_counts['$__c'] = parseInt(_.cookie.get('mp_' + name + '__c')) || 0;
-
-    var increment_count = function() {
-        instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
-        _.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
-    };
-
-    var evtCallback = function() {
-        try {
-            instance.mp_counts = instance.mp_counts || {};
-            increment_count();
-        } catch (e) {
-            console$1.error(e);
-        }
-    };
-    _.register_event(document$1, 'submit', evtCallback);
-    _.register_event(document$1, 'change', evtCallback);
-    var mousedownTarget = null;
-    _.register_event(document$1, 'mousedown', function(e) {
-        mousedownTarget = e.target;
-    });
-    _.register_event(document$1, 'mouseup', function(e) {
-        if (e.target === mousedownTarget) {
-            evtCallback(e);
-        }
-    });
 };
 
 function init_as_module() {

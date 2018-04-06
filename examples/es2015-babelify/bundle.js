@@ -1364,12 +1364,6 @@ var create_mplib = function create_mplib(token, config, name) {
         } else {
             _autotrack.autotrack.init(instance);
         }
-
-        try {
-            add_dom_event_counting_handlers(instance);
-        } catch (e) {
-            _utils.console.error(e);
-        }
     }
 
     // if target is not defined, we called init after the lib already
@@ -1751,18 +1745,6 @@ MixpanelLib.prototype.track = function (event_name, properties, callback) {
 
     // update properties with pageview info and super-properties
     properties = _utils._.extend({}, _utils._.info.properties(), this['persistence'].properties(), properties);
-
-    try {
-        if (this.get_config('autotrack') && event_name !== 'mp_page_view' && event_name !== '$create_alias') {
-            // The point of $__c is to count how many clicks occur per tracked event. Since we're
-            // tracking an event in this function, we need to reset the $__c value.
-            properties = _utils._.extend({}, properties, this.mp_counts);
-            this.mp_counts = { '$__c': 0 };
-            _utils._.cookie.set('mp_' + this.get_config('name') + '__c', 0, 1, true);
-        }
-    } catch (e) {
-        _utils.console.error(e);
-    }
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_utils._.isArray(property_blacklist)) {
@@ -3998,38 +3980,6 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
 
     // fallback handler, always will work
     _utils._.register_event(_utils.window, 'load', dom_loaded_handler, true);
-};
-
-var add_dom_event_counting_handlers = function add_dom_event_counting_handlers(instance) {
-    var name = instance.get_config('name');
-
-    instance.mp_counts = instance.mp_counts || {};
-    instance.mp_counts['$__c'] = parseInt(_utils._.cookie.get('mp_' + name + '__c')) || 0;
-
-    var increment_count = function increment_count() {
-        instance.mp_counts['$__c'] = (instance.mp_counts['$__c'] || 0) + 1;
-        _utils._.cookie.set('mp_' + name + '__c', instance.mp_counts['$__c'], 1, true);
-    };
-
-    var evtCallback = function evtCallback() {
-        try {
-            instance.mp_counts = instance.mp_counts || {};
-            increment_count();
-        } catch (e) {
-            _utils.console.error(e);
-        }
-    };
-    _utils._.register_event(_utils.document, 'submit', evtCallback);
-    _utils._.register_event(_utils.document, 'change', evtCallback);
-    var mousedownTarget = null;
-    _utils._.register_event(_utils.document, 'mousedown', function (e) {
-        mousedownTarget = e.target;
-    });
-    _utils._.register_event(_utils.document, 'mouseup', function (e) {
-        if (e.target === mousedownTarget) {
-            evtCallback(e);
-        }
-    });
 };
 
 function init_from_snippet() {
