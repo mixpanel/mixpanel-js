@@ -6,3 +6,4 @@ npm-debug.log
 *.swp
 *.ps1
 *.bundle.js
+.nvmrc
