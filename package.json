@@ -1,5 +1,5 @@
 {
-  "name": "mixpanel-browser",
+  "name": "@fintechstudios/mixpanel-browser",
   "version": "2.20.0",
   "description": "The official Mixpanel JavaScript browser client library",
   "main": "build/mixpanel.cjs.js",
@@ -9,10 +9,10 @@
   "scripts": {
     "build": "./build.sh",
     "integration_test": "echo 'Browse to localhost:3000/tests' && node testServer.js",
-    "lint": "./node_modules/eslint/bin/eslint.js ./src",
-    "start": "pushd examples; python -m SimpleHTTPServer; popd",
+    "lint": "eslint ./src",
+    "start": "http-server examples",
     "test": "npm run lint && npm run unit-test",
-    "unit-test": "BABEL_ENV=test ./node_modules/mocha/bin/mocha --compilers js:babel-core/register tests/unit/*.js",
+    "unit-test": "BABEL_ENV=test mocha --compilers js:babel-core/register tests/unit/*.js",
     "validate": "npm ls"
   },
   "repository": {
@@ -35,6 +35,7 @@
     "cookie-parser": "^1.3.4",
     "eslint": "^2.4.0",
     "express": "^4.12.2",
+    "http-server": "^0.11.1",
     "jsdom": "^8.1.0",
     "mocha": "^2.4.5",
     "mocha-jsdom": "^1.1.0",
