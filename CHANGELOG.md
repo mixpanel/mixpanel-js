@@ -1,3 +1,7 @@
+**2.21.0** (20 Apr 2018)
+- Add set of opt in/out utility methods in preparation for GDPR
+  See https://mixpanel.com/help/reference/javascript-full-api-reference for details
+
 **2.20.0** (6 Apr 2018)
 - Remove obsolete autotrack event count metrics
 
