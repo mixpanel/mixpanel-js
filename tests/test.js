@@ -2958,6 +2958,32 @@
                     }, resp);
                 });
 
+                asyncTest('xhr headers should work', 5, function() {
+                    mixpanel.test.set_config({
+                        xhr_headers: {
+                            'x-api-token': 'test-token',
+                            'x-api-key': 'test-key'
+                        }
+                    });
+
+                    // A meaningless request
+                    mixpanel.test.track('test', {}, function(response) {
+                        same(response, 0, "xhr returned error");
+                        start();
+                    });
+
+                    same(this.requests.length, 1, 'track should have fired off a request');
+                    same(Object.keys(this.requests[0].requestHeaders).length, 2, 'both custom headers should be present');
+                    same(this.requests[0].requestHeaders['x-api-token'], 'test-token', 'x-api-token should be set');
+                    same(this.requests[0].requestHeaders['x-api-key'], 'test-key', 'x-api-key should be set');
+
+                    var resp = 'HTTP/1.1 500 Internal Server Error';
+                    this.requests[0].respond(500, {
+                        'Content-Length': resp.length,
+                        'Content-Type': 'text'
+                    }, resp);
+                });
+
                 asyncTest('xhr error handling code supports verbose', 2, function() {
                     mixpanel.test.set_config({
                         verbose: true
