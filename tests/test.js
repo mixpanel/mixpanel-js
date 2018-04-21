@@ -2970,7 +2970,6 @@
 
                 asyncTest('xhr error handling code works', 2, function() {
                     mixpanel.test.track('test', {}, function(response) {
-                        console.log("OTHER ARGS:", arguments);
                         same(response, 0, "xhr returned error");
                         start();
                     });
