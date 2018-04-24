@@ -6,12 +6,12 @@ var Config = {
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
-var win;
+var window$1;
 if (typeof(window) === 'undefined') {
     var loc = {
         hostname: ''
     };
-    win = {
+    window$1 = {
         navigator: { userAgent: '' },
         document: {
             location: loc,
@@ -21,7 +21,7 @@ if (typeof(window) === 'undefined') {
         location: loc
     };
 } else {
-    win = window;
+    window$1 = window;
 }
 
 
@@ -37,11 +37,11 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var windowConsole = win.console;
-var navigator$1 = win.navigator;
-var document$1 = win.document;
-var windowOpera = win.opera;
-var screen = win.screen;
+var windowConsole = window$1.console;
+var navigator$1 = window$1.navigator;
+var document$1 = window$1.document;
+var windowOpera = window$1.opera;
+var screen = window$1.screen;
 var userAgent = navigator$1.userAgent;
 var nativeBind = FuncProto.bind;
 var nativeForEach = ArrayProto.forEach;
@@ -1538,7 +1538,7 @@ _.info = {
             '$referring_domain': _.info.referringDomain(document$1.referrer),
             '$device': _.info.device(userAgent)
         }), {
-            '$current_url': win.location.href,
+            '$current_url': window$1.location.href,
             '$browser_version': _.info.browserVersion(userAgent, navigator$1.vendor, windowOpera),
             '$screen_height': screen.height,
             '$screen_width': screen.width,
@@ -2110,6 +2110,198 @@ var autotrack = {
 _.bind_instance_methods(autotrack);
 _.safewrap_instance_methods(autotrack);
 
+/**
+ * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
+ * @callback trackFunction
+ * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
+ * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
+ * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
+ */
+
+/** Public **/
+
+/**
+ * Opt the user in to data tracking and cookies/localstorage for the given token
+ * @param {string} token - Mixpanel project tracking token
+ * @param {Object} [options]
+ * @param {trackFunction} [options.track] - function used for tracking a Mixpanel event to record the opt-in action
+ * @param {string} [options.trackEventName] - event name to be used for tracking the opt-in action
+ * @param {Object} [options.trackProperties] - set of properties to be tracked along with the opt-in action
+ * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires (default=365)
+ * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
+ * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
+ */
+function optIn(token, options) {
+    _optInOut(true, token, options);
+}
+
+/**
+ * Opt the user out of data tracking and cookies/localstorage for the given token
+ * @param {string} token - Mixpanel project tracking token
+ * @param {Object} [options]
+ * @param {Number} [options.cookieExpiration] - number of days until the opt-out cookie expires (default=365)
+ * @param {boolean} [options.crossSubdomainCookie] - whether the opt-out cookie is set as cross-subdomain or not
+ * @param {boolean} [options.secureCookie] - whether the opt-out cookie is set as secure or not
+ */
+function optOut(token, options) {
+    _optInOut(false, token, options);
+}
+
+/**
+ * Check whether the user has opted in to data tracking and cookies/localstorage for the given token
+ * @param {string} token - Mixpanel project tracking token
+ * @returns {boolean} whether the user has opted in to the given opt type
+ */
+function hasOptedIn(token) {
+    return _getOptInOutCookieValue(token) === '1';
+}
+
+/**
+ * Check whether the user has opted out of data tracking and cookies/localstorage for the given token
+ * @param {string} token - Mixpanel project tracking token
+ * @returns {boolean} whether the user has opted out of the given opt type
+ */
+function hasOptedOut(token) {
+    if (_hasDoNotTrackFlagOn()) {
+        return true;
+    }
+    return _getOptInOutCookieValue(token) === '0';
+}
+
+/**
+ * Wrap a MixpanelLib method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
+ * If the user has opted out, return early instead of executing the method.
+ * If a callback argument was provided, execute it passing the 0 error code.
+ * @param {function} method - wrapped method to be executed if the user has not opted out
+ * @returns {*} the result of executing method OR undefined if the user has opted out
+ */
+function addOptOutCheckMixpanelLib(method) {
+    return _addOptOutCheck(method, function() {
+        return this.get_config('token');
+    });
+}
+
+/**
+ * Wrap a MixpanelPeople method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
+ * If the user has opted out, return early instead of executing the method.
+ * If a callback argument was provided, execute it passing the 0 error code.
+ * @param {function} method - wrapped method to be executed if the user has not opted out
+ * @returns {*} the result of executing method OR undefined if the user has opted out
+ */
+function addOptOutCheckMixpanelPeople(method) {
+    return _addOptOutCheck(method, function() {
+        return this._get_config('token');
+    });
+}
+
+/**
+ * Clear the user's opt in/out status of data tracking and cookies/localstorage for the given token
+ * @param {string} token - Mixpanel project tracking token
+ * @param {Object} [options]
+ * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires (default=365)
+ * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
+ * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
+ */
+function clearOptInOut(token, options) {
+    options = options || {};
+    _.cookie.remove(_getOptInOutCookieName(token), !!options.crossSubdomainCookie);
+}
+
+/** Private **/
+
+/**
+ * Get the name of the cookie that is used for the given opt type (tracking, cookie, etc.)
+ * @param {string} token - Mixpanel project tracking token
+ * @returns {string} the name of the cookie for the given opt type
+ */
+function _getOptInOutCookieName(token) {
+    return '__mp_opt_in_out_' + token;
+}
+
+/**
+ * Get the value of the cookie that is used for the given opt type (tracking, cookie, etc.)
+ * @param {string} token - Mixpanel project tracking token
+ * @returns {string} the value of the cookie for the given opt type
+ */
+function _getOptInOutCookieValue(token) {
+    return _.cookie.get(_getOptInOutCookieName(token));
+}
+
+/**
+ * Check whether the user has set the DNT/doNotTrack setting to true in their browser
+ * @returns {boolean} whether the DNT setting is true
+ */
+function _hasDoNotTrackFlagOn() {
+    return !!(window$1.navigator && window$1.navigator.doNotTrack === '1');
+}
+
+/**
+ * Set a cookie for the user indicating that they are opted in or out for the given opt type
+ * @param {boolean} optValue - whether to opt the user in or out for the given opt type
+ * @param {string} token - Mixpanel project tracking token
+ * @param {Object} [options]
+ * @param {trackFunction} [options.track] - function used for tracking a Mixpanel event to record the opt-in action
+ * @param {string} [options.trackEventName] - event name to be used for tracking the opt-in action
+ * @param {Object} [options.trackProperties] - set of properties to be tracked along with the opt-in action
+ * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires (default=365)
+ * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
+ * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
+ */
+function _optInOut(optValue, token, options) {
+    if (!_.isString(token) || !token.length) {
+        console.error('gdpr.' + (optValue ? 'optIn' : 'optOut') + ' called with an invalid token');
+        return;
+    }
+
+    options = options || {};
+
+    _.cookie.set(
+        _getOptInOutCookieName(token),
+        optValue ? 1 : 0,
+        _.isNumber(options.cookieExpiration) ? options.cookieExpiration : null,
+        !!options.crossSubdomainCookie,
+        !!options.secureCookie
+    );
+
+    if (options.track && optValue) { // only track event if opting in (optValue=true)
+        options.track(options.trackEventName || '$opt_in', options.trackProperties);
+    }
+}
+
+/**
+ * Wrap a method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
+ * If the user has opted out, return early instead of executing the method.
+ * If a callback argument was provided, execute it passing the 0 error code.
+ * @param {function} method - wrapped method to be executed if the user has not opted out
+ * @param {function} getToken - getter function for the Mixpanel API token to be checked for opt-out
+ * @returns {*} the result of executing method OR undefined if the user has opted out
+ */
+function _addOptOutCheck(method, getToken) {
+    return function() {
+        var optedOut = false;
+
+        try {
+            var token = getToken.call(this);
+            if (token) { // if there was an issue getting the token, continue method execution as normal
+                optedOut = hasOptedOut(token);
+            }
+        } catch(err) {
+            console.error('Unexpected error when checking tracking opt-out status: ' + err);
+        }
+
+        if (!optedOut) {
+            return method.apply(this, arguments);
+        }
+
+        var callback = arguments[arguments.length - 1];
+        if (typeof(callback) === 'function') {
+            callback(0);
+        }
+
+        return;
+    };
+}
+
 /*
  * Mixpanel JS Library
  *
@@ -2181,7 +2373,7 @@ var INIT_SNIPPET = 1;
  */
     // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
     // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-var USE_XHR = (win.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
+var USE_XHR = (window$1.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 
     // IE<10 does not support cross-origin XHR's but script tags
     // with defer won't block window.onload; ENQUEUE_REQUESTS
@@ -2192,30 +2384,31 @@ var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAg
  * Module-level globals
  */
 var DEFAULT_CONFIG = {
-    'api_host':               'https://api.mixpanel.com',
-    'app_host':               'https://mixpanel.com',
-    'autotrack':              true,
-    'cdn':                    'https://cdn.mxpnl.com',
-    'cross_subdomain_cookie': true,
-    'persistence':            'cookie',
-    'persistence_name':       '',
-    'cookie_name':            '',
-    'loaded':                 function() {},
-    'store_google':           true,
-    'save_referrer':          true,
-    'test':                   false,
-    'verbose':                false,
-    'img':                    false,
-    'track_pageview':         true,
-    'debug':                  false,
-    'track_links_timeout':    300,
-    'cookie_expiration':      365,
-    'upgrade':                false,
-    'disable_persistence':    false,
-    'disable_cookie':         false,
-    'secure_cookie':          false,
-    'ip':                     true,
-    'property_blacklist':     []
+    'api_host':                    'https://api.mixpanel.com',
+    'app_host':                    'https://mixpanel.com',
+    'autotrack':                   true,
+    'cdn':                         'https://cdn.mxpnl.com',
+    'cross_subdomain_cookie':      true,
+    'persistence':                 'cookie',
+    'persistence_name':            '',
+    'cookie_name':                 '',
+    'loaded':                      function() {},
+    'store_google':                true,
+    'save_referrer':               true,
+    'test':                        false,
+    'verbose':                     false,
+    'img':                         false,
+    'track_pageview':              true,
+    'debug':                       false,
+    'track_links_timeout':         300,
+    'cookie_expiration':           365,
+    'upgrade':                     false,
+    'disable_persistence':         false,
+    'disable_cookie':              false,
+    'secure_cookie':               false,
+    'ip':                          true,
+    'opt_out_tracking_by_default': false,
+    'property_blacklist':          []
 };
 
 var DOM_LOADED = false;
@@ -2260,7 +2453,7 @@ DomTracker.prototype.track = function(query, event_name, properties, user_callba
             that.event_handler(e, this, options);
 
             // in case the mixpanel servers don't get back to us in time
-            win.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
+            window$1.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
 
             // fire the tracking event
             that.mp.track(event_name, props, that.track_callback(user_callback, props, options));
@@ -2343,7 +2536,7 @@ LinkTracker.prototype.after_track_handler = function(props, options) {
     if (options.new_tab) { return; }
 
     setTimeout(function() {
-        win.location = options.href;
+        window$1.location = options.href;
     }, 0);
 };
 
@@ -2633,6 +2826,8 @@ MixpanelPersistence.prototype.set_disabled = function(disabled) {
     this.disabled = disabled;
     if (this.disabled) {
         this.remove();
+    } else {
+        this.save();
     }
 };
 
@@ -2931,10 +3126,24 @@ MixpanelLib.prototype._init = function(token, config, name) {
     };
 
     this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
+
+    // check whether we should opt out by default and update persistence accordingly
+    if (this.get_config('opt_out_tracking_by_default') || _.cookie.get('mp_optout')) {
+        this.opt_out_tracking();
+    }
+    this._update_persistence();
+
     this.register_once({'distinct_id': _.UUID()}, '');
 };
 
 // Private methods
+
+MixpanelLib.prototype._update_persistence = function() {
+    var disablePersistence = this.get_config('disable_persistence') || this.has_opted_out_tracking();
+    if (this['persistence'].disabled !== disablePersistence) {
+        this['persistence'].set_disabled(disablePersistence);
+    }
+};
 
 MixpanelLib.prototype._loaded = function() {
     this.get_config('loaded')(this);
@@ -2950,9 +3159,13 @@ MixpanelLib.prototype._dom_loaded = function() {
     _.each(this.__dom_loaded_queue, function(item) {
         this._track_dom.apply(this, item);
     }, this);
-    _.each(this.__request_queue, function(item) {
-        this._send_request.apply(this, item);
-    }, this);
+
+    if (!this.has_opted_out_tracking()) {
+        _.each(this.__request_queue, function(item) {
+            this._send_request.apply(this, item);
+        }, this);
+    }
+
     delete this.__dom_loaded_queue;
     delete this.__request_queue;
 };
@@ -3181,7 +3394,7 @@ MixpanelLib.prototype.disable = function(events) {
  * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  */
-MixpanelLib.prototype.track = function(event_name, properties, callback) {
+MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, callback) {
     if (typeof(callback) !== 'function') {
         callback = function() {};
     }
@@ -3253,7 +3466,7 @@ MixpanelLib.prototype.track = function(event_name, properties, callback) {
     );
 
     return truncated_data;
-};
+});
 
 /**
  * Track a page view event, which is currently ignored by the server.
@@ -3687,8 +3900,12 @@ MixpanelLib.prototype._event_is_disabled = function(event_name) {
         _.include(this.__disabled_events, event_name);
 };
 
-MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
-    if (!distinct_id || this._flags.identify_called || this.get_config('disable_notifications')) {
+MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLib(function(distinct_id) {
+    if (
+        !distinct_id ||
+        this._flags.identify_called ||
+        this.get_config('disable_notifications')
+    ) {
         return;
     }
 
@@ -3711,12 +3928,140 @@ MixpanelLib.prototype._check_and_handle_notifications = function(distinct_id) {
             }
         })
     );
-};
+});
 
 MixpanelLib.prototype._show_notification = function(notification_data) {
     var notification = new MPNotif(notification_data, this);
     notification.show();
 };
+
+MixpanelLib.prototype._call_gdpr_func = function(func, options) {
+    // call a base gdpr function after constructing the appropriate token and options args
+    // and then update persistence to reflect the new opt in/out status.
+    options = _.extend({
+        'track': _.bind(this.track, this),
+        'cookie_expiration': this.get_config('cookie_expiration'),
+        'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
+        'secure_cookie': this.get_config('secure_cookie')
+    }, options);
+
+    func(this.get_config('token'), {
+        track: options['track'],
+        trackEventName: options['track_event_name'],
+        trackProperties: options['track_properties'],
+        cookieExpiration: options['cookie_expiration'],
+        crossSubdomainCookie: options['cross_subdomain_cookie'],
+        secureCookie: options['secure_cookie']
+    });
+
+    this._update_persistence();
+};
+
+/**
+ * Opt the user in to data tracking and cookies/localstorage for this Mixpanel instance
+ *
+ * ### Usage
+ *
+ *     // opt user in
+ *     mixpanel.opt_in_tracking();
+ *
+ *     // opt user in with specific event name, properties, cookie configuration
+ *     mixpanel.opt_in_tracking({
+ *         track_event_name: 'User opted in',
+ *         track_event_properties: {
+ *             'Email': 'jdoe@example.com'
+ *         },
+ *         cookie_expiration: 30,
+ *         secure_cookie: true
+ *     });
+ *
+ * @param {Object} [options] A dictionary of config options to override
+ * @param {trackFunction} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
+ * @param {string} [options.track_event_name] Event name to be used for tracking the opt-in action (default="$opt_in")
+ * @param {Object} [options.track_properties] Set of properties to be tracked along with the opt-in action (default={})
+ * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (default=365, or value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (default=true, or value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (default=false, or value specified in this Mixpanel instance's config)
+ */
+MixpanelLib.prototype.opt_in_tracking = function(options) {
+    this._call_gdpr_func(optIn, options);
+};
+
+/**
+ * Opt the user out of data tracking and cookies/localstorage for this Mixpanel instance
+ *
+ * ### Usage
+ *
+ *     // opt user out
+ *     mixpanel.opt_out_tracking();
+ *
+ *     // opt user out with different cookie configuration from Mixpanel instance
+ *     mixpanel.opt_out_tracking({
+ *         cookie_expiration: 30,
+ *         secure_cookie: true
+ *     });
+ *
+ * @param {Object} [options] A dictionary of config options to override
+ * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (default=365, or value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (default=true, or value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (default=false, or value specified in this Mixpanel instance's config)
+ */
+MixpanelLib.prototype.opt_out_tracking = function(options) {
+    this._call_gdpr_func(optOut, options);
+};
+
+/**
+ * Check whether the user has opted in to data tracking and cookies/localstorage for this Mixpanel instance
+ *
+ * ### Usage
+ *
+ *     var has_opted_in = mixpanel.has_opted_in_tracking();
+ *     // use has_opted_in value
+ *
+ * @returns {boolean} current opt-in status
+ */
+MixpanelLib.prototype.has_opted_in_tracking = function() {
+    return hasOptedIn(this.get_config('token'));
+};
+
+/**
+ * Check whether the user has opted out of data tracking and cookies/localstorage for this Mixpanel instance
+ *
+ * ### Usage
+ *
+ *     var has_opted_out = mixpanel.has_opted_out_tracking();
+ *     // use has_opted_out value
+ *
+ * @returns {boolean} current opt-out status
+ */
+MixpanelLib.prototype.has_opted_out_tracking = function() {
+    return hasOptedOut(this.get_config('token'));
+};
+
+/**
+ * Clear the user's opt in/out status of data tracking and cookies/localstorage for this Mixpanel instance
+ *
+ * ### Usage
+ *
+ *     // clear user's opt-in/out status
+ *     mixpanel.clear_opt_in_out_tracking();
+ *
+ *     // clear user's opt-in/out status with specific cookie configuration - should match
+ *     // configuration used when opt_in_tracking/opt_out_tracking methods were called.
+ *     mixpanel.clear_opt_in_out_tracking({
+ *         cookie_expiration: 30,
+ *         secure_cookie: true
+ *     });
+ *
+ * @param {Object} [options] A dictionary of config options to override
+ * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (default=365, or value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (default=true, or value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (default=false, or value specified in this Mixpanel instance's config)
+ */
+MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
+    this._call_gdpr_func(clearOptInOut, options);
+};
+
 
 MixpanelPeople.prototype._init = function(mixpanel_instance) {
     this._mixpanel = mixpanel_instance;
@@ -3741,7 +4086,7 @@ MixpanelPeople.prototype._init = function(mixpanel_instance) {
  * @param {*} [to] A value to set on the given property name
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.set = function(prop, to, callback) {
+MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
     var data = {};
     var $set = {};
     if (_.isObject(prop)) {
@@ -3771,7 +4116,7 @@ MixpanelPeople.prototype.set = function(prop, to, callback) {
     data[SET_ACTION] = $set;
 
     return this._send_request(data, callback);
-};
+});
 
 /*
  * Set properties on a user record, only if they do not yet exist.
@@ -3794,7 +4139,7 @@ MixpanelPeople.prototype.set = function(prop, to, callback) {
  * @param {*} [to] A value to set on the given property name
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.set_once = function(prop, to, callback) {
+MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
     var data = {};
     var $set_once = {};
     if (_.isObject(prop)) {
@@ -3809,7 +4154,7 @@ MixpanelPeople.prototype.set_once = function(prop, to, callback) {
     }
     data[SET_ONCE_ACTION] = $set_once;
     return this._send_request(data, callback);
-};
+});
 
 /*
  * Unset properties on a user record (permanently removes the properties and their values from a profile).
@@ -3867,7 +4212,7 @@ MixpanelPeople.prototype.unset = function(prop, callback) {
  * @param {Number} [by] An amount to increment the given property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.increment = function(prop, by, callback) {
+MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop, by, callback) {
     var data = {};
     var $add = {};
     if (_.isObject(prop)) {
@@ -3893,7 +4238,7 @@ MixpanelPeople.prototype.increment = function(prop, by, callback) {
     data[ADD_ACTION] = $add;
 
     return this._send_request(data, callback);
-};
+});
 
 /*
  * Append a value to a list-valued people analytics property.
@@ -3914,7 +4259,7 @@ MixpanelPeople.prototype.increment = function(prop, by, callback) {
  * @param {*} [value] An item to append to the list
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.append = function(list_name, value, callback) {
+MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
     var data = {};
     var $append = {};
     if (_.isObject(list_name)) {
@@ -3930,7 +4275,7 @@ MixpanelPeople.prototype.append = function(list_name, value, callback) {
     data[APPEND_ACTION] = $append;
 
     return this._send_request(data, callback);
-};
+});
 
 /*
  * Merge a given list with a list-valued people analytics property,
@@ -3958,7 +4303,7 @@ MixpanelPeople.prototype.append = function(list_name, value, callback) {
  * @param {*} [value] Value / values to merge with the given property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.union = function(list_name, values, callback) {
+MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name, values, callback) {
     var data = {};
     var $union = {};
     if (_.isObject(list_name)) {
@@ -3974,7 +4319,7 @@ MixpanelPeople.prototype.union = function(list_name, values, callback) {
     data[UNION_ACTION] = $union;
 
     return this._send_request(data, callback);
-};
+});
 
 /*
  * Record that you have charged the current user a certain amount
@@ -3995,7 +4340,7 @@ MixpanelPeople.prototype.union = function(list_name, values, callback) {
  * @param {Object} [properties] An associative array of properties associated with the charge
  * @param {Function} [callback] If provided, the callback will be called when the server responds
  */
-MixpanelPeople.prototype.track_charge = function(amount, properties, callback) {
+MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(amount, properties, callback) {
     if (!_.isNumber(amount)) {
         amount = parseFloat(amount);
         if (isNaN(amount)) {
@@ -4007,7 +4352,7 @@ MixpanelPeople.prototype.track_charge = function(amount, properties, callback) {
     return this.append('$transactions', _.extend({
         '$amount': amount
     }, properties), callback);
-};
+});
 
 /*
  * Permanently clear all revenue report transactions from the
@@ -4422,7 +4767,7 @@ MPNotif.prototype._attach_and_animate = _.safewrap(function() {
             self.dismiss();
             if (self.clickthrough) {
                 self._track_event('$campaign_open', {'$resource_type': 'link'}, function() {
-                    win.location.href = self.dest_url;
+                    window$1.location.href = self.dest_url;
                 });
             }
         }
@@ -5120,7 +5465,7 @@ MPNotif.prototype._init_video = _.safewrap(function() {
     var self = this;
 
     // Youtube iframe API compatibility
-    self.yt_custom = 'postMessage' in win;
+    self.yt_custom = 'postMessage' in window$1;
 
     self.dest_url = self.video_url;
     var youtube_match = self.video_url.match(
@@ -5135,7 +5480,7 @@ MPNotif.prototype._init_video = _.safewrap(function() {
         self.youtube_video = youtube_match[1];
 
         if (self.yt_custom) {
-            win['onYouTubeIframeAPIReady'] = function() {
+            window$1['onYouTubeIframeAPIReady'] = function() {
                 if (self._get_el('video-frame')) {
                     self._yt_video_ready();
                 }
@@ -5254,7 +5599,7 @@ MPNotif.prototype._preload_images = function(all_loaded_cb) {
 };
 
 MPNotif.prototype._remove_notification_el = _.safewrap(function() {
-    win.clearInterval(this._video_progress_checker);
+    window$1.clearInterval(this._video_progress_checker);
     this.notification_el.style.visibility = 'hidden';
     this.body_el.removeChild(this.notification_el);
 });
@@ -5268,7 +5613,7 @@ MPNotif.prototype._set_client_config = function() {
     this.browser_versions['chrome']  = get_browser_version(/Chrome\/(\d+)/);
     this.browser_versions['firefox'] = get_browser_version(/Firefox\/(\d+)/);
     this.browser_versions['ie']      = get_browser_version(/MSIE (\d+).+/);
-    if (!this.browser_versions['ie'] && !(win.ActiveXObject) && 'ActiveXObject' in win) {
+    if (!this.browser_versions['ie'] && !(window$1.ActiveXObject) && 'ActiveXObject' in window$1) {
         this.browser_versions['ie'] = 11;
     }
 
@@ -5365,7 +5710,7 @@ MPNotif.prototype._switch_to_video = _.safewrap(function() {
     video_el.innerHTML = self.video_iframe;
 
     var video_ready = function() {
-        if (win['YT'] && win['YT']['loaded']) {
+        if (window$1['YT'] && window$1['YT']['loaded']) {
             self._yt_video_ready();
         }
         self.showing_video = true;
@@ -5405,7 +5750,7 @@ MPNotif.prototype._yt_video_ready = _.safewrap(function() {
         progress_time = self._get_el('video-time'),
         progress_el   = self._get_el('video-progress');
 
-    new win['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
+    new window$1['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
         'events': {
             'onReady': function(event) {
                 var ytplayer = event['target'],
@@ -5422,7 +5767,7 @@ MPNotif.prototype._yt_video_ready = _.safewrap(function() {
                         progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
                     };
                 update_video_time(0);
-                self._video_progress_checker = win.setInterval(function() {
+                self._video_progress_checker = window$1.setInterval(function() {
                     var current_time = ytplayer['getCurrentTime']();
                     progress_bar.style.width = (current_time / video_duration * 100) + '%';
                     update_video_time(current_time);
@@ -5460,6 +5805,11 @@ MixpanelLib.prototype['get_distinct_id']                 = MixpanelLib.prototype
 MixpanelLib.prototype['toString']                        = MixpanelLib.prototype.toString;
 MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
 MixpanelLib.prototype['_show_notification']              = MixpanelLib.prototype._show_notification;
+MixpanelLib.prototype['opt_out_tracking']                = MixpanelLib.prototype.opt_out_tracking;
+MixpanelLib.prototype['opt_in_tracking']                 = MixpanelLib.prototype.opt_in_tracking;
+MixpanelLib.prototype['has_opted_out_tracking']          = MixpanelLib.prototype.has_opted_out_tracking;
+MixpanelLib.prototype['has_opted_in_tracking']           = MixpanelLib.prototype.has_opted_in_tracking;
+MixpanelLib.prototype['clear_opt_in_out_tracking']       = MixpanelLib.prototype.clear_opt_in_out_tracking;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
@@ -5519,7 +5869,7 @@ var override_mp_init_func = function() {
 
             mixpanel_master = instance;
             if (init_type === INIT_SNIPPET) {
-                win[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+                window$1[PRIMARY_INSTANCE_NAME] = mixpanel_master;
             }
             extend_mp();
         }
@@ -5569,7 +5919,7 @@ var add_dom_loaded_handler = function() {
         // check to make sure we arn't in a frame
         var toplevel = false;
         try {
-            toplevel = win.frameElement === null;
+            toplevel = window$1.frameElement === null;
         } catch(e) {
             // noop
         }
@@ -5580,7 +5930,7 @@ var add_dom_loaded_handler = function() {
     }
 
     // fallback handler, always will work
-    _.register_event(win, 'load', dom_loaded_handler, true);
+    _.register_event(window$1, 'load', dom_loaded_handler, true);
 };
 
 function init_as_module() {
