@@ -1,11 +1,13 @@
 import os from 'os';
 import { expect } from 'chai';
-import jsdom from 'mocha-jsdom';
+import jsdom from 'jsdom-global';
 import sinon from 'sinon';
 import nodeLocalStorage from 'node-localstorage';
 
-import { autotrack } from '../../src/autotrack';
 import { _ } from '../../src/utils';
+import { autotrack } from '../../src/autotrack';
+
+import jsdomSetup from './jsdom-setup';
 
 const triggerMouseEvent = function(node, eventType) {
   node.dispatchEvent(new MouseEvent(eventType, {
@@ -18,24 +20,15 @@ const simulateClick = function(el) {
   triggerMouseEvent(el, "click");
 }
 
+
 describe('Autotrack system', function() {
-  jsdom({
-    url: 'https://mixpanel.com/about/?query=param'
-  });
-
-  before(function() {
-    // jsdom doesn't have support for local/session storage
-    // add support using this node implementation
-    window.sessionStorage = nodeLocalStorage.LocalStorage(os.tmpdir() + '/tmpSessionStorage');
-  });
-
-  beforeEach(function() {
-    window.sessionStorage.clear();
-  });
+  jsdomSetup({jsdom: {
+    url: 'https://mixpanel.com/about/?query=param',
+  }});
 
   describe('_getPropertiesFromElement', function() {
     let div, div2, input, sensitiveInput, hidden, password;
-    before(function() {
+    beforeEach(function() {
       div = document.createElement('div');
       div.className = 'class1 class2 class3'
       div.innerHTML = 'my <span>sweet <i>inner</i></span> text';
@@ -170,10 +163,6 @@ describe('Autotrack system', function() {
   });
 
   describe('_loadScript', function() {
-    beforeEach(function() {
-      document.body.innerHTML = '';
-    });
-
     it('should insert the given script before the one already on the page', function() {
       document.body.appendChild(document.createElement('script'));
       const callback = _ => _;
@@ -201,6 +190,7 @@ describe('Autotrack system', function() {
   });
 
   describe('_getDefaultProperties', function() {
+
     it('should return the default properties', function() {
       expect(autotrack._getDefaultProperties('test')).to.deep.equal({
         '$event_type': 'test',
@@ -224,7 +214,7 @@ describe('Autotrack system', function() {
     let prop2;
     let prop3;
 
-    before(function() {
+    beforeEach(function() {
       trackedElem = document.createElement('div');
       trackedElem.className = 'ce_event';
 
@@ -453,7 +443,7 @@ describe('Autotrack system', function() {
       const eventType2 = trackArgs2[1]['my property name'];
       expect(eventType1).to.equal('my property value');
       expect(eventType2).to.equal('my property value');
-      lib.track.reset();
+      lib.track.resetHistory();
     });
 
     it('includes necessary metadata as properties when tracking an event', function() {
@@ -598,7 +588,7 @@ describe('Autotrack system', function() {
       autotrack._trackEvent(e1, lib);
       const props1 = getTrackedProps(lib.track);
       expect(props1).to.have.property('$el_text', 'Some super duper really long Text with new lines that we\'ll strip out and also we will want to make this text shorter since it\'s not likely people really care about text content that\'s super long and it also takes up more space and bandwidth. Some super d');
-      lib.track.reset();
+      lib.track.resetHistory();
 
       const e2 = {
         target: span1,
@@ -607,7 +597,7 @@ describe('Autotrack system', function() {
       autotrack._trackEvent(e2, lib);
       const props2 = getTrackedProps(lib.track);
       expect(props2).to.have.property('$el_text', 'Some text');
-      lib.track.reset();
+      lib.track.resetHistory();
 
       const e3 = {
         target: img2,
@@ -646,7 +636,7 @@ describe('Autotrack system', function() {
       const props1 = getTrackedProps(lib.track);
       expect(props1).to.have.property('$el_text');
       expect(props1['$el_text']).to.match(/Why\s+hello\s+there/);
-      lib.track.reset();
+      lib.track.resetHistory();
 
       const e2 = {
         target: span2,
@@ -656,7 +646,7 @@ describe('Autotrack system', function() {
       const props2 = getTrackedProps(lib.track);
       expect(props2).to.have.property('$el_text');
       expect(props2['$el_text']).to.match(/Why\s+hello\s+there/);
-      lib.track.reset();
+      lib.track.resetHistory();
 
       const e3 = {
         target: span3,
@@ -703,11 +693,11 @@ describe('Autotrack system', function() {
       a.appendChild(span);
       autotrack._trackEvent({target: a, type: 'click'}, lib);
       expect(lib.track.calledOnce).to.equal(true);
-      lib.track.reset();
+      lib.track.resetHistory();
 
       autotrack._trackEvent({target: span, type: 'click'}, lib);
       expect(lib.track.calledOnce).to.equal(true);
-      lib.track.reset();
+      lib.track.resetHistory();
 
       a.className = 'test1 mp-no-track test2';
       autotrack._trackEvent({target: a, type: 'click'}, lib);
@@ -725,15 +715,11 @@ describe('Autotrack system', function() {
 
     let navigateSpy;
 
-    before(function() {
+    beforeEach(function() {
       document.title = 'test page';
       autotrack._addDomEventHandlers(lib);
       navigateSpy = sinon.spy(autotrack, '_navigate');
-    });
-
-    beforeEach(function() {
-      navigateSpy.reset();
-      lib.track.reset();
+      lib.track.resetHistory();
     });
 
     after(function() {
@@ -752,14 +738,16 @@ describe('Autotrack system', function() {
       const eventType2 = trackArgs2[1]['$event_type'];
       expect(eventType1).to.equal('click');
       expect(eventType2).to.equal('click');
-      lib.track.reset();
+      lib.track.resetHistory();
     });
 
   });
 
   describe('init', function() {
     let lib, sandbox, _maybeLoadEditorStub;
+
     beforeEach(function() {
+      document.title = 'test page';
       sandbox = sinon.sandbox.create();
       sandbox.spy(autotrack, '_addDomEventHandlers');
       autotrack._initializedTokens = [];
@@ -862,11 +850,18 @@ describe('Autotrack system', function() {
 
   describe('_maybeLoadEditor', function() {
     let hash, editorParams, sandbox, lib = {};
+
     beforeEach(function() {
+      // jsdom doesn't have support for local/session storage
+      // add support using this node implementation
+      window.sessionStorage = nodeLocalStorage.LocalStorage(os.tmpdir() + '/tmpSessionStorage');
+
       this.clock = sinon.useFakeTimers();
 
       sandbox = sinon.sandbox.create();
       sandbox.stub(autotrack, '_loadEditor');
+
+      window.sessionStorage.clear();
       sandbox.spy(window.sessionStorage, 'setItem');
       sandbox.spy(window.sessionStorage, 'getItem');
       sandbox.spy(window.sessionStorage, 'removeItem');
@@ -915,7 +910,6 @@ describe('Autotrack system', function() {
     });
 
     it('should initialize the visual editor when the hash state contains action "mpeditor"', function() {
-      window.location.href = 'https://mixpanel.com/';
       window.location.hash = `#${hash}`;
       autotrack._maybeLoadEditor(lib);
       expect(autotrack._loadEditor.calledOnce).to.equal(true);
@@ -925,7 +919,6 @@ describe('Autotrack system', function() {
     });
 
     it('should initialize the visual editor when the hash was parsed by the snippet', function() {
-      window.location.href = 'https://mixpanel.com/';
       window.sessionStorage.setItem('_mpcehash', `#${hash}`);
       autotrack._maybeLoadEditor(lib);
       expect(autotrack._loadEditor.calledOnce).to.equal(true);
@@ -937,7 +930,6 @@ describe('Autotrack system', function() {
     });
 
     it('should NOT initialize the visual editor when the activation query param does not exist', function() {
-      window.location.href = 'https://mixpanel.com/';
       autotrack._maybeLoadEditor(lib);
       expect(autotrack._loadEditor.calledOnce).to.equal(false);
     });
@@ -950,7 +942,6 @@ describe('Autotrack system', function() {
       };
       hash = Object.keys(hashParams).map(k => `${k}=${hashParams[k]}`).join('&');
       window.location.hash = `#${hash}`;
-      window.location.href = 'https://mixpanel.com/';
       var spy = sinon.spy(autotrack, "_maybeLoadEditor");
       spy(lib);
       expect(spy.returned(false)).to.equal(true);
@@ -964,7 +955,7 @@ describe('Autotrack system', function() {
     beforeEach(function() {
       autotrack._editorLoaded = false;
       sandbox = sinon.sandbox.create();
-      sandbox.stub(autotrack, '_loadScript', (path, callback) => callback());
+      sandbox.stub(autotrack, '_loadScript').callsFake((path, callback) => callback());
       lib.get_config = sandbox.stub();
       lib.get_config.withArgs('app_host').returns('mixpanel.com');
       lib.get_config.withArgs('token').returns('token');
