@@ -3087,6 +3087,32 @@
                         mixpanel.init('gdpr', {}, 'gdpr');
                         mixpanel.gdpr.opt_in_tracking();
                     });
+
+                    // test cases using custom GDPR cookie prefix
+                    var prefix = '𝓶𝓶𝓶𝓬𝓸𝓸𝓴𝓲𝓮𝓼';
+
+                    gdprTest(method + ' tracking is enabled by opt-in with custom cookie prefix passed as option', {
+                        setup: function() {
+                            mixpanel.gdpr.opt_in_tracking({cookie_prefix: prefix});
+                        }
+                    });
+
+                    gdprTest(method + ' tracking is not disabled by opt-out with custom cookie prefix passed as option', {
+                        opt_in: true,
+                        assert_user_cleared: true,
+                        setup: function() {
+                            mixpanel.gdpr.opt_out_tracking({cookie_prefix: prefix});
+                        }
+                    });
+
+                    gdprTest(method + ' tracking is enabled by opt-in with custom cookie prefix in lib configuration', {
+                        init: function() {
+                            mixpanel.init('gdpr', {opt_out_tracking_cookie_prefix: prefix}, 'gdpr');
+                        },
+                        setup: function() {
+                            mixpanel.gdpr.opt_in_tracking();
+                        }
+                    });
                 }
 
                 gdprTestMethod('track'       , ['event_name', {prop: 'value'}]);
