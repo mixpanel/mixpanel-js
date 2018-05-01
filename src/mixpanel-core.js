@@ -1693,12 +1693,12 @@ MixpanelLib.prototype._call_gdpr_func = function(func, options) {
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {function} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
- * @param {string} [options.track_event_name] Event name to be used for tracking the opt-in action (default="$opt_in")
- * @param {Object} [options.track_properties] Set of properties to be tracked along with the opt-in action (default={})
+ * @param {string} [options.track_event_name=$opt_in] Event name to be used for tracking the opt-in action
+ * @param {Object} [options.track_properties] Set of properties to be tracked along with the opt-in action
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie name
- * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (default=365, or value specified in this Mixpanel instance's config)
- * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (default=true, or value specified in this Mixpanel instance's config)
- * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (default=false, or value specified in this Mixpanel instance's config)
+ * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.opt_in_tracking = function(options) {
     this._call_gdpr_func(optIn, options);
@@ -1720,12 +1720,20 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  *     });
  *
  * @param {Object} [options] A dictionary of config options to override
+ * @param {boolean} [options.delete_user=true] If true, will delete the currently identified user's profile and clear all charges after opting the user out
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie name
- * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (default=365, or value specified in this Mixpanel instance's config)
- * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (default=true, or value specified in this Mixpanel instance's config)
- * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (default=false, or value specified in this Mixpanel instance's config)
+ * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.opt_out_tracking = function(options) {
+    // delete use and clear charges since these methods may be disabled by opt-out
+    options = _.extend({'delete_user': true}, options);
+    if (options['delete_user'] && this['people'] && this['people']._identify_called()) {
+        this['people'].delete_user();
+        this['people'].clear_charges();
+    }
+
     this._call_gdpr_func(optOut, options);
     this._update_persistence();
 };
@@ -1779,9 +1787,9 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie name
- * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (default=365, or value specified in this Mixpanel instance's config)
- * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (default=true, or value specified in this Mixpanel instance's config)
- * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (default=false, or value specified in this Mixpanel instance's config)
+ * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
     this._call_gdpr_func(clearOptInOut, options);
