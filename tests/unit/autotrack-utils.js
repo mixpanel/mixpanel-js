@@ -1,7 +1,8 @@
 import { expect } from 'chai';
-import jsdom from 'mocha-jsdom';
+import jsdom from 'jsdom-global';
 import sinon from 'sinon';
 
+import { _ } from '../../src/utils';
 import {
     getSafeText,
     shouldTrackDomEvent,
@@ -9,10 +10,10 @@ import {
     shouldTrackValue,
 } from '../../src/autotrack-utils';
 
+import jsdomSetup from './jsdom-setup';
+
 describe(`Autotrack utility functions`, function() {
-  jsdom({
-    url: `https://mixpanel.com/about/?query=param`
-  });
+  jsdomSetup();
 
   describe(`getSafeText`, function() {
     it(`should collect and normalize text from elements`, function() {
