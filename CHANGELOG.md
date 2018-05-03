@@ -1,3 +1,7 @@
+**2.22.0** (3 May 2018)
+- Add `cookie_prefix` option to GDPR opt-out utils, allowing customization of cookie name
+- Automatically delete user profile and charge data on GDPR opt-out (if specified)
+
 **2.21.0** (20 Apr 2018)
 - Add set of opt in/out utility methods in preparation for GDPR
   See https://mixpanel.com/help/reference/javascript-full-api-reference for details
