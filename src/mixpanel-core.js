@@ -939,7 +939,7 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
             req.open('GET', url, true);
 
             var headers = this.get_config('xhr_headers');
-            _.each(headers, function(headerName, headerValue) {
+            _.each(headers, function(headerValue, headerName) {
                 req.setRequestHeader(headerName, headerValue);
             });
 
