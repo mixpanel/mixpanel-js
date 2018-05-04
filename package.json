@@ -1,6 +1,6 @@
 {
   "name": "mixpanel-browser",
-  "version": "2.21.0",
+  "version": "2.22.0",
   "description": "The official Mixpanel JavaScript browser client library",
   "main": "build/mixpanel.cjs.js",
   "directories": {
