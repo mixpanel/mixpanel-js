@@ -10,6 +10,8 @@ const TOKENS = [
   `y^0M0RJnZq#9WE!Si*1tPZmtdcODB$%c`, // randomly-generated string
   `Ƭ Ө K Σ П`, // unicode string with whitespace
 ];
+const DEFAULT_COOKIE_PREFIX = `__mp_opt_in_out_`;
+const CUSTOM_COOKIE_PREFIX = `𝓶𝓶𝓶𝓬𝓸𝓸𝓴𝓲𝓮𝓼`;
 
 describe(`GDPR utils`, function() {
   // these imports must be re-required before each test
@@ -82,6 +84,29 @@ describe(`GDPR utils`, function() {
         expect(track.calledOnce).to.be.true;
       });
     });
+
+    it(`should allow use of a custom "cookie prefix" string (with correct default behavior)`, function() {
+      const DEFAULT_COOKIE_PREFIX = `__mp_opt_in_out_`;
+      const CUSTOM_COOKIE_PREFIX = `𝓶𝓶𝓶𝓬𝓸𝓸𝓴𝓲𝓮𝓼`;
+
+      TOKENS.forEach(token => {
+        gdpr.optOut(token);
+        gdpr.optIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+
+        expect(document.cookie).to.contain(DEFAULT_COOKIE_PREFIX + token + `=0`);
+        expect(document.cookie).to.contain(CUSTOM_COOKIE_PREFIX + token + `=1`);
+
+        gdpr.optIn(token);
+
+        expect(document.cookie).to.contain(DEFAULT_COOKIE_PREFIX + token + `=1`);
+        expect(document.cookie).to.contain(CUSTOM_COOKIE_PREFIX + token + `=1`);
+
+        gdpr.optOut(token);
+
+        expect(document.cookie).to.contain(DEFAULT_COOKIE_PREFIX + token + `=0`);
+        expect(document.cookie).to.contain(CUSTOM_COOKIE_PREFIX + token + `=1`);
+      });
+    });
   });
 
   describe(`optOut`, function() {
@@ -115,6 +140,26 @@ describe(`GDPR utils`, function() {
         gdpr.optIn(token);
         gdpr.optOut(token, {track});
         expect(track.calledOnce).to.be.false;
+      });
+    });
+
+    it(`should allow use of a custom "cookie prefix" string (with correct default behavior)`, function() {
+      TOKENS.forEach(token => {
+        gdpr.optIn(token);
+        gdpr.optOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+
+        expect(document.cookie).to.contain(DEFAULT_COOKIE_PREFIX + token + `=1`);
+        expect(document.cookie).to.contain(CUSTOM_COOKIE_PREFIX + token + `=0`);
+
+        gdpr.optOut(token);
+
+        expect(document.cookie).to.contain(DEFAULT_COOKIE_PREFIX + token + `=0`);
+        expect(document.cookie).to.contain(CUSTOM_COOKIE_PREFIX + token + `=0`);
+
+        gdpr.optIn(token);
+
+        expect(document.cookie).to.contain(DEFAULT_COOKIE_PREFIX + token + `=1`);
+        expect(document.cookie).to.contain(CUSTOM_COOKIE_PREFIX + token + `=0`);
       });
     });
   });
@@ -178,6 +223,18 @@ describe(`GDPR utils`, function() {
         gdpr.clearOptInOut(token);
         gdpr.optIn(token);
         expect(gdpr.hasOptedIn(token)).to.be.true;
+      });
+    });
+
+    it(`should allow use of a custom "cookie prefix" string`, function() {
+      TOKENS.forEach(token => {
+        gdpr.optIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        expect(gdpr.hasOptedIn(token)).to.be.false;
+        expect(gdpr.hasOptedIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.true;
+        gdpr.optOut(token);
+        expect(gdpr.hasOptedIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.true;
+        gdpr.optOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        expect(gdpr.hasOptedIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.false;
       });
     });
   });
@@ -244,6 +301,18 @@ describe(`GDPR utils`, function() {
       });
     });
 
+    it(`should allow use of a custom "cookie prefix" string`, function() {
+      TOKENS.forEach(token => {
+        gdpr.optOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        expect(gdpr.hasOptedOut(token)).to.be.false;
+        expect(gdpr.hasOptedOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.true;
+        gdpr.optIn(token);
+        expect(gdpr.hasOptedOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.true;
+        gdpr.optIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        expect(gdpr.hasOptedOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.false;
+      });
+    });
+
     it(`should return 'true' if the user has navigator.doNotTrack flag set`, function() {
       TOKENS.forEach(token => {
         gdpr.optIn(token);
@@ -307,6 +376,24 @@ describe(`GDPR utils`, function() {
         expect(gdpr.hasOptedIn(token)).to.be.false;
       });
     });
+
+    it(`should allow use of a custom "cookie prefix" string`, function() {
+      TOKENS.forEach(token => {
+        gdpr.optIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        expect(gdpr.hasOptedIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.true;
+        gdpr.clearOptInOut(token);
+        expect(gdpr.hasOptedIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.true;
+        gdpr.clearOptInOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        expect(gdpr.hasOptedIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.false;
+
+        gdpr.optOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        expect(gdpr.hasOptedOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.true;
+        gdpr.clearOptInOut(token);
+        expect(gdpr.hasOptedOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.true;
+        gdpr.clearOptInOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        expect(gdpr.hasOptedOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX})).to.be.false;
+      });
+    });
   });
 
   describe(`addOptOutCheckMixpanelLib`, function() {
@@ -314,53 +401,50 @@ describe(`GDPR utils`, function() {
     const trackProperties = {'𝖕𝖗𝖔𝖕𝖊𝖗𝖙𝖞': `𝓿𝓪𝓵𝓾𝓮`};
     let getConfig, track, mixpanelLib;
 
-    function setupMocks(getConfigFunc) {
-      getConfig = sinon.spy(getConfigFunc);
+    function setupMocks(getConfigFunc, options) {
+      getConfig = sinon.spy(name => getConfigFunc()[name]);
       track = sinon.spy();
       mixpanelLib = {
         get_config: getConfig,
-        track: gdpr.addOptOutCheckMixpanelLib(track),
+        track: gdpr.addOptOutCheckMixpanelLib(track, options),
       };
     }
 
     it(`should call the wrapped method if the user is neither opted in or opted out`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
 
         mixpanelLib.track(trackEventName, trackProperties);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
         expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
       });
     });
 
     it(`should call the wrapped method if the user is opted in`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
 
         gdpr.optIn(token);
         mixpanelLib.track(trackEventName, trackProperties);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
         expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
       });
     });
 
     it(`should not call the wrapped method if the user is opted out`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
 
         gdpr.optOut(token);
         mixpanelLib.track(trackEventName, trackProperties);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
         expect(track.notCalled).to.be.true;
       });
     });
 
     it(`should not invoke the callback directly if the user is neither opted in or opted out`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
         const callback = sinon.spy();
 
         mixpanelLib.track(trackEventName, trackProperties, callback);
@@ -371,7 +455,7 @@ describe(`GDPR utils`, function() {
 
     it(`should not invoke the callback directly if the user is opted in`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
         const callback = sinon.spy();
 
         gdpr.optIn(token);
@@ -383,7 +467,7 @@ describe(`GDPR utils`, function() {
 
     it(`should invoke the callback directly if the user is opted out`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
         const callback = sinon.spy();
 
         gdpr.optOut(token);
@@ -395,12 +479,11 @@ describe(`GDPR utils`, function() {
 
     it(`should call the wrapped method if there is no token available`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => null);
+        setupMocks(() => ({token: null}));
 
         gdpr.optIn(token);
         mixpanelLib.track(trackEventName, trackProperties);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
         expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
       });
     });
@@ -414,7 +497,27 @@ describe(`GDPR utils`, function() {
         gdpr.optIn(token);
         mixpanelLib.track(trackEventName, trackProperties);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
+        expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
+      });
+    });
+
+    it(`should allow use of a custom "cookie prefix" string`, function() {
+      TOKENS.forEach(token => {
+        setupMocks(() => ({token, opt_out_tracking_cookie_prefix: CUSTOM_COOKIE_PREFIX}));
+
+        gdpr.optOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        mixpanelLib.track(trackEventName, trackProperties);
+
+        expect(track.notCalled).to.be.true;
+
+        gdpr.optIn(token);
+        mixpanelLib.track(trackEventName, trackProperties);
+
+        expect(track.notCalled).to.be.true;
+
+        gdpr.optIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        mixpanelLib.track(trackEventName, trackProperties);
+
         expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
       });
     });
@@ -425,53 +528,50 @@ describe(`GDPR utils`, function() {
     const setPropertyValue = `𝓿𝓪𝓵𝓾𝓮`;
     let getConfig, set, mixpanelPeople;
 
-    function setupMocks(getConfigFunc) {
-      getConfig = sinon.spy(getConfigFunc);
+    function setupMocks(getConfigFunc, options) {
+      getConfig = sinon.spy(name => getConfigFunc()[name]);
       set = sinon.spy();
       mixpanelPeople = {
         _get_config: getConfig,
-        set: gdpr.addOptOutCheckMixpanelPeople(set),
+        set: gdpr.addOptOutCheckMixpanelPeople(set, options),
       };
     }
 
     it(`should call the wrapped method if the user is neither opted in or opted out`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
 
         mixpanelPeople.set(setPropertyName, setPropertyValue);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
         expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
       });
     });
 
     it(`should call the wrapped method if the user is opted in`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
 
         gdpr.optIn(token);
         mixpanelPeople.set(setPropertyName, setPropertyValue);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
         expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
       });
     });
 
     it(`should not call the wrapped method if the user is opted out`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
 
         gdpr.optOut(token);
         mixpanelPeople.set(setPropertyName, setPropertyValue);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
         expect(set.notCalled).to.be.true;
       });
     });
 
     it(`should not invoke the callback directly if the user is neither opted in or opted out`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
         const callback = sinon.spy();
 
         mixpanelPeople.set(setPropertyName, setPropertyValue, callback);
@@ -482,7 +582,7 @@ describe(`GDPR utils`, function() {
 
     it(`should not invoke the callback directly if the user is opted in`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
         const callback = sinon.spy();
 
         gdpr.optIn(token);
@@ -494,7 +594,7 @@ describe(`GDPR utils`, function() {
 
     it(`should invoke the callback directly if the user is opted out`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => token);
+        setupMocks(() => ({token}));
         const callback = sinon.spy();
 
         gdpr.optOut(token);
@@ -506,12 +606,11 @@ describe(`GDPR utils`, function() {
 
     it(`should call the wrapped method if there is no token available`, function() {
       TOKENS.forEach(token => {
-        setupMocks(() => null);
+        setupMocks(() => ({token: null}));
 
         gdpr.optIn(token);
         mixpanelPeople.set(setPropertyName, setPropertyValue);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
         expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
       });
     });
@@ -525,7 +624,27 @@ describe(`GDPR utils`, function() {
         gdpr.optIn(token);
         mixpanelPeople.set(setPropertyName, setPropertyValue);
 
-        expect(getConfig.calledOnceWith(`token`)).to.be.true;
+        expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
+      });
+    });
+
+    it(`should allow use of a custom "cookie prefix" string`, function() {
+      TOKENS.forEach(token => {
+        setupMocks(() => ({token, opt_out_tracking_cookie_prefix: CUSTOM_COOKIE_PREFIX}));
+
+        gdpr.optOut(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        mixpanelPeople.set(setPropertyName, setPropertyValue);
+
+        expect(set.notCalled).to.be.true;
+
+        gdpr.optIn(token);
+        mixpanelPeople.set(setPropertyName, setPropertyValue);
+
+        expect(set.notCalled).to.be.true;
+
+        gdpr.optIn(token, {cookiePrefix: CUSTOM_COOKIE_PREFIX});
+        mixpanelPeople.set(setPropertyName, setPropertyValue);
+
         expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
       });
     });
