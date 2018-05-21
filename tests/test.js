@@ -3015,6 +3015,31 @@
             if (USE_XHR) {
                 mpmodule("xhr tests", startRecordingXhrRequests, stopRecordingXhrRequests);
 
+                asyncTest('xhr headers should work', 5, function() {
+                    mixpanel.test.set_config({
+                        xhr_headers: {
+                            'x-api-token': 'test-token',
+                            'x-api-key': 'test-key'
+                        }
+                    });
+
+                    // A meaningless request
+                    mixpanel.test.track('test', {}, function(response) {
+                        same(response, 1, "xhr returned success");
+                        start();
+                    });
+
+                    same(this.requests.length, 1, 'track should have fired off a request');
+                    same(_.keys(this.requests[0].requestHeaders).length, 2, 'both custom headers should be present');
+                    same(this.requests[0].requestHeaders['x-api-token'], 'test-token', 'x-api-token should be set');
+                    same(this.requests[0].requestHeaders['x-api-key'], 'test-key', 'x-api-key should be set');
+
+                    var resp = '1';
+                    this.requests[0].respond(200, {
+                        'Content-Type': 'text'
+                    }, resp);
+                });
+
                 asyncTest('xhr error handling code works', 2, function() {
                     mixpanel.test.track('test', {}, function(response) {
                         same(response, 0, "xhr returned error");

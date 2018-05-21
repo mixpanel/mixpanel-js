@@ -119,7 +119,8 @@ var DEFAULT_CONFIG = {
     'ip':                             true,
     'opt_out_tracking_by_default':    false,
     'opt_out_tracking_cookie_prefix': null,
-    'property_blacklist':             []
+    'property_blacklist':             [],
+    'xhr_headers':                    {} // { header: value, header2: value }
 };
 
 var DOM_LOADED = false;
@@ -967,6 +968,12 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
         try {
             var req = new XMLHttpRequest();
             req.open('GET', url, true);
+
+            var headers = this.get_config('xhr_headers');
+            _.each(headers, function(headerValue, headerName) {
+                req.setRequestHeader(headerName, headerValue);
+            });
+
             // send the mp_optout cookie
             // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
             req.withCredentials = true;
