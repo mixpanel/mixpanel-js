@@ -1,3 +1,6 @@
+**2.22.1** (22 May 2018)
+- Add `xhr_headers` config option for sending extra headers with each request (thanks @austince)
+
 **2.22.0** (3 May 2018)
 - Add `cookie_prefix` option to GDPR opt-out utils, allowing customization of cookie name
 - Automatically delete user profile and charge data on GDPR opt-out (if specified)
