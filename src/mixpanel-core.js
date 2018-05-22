@@ -1558,6 +1558,10 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // The upgrade config option only works in the initialization,
  *       // so make sure you set it when you create the library.
  *       upgrade:                        false
+ *
+ *       // extra HTTP request headers to set for each API request, in
+ *       // the format {'Header-Name': value}
+ *       xhr_headers:                    {}
  *     }
  *
  *
