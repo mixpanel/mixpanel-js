@@ -1505,25 +1505,25 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *
  *     {
  *       // super properties cookie expiration (in days)
- *       cookie_expiration:              365
+ *       cookie_expiration: 365
  *
  *       // super properties span subdomains
- *       cross_subdomain_cookie:         true
+ *       cross_subdomain_cookie: true
  *
  *       // debug mode
- *       debug:                          false
+ *       debug: false
  *
  *       // if this is true, the mixpanel cookie or localStorage entry
  *       // will be deleted, and no user persistence will take place
- *       disable_persistence:            false
+ *       disable_persistence: false
  *
  *       // if this is true, Mixpanel will automatically determine
  *       // City, Region and Country data using the IP address of
  *       //the client
- *       ip:                             true
+ *       ip: true
  *
  *       // opt users out of tracking by this Mixpanel instance by default
- *       opt_out_tracking_by_default:    false
+ *       opt_out_tracking_by_default: false
  *
  *       // customize the name of the cookie set by opt-in/opt-out methods
  *       opt_out_tracking_cookie_prefix: null
@@ -1532,36 +1532,36 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // localStorage) if set to 'localStorage', any existing
  *       // mixpanel cookie value with the same persistence_name
  *       // will be transferred to localStorage and deleted
- *       persistence:                    'cookie'
+ *       persistence: 'cookie'
  *
  *       // name for super properties persistent store
- *       persistence_name:               ''
+ *       persistence_name: ''
  *
  *       // names of properties/superproperties which should never
  *       // be sent with track() calls
- *       property_blacklist:             []
+ *       property_blacklist: []
  *
  *       // if this is true, mixpanel cookies will be marked as
  *       // secure, meaning they will only be transmitted over https
- *       secure_cookie:                  false
+ *       secure_cookie: false
  *
  *       // the amount of time track_links will
  *       // wait for Mixpanel's servers to respond
- *       track_links_timeout:            300
+ *       track_links_timeout: 300
  *
  *       // should we track a page view on page load
- *       track_pageview:                 true
+ *       track_pageview: true
  *
  *       // if you set upgrade to be true, the library will check for
  *       // a cookie from our old js library and import super
  *       // properties from it, then the old cookie is deleted
  *       // The upgrade config option only works in the initialization,
  *       // so make sure you set it when you create the library.
- *       upgrade:                        false
+ *       upgrade: false
  *
  *       // extra HTTP request headers to set for each API request, in
  *       // the format {'Header-Name': value}
- *       xhr_headers:                    {}
+ *       xhr_headers: {}
  *     }
  *
  *
