@@ -1037,7 +1037,33 @@ _.cookie = {
 };
 
 // _.localStorage
+var _localStorage_supported = null;
 _.localStorage = {
+    is_supported: function() {
+        if (_localStorage_supported !== null) {
+            return _localStorage_supported;
+        }
+
+        var supported = true;
+        try {
+            var key = '__mplssupport__',
+                val = 'xyz';
+            _.localStorage.set(key, val);
+            if (_.localStorage.get(key) !== val) {
+                supported = false;
+            }
+            _.localStorage.remove(key);
+        } catch (err) {
+            supported = false;
+        }
+        if (!supported) {
+            console.error('localStorage unsupported; falling back to cookie store');
+        }
+
+        _localStorage_supported = supported;
+        return supported;
+    },
+
     error: function(msg) {
         console.error('localStorage error: ' + msg);
     },

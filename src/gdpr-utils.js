@@ -23,7 +23,7 @@ import { _, window } from './utils';
 
 /** Public **/
 
-var GDPR_DEFAULT_COOKIE_PREFIX = '__mp_opt_in_out_';
+var GDPR_DEFAULT_PERSISTENCE_PREFIX = '__mp_opt_in_out_';
 
 /**
  * Opt the user in to data tracking and cookies/localstorage for the given token
@@ -32,7 +32,8 @@ var GDPR_DEFAULT_COOKIE_PREFIX = '__mp_opt_in_out_';
  * @param {trackFunction} [options.track] - function used for tracking a Mixpanel event to record the opt-in action
  * @param {string} [options.trackEventName] - event name to be used for tracking the opt-in action
  * @param {Object} [options.trackProperties] - set of properties to be tracked along with the opt-in action
- * @param {string} [options.cookiePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie name
+ * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
+ * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
@@ -45,7 +46,8 @@ export function optIn(token, options) {
  * Opt the user out of data tracking and cookies/localstorage for the given token
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]
- * @param {string} [options.cookiePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie name
+ * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
+ * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-out cookie expires
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-out cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-out cookie is set as secure or not
@@ -58,25 +60,27 @@ export function optOut(token, options) {
  * Check whether the user has opted in to data tracking and cookies/localstorage for the given token
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]
- * @param {string} [options.cookiePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie name
+ * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
+ * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @returns {boolean} whether the user has opted in to the given opt type
  */
 export function hasOptedIn(token, options) {
-    return _getOptInOutCookieValue(token, options) === '1';
+    return _getStorageValue(token, options) === '1';
 }
 
 /**
  * Check whether the user has opted out of data tracking and cookies/localstorage for the given token
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]
- * @param {string} [options.cookiePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie name
+ * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
+ * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @returns {boolean} whether the user has opted out of the given opt type
  */
 export function hasOptedOut(token, options) {
     if (_hasDoNotTrackFlagOn()) {
         return true;
     }
-    return _getOptInOutCookieValue(token, options) === '0';
+    return _getStorageValue(token, options) === '0';
 }
 
 /**
@@ -109,39 +113,51 @@ export function addOptOutCheckMixpanelPeople(method) {
  * Clear the user's opt in/out status of data tracking and cookies/localstorage for the given token
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]
- * @param {string} [options.cookiePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie name
+ * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
+ * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
  */
 export function clearOptInOut(token, options) {
     options = options || {};
-    _.cookie.remove(_getOptInOutCookieName(token, options), !!options.crossSubdomainCookie);
+    _getStorage(options).remove(_getStorageKey(token, options), !!options.crossSubdomainCookie);
 }
 
 /** Private **/
 
 /**
+ * Get storage util
+ * @param {Object} [options]
+ * @param {string} [options.persistenceType]
+ * @returns {object} either _.cookie or _.localstorage
+ */
+function _getStorage(options) {
+    options = options || {};
+    return options.persistenceType === 'localStorage' ? _.localStorage : _.cookie;
+}
+
+/**
  * Get the name of the cookie that is used for the given opt type (tracking, cookie, etc.)
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]
- * @param {string} [options.cookiePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie name
+ * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @returns {string} the name of the cookie for the given opt type
  */
-function _getOptInOutCookieName(token, options) {
+function _getStorageKey(token, options) {
     options = options || {};
-    return (options.cookiePrefix || GDPR_DEFAULT_COOKIE_PREFIX) + token;
+    return (options.persistencePrefix || GDPR_DEFAULT_PERSISTENCE_PREFIX) + token;
 }
 
 /**
  * Get the value of the cookie that is used for the given opt type (tracking, cookie, etc.)
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]
- * @param {string} [options.cookiePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie name
+ * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @returns {string} the value of the cookie for the given opt type
  */
-function _getOptInOutCookieValue(token, options) {
-    return _.cookie.get(_getOptInOutCookieName(token, options));
+function _getStorageValue(token, options) {
+    return _getStorage(options).get(_getStorageKey(token, options));
 }
 
 /**
@@ -153,14 +169,14 @@ function _hasDoNotTrackFlagOn() {
 }
 
 /**
- * Set a cookie for the user indicating that they are opted in or out for the given opt type
+ * Set cookie/localstorage for the user indicating that they are opted in or out for the given opt type
  * @param {boolean} optValue - whether to opt the user in or out for the given opt type
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]
  * @param {trackFunction} [options.track] - function used for tracking a Mixpanel event to record the opt-in action
  * @param {string} [options.trackEventName] - event name to be used for tracking the opt-in action
  * @param {Object} [options.trackProperties] - set of properties to be tracked along with the opt-in action
- * @param {string} [options.cookiePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie name
+ * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
@@ -173,8 +189,8 @@ function _optInOut(optValue, token, options) {
 
     options = options || {};
 
-    _.cookie.set(
-        _getOptInOutCookieName(token, options),
+    _getStorage(options).set(
+        _getStorageKey(token, options),
         optValue ? 1 : 0,
         _.isNumber(options.cookieExpiration) ? options.cookieExpiration : null,
         !!options.crossSubdomainCookie,
@@ -200,10 +216,14 @@ function _addOptOutCheck(method, getConfigValue) {
 
         try {
             var token = getConfigValue.call(this, 'token');
-            var cookiePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
+            var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
+            var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
 
             if (token) { // if there was an issue getting the token, continue method execution as normal
-                optedOut = hasOptedOut(token, {cookiePrefix: cookiePrefix});
+                optedOut = hasOptedOut(token, {
+                    persistenceType: persistenceType,
+                    persistencePrefix: persistencePrefix
+                });
             }
         } catch(err) {
             console.error('Unexpected error when checking tracking opt-out status: ' + err);
