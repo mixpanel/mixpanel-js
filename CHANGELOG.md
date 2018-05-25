@@ -1,3 +1,6 @@
+**2.22.2** (25 May 2018)
+- Allow GDPR utils to use localStorage instead of cookies
+
 **2.22.1** (22 May 2018)
 - Add `xhr_headers` config option for sending extra headers with each request (thanks @austince)
 
