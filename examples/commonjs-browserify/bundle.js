@@ -3857,8 +3857,12 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // opt users out of tracking by this Mixpanel instance by default
  *       opt_out_tracking_by_default: false
  *
- *       // customize the name of the cookie set by opt-in/opt-out methods
- *       opt_out_tracking_storage_prefix: null
+ *       // persistence mechanism used by opt-in/opt-out methods - cookie
+ *       // or localStorage - falls back to cookie if localStorage is unavailable
+ *       opt_out_tracking_persistence_type: 'localStorage'
+ *
+ *       // customize the name of cookie/localStorage set by opt-in/opt-out methods
+ *       opt_out_tracking_cookie_prefix: null
  *
  *       // type of persistent store for super properties (cookie/
  *       // localStorage) if set to 'localStorage', any existing
@@ -4002,7 +4006,7 @@ MixpanelLib.prototype._init_gdpr_persistence = function() {
     // try to convert opt-in/out cookies to localStorage if possible
     if (is_localStorage_requested && _.localStorage.is_supported()) {
         if (!this.has_opted_in_tracking() && this.has_opted_in_tracking({'persistence_type': 'cookie'})) {
-            this.clear_opt_in_in_tracking({'persistence_type': 'cookie'});
+            this.clear_opt_in_out_tracking({'persistence_type': 'cookie'});
             this.opt_in_tracking();
         }
         if (!this.has_opted_out_tracking() && this.has_opted_out_tracking({'persistence_type': 'cookie'})) {
