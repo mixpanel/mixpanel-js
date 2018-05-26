@@ -1,3 +1,6 @@
+**2.22.3** (25 May 2018)
+- Bugfix for previous patch
+
 **2.22.2** (25 May 2018)
 - Allow GDPR utils to use localStorage instead of cookies
 
