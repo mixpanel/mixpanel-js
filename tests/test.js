@@ -3267,19 +3267,29 @@
                         });
                     }
 
-                    gdprTest(method + ' tracking is disabled by opt-out cookie *upgraded* to localStorage', {
-                        opt_in: false,
-                        assert_user_cleared: true,
-                        config: {opt_out_tracking_persistence_type: 'cookie'},
-                        post_init: function() {
-                            // opt out with 'cookies' as configured persistence type
-                            mixpanel.gdpr.opt_out_tracking();
+                    if (window.localStorage) {
+                        gdprTest(method + ' tracking is enabled by opt-out cookie *upgraded* to localStorage', {
+                            opt_in: true,
+                            config: {opt_out_tracking_persistence_type: 'localStorage'},
+                            pre_init: function() {
+                                // opt in with 'cookies' as configured persistence type
+                                mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
+                                mixpanel.gdpr.opt_in_tracking();
+                                clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                            }
+                        });
 
-                            // switch to 'localStorage' as configured persistence type; opt-out status should be retained
-                            clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
-                            mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'localStorage'}, 'gdpr');
-                        }
-                    });
+                        gdprTest(method + ' tracking is disabled by opt-out cookie *upgraded* to localStorage', {
+                            opt_in: false,
+                            config: {opt_out_tracking_persistence_type: 'localStorage'},
+                            pre_init: function() {
+                                // opt out with 'cookies' as configured persistence type
+                                mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
+                                mixpanel.gdpr.opt_out_tracking();
+                                clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                            }
+                        });
+                    }
                 }
 
                 gdprTestMethod('track'       , ['event_name', {prop: 'value'}]);
