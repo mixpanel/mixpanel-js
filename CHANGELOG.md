@@ -1,3 +1,6 @@
+**2.22.4** (1 Jun 2018)
+- Ensure GDPR cookies are always cleared when possible
+
 **2.22.3** (25 May 2018)
 - Bugfix for previous patch
 
