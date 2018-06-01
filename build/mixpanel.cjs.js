@@ -4005,13 +4005,12 @@ MixpanelLib.prototype._init_gdpr_persistence = function() {
     // try to convert opt-in/out cookies to localStorage if possible
     if (is_localStorage_requested && _.localStorage.is_supported()) {
         if (!this.has_opted_in_tracking() && this.has_opted_in_tracking({'persistence_type': 'cookie'})) {
-            this.clear_opt_in_out_tracking({'persistence_type': 'cookie'});
             this.opt_in_tracking();
         }
         if (!this.has_opted_out_tracking() && this.has_opted_out_tracking({'persistence_type': 'cookie'})) {
-            this.clear_opt_in_out_tracking({'persistence_type': 'cookie'});
             this.opt_out_tracking();
         }
+        this.clear_opt_in_out_tracking({'persistence_type': 'cookie'});
     }
 
     // check whether we should opt out by default and update persistence accordingly
