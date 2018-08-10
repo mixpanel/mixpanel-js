@@ -698,6 +698,13 @@ var MixpanelLib = function() {};
  */
 var MixpanelPeople = function() {};
 
+
+/**
+ * Mixpanel Group Object
+ *
+ */
+var MixpanelGroup = function() {};
+
 var MPNotif;
 
 /**
@@ -1171,6 +1178,48 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
 
     return truncated_data;
 });
+
+/**
+ * TODO: docstring here
+ * groups_values: array of strings
+ * e.g. mixpanel.setGroup('company', ['mixpanel','google'])
+ */
+MixpanelLib.prototype.setGroup = function(group_key,group_values){
+};
+
+/**
+ * TODO: docstring here
+ * mixpanel.addGroup( 'company', 'mixpanel')
+ */
+MixpanelLib.prototype.addGroup = function(group_key,group_value){
+};
+
+/**
+ * TODO: docstring here
+ */
+MixpanelLib.prototype.removeGroup = function(group_key,group_value){
+};
+
+/**
+ * TODO: docstring here
+ * mixpanel.trackWithGroups( 
+ */
+MixpanelLib.prototype.trackWithGroups = function(event,properties,groups/**FIXME: a better name? **/){
+};
+
+
+/***
+ *
+ * TODO: docstring here
+ * mixpanel.group(group_key, group_value)
+ *
+ */
+
+MixpanelLib.prototype.group = function (group_key,group_value){
+    var g = new MixpanelGroup()
+    g._init(this, group_key,group_value)
+    return g
+};
 
 /**
  * Track a page view event, which is currently ignored by the server.
@@ -1838,6 +1887,13 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
     this._update_persistence();
 };
 
+
+//TODO
+MixpanelGroup.prototype._init = function(mixpanel_instance, group_key,group_value){
+    this._mixpanel=mixpanel_instance
+    this._group_key = group_key
+    this._group_value = group_value
+}
 
 MixpanelPeople.prototype._init = function(mixpanel_instance) {
     this._mixpanel = mixpanel_instance;
@@ -3565,6 +3621,17 @@ MPNotif.prototype._yt_video_ready = _.safewrap(function() {
     });
 });
 
+/****
+ * TODO
+ */
+MixpanelGroup.prototype.set = function(properties){
+    console.log('group.set', properties)
+}
+
+MixpanelGroup.prototype.toString = function(){
+    return this._mixpanel.toString() + '.group.'+ this._group_key + '.'+this._group_key;
+}
+
 // EXPORTS (for closure compiler)
 
 // MixpanelLib Exports
@@ -3615,6 +3682,12 @@ MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user
 MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
 _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
+
+
+// MixpanelGroup Exports
+// TODO
+MixpanelGroup.prototype['set']=MixpanelGroup.prototype.set
+MixpanelGroup.prototype['_init']=MixpanelGroup.prototype._init
 
 var instances = {};
 var extend_mp = function() {
