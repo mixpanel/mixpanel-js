@@ -698,7 +698,11 @@ var MixpanelLib = function() {};
  */
 var MixpanelPeople = function() {};
 
-
+/**
+ * Mixpanel Group Manager Object
+ *
+ */
+var MixpanelGroupManager = function() {};
 /**
  * Mixpanel Group Object
  *
@@ -733,6 +737,9 @@ var create_mplib = function(token, config, name) {
 
     instance['people'] = new MixpanelPeople();
     instance['people']._init(instance);
+
+    instance['group_manager'] = new MixpanelGroupManager();
+    instance['group_manager']._init(instance)
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true
@@ -1179,19 +1186,84 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     return truncated_data;
 });
 
-/**
- * TODO: docstring here
- * groups_values: array of strings
- * e.g. mixpanel.setGroup('company', ['mixpanel','google'])
- */
-MixpanelLib.prototype.setGroup = function(group_key,group_values){
+MixpanelGroupManager.prototype._send_request = function(data,callback){
+    data['$token'] = this._mixpanel.get_config('token');
+    data['$distinct_id'] = this._mixpanel.get_distinct_id();
+
+    var date_encoded_data = _.encodeDates(data);
+    var truncated_data    = _.truncate(date_encoded_data, 255);
+    var json_data         = _.JSONEncode(date_encoded_data);
+    var encoded_data      = _.base64Encode(json_data);
+
+    /////what is this?
+    //
+    //if (!this._identify_called()) {
+    //    this._enqueue(data);
+    //    if (!_.isUndefined(callback)) {
+    //        if (this._get_config('verbose')) {
+    //            callback({status: -1, error: null});
+    //        } else {
+    //            callback(-1);
+    //        }
+    //    }
+    //    return truncated_data;
+    //}
+    console.log(data)
+
+    this._mixpanel._send_request(
+        this._mixpanel.get_config('api_host') + '/groups/',
+        {'data': encoded_data},
+        this._mixpanel._prepare_callback(callback, truncated_data)
+    );
+
+    return truncated_data;
+}
+
+MixpanelGroupManager.prototype.group = function (group_key,group_value){
+    var g = new MixpanelGroup()
+    g._init(this._mixpanel, group_key,group_value)
+    return g
+}
+
+MixpanelGroupManager.prototype.set_group = function(group_key,group_values,callback){
+    // TODO: do we need this copy-pasted code
+    // see MixpanelPeople.prototype.set()
+    // 
+    ////////////
+    // make sure that the referrer info has been updated and saved
+    //if (this._get_config('save_referrer')) {
+    //    this._mixpanel['persistence'].update_referrer_info(document.referrer);
+    //}
+    //// update $set object with default people properties
+    //$set = _.extend(
+    //    {},
+    //    _.info.people_properties(),
+    //    this._mixpanel['persistence'].get_referrer_info(),
+    //    $set
+    //);
+    var data = {};
+    var $set = {};
+    $set[group_key] = group_values;
+    data[SET_ACTION] = $set;
+    return this._send_request(data, callback);
 };
 
 /**
  * TODO: docstring here
- * mixpanel.addGroup( 'company', 'mixpanel')
+ * groups_values: array of strings
+ * e.g. mixpanel.set_group('company', ['mixpanel','google'])
+ *
  */
-MixpanelLib.prototype.addGroup = function(group_key,group_value){
+MixpanelLib.prototype.set_group = function(group_key,group_values,callback){
+    return this.group_manager.set_group(group_key,group_values,callback)
+};
+
+/**
+ * TODO: docstring here
+ * mixpanel.add_group( 'company', 'mixpanel')
+ */
+MixpanelLib.prototype.add_group = function(group_key,group_value,callback){
+    return this.group_manager.getGroup(group_key,group_value,callback)
 };
 
 /**
@@ -1204,7 +1276,78 @@ MixpanelLib.prototype.removeGroup = function(group_key,group_value){
  * TODO: docstring here
  * mixpanel.trackWithGroups( 
  */
-MixpanelLib.prototype.trackWithGroups = function(event,properties,groups/**FIXME: a better name? **/){
+MixpanelLib.prototype.trackWithGroups = function(event_name,properties,groups/**FIXME: a better name? **/, callback){
+    if (typeof(callback) !== 'function') {
+        callback = function() {};
+    }
+
+    if (_.isUndefined(event_name)) {
+        console.error('No event name provided to mixpanel.track');
+        return;
+    }
+
+    if (this._event_is_disabled(event_name)) {
+        callback(0);
+        return;
+    }
+
+    // set defaults
+    properties = properties || {};
+    properties['token'] = this.get_config('token');
+
+    // set $duration if time_event was previously called for this event
+    var start_timestamp = this['persistence'].remove_event_timer(event_name);
+    if (!_.isUndefined(start_timestamp)) {
+        var duration_in_ms = new Date().getTime() - start_timestamp;
+        properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
+    }
+
+    // update persistence
+    this['persistence'].update_search_keyword(document.referrer);
+
+    if (this.get_config('store_google')) { this['persistence'].update_campaign_params(); }
+    if (this.get_config('save_referrer')) { this['persistence'].update_referrer_info(document.referrer); }
+
+    // note: extend writes to the first object, so lets make sure we
+    // don't write to the persistence properties object and info
+    // properties object by passing in a new object
+
+    // update properties with pageview info and super-properties
+    properties = _.extend(
+        {},
+        _.info.properties(),
+        this['persistence'].properties(),
+        properties
+    );
+
+    var property_blacklist = this.get_config('property_blacklist');
+    if (_.isArray(property_blacklist)) {
+        _.each(property_blacklist, function(blacklisted_prop) {
+            delete properties[blacklisted_prop];
+        });
+    } else {
+        console.error('Invalid value for property_blacklist config: ' + property_blacklist);
+    }
+
+    var data = {
+        'event': event_name,
+        'properties': properties
+    };
+
+    var truncated_data = _.truncate(data, 255);
+    var json_data      = _.JSONEncode(truncated_data);
+    var encoded_data   = _.base64Encode(json_data);
+
+    console.log('MIXPANEL REQUEST:');
+    console.log(truncated_data);
+
+    this._send_request(
+        this.get_config('api_host') + '/groups/' /* TODO: fill in the real endpoint */,
+        { 'data': encoded_data },
+        this._prepare_callback(callback, truncated_data)
+    );
+
+    return truncated_data;
 };
 
 
@@ -1216,9 +1359,7 @@ MixpanelLib.prototype.trackWithGroups = function(event,properties,groups/**FIXME
  */
 
 MixpanelLib.prototype.group = function (group_key,group_value){
-    var g = new MixpanelGroup()
-    g._init(this, group_key,group_value)
-    return g
+    return this.group_manager.group(group_key,group_value)
 };
 
 /**
@@ -1887,6 +2028,11 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
     this._update_persistence();
 };
 
+
+//TODO
+MixpanelGroupManager.prototype._init = function(mixpanel_instance){
+    this._mixpanel=mixpanel_instance
+}
 
 //TODO
 MixpanelGroup.prototype._init = function(mixpanel_instance, group_key,group_value){
@@ -3629,7 +3775,7 @@ MixpanelGroup.prototype.set = function(properties){
 }
 
 MixpanelGroup.prototype.toString = function(){
-    return this._mixpanel.toString() + '.group.'+ this._group_key + '.'+this._group_key;
+    return this._mixpanel.toString() + '.group.'+ this._group_key + '.'+this._group_value;
 }
 
 // EXPORTS (for closure compiler)
@@ -3661,6 +3807,7 @@ MixpanelLib.prototype['opt_in_tracking']                 = MixpanelLib.prototype
 MixpanelLib.prototype['has_opted_out_tracking']          = MixpanelLib.prototype.has_opted_out_tracking;
 MixpanelLib.prototype['has_opted_in_tracking']           = MixpanelLib.prototype.has_opted_in_tracking;
 MixpanelLib.prototype['clear_opt_in_out_tracking']       = MixpanelLib.prototype.clear_opt_in_out_tracking;
+MixpanelLib.prototype['set_group']=MixpanelLib.prototype.set_group
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
@@ -3684,8 +3831,11 @@ MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
 
 
+// MixpanelGroupManager Exports
+MixpanelGroupManager.prototype['_init']=MixpanelGroupManager.prototype._init
+MixpanelGroupManager.prototype['set_group']=MixpanelGroupManager.prototype.set_group
+
 // MixpanelGroup Exports
-// TODO
 MixpanelGroup.prototype['set']=MixpanelGroup.prototype.set
 MixpanelGroup.prototype['_init']=MixpanelGroup.prototype._init
 
