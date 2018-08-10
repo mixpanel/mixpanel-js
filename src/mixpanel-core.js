@@ -2502,6 +2502,12 @@ MixpanelPeople.prototype._populate_group_fields = function(data) {
     return;
 };
 
+//FIXME: monkey patch
+MixpanelPeople.prototype._populate_group_fields = function(data) {
+    console.log(data); //suppress linter's "unused var" warning
+    return;
+};
+
 
 // Internal class for notification display
 MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
