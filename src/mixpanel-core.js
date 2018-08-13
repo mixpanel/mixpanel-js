@@ -1228,26 +1228,12 @@ MixpanelGroupManager.prototype.group = function (group_key,group_value){
 }
 
 MixpanelGroupManager.prototype.set_group = function(group_key,group_values,callback){
-    // TODO: do we need this copy-pasted code
-    // see MixpanelPeople.prototype.set()
-    // 
-    ////////////
-    // make sure that the referrer info has been updated and saved
-    //if (this._get_config('save_referrer')) {
-    //    this._mixpanel['persistence'].update_referrer_info(document.referrer);
-    //}
-    //// update $set object with default people properties
-    //$set = _.extend(
-    //    {},
-    //    _.info.people_properties(),
-    //    this._mixpanel['persistence'].get_referrer_info(),
-    //    $set
-    //);
     var data = {};
     var $set = {};
     $set[group_key] = group_values;
     data[SET_ACTION] = $set;
     return this._send_request(data, callback);
+    $set[group_key] = group_value
 };
 
 MixpanelGroupManager.prototype.add_group = function(group_key,group_value,callback){
@@ -1294,9 +1280,10 @@ MixpanelLib.prototype.remove_group = function(group_key,group_value,callback){
 
 /**
  * TODO: docstring here
- * mixpanel.trackWithGroups( 
+ * mixpanel.track_with_groups( 'purchase', { 'product': 'iphone' }, { 'University' : ['UCB'] })
  */
-MixpanelLib.prototype.trackWithGroups = function(event_name,properties,groups/**FIXME: a better name? **/, callback){
+MixpanelLib.prototype.track_with_groups = function(event_name,properties,group_properties, callback){
+    // copy-pasta from mixpanel.track(), only with a different endpoint
     if (typeof(callback) !== 'function') {
         callback = function() {};
     }
@@ -1310,6 +1297,8 @@ MixpanelLib.prototype.trackWithGroups = function(event_name,properties,groups/**
         callback(0);
         return;
     }
+
+    _.extend(properties,group_properties)
 
     // set defaults
     properties = properties || {};
@@ -3788,10 +3777,45 @@ MPNotif.prototype._yt_video_ready = _.safewrap(function() {
 });
 
 /****
- * TODO
+ * Set properties on a group
+ *
+ * Usage:
+ * mixpanel.group(group_key, group_value).set({properties})
+ * mixpanel.group(group_key, group_value).set(prop_key,prop_value)
+ *
  */
-MixpanelGroup.prototype.set = function(properties){
-    console.log('group.set', properties)
+MixpanelGroup.prototype.set = function(prop, to, callback){
+    var data = {};
+    var $set = {};
+    if (_.isObject(prop)) {
+        _.each(prop, function(v, k) {
+            if (!this._is_reserved_property(k)) {
+                $set[k] = v;
+            }
+        }, this);
+        callback = to;
+    } else {
+        $set[prop] = to;
+    }
+
+    // make sure that the referrer info has been updated and saved
+    if (this._get_config('save_referrer')) {
+        this._mixpanel['persistence'].update_referrer_info(document.referrer);
+    }
+
+    $set['$group_key'] = this._group_key
+    $set['$group_value'] = this._group_value
+
+    // update $set object with default people properties
+    $set = _.extend(
+        {},
+        _.info.people_properties(),
+        this._mixpanel['persistence'].get_referrer_info(),
+        $set
+    );
+
+    data[SET_ACTION] = $set;
+    return this._mixpanel.group_manager._send_request(data, callback);
 }
 
 MixpanelGroup.prototype.toString = function(){
