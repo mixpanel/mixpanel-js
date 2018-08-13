@@ -2754,6 +2754,47 @@
                     "$delete": this.id
                 }, "Cannot delete user without valid distinct id");
             });
+            
+            mpmodule("mixpanel.set_group");
+
+            test("array of groups", 1, function(){
+                a = mixpanel.test.set_group('company', ['mixpanel','google']);
+                same(a['$set']['company'], ['mixpanel', 'google' ]);
+            });
+
+            test("single group", 1, function(){
+                a = mixpanel.test.set_group('company', 'mixpanel');
+                same(a['$set']['company'], 'mixpanel');
+            });
+
+            mpmodule("mixpanel.add_group");
+            test("add_group (basic functionality)", 1, function(){
+                a = mixpanel.test.add_group('company', 'mixpanel');
+                same(a['$add']['company'], 'mixpanel');
+            });
+
+            mpmodule("mixpanel.remove_group")
+            test("remove_group (basic functionality)", 1, function (){
+                a = mixpanel.test.remove_group('company', 'mixpanel');
+                same(a['$remove']['company'], 'mixpanel');
+            });
+
+            mpmodule("mixpanel.track_with_groups")
+            test("track_with_groups (basic functionality)", 1, function (){
+                var prop = {"product_name":"macbook"};
+                var group_prop = {"company": "mixpanel"};
+                t = mixpanel.test.track_with_groups('purchase', prop, group_prop);
+                var expected = _.extend({}, prop);
+                expected = _.extend(expected, group_prop);
+                ok(contains_obj(t['properties'],expected), "should be the union of prop and group_prop");
+            });
+
+            test("overwrite", 1, function (){
+                var prop = {"key":"value1"};
+                var group_prop = {"key": "value2"};
+                t = mixpanel.test.track_with_groups('event', prop, group_prop);
+                same(t['properties']['key'],'value2' , "group_prop should overwrite prop");
+            });
 
             mpmodule("in-app notification display");
 

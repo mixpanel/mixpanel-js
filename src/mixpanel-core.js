@@ -1229,7 +1229,8 @@ MixpanelGroupManager.prototype.add_group = function(group_key,group_value,callba
 
 MixpanelGroupManager.prototype.remove_group = function(group_key,group_value,callback){
     var data = {};
-    var $remove = [];
+    var $remove = {};
+    //FIXME: is '$remove' method correct?
     $remove[group_key] = group_value;
     data['$remove'] = $remove;
     return this._send_request(data, callback);
