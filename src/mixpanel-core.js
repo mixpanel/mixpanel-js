@@ -1195,8 +1195,10 @@ MixpanelGroupManager.prototype._send_request = function(data,callback){
     var json_data         = _.JSONEncode(date_encoded_data);
     var encoded_data      = _.base64Encode(json_data);
 
-    /////what is this?
-    //
+    ////////////
+    //what is this queueing code??
+    ////////////
+    
     //if (!this._identify_called()) {
     //    this._enqueue(data);
     //    if (!_.isUndefined(callback)) {
@@ -1248,6 +1250,22 @@ MixpanelGroupManager.prototype.set_group = function(group_key,group_values,callb
     return this._send_request(data, callback);
 };
 
+MixpanelGroupManager.prototype.add_group = function(group_key,group_value,callback){
+    var data = {};
+    var $add = {};
+    $add[group_key] = group_value
+    data[ADD_ACTION] = $add;
+    return this._send_request(data, callback);
+};
+
+MixpanelGroupManager.prototype.remove_group = function(group_key,group_value,callback){
+    var data = {};
+    var $remove = [];
+    $remove[group_key] = group_value
+    data['$remove'] = $remove;
+    return this._send_request(data, callback);
+};
+
 /**
  * TODO: docstring here
  * groups_values: array of strings
@@ -1263,13 +1281,15 @@ MixpanelLib.prototype.set_group = function(group_key,group_values,callback){
  * mixpanel.add_group( 'company', 'mixpanel')
  */
 MixpanelLib.prototype.add_group = function(group_key,group_value,callback){
-    return this.group_manager.getGroup(group_key,group_value,callback)
+    return this.group_manager.add_group(group_key,group_value,callback)
 };
 
 /**
  * TODO: docstring here
+ * mixpanel.remove_group( 'company', 'mixpanel')
  */
-MixpanelLib.prototype.removeGroup = function(group_key,group_value){
+MixpanelLib.prototype.remove_group = function(group_key,group_value,callback){
+    return this.group_manager.remove_group(group_key,group_value,callback)
 };
 
 /**
@@ -3808,6 +3828,7 @@ MixpanelLib.prototype['has_opted_out_tracking']          = MixpanelLib.prototype
 MixpanelLib.prototype['has_opted_in_tracking']           = MixpanelLib.prototype.has_opted_in_tracking;
 MixpanelLib.prototype['clear_opt_in_out_tracking']       = MixpanelLib.prototype.clear_opt_in_out_tracking;
 MixpanelLib.prototype['set_group']=MixpanelLib.prototype.set_group
+MixpanelLib.prototype['get_group']=MixpanelLib.prototype.get_group
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
@@ -3834,6 +3855,8 @@ _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_
 // MixpanelGroupManager Exports
 MixpanelGroupManager.prototype['_init']=MixpanelGroupManager.prototype._init
 MixpanelGroupManager.prototype['set_group']=MixpanelGroupManager.prototype.set_group
+MixpanelGroupManager.prototype['add_group']=MixpanelGroupManager.prototype.add_group
+MixpanelGroupManager.prototype['remove_group']=MixpanelGroupManager.prototype.remove_group
 
 // MixpanelGroup Exports
 MixpanelGroup.prototype['set']=MixpanelGroup.prototype.set
