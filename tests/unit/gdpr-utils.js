@@ -1,7 +1,5 @@
-import os from 'os';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import nodeLocalStorage from 'node-localstorage';
 
 import jsdomSetup from './jsdom-setup';
 
@@ -40,15 +38,10 @@ describe(`GDPR utils`, function() {
   // so that they reference the correct jsdom document
   let _, gdpr;
 
-  // jsdom doesn't have support for local/session storage
-  // add support using this node implementation
-  const localStorage = nodeLocalStorage.LocalStorage(os.tmpdir() + '/tmpLocalStorage');
-
   jsdomSetup({
-    dependencies: [`../../src/utils`, `../../src/gdpr-utils`],
-    beforeCallback: dependencies => {
-      [_, gdpr] = dependencies;
-      window.localStorage = localStorage;
+    reImportModules: [`../../src/utils`, `../../src/gdpr-utils`],
+    beforeCallback: modules => {
+      [_, gdpr] = modules;
       window.localStorage.clear();
     },
   });

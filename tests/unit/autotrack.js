@@ -1,8 +1,6 @@
-import os from 'os';
 import { expect } from 'chai';
 import jsdom from 'jsdom-global';
 import sinon from 'sinon';
-import nodeLocalStorage from 'node-localstorage';
 
 import { _ } from '../../src/utils';
 import { autotrack } from '../../src/autotrack';
@@ -22,9 +20,9 @@ const simulateClick = function(el) {
 
 
 describe('Autotrack system', function() {
-  jsdomSetup({jsdom: {
-    url: 'https://mixpanel.com/about/?query=param',
-  }});
+  jsdomSetup({
+    url: 'https://example.com/about/?query=param',
+  });
 
   describe('_getPropertiesFromElement', function() {
     let div, div2, input, sensitiveInput, hidden, password;
@@ -195,7 +193,7 @@ describe('Autotrack system', function() {
       expect(autotrack._getDefaultProperties('test')).to.deep.equal({
         '$event_type': 'test',
         '$ce_version': 1,
-        '$host': 'mixpanel.com',
+        '$host': 'example.com',
         '$pathname': '/about/',
       });
     });
@@ -467,7 +465,7 @@ describe('Autotrack system', function() {
       const props = trackArgs[1];
       expect(event).to.equal('$web_event');
       expect(props['$event_type']).to.equal('click');
-      expect(props).to.have.property('$host', 'mixpanel.com');
+      expect(props).to.have.property('$host', 'example.com');
       expect(props).to.have.property('$el_attr__href', 'http://test.com');
       expect(props['$elements'][1]).to.have.property('tag_name', 'span');
       expect(props['$elements'][2]).to.have.property('tag_name', 'div');
@@ -836,7 +834,7 @@ describe('Autotrack system', function() {
         '$event_type': 'pageview',
         '$ce_version': 1,
         '$title': 'test page',
-        '$host': 'mixpanel.com',
+        '$host': 'example.com',
         '$pathname': '/about/',
       });
     });
@@ -852,20 +850,12 @@ describe('Autotrack system', function() {
     let hash, editorParams, sandbox, lib = {};
 
     beforeEach(function() {
-      // jsdom doesn't have support for local/session storage
-      // add support using this node implementation
-      window.sessionStorage = nodeLocalStorage.LocalStorage(os.tmpdir() + '/tmpSessionStorage');
+      window.sessionStorage.clear();
 
       this.clock = sinon.useFakeTimers();
 
       sandbox = sinon.sandbox.create();
       sandbox.stub(autotrack, '_loadEditor');
-
-      window.sessionStorage.clear();
-      sandbox.spy(window.sessionStorage, 'setItem');
-      sandbox.spy(window.sessionStorage, 'getItem');
-      sandbox.spy(window.sessionStorage, 'removeItem');
-
       lib.get_config = sandbox.stub();
       lib.get_config.withArgs('token').returns('test_token');
       lib.get_config.withArgs('app_host').returns('test_app_host');
@@ -914,8 +904,7 @@ describe('Autotrack system', function() {
       autotrack._maybeLoadEditor(lib);
       expect(autotrack._loadEditor.calledOnce).to.equal(true);
       expect(autotrack._loadEditor.calledWith(lib, editorParams)).to.equal(true);
-      expect(window.sessionStorage.setItem.callCount).to.equal(1);
-      expect(window.sessionStorage.setItem.calledWith('editorParams', JSON.stringify(editorParams))).to.equal(true);
+      expect(JSON.parse(window.sessionStorage.getItem('editorParams'))).to.deep.equal(editorParams);
     });
 
     it('should initialize the visual editor when the hash was parsed by the snippet', function() {
@@ -923,10 +912,7 @@ describe('Autotrack system', function() {
       autotrack._maybeLoadEditor(lib);
       expect(autotrack._loadEditor.calledOnce).to.equal(true);
       expect(autotrack._loadEditor.calledWith(lib, editorParams)).to.equal(true);
-      expect(window.sessionStorage.setItem.callCount).to.equal(2);
-      expect(window.sessionStorage.setItem.calledWith('editorParams', JSON.stringify(editorParams))).to.equal(true);
-      expect(window.sessionStorage.removeItem.callCount).to.equal(1);
-      expect(window.sessionStorage.removeItem.calledWith('_mpcehash'));
+      expect(JSON.parse(window.sessionStorage.getItem('editorParams'))).to.deep.equal(editorParams);
     });
 
     it('should NOT initialize the visual editor when the activation query param does not exist', function() {
@@ -957,7 +943,7 @@ describe('Autotrack system', function() {
       sandbox = sinon.sandbox.create();
       sandbox.stub(autotrack, '_loadScript').callsFake((path, callback) => callback());
       lib.get_config = sandbox.stub();
-      lib.get_config.withArgs('app_host').returns('mixpanel.com');
+      lib.get_config.withArgs('app_host').returns('example.com');
       lib.get_config.withArgs('token').returns('token');
       window.mp_load_editor = sandbox.spy();
     });
