@@ -3783,12 +3783,9 @@ MixpanelGroup.prototype.set = function(prop, to, callback){
     }
 
     // make sure that the referrer info has been updated and saved
-    if (this._get_config('save_referrer')) {
+    if (this._mixpanel.get_config('save_referrer')) {
         this._mixpanel['persistence'].update_referrer_info(document.referrer);
     }
-
-    $set['$group_key'] = this._group_key;
-    $set['$group_value'] = this._group_value;
 
     // update $set object with default people properties
     $set = _.extend(
@@ -3799,8 +3796,11 @@ MixpanelGroup.prototype.set = function(prop, to, callback){
     );
 
     data[SET_ACTION] = $set;
+    data['$group_key'] = this._group_key;
+    data['$group_value'] = this._group_value;
     return this._mixpanel.group_manager._send_request(data, callback);
 };
+
 
 MixpanelGroup.prototype.toString = function(){
     return this._mixpanel.toString() + '.group.'+ this._group_key + '.'+this._group_value;

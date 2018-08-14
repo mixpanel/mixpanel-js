@@ -2795,6 +2795,15 @@
                 t = mixpanel.test.track_with_groups('event', prop, group_prop);
                 same(t['properties']['key'],'value2' , "group_prop should overwrite prop");
             });
+            
+            mpmodule("mixpanel.group.set")
+            test("kv style api", 3, function(){
+                var gs = mixpanel.test.group("company","mixpanel").set("key", "value");
+                var $set=gs['$set']
+                same(gs['$group_key'], 'company');
+                same(gs['$group_value'], 'mixpanel');
+                same($set['key'], 'value');
+            });
 
             mpmodule("in-app notification display");
 
