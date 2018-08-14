@@ -1267,7 +1267,7 @@ MixpanelLib.prototype.remove_group = function(group_key,group_value,callback){
  * mixpanel.track_with_groups( 'purchase', { 'product': 'iphone' }, { 'University' : ['UCB'] })
  */
 MixpanelLib.prototype.track_with_groups = function(event_name,properties,group_properties, callback){
-    // copy-pasta from mixpanel.track(), only with a different endpoint
+    // copy-pasta from mixpanel.track(), only with a different endpoint and a few more group_properties
     if (typeof(callback) !== 'function') {
         callback = function() {};
     }
@@ -2085,7 +2085,7 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
     );
 
     data[SET_ACTION] = $set;
-
+    this._populate_group_fields(data);
     return this._send_request(data, callback);
 });
 
@@ -2124,6 +2124,7 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, 
         $set_once[prop] = to;
     }
     data[SET_ONCE_ACTION] = $set_once;
+    this._populate_group_fields(data);
     return this._send_request(data, callback);
 });
 
@@ -2155,6 +2156,7 @@ MixpanelPeople.prototype.unset = function(prop, callback) {
 
     data[UNSET_ACTION] = $unset;
 
+    this._populate_group_fields(data);
     return this._send_request(data, callback);
 };
 
@@ -2207,6 +2209,7 @@ MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop,
         $add[prop] = by;
     }
     data[ADD_ACTION] = $add;
+    this._populate_group_fields(data);
 
     return this._send_request(data, callback);
 });
@@ -2244,6 +2247,7 @@ MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_nam
         $append[list_name] = value;
     }
     data[APPEND_ACTION] = $append;
+    this._populate_group_fields(data);
 
     return this._send_request(data, callback);
 });
@@ -2289,6 +2293,7 @@ MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name
     }
     data[UNION_ACTION] = $union;
 
+    this._populate_group_fields(data);
     return this._send_request(data, callback);
 });
 
@@ -2489,6 +2494,12 @@ MixpanelPeople.prototype._flush = function(
 
 MixpanelPeople.prototype._is_reserved_property = function(prop) {
     return prop === '$distinct_id' || prop === '$token' || prop === '$device_id' || prop === '$user_id';
+};
+
+//FIXME: monkey patch
+MixpanelPeople.prototype._populate_group_fields = function(data) {
+    console.log(data); //suppress linter's "unused var" warning
+    return;
 };
 
 
@@ -3768,39 +3779,20 @@ MPNotif.prototype._yt_video_ready = _.safewrap(function() {
  * mixpanel.group(group_key, group_value).set(prop_key,prop_value)
  *
  */
-MixpanelGroup.prototype.set = function(prop, to, callback){
-    var data = {};
-    var $set = {};
-    if (_.isObject(prop)) {
-        _.each(prop, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $set[k] = v;
-            }
-        }, this);
-        callback = to;
-    } else {
-        $set[prop] = to;
-    }
 
-    // make sure that the referrer info has been updated and saved
-    if (this._mixpanel.get_config('save_referrer')) {
-        this._mixpanel['persistence'].update_referrer_info(document.referrer);
-    }
-
-    // update $set object with default people properties
-    $set = _.extend(
-        {},
-        _.info.people_properties(),
-        this._mixpanel['persistence'].get_referrer_info(),
-        $set
-    );
-
-    data[SET_ACTION] = $set;
-    data['$group_key'] = this._group_key;
-    data['$group_value'] = this._group_value;
+MixpanelGroup.prototype._send_request = function(data, callback){
     return this._mixpanel.group_manager._send_request(data, callback);
 };
 
+MixpanelGroup.prototype._populate_group_fields = function(data){
+    data['$group_key'] = this._group_key;
+    data['$group_value'] = this._group_value;
+    return;
+};
+
+MixpanelGroup.prototype._get_config = function(conf){
+    return this._mixpanel.get_config(conf);
+};
 
 MixpanelGroup.prototype.toString = function(){
     return this._mixpanel.toString() + '.group.'+ this._group_key + '.'+this._group_value;
@@ -3836,7 +3828,9 @@ MixpanelLib.prototype['has_opted_out_tracking']          = MixpanelLib.prototype
 MixpanelLib.prototype['has_opted_in_tracking']           = MixpanelLib.prototype.has_opted_in_tracking;
 MixpanelLib.prototype['clear_opt_in_out_tracking']       = MixpanelLib.prototype.clear_opt_in_out_tracking;
 MixpanelLib.prototype['set_group']                       = MixpanelLib.prototype.set_group;
-MixpanelLib.prototype['get_group']                       = MixpanelLib.prototype.get_group;
+MixpanelLib.prototype['add_group']                       = MixpanelLib.prototype.add_group;
+MixpanelLib.prototype['remove_group']                    = MixpanelLib.prototype.remove_group;
+MixpanelLib.prototype['track_with_groups']               = MixpanelLib.prototype.track_with_groups;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
@@ -3860,15 +3854,16 @@ MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
 
 
-// MixpanelGroupManager Exports
-MixpanelGroupManager.prototype['_init']         = MixpanelGroupManager.prototype._init;
-MixpanelGroupManager.prototype['set_group']     = MixpanelGroupManager.prototype.set_group;
-MixpanelGroupManager.prototype['add_group']     = MixpanelGroupManager.prototype.add_group;
-MixpanelGroupManager.prototype['remove_group']  = MixpanelGroupManager.prototype.remove_group;
-
 // MixpanelGroup Exports
-MixpanelGroup.prototype['set']              = MixpanelGroup.prototype.set;
+// FIXME: this is hacky, we just set MixpanelGroup's methods to those from MixpanelPeople
+MixpanelGroup.prototype['set']           = MixpanelPeople.prototype.set;
+MixpanelGroup.prototype['set_once']      = MixpanelPeople.prototype.set_once;
+MixpanelGroup.prototype['unset']         = MixpanelPeople.prototype.unset;
+MixpanelGroup.prototype['increment']     = MixpanelPeople.prototype.increment;
+MixpanelGroup.prototype['append']        = MixpanelPeople.prototype.append;
+MixpanelGroup.prototype['union']         = MixpanelPeople.prototype.union;
 MixpanelGroup.prototype['_init']            = MixpanelGroup.prototype._init;
+MixpanelGroup.prototype['toString']            = MixpanelGroup.prototype.toString;
 
 var instances = {};
 var extend_mp = function() {
