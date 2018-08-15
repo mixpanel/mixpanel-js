@@ -1291,7 +1291,12 @@ MixpanelLib.prototype.remove_group = function(group_key,group_value,callback){
  * @param {function(...[*])=} user_callback
  */
 MixpanelLib.prototype.track_with_groups = function(event_name,properties,group_properties, callback){
-    _.extend(properties,group_properties);
+    _.each (group_properties, function(v,k){
+        if (v === null || v === undefined) {
+            return;
+        }
+        properties[k] = v;
+    });
     return this.track(event_name, properties, callback);
 };
 
