@@ -1113,7 +1113,6 @@ MixpanelLib.prototype.disable = function(events) {
  * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  */
-
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, callback) {
     if (typeof(callback) !== 'function') {
         callback = function() {};
@@ -1241,56 +1240,56 @@ MixpanelGroupManager.prototype.remove_group = function(group_key, group_value, c
  * Set a user's group_key to a list of group_values
  *
  * Usage:
- *      mixpanel.set_group('company', ['mixpanel','google'])
+ *      mixpanel.set_group('company', ['mixpanel', 'google'])
  *      TODO: mixpanel.set_group('key', 'single_value')
  *
  *  @param {String} group_key   The name of group key.
- *  @param {Object} group_values an array of group values.
- *  @param {Function} [calback] If provided, the callback will be called after the tracking event
+ *  @param {Object} group_values An array of group values.
+ *  @param {Function} [callback] If provided, the callback will be called after the tracking event
  *
  */
-MixpanelLib.prototype.set_group = function(group_key,group_values,callback){
-    return this.group_manager.set_group(group_key,group_values,callback);
+MixpanelLib.prototype.set_group = function(group_key, group_values, callback){
+    return this.group_manager.set_group(group_key, group_values, callback);
 };
 
 /**
- * Add a new values to a user group.
+ * Add a new group for this user.
  * Usage:
- *      mixpanel.add_group( 'company', 'mixpanel')
- *      TODO: mixpanel.set_group('key', ['array', 'of', 'values'])
+ *      mixpanel.add_group('company', 'mixpanel')
+ *      TODO: mixpanel.add_group('key', ['array', 'of', 'values'])
  *
  *  @param {String} group_key   The name of group key.
  *  @param {String} group_value The name of group value.
- *  @param {Function} [calback] If provided, the callback will be called after the tracking event
+ *  @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelLib.prototype.add_group = function(group_key,group_value,callback){
-    return this.group_manager.add_group(group_key,group_value,callback);
+MixpanelLib.prototype.add_group = function(group_key, group_value, callback){
+    return this.group_manager.add_group(group_key, group_value, callback);
 };
 
 /**
- * Remove a value from a user group.
+ * Remove a group from this user.
  * Usage:
- *      mixpanel.remove_group( 'company', 'mixpanel')
- *      TODO: mixpanel.set_group('key', ['array', 'of', 'values'])
+ *      mixpanel.remove_group('company', 'mixpanel')
+ *      TODO: mixpanel.remove_group('key', ['array', 'of', 'values'])
  *  @param {String} group_key   The name of group key.
  *  @param {String} group_value The name of group value.
- *  @param {Function} [calback] If provided, the callback will be called after the tracking event
+ *  @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelLib.prototype.remove_group = function(group_key,group_value,callback){
-    return this.group_manager.remove_group(group_key,group_value,callback);
+MixpanelLib.prototype.remove_group = function(group_key, group_value, callback){
+    return this.group_manager.remove_group(group_key, group_value, callback);
 };
 
 /**
  * Similar to mixpanel.track(), but append an key-value map of group properteis
  * Usage:
- *      mixpanel.track_with_groups( 'purchase', { 'product': 'iphone' }, { 'University' : ['UCB'] })
+ *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB']})
  * @param {Object|string} query
  * @param {string} event_name
  * @param {Object=} properties
  * @param {Object=} group_properties
  * @param {function(...[*])=} user_callback
  */
-MixpanelLib.prototype.track_with_groups = function(event_name,properties,group_properties, callback){
+MixpanelLib.prototype.track_with_groups = function(event_name, properties, group_properties, callback){
     _.each (group_properties, function(v,k){
         if (v === null || v === undefined) {
             return;
@@ -1312,8 +1311,8 @@ MixpanelLib.prototype.track_with_groups = function(event_name,properties,group_p
  *
  */
 
-MixpanelLib.prototype.group = function (group_key,group_value){
-    return this.group_manager.group(group_key,group_value);
+MixpanelLib.prototype.group = function (group_key, group_value){
+    return this.group_manager.group(group_key, group_value);
 };
 
 /**
@@ -1984,11 +1983,11 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
 
 
 MixpanelGroupManager.prototype._init = function(mixpanel_instance){
-    this._mixpanel=mixpanel_instance;
+    this._mixpanel = mixpanel_instance;
 };
 
 MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_value){
-    this._mixpanel=mixpanel_instance;
+    this._mixpanel = mixpanel_instance;
     this._group_key = group_key;
     this._group_value = group_value;
 };
