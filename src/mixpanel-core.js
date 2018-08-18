@@ -699,11 +699,6 @@ var MixpanelLib = function() {};
 var MixpanelPeople = function() {};
 
 /**
- * Mixpanel Group Manager Object
- * @constructor
- */
-var MixpanelGroupManager = function() {};
-/**
  * Mixpanel Group Object
  * @constructor
  */
@@ -738,8 +733,7 @@ var create_mplib = function(token, config, name) {
     instance['people'] = new MixpanelPeople();
     instance['people']._init(instance);
 
-    instance['group_manager'] = new MixpanelGroupManager();
-    instance['group_manager']._init(instance);
+    instance['_groups'] = {}; // cache groups in a pool
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true
@@ -1186,62 +1180,12 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     return truncated_data;
 });
 
-MixpanelGroupManager.prototype._send_request = function(data, callback){
-    data['$token'] = this._mixpanel.get_config('token');
-    data['$distinct_id'] = this._mixpanel.get_distinct_id();
-
-    var date_encoded_data = _.encodeDates(data);
-    var truncated_data    = _.truncate(date_encoded_data, 255);
-    var json_data         = _.JSONEncode(date_encoded_data);
-    var encoded_data      = _.base64Encode(json_data);
-
-    console.log(data);
-    this._mixpanel._send_request(
-        this._mixpanel.get_config('api_host') + '/groups/',
-        {'data': encoded_data},
-        this._mixpanel._prepare_callback(callback, truncated_data)
-    );
-
-    return truncated_data;
-};
-
-MixpanelGroupManager.prototype.group = function (group_key, group_value){
-    var g = new MixpanelGroup();
-    g._init(this._mixpanel, group_key,group_value);
-    return g;
-};
-
-MixpanelGroupManager.prototype.set_group = function(group_key, group_values, callback){
-    var data = {};
-    var $set = {};
-    $set[group_key] = group_values;
-    data[SET_ACTION] = $set;
-    return this._send_request(data, callback);
-};
-
-MixpanelGroupManager.prototype.add_group = function(group_key, group_value, callback){
-    var data = {};
-    var $add = {};
-    $add[group_key] = group_value;
-    data[ADD_ACTION] = $add;
-    return this._send_request(data, callback);
-};
-
-MixpanelGroupManager.prototype.remove_group = function(group_key, group_value, callback){
-    var data = {};
-    var $remove = {};
-    //FIXME: is '$remove' method correct?
-    $remove[group_key] = group_value;
-    data['$remove'] = $remove;
-    return this._send_request(data, callback);
-};
-
 /**
  * Set a user's group_key to a list of group_values
  *
  * Usage:
  *      mixpanel.set_group('company', ['mixpanel', 'google'])
- *      TODO: mixpanel.set_group('key', 'single_value')
+ *      mixpanel.set_group('company', 'mixpanel')
  *
  *  @param {String} group_key   The name of group key.
  *  @param {Object} group_values An array of group values.
@@ -1249,21 +1193,46 @@ MixpanelGroupManager.prototype.remove_group = function(group_key, group_value, c
  *
  */
 MixpanelLib.prototype.set_group = function(group_key, group_values, callback){
-    return this.group_manager.set_group(group_key, group_values, callback);
+    if (this.has_opted_out_tracking())
+        return;
+    if (!_.isArray(group_values)){
+        group_values = [group_values];
+    }
+    var prop = {};
+    prop[group_key] = group_values;
+    this.register(prop);
+    return this.people.set(group_key, group_values, callback);
 };
 
 /**
  * Add a new group for this user.
  * Usage:
  *      mixpanel.add_group('company', 'mixpanel')
- *      TODO: mixpanel.add_group('key', ['array', 'of', 'values'])
+ *      mixpanel.add_group('organization', ['red cross', 'boy scouts'])
  *
  *  @param {String} group_key   The name of group key.
  *  @param {String} group_value The name of group value.
  *  @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelLib.prototype.add_group = function(group_key, group_value, callback){
-    return this.group_manager.add_group(group_key, group_value, callback);
+MixpanelLib.prototype.add_group = function(group_key, group_values, callback){
+    if (this.has_opted_out_tracking())
+        return;
+    if (!_.isArray(group_values)){
+        group_values = [group_values];
+    }
+    var old_values = this.get_property(group_key);
+    if (old_values === undefined){
+        old_values = [];
+        var prop = {};
+        prop[group_key] = group_values;
+        this.register(prop);
+    }
+    _.each(group_values, function(v){
+        if (!old_values.includes(v)){
+            old_values.push(v);
+        }
+    });
+    return this.people.union(group_key, group_values, callback);
 };
 
 /**
@@ -1275,8 +1244,30 @@ MixpanelLib.prototype.add_group = function(group_key, group_value, callback){
  *  @param {String} group_value The name of group value.
  *  @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelLib.prototype.remove_group = function(group_key, group_value, callback){
-    return this.group_manager.remove_group(group_key, group_value, callback);
+MixpanelLib.prototype.remove_group = function(group_key, group_values, callback){
+    if (this.has_opted_out_tracking())
+        return;
+    var data = {};
+    var $remove = {};
+    //FIXME: is '$remove' method correct?
+    if (!_.isArray(group_values)){
+        group_values = [group_values];
+    }
+    $remove[group_key] = group_values;
+    data['$remove'] = $remove;
+    var old_value = this.get_property(group_key);
+    if (old_value === undefined)
+        return this.people._send_request(data, callback);
+    _.each(group_values, function(v){
+        var idx = old_value.indexOf(v);
+        if (idx > -1){
+            old_value.splice(idx, 1);
+        }
+    });
+    if (old_value.length === 0){
+        this.unregister(group_key);
+    }
+    return this.people._send_request(data, callback);
 };
 
 /**
@@ -1290,6 +1281,14 @@ MixpanelLib.prototype.remove_group = function(group_key, group_value, callback){
  * @param {function(...[*])=} user_callback
  */
 MixpanelLib.prototype.track_with_groups = function(event_name, properties, group_properties, callback){
+    if (this.has_opted_out_tracking())
+        return;
+    if (properties === null){
+        return this.track(event_name, group_properties, callback);
+    }
+    if (group_properties === null){
+        return this.track(event_name, properties, callback);
+    }
     _.each (group_properties, function(v,k){
         if (v === null || v === undefined) {
             return;
@@ -1311,8 +1310,15 @@ MixpanelLib.prototype.track_with_groups = function(event_name, properties, group
  *
  */
 
-MixpanelLib.prototype.group = function (group_key, group_value){
-    return this.group_manager.group(group_key, group_value);
+MixpanelLib.prototype.get_group = function (group_key, group_value){
+    var map_key = group_key + '_' + group_value; // FIXME: is this key unique?
+    var group = this._groups[map_key];
+    if (group === undefined){
+        group = new MixpanelGroup();
+        group._init(this, group_key, group_value);
+        this._groups[map_key] = group;
+    }
+    return group;
 };
 
 /**
@@ -1979,11 +1985,6 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
 MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
     this._call_gdpr_func(clearOptInOut, options);
     this._update_persistence();
-};
-
-
-MixpanelGroupManager.prototype._init = function(mixpanel_instance){
-    this._mixpanel = mixpanel_instance;
 };
 
 MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_value){
@@ -3722,19 +3723,25 @@ MPNotif.prototype._yt_video_ready = _.safewrap(function() {
     });
 });
 
-/****
- * Set properties on a group
- *
- * Usage:
- * mixpanel.group(group_key, group_value).set({properties})
- * mixpanel.group(group_key, group_value).set(prop_key,prop_value)
- *
- */
 
 MixpanelGroup.prototype._send_request = function(data, callback){
     data['$group_key'] = this._group_key;
     data['$group_value'] = this._group_value;
-    return this._mixpanel.group_manager._send_request(data, callback);
+    data['$token'] = this._mixpanel.get_config('token');
+
+    var date_encoded_data = _.encodeDates(data);
+    var truncated_data    = _.truncate(date_encoded_data, 255);
+    var json_data         = _.JSONEncode(date_encoded_data);
+    var encoded_data      = _.base64Encode(json_data);
+
+    console.log(data);
+    this._mixpanel._send_request(
+        this._mixpanel.get_config('api_host') + '/groups/',
+        {'data': encoded_data},
+        this._mixpanel._prepare_callback(callback, truncated_data)
+    );
+
+    return truncated_data;
 };
 
 MixpanelGroup.prototype._get_config = function(conf){

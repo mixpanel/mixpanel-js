@@ -2757,26 +2757,55 @@
             
             mpmodule("mixpanel.set_group");
 
-            test("array of groups", 1, function(){
+            test("should overwrite super property", 2, function(){
+                mixpanel.test.register('company', ['facebook']);
                 a = mixpanel.test.set_group('company', ['mixpanel','google']);
                 same(a['$set']['company'], ['mixpanel', 'google' ]);
+                same(mixpanel.test.get_property('company'), ['mixpanel', 'google']);
             });
 
             test("single group", 1, function(){
                 a = mixpanel.test.set_group('company', 'mixpanel');
-                same(a['$set']['company'], 'mixpanel');
+                same(a['$set']['company'], ['mixpanel']);
             });
 
             mpmodule("mixpanel.add_group");
-            test("add_group (basic functionality)", 1, function(){
+            test("add_group (basic functionality)", 2, function(){
                 a = mixpanel.test.add_group('company', 'mixpanel');
-                same(a['$add']['company'], 'mixpanel');
+                same(a['$union']['company'], ['mixpanel']);
+                same(mixpanel.test.get_property('company'), ['mixpanel']);
+            });
+
+            test("super property", 4, function(){
+                mixpanel.test.add_group('company', 'mixpanel');
+                same(mixpanel.test.get_property('company'), ['mixpanel']);
+                mixpanel.test.add_group('company', 'mixpanel');
+                same(mixpanel.test.get_property('company'), ['mixpanel']);
+                mixpanel.test.add_group('company', 'google');
+                same(mixpanel.test.get_property('company'), ['mixpanel', 'google']);
+                mixpanel.test.add_group('company', ['google', 'facebook']);
+                same(mixpanel.test.get_property('company'), ['mixpanel', 'google', 'facebook']);
+            });
+
+            test("add_group (array of groups)", 2, function(){
+                a = mixpanel.test.add_group('company', ['mixpanel', 'google']);
+                same(a['$union']['company'], ['mixpanel', 'google']);
+                same(mixpanel.test.get_property('company'), ['mixpanel', 'google']);
             });
 
             mpmodule("mixpanel.remove_group")
             test("remove_group (basic functionality)", 1, function (){
                 a = mixpanel.test.remove_group('company', 'mixpanel');
-                same(a['$remove']['company'], 'mixpanel');
+                same(a['$remove']['company'], ['mixpanel']);
+            });
+            test("super properties", 3, function (){
+                mixpanel.test.remove_group('company', 'mixpanel');
+                same(mixpanel.test.get_property('company'), undefined);
+                mixpanel.test.add_group('company', 'google');
+                mixpanel.test.remove_group('company', 'mixpanel');
+                same(mixpanel.test.get_property('company'), ['google']);
+                mixpanel.test.remove_group('company', 'google');
+                same(mixpanel.test.get_property('company'), undefined);
             });
 
             mpmodule("mixpanel.track_with_groups")
@@ -2789,16 +2818,35 @@
                 ok(contains_obj(t['properties'],expected), "should be the union of prop and group_prop");
             });
 
-            test("overwrite", 1, function (){
+            test("handle null properties", 1, function (){
+                var prop = {"key": "value"};
+                t = mixpanel.test.track_with_groups('purchase', null, prop);
+                ok(contains_obj(t['properties'], prop))
+            });
+
+            test("handle null group properties", 1, function (){
+                var prop = {"key": "value"};
+                t = mixpanel.test.track_with_groups('purchase', prop, null);
+                ok(contains_obj(t['properties'], prop))
+            });
+
+            test("overwrite properties", 1, function (){
                 var prop = {"key":"value1"};
                 var group_prop = {"key": "value2"};
                 t = mixpanel.test.track_with_groups('event', prop, group_prop);
                 same(t['properties']['key'],'value2' , "group_prop should overwrite prop");
             });
-            
+            mpmodule("mixpanel.get_group");
+            test("cached", 1, function(){
+                var group = mixpanel.test.get_group("key", "value");
+                group.foo = 'bar';
+                var group2 = mixpanel.test.get_group("key", "value");
+                same(group2.foo, 'bar');
+            });
+
             mpmodule("mixpanel.group.set")
             test("kv style api", 3, function(){
-                var gs = mixpanel.test.group("company","mixpanel").set("key", "value");
+                var gs = mixpanel.test.get_group("company","mixpanel").set("key", "value");
                 var $set=gs['$set']
                 same(gs['$group_key'], 'company');
                 same(gs['$group_value'], 'mixpanel');
