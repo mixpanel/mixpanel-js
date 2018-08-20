@@ -110,6 +110,19 @@ export function addOptOutCheckMixpanelPeople(method) {
 }
 
 /**
+ * Wrap a MixpanelGroup method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
+ * If the user has opted out, return early instead of executing the method.
+ * If a callback argument was provided, execute it passing the 0 error code.
+ * @param {function} method - wrapped method to be executed if the user has not opted out
+ * @returns {*} the result of executing method OR undefined if the user has opted out
+ */
+export function addOptOutCheckMixpanelGroup(method) {
+    return _addOptOutCheck(method, function(name) {
+        return this._get_config(name);
+    });
+}
+
+/**
  * Clear the user's opt in/out status of data tracking and cookies/localstorage for the given token
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]

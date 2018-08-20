@@ -2845,14 +2845,44 @@
             });
 
             mpmodule("mixpanel.group.set")
-            test("kv style api", 3, function(){
+            test("basic", 4, function(){
                 var gs = mixpanel.test.get_group("company","mixpanel").set("key", "value");
                 var $set=gs['$set']
+                same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
                 same(gs['$group_key'], 'company');
                 same(gs['$group_value'], 'mixpanel');
                 same($set['key'], 'value');
             });
 
+            mpmodule("mixpanel.group.set_once")
+            test("basic", 4, function(){
+                var gs = mixpanel.test.get_group("company","mixpanel").set_once("key", "value");
+                var $set_once=gs['$set_once']
+                same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
+                same(gs['$group_key'], 'company');
+                same(gs['$group_value'], 'mixpanel');
+                same($set_once['key'], 'value');
+            });
+
+            mpmodule("mixpanel.group.union")
+            test("basic", 4, function(){
+                var gs = mixpanel.test.get_group("company","mixpanel").union("key", "value");
+                var $union=gs['$union']
+                same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
+                same(gs['$group_key'], 'company');
+                same(gs['$group_value'], 'mixpanel');
+                same($union['key'], ['value']);
+            });
+
+            mpmodule("mixpanel.group.unset")
+            test("basic", 4, function(){
+                var gs = mixpanel.test.get_group("company","mixpanel").unset("key");
+                var $unset=gs['$unset']
+                same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
+                same(gs['$group_key'], 'company');
+                same(gs['$group_value'], 'mixpanel');
+                same($unset, ['key']);
+            });
             mpmodule("in-app notification display");
 
             asyncTest("notification with normal data adds itself to DOM", 1, function() {

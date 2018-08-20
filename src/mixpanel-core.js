@@ -9,7 +9,8 @@ import {
     hasOptedOut,
     clearOptInOut,
     addOptOutCheckMixpanelLib,
-    addOptOutCheckMixpanelPeople
+    addOptOutCheckMixpanelPeople,
+    addOptOutCheckMixpanelGroup
 } from './gdpr-utils';
 
 /*
@@ -131,6 +132,73 @@ var DOM_LOADED = false;
  * @constructor
  */
 var DomTracker = function() {};
+
+// common internal methods for mixpanel.people and mixpanel.group APIs, these methods shouldn't involve network IO.
+var _set = function(prop, to) {
+    var data = {};
+    var $set = {};
+    if (_.isObject(prop)) {
+        _.each(prop, function(v, k) {
+            if (!this._is_reserved_property(k)) {
+                $set[k] = v;
+            }
+        }, this);
+    } else {
+        $set[prop] = to;
+    }
+
+    data[SET_ACTION] = $set;
+    return data;
+};
+
+var _unset = function(prop) {
+    var data = {};
+    var $unset = [];
+    if (!_.isArray(prop)) {
+        prop = [prop];
+    }
+
+    _.each(prop, function(k) {
+        if (!this._is_reserved_property(k)) {
+            $unset.push(k);
+        }
+    }, this);
+
+    data[UNSET_ACTION] = $unset;
+    return data;
+};
+
+var _set_once = function(prop, to) {
+    var data = {};
+    var $set_once = {};
+    if (_.isObject(prop)) {
+        _.each(prop, function(v, k) {
+            if (!this._is_reserved_property(k)) {
+                $set_once[k] = v;
+            }
+        }, this);
+    } else {
+        $set_once[prop] = to;
+    }
+    data[SET_ONCE_ACTION] = $set_once;
+    return data;
+};
+
+var _union = function(list_name, values) {
+    var data = {};
+    var $union = {};
+    if (_.isObject(list_name)) {
+        _.each(list_name, function(v, k) {
+            if (!this._is_reserved_property(k)) {
+                $union[k] = _.isArray(v) ? v : [v];
+            }
+        }, this);
+    } else {
+        $union[list_name] = _.isArray(values) ? values : [values];
+    }
+    data[UNION_ACTION] = $union;
+    return data;
+};
 
 // interface
 DomTracker.prototype.create_properties = function() {};
@@ -2016,34 +2084,24 @@ MixpanelPeople.prototype._init = function(mixpanel_instance) {
  * @param {*} [to] A value to set on the given property name
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
-    var data = {};
-    var $set = {};
+MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, callback){
+    var data = _set.apply(this, [prop, to]);
+    var $set = data[SET_ACTION];
     if (_.isObject(prop)) {
-        _.each(prop, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $set[k] = v;
-            }
-        }, this);
         callback = to;
-    } else {
-        $set[prop] = to;
     }
-
     // make sure that the referrer info has been updated and saved
     if (this._get_config('save_referrer')) {
         this._mixpanel['persistence'].update_referrer_info(document.referrer);
     }
 
     // update $set object with default people properties
-    $set = _.extend(
+    data[SET_ACTION] = _.extend(
         {},
         _.info.people_properties(),
         this._mixpanel['persistence'].get_referrer_info(),
         $set
     );
-
-    data[SET_ACTION] = $set;
     return this._send_request(data, callback);
 });
 
@@ -2068,20 +2126,11 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
  * @param {*} [to] A value to set on the given property name
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
-    var data = {};
-    var $set_once = {};
+MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, to, callback){
+    var data = _set_once.apply(this, [prop, to]);
     if (_.isObject(prop)) {
-        _.each(prop, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $set_once[k] = v;
-            }
-        }, this);
         callback = to;
-    } else {
-        $set_once[prop] = to;
     }
-    data[SET_ONCE_ACTION] = $set_once;
     return this._send_request(data, callback);
 });
 
@@ -2098,21 +2147,8 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, 
  * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.unset = function(prop, callback) {
-    var data = {};
-    var $unset = [];
-    if (!_.isArray(prop)) {
-        prop = [prop];
-    }
-
-    _.each(prop, function(k) {
-        if (!this._is_reserved_property(k)) {
-            $unset.push(k);
-        }
-    }, this);
-
-    data[UNSET_ACTION] = $unset;
-
+MixpanelPeople.prototype.unset = function(prop, callback){
+    var data = _unset.apply(this, [prop]);
     return this._send_request(data, callback);
 };
 
@@ -2232,21 +2268,11 @@ MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_nam
  * @param {*} [value] Value / values to merge with the given property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name, values, callback) {
-    var data = {};
-    var $union = {};
+MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name, values, callback){
     if (_.isObject(list_name)) {
-        _.each(list_name, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $union[k] = _.isArray(v) ? v : [v];
-            }
-        }, this);
         callback = values;
-    } else {
-        $union[list_name] = _.isArray(values) ? values : [values];
     }
-    data[UNION_ACTION] = $union;
-
+    var data = _union.apply(this, [list_name, values]);
     return this._send_request(data, callback);
 });
 
@@ -3723,11 +3749,113 @@ MPNotif.prototype._yt_video_ready = _.safewrap(function() {
     });
 });
 
+/*
+ * Set properties on a group.
+ *
+ * TODO: in JSON payload do we use a single value or array of values?
+ * ### Usage:
+ *
+ *     mixpanel.get_group('company', 'mixpanel').set('Location', '405 Howard');
+ *
+ *     // or set multiple properties at once
+ *     mixpanel.get_group('company', 'mixpanel').set({
+ *          'Location': '405 Howard',
+ *          'Founded' : 2009,
+ *     });
+ *     // properties can be strings, integers, dates, or lists
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [to] A value to set on the given property name
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.set = addOptOutCheckMixpanelGroup(function(prop, to, callback) {
+    var data = _set.apply(this, [prop, to]);
+    if (_.isObject(prop)) {
+        callback = to;
+    }
+    return this._send_request(data, callback);
+});
+
+/*
+ * Set properties on a group, only if they do not yet exist.
+ * This will not overwrite previous people property values, unlike
+ * group.set().
+ *
+ * TODO: in JSON payload do we use a single value or array of values?
+ * ### Usage:
+ *
+ *     mixpanel.get_group('company', 'mixpanel').set_once('Location', '405 Howard');
+ *
+ *     // or set multiple properties at once
+ *     mixpanel.get_group('company', 'mixpanel').set_once({
+ *          'Location': '405 Howard',
+ *          'Founded' : 2009,
+ *     });
+ *     // properties can be strings, integers or dates
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [to] A value to set on the given property name
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to, callback){
+    var data = _set_once.apply(this, [prop, to]);
+    if (_.isObject(prop)) {
+        callback = to;
+    }
+    return this._send_request(data, callback);
+});
+
+/*
+ * Unset properties on a group permanently.
+ *
+ * ### Usage:
+ *
+ * TODO: in JSON payload do we use a single value or array of values?
+ *     mixpanel.get_group('company', 'mixpanel').unset('Founded');
+ *
+ *     // or unset multiple properties at once
+ *     mixpanel.get_group('company', 'mixpanel').unset(['Location', 'founded']);
+ *
+ * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.unset = function(prop, callback){
+    var data = _unset.apply(this, [prop]);
+    return this._send_request(data, callback);
+};
+
+/*
+ * Merge a given list with a list-valued group property,
+ * excluding duplicate values.
+ *
+ * ### Usage:
+ *
+ * TODO: in JSON payload do we use a single value or array of values?
+ *     // merge a value to a list, creating it if needed
+ *     mixpanel.get_group('company', 'mixpanel').union('Location', '405 Howard St.');
+ *
+ *     // like group.set(), you can append multiple
+ *     // properties at once:
+ *     mixpanel.get_group('company', 'mixpanel').union({
+ *         key1: 'value1',
+ *         key2: [value2];
+ *     });
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [value] Value / values to merge with the given property
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.union = addOptOutCheckMixpanelGroup(function(list_name, values, callback){
+    if (_.isObject(list_name)) {
+        callback = values;
+    }
+    var data = _union.apply(this, [list_name, values]);
+    return this._send_request(data, callback);
+});
 
 MixpanelGroup.prototype._send_request = function(data, callback){
     data['$group_key'] = this._group_key;
     data['$group_value'] = this._group_value;
-    data['$token'] = this._mixpanel.get_config('token');
 
     var date_encoded_data = _.encodeDates(data);
     var truncated_data    = _.truncate(date_encoded_data, 255);
@@ -3742,6 +3870,10 @@ MixpanelGroup.prototype._send_request = function(data, callback){
     );
 
     return truncated_data;
+};
+
+MixpanelGroup.prototype._is_reserved_property = function(prop){
+    return prop === '$group_key' || prop === '$group_value';
 };
 
 MixpanelGroup.prototype._get_config = function(conf){
@@ -3809,12 +3941,10 @@ _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_
 
 
 // MixpanelGroup Exports
-// FIXME: this is hacky, we just set MixpanelGroup's methods to those from MixpanelPeople
-MixpanelGroup.prototype['set']           = MixpanelPeople.prototype.set;
-MixpanelGroup.prototype['set_once']      = MixpanelPeople.prototype.set_once;
-MixpanelGroup.prototype['unset']         = MixpanelPeople.prototype.unset;
-MixpanelGroup.prototype['increment']     = MixpanelPeople.prototype.increment;
-MixpanelGroup.prototype['union']         = MixpanelPeople.prototype.union;
+MixpanelGroup.prototype['set']           = MixpanelGroup.prototype.set;
+MixpanelGroup.prototype['set_once']      = MixpanelGroup.prototype.set_once;
+MixpanelGroup.prototype['unset']         = MixpanelGroup.prototype.unset;
+MixpanelGroup.prototype['union']         = MixpanelGroup.prototype.union;
 MixpanelGroup.prototype['_init']         = MixpanelGroup.prototype._init;
 MixpanelGroup.prototype['toString']      = MixpanelGroup.prototype.toString;
 
