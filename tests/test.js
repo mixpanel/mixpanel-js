@@ -2764,11 +2764,6 @@
                 same(mixpanel.test.get_property('company'), ['mixpanel', 'google']);
             });
 
-            test("single group", 1, function(){
-                a = mixpanel.test.set_group('company', 'mixpanel');
-                same(a['$set']['company'], ['mixpanel']);
-            });
-
             mpmodule("mixpanel.add_group");
             test("add_group (basic functionality)", 2, function(){
                 a = mixpanel.test.add_group('company', 'mixpanel');
@@ -2783,20 +2778,14 @@
                 same(mixpanel.test.get_property('company'), ['mixpanel']);
                 mixpanel.test.add_group('company', 'google');
                 same(mixpanel.test.get_property('company'), ['mixpanel', 'google']);
-                mixpanel.test.add_group('company', ['google', 'facebook']);
+                mixpanel.test.add_group('company', 'facebook');
                 same(mixpanel.test.get_property('company'), ['mixpanel', 'google', 'facebook']);
-            });
-
-            test("add_group (array of groups)", 2, function(){
-                a = mixpanel.test.add_group('company', ['mixpanel', 'google']);
-                same(a['$union']['company'], ['mixpanel', 'google']);
-                same(mixpanel.test.get_property('company'), ['mixpanel', 'google']);
             });
 
             mpmodule("mixpanel.remove_group")
             test("remove_group (basic functionality)", 1, function (){
                 a = mixpanel.test.remove_group('company', 'mixpanel');
-                same(a['$remove']['company'], ['mixpanel']);
+                same(a['$remove']['company'], 'mixpanel');
             });
             test("super properties", 3, function (){
                 mixpanel.test.remove_group('company', 'mixpanel');
@@ -2866,7 +2855,7 @@
 
             mpmodule("mixpanel.group.union")
             test("basic", 4, function(){
-                var gs = mixpanel.test.get_group("company","mixpanel").union("key", "value");
+                var gs = mixpanel.test.get_group("company","mixpanel").union("key", ["value"]);
                 var $union=gs['$union']
                 same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
                 same(gs['$group_key'], 'company');
@@ -2883,6 +2872,27 @@
                 same(gs['$group_value'], 'mixpanel');
                 same($unset, ['key']);
             });
+
+            mpmodule("mixpanel.group.remove")
+            test("basic", 4, function(){
+                var gs = mixpanel.test.get_group("company","mixpanel").remove("key", "value");
+                var $remove = gs['$remove']
+                same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
+                same(gs['$group_key'], 'company');
+                same(gs['$group_value'], 'mixpanel');
+                same($remove['key'], 'value');
+            });
+
+            mpmodule("mixpanel.group.delete")
+            test("basic", 4, function(){
+                var gs = mixpanel.test.get_group("company","mixpanel").delete();
+                var $delete = gs['$delete']
+                same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
+                same(gs['$group_key'], 'company');
+                same(gs['$group_value'], 'mixpanel');
+                same($delete, '');
+            });
+
             mpmodule("in-app notification display");
 
             asyncTest("notification with normal data adds itself to DOM", 1, function() {
