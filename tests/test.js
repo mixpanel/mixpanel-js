@@ -2839,7 +2839,7 @@
                 var $set=gs['$set']
                 same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
                 same(gs['$group_key'], 'company');
-                same(gs['$group_value'], 'mixpanel');
+                same(gs['$group_id'], 'mixpanel');
                 same($set['key'], 'value');
             });
 
@@ -2849,7 +2849,7 @@
                 var $set_once=gs['$set_once']
                 same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
                 same(gs['$group_key'], 'company');
-                same(gs['$group_value'], 'mixpanel');
+                same(gs['$group_id'], 'mixpanel');
                 same($set_once['key'], 'value');
             });
 
@@ -2859,7 +2859,7 @@
                 var $union=gs['$union']
                 same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
                 same(gs['$group_key'], 'company');
-                same(gs['$group_value'], 'mixpanel');
+                same(gs['$group_id'], 'mixpanel');
                 same($union['key'], ['value']);
             });
 
@@ -2869,7 +2869,7 @@
                 var $unset=gs['$unset']
                 same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
                 same(gs['$group_key'], 'company');
-                same(gs['$group_value'], 'mixpanel');
+                same(gs['$group_id'], 'mixpanel');
                 same($unset, ['key']);
             });
 
@@ -2879,7 +2879,7 @@
                 var $remove = gs['$remove']
                 same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
                 same(gs['$group_key'], 'company');
-                same(gs['$group_value'], 'mixpanel');
+                same(gs['$group_id'], 'mixpanel');
                 same($remove['key'], 'value');
             });
 
@@ -2889,7 +2889,7 @@
                 var $delete = gs['$delete']
                 same(gs['$distinct_id'], undefined); //shouldn't have $distinct_id
                 same(gs['$group_key'], 'company');
-                same(gs['$group_value'], 'mixpanel');
+                same(gs['$group_id'], 'mixpanel');
                 same($delete, '');
             });
 
