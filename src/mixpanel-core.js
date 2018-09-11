@@ -825,7 +825,7 @@ var create_mplib = function(token, config, name) {
     instance['people'] = new MixpanelPeople();
     instance['people']._init(instance);
 
-    instance['_groups'] = {}; // cache groups in a pool
+    instance['_cached_groups'] = {}; // cache groups in a pool
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true
@@ -1273,11 +1273,12 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
 });
 
 /**
- * Set a user's group_key to a list of group_id's
+ * Register the current user into one/many groups.
  *
  * Usage:
- *      mixpanel.set_group('company', ['mixpanel', 'google'])
+ *      mixpanel.set_group('company', ['mixpanel', 'google']) # an array of IDs
  *      mixpanel.set_group('company', 'mixpanel')
+ *      mixpanel.set_group('company', 128746312) // a integer ID
  *
  *  @param {String} group_key   The name of group key.
  *  @param {Object} group_ids   An array of group id's, or a singular group id.
@@ -1303,7 +1304,7 @@ MixpanelLib.prototype.set_group = function(group_key, group_ids, callback){
  *      mixpanel.add_group('company', 'mixpanel')
  *
  *  @param {String} group_key   The name of group key.
- *  @param {Object} group_id    The group id.
+ *  @param {Object} group_id    A group id which can be stringified.
  *  @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelLib.prototype.add_group = function(group_key, group_id, callback){
@@ -1331,7 +1332,7 @@ MixpanelLib.prototype.add_group = function(group_key, group_id, callback){
  *      mixpanel.remove_group('company', 'mixpanel')
  *
  *  @param {String} group_key           The name of group key.
- *  @param {Object} group_id    The group id.
+ *  @param {Object} group_id            A group id which can be stringified.
  *  @param {Function} [callback]        If provided, the callback will be called after the tracking event
  */
 MixpanelLib.prototype.remove_group = function(group_key, group_id, callback){
@@ -1355,7 +1356,7 @@ MixpanelLib.prototype.remove_group = function(group_key, group_id, callback){
 };
 
 /**
- * Similar to mixpanel.track(), but append an key-value map of group properties
+ * Similar to mixpanel.track(), but append an key-value map of group id's
  * Usage:
  *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
  * @param {Object|string} query
@@ -1382,6 +1383,15 @@ MixpanelLib.prototype.track_with_groups = function(event_name, properties, group
     return this.track(event_name, properties, callback);
 };
 
+MixpanelLib.prototype._create_map_key = function (group_key, group_id){
+    var map_key = group_key + '_' + JSON.stringify(group_id); // FIXME: is this key unique?
+    return map_key;
+};
+
+MixpanelLib.prototype._remove_group_from_cache = function (group_key, group_id){
+    var map_key = this._create_map_key(group_key, group_id);
+    delete this._cached_groups[map_key];
+};
 
 /***
  *
@@ -1390,17 +1400,17 @@ MixpanelLib.prototype.track_with_groups = function(event_name, properties, group
  *       mixpanel.get_group(group_key, group_id)
  *
  *  @param {String} group_key   The name of group key.
- *  @param {Object} group_id    The group id.
+ *  @param {Object} group_id    A group id which can be stringified.
  *
  */
 
 MixpanelLib.prototype.get_group = function (group_key, group_id){
-    var map_key = group_key + '_' + group_id; // FIXME: is this key unique? also do we have a to_string() method to other possible types?
-    var group = this._groups[map_key];
+    var map_key = this._create_map_key(group_key, group_id);
+    var group = this._cached_groups[map_key];
     if (group === undefined){
         group = new MixpanelGroup();
         group._init(this, group_key, group_id);
-        this._groups[map_key] = group;
+        this._cached_groups[map_key] = group;
     }
     return group;
 };
@@ -3864,15 +3874,14 @@ MixpanelGroup.prototype.delete = function(callback) {
 };
 
 /*
- * Remove a list of properties from a group, excluding duplicate values.
- * If a value doesn't exist, it is ignored.
+ * Remove a property from a group, the value will be ignored if doesn't exist.
  *
  * ### Usage:
  *
  *     mixpanel.get_group('company', 'mixpanel').remove('Location', 'London');
  *
  * @param {String} Prop Name of the property.
- * @param {String] Value Value to remove from the given group property
+ * @param {Object] Value Value to remove from the given group property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(function(list_name, values, callback) {
@@ -3909,7 +3918,7 @@ MixpanelGroup.prototype._get_config = function(conf){
 };
 
 MixpanelGroup.prototype.toString = function(){
-    return this._mixpanel.toString() + '.group.'+ this._group_key + '.'+this._group_id;
+    return this._mixpanel.toString() + '.group.' + this._group_key + '.' + this._group_id;
 };
 
 // EXPORTS (for closure compiler)
