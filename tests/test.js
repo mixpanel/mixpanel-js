@@ -2826,11 +2826,13 @@
                 same(t['properties']['key'],'value2' , "group_prop should overwrite prop");
             });
             mpmodule("mixpanel.get_group");
-            test("cached", 1, function(){
-                var group = mixpanel.test.get_group("key", "value");
+            test("cached", 2, function(){
+                var group = mixpanel.test.get_group("may_have", "collision");
                 group.foo = 'bar';
-                var group2 = mixpanel.test.get_group("key", "value");
-                same(group2.foo, 'bar');
+                var group2 = mixpanel.test.get_group("may", "have_collision");
+                same(group2.foo, undefined);
+                var group3 = mixpanel.test.get_group("may_have", "collision");
+                same(group3.foo, 'bar');
             });
 
             mpmodule("mixpanel.group.set")

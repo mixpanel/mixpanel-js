@@ -1335,25 +1335,23 @@ MixpanelLib.prototype.add_group = function(group_key, group_id, callback){
  *  @param {Object} group_id            A group id which can be stringified.
  *  @param {Function} [callback]        If provided, the callback will be called after the tracking event
  */
+
 MixpanelLib.prototype.remove_group = function(group_key, group_id, callback){
     if (this.has_opted_out_tracking())
         return;
-    var data = {};
-    var $remove = {};
-    $remove[group_key] = group_id;
-    data['$remove'] = $remove;
     var old_value = this.get_property(group_key);
-    if (old_value === undefined)
-        return this.people._send_request(data, callback);
-    var idx = old_value.indexOf(group_id);
-    if (idx > -1){
-        old_value.splice(idx, 1);
-        this.register({group_key: old_value});
+    // if the value doens't exist, the local storage is unchanged
+    if (old_value !== undefined){
+        var idx = old_value.indexOf(group_id);
+        if (idx > -1){
+            old_value.splice(idx, 1);
+            this.register({group_key: old_value});
+        }
+        if (old_value.length === 0){
+            this.unregister(group_key);
+        }
     }
-    if (old_value.length === 0){
-        this.unregister(group_key);
-    }
-    return this.people._send_request(data, callback);
+    return this.people.remove(group_key, group_id, callback);
 };
 
 /**
@@ -1385,7 +1383,8 @@ MixpanelLib.prototype.track_with_groups = function(event_name, properties, group
 };
 
 MixpanelLib.prototype._create_map_key = function (group_key, group_id){
-    var map_key = group_key + '_' + JSON.stringify(group_id); // FIXME: is this key unique?
+    // FIXME: does map_key uniquely identify a key-value pair?
+    var map_key = JSON.stringify([group_key]) + '_' + JSON.stringify([group_id]);
     return map_key;
 };
 
@@ -2156,6 +2155,25 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
 MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
     var data = _set_once.apply(this, [prop, to]);
     if (_.isObject(prop)) {
+        callback = to;
+    }
+    return this._send_request(data, callback);
+});
+
+/*
+ * Remove a property from current user's profile, the value will be ignored if doesn't exist.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.remove('School', 'UCB');
+ *
+ * @param {String} Prop Name of the property.
+ * @param {Object] Value Value to remove from the given property
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(prop, to, callback){
+    var data = _remove.apply(this, [prop, to]);
+    if (_.isObject(prop)){
         callback = to;
     }
     return this._send_request(data, callback);
@@ -3969,6 +3987,7 @@ MixpanelPeople.prototype['set_once']      = MixpanelPeople.prototype.set_once;
 MixpanelPeople.prototype['unset']         = MixpanelPeople.prototype.unset;
 MixpanelPeople.prototype['increment']     = MixpanelPeople.prototype.increment;
 MixpanelPeople.prototype['append']        = MixpanelPeople.prototype.append;
+MixpanelPeople.prototype['remove']        = MixpanelPeople.prototype.remove;
 MixpanelPeople.prototype['union']         = MixpanelPeople.prototype.union;
 MixpanelPeople.prototype['track_charge']  = MixpanelPeople.prototype.track_charge;
 MixpanelPeople.prototype['clear_charges'] = MixpanelPeople.prototype.clear_charges;
