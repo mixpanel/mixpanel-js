@@ -1313,7 +1313,6 @@ MixpanelLib.prototype.add_group = function(group_key, group_id, callback){
     }
     var old_values = this.get_property(group_key);
     if (old_values === undefined){
-        old_values = [];
         var prop = {};
         prop[group_key] = [group_id];
         this.register(prop);
@@ -1321,6 +1320,7 @@ MixpanelLib.prototype.add_group = function(group_key, group_id, callback){
     else {
         if (!old_values.includes(group_id)){
             old_values.push(group_id);
+            this.register(prop);
         }
     }
     return this.people.union(group_key, group_id, callback);
@@ -1348,6 +1348,7 @@ MixpanelLib.prototype.remove_group = function(group_key, group_id, callback){
     var idx = old_value.indexOf(group_id);
     if (idx > -1){
         old_value.splice(idx, 1);
+        this.register({group_key: old_value});
     }
     if (old_value.length === 0){
         this.unregister(group_key);
