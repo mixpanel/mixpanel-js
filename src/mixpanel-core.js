@@ -1122,10 +1122,14 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
  * @param {Array} array
  */
 MixpanelLib.prototype._execute_array = function(array) {
-    var fn_name, alias_calls = [], other_calls = [], tracking_calls = [];
+    var fn_name, alias_calls = [], other_calls = [], tracking_calls = [], chained_calls = [];
     _.each(array, function(item) {
         if (item) {
             fn_name = item[0];
+            if (_.isArray(fn_name)){
+                chained_calls.push(item);
+                return;
+            }
             if (typeof(item) === 'function') {
                 item.call(this);
             } else if (_.isArray(item) && fn_name === 'alias') {
@@ -1147,6 +1151,14 @@ MixpanelLib.prototype._execute_array = function(array) {
     execute(alias_calls, this);
     execute(other_calls, this);
     execute(tracking_calls, this);
+
+    var that = this;
+    _.each(chained_calls, function(chained_call){
+        var caller = that;
+        _.each(chained_call, function(call){
+            caller = caller[call[0]].apply(caller, call.slice(1));
+        });
+    });
 };
 
 /**
