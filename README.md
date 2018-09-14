@@ -1,5 +1,7 @@
 # Mixpanel JavaScript Library
 [![Build Status](https://travis-ci.org/mixpanel/mixpanel-js.svg?branch=master)](https://travis-ci.org/mixpanel/mixpanel-js)
+[![Code Quality: Javascript](https://img.shields.io/lgtm/grade/javascript/g/mixpanel/mixpanel-js.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/mixpanel/mixpanel-js/context:javascript)
+[![Total Alerts](https://img.shields.io/lgtm/alerts/g/mixpanel/mixpanel-js.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/mixpanel/mixpanel-js/alerts)
 
 The Mixpanel JavaScript Library is a set of methods attached to a global `mixpanel` object
 intended to be used by websites wishing to send data to Mixpanel projects. A full reference
