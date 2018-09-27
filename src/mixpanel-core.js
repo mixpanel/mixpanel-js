@@ -1290,7 +1290,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
  * Usage:
  *      mixpanel.set_group('company', ['mixpanel', 'google']) # an array of IDs
  *      mixpanel.set_group('company', 'mixpanel')
- *      mixpanel.set_group('company', 128746312) // a integer ID
+ *      mixpanel.set_group('company', 128746312)
  *
  *  @param {String} group_key   The name of group key.
  *  @param {Object} group_ids   An array of group id's, or a singular group id.
@@ -1316,7 +1316,7 @@ MixpanelLib.prototype.set_group = function(group_key, group_ids, callback){
  *      mixpanel.add_group('company', 'mixpanel')
  *
  *  @param {String} group_key   The name of group key.
- *  @param {Object} group_id    A group id which can be stringified.
+ *  @param {Object} group_id    A valid mixpanel property type.
  *  @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelLib.prototype.add_group = function(group_key, group_id, callback){
@@ -1344,7 +1344,7 @@ MixpanelLib.prototype.add_group = function(group_key, group_id, callback){
  *      mixpanel.remove_group('company', 'mixpanel')
  *
  *  @param {String} group_key           The name of group key.
- *  @param {Object} group_id            A group id which can be stringified.
+ *  @param {Object} group_id            A valid mixpanel property type.
  *  @param {Function} [callback]        If provided, the callback will be called after the tracking event
  */
 
@@ -1367,7 +1367,7 @@ MixpanelLib.prototype.remove_group = function(group_key, group_id, callback){
 };
 
 /**
- * Similar to mixpanel.track(), but append an key-value map of group id's
+ * Track an event with specific groups.
  * Usage:
  *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
  * @param {Object|string} query
@@ -1395,8 +1395,7 @@ MixpanelLib.prototype.track_with_groups = function(event_name, properties, group
 };
 
 MixpanelLib.prototype._create_map_key = function (group_key, group_id){
-    // FIXME: does map_key uniquely identify a key-value pair?
-    var map_key = JSON.stringify([group_key]) + '_' + JSON.stringify([group_id]);
+    var map_key = group_key + '_' + JSON.stringify(group_id);
     return map_key;
 };
 
@@ -1412,14 +1411,14 @@ MixpanelLib.prototype._remove_group_from_cache = function (group_key, group_id){
  *       mixpanel.get_group(group_key, group_id)
  *
  *  @param {String} group_key   The name of group key.
- *  @param {Object} group_id    A group id which can be stringified.
+ *  @param {Object} group_id    A valid mixpanel property type.
  *
  */
 
 MixpanelLib.prototype.get_group = function (group_key, group_id){
     var map_key = this._create_map_key(group_key, group_id);
     var group = this._cached_groups[map_key];
-    if (group === undefined){
+    if (group === undefined || group._group_key !== group_key || group._group_id !== group_id ){
         group = new MixpanelGroup();
         group._init(this, group_key, group_id);
         this._cached_groups[map_key] = group;
@@ -3873,8 +3872,7 @@ MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(function(prop, callb
 });
 
 /*
- * Merge a given list with a list-valued group property,
- * excluding duplicate values.
+ * Merge a given list with a list-valued group property, excluding duplicate values.
  *
  * ### Usage:
  *
