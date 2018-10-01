@@ -19,9 +19,7 @@ import {
     UNSET_ACTION,
     ADD_ACTION,
     APPEND_ACTION,
-    UNION_ACTION,
-    REMOVE_ACTION,
-    DELETE_ACTION
+    UNION_ACTION
 } from './constants';
 
 /*
