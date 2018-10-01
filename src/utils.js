@@ -1,5 +1,15 @@
 /* eslint camelcase: "off", eqeqeq: "off" */
 import Config from './config';
+import {
+    SET_ACTION,
+    SET_ONCE_ACTION,
+    UNSET_ACTION,
+    ADD_ACTION,
+    APPEND_ACTION,
+    UNION_ACTION,
+    REMOVE_ACTION,
+    DELETE_ACTION
+} from './constants';
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 var win;
@@ -19,8 +29,6 @@ if (typeof(window) === 'undefined') {
 } else {
     win = window;
 }
-
-
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -1588,6 +1596,97 @@ _.info = {
             'mp_browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
             'mp_platform': _.info.os()
         });
+    }
+};
+
+_.people_helpers = {
+// common internal methods for mixpanel.people and mixpanel.group APIs, these methods shouldn't involve network IO.
+    set_action: function(prop, to) {
+        var data = {};
+        var $set = {};
+        if (_.isObject(prop)) {
+            _.each(prop, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $set[k] = v;
+                }
+            }, this);
+        } else {
+            $set[prop] = to;
+        }
+
+        data[SET_ACTION] = $set;
+        return data;
+    },
+
+    unset_action: function(prop) {
+        var data = {};
+        var $unset = [];
+        if (!_.isArray(prop)) {
+            prop = [prop];
+        }
+
+        _.each(prop, function(k) {
+            if (!this._is_reserved_property(k)) {
+                $unset.push(k);
+            }
+        }, this);
+
+        data[UNSET_ACTION] = $unset;
+        return data;
+    },
+
+    set_once_action: function(prop, to) {
+        var data = {};
+        var $set_once = {};
+        if (_.isObject(prop)) {
+            _.each(prop, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $set_once[k] = v;
+                }
+            }, this);
+        } else {
+            $set_once[prop] = to;
+        }
+        data[SET_ONCE_ACTION] = $set_once;
+        return data;
+    },
+
+    union_action: function(list_name, values) {
+        var data = {};
+        var $union = {};
+        if (_.isObject(list_name)) {
+            _.each(list_name, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $union[k] = _.isArray(v) ? v : [v];
+                }
+            }, this);
+        } else {
+            $union[list_name] = _.isArray(values) ? values : [values];
+        }
+        data[UNION_ACTION] = $union;
+        return data;
+    },
+
+    remove_action: function(list_name, value) {
+        var data = {};
+        var $remove = {};
+        if (_.isObject(list_name)) {
+            _.each(list_name, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $remove[k] = _.isArray(v) ? v : [v];
+                }
+            }, this);
+        } else {
+            $remove[list_name] = value;
+        }
+        data[REMOVE_ACTION] = $remove;
+        return data;
+    },
+
+    delete_action: function() {
+        var data = {};
+        data[DELETE_ACTION] = '';
+        return data;
     }
 };
 

@@ -2,6 +2,7 @@
 import Config from './config';
 import { _, console, userAgent, window, document } from './utils';
 import { autotrack } from './autotrack';
+import { MixpanelGroup } from './mixpanel-group';
 import {
     optIn,
     optOut,
@@ -9,9 +10,19 @@ import {
     hasOptedOut,
     clearOptInOut,
     addOptOutCheckMixpanelLib,
-    addOptOutCheckMixpanelPeople,
-    addOptOutCheckMixpanelGroup
+    addOptOutCheckMixpanelPeople
 } from './gdpr-utils';
+
+import {
+    SET_ACTION,
+    SET_ONCE_ACTION,
+    UNSET_ACTION,
+    ADD_ACTION,
+    APPEND_ACTION,
+    UNION_ACTION,
+    REMOVE_ACTION,
+    DELETE_ACTION
+} from './constants';
 
 /*
  * Mixpanel JS Library
@@ -55,14 +66,6 @@ var INIT_SNIPPET = 1;
 /** @const */   var ADD_QUEUE_KEY             = '__mpa';
 /** @const */   var APPEND_QUEUE_KEY          = '__mpap';
 /** @const */   var UNION_QUEUE_KEY           = '__mpu';
-/** @const */   var SET_ACTION                = '$set';
-/** @const */   var SET_ONCE_ACTION           = '$set_once';
-/** @const */   var UNSET_ACTION              = '$unset';
-/** @const */   var ADD_ACTION                = '$add';
-/** @const */   var APPEND_ACTION             = '$append';
-/** @const */   var UNION_ACTION              = '$union';
-/** @const */   var REMOVE_ACTION             = '$remove';
-/** @const */   var DELETE_ACTION             = '$delete';
 // This key is deprecated, but we want to check for it to see whether aliasing is allowed.
 /** @const */   var PEOPLE_DISTINCT_ID_KEY    = '$people_distinct_id';
 /** @const */   var ALIAS_ID_KEY              = '__alias';
@@ -706,103 +709,11 @@ var MixpanelPeople = function() {};
  * Mixpanel Group Object
  * @constructor
  */
-var MixpanelGroup = function() {};
 
 var MPNotif;
 
-var people_helpers = {
-// common internal methods for mixpanel.people and mixpanel.group APIs, these methods shouldn't involve network IO.
-    set_action: function(prop, to) {
-        var data = {};
-        var $set = {};
-        if (_.isObject(prop)) {
-            _.each(prop, function(v, k) {
-                if (!this._is_reserved_property(k)) {
-                    $set[k] = v;
-                }
-            }, this);
-        } else {
-            $set[prop] = to;
-        }
 
-        data[SET_ACTION] = $set;
-        return data;
-    },
-
-    unset_action: function(prop) {
-        var data = {};
-        var $unset = [];
-        if (!_.isArray(prop)) {
-            prop = [prop];
-        }
-
-        _.each(prop, function(k) {
-            if (!this._is_reserved_property(k)) {
-                $unset.push(k);
-            }
-        }, this);
-
-        data[UNSET_ACTION] = $unset;
-        return data;
-    },
-
-    set_once_action: function(prop, to) {
-        var data = {};
-        var $set_once = {};
-        if (_.isObject(prop)) {
-            _.each(prop, function(v, k) {
-                if (!this._is_reserved_property(k)) {
-                    $set_once[k] = v;
-                }
-            }, this);
-        } else {
-            $set_once[prop] = to;
-        }
-        data[SET_ONCE_ACTION] = $set_once;
-        return data;
-    },
-
-    union_action: function(list_name, values) {
-        var data = {};
-        var $union = {};
-        if (_.isObject(list_name)) {
-            _.each(list_name, function(v, k) {
-                if (!this._is_reserved_property(k)) {
-                    $union[k] = _.isArray(v) ? v : [v];
-                }
-            }, this);
-        } else {
-            $union[list_name] = _.isArray(values) ? values : [values];
-        }
-        data[UNION_ACTION] = $union;
-        return data;
-    },
-
-    remove_action: function(list_name, value) {
-        var data = {};
-        var $remove = {};
-        if (_.isObject(list_name)) {
-            _.each(list_name, function(v, k) {
-                if (!this._is_reserved_property(k)) {
-                    $remove[k] = _.isArray(v) ? v : [v];
-                }
-            }, this);
-        } else {
-            $remove[list_name] = value;
-        }
-        data[REMOVE_ACTION] = $remove;
-        return data;
-    },
-
-    delete_action: function() {
-        var data = {};
-        data[DELETE_ACTION] = '';
-        return data;
-    }
-};
-
-_.extend(MixpanelPeople.prototype, people_helpers);
-_.extend(MixpanelGroup.prototype, people_helpers);
+_.extend(MixpanelPeople.prototype, _.people_helpers);
 
 /**
  * create_mplib(token:string, config:object, name:string)
@@ -2099,11 +2010,6 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
     this._update_persistence();
 };
 
-MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_id){
-    this._mixpanel = mixpanel_instance;
-    this._group_key = group_key;
-    this._group_id = group_id;
-};
 
 MixpanelPeople.prototype._init = function(mixpanel_instance) {
     this._mixpanel = mixpanel_instance;
@@ -3812,154 +3718,6 @@ MPNotif.prototype._yt_video_ready = _.safewrap(function() {
     });
 });
 
-/*
- * Set properties on a group.
- *
- * ### Usage:
- *
- *     mixpanel.get_group('company', 'mixpanel').set('Location', '405 Howard');
- *
- *     // or set multiple properties at once
- *     mixpanel.get_group('company', 'mixpanel').set({
- *          'Location': '405 Howard',
- *          'Founded' : 2009,
- *     });
- *     // properties can be strings, integers, dates, or lists
- *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
- * @param {*} [to] A value to set on the given property name
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelGroup.prototype.set = addOptOutCheckMixpanelGroup(function(prop, to, callback) {
-    var data = this.set_action(prop, to);
-    if (_.isObject(prop)) {
-        callback = to;
-    }
-    return this._send_request(data, callback);
-});
-
-/*
- * Set properties on a group, only if they do not yet exist.
- * This will not overwrite previous group property values, unlike
- * group.set().
- *
- * ### Usage:
- *
- *     mixpanel.get_group('company', 'mixpanel').set_once('Location', '405 Howard');
- *
- *     // or set multiple properties at once
- *     mixpanel.get_group('company', 'mixpanel').set_once({
- *          'Location': '405 Howard',
- *          'Founded' : 2009,
- *     });
- *     // properties can be strings, integers, lists or dates
- *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
- * @param {*} [to] A value to set on the given property name
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to, callback){
-    var data = this.set_once_action(prop, to);
-    if (_.isObject(prop)) {
-        callback = to;
-    }
-    return this._send_request(data, callback);
-});
-
-/*
- * Unset properties on a group permanently.
- *
- * ### Usage:
- *
- *     mixpanel.get_group('company', 'mixpanel').unset('Founded');
- *
- * @param {String} prop The name of the property.
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(function(prop, callback){
-    var data = this.unset_action(prop);
-    return this._send_request(data, callback);
-});
-
-/*
- * Merge a given list with a list-valued group property, excluding duplicate values.
- *
- * ### Usage:
- *
- *     // merge a value to a list, creating it if needed
- *     mixpanel.get_group('company', 'mixpanel').union('Location', ['San Francisco', 'London']);
- *
- * @param {String} Prop Name of the property.
- * @param {Array] Values Values to merge with the given property
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelGroup.prototype.union = addOptOutCheckMixpanelGroup(function(list_name, values, callback) {
-    if (_.isObject(list_name)) {
-        callback = values;
-    }
-    var data = this.union_action(list_name, values);
-    return this._send_request(data, callback);
-});
-
-/*
- * Permanently delete a group.
- *
- * ### Usage:
- *     mixpanel.get_group('company', 'mixpanel').delete();
- */
-MixpanelGroup.prototype.delete = function(callback) {
-    var data = this.delete_action();
-    return this._send_request(data, callback);
-};
-
-/*
- * Remove a property from a group, the value will be ignored if doesn't exist.
- *
- * ### Usage:
- *
- *     mixpanel.get_group('company', 'mixpanel').remove('Location', 'London');
- *
- * @param {String} Prop Name of the property.
- * @param {Object] Value Value to remove from the given group property
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(function(list_name, values, callback) {
-    var data = this.remove_action(list_name, values);
-    return this._send_request(data, callback);
-});
-
-MixpanelGroup.prototype._send_request = function(data, callback){
-    data['$group_key'] = this._group_key;
-    data['$group_id'] = this._group_id;
-    data['$token'] = this._get_config('token');
-
-    var date_encoded_data = _.encodeDates(data);
-    var truncated_data    = _.truncate(date_encoded_data, 255);
-    var json_data         = _.JSONEncode(date_encoded_data);
-    var encoded_data      = _.base64Encode(json_data);
-
-    console.log(data);
-    this._mixpanel._send_request(
-        this._mixpanel.get_config('api_host') + '/groups/',
-        {'data': encoded_data},
-        this._mixpanel._prepare_callback(callback, truncated_data)
-    );
-
-    return truncated_data;
-};
-
-MixpanelGroup.prototype._is_reserved_property = function(prop){
-    return prop === '$group_key' || prop === '$group_id';
-};
-
-MixpanelGroup.prototype._get_config = function(conf){
-    return this._mixpanel.get_config(conf);
-};
-
-MixpanelGroup.prototype.toString = function(){
-    return this._mixpanel.toString() + '.group.' + this._group_key + '.' + this._group_id;
-};
-
 // EXPORTS (for closure compiler)
 
 // MixpanelLib Exports
@@ -4016,14 +3774,6 @@ MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
 _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
 
-
-// MixpanelGroup Exports
-MixpanelGroup.prototype['set']           = MixpanelGroup.prototype.set;
-MixpanelGroup.prototype['set_once']      = MixpanelGroup.prototype.set_once;
-MixpanelGroup.prototype['unset']         = MixpanelGroup.prototype.unset;
-MixpanelGroup.prototype['union']         = MixpanelGroup.prototype.union;
-MixpanelGroup.prototype['_init']         = MixpanelGroup.prototype._init;
-MixpanelGroup.prototype['toString']      = MixpanelGroup.prototype.toString;
 
 var instances = {};
 var extend_mp = function() {
