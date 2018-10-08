@@ -19,6 +19,7 @@ import {
     UNSET_ACTION,
     ADD_ACTION,
     APPEND_ACTION,
+    REMOVE_ACTION,
     UNION_ACTION
 } from './constants';
 
@@ -63,6 +64,7 @@ var INIT_SNIPPET = 1;
 /** @const */   var UNSET_QUEUE_KEY           = '__mpus';
 /** @const */   var ADD_QUEUE_KEY             = '__mpa';
 /** @const */   var APPEND_QUEUE_KEY          = '__mpap';
+/** @const */   var REMOVE_QUEUE_KEY          = '__mpr';
 /** @const */   var UNION_QUEUE_KEY           = '__mpu';
 // This key is deprecated, but we want to check for it to see whether aliasing is allowed.
 /** @const */   var PEOPLE_DISTINCT_ID_KEY    = '$people_distinct_id';
@@ -75,6 +77,7 @@ var INIT_SNIPPET = 1;
     UNSET_QUEUE_KEY,
     ADD_QUEUE_KEY,
     APPEND_QUEUE_KEY,
+    REMOVE_QUEUE_KEY,
     UNION_QUEUE_KEY,
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
@@ -559,6 +562,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         unset_q = this._get_or_create_queue(UNSET_ACTION),
         add_q = this._get_or_create_queue(ADD_ACTION),
         union_q = this._get_or_create_queue(UNION_ACTION),
+        remove_q = this._get_or_create_queue(REMOVE_ACTION, []),
         append_q = this._get_or_create_queue(APPEND_ACTION, []);
 
     if (q_key === SET_QUEUE_KEY) {
@@ -624,6 +628,8 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
             }
         });
         this._pop_from_people_queue(UNSET_ACTION, q_data);
+    } else if (q_key === REMOVE_QUEUE_KEY) {
+        remove_q.push(q_data);
     } else if (q_key === APPEND_QUEUE_KEY) {
         append_q.push(q_data);
         this._pop_from_people_queue(UNSET_ACTION, q_data);
@@ -657,6 +663,8 @@ MixpanelPersistence.prototype._get_queue_key = function(queue) {
         return ADD_QUEUE_KEY;
     } else if (queue === APPEND_ACTION) {
         return APPEND_QUEUE_KEY;
+    } else if (queue === REMOVE_ACTION) {
+        return REMOVE_QUEUE_KEY;
     } else if (queue === UNION_ACTION) {
         return UNION_QUEUE_KEY;
     } else {
@@ -1535,7 +1543,7 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
 MixpanelLib.prototype.identify = function(
-    unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback
+    unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     // Optional Parameters
     //  _set_callback:function  A callback to be run if and when the People set queue is flushed
@@ -1556,7 +1564,7 @@ MixpanelLib.prototype.identify = function(
     this._check_and_handle_notifications(this.get_distinct_id());
     this._flags.identify_called = true;
     // Flush any queued up people requests
-    this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback);
+    this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
 };
 
 /**
@@ -2369,6 +2377,8 @@ MixpanelPeople.prototype._enqueue = function(data) {
         this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, data);
     } else if (APPEND_ACTION in data) {
         this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, data);
+    } else if (REMOVE_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(REMOVE_ACTION, data);
     } else if (UNION_ACTION in data) {
         this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, data);
     } else {
@@ -2401,10 +2411,11 @@ MixpanelPeople.prototype._flush_one_queue = function(action, action_method, call
 // Flush queued engage operations - order does not matter,
 // and there are network level race conditions anyway
 MixpanelPeople.prototype._flush = function(
-    _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback
+    _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     var _this = this;
     var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);
+    var $remove_queue = this._mixpanel['persistence']._get_queue(REMOVE_ACTION);
 
     this._flush_one_queue(SET_ACTION, this.set, _set_callback);
     this._flush_one_queue(SET_ONCE_ACTION, this.set_once, _set_once_callback);
@@ -2416,7 +2427,7 @@ MixpanelPeople.prototype._flush = function(
     // no concat method server side
     if (!_.isUndefined($append_queue) && _.isArray($append_queue) && $append_queue.length) {
         var $append_item;
-        var callback = function(response, data) {
+        var append_callback = function(response, data) {
             if (response === 0) {
                 _this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, $append_item);
             }
@@ -2426,9 +2437,27 @@ MixpanelPeople.prototype._flush = function(
         };
         for (var i = $append_queue.length - 1; i >= 0; i--) {
             $append_item = $append_queue.pop();
-            _this.append($append_item, callback);
+            _this.append($append_item, append_callback);
         }
         // Save the shortened append queue
+        _this._mixpanel['persistence'].save();
+    }
+
+    // same for $remove
+    if (!_.isUndefined($remove_queue) && _.isArray($remove_queue) && $remove_queue.length) {
+        var $remove_item;
+        var remove_callback = function(response, data) {
+            if (response === 0) {
+                _this._mixpanel['persistence']._add_to_people_queue(REMOVE_ACTION, $remove_item);
+            }
+            if (!_.isUndefined(_remove_callback)) {
+                _remove_callback(response, data);
+            }
+        };
+        for (var j = $remove_queue.length - 1; j >= 0; j--) {
+            $remove_item = $remove_queue.pop();
+            _this.remove($remove_item, remove_callback);
+        }
         _this._mixpanel['persistence'].save();
     }
 };
