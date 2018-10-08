@@ -1671,7 +1671,7 @@ _.people_helpers = {
         if (_.isObject(list_name)) {
             _.each(list_name, function(v, k) {
                 if (!this._is_reserved_property(k)) {
-                    $remove[k] = _.isArray(v) ? v : [v];
+                    $remove[k] = v;
                 }
             }, this);
         } else {
