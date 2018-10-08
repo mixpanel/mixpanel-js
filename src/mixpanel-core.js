@@ -703,11 +703,6 @@ var MixpanelLib = function() {};
  */
 var MixpanelPeople = function() {};
 
-/**
- * Mixpanel Group Object
- * @constructor
- */
-
 var MPNotif;
 
 
@@ -740,7 +735,7 @@ var create_mplib = function(token, config, name) {
     instance['people'] = new MixpanelPeople();
     instance['people']._init(instance);
 
-    instance['_cached_groups'] = {}; // cache groups in a pool
+    instance._cached_groups = {}; // cache groups in a pool
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true

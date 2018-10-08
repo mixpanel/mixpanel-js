@@ -2,6 +2,10 @@
 import { addOptOutCheckMixpanelGroup } from './gdpr-utils';
 import { _ } from './utils';
 
+/**
+ * Mixpanel Group Object
+ * @constructor
+ */
 var MixpanelGroup = function() {};
 
 _.extend(MixpanelGroup.prototype, _.people_helpers);
@@ -165,7 +169,6 @@ MixpanelGroup.prototype['set']           = MixpanelGroup.prototype.set;
 MixpanelGroup.prototype['set_once']      = MixpanelGroup.prototype.set_once;
 MixpanelGroup.prototype['unset']         = MixpanelGroup.prototype.unset;
 MixpanelGroup.prototype['union']         = MixpanelGroup.prototype.union;
-MixpanelGroup.prototype['_init']         = MixpanelGroup.prototype._init;
 MixpanelGroup.prototype['toString']      = MixpanelGroup.prototype.toString;
 
 export {MixpanelGroup};
