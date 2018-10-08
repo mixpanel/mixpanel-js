@@ -20,8 +20,9 @@ import {
     ADD_ACTION,
     APPEND_ACTION,
     REMOVE_ACTION,
-    UNION_ACTION
-} from './constants';
+    UNION_ACTION,
+    apiActions
+} from './api-actions';
 
 /*
  * Mixpanel JS Library
@@ -630,6 +631,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === REMOVE_QUEUE_KEY) {
         remove_q.push(q_data);
+        //TODO: does $remove cancel append? or vice versa?
     } else if (q_key === APPEND_QUEUE_KEY) {
         append_q.push(q_data);
         this._pop_from_people_queue(UNSET_ACTION, q_data);
@@ -714,7 +716,7 @@ var MixpanelPeople = function() {};
 var MPNotif;
 
 
-_.extend(MixpanelPeople.prototype, _.people_helpers);
+_.extend(MixpanelPeople.prototype, apiActions);
 
 /**
  * create_mplib(token:string, config:object, name:string)
@@ -2037,7 +2039,6 @@ MixpanelPeople.prototype._init = function(mixpanel_instance) {
  */
 MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
     var data = this.set_action(prop, to);
-    var $set = data[SET_ACTION];
     if (_.isObject(prop)) {
         callback = to;
     }
@@ -2051,7 +2052,7 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
         {},
         _.info.people_properties(),
         this._mixpanel['persistence'].get_referrer_info(),
-        $set
+        data[SET_ACTION]
     );
     return this._send_request(data, callback);
 });

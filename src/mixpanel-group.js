@@ -1,5 +1,6 @@
 /* eslint camelcase: "off" */
 import { addOptOutCheckMixpanelGroup } from './gdpr-utils';
+import { apiActions } from './api-actions';
 import { _ } from './utils';
 
 /**
@@ -8,7 +9,7 @@ import { _ } from './utils';
  */
 var MixpanelGroup = function() {};
 
-_.extend(MixpanelGroup.prototype, _.people_helpers);
+_.extend(MixpanelGroup.prototype, apiActions);
 
 MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_id){
     this._mixpanel = mixpanel_instance;
