@@ -128,8 +128,8 @@ MixpanelGroup.prototype.delete = function(callback) {
  * @param {Object] Value Value to remove from the given group property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(function(list_name, values, callback) {
-    var data = this.remove_action(list_name, values);
+MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(function(list_name, value, callback) {
+    var data = this.remove_action(list_name, value);
     return this._send_request(data, callback);
 });
 

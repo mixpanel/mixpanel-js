@@ -13,13 +13,14 @@
         <script type="text/javascript" src="../mixpanel-jslib-snippet.js"></script>
         <script type="text/javascript">
             var called_all_mixpanel_functions = false;
+            var group_ops = {}
 
             mixpanel.init("MIXPANEL_HEADCALLS_TOKEN", {
                 cookie_name: "headtest",
                 reset_cookie: true,
                 debug: true,
                 loaded: function(headtest) {
-                    test('functions queued in <head> before lib loads are later executed successfully', 7, function() {
+                    test('functions queued in <head> before lib loads are later executed successfully', 14, function() {
                         stop(); stop();
                         ok(headtest._flags.identify_called);
                         headtest.track("purchase llamas", {}, function(response) {
@@ -33,11 +34,18 @@
                         var props = headtest.cookie.properties();
                         ok(props.wombat);
                         ok(!props.wookie);
+                        same(props['Company'], ['mixpanel', 'facebook'])
                         same(headtest.config.track_links_timeout, 200);
+                        ok(group_ops['set'])
+                        ok(group_ops['set_once'])
+                        ok(group_ops['union'])
+                        ok(group_ops['unset'])
+                        ok(group_ops['remove'])
+                        ok(group_ops['delete'])
                         ok(props.distinct_id === 'q-bert' || props.distinct_id === 'spyhunter');
                     });
 
-                    test('functions continue to work after lib loads', 6, function() {
+                    test('functions continue to work after lib loads', 7, function() {
                         headtest.disable(['purchase capybaras']);
                         headtest.track("purchase capybaras", {}, function(response) {
                             same(response, 0, "tracking disabled event should fail");
@@ -63,9 +71,15 @@
                         headtest.people.clear_charges();
                         headtest.people.delete_user();
 
+                        headtest.track_with_groups('group_event', {'Name': 'Bob'}, {'Company': 'Google'})
+                        headtest.set_group('Company', ['mixpanel','google'])
+                        headtest.add_group('Company', 'facebook')
+                        headtest.remove_group('Company', 'google')
+
                         var props = headtest.cookie.properties();
                         ok(!props.wombat);
                         same(props.wookie, 1521);
+                        same(props['Company'], ['mixpanel', 'facebook'])
                         same(headtest.config.track_links_timeout, 300);
                         ok(props.distinct_id === 'bentley' || props.distinct_id === 'defender');
                     });
@@ -92,6 +106,18 @@
             mixpanel.headtest.register_once({wombat: false});
             mixpanel.headtest.unregister('wookie');
             mixpanel.headtest.set_config({track_links_timeout: 200});
+
+            //b2b APIs
+            mixpanel.headtest.track_with_groups('group_event', {'Name': 'Bob'}, {'Company': 'Google'})
+            mixpanel.headtest.set_group('Company', ['mixpanel','google'])
+            mixpanel.headtest.add_group('Company', 'facebook')
+            mixpanel.headtest.remove_group('Company', 'google')
+            mixpanel.headtest.get_group('foo', 'bar').set('key', 'value', function(){group_ops['set'] = true;})
+            mixpanel.headtest.get_group('foo', 'bar').set_once('key', 'value', function(){group_ops['set_once']=true;})
+            mixpanel.headtest.get_group('foo', 'bar').union('key', ['other_value'], function(){group_ops['union']=true;})
+            mixpanel.headtest.get_group('foo', 'bar').unset('key', function(){group_ops['unset']=true;})
+            mixpanel.headtest.get_group('foo', 'bar').remove('key', 'value', function(){group_ops['remove']=true;})
+            mixpanel.headtest.get_group('foo', 'bar').delete(function(){group_ops['delete']=true;})
 
             mixpanel.headtest.alias('spyhunter');
             mixpanel.headtest.identify('q-bert');
