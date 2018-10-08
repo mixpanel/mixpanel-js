@@ -83,13 +83,16 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
                 var outer_args = arguments;
                 var mock_group = {};
                 var outer_list = ['get_group'].concat(Array.prototype.slice.call(outer_args, 0));
-                _.each(group_functions, function(fn_name){
-                    mock_group[fn_name] = function(){
-                        inner_args = arguments;
-                        inner_list = [fn_name].concat(Array.prototype.slice.call(inner_args, 0));
-                        target.push([outer_list, inner_list]);
-                    };
-                });
+                for (var i = 0; i < group_functions.length; i++) {
+                    fn_name = group_functions[i]
+                    mock_group[fn_name] = function(func_name){
+                        return function(){
+                            inner_args = arguments;
+                            inner_list = [func_name].concat(Array.prototype.slice.call(inner_args, 0));
+                            target.push([outer_list, inner_list]);
+                        }
+                    }(fn_name);
+                };
                 return mock_group;
             };
 
