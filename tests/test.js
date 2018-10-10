@@ -2298,6 +2298,55 @@
                 }, "$token and $distinct_id pulled out correctly");
             });
 
+            mpmodule("mixpanel.people.remove");
+
+            test("remove (basic functionality)", 2, function() {
+                var expected = {'key': 'val'};
+
+                i = mixpanel.people.append('key', 'val');
+                same(i["$append"], expected);
+
+                mixpanel.test.identify(this.id);
+                i = mixpanel.test.people.append('key', 'val');
+                same(i, {
+                    "$distinct_id": this.id,
+                    "$token": this.token,
+                    "$append": expected
+                }, "Basic append works");
+            });
+
+            test("append queues data", 2, function() {
+                stop();
+                s = mixpanel.test.people.remove({
+                    'key': 'val'
+                }, function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                    start();
+                });
+                same(mixpanel.test.persistence.props['__mpr'], [{
+                    'key': 'val'
+                }], "queued remove saved");
+            });
+
+            test("remove hits server immediately if identified", 2, function() {
+                mixpanel.test.identify(this.id);
+
+                stop();
+                s = mixpanel.test.people.remove({
+                    a: 3
+                }, function(resp) {
+                    same(resp, 1, "responded with 'success'");
+                    start();
+                });
+                same(s, {
+                    "$distinct_id": this.id,
+                    "$token": this.token,
+                    "$remove": {
+                        "a": 3
+                    }
+                }, "$token and $distinct_id pulled out correctly");
+            });
+
             mpmodule("mixpanel.people.union");
 
             test("union (basic functionality)", 7, function() {
