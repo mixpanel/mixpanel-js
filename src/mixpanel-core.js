@@ -631,7 +631,6 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === REMOVE_QUEUE_KEY) {
         remove_q.push(q_data);
-        //TODO: does $remove cancel append? or vice versa?
     } else if (q_key === APPEND_QUEUE_KEY) {
         append_q.push(q_data);
         this._pop_from_people_queue(UNSET_ACTION, q_data);
@@ -1042,12 +1041,12 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
  * @param {Array} array
  */
 MixpanelLib.prototype._execute_array = function(array) {
-    var fn_name, alias_calls = [], other_calls = [], tracking_calls = [], chained_calls = [];
+    var fn_name, alias_calls = [], other_calls = [], tracking_calls = [];
     _.each(array, function(item) {
         if (item) {
             fn_name = item[0];
             if (_.isArray(fn_name)){
-                chained_calls.push(item);
+                tracking_calls.push(item);
                 return;
             }
             if (typeof(item) === 'function') {
@@ -1062,23 +1061,25 @@ MixpanelLib.prototype._execute_array = function(array) {
         }
     }, this);
 
+    var that = this;
     var execute = function(calls, context) {
         _.each(calls, function(item) {
-            this[item[0]].apply(this, item.slice(1));
+            if (_.isArray(item[0])){
+                // chained call
+                var caller = that;
+                _.each(item, function(call){
+                    caller = caller[call[0]].apply(caller, call.slice(1));
+                });
+            }
+            else {
+                this[item[0]].apply(this, item.slice(1));
+            }
         }, context);
     };
 
     execute(alias_calls, this);
     execute(other_calls, this);
     execute(tracking_calls, this);
-
-    var that = this;
-    _.each(chained_calls, function(chained_call){
-        var caller = that;
-        _.each(chained_call, function(call){
-            caller = caller[call[0]].apply(caller, call.slice(1));
-        });
-    });
 };
 
 /**
