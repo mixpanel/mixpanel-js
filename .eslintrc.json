@@ -8,7 +8,7 @@
         "sourceType": "module"
     },
     "rules": {
-        "camelcase": "error",
+        "camelcase": "off",
         "eol-last": "error",
         "eqeqeq": "error",
         "indent":

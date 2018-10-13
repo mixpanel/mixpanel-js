@@ -17,7 +17,26 @@ _srcLoaderModule2['default'].init("FAKE_TOKEN", {
 
 _srcLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loader-module":6}],2:[function(require,module,exports){
+},{"../../src/loader-module":10}],2:[function(require,module,exports){
+/** @const */'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+var SET_ACTION = '$set';
+exports.SET_ACTION = SET_ACTION;
+/** @const */var SET_ONCE_ACTION = '$set_once';
+exports.SET_ONCE_ACTION = SET_ONCE_ACTION;
+/** @const */var UNSET_ACTION = '$unset';
+exports.UNSET_ACTION = UNSET_ACTION;
+/** @const */var ADD_ACTION = '$add';
+exports.ADD_ACTION = ADD_ACTION;
+/** @const */var APPEND_ACTION = '$append';
+exports.APPEND_ACTION = APPEND_ACTION;
+/** @const */var UNION_ACTION = '$union';
+exports.UNION_ACTION = UNION_ACTION;
+
+},{}],3:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -232,7 +251,7 @@ function shouldTrackValue(value) {
     return true;
 }
 
-},{"./utils":8}],3:[function(require,module,exports){
+},{"./utils":16}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -586,7 +605,7 @@ _utils._.safewrap_instance_methods(autotrack);
 
 exports.autotrack = autotrack;
 
-},{"./autotrack-utils":2,"./utils":8}],4:[function(require,module,exports){
+},{"./autotrack-utils":3,"./utils":16}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -600,7 +619,149 @@ var Config = {
 exports['default'] = Config;
 module.exports = exports['default'];
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _utils = require('./utils');
+
+/**
+ * DomTracker Object
+ * @constructor
+ */
+var DomTracker = function DomTracker() {};
+
+// interface
+DomTracker.prototype.create_properties = function () {};
+DomTracker.prototype.event_handler = function () {};
+DomTracker.prototype.after_track_handler = function () {};
+
+DomTracker.prototype.init = function (mixpanel_instance) {
+    this.mp = mixpanel_instance;
+    return this;
+};
+
+/**
+ * @param {Object|string} query
+ * @param {string} event_name
+ * @param {Object=} properties
+ * @param {function(...[*])=} user_callback
+ */
+DomTracker.prototype.track = function (query, event_name, properties, user_callback) {
+    var that = this;
+    var elements = _utils._.dom_query(query);
+
+    if (elements.length === 0) {
+        _utils.console.error('The DOM query (' + query + ') returned 0 elements');
+        return;
+    }
+
+    _utils._.each(elements, function (element) {
+        _utils._.register_event(element, this.override_event, function (e) {
+            var options = {};
+            var props = that.create_properties(properties, this);
+            var timeout = that.mp.get_config('track_links_timeout');
+
+            that.event_handler(e, this, options);
+
+            // in case the mixpanel servers don't get back to us in time
+            _utils.window.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
+
+            // fire the tracking event
+            that.mp.track(event_name, props, that.track_callback(user_callback, props, options));
+        });
+    }, this);
+
+    return true;
+};
+
+/**
+ * @param {function(...[*])} user_callback
+ * @param {Object} props
+ * @param {Object} options
+ * @param {boolean} options.callback_fired
+ * @param {boolean=} timeout_occurred
+ */
+DomTracker.prototype.track_callback = function (user_callback, props, options, timeout_occurred) {
+    timeout_occurred = timeout_occurred || false;
+    var that = this;
+
+    return function () {
+        // options is referenced from both callbacks, so we can have
+        // a 'lock' of sorts to ensure only one fires
+        if (options.callback_fired) {
+            return;
+        }
+        options.callback_fired = true;
+
+        if (user_callback && user_callback(timeout_occurred, props) === false) {
+            // user can prevent the default functionality by
+            // returning false from their callback
+            return;
+        }
+
+        that.after_track_handler(props, options, timeout_occurred);
+    };
+};
+
+DomTracker.prototype.create_properties = function (properties, element) {
+    var props;
+
+    if (typeof properties === 'function') {
+        props = properties(element);
+    } else {
+        props = _utils._.extend({}, properties);
+    }
+
+    return props;
+};
+
+exports['default'] = DomTracker;
+module.exports = exports['default'];
+
+},{"./utils":16}],7:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _utils = require('./utils');
+
+var _domTracker = require('./dom-tracker');
+
+var _domTracker2 = _interopRequireDefault(_domTracker);
+
+/**
+ * FormTracker Object
+ * @constructor
+ * @extends DomTracker
+ */
+var FormTracker = function FormTracker() {
+    this.override_event = 'submit';
+};
+_utils._.inherit(FormTracker, _domTracker2['default']);
+
+FormTracker.prototype.event_handler = function (evt, element, options) {
+    options.element = element;
+    evt.preventDefault();
+};
+
+FormTracker.prototype.after_track_handler = function (props, options) {
+    setTimeout(function () {
+        options.element.submit();
+    }, 0);
+};
+
+exports['default'] = FormTracker;
+module.exports = exports['default'];
+
+},{"./dom-tracker":6,"./utils":16}],8:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -861,7 +1022,64 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":8}],6:[function(require,module,exports){
+},{"./utils":16}],9:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _utils = require('./utils');
+
+var _domTracker = require('./dom-tracker');
+
+var _domTracker2 = _interopRequireDefault(_domTracker);
+
+/**
+ * LinkTracker Object
+ * @constructor
+ * @extends DomTracker
+ */
+var LinkTracker = function LinkTracker() {
+    this.override_event = 'click';
+};
+_utils._.inherit(LinkTracker, _domTracker2['default']);
+
+LinkTracker.prototype.create_properties = function (properties, element) {
+    var props = LinkTracker.superclass.create_properties.apply(this, arguments);
+
+    if (element.href) {
+        props['url'] = element.href;
+    }
+
+    return props;
+};
+
+LinkTracker.prototype.event_handler = function (evt, element, options) {
+    options.new_tab = evt.which === 2 || evt.metaKey || evt.ctrlKey || element.target === '_blank';
+    options.href = element.href;
+
+    if (!options.new_tab) {
+        evt.preventDefault();
+    }
+};
+
+LinkTracker.prototype.after_track_handler = function (props, options) {
+    if (options.new_tab) {
+        return;
+    }
+
+    setTimeout(function () {
+        _utils.window.location = options.href;
+    }, 0);
+};
+
+exports['default'] = LinkTracker;
+module.exports = exports['default'];
+
+},{"./dom-tracker":6,"./utils":16}],10:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -876,8 +1094,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)();
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"./mixpanel-core":7}],7:[function(require,module,exports){
-/* eslint camelcase: "off" */
+},{"./mixpanel-core":11}],11:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -895,6 +1112,28 @@ var _config2 = _interopRequireDefault(_config);
 var _utils = require('./utils');
 
 var _autotrack = require('./autotrack');
+
+var _linkTracker = require('./link-tracker');
+
+var _linkTracker2 = _interopRequireDefault(_linkTracker);
+
+var _formTracker = require('./form-tracker');
+
+var _formTracker2 = _interopRequireDefault(_formTracker);
+
+var _persistence = require('./persistence');
+
+var _persistence2 = _interopRequireDefault(_persistence);
+
+var _people = require('./people');
+
+var _people2 = _interopRequireDefault(_people);
+
+var _notifications = require('./notifications');
+
+var _notifications2 = _interopRequireDefault(_notifications);
+
+var _persistenceKeys = require('./persistence-keys');
 
 var _gdprUtils = require('./gdpr-utils');
 
@@ -934,24 +1173,6 @@ var INIT_SNIPPET = 1;
  * Constants
  */
 /** @const */var PRIMARY_INSTANCE_NAME = 'mixpanel';
-/** @const */var SET_QUEUE_KEY = '__mps';
-/** @const */var SET_ONCE_QUEUE_KEY = '__mpso';
-/** @const */var UNSET_QUEUE_KEY = '__mpus';
-/** @const */var ADD_QUEUE_KEY = '__mpa';
-/** @const */var APPEND_QUEUE_KEY = '__mpap';
-/** @const */var UNION_QUEUE_KEY = '__mpu';
-/** @const */var SET_ACTION = '$set';
-/** @const */var SET_ONCE_ACTION = '$set_once';
-/** @const */var UNSET_ACTION = '$unset';
-/** @const */var ADD_ACTION = '$add';
-/** @const */var APPEND_ACTION = '$append';
-/** @const */var UNION_ACTION = '$union';
-// This key is deprecated, but we want to check for it to see whether aliasing is allowed.
-/** @const */var PEOPLE_DISTINCT_ID_KEY = '$people_distinct_id';
-/** @const */var ALIAS_ID_KEY = '__alias';
-/** @const */var CAMPAIGN_IDS_KEY = '__cmpns';
-/** @const */var EVENT_TIMERS_KEY = '__timers';
-/** @const */var RESERVED_PROPERTIES = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, UNSET_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, UNION_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY, CAMPAIGN_IDS_KEY, EVENT_TIMERS_KEY];
 
 /*
  * Dynamic... constants? Is that an oxymoron?
@@ -1002,574 +1223,10 @@ var DEFAULT_CONFIG = {
 var DOM_LOADED = false;
 
 /**
- * DomTracker Object
- * @constructor
- */
-var DomTracker = function DomTracker() {};
-
-// interface
-DomTracker.prototype.create_properties = function () {};
-DomTracker.prototype.event_handler = function () {};
-DomTracker.prototype.after_track_handler = function () {};
-
-DomTracker.prototype.init = function (mixpanel_instance) {
-    this.mp = mixpanel_instance;
-    return this;
-};
-
-/**
- * @param {Object|string} query
- * @param {string} event_name
- * @param {Object=} properties
- * @param {function(...[*])=} user_callback
- */
-DomTracker.prototype.track = function (query, event_name, properties, user_callback) {
-    var that = this;
-    var elements = _utils._.dom_query(query);
-
-    if (elements.length === 0) {
-        _utils.console.error('The DOM query (' + query + ') returned 0 elements');
-        return;
-    }
-
-    _utils._.each(elements, function (element) {
-        _utils._.register_event(element, this.override_event, function (e) {
-            var options = {};
-            var props = that.create_properties(properties, this);
-            var timeout = that.mp.get_config('track_links_timeout');
-
-            that.event_handler(e, this, options);
-
-            // in case the mixpanel servers don't get back to us in time
-            _utils.window.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
-
-            // fire the tracking event
-            that.mp.track(event_name, props, that.track_callback(user_callback, props, options));
-        });
-    }, this);
-
-    return true;
-};
-
-/**
- * @param {function(...[*])} user_callback
- * @param {Object} props
- * @param {boolean=} timeout_occured
- */
-DomTracker.prototype.track_callback = function (user_callback, props, options, timeout_occured) {
-    timeout_occured = timeout_occured || false;
-    var that = this;
-
-    return function () {
-        // options is referenced from both callbacks, so we can have
-        // a 'lock' of sorts to ensure only one fires
-        if (options.callback_fired) {
-            return;
-        }
-        options.callback_fired = true;
-
-        if (user_callback && user_callback(timeout_occured, props) === false) {
-            // user can prevent the default functionality by
-            // returning false from their callback
-            return;
-        }
-
-        that.after_track_handler(props, options, timeout_occured);
-    };
-};
-
-DomTracker.prototype.create_properties = function (properties, element) {
-    var props;
-
-    if (typeof properties === 'function') {
-        props = properties(element);
-    } else {
-        props = _utils._.extend({}, properties);
-    }
-
-    return props;
-};
-
-/**
- * LinkTracker Object
- * @constructor
- * @extends DomTracker
- */
-var LinkTracker = function LinkTracker() {
-    this.override_event = 'click';
-};
-_utils._.inherit(LinkTracker, DomTracker);
-
-LinkTracker.prototype.create_properties = function (properties, element) {
-    var props = LinkTracker.superclass.create_properties.apply(this, arguments);
-
-    if (element.href) {
-        props['url'] = element.href;
-    }
-
-    return props;
-};
-
-LinkTracker.prototype.event_handler = function (evt, element, options) {
-    options.new_tab = evt.which === 2 || evt.metaKey || evt.ctrlKey || element.target === '_blank';
-    options.href = element.href;
-
-    if (!options.new_tab) {
-        evt.preventDefault();
-    }
-};
-
-LinkTracker.prototype.after_track_handler = function (props, options) {
-    if (options.new_tab) {
-        return;
-    }
-
-    setTimeout(function () {
-        _utils.window.location = options.href;
-    }, 0);
-};
-
-/**
- * FormTracker Object
- * @constructor
- * @extends DomTracker
- */
-var FormTracker = function FormTracker() {
-    this.override_event = 'submit';
-};
-_utils._.inherit(FormTracker, DomTracker);
-
-FormTracker.prototype.event_handler = function (evt, element, options) {
-    options.element = element;
-    evt.preventDefault();
-};
-
-FormTracker.prototype.after_track_handler = function (props, options) {
-    setTimeout(function () {
-        options.element.submit();
-    }, 0);
-};
-
-/**
- * Mixpanel Persistence Object
- * @constructor
- */
-var MixpanelPersistence = function MixpanelPersistence(config) {
-    this['props'] = {};
-    this.campaign_params_saved = false;
-
-    if (config['persistence_name']) {
-        this.name = 'mp_' + config['persistence_name'];
-    } else {
-        this.name = 'mp_' + config['token'] + '_mixpanel';
-    }
-
-    var storage_type = config['persistence'];
-    if (storage_type !== 'cookie' && storage_type !== 'localStorage') {
-        _utils.console.critical('Unknown persistence type ' + storage_type + '; falling back to cookie');
-        storage_type = config['persistence'] = 'cookie';
-    }
-
-    if (storage_type === 'localStorage' && _utils._.localStorage.is_supported()) {
-        this.storage = _utils._.localStorage;
-    } else {
-        this.storage = _utils._.cookie;
-    }
-
-    this.load();
-    this.update_config(config);
-    this.upgrade(config);
-    this.save();
-};
-
-MixpanelPersistence.prototype.properties = function () {
-    var p = {};
-    // Filter out reserved properties
-    _utils._.each(this['props'], function (v, k) {
-        if (!_utils._.include(RESERVED_PROPERTIES, k)) {
-            p[k] = v;
-        }
-    });
-    return p;
-};
-
-MixpanelPersistence.prototype.load = function () {
-    if (this.disabled) {
-        return;
-    }
-
-    var entry = this.storage.parse(this.name);
-
-    if (entry) {
-        this['props'] = _utils._.extend({}, entry);
-    }
-};
-
-MixpanelPersistence.prototype.upgrade = function (config) {
-    var upgrade_from_old_lib = config['upgrade'],
-        old_cookie_name,
-        old_cookie;
-
-    if (upgrade_from_old_lib) {
-        old_cookie_name = 'mp_super_properties';
-        // Case where they had a custom cookie name before.
-        if (typeof upgrade_from_old_lib === 'string') {
-            old_cookie_name = upgrade_from_old_lib;
-        }
-
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        // remove the cookie
-        this.storage.remove(old_cookie_name);
-        this.storage.remove(old_cookie_name, true);
-
-        if (old_cookie) {
-            this['props'] = _utils._.extend(this['props'], old_cookie['all'], old_cookie['events']);
-        }
-    }
-
-    if (!config['cookie_name'] && config['name'] !== 'mixpanel') {
-        // special case to handle people with cookies of the form
-        // mp_TOKEN_INSTANCENAME from the first release of this library
-        old_cookie_name = 'mp_' + config['token'] + '_' + config['name'];
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        if (old_cookie) {
-            this.storage.remove(old_cookie_name);
-            this.storage.remove(old_cookie_name, true);
-
-            // Save the prop values that were in the cookie from before -
-            // this should only happen once as we delete the old one.
-            this.register_once(old_cookie);
-        }
-    }
-
-    if (this.storage === _utils._.localStorage) {
-        old_cookie = _utils._.cookie.parse(this.name);
-
-        _utils._.cookie.remove(this.name);
-        _utils._.cookie.remove(this.name, true);
-
-        if (old_cookie) {
-            this.register_once(old_cookie);
-        }
-    }
-};
-
-MixpanelPersistence.prototype.save = function () {
-    if (this.disabled) {
-        return;
-    }
-    this._expire_notification_campaigns();
-    this.storage.set(this.name, _utils._.JSONEncode(this['props']), this.expire_days, this.cross_subdomain, this.secure);
-};
-
-MixpanelPersistence.prototype.remove = function () {
-    // remove both domain and subdomain cookies
-    this.storage.remove(this.name, false);
-    this.storage.remove(this.name, true);
-};
-
-// removes the storage entry and deletes all loaded data
-// forced name for tests
-MixpanelPersistence.prototype.clear = function () {
-    this.remove();
-    this['props'] = {};
-};
-
-/**
- * @param {Object} props
- * @param {*=} default_value
- * @param {number=} days
- */
-MixpanelPersistence.prototype.register_once = function (props, default_value, days) {
-    if (_utils._.isObject(props)) {
-        if (typeof default_value === 'undefined') {
-            default_value = 'None';
-        }
-        this.expire_days = typeof days === 'undefined' ? this.default_expiry : days;
-
-        _utils._.each(props, function (val, prop) {
-            if (!this['props'].hasOwnProperty(prop) || this['props'][prop] === default_value) {
-                this['props'][prop] = val;
-            }
-        }, this);
-
-        this.save();
-
-        return true;
-    }
-    return false;
-};
-
-/**
- * @param {Object} props
- * @param {number=} days
- */
-MixpanelPersistence.prototype.register = function (props, days) {
-    if (_utils._.isObject(props)) {
-        this.expire_days = typeof days === 'undefined' ? this.default_expiry : days;
-
-        _utils._.extend(this['props'], props);
-
-        this.save();
-
-        return true;
-    }
-    return false;
-};
-
-MixpanelPersistence.prototype.unregister = function (prop) {
-    if (prop in this['props']) {
-        delete this['props'][prop];
-        this.save();
-    }
-};
-
-MixpanelPersistence.prototype._expire_notification_campaigns = _utils._.safewrap(function () {
-    var campaigns_shown = this['props'][CAMPAIGN_IDS_KEY],
-        EXPIRY_TIME = _config2['default'].DEBUG ? 60 * 1000 : 60 * 60 * 1000; // 1 minute (Config.DEBUG) / 1 hour (PDXN)
-    if (!campaigns_shown) {
-        return;
-    }
-    for (var campaign_id in campaigns_shown) {
-        if (1 * new Date() - campaigns_shown[campaign_id] > EXPIRY_TIME) {
-            delete campaigns_shown[campaign_id];
-        }
-    }
-    if (_utils._.isEmptyObject(campaigns_shown)) {
-        delete this['props'][CAMPAIGN_IDS_KEY];
-    }
-});
-
-MixpanelPersistence.prototype.update_campaign_params = function () {
-    if (!this.campaign_params_saved) {
-        this.register_once(_utils._.info.campaignParams());
-        this.campaign_params_saved = true;
-    }
-};
-
-MixpanelPersistence.prototype.update_search_keyword = function (referrer) {
-    this.register(_utils._.info.searchInfo(referrer));
-};
-
-// EXPORTED METHOD, we test this directly.
-MixpanelPersistence.prototype.update_referrer_info = function (referrer) {
-    // If referrer doesn't exist, we want to note the fact that it was type-in traffic.
-    this.register_once({
-        '$initial_referrer': referrer || '$direct',
-        '$initial_referring_domain': _utils._.info.referringDomain(referrer) || '$direct'
-    }, '');
-};
-
-MixpanelPersistence.prototype.get_referrer_info = function () {
-    return _utils._.strip_empty_properties({
-        '$initial_referrer': this['props']['$initial_referrer'],
-        '$initial_referring_domain': this['props']['$initial_referring_domain']
-    });
-};
-
-// safely fills the passed in object with stored properties,
-// does not override any properties defined in both
-// returns the passed in object
-MixpanelPersistence.prototype.safe_merge = function (props) {
-    _utils._.each(this['props'], function (val, prop) {
-        if (!(prop in props)) {
-            props[prop] = val;
-        }
-    });
-
-    return props;
-};
-
-MixpanelPersistence.prototype.update_config = function (config) {
-    this.default_expiry = this.expire_days = config['cookie_expiration'];
-    this.set_disabled(config['disable_persistence']);
-    this.set_cross_subdomain(config['cross_subdomain_cookie']);
-    this.set_secure(config['secure_cookie']);
-};
-
-MixpanelPersistence.prototype.set_disabled = function (disabled) {
-    this.disabled = disabled;
-    if (this.disabled) {
-        this.remove();
-    } else {
-        this.save();
-    }
-};
-
-MixpanelPersistence.prototype.set_cross_subdomain = function (cross_subdomain) {
-    if (cross_subdomain !== this.cross_subdomain) {
-        this.cross_subdomain = cross_subdomain;
-        this.remove();
-        this.save();
-    }
-};
-
-MixpanelPersistence.prototype.get_cross_subdomain = function () {
-    return this.cross_subdomain;
-};
-
-MixpanelPersistence.prototype.set_secure = function (secure) {
-    if (secure !== this.secure) {
-        this.secure = secure ? true : false;
-        this.remove();
-        this.save();
-    }
-};
-
-MixpanelPersistence.prototype._add_to_people_queue = function (queue, data) {
-    var q_key = this._get_queue_key(queue),
-        q_data = data[queue],
-        set_q = this._get_or_create_queue(SET_ACTION),
-        set_once_q = this._get_or_create_queue(SET_ONCE_ACTION),
-        unset_q = this._get_or_create_queue(UNSET_ACTION),
-        add_q = this._get_or_create_queue(ADD_ACTION),
-        union_q = this._get_or_create_queue(UNION_ACTION),
-        append_q = this._get_or_create_queue(APPEND_ACTION, []);
-
-    if (q_key === SET_QUEUE_KEY) {
-        // Update the set queue - we can override any existing values
-        _utils._.extend(set_q, q_data);
-        // if there was a pending increment, override it
-        // with the set.
-        this._pop_from_people_queue(ADD_ACTION, q_data);
-        // if there was a pending union, override it
-        // with the set.
-        this._pop_from_people_queue(UNION_ACTION, q_data);
-        this._pop_from_people_queue(UNSET_ACTION, q_data);
-    } else if (q_key === SET_ONCE_QUEUE_KEY) {
-        // only queue the data if there is not already a set_once call for it.
-        _utils._.each(q_data, function (v, k) {
-            if (!(k in set_once_q)) {
-                set_once_q[k] = v;
-            }
-        });
-        this._pop_from_people_queue(UNSET_ACTION, q_data);
-    } else if (q_key === UNSET_QUEUE_KEY) {
-        _utils._.each(q_data, function (prop) {
-
-            // undo previously-queued actions on this key
-            _utils._.each([set_q, set_once_q, add_q, union_q], function (enqueued_obj) {
-                if (prop in enqueued_obj) {
-                    delete enqueued_obj[prop];
-                }
-            });
-            _utils._.each(append_q, function (append_obj) {
-                if (prop in append_obj) {
-                    delete append_obj[prop];
-                }
-            });
-
-            unset_q[prop] = true;
-        });
-    } else if (q_key === ADD_QUEUE_KEY) {
-        _utils._.each(q_data, function (v, k) {
-            // If it exists in the set queue, increment
-            // the value
-            if (k in set_q) {
-                set_q[k] += v;
-            } else {
-                // If it doesn't exist, update the add
-                // queue
-                if (!(k in add_q)) {
-                    add_q[k] = 0;
-                }
-                add_q[k] += v;
-            }
-        }, this);
-        this._pop_from_people_queue(UNSET_ACTION, q_data);
-    } else if (q_key === UNION_QUEUE_KEY) {
-        _utils._.each(q_data, function (v, k) {
-            if (_utils._.isArray(v)) {
-                if (!(k in union_q)) {
-                    union_q[k] = [];
-                }
-                // We may send duplicates, the server will dedup them.
-                union_q[k] = union_q[k].concat(v);
-            }
-        });
-        this._pop_from_people_queue(UNSET_ACTION, q_data);
-    } else if (q_key === APPEND_QUEUE_KEY) {
-        append_q.push(q_data);
-        this._pop_from_people_queue(UNSET_ACTION, q_data);
-    }
-
-    _utils.console.log('MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):');
-    _utils.console.log(data);
-
-    this.save();
-};
-
-MixpanelPersistence.prototype._pop_from_people_queue = function (queue, data) {
-    var q = this._get_queue(queue);
-    if (!_utils._.isUndefined(q)) {
-        _utils._.each(data, function (v, k) {
-            delete q[k];
-        }, this);
-
-        this.save();
-    }
-};
-
-MixpanelPersistence.prototype._get_queue_key = function (queue) {
-    if (queue === SET_ACTION) {
-        return SET_QUEUE_KEY;
-    } else if (queue === SET_ONCE_ACTION) {
-        return SET_ONCE_QUEUE_KEY;
-    } else if (queue === UNSET_ACTION) {
-        return UNSET_QUEUE_KEY;
-    } else if (queue === ADD_ACTION) {
-        return ADD_QUEUE_KEY;
-    } else if (queue === APPEND_ACTION) {
-        return APPEND_QUEUE_KEY;
-    } else if (queue === UNION_ACTION) {
-        return UNION_QUEUE_KEY;
-    } else {
-        _utils.console.error('Invalid queue:', queue);
-    }
-};
-
-MixpanelPersistence.prototype._get_queue = function (queue) {
-    return this['props'][this._get_queue_key(queue)];
-};
-MixpanelPersistence.prototype._get_or_create_queue = function (queue, default_val) {
-    var key = this._get_queue_key(queue);
-    default_val = _utils._.isUndefined(default_val) ? {} : default_val;
-
-    return this['props'][key] || (this['props'][key] = default_val);
-};
-
-MixpanelPersistence.prototype.set_event_timer = function (event_name, timestamp) {
-    var timers = this['props'][EVENT_TIMERS_KEY] || {};
-    timers[event_name] = timestamp;
-    this['props'][EVENT_TIMERS_KEY] = timers;
-    this.save();
-};
-
-MixpanelPersistence.prototype.remove_event_timer = function (event_name) {
-    var timers = this['props'][EVENT_TIMERS_KEY] || {};
-    var timestamp = timers[event_name];
-    if (!_utils._.isUndefined(timestamp)) {
-        delete this['props'][EVENT_TIMERS_KEY][event_name];
-        this.save();
-    }
-    return timestamp;
-};
-
-/**
  * Mixpanel Library Object
  * @constructor
  */
 var MixpanelLib = function MixpanelLib() {};
-
-/**
- * Mixpanel People Object
- * @constructor
- */
-var MixpanelPeople = function MixpanelPeople() {};
-
-var MPNotif;
 
 /**
  * create_mplib(token:string, config:object, name:string)
@@ -1595,7 +1252,7 @@ var create_mplib = function create_mplib(token, config, name) {
 
     instance._init(token, config, name);
 
-    instance['people'] = new MixpanelPeople();
+    instance['people'] = new _people2['default']();
     instance['people']._init(instance);
 
     // if any instance on the page has debug = true, we set the
@@ -1691,7 +1348,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
         'identify_called': false
     };
 
-    this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
+    this['persistence'] = this['cookie'] = new _persistence2['default'](this['config']);
     this._init_gdpr_persistence();
 
     this.register_once({ 'distinct_id': _utils._.UUID() }, '');
@@ -1761,10 +1418,9 @@ MixpanelLib.prototype._prepare_callback = function (callback, data) {
     }
 
     if (USE_XHR) {
-        var callback_function = function callback_function(response) {
+        return function (response) {
             callback(response, data);
         };
-        return callback_function;
     } else {
         // if the user gives us a callback, we store as a random
         // property on this instances jsc function and update our
@@ -2086,7 +1742,7 @@ MixpanelLib.prototype.track_pageview = function (page) {
  * @param {Object|Function} [properties] A properties object or function that returns a dictionary of properties when passed a DOMElement
  */
 MixpanelLib.prototype.track_links = function () {
-    return this._track_dom.call(this, LinkTracker, arguments);
+    return this._track_dom.call(this, _linkTracker2['default'], arguments);
 };
 
 /**
@@ -2117,7 +1773,7 @@ MixpanelLib.prototype.track_links = function () {
  * @param {Object|Function} [properties] This can be a set of properties, or a function that returns a set of properties after being passed a DOMElement
  */
 MixpanelLib.prototype.track_forms = function () {
-    return this._track_dom.call(this, FormTracker, arguments);
+    return this._track_dom.call(this, _formTracker2['default'], arguments);
 };
 
 /**
@@ -2250,8 +1906,8 @@ MixpanelLib.prototype.identify = function (unique_id, _set_callback, _add_callba
 
     // identify only changes the distinct id if it doesn't match either the existing or the alias;
     // if it's new, blow away the alias as well.
-    if (unique_id !== this.get_distinct_id() && unique_id !== this.get_property(ALIAS_ID_KEY)) {
-        this.unregister(ALIAS_ID_KEY);
+    if (unique_id !== this.get_distinct_id() && unique_id !== this.get_property(_persistenceKeys.ALIAS_ID_KEY)) {
+        this.unregister(_persistenceKeys.ALIAS_ID_KEY);
         this._register_single('distinct_id', unique_id);
     }
     this._check_and_handle_notifications(this.get_distinct_id());
@@ -2315,7 +1971,7 @@ MixpanelLib.prototype.alias = function (alias, original) {
     // If the $people_distinct_id key exists in persistence, there has been a previous
     // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
     // this ID, as it will duplicate users.
-    if (alias === this.get_property(PEOPLE_DISTINCT_ID_KEY)) {
+    if (alias === this.get_property(_persistenceKeys.PEOPLE_DISTINCT_ID_KEY)) {
         _utils.console.critical('Attempting to create alias for existing People user - aborting.');
         return -2;
     }
@@ -2325,7 +1981,7 @@ MixpanelLib.prototype.alias = function (alias, original) {
         original = this.get_distinct_id();
     }
     if (alias !== original) {
-        this._register_single(ALIAS_ID_KEY, alias);
+        this._register_single(_persistenceKeys.ALIAS_ID_KEY, alias);
         return this.track('$create_alias', { 'alias': alias, 'distinct_id': original }, function () {
             // Flush the people queue
             _this.identify(alias);
@@ -2507,7 +2163,7 @@ MixpanelLib.prototype._check_and_handle_notifications = (0, _gdprUtils.addOptOut
 });
 
 MixpanelLib.prototype._show_notification = function (notification_data) {
-    var notification = new MPNotif(notification_data, this);
+    var notification = new _notifications2['default'](notification_data, this);
     notification.show();
 };
 
@@ -2690,448 +2346,206 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function (options) {
     this._update_persistence();
 };
 
-MixpanelPeople.prototype._init = function (mixpanel_instance) {
-    this._mixpanel = mixpanel_instance;
+// EXPORTS (for closure compiler)
+
+// MixpanelLib Exports
+MixpanelLib.prototype['init'] = MixpanelLib.prototype.init;
+MixpanelLib.prototype['reset'] = MixpanelLib.prototype.reset;
+MixpanelLib.prototype['disable'] = MixpanelLib.prototype.disable;
+MixpanelLib.prototype['time_event'] = MixpanelLib.prototype.time_event;
+MixpanelLib.prototype['track'] = MixpanelLib.prototype.track;
+MixpanelLib.prototype['track_links'] = MixpanelLib.prototype.track_links;
+MixpanelLib.prototype['track_forms'] = MixpanelLib.prototype.track_forms;
+MixpanelLib.prototype['track_pageview'] = MixpanelLib.prototype.track_pageview;
+MixpanelLib.prototype['register'] = MixpanelLib.prototype.register;
+MixpanelLib.prototype['register_once'] = MixpanelLib.prototype.register_once;
+MixpanelLib.prototype['unregister'] = MixpanelLib.prototype.unregister;
+MixpanelLib.prototype['identify'] = MixpanelLib.prototype.identify;
+MixpanelLib.prototype['alias'] = MixpanelLib.prototype.alias;
+MixpanelLib.prototype['name_tag'] = MixpanelLib.prototype.name_tag;
+MixpanelLib.prototype['set_config'] = MixpanelLib.prototype.set_config;
+MixpanelLib.prototype['get_config'] = MixpanelLib.prototype.get_config;
+MixpanelLib.prototype['get_property'] = MixpanelLib.prototype.get_property;
+MixpanelLib.prototype['get_distinct_id'] = MixpanelLib.prototype.get_distinct_id;
+MixpanelLib.prototype['toString'] = MixpanelLib.prototype.toString;
+MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
+MixpanelLib.prototype['_show_notification'] = MixpanelLib.prototype._show_notification;
+MixpanelLib.prototype['opt_out_tracking'] = MixpanelLib.prototype.opt_out_tracking;
+MixpanelLib.prototype['opt_in_tracking'] = MixpanelLib.prototype.opt_in_tracking;
+MixpanelLib.prototype['has_opted_out_tracking'] = MixpanelLib.prototype.has_opted_out_tracking;
+MixpanelLib.prototype['has_opted_in_tracking'] = MixpanelLib.prototype.has_opted_in_tracking;
+MixpanelLib.prototype['clear_opt_in_out_tracking'] = MixpanelLib.prototype.clear_opt_in_out_tracking;
+
+_utils._.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
+
+var instances = {};
+var extend_mp = function extend_mp() {
+    // add all the sub mixpanel instances
+    _utils._.each(instances, function (instance, name) {
+        if (name !== PRIMARY_INSTANCE_NAME) {
+            mixpanel_master[name] = instance;
+        }
+    });
+
+    // add private functions as _
+    mixpanel_master['_'] = _utils._;
 };
 
-/*
- * Set properties on a user record.
- *
- * ### Usage:
- *
- *     mixpanel.people.set('gender', 'm');
- *
- *     // or set multiple properties at once
- *     mixpanel.people.set({
- *         'Company': 'Acme',
- *         'Plan': 'Premium',
- *         'Upgrade date': new Date()
- *     });
- *     // properties can be strings, integers, dates, or lists
- *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
- * @param {*} [to] A value to set on the given property name
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelPeople.prototype.set = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (prop, to, callback) {
-    var data = {};
-    var $set = {};
-    if (_utils._.isObject(prop)) {
-        _utils._.each(prop, function (v, k) {
-            if (!this._is_reserved_property(k)) {
-                $set[k] = v;
+var override_mp_init_func = function override_mp_init_func() {
+    // we override the snippets init function to handle the case where a
+    // user initializes the mixpanel library after the script loads & runs
+    mixpanel_master['init'] = function (token, config, name) {
+        if (name) {
+            // initialize a sub library
+            if (!mixpanel_master[name]) {
+                mixpanel_master[name] = instances[name] = create_mplib(token, config, name);
+                mixpanel_master[name]._loaded();
             }
-        }, this);
-        callback = to;
-    } else {
-        $set[prop] = to;
-    }
+            return mixpanel_master[name];
+        } else {
+            var instance = mixpanel_master;
 
-    // make sure that the referrer info has been updated and saved
-    if (this._get_config('save_referrer')) {
-        this._mixpanel['persistence'].update_referrer_info(_utils.document.referrer);
-    }
-
-    // update $set object with default people properties
-    $set = _utils._.extend({}, _utils._.info.people_properties(), this._mixpanel['persistence'].get_referrer_info(), $set);
-
-    data[SET_ACTION] = $set;
-
-    return this._send_request(data, callback);
-});
-
-/*
- * Set properties on a user record, only if they do not yet exist.
- * This will not overwrite previous people property values, unlike
- * people.set().
- *
- * ### Usage:
- *
- *     mixpanel.people.set_once('First Login Date', new Date());
- *
- *     // or set multiple properties at once
- *     mixpanel.people.set_once({
- *         'First Login Date': new Date(),
- *         'Starting Plan': 'Premium'
- *     });
- *
- *     // properties can be strings, integers or dates
- *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
- * @param {*} [to] A value to set on the given property name
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelPeople.prototype.set_once = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (prop, to, callback) {
-    var data = {};
-    var $set_once = {};
-    if (_utils._.isObject(prop)) {
-        _utils._.each(prop, function (v, k) {
-            if (!this._is_reserved_property(k)) {
-                $set_once[k] = v;
+            if (instances[PRIMARY_INSTANCE_NAME]) {
+                // main mixpanel lib already initialized
+                instance = instances[PRIMARY_INSTANCE_NAME];
+            } else if (token) {
+                // intialize the main mixpanel lib
+                instance = create_mplib(token, config, PRIMARY_INSTANCE_NAME);
+                instance._loaded();
+                instances[PRIMARY_INSTANCE_NAME] = instance;
             }
-        }, this);
-        callback = to;
-    } else {
-        $set_once[prop] = to;
-    }
-    data[SET_ONCE_ACTION] = $set_once;
-    return this._send_request(data, callback);
-});
 
-/*
- * Unset properties on a user record (permanently removes the properties and their values from a profile).
- *
- * ### Usage:
- *
- *     mixpanel.people.unset('gender');
- *
- *     // or unset multiple properties at once
- *     mixpanel.people.unset(['gender', 'Company']);
- *
- * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelPeople.prototype.unset = function (prop, callback) {
-    var data = {};
-    var $unset = [];
-    if (!_utils._.isArray(prop)) {
-        prop = [prop];
-    }
-
-    _utils._.each(prop, function (k) {
-        if (!this._is_reserved_property(k)) {
-            $unset.push(k);
+            mixpanel_master = instance;
+            if (init_type === INIT_SNIPPET) {
+                _utils.window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+            }
+            extend_mp();
         }
-    }, this);
-
-    data[UNSET_ACTION] = $unset;
-
-    return this._send_request(data, callback);
+    };
 };
 
-/*
- * Increment/decrement numeric people analytics properties.
- *
- * ### Usage:
- *
- *     mixpanel.people.increment('page_views', 1);
- *
- *     // or, for convenience, if you're just incrementing a counter by
- *     // 1, you can simply do
- *     mixpanel.people.increment('page_views');
- *
- *     // to decrement a counter, pass a negative number
- *     mixpanel.people.increment('credits_left', -1);
- *
- *     // like mixpanel.people.set(), you can increment multiple
- *     // properties at once:
- *     mixpanel.people.increment({
- *         counter1: 1,
- *         counter2: 6
- *     });
- *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
- * @param {Number} [by] An amount to increment the given property
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelPeople.prototype.increment = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (prop, by, callback) {
-    var data = {};
-    var $add = {};
-    if (_utils._.isObject(prop)) {
-        _utils._.each(prop, function (v, k) {
-            if (!this._is_reserved_property(k)) {
-                if (isNaN(parseFloat(v))) {
-                    _utils.console.error('Invalid increment value passed to mixpanel.people.increment - must be a number');
-                    return;
-                } else {
-                    $add[k] = v;
-                }
-            }
-        }, this);
-        callback = by;
-    } else {
-        // convenience: mixpanel.people.increment('property'); will
-        // increment 'property' by 1
-        if (_utils._.isUndefined(by)) {
-            by = 1;
-        }
-        $add[prop] = by;
-    }
-    data[ADD_ACTION] = $add;
-
-    return this._send_request(data, callback);
-});
-
-/*
- * Append a value to a list-valued people analytics property.
- *
- * ### Usage:
- *
- *     // append a value to a list, creating it if needed
- *     mixpanel.people.append('pages_visited', 'homepage');
- *
- *     // like mixpanel.people.set(), you can append multiple
- *     // properties at once:
- *     mixpanel.people.append({
- *         list1: 'bob',
- *         list2: 123
- *     });
- *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
- * @param {*} [value] An item to append to the list
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelPeople.prototype.append = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (list_name, value, callback) {
-    var data = {};
-    var $append = {};
-    if (_utils._.isObject(list_name)) {
-        _utils._.each(list_name, function (v, k) {
-            if (!this._is_reserved_property(k)) {
-                $append[k] = v;
-            }
-        }, this);
-        callback = value;
-    } else {
-        $append[list_name] = value;
-    }
-    data[APPEND_ACTION] = $append;
-
-    return this._send_request(data, callback);
-});
-
-/*
- * Merge a given list with a list-valued people analytics property,
- * excluding duplicate values.
- *
- * ### Usage:
- *
- *     // merge a value to a list, creating it if needed
- *     mixpanel.people.union('pages_visited', 'homepage');
- *
- *     // like mixpanel.people.set(), you can append multiple
- *     // properties at once:
- *     mixpanel.people.union({
- *         list1: 'bob',
- *         list2: 123
- *     });
- *
- *     // like mixpanel.people.append(), you can append multiple
- *     // values to the same list:
- *     mixpanel.people.union({
- *         list1: ['bob', 'billy']
- *     });
- *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
- * @param {*} [value] Value / values to merge with the given property
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelPeople.prototype.union = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (list_name, values, callback) {
-    var data = {};
-    var $union = {};
-    if (_utils._.isObject(list_name)) {
-        _utils._.each(list_name, function (v, k) {
-            if (!this._is_reserved_property(k)) {
-                $union[k] = _utils._.isArray(v) ? v : [v];
-            }
-        }, this);
-        callback = values;
-    } else {
-        $union[list_name] = _utils._.isArray(values) ? values : [values];
-    }
-    data[UNION_ACTION] = $union;
-
-    return this._send_request(data, callback);
-});
-
-/*
- * Record that you have charged the current user a certain amount
- * of money. Charges recorded with track_charge() will appear in the
- * Mixpanel revenue report.
- *
- * ### Usage:
- *
- *     // charge a user $50
- *     mixpanel.people.track_charge(50);
- *
- *     // charge a user $30.50 on the 2nd of january
- *     mixpanel.people.track_charge(30.50, {
- *         '$time': new Date('jan 1 2012')
- *     });
- *
- * @param {Number} amount The amount of money charged to the current user
- * @param {Object} [properties] An associative array of properties associated with the charge
- * @param {Function} [callback] If provided, the callback will be called when the server responds
- */
-MixpanelPeople.prototype.track_charge = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (amount, properties, callback) {
-    if (!_utils._.isNumber(amount)) {
-        amount = parseFloat(amount);
-        if (isNaN(amount)) {
-            _utils.console.error('Invalid value passed to mixpanel.people.track_charge - must be a number');
+var add_dom_loaded_handler = function add_dom_loaded_handler() {
+    // Cross browser DOM Loaded support
+    function dom_loaded_handler() {
+        // function flag since we only want to execute this once
+        if (dom_loaded_handler.done) {
             return;
         }
-    }
+        dom_loaded_handler.done = true;
 
-    return this.append('$transactions', _utils._.extend({
-        '$amount': amount
-    }, properties), callback);
-});
+        DOM_LOADED = true;
+        ENQUEUE_REQUESTS = false;
 
-/*
- * Permanently clear all revenue report transactions from the
- * current user's people analytics profile.
- *
- * ### Usage:
- *
- *     mixpanel.people.clear_charges();
- *
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelPeople.prototype.clear_charges = function (callback) {
-    return this.set('$transactions', [], callback);
-};
-
-/*
- * Permanently deletes the current people analytics profile from
- * Mixpanel (using the current distinct_id).
- *
- * ### Usage:
- *
- *     // remove the all data you have stored about the current user
- *     mixpanel.people.delete_user();
- *
- */
-MixpanelPeople.prototype.delete_user = function () {
-    if (!this._identify_called()) {
-        _utils.console.error('mixpanel.people.delete_user() requires you to call identify() first');
-        return;
-    }
-    var data = { '$delete': this._mixpanel.get_distinct_id() };
-    return this._send_request(data);
-};
-
-MixpanelPeople.prototype.toString = function () {
-    return this._mixpanel.toString() + '.people';
-};
-
-MixpanelPeople.prototype._send_request = function (data, callback) {
-    data['$token'] = this._get_config('token');
-    data['$distinct_id'] = this._mixpanel.get_distinct_id();
-
-    var date_encoded_data = _utils._.encodeDates(data);
-    var truncated_data = _utils._.truncate(date_encoded_data, 255);
-    var json_data = _utils._.JSONEncode(date_encoded_data);
-    var encoded_data = _utils._.base64Encode(json_data);
-
-    if (!this._identify_called()) {
-        this._enqueue(data);
-        if (!_utils._.isUndefined(callback)) {
-            if (this._get_config('verbose')) {
-                callback({ status: -1, error: null });
-            } else {
-                callback(-1);
-            }
-        }
-        return truncated_data;
-    }
-
-    _utils.console.log('MIXPANEL PEOPLE REQUEST:');
-    _utils.console.log(truncated_data);
-
-    this._mixpanel._send_request(this._get_config('api_host') + '/engage/', { 'data': encoded_data }, this._mixpanel._prepare_callback(callback, truncated_data));
-
-    return truncated_data;
-};
-
-MixpanelPeople.prototype._get_config = function (conf_var) {
-    return this._mixpanel.get_config(conf_var);
-};
-
-MixpanelPeople.prototype._identify_called = function () {
-    return this._mixpanel._flags.identify_called === true;
-};
-
-// Queue up engage operations if identify hasn't been called yet.
-MixpanelPeople.prototype._enqueue = function (data) {
-    if (SET_ACTION in data) {
-        this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, data);
-    } else if (SET_ONCE_ACTION in data) {
-        this._mixpanel['persistence']._add_to_people_queue(SET_ONCE_ACTION, data);
-    } else if (UNSET_ACTION in data) {
-        this._mixpanel['persistence']._add_to_people_queue(UNSET_ACTION, data);
-    } else if (ADD_ACTION in data) {
-        this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, data);
-    } else if (APPEND_ACTION in data) {
-        this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, data);
-    } else if (UNION_ACTION in data) {
-        this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, data);
-    } else {
-        _utils.console.error('Invalid call to _enqueue():', data);
-    }
-};
-
-MixpanelPeople.prototype._flush_one_queue = function (action, action_method, callback, queue_to_params_fn) {
-    var _this = this;
-    var queued_data = _utils._.extend({}, this._mixpanel['persistence']._get_queue(action));
-    var action_params = queued_data;
-
-    if (!_utils._.isUndefined(queued_data) && _utils._.isObject(queued_data) && !_utils._.isEmptyObject(queued_data)) {
-        _this._mixpanel['persistence']._pop_from_people_queue(action, queued_data);
-        if (queue_to_params_fn) {
-            action_params = queue_to_params_fn(queued_data);
-        }
-        action_method.call(_this, action_params, function (response, data) {
-            // on bad response, we want to add it back to the queue
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(action, queued_data);
-            }
-            if (!_utils._.isUndefined(callback)) {
-                callback(response, data);
-            }
+        _utils._.each(instances, function (inst) {
+            inst._dom_loaded();
         });
     }
-};
 
-// Flush queued engage operations - order does not matter,
-// and there are network level race conditions anyway
-MixpanelPeople.prototype._flush = function (_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback) {
-    var _this = this;
-    var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);
-
-    this._flush_one_queue(SET_ACTION, this.set, _set_callback);
-    this._flush_one_queue(SET_ONCE_ACTION, this.set_once, _set_once_callback);
-    this._flush_one_queue(UNSET_ACTION, this.unset, _unset_callback, function (queue) {
-        return _utils._.keys(queue);
-    });
-    this._flush_one_queue(ADD_ACTION, this.increment, _add_callback);
-    this._flush_one_queue(UNION_ACTION, this.union, _union_callback);
-
-    // we have to fire off each $append individually since there is
-    // no concat method server side
-    if (!_utils._.isUndefined($append_queue) && _utils._.isArray($append_queue) && $append_queue.length) {
-        var $append_item;
-        var callback = function callback(response, data) {
-            if (response === 0) {
-                _this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, $append_item);
-            }
-            if (!_utils._.isUndefined(_append_callback)) {
-                _append_callback(response, data);
-            }
-        };
-        for (var i = $append_queue.length - 1; i >= 0; i--) {
-            $append_item = $append_queue.pop();
-            _this.append($append_item, callback);
+    function do_scroll_check() {
+        try {
+            _utils.document.documentElement.doScroll('left');
+        } catch (e) {
+            setTimeout(do_scroll_check, 1);
+            return;
         }
-        // Save the shortened append queue
-        _this._mixpanel['persistence'].save();
+
+        dom_loaded_handler();
     }
+
+    if (_utils.document.addEventListener) {
+        if (_utils.document.readyState === 'complete') {
+            // safari 4 can fire the DOMContentLoaded event before loading all
+            // external JS (including this file). you will see some copypasta
+            // on the internet that checks for 'complete' and 'loaded', but
+            // 'loaded' is an IE thing
+            dom_loaded_handler();
+        } else {
+            _utils.document.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
+        }
+    } else if (_utils.document.attachEvent) {
+        // IE
+        _utils.document.attachEvent('onreadystatechange', dom_loaded_handler);
+
+        // check to make sure we arn't in a frame
+        var toplevel = false;
+        try {
+            toplevel = _utils.window.frameElement === null;
+        } catch (e) {
+            // noop
+        }
+
+        if (_utils.document.documentElement.doScroll && toplevel) {
+            do_scroll_check();
+        }
+    }
+
+    // fallback handler, always will work
+    _utils._.register_event(_utils.window, 'load', dom_loaded_handler, true);
 };
 
-MixpanelPeople.prototype._is_reserved_property = function (prop) {
-    return prop === '$distinct_id' || prop === '$token';
-};
+function init_from_snippet() {
+    init_type = INIT_SNIPPET;
+    mixpanel_master = _utils.window[PRIMARY_INSTANCE_NAME];
 
-// Internal class for notification display
-MixpanelLib._Notification = function (notif_data, mixpanel_instance) {
+    // Initialization
+    if (_utils._.isUndefined(mixpanel_master)) {
+        // mixpanel wasn't initialized properly, report error and quit
+        _utils.console.critical('"mixpanel" object not initialized. Ensure you are using the latest version of the Mixpanel JS Library along with the snippet we provide.');
+        return;
+    }
+    if (mixpanel_master['__loaded'] || mixpanel_master['config'] && mixpanel_master['persistence']) {
+        // lib has already been loaded at least once; we don't want to override the global object this time so bomb early
+        _utils.console.error('Mixpanel library has already been downloaded at least once.');
+        return;
+    }
+    var snippet_version = mixpanel_master['__SV'] || 0;
+    if (snippet_version < 1.1) {
+        // mixpanel wasn't initialized properly, report error and quit
+        _utils.console.critical('Version mismatch; please ensure you\'re using the latest version of the Mixpanel code snippet.');
+        return;
+    }
+
+    // Load instances of the Mixpanel Library
+    _utils._.each(mixpanel_master['_i'], function (item) {
+        if (item && _utils._.isArray(item)) {
+            instances[item[item.length - 1]] = create_mplib.apply(this, item);
+        }
+    });
+
+    override_mp_init_func();
+    mixpanel_master['init']();
+
+    // Fire loaded events after updating the window's mixpanel object
+    _utils._.each(instances, function (instance) {
+        instance._loaded();
+    });
+
+    add_dom_loaded_handler();
+}
+
+function init_as_module() {
+    init_type = INIT_MODULE;
+    mixpanel_master = new MixpanelLib();
+
+    override_mp_init_func();
+    mixpanel_master['init']();
+    add_dom_loaded_handler();
+
+    return mixpanel_master;
+}
+
+},{"./autotrack":4,"./config":5,"./form-tracker":7,"./gdpr-utils":8,"./link-tracker":9,"./notifications":12,"./people":13,"./persistence":15,"./persistence-keys":14,"./utils":16}],12:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _persistenceKeys = require('./persistence-keys');
+
+var _utils = require('./utils');
+
+var MPNotif = function MPNotif(notif_data, mixpanel_instance) {
     _utils._.bind_instance_methods(this);
 
     this.mixpanel = mixpanel_instance;
@@ -3170,8 +2584,6 @@ MixpanelLib._Notification = function (notif_data, mixpanel_instance) {
     this.imgs_to_preload = this._init_image_html();
     this._init_video();
 };
-
-MPNotif = MixpanelLib._Notification;
 
 MPNotif.ANIM_TIME = 200;
 MPNotif.MARKUP_PREFIX = 'mixpanel-notification';
@@ -3259,6 +2671,7 @@ MPNotif.prototype._add_class = _utils._.safewrap(function (el, class_name) {
         el.className += ' ' + class_name;
     }
 });
+
 MPNotif.prototype._remove_class = _utils._.safewrap(function (el, class_name) {
     class_name = MPNotif.MARKUP_PREFIX + '-' + class_name;
     if (typeof el === 'string') {
@@ -3378,7 +2791,7 @@ MPNotif.prototype._attach_and_animate = _utils._.safewrap(function () {
             self.dismiss();
             if (self.clickthrough) {
                 self._track_event('$campaign_open', { '$resource_type': 'link' }, function () {
-                    _utils.window.location.href = self.dest_url;
+                    window.location.href = self.dest_url;
                 });
             }
         }
@@ -3394,7 +2807,7 @@ MPNotif.prototype._get_notification_display_el = function () {
 };
 
 MPNotif.prototype._get_shown_campaigns = function () {
-    return this.persistence['props'][CAMPAIGN_IDS_KEY] || (this.persistence['props'][CAMPAIGN_IDS_KEY] = {});
+    return this.persistence['props'][_persistenceKeys.CAMPAIGN_IDS_KEY] || (this.persistence['props'][_persistenceKeys.CAMPAIGN_IDS_KEY] = {});
 };
 
 MPNotif.prototype._browser_lte = function (browser, version) {
@@ -3999,7 +3412,7 @@ MPNotif.prototype._init_video = _utils._.safewrap(function () {
     var self = this;
 
     // Youtube iframe API compatibility
-    self.yt_custom = 'postMessage' in _utils.window;
+    self.yt_custom = 'postMessage' in window;
 
     self.dest_url = self.video_url;
     var youtube_match = self.video_url.match(
@@ -4011,7 +3424,7 @@ MPNotif.prototype._init_video = _utils._.safewrap(function () {
         self.youtube_video = youtube_match[1];
 
         if (self.yt_custom) {
-            _utils.window['onYouTubeIframeAPIReady'] = function () {
+            window['onYouTubeIframeAPIReady'] = function () {
                 if (self._get_el('video-frame')) {
                     self._yt_video_ready();
                 }
@@ -4131,7 +3544,7 @@ MPNotif.prototype._preload_images = function (all_loaded_cb) {
 };
 
 MPNotif.prototype._remove_notification_el = _utils._.safewrap(function () {
-    _utils.window.clearInterval(this._video_progress_checker);
+    window.clearInterval(this._video_progress_checker);
     this.notification_el.style.visibility = 'hidden';
     this.body_el.removeChild(this.notification_el);
 });
@@ -4145,7 +3558,7 @@ MPNotif.prototype._set_client_config = function () {
     this.browser_versions['chrome'] = get_browser_version(/Chrome\/(\d+)/);
     this.browser_versions['firefox'] = get_browser_version(/Firefox\/(\d+)/);
     this.browser_versions['ie'] = get_browser_version(/MSIE (\d+).+/);
-    if (!this.browser_versions['ie'] && !_utils.window.ActiveXObject && 'ActiveXObject' in _utils.window) {
+    if (!this.browser_versions['ie'] && !window.ActiveXObject && 'ActiveXObject' in window) {
         this.browser_versions['ie'] = 11;
     }
 
@@ -4223,7 +3636,7 @@ MPNotif.prototype._switch_to_video = _utils._.safewrap(function () {
     video_el.innerHTML = self.video_iframe;
 
     var video_ready = function video_ready() {
-        if (_utils.window['YT'] && _utils.window['YT']['loaded']) {
+        if (window['YT'] && window['YT']['loaded']) {
             self._yt_video_ready();
         }
         self.showing_video = true;
@@ -4263,7 +3676,7 @@ MPNotif.prototype._yt_video_ready = _utils._.safewrap(function () {
         progress_time = self._get_el('video-time'),
         progress_el = self._get_el('video-progress');
 
-    new _utils.window['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
+    new window['YT']['Player'](MPNotif.MARKUP_PREFIX + '-video-frame', {
         'events': {
             'onReady': function onReady(event) {
                 var ytplayer = event['target'],
@@ -4280,7 +3693,7 @@ MPNotif.prototype._yt_video_ready = _utils._.safewrap(function () {
                     progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
                 };
                 update_video_time(0);
-                self._video_progress_checker = _utils.window.setInterval(function () {
+                self._video_progress_checker = window.setInterval(function () {
                     var current_time = ytplayer['getCurrentTime']();
                     progress_bar.style.width = current_time / video_duration * 100 + '%';
                     update_video_time(current_time);
@@ -4294,44 +3707,467 @@ MPNotif.prototype._yt_video_ready = _utils._.safewrap(function () {
     });
 });
 
-// EXPORTS (for closure compiler)
+exports['default'] = MPNotif;
+module.exports = exports['default'];
 
-// MixpanelLib Exports
-MixpanelLib.prototype['init'] = MixpanelLib.prototype.init;
-MixpanelLib.prototype['reset'] = MixpanelLib.prototype.reset;
-MixpanelLib.prototype['disable'] = MixpanelLib.prototype.disable;
-MixpanelLib.prototype['time_event'] = MixpanelLib.prototype.time_event;
-MixpanelLib.prototype['track'] = MixpanelLib.prototype.track;
-MixpanelLib.prototype['track_links'] = MixpanelLib.prototype.track_links;
-MixpanelLib.prototype['track_forms'] = MixpanelLib.prototype.track_forms;
-MixpanelLib.prototype['track_pageview'] = MixpanelLib.prototype.track_pageview;
-MixpanelLib.prototype['register'] = MixpanelLib.prototype.register;
-MixpanelLib.prototype['register_once'] = MixpanelLib.prototype.register_once;
-MixpanelLib.prototype['unregister'] = MixpanelLib.prototype.unregister;
-MixpanelLib.prototype['identify'] = MixpanelLib.prototype.identify;
-MixpanelLib.prototype['alias'] = MixpanelLib.prototype.alias;
-MixpanelLib.prototype['name_tag'] = MixpanelLib.prototype.name_tag;
-MixpanelLib.prototype['set_config'] = MixpanelLib.prototype.set_config;
-MixpanelLib.prototype['get_config'] = MixpanelLib.prototype.get_config;
-MixpanelLib.prototype['get_property'] = MixpanelLib.prototype.get_property;
-MixpanelLib.prototype['get_distinct_id'] = MixpanelLib.prototype.get_distinct_id;
-MixpanelLib.prototype['toString'] = MixpanelLib.prototype.toString;
-MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
-MixpanelLib.prototype['_show_notification'] = MixpanelLib.prototype._show_notification;
-MixpanelLib.prototype['opt_out_tracking'] = MixpanelLib.prototype.opt_out_tracking;
-MixpanelLib.prototype['opt_in_tracking'] = MixpanelLib.prototype.opt_in_tracking;
-MixpanelLib.prototype['has_opted_out_tracking'] = MixpanelLib.prototype.has_opted_out_tracking;
-MixpanelLib.prototype['has_opted_in_tracking'] = MixpanelLib.prototype.has_opted_in_tracking;
-MixpanelLib.prototype['clear_opt_in_out_tracking'] = MixpanelLib.prototype.clear_opt_in_out_tracking;
+},{"./persistence-keys":14,"./utils":16}],13:[function(require,module,exports){
+'use strict';
 
-// MixpanelPersistence Exports
-MixpanelPersistence.prototype['properties'] = MixpanelPersistence.prototype.properties;
-MixpanelPersistence.prototype['update_search_keyword'] = MixpanelPersistence.prototype.update_search_keyword;
-MixpanelPersistence.prototype['update_referrer_info'] = MixpanelPersistence.prototype.update_referrer_info;
-MixpanelPersistence.prototype['get_cross_subdomain'] = MixpanelPersistence.prototype.get_cross_subdomain;
-MixpanelPersistence.prototype['clear'] = MixpanelPersistence.prototype.clear;
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
 
-// MixpanelPeople Exports
+var _actions = require('./actions');
+
+var _utils = require('./utils');
+
+var _gdprUtils = require('./gdpr-utils');
+
+/**
+ * Mixpanel People Object
+ * @constructor
+ */
+var MixpanelPeople = function MixpanelPeople() {};
+
+MixpanelPeople.prototype._init = function (mixpanel_instance) {
+    this._mixpanel = mixpanel_instance;
+};
+
+/*
+ * Set properties on a user record.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.set('gender', 'm');
+ *
+ *     // or set multiple properties at once
+ *     mixpanel.people.set({
+ *         'Company': 'Acme',
+ *         'Plan': 'Premium',
+ *         'Upgrade date': new Date()
+ *     });
+ *     // properties can be strings, integers, dates, or lists
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [to] A value to set on the given property name
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.set = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (prop, to, callback) {
+    var data = {};
+    var $set = {};
+    if (_utils._.isObject(prop)) {
+        _utils._.each(prop, function (v, k) {
+            if (!this._is_reserved_property(k)) {
+                $set[k] = v;
+            }
+        }, this);
+        callback = to;
+    } else {
+        $set[prop] = to;
+    }
+
+    // make sure that the referrer info has been updated and saved
+    if (this._get_config('save_referrer')) {
+        this._mixpanel['persistence'].update_referrer_info(_utils.document.referrer);
+    }
+
+    // update $set object with default people properties
+    $set = _utils._.extend({}, _utils._.info.people_properties(), this._mixpanel['persistence'].get_referrer_info(), $set);
+
+    data[_actions.SET_ACTION] = $set;
+
+    return this._send_request(data, callback);
+});
+
+/*
+ * Set properties on a user record, only if they do not yet exist.
+ * This will not overwrite previous people property values, unlike
+ * people.set().
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.set_once('First Login Date', new Date());
+ *
+ *     // or set multiple properties at once
+ *     mixpanel.people.set_once({
+ *         'First Login Date': new Date(),
+ *         'Starting Plan': 'Premium'
+ *     });
+ *
+ *     // properties can be strings, integers or dates
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [to] A value to set on the given property name
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.set_once = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (prop, to, callback) {
+    var data = {};
+    var $set_once = {};
+    if (_utils._.isObject(prop)) {
+        _utils._.each(prop, function (v, k) {
+            if (!this._is_reserved_property(k)) {
+                $set_once[k] = v;
+            }
+        }, this);
+        callback = to;
+    } else {
+        $set_once[prop] = to;
+    }
+    data[_actions.SET_ONCE_ACTION] = $set_once;
+    return this._send_request(data, callback);
+});
+
+/*
+ * Unset properties on a user record (permanently removes the properties and their values from a profile).
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.unset('gender');
+ *
+ *     // or unset multiple properties at once
+ *     mixpanel.people.unset(['gender', 'Company']);
+ *
+ * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.unset = function (prop, callback) {
+    var data = {};
+    var $unset = [];
+    if (!_utils._.isArray(prop)) {
+        prop = [prop];
+    }
+
+    _utils._.each(prop, function (k) {
+        if (!this._is_reserved_property(k)) {
+            $unset.push(k);
+        }
+    }, this);
+
+    data[_actions.UNSET_ACTION] = $unset;
+
+    return this._send_request(data, callback);
+};
+
+/*
+ * Increment/decrement numeric people analytics properties.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.increment('page_views', 1);
+ *
+ *     // or, for convenience, if you're just incrementing a counter by
+ *     // 1, you can simply do
+ *     mixpanel.people.increment('page_views');
+ *
+ *     // to decrement a counter, pass a negative number
+ *     mixpanel.people.increment('credits_left', -1);
+ *
+ *     // like mixpanel.people.set(), you can increment multiple
+ *     // properties at once:
+ *     mixpanel.people.increment({
+ *         counter1: 1,
+ *         counter2: 6
+ *     });
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
+ * @param {Number} [by] An amount to increment the given property
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.increment = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (prop, by, callback) {
+    var data = {};
+    var $add = {};
+    if (_utils._.isObject(prop)) {
+        _utils._.each(prop, function (v, k) {
+            if (!this._is_reserved_property(k)) {
+                if (isNaN(parseFloat(v))) {
+                    _utils.console.error('Invalid increment value passed to mixpanel.people.increment - must be a number');
+                } else {
+                    $add[k] = v;
+                }
+            }
+        }, this);
+        callback = by;
+    } else {
+        // convenience: mixpanel.people.increment('property'); will
+        // increment 'property' by 1
+        if (_utils._.isUndefined(by)) {
+            by = 1;
+        }
+        $add[prop] = by;
+    }
+    data[_actions.ADD_ACTION] = $add;
+
+    return this._send_request(data, callback);
+});
+
+/*
+ * Append a value to a list-valued people analytics property.
+ *
+ * ### Usage:
+ *
+ *     // append a value to a list, creating it if needed
+ *     mixpanel.people.append('pages_visited', 'homepage');
+ *
+ *     // like mixpanel.people.set(), you can append multiple
+ *     // properties at once:
+ *     mixpanel.people.append({
+ *         list1: 'bob',
+ *         list2: 123
+ *     });
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [value] An item to append to the list
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.append = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (list_name, value, callback) {
+    var data = {};
+    var $append = {};
+    if (_utils._.isObject(list_name)) {
+        _utils._.each(list_name, function (v, k) {
+            if (!this._is_reserved_property(k)) {
+                $append[k] = v;
+            }
+        }, this);
+        callback = value;
+    } else {
+        $append[list_name] = value;
+    }
+    data[_actions.APPEND_ACTION] = $append;
+
+    return this._send_request(data, callback);
+});
+
+/*
+ * Merge a given list with a list-valued people analytics property,
+ * excluding duplicate values.
+ *
+ * ### Usage:
+ *
+ *     // merge a value to a list, creating it if needed
+ *     mixpanel.people.union('pages_visited', 'homepage');
+ *
+ *     // like mixpanel.people.set(), you can append multiple
+ *     // properties at once:
+ *     mixpanel.people.union({
+ *         list1: 'bob',
+ *         list2: 123
+ *     });
+ *
+ *     // like mixpanel.people.append(), you can append multiple
+ *     // values to the same list:
+ *     mixpanel.people.union({
+ *         list1: ['bob', 'billy']
+ *     });
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [value] Value / values to merge with the given property
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.union = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (list_name, values, callback) {
+    var data = {};
+    var $union = {};
+    if (_utils._.isObject(list_name)) {
+        _utils._.each(list_name, function (v, k) {
+            if (!this._is_reserved_property(k)) {
+                $union[k] = _utils._.isArray(v) ? v : [v];
+            }
+        }, this);
+        callback = values;
+    } else {
+        $union[list_name] = _utils._.isArray(values) ? values : [values];
+    }
+    data[_actions.UNION_ACTION] = $union;
+
+    return this._send_request(data, callback);
+});
+
+/*
+ * Record that you have charged the current user a certain amount
+ * of money. Charges recorded with track_charge() will appear in the
+ * Mixpanel revenue report.
+ *
+ * ### Usage:
+ *
+ *     // charge a user $50
+ *     mixpanel.people.track_charge(50);
+ *
+ *     // charge a user $30.50 on the 2nd of january
+ *     mixpanel.people.track_charge(30.50, {
+ *         '$time': new Date('jan 1 2012')
+ *     });
+ *
+ * @param {Number} amount The amount of money charged to the current user
+ * @param {Object} [properties] An associative array of properties associated with the charge
+ * @param {Function} [callback] If provided, the callback will be called when the server responds
+ */
+MixpanelPeople.prototype.track_charge = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (amount, properties, callback) {
+    if (!_utils._.isNumber(amount)) {
+        amount = parseFloat(amount);
+        if (isNaN(amount)) {
+            _utils.console.error('Invalid value passed to mixpanel.people.track_charge - must be a number');
+            return;
+        }
+    }
+
+    return this.append('$transactions', _utils._.extend({
+        '$amount': amount
+    }, properties), callback);
+});
+
+/*
+ * Permanently clear all revenue report transactions from the
+ * current user's people analytics profile.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.clear_charges();
+ *
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.clear_charges = function (callback) {
+    return this.set('$transactions', [], callback);
+};
+
+/*
+ * Permanently deletes the current people analytics profile from
+ * Mixpanel (using the current distinct_id).
+ *
+ * ### Usage:
+ *
+ *     // remove the all data you have stored about the current user
+ *     mixpanel.people.delete_user();
+ *
+ */
+MixpanelPeople.prototype.delete_user = function () {
+    if (!this._identify_called()) {
+        _utils.console.error('mixpanel.people.delete_user() requires you to call identify() first');
+        return;
+    }
+    var data = { '$delete': this._mixpanel.get_distinct_id() };
+    return this._send_request(data);
+};
+
+MixpanelPeople.prototype.toString = function () {
+    return this._mixpanel.toString() + '.people';
+};
+
+MixpanelPeople.prototype._send_request = function (data, callback) {
+    data['$token'] = this._get_config('token');
+    data['$distinct_id'] = this._mixpanel.get_distinct_id();
+
+    var date_encoded_data = _utils._.encodeDates(data);
+    var truncated_data = _utils._.truncate(date_encoded_data, 255);
+    var json_data = _utils._.JSONEncode(date_encoded_data);
+    var encoded_data = _utils._.base64Encode(json_data);
+
+    if (!this._identify_called()) {
+        this._enqueue(data);
+        if (!_utils._.isUndefined(callback)) {
+            if (this._get_config('verbose')) {
+                callback({ status: -1, error: null });
+            } else {
+                callback(-1);
+            }
+        }
+        return truncated_data;
+    }
+
+    _utils.console.log('MIXPANEL PEOPLE REQUEST:');
+    _utils.console.log(truncated_data);
+
+    this._mixpanel._send_request(this._get_config('api_host') + '/engage/', { 'data': encoded_data }, this._mixpanel._prepare_callback(callback, truncated_data));
+
+    return truncated_data;
+};
+
+MixpanelPeople.prototype._get_config = function (conf_var) {
+    return this._mixpanel.get_config(conf_var);
+};
+
+MixpanelPeople.prototype._identify_called = function () {
+    return this._mixpanel._flags.identify_called === true;
+};
+
+// Queue up engage operations if identify hasn't been called yet.
+MixpanelPeople.prototype._enqueue = function (data) {
+    if (_actions.SET_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(_actions.SET_ACTION, data);
+    } else if (_actions.SET_ONCE_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(_actions.SET_ONCE_ACTION, data);
+    } else if (_actions.UNSET_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(_actions.UNSET_ACTION, data);
+    } else if (_actions.ADD_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(_actions.ADD_ACTION, data);
+    } else if (_actions.APPEND_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(_actions.APPEND_ACTION, data);
+    } else if (_actions.UNION_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(_actions.UNION_ACTION, data);
+    } else {
+        _utils.console.error('Invalid call to _enqueue():', data);
+    }
+};
+
+MixpanelPeople.prototype._flush_one_queue = function (action, action_method, callback, queue_to_params_fn) {
+    var _this = this;
+    var queued_data = _utils._.extend({}, this._mixpanel['persistence']._get_queue(action));
+    var action_params = queued_data;
+
+    if (!_utils._.isUndefined(queued_data) && _utils._.isObject(queued_data) && !_utils._.isEmptyObject(queued_data)) {
+        _this._mixpanel['persistence']._pop_from_people_queue(action, queued_data);
+        if (queue_to_params_fn) {
+            action_params = queue_to_params_fn(queued_data);
+        }
+        action_method.call(_this, action_params, function (response, data) {
+            // on bad response, we want to add it back to the queue
+            if (response === 0) {
+                _this._mixpanel['persistence']._add_to_people_queue(action, queued_data);
+            }
+            if (!_utils._.isUndefined(callback)) {
+                callback(response, data);
+            }
+        });
+    }
+};
+
+// Flush queued engage operations - order does not matter,
+// and there are network level race conditions anyway
+MixpanelPeople.prototype._flush = function (_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback) {
+    var _this = this;
+    var $append_queue = this._mixpanel['persistence']._get_queue(_actions.APPEND_ACTION);
+
+    this._flush_one_queue(_actions.SET_ACTION, this.set, _set_callback);
+    this._flush_one_queue(_actions.SET_ONCE_ACTION, this.set_once, _set_once_callback);
+    this._flush_one_queue(_actions.UNSET_ACTION, this.unset, _unset_callback, function (queue) {
+        return _utils._.keys(queue);
+    });
+    this._flush_one_queue(_actions.ADD_ACTION, this.increment, _add_callback);
+    this._flush_one_queue(_actions.UNION_ACTION, this.union, _union_callback);
+
+    // we have to fire off each $append individually since there is
+    // no concat method server side
+    if (!_utils._.isUndefined($append_queue) && _utils._.isArray($append_queue) && $append_queue.length) {
+        var $append_item;
+        var callback = function callback(response, data) {
+            if (response === 0) {
+                _this._mixpanel['persistence']._add_to_people_queue(_actions.APPEND_ACTION, $append_item);
+            }
+            if (!_utils._.isUndefined(_append_callback)) {
+                _append_callback(response, data);
+            }
+        };
+        for (var i = $append_queue.length - 1; i >= 0; i--) {
+            $append_item = $append_queue.pop();
+            _this.append($append_item, callback);
+        }
+        // Save the shortened append queue
+        _this._mixpanel['persistence'].save();
+    }
+};
+
+MixpanelPeople.prototype._is_reserved_property = function (prop) {
+    return prop === '$distinct_id' || prop === '$token';
+};
+
 MixpanelPeople.prototype['set'] = MixpanelPeople.prototype.set;
 MixpanelPeople.prototype['set_once'] = MixpanelPeople.prototype.set_once;
 MixpanelPeople.prototype['unset'] = MixpanelPeople.prototype.unset;
@@ -4343,165 +4179,476 @@ MixpanelPeople.prototype['clear_charges'] = MixpanelPeople.prototype.clear_charg
 MixpanelPeople.prototype['delete_user'] = MixpanelPeople.prototype.delete_user;
 MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
-_utils._.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
+exports['default'] = MixpanelPeople;
+module.exports = exports['default'];
 
-var instances = {};
-var extend_mp = function extend_mp() {
-    // add all the sub mixpanel instances
-    _utils._.each(instances, function (instance, name) {
-        if (name !== PRIMARY_INSTANCE_NAME) {
-            mixpanel_master[name] = instance;
+},{"./actions":2,"./gdpr-utils":8,"./utils":16}],14:[function(require,module,exports){
+/** @const */'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+var SET_QUEUE_KEY = '__mps';
+exports.SET_QUEUE_KEY = SET_QUEUE_KEY;
+/** @const */var SET_ONCE_QUEUE_KEY = '__mpso';
+exports.SET_ONCE_QUEUE_KEY = SET_ONCE_QUEUE_KEY;
+/** @const */var UNSET_QUEUE_KEY = '__mpus';
+exports.UNSET_QUEUE_KEY = UNSET_QUEUE_KEY;
+/** @const */var ADD_QUEUE_KEY = '__mpa';
+exports.ADD_QUEUE_KEY = ADD_QUEUE_KEY;
+/** @const */var APPEND_QUEUE_KEY = '__mpap';
+exports.APPEND_QUEUE_KEY = APPEND_QUEUE_KEY;
+/** @const */var UNION_QUEUE_KEY = '__mpu';
+exports.UNION_QUEUE_KEY = UNION_QUEUE_KEY;
+/** @const */var EVENT_TIMERS_KEY = '__timers';
+exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
+// This key is deprecated, but we want to check for it to see whether aliasing is allowed.
+/** @const */var PEOPLE_DISTINCT_ID_KEY = '$people_distinct_id';
+exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
+/** @const */var ALIAS_ID_KEY = '__alias';
+exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
+/** @const */var CAMPAIGN_IDS_KEY = '__cmpns';
+exports.CAMPAIGN_IDS_KEY = CAMPAIGN_IDS_KEY;
+
+},{}],15:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _utils = require('./utils');
+
+var _config = require('./config');
+
+var _config2 = _interopRequireDefault(_config);
+
+var _persistenceKeys = require('./persistence-keys');
+
+var _actions = require('./actions');
+
+/** @const */var RESERVED_PROPERTIES = [_persistenceKeys.SET_QUEUE_KEY, _persistenceKeys.SET_ONCE_QUEUE_KEY, _persistenceKeys.UNSET_QUEUE_KEY, _persistenceKeys.ADD_QUEUE_KEY, _persistenceKeys.APPEND_QUEUE_KEY, _persistenceKeys.UNION_QUEUE_KEY, _persistenceKeys.PEOPLE_DISTINCT_ID_KEY, _persistenceKeys.ALIAS_ID_KEY, _persistenceKeys.CAMPAIGN_IDS_KEY, _persistenceKeys.EVENT_TIMERS_KEY];
+
+/**
+ * Mixpanel Persistence Object
+ * @constructor
+ */
+var MixpanelPersistence = function MixpanelPersistence(config) {
+    this['props'] = {};
+    this.campaign_params_saved = false;
+
+    if (config['persistence_name']) {
+        this.name = 'mp_' + config['persistence_name'];
+    } else {
+        this.name = 'mp_' + config['token'] + '_mixpanel';
+    }
+
+    var storage_type = config['persistence'];
+    if (storage_type !== 'cookie' && storage_type !== 'localStorage') {
+        _utils.console.critical('Unknown persistence type ' + storage_type + '; falling back to cookie');
+        storage_type = config['persistence'] = 'cookie';
+    }
+
+    if (storage_type === 'localStorage' && _utils._.localStorage.is_supported()) {
+        this.storage = _utils._.localStorage;
+    } else {
+        this.storage = _utils._.cookie;
+    }
+
+    this.load();
+    this.update_config(config);
+    this.upgrade(config);
+    this.save();
+};
+
+MixpanelPersistence.prototype.properties = function () {
+    var p = {};
+    // Filter out reserved properties
+    _utils._.each(this['props'], function (v, k) {
+        if (!_utils._.include(RESERVED_PROPERTIES, k)) {
+            p[k] = v;
+        }
+    });
+    return p;
+};
+
+MixpanelPersistence.prototype.load = function () {
+    if (this.disabled) {
+        return;
+    }
+
+    var entry = this.storage.parse(this.name);
+
+    if (entry) {
+        this['props'] = _utils._.extend({}, entry);
+    }
+};
+
+MixpanelPersistence.prototype.upgrade = function (config) {
+    var upgrade_from_old_lib = config['upgrade'],
+        old_cookie_name,
+        old_cookie;
+
+    if (upgrade_from_old_lib) {
+        old_cookie_name = 'mp_super_properties';
+        // Case where they had a custom cookie name before.
+        if (typeof upgrade_from_old_lib === 'string') {
+            old_cookie_name = upgrade_from_old_lib;
+        }
+
+        old_cookie = this.storage.parse(old_cookie_name);
+
+        // remove the cookie
+        this.storage.remove(old_cookie_name);
+        this.storage.remove(old_cookie_name, true);
+
+        if (old_cookie) {
+            this['props'] = _utils._.extend(this['props'], old_cookie['all'], old_cookie['events']);
+        }
+    }
+
+    if (!config['cookie_name'] && config['name'] !== 'mixpanel') {
+        // special case to handle people with cookies of the form
+        // mp_TOKEN_INSTANCENAME from the first release of this library
+        old_cookie_name = 'mp_' + config['token'] + '_' + config['name'];
+        old_cookie = this.storage.parse(old_cookie_name);
+
+        if (old_cookie) {
+            this.storage.remove(old_cookie_name);
+            this.storage.remove(old_cookie_name, true);
+
+            // Save the prop values that were in the cookie from before -
+            // this should only happen once as we delete the old one.
+            this.register_once(old_cookie);
+        }
+    }
+
+    if (this.storage === _utils._.localStorage) {
+        old_cookie = _utils._.cookie.parse(this.name);
+
+        _utils._.cookie.remove(this.name);
+        _utils._.cookie.remove(this.name, true);
+
+        if (old_cookie) {
+            this.register_once(old_cookie);
+        }
+    }
+};
+
+MixpanelPersistence.prototype.save = function () {
+    if (this.disabled) {
+        return;
+    }
+    this._expire_notification_campaigns();
+    this.storage.set(this.name, _utils._.JSONEncode(this['props']), this.expire_days, this.cross_subdomain, this.secure);
+};
+
+MixpanelPersistence.prototype.remove = function () {
+    // remove both domain and subdomain cookies
+    this.storage.remove(this.name, false);
+    this.storage.remove(this.name, true);
+};
+
+// removes the storage entry and deletes all loaded data
+// forced name for tests
+MixpanelPersistence.prototype.clear = function () {
+    this.remove();
+    this['props'] = {};
+};
+
+/**
+ * @param {Object} props
+ * @param {*=} default_value
+ * @param {number=} days
+ */
+MixpanelPersistence.prototype.register_once = function (props, default_value, days) {
+    if (_utils._.isObject(props)) {
+        if (typeof default_value === 'undefined') {
+            default_value = 'None';
+        }
+        this.expire_days = typeof days === 'undefined' ? this.default_expiry : days;
+
+        _utils._.each(props, function (val, prop) {
+            if (!this['props'].hasOwnProperty(prop) || this['props'][prop] === default_value) {
+                this['props'][prop] = val;
+            }
+        }, this);
+
+        this.save();
+
+        return true;
+    }
+    return false;
+};
+
+/**
+ * @param {Object} props
+ * @param {number=} days
+ */
+MixpanelPersistence.prototype.register = function (props, days) {
+    if (_utils._.isObject(props)) {
+        this.expire_days = typeof days === 'undefined' ? this.default_expiry : days;
+
+        _utils._.extend(this['props'], props);
+
+        this.save();
+
+        return true;
+    }
+    return false;
+};
+
+MixpanelPersistence.prototype.unregister = function (prop) {
+    if (prop in this['props']) {
+        delete this['props'][prop];
+        this.save();
+    }
+};
+
+MixpanelPersistence.prototype._expire_notification_campaigns = _utils._.safewrap(function () {
+    var campaigns_shown = this['props'][_persistenceKeys.CAMPAIGN_IDS_KEY],
+        EXPIRY_TIME = _config2['default'].DEBUG ? 60 * 1000 : 60 * 60 * 1000; // 1 minute (Config.DEBUG) / 1 hour (PDXN)
+    if (!campaigns_shown) {
+        return;
+    }
+    for (var campaign_id in campaigns_shown) {
+        if (1 * new Date() - campaigns_shown[campaign_id] > EXPIRY_TIME) {
+            delete campaigns_shown[campaign_id];
+        }
+    }
+    if (_utils._.isEmptyObject(campaigns_shown)) {
+        delete this['props'][_persistenceKeys.CAMPAIGN_IDS_KEY];
+    }
+});
+
+MixpanelPersistence.prototype.update_campaign_params = function () {
+    if (!this.campaign_params_saved) {
+        this.register_once(_utils._.info.campaignParams());
+        this.campaign_params_saved = true;
+    }
+};
+
+MixpanelPersistence.prototype.update_search_keyword = function (referrer) {
+    this.register(_utils._.info.searchInfo(referrer));
+};
+
+// EXPORTED METHOD, we test this directly.
+MixpanelPersistence.prototype.update_referrer_info = function (referrer) {
+    // If referrer doesn't exist, we want to note the fact that it was type-in traffic.
+    this.register_once({
+        '$initial_referrer': referrer || '$direct',
+        '$initial_referring_domain': _utils._.info.referringDomain(referrer) || '$direct'
+    }, '');
+};
+
+MixpanelPersistence.prototype.get_referrer_info = function () {
+    return _utils._.strip_empty_properties({
+        '$initial_referrer': this['props']['$initial_referrer'],
+        '$initial_referring_domain': this['props']['$initial_referring_domain']
+    });
+};
+
+// safely fills the passed in object with stored properties,
+// does not override any properties defined in both
+// returns the passed in object
+MixpanelPersistence.prototype.safe_merge = function (props) {
+    _utils._.each(this['props'], function (val, prop) {
+        if (!(prop in props)) {
+            props[prop] = val;
         }
     });
 
-    // add private functions as _
-    mixpanel_master['_'] = _utils._;
+    return props;
 };
 
-var override_mp_init_func = function override_mp_init_func() {
-    // we override the snippets init function to handle the case where a
-    // user initializes the mixpanel library after the script loads & runs
-    mixpanel_master['init'] = function (token, config, name) {
-        if (name) {
-            // initialize a sub library
-            if (!mixpanel_master[name]) {
-                mixpanel_master[name] = instances[name] = create_mplib(token, config, name);
-                mixpanel_master[name]._loaded();
-            }
-            return mixpanel_master[name];
-        } else {
-            var instance = mixpanel_master;
-
-            if (instances[PRIMARY_INSTANCE_NAME]) {
-                // main mixpanel lib already initialized
-                instance = instances[PRIMARY_INSTANCE_NAME];
-            } else if (token) {
-                // intialize the main mixpanel lib
-                instance = create_mplib(token, config, PRIMARY_INSTANCE_NAME);
-                instance._loaded();
-                instances[PRIMARY_INSTANCE_NAME] = instance;
-            }
-
-            mixpanel_master = instance;
-            if (init_type === INIT_SNIPPET) {
-                _utils.window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
-            }
-            extend_mp();
-        }
-    };
+MixpanelPersistence.prototype.update_config = function (config) {
+    this.default_expiry = this.expire_days = config['cookie_expiration'];
+    this.set_disabled(config['disable_persistence']);
+    this.set_cross_subdomain(config['cross_subdomain_cookie']);
+    this.set_secure(config['secure_cookie']);
 };
 
-var add_dom_loaded_handler = function add_dom_loaded_handler() {
-    // Cross browser DOM Loaded support
-    function dom_loaded_handler() {
-        // function flag since we only want to execute this once
-        if (dom_loaded_handler.done) {
-            return;
-        }
-        dom_loaded_handler.done = true;
+MixpanelPersistence.prototype.set_disabled = function (disabled) {
+    this.disabled = disabled;
+    if (this.disabled) {
+        this.remove();
+    } else {
+        this.save();
+    }
+};
 
-        DOM_LOADED = true;
-        ENQUEUE_REQUESTS = false;
+MixpanelPersistence.prototype.set_cross_subdomain = function (cross_subdomain) {
+    if (cross_subdomain !== this.cross_subdomain) {
+        this.cross_subdomain = cross_subdomain;
+        this.remove();
+        this.save();
+    }
+};
 
-        _utils._.each(instances, function (inst) {
-            inst._dom_loaded();
+MixpanelPersistence.prototype.get_cross_subdomain = function () {
+    return this.cross_subdomain;
+};
+
+MixpanelPersistence.prototype.set_secure = function (secure) {
+    if (secure !== this.secure) {
+        this.secure = !!secure;
+        this.remove();
+        this.save();
+    }
+};
+
+MixpanelPersistence.prototype._add_to_people_queue = function (queue, data) {
+    var q_key = this._get_queue_key(queue),
+        q_data = data[queue],
+        set_q = this._get_or_create_queue(_actions.SET_ACTION),
+        set_once_q = this._get_or_create_queue(_actions.SET_ONCE_ACTION),
+        unset_q = this._get_or_create_queue(_actions.UNSET_ACTION),
+        add_q = this._get_or_create_queue(_actions.ADD_ACTION),
+        union_q = this._get_or_create_queue(_actions.UNION_ACTION),
+        append_q = this._get_or_create_queue(_actions.APPEND_ACTION, []);
+
+    if (q_key === _persistenceKeys.SET_QUEUE_KEY) {
+        // Update the set queue - we can override any existing values
+        _utils._.extend(set_q, q_data);
+        // if there was a pending increment, override it
+        // with the set.
+        this._pop_from_people_queue(_actions.ADD_ACTION, q_data);
+        // if there was a pending union, override it
+        // with the set.
+        this._pop_from_people_queue(_actions.UNION_ACTION, q_data);
+        this._pop_from_people_queue(_actions.UNSET_ACTION, q_data);
+    } else if (q_key === _persistenceKeys.SET_ONCE_QUEUE_KEY) {
+        // only queue the data if there is not already a set_once call for it.
+        _utils._.each(q_data, function (v, k) {
+            if (!(k in set_once_q)) {
+                set_once_q[k] = v;
+            }
         });
+        this._pop_from_people_queue(_actions.UNSET_ACTION, q_data);
+    } else if (q_key === _persistenceKeys.UNSET_QUEUE_KEY) {
+        _utils._.each(q_data, function (prop) {
+
+            // undo previously-queued actions on this key
+            _utils._.each([set_q, set_once_q, add_q, union_q], function (enqueued_obj) {
+                if (prop in enqueued_obj) {
+                    delete enqueued_obj[prop];
+                }
+            });
+            _utils._.each(append_q, function (append_obj) {
+                if (prop in append_obj) {
+                    delete append_obj[prop];
+                }
+            });
+
+            unset_q[prop] = true;
+        });
+    } else if (q_key === _persistenceKeys.ADD_QUEUE_KEY) {
+        _utils._.each(q_data, function (v, k) {
+            // If it exists in the set queue, increment
+            // the value
+            if (k in set_q) {
+                set_q[k] += v;
+            } else {
+                // If it doesn't exist, update the add
+                // queue
+                if (!(k in add_q)) {
+                    add_q[k] = 0;
+                }
+                add_q[k] += v;
+            }
+        }, this);
+        this._pop_from_people_queue(_actions.UNSET_ACTION, q_data);
+    } else if (q_key === _persistenceKeys.UNION_QUEUE_KEY) {
+        _utils._.each(q_data, function (v, k) {
+            if (_utils._.isArray(v)) {
+                if (!(k in union_q)) {
+                    union_q[k] = [];
+                }
+                // We may send duplicates, the server will dedup them.
+                union_q[k] = union_q[k].concat(v);
+            }
+        });
+        this._pop_from_people_queue(_actions.UNSET_ACTION, q_data);
+    } else if (q_key === _persistenceKeys.APPEND_QUEUE_KEY) {
+        append_q.push(q_data);
+        this._pop_from_people_queue(_actions.UNSET_ACTION, q_data);
     }
 
-    function do_scroll_check() {
-        try {
-            _utils.document.documentElement.doScroll('left');
-        } catch (e) {
-            setTimeout(do_scroll_check, 1);
-            return;
-        }
+    _utils.console.log('MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):');
+    _utils.console.log(data);
 
-        dom_loaded_handler();
-    }
-
-    if (_utils.document.addEventListener) {
-        if (_utils.document.readyState === 'complete') {
-            // safari 4 can fire the DOMContentLoaded event before loading all
-            // external JS (including this file). you will see some copypasta
-            // on the internet that checks for 'complete' and 'loaded', but
-            // 'loaded' is an IE thing
-            dom_loaded_handler();
-        } else {
-            _utils.document.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
-        }
-    } else if (_utils.document.attachEvent) {
-        // IE
-        _utils.document.attachEvent('onreadystatechange', dom_loaded_handler);
-
-        // check to make sure we arn't in a frame
-        var toplevel = false;
-        try {
-            toplevel = _utils.window.frameElement === null;
-        } catch (e) {
-            // noop
-        }
-
-        if (_utils.document.documentElement.doScroll && toplevel) {
-            do_scroll_check();
-        }
-    }
-
-    // fallback handler, always will work
-    _utils._.register_event(_utils.window, 'load', dom_loaded_handler, true);
+    this.save();
 };
 
-function init_from_snippet() {
-    init_type = INIT_SNIPPET;
-    mixpanel_master = _utils.window[PRIMARY_INSTANCE_NAME];
+MixpanelPersistence.prototype._pop_from_people_queue = function (queue, data) {
+    var q = this._get_queue(queue);
+    if (!_utils._.isUndefined(q)) {
+        _utils._.each(data, function (v, k) {
+            delete q[k];
+        }, this);
 
-    // Initialization
-    if (_utils._.isUndefined(mixpanel_master)) {
-        // mixpanel wasn't initialized properly, report error and quit
-        _utils.console.critical('"mixpanel" object not initialized. Ensure you are using the latest version of the Mixpanel JS Library along with the snippet we provide.');
-        return;
+        this.save();
     }
-    if (mixpanel_master['__loaded'] || mixpanel_master['config'] && mixpanel_master['persistence']) {
-        // lib has already been loaded at least once; we don't want to override the global object this time so bomb early
-        _utils.console.error('Mixpanel library has already been downloaded at least once.');
-        return;
+};
+
+MixpanelPersistence.prototype._get_queue_key = function (queue) {
+    if (queue === _actions.SET_ACTION) {
+        return _persistenceKeys.SET_QUEUE_KEY;
+    } else if (queue === _actions.SET_ONCE_ACTION) {
+        return _persistenceKeys.SET_ONCE_QUEUE_KEY;
+    } else if (queue === _actions.UNSET_ACTION) {
+        return _persistenceKeys.UNSET_QUEUE_KEY;
+    } else if (queue === _actions.ADD_ACTION) {
+        return _persistenceKeys.ADD_QUEUE_KEY;
+    } else if (queue === _actions.APPEND_ACTION) {
+        return _persistenceKeys.APPEND_QUEUE_KEY;
+    } else if (queue === _actions.UNION_ACTION) {
+        return _persistenceKeys.UNION_QUEUE_KEY;
+    } else {
+        _utils.console.error('Invalid queue:', queue);
     }
-    var snippet_version = mixpanel_master['__SV'] || 0;
-    if (snippet_version < 1.1) {
-        // mixpanel wasn't initialized properly, report error and quit
-        _utils.console.critical('Version mismatch; please ensure you\'re using the latest version of the Mixpanel code snippet.');
-        return;
+};
+
+MixpanelPersistence.prototype._get_queue = function (queue) {
+    return this['props'][this._get_queue_key(queue)];
+};
+MixpanelPersistence.prototype._get_or_create_queue = function (queue, default_val) {
+    var key = this._get_queue_key(queue);
+    default_val = _utils._.isUndefined(default_val) ? {} : default_val;
+
+    return this['props'][key] || (this['props'][key] = default_val);
+};
+
+MixpanelPersistence.prototype.set_event_timer = function (event_name, timestamp) {
+    var timers = this['props'][_persistenceKeys.EVENT_TIMERS_KEY] || {};
+    timers[event_name] = timestamp;
+    this['props'][_persistenceKeys.EVENT_TIMERS_KEY] = timers;
+    this.save();
+};
+
+MixpanelPersistence.prototype.remove_event_timer = function (event_name) {
+    var timers = this['props'][_persistenceKeys.EVENT_TIMERS_KEY] || {};
+    var timestamp = timers[event_name];
+    if (!_utils._.isUndefined(timestamp)) {
+        delete this['props'][_persistenceKeys.EVENT_TIMERS_KEY][event_name];
+        this.save();
     }
+    return timestamp;
+};
 
-    // Load instances of the Mixpanel Library
-    _utils._.each(mixpanel_master['_i'], function (item) {
-        if (item && _utils._.isArray(item)) {
-            instances[item[item.length - 1]] = create_mplib.apply(this, item);
-        }
-    });
+// MixpanelPersistence Exports
+MixpanelPersistence.prototype['properties'] = MixpanelPersistence.prototype.properties;
+MixpanelPersistence.prototype['update_search_keyword'] = MixpanelPersistence.prototype.update_search_keyword;
+MixpanelPersistence.prototype['update_referrer_info'] = MixpanelPersistence.prototype.update_referrer_info;
+MixpanelPersistence.prototype['get_cross_subdomain'] = MixpanelPersistence.prototype.get_cross_subdomain;
+MixpanelPersistence.prototype['clear'] = MixpanelPersistence.prototype.clear;
 
-    override_mp_init_func();
-    mixpanel_master['init']();
+exports['default'] = MixpanelPersistence;
+module.exports = exports['default'];
 
-    // Fire loaded events after updating the window's mixpanel object
-    _utils._.each(instances, function (instance) {
-        instance._loaded();
-    });
-
-    add_dom_loaded_handler();
-}
-
-function init_as_module() {
-    init_type = INIT_MODULE;
-    mixpanel_master = new MixpanelLib();
-
-    override_mp_init_func();
-    mixpanel_master['init']();
-    add_dom_loaded_handler();
-
-    return mixpanel_master;
-}
-
-},{"./autotrack":3,"./config":4,"./gdpr-utils":5,"./utils":8}],8:[function(require,module,exports){
+},{"./actions":2,"./config":5,"./persistence-keys":14,"./utils":16}],16:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -6117,4 +6264,4 @@ exports.console = console;
 exports.window = win;
 exports.document = document;
 
-},{"./config":4}]},{},[1]);
+},{"./config":5}]},{},[1]);
