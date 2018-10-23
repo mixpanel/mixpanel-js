@@ -823,7 +823,16 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
     this._init_gdpr_persistence();
 
-    this.register_once({'distinct_id': _.UUID()}, '');
+    var uuid = _.UUID();
+    if (!this.get_distinct_id()) {
+        // There is no need to set the distinct id
+        // or the device id if something was already stored
+        // in the persitence
+        this.register_once({
+            'distinct_id': uuid,
+            '$device_id': uuid
+        }, '');
+    }
 };
 
 // Private methods
@@ -1147,7 +1156,6 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         'event': event_name,
         'properties': properties
     };
-
     var truncated_data = _.truncate(data, 255);
     var json_data      = _.JSONEncode(truncated_data);
     var encoded_data   = _.base64Encode(json_data);
@@ -1374,9 +1382,11 @@ MixpanelLib.prototype.identify = function(
 
     // identify only changes the distinct id if it doesn't match either the existing or the alias;
     // if it's new, blow away the alias as well.
-    if (unique_id !== this.get_distinct_id() && unique_id !== this.get_property(ALIAS_ID_KEY)) {
+    var distinct_id = this.get_distinct_id();
+    this.register({'$user_id': unique_id});
+    if (unique_id !== distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
         this.unregister(ALIAS_ID_KEY);
-        this._register_single('distinct_id', unique_id);
+        this.register({'distinct_id': unique_id});
     }
     this._check_and_handle_notifications(this.get_distinct_id());
     this._flags.identify_called = true;
@@ -1391,7 +1401,11 @@ MixpanelLib.prototype.identify = function(
 MixpanelLib.prototype.reset = function() {
     this['persistence'].clear();
     this._flags.identify_called = false;
-    this.register_once({'distinct_id': _.UUID()}, '');
+    var uuid = _.UUID();
+    this.register_once({
+        'distinct_id': uuid,
+        '$device_id': uuid
+    }, '');
 };
 
 /**
@@ -2156,6 +2170,14 @@ MixpanelPeople.prototype.toString = function() {
 MixpanelPeople.prototype._send_request = function(data, callback) {
     data['$token'] = this._get_config('token');
     data['$distinct_id'] = this._mixpanel.get_distinct_id();
+    var device_id = this._mixpanel.get_property('$device_id');
+    var user_id = this._mixpanel.get_property('$user_id');
+    if (device_id) {
+        data['$device_id'] = device_id;
+    }
+    if (user_id) {
+        data['$user_id'] = user_id;
+    }
 
     var date_encoded_data = _.encodeDates(data);
     var truncated_data    = _.truncate(date_encoded_data, 255);
@@ -2271,7 +2293,7 @@ MixpanelPeople.prototype._flush = function(
 };
 
 MixpanelPeople.prototype._is_reserved_property = function(prop) {
-    return prop === '$distinct_id' || prop === '$token';
+    return prop === '$distinct_id' || prop === '$token' || prop === '$device_id' || prop === '$user_id';
 };
 
 

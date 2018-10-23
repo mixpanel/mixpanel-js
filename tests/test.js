@@ -322,11 +322,12 @@
         if (!lib_loaded) {
             module("async tracking");
 
-            asyncTest("priority functions", 3, function() {
+            asyncTest("priority functions", 4, function() {
                 untilDone(function(done) {
                     if (test1.properties !== null) {
                         var p = test1.properties;
                         same(p.mp_name_tag, test1.name, "name_tag should fire before track");
+                        same(p["$user_id"], test1.id, "identify should fire before track");
                         same(p.distinct_id, test1.id, "identify should fire before track");
                         ok(!_.isUndefined(p.$duration), "duration should be set");
                         done();
@@ -1152,7 +1153,12 @@
 
             mpmodule("mixpanel");
 
-            test("constructor", window.COOKIE_FAILURE_TEST ? 2 : 3, function() {
+            var get_props_without_internal_ids = function(instance) {
+                return _.omit(instance.persistence.properties(), 'distinct_id', '$device_id');
+            };
+
+
+            test("constructor", window.COOKIE_FAILURE_TEST ? 3 : 4, function() {
                 var token = 'ASDF',
                     sp = {
                         'test': 'all'
@@ -1162,9 +1168,12 @@
                     persistence_name: 'mpl_t2',
                     track_pageview: false
                 }, 'mpl');
-
                 mixpanel.mpl.register(sp);
                 ok(contains_obj(mixpanel.mpl.persistence.props, sp), "Super properties set correctly");
+                var props = mixpanel.mpl.persistence.properties();
+                var distinct_id = props['distinct_id'];
+                var device_id = props['$device_id'];
+                same(distinct_id, device_id);
 
                 // Recreate object - should pull super props from persistence
                 mixpanel.init(token, {
@@ -1179,9 +1188,7 @@
                     persistence_name: 'mpl_t',
                     track_pageview: false
                 }, 'mpl3');
-                var props = mixpanel.mpl3.persistence.properties();
-                delete props['distinct_id'];
-                same(props, {}, "Super properties shouldn't be loaded from mixpanel persistence")
+                same(get_props_without_internal_ids(mixpanel.mpl3), {}, "Super properties shouldn't be loaded from mixpanel persistence")
 
                 clearLibInstance(mixpanel.mpl);
                 clearLibInstance(mixpanel.mpl2);
@@ -1287,21 +1294,17 @@
 
             mpmodule("super properties");
 
-            var get_props_without_distinct_id = function(instance) {
-                return _.omit(instance.persistence.properties(), 'distinct_id');
-            };
-
             test("register", 2, function() {
                 var props = {
                         'hi': 'there'
                     },
-                    persisted_props = get_props_without_distinct_id(mixpanel.test);
+                    persisted_props = get_props_without_internal_ids(mixpanel.test);
 
                 same(persisted_props, {}, "empty before setting");
 
                 mixpanel.test.register(props);
 
-                same(get_props_without_distinct_id(mixpanel.test), props, "properties set properly");
+                same(get_props_without_internal_ids(mixpanel.test), props, "properties set properly");
             });
 
             test("register_once", 4, function() {
@@ -1312,30 +1315,33 @@
                         'hi': 'ho'
                     }
 
-                same(get_props_without_distinct_id(mixpanel.test), {}, "empty before setting");
+                same(get_props_without_internal_ids(mixpanel.test), {}, "empty before setting");
 
                 mixpanel.test.register_once(props);
-                same(get_props_without_distinct_id(mixpanel.test), props, "properties set properly");
+                same(get_props_without_internal_ids(mixpanel.test), props, "properties set properly");
 
                 mixpanel.test.register_once(props1);
-                same(get_props_without_distinct_id(mixpanel.test), props, "register_once doesn't override already set super property");
+                same(get_props_without_internal_ids(mixpanel.test), props, "register_once doesn't override already set super property");
 
                 mixpanel.test.register_once({falsey: 0});
                 mixpanel.test.register_once({falsey: 1});
-                ok(contains_obj(get_props_without_distinct_id(mixpanel.test), {falsey: 0}), "register_once doesn't override already-set falsey value");
+                ok(contains_obj(get_props_without_internal_ids(mixpanel.test), {falsey: 0}), "register_once doesn't override already-set falsey value");
             });
 
-            test("identify", 1, function() {
+            test("identify", 3, function() {
+                var distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
                 same(mixpanel.test.get_distinct_id(), this.id);
+                same(mixpanel.test.get_property('$user_id'), this.id);
+                same(mixpanel.test.get_property('$device_id'), distinct_id);
             });
 
             test("name_tag", 2, function() {
                 var name_tag = "fake name";
-                same(get_props_without_distinct_id(mixpanel.test), {}, "empty before setting");
+                same(get_props_without_internal_ids(mixpanel.test), {}, "empty before setting");
 
                 mixpanel.test.name_tag(name_tag);
-                same(get_props_without_distinct_id(mixpanel.test), {
+                same(get_props_without_internal_ids(mixpanel.test), {
                     'mp_name_tag': name_tag
                 }, "name tag set");
             });
@@ -1653,13 +1659,15 @@
                 same(ev, -1);
             });
 
-            test("alias prevents identify from changing the ID", 3, function() {
+            test("alias prevents identify from changing the ID", 5, function() {
                 var old_id = mixpanel.test.get_distinct_id(),
                     new_id = this.id;
                 notOk(old_id === new_id);
                 mixpanel.test.alias(new_id);
                 mixpanel.test.identify(new_id);
                 same(mixpanel.test.get_distinct_id(), old_id, "identify should not do anything");
+                same(mixpanel.test.get_property('$user_id'), new_id, "identify should always set user_id");
+                same(mixpanel.test.get_property('$device_id'), old_id);
                 same(mixpanel.test.get_property(__alias), new_id, "identify should not delete the __alias key");
             });
 
@@ -1827,7 +1835,7 @@
 
             mpmodule("mixpanel.people.set");
 
-            test("set (basic functionality)", 6, function() {
+            test("set (basic functionality)", 8, function() {
                 var _to_set = {
                         key1: 'val1'
                     },
@@ -1845,10 +1853,12 @@
 
                 s = mixpanel.people.set(_to_set2);
                 ok(contains_obj(s["$set"], _to_set2), ".set() an object (with multiple keys) works");
-
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
                 s = mixpanel.test.people.set(_to_set2);
                 same(s['$distinct_id'], this.id);
+                same(s['$device_id'], old_distinct_id);
+                same(s['$user_id'], this.id);
                 same(s['$token'], this.token);
                 ok(contains_obj(s['$set'], _to_set2));
             });
@@ -1866,7 +1876,8 @@
                 }), "queued set saved");
             });
 
-            test("set hits server immediately if identified", 4, function() {
+            test("set hits server immediately if identified", 6, function() {
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
 
                 stop();
@@ -1876,8 +1887,9 @@
                     same(resp, 1, "responded with 'success'");
                     start();
                 });
-
                 same(s['$distinct_id'], this.id, '$distinct_id pulled out correctly');
+                same(s['$user_id'], this.id, '$user_id pulled out correctly');
+                same(s['$device_id'], old_distinct_id, '$device_id pulled out correctly');
                 same(s['$token'], this.token, '$token pulled out correctly');
                 ok(contains_obj(s['$set'], {
                     'a': 3
@@ -2145,11 +2157,13 @@
 
                 i = mixpanel.people.increment(_to_inc2);
                 same(i["$add"], _to_inc2, ".increment() with an object (multiple keys) works");
-
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
                 i = mixpanel.test.people.increment(_to_inc2);
                 same(i, {
                     "$distinct_id": this.id,
+                    "$user_id": this.id,
+                    "$device_id": old_distinct_id,
                     "$token": this.token,
                     "$add": _to_inc2
                 }, "Basic inc works for additional libs");
@@ -2169,6 +2183,7 @@
             });
 
             test("increment hits server immediately if identified", 2, function() {
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
 
                 stop();
@@ -2180,6 +2195,8 @@
                 });
                 same(s, {
                     "$distinct_id": this.id,
+                    "$user_id": this.id,
+                    "$device_id": old_distinct_id,
                     "$token": this.token,
                     "$add": {
                         "a": 3
@@ -2188,6 +2205,7 @@
             });
 
             test("increment ignores string values", 1, function() {
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
                 i = mixpanel.test.people.increment({
                     "a": 1,
@@ -2195,6 +2213,8 @@
                 });
                 same(i, {
                     "$distinct_id": this.id,
+                    "$user_id": this.id,
+                    "$device_id": old_distinct_id,
                     "$token": this.token,
                     "$add": {
                         "a": 1
@@ -2231,10 +2251,13 @@
                 i = mixpanel.people.append(_append3);
                 same(i["$append"], _append3, ".append() with an object (multiple keys) works");
 
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
                 i = mixpanel.test.people.append(_append1);
                 same(i, {
                     "$distinct_id": this.id,
+                    "$device_id": old_distinct_id,
+                    "$user_id": this.id,
                     "$token": this.token,
                     "$append": _append1
                 }, "Basic append works for additional libs");
@@ -2254,6 +2277,7 @@
             });
 
             test("append hits server immediately if identified", 2, function() {
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
 
                 stop();
@@ -2265,6 +2289,8 @@
                 });
                 same(s, {
                     "$distinct_id": this.id,
+                    "$device_id": old_distinct_id,
+                    "$user_id": this.id,
                     "$token": this.token,
                     "$append": {
                         "a": 3
@@ -2318,10 +2344,13 @@
                     'key2': ['val2']
                 }, ".union() with an object (with multiple keys and non-array val) works");
 
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
                 i = mixpanel.test.people.union(_union2);
                 same(i, {
                     "$distinct_id": this.id,
+                    "$device_id": old_distinct_id,
+                    "$user_id": this.id,
                     "$token": this.token,
                     "$union": _union2
                 }, "Basic union message works")
@@ -2403,6 +2432,7 @@
             });
 
             test("union sends immediately if identified", 2, function() {
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
 
                 stop();
@@ -2414,6 +2444,8 @@
                 });
                 same(s, {
                     "$distinct_id": this.id,
+                    "$device_id": old_distinct_id,
+                    "$user_id": this.id,
                     "$token": this.token,
                     "$union": {
                         "a": [3]
@@ -2572,11 +2604,14 @@
                 mixpanel.test.people.increment("b", 2);
 
                 stop();
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id, function() {}, function(resp, data) {
                     ok(resp == 1, "Successful write");
                     same(data, {
                         "$token": _this.token,
                         "$distinct_id": _this.id,
+                        "$device_id": old_distinct_id,
+                        "$user_id": _this.id,
                         "$add": {
                             "a": 1,
                             "b": 2
@@ -2708,11 +2743,14 @@
 
                 same(d, undefined, "Cannot delete user without valid distinct id");
 
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
                 d = mixpanel.test.people.delete_user();
                 same(d, {
                     "$token": this.token,
                     "$distinct_id": this.id,
+                    "$device_id": old_distinct_id,
+                    "$user_id": this.id,
                     "$delete": this.id
                 }, "Cannot delete user without valid distinct id");
             });
@@ -2961,13 +2999,14 @@
 
             mpmodule("mixpanel.reset");
 
-            test('reset generates new distinct_id', 1, function() {
+            test('reset generates new distinct_id', 2, function() {
                 var id = '1234';
 
                 mixpanel.test.identify(id);
                 mixpanel.test.reset();
 
                 notEqual(id, mixpanel.test.get_distinct_id());
+                same(mixpanel.test.get_distinct_id(), mixpanel.test.get_property('$device_id'));
             });
 
             test('reset clears super properties', 1, function() {
