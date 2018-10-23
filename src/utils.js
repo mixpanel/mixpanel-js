@@ -1567,7 +1567,8 @@ _.info = {
             '$screen_height': screen.height,
             '$screen_width': screen.width,
             'mp_lib': 'web',
-            '$lib_version': Config.LIB_VERSION
+            '$lib_version': Config.LIB_VERSION,
+            'time': _.timestamp() / 1000 // epoch time in seconds
         });
     },
 

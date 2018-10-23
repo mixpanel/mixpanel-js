@@ -118,6 +118,10 @@
         ok(typeof(prop) === "undefined", message);
     }
 
+    function isDefined(obj, prop, message) {
+        ok(obj.hasOwnProperty(prop), message)
+    }
+
     function callsError(callback, message) {
         var old_error = console.error;
 
@@ -582,6 +586,14 @@
 
                 same(data.properties.$screen_height, screen.height);
                 same(data.properties.$screen_width, screen.width);
+            });
+
+            test("should _not_ override user sent time", 2, function() {
+                var data = mixpanel.test.track('test', {"foo": "bar"});
+                var data1 = mixpanel.test.track('test', {"foo": "bar", "time": 123456});
+
+                isDefined(data.properties, 'time', "time not defined")
+                same(data1.properties.time, 123456);
             });
 
             mpmodule("mixpanel.time_event", function() {
