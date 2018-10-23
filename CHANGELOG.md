@@ -1,3 +1,10 @@
+**2.23.0** (23 Oct 2018)
+- Track `time` prop automatically with all events recording UTC timestamp (in seconds)
+  as the client (browser) sees it. The automatic value can be overridden by setting the
+  `time` prop explicitly in tracking calls.
+- Set `$user_id` and `$device_id` superprops automatically. This allows finer-grained
+  identity management around linking anonymous, logged-in, and logged-out behavior.
+
 **2.22.4** (1 Jun 2018)
 - Ensure GDPR cookies are always cleared when possible
 
