@@ -631,6 +631,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         this._pop_from_people_queue(UNSET_ACTION, q_data);
     } else if (q_key === REMOVE_QUEUE_KEY) {
         remove_q.push(q_data);
+        this._pop_from_people_queue(APPEND_ACTION, q_data);
     } else if (q_key === APPEND_QUEUE_KEY) {
         append_q.push(q_data);
         this._pop_from_people_queue(UNSET_ACTION, q_data);
@@ -646,7 +647,18 @@ MixpanelPersistence.prototype._pop_from_people_queue = function(queue, data) {
     var q = this._get_queue(queue);
     if (!_.isUndefined(q)) {
         _.each(data, function(v, k) {
-            delete q[k];
+            if (queue === APPEND_ACTION || queue === REMOVE_ACTION) {
+                // list actions: only remove if both k+v match
+                // e.g. remove should not override append in a case like
+                // append({foo: 'bar'}); remove({foo: 'qux'})
+                _.each(q, function(queued_action) {
+                    if (queued_action[k] === v) {
+                        delete queued_action[k];
+                    }
+                });
+            } else {
+                delete q[k];
+            }
         }, this);
 
         this.save();
@@ -2439,7 +2451,9 @@ MixpanelPeople.prototype._flush = function(
         };
         for (var i = $append_queue.length - 1; i >= 0; i--) {
             $append_item = $append_queue.pop();
-            _this.append($append_item, append_callback);
+            if (!_.isEmptyObject($append_item)) {
+                _this.append($append_item, append_callback);
+            }
         }
         // Save the shortened append queue
         _this._mixpanel['persistence'].save();
@@ -2458,7 +2472,9 @@ MixpanelPeople.prototype._flush = function(
         };
         for (var j = $remove_queue.length - 1; j >= 0; j--) {
             $remove_item = $remove_queue.pop();
-            _this.remove($remove_item, remove_callback);
+            if (!_.isEmptyObject($remove_item)) {
+                _this.remove($remove_item, remove_callback);
+            }
         }
         _this._mixpanel['persistence'].save();
     }
