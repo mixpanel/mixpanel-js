@@ -2318,7 +2318,7 @@
                 }, "Basic append works");
             });
 
-            test("append queues data", 2, function() {
+            test("remove queues data", 2, function() {
                 stop();
                 s = mixpanel.test.people.remove({
                     'key': 'val'
@@ -2351,6 +2351,20 @@
                         "a": 3
                     }
                 }, "$token and $distinct_id pulled out correctly");
+            });
+
+            test("remove overrides previously queued append calls", 6, function() {
+                s = mixpanel.test.people.append({a: 2}, function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                });
+                same(mixpanel.test.persistence.props['__mpap'], [{a: 2}], "queued append saved");
+                same(mixpanel.test.persistence.props['__mpr'], [], "appended prop not in remove queue");
+
+                mixpanel.test.people.remove({a: 2}, function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                });
+                same(mixpanel.test.persistence.props['__mpr'], [{a: 2}], "queued remove call works correctly");
+                same(mixpanel.test.persistence.props['__mpap'], [{}], "remove overrides previously queued append");
             });
 
             mpmodule("mixpanel.people.union");
