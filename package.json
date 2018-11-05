@@ -9,10 +9,10 @@
   "scripts": {
     "build": "./build.sh",
     "integration_test": "echo 'Browse to localhost:3000/tests' && node testServer.js",
-    "lint": "./node_modules/eslint/bin/eslint.js ./src",
+    "lint": "eslint ./src",
     "start": "pushd examples; python -m SimpleHTTPServer; popd",
     "test": "npm run lint && npm run unit-test",
-    "unit-test": "BABEL_ENV=test ./node_modules/mocha/bin/mocha --compilers js:babel-core/register tests/unit/*.js",
+    "unit-test": "BABEL_ENV=test mocha --compilers js:babel-core/register tests/unit/*.js",
     "validate": "npm ls"
   },
   "repository": {
