@@ -17,7 +17,7 @@ MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_id)
     this._group_id = group_id;
 };
 
-/*
+/**
  * Set properties on a group.
  *
  * ### Usage:
@@ -43,7 +43,7 @@ MixpanelGroup.prototype.set = addOptOutCheckMixpanelGroup(function(prop, to, cal
     return this._send_request(data, callback);
 });
 
-/*
+/**
  * Set properties on a group, only if they do not yet exist.
  * This will not overwrite previous group property values, unlike
  * group.set().
@@ -71,7 +71,7 @@ MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to
     return this._send_request(data, callback);
 });
 
-/*
+/**
  * Unset properties on a group permanently.
  *
  * ### Usage:
@@ -86,7 +86,7 @@ MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(function(prop, callb
     return this._send_request(data, callback);
 });
 
-/*
+/**
  * Merge a given list with a list-valued group property, excluding duplicate values.
  *
  * ### Usage:
@@ -106,18 +106,18 @@ MixpanelGroup.prototype.union = addOptOutCheckMixpanelGroup(function(list_name, 
     return this._send_request(data, callback);
 });
 
-/*
+/**
  * Permanently delete a group.
  *
  * ### Usage:
  *     mixpanel.get_group('company', 'mixpanel').delete();
  */
-MixpanelGroup.prototype.delete = function(callback) {
+MixpanelGroup.prototype['delete'] = addOptOutCheckMixpanelGroup(function(callback) {
     var data = this.delete_action();
     return this._send_request(data, callback);
-};
+});
 
-/*
+/**
  * Remove a property from a group, the value will be ignored if doesn't exist.
  *
  * ### Usage:
@@ -166,10 +166,11 @@ MixpanelGroup.prototype.toString = function(){
 };
 
 // MixpanelGroup Exports
-MixpanelGroup.prototype['set']           = MixpanelGroup.prototype.set;
-MixpanelGroup.prototype['set_once']      = MixpanelGroup.prototype.set_once;
-MixpanelGroup.prototype['unset']         = MixpanelGroup.prototype.unset;
-MixpanelGroup.prototype['union']         = MixpanelGroup.prototype.union;
-MixpanelGroup.prototype['toString']      = MixpanelGroup.prototype.toString;
+MixpanelGroup.prototype['remove']   = MixpanelGroup.prototype.remove;
+MixpanelGroup.prototype['set']      = MixpanelGroup.prototype.set;
+MixpanelGroup.prototype['set_once'] = MixpanelGroup.prototype.set_once;
+MixpanelGroup.prototype['union']    = MixpanelGroup.prototype.union;
+MixpanelGroup.prototype['unset']    = MixpanelGroup.prototype.unset;
+MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 export {MixpanelGroup};
