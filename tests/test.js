@@ -2367,6 +2367,20 @@
                 same(mixpanel.test.persistence.props['__mpap'], [{}], "remove overrides previously queued append");
             });
 
+            test("remove does not override previously queued append calls with different values", 6, function() {
+                s = mixpanel.test.people.append({a: 2}, function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                });
+                same(mixpanel.test.persistence.props['__mpap'], [{a: 2}], "queued append saved");
+                same(mixpanel.test.persistence.props['__mpr'], [], "appended prop not in remove queue");
+
+                mixpanel.test.people.remove({a: 5}, function(resp) {
+                    same(resp, -1, "responded with 'queued'");
+                });
+                same(mixpanel.test.persistence.props['__mpr'], [{a: 5}], "queued remove call works correctly");
+                same(mixpanel.test.persistence.props['__mpap'], [{a: 2}], "remove does not override append of different value");
+            });
+
             mpmodule("mixpanel.people.union");
 
             test("union (basic functionality)", 7, function() {
