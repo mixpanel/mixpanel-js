@@ -2306,10 +2306,13 @@
                 i = mixpanel.people.append('key', 'val');
                 same(i["$append"], expected);
 
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
                 i = mixpanel.test.people.append('key', 'val');
                 same(i, {
                     "$distinct_id": this.id,
+                    "$device_id": old_distinct_id,
+                    "$user_id": this.id,
                     "$token": this.token,
                     "$append": expected
                 }, "Basic append works");
@@ -2329,6 +2332,7 @@
             });
 
             test("remove hits server immediately if identified", 2, function() {
+                var old_distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(this.id);
 
                 stop();
@@ -2340,6 +2344,8 @@
                 });
                 same(s, {
                     "$distinct_id": this.id,
+                    "$device_id": old_distinct_id,
+                    "$user_id": this.id,
                     "$token": this.token,
                     "$remove": {
                         "a": 3
@@ -2803,7 +2809,7 @@
                     "$delete": this.id
                 }, "Cannot delete user without valid distinct id");
             });
-            
+
             mpmodule("mixpanel.set_group");
 
             test("should overwrite super property", 2, function(){
