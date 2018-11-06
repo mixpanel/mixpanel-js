@@ -1057,11 +1057,9 @@ MixpanelLib.prototype._execute_array = function(array) {
     _.each(array, function(item) {
         if (item) {
             fn_name = item[0];
-            if (_.isArray(fn_name)){
-                tracking_calls.push(item);
-                return;
-            }
-            if (typeof(item) === 'function') {
+            if (_.isArray(fn_name)) {
+                tracking_calls.push(item); // chained call e.g. mixpanel.get_group().set()
+            } else if (typeof(item) === 'function') {
                 item.call(this);
             } else if (_.isArray(item) && fn_name === 'alias') {
                 alias_calls.push(item);
@@ -1073,17 +1071,15 @@ MixpanelLib.prototype._execute_array = function(array) {
         }
     }, this);
 
-    var that = this;
     var execute = function(calls, context) {
         _.each(calls, function(item) {
-            if (_.isArray(item[0])){
+            if (_.isArray(item[0])) {
                 // chained call
-                var caller = that;
-                _.each(item, function(call){
+                var caller = context;
+                _.each(item, function(call) {
                     caller = caller[call[0]].apply(caller, call.slice(1));
                 });
-            }
-            else {
+            } else {
                 this[item[0]].apply(this, item.slice(1));
             }
         }, context);
