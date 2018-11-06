@@ -80,6 +80,22 @@ var apiActions = {
         return data;
     },
 
+    append_action: function(list_name, value) {
+        var data = {};
+        var $append = {};
+        if (_.isObject(list_name)) {
+            _.each(list_name, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $append[k] = v;
+                }
+            }, this);
+        } else {
+            $append[list_name] = value;
+        }
+        data[APPEND_ACTION] = $append;
+        return data;
+    },
+
     remove_action: function(list_name, value) {
         var data = {};
         var $remove = {};

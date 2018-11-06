@@ -2073,25 +2073,6 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, 
 });
 
 /*
- * Remove a property from current user's profile, the value will be ignored if doesn't exist.
- *
- * ### Usage:
- *
- *     mixpanel.people.remove('School', 'UCB');
- *
- * @param {String} Prop Name of the property.
- * @param {Object] Value Value to remove from the given property
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
- */
-MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
-    var data = this.remove_action(prop, to);
-    if (_.isObject(prop)) {
-        callback = to;
-    }
-    return this._send_request(data, callback);
-});
-
-/*
  * Unset properties on a user record (permanently removes the properties and their values from a profile).
  *
  * ### Usage:
@@ -2177,25 +2158,34 @@ MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop,
  *         list2: 123
  *     });
  *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
- * @param {*} [value] An item to append to the list
+ * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [value] value An item to append to the list
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
-    var data = {};
-    var $append = {};
     if (_.isObject(list_name)) {
-        _.each(list_name, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $append[k] = v;
-            }
-        }, this);
         callback = value;
-    } else {
-        $append[list_name] = value;
     }
-    data[APPEND_ACTION] = $append;
+    var data = this.append_action(list_name, value);
+    return this._send_request(data, callback);
+});
 
+/*
+ * Remove a value from a list-valued people analytics property.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.remove('School', 'UCB');
+ *
+ * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [value] value Item to remove from the list
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
+    if (_.isObject(list_name)) {
+        callback = value;
+    }
+    var data = this.remove_action(list_name, value);
     return this._send_request(data, callback);
 });
 
@@ -2221,7 +2211,7 @@ MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_nam
  *         list1: ['bob', 'billy']
  *     });
  *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [value] Value / values to merge with the given property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
