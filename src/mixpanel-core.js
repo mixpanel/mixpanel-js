@@ -1233,7 +1233,7 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, 
     var prop = {};
     prop[group_key] = group_ids;
     this.register(prop);
-    return this.people.set(group_key, group_ids, callback);
+    return this['people'].set(group_key, group_ids, callback);
 });
 
 /**
@@ -1252,12 +1252,12 @@ MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, 
         prop[group_key] = [group_id];
         this.register(prop);
     } else {
-        if (!old_values.includes(group_id)) {
+        if (old_values.indexOf(group_id) === -1) {
             old_values.push(group_id);
             this.register(prop);
         }
     }
-    return this.people.union(group_key, group_id, callback);
+    return this['people'].union(group_key, group_id, callback);
 });
 
 /**
@@ -1282,7 +1282,7 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_ke
             this.unregister(group_key);
         }
     }
-    return this.people.remove(group_key, group_id, callback);
+    return this['people'].remove(group_key, group_id, callback);
 });
 
 /**
@@ -3745,6 +3745,7 @@ MixpanelLib.prototype['opt_in_tracking']                 = MixpanelLib.prototype
 MixpanelLib.prototype['has_opted_out_tracking']          = MixpanelLib.prototype.has_opted_out_tracking;
 MixpanelLib.prototype['has_opted_in_tracking']           = MixpanelLib.prototype.has_opted_in_tracking;
 MixpanelLib.prototype['clear_opt_in_out_tracking']       = MixpanelLib.prototype.clear_opt_in_out_tracking;
+MixpanelLib.prototype['get_group']                       = MixpanelLib.prototype.get_group;
 MixpanelLib.prototype['set_group']                       = MixpanelLib.prototype.set_group;
 MixpanelLib.prototype['add_group']                       = MixpanelLib.prototype.add_group;
 MixpanelLib.prototype['remove_group']                    = MixpanelLib.prototype.remove_group;
