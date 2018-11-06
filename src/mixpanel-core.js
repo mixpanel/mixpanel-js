@@ -1221,134 +1221,111 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
  *      mixpanel.set_group('company', 'mixpanel')
  *      mixpanel.set_group('company', 128746312)
  *
- *  @param {String} group_key   The name of group key.
- *  @param {Object} group_ids   An array of group id's, or a singular group id.
- *  @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {String} group_key Group key
+ * @param {Array|String|Number} group_ids An array of group IDs, or a singular group ID
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
  *
  */
-MixpanelLib.prototype.set_group = function(group_key, group_ids, callback){
-    if (this.has_opted_out_tracking()){
-        return;
-    }
-    if (!_.isArray(group_ids)){
+MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, group_ids, callback) {
+    if (!_.isArray(group_ids)) {
         group_ids = [group_ids];
     }
     var prop = {};
     prop[group_key] = group_ids;
     this.register(prop);
     return this.people.set(group_key, group_ids, callback);
-};
+});
 
 /**
  * Add a new group for this user.
  * Usage:
  *      mixpanel.add_group('company', 'mixpanel')
  *
- *  @param {String} group_key   The name of group key.
- *  @param {Object} group_id    A valid mixpanel property type.
- *  @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {String} group_key Group key
+ * @param {*} group_id A valid Mixpanel property type
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelLib.prototype.add_group = function(group_key, group_id, callback){
-    if (this.has_opted_out_tracking()){
-        return;
-    }
+MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
     var old_values = this.get_property(group_key);
-    if (old_values === undefined){
+    if (old_values === undefined) {
         var prop = {};
         prop[group_key] = [group_id];
         this.register(prop);
-    }
-    else {
-        if (!old_values.includes(group_id)){
+    } else {
+        if (!old_values.includes(group_id)) {
             old_values.push(group_id);
             this.register(prop);
         }
     }
     return this.people.union(group_key, group_id, callback);
-};
+});
 
 /**
  * Remove a group from this user.
  * Usage:
  *      mixpanel.remove_group('company', 'mixpanel')
  *
- *  @param {String} group_key           The name of group key.
- *  @param {Object} group_id            A valid mixpanel property type.
- *  @param {Function} [callback]        If provided, the callback will be called after the tracking event
+ * @param {String} group_key Group key
+ * @param {*} group_id A valid Mixpanel property type
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-
-MixpanelLib.prototype.remove_group = function(group_key, group_id, callback){
-    if (this.has_opted_out_tracking())
-        return;
+MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
     var old_value = this.get_property(group_key);
-    // if the value doens't exist, the local storage is unchanged
-    if (old_value !== undefined){
+    // if the value doesn't exist, the persistent store is unchanged
+    if (old_value !== undefined) {
         var idx = old_value.indexOf(group_id);
-        if (idx > -1){
+        if (idx > -1) {
             old_value.splice(idx, 1);
             this.register({group_key: old_value});
         }
-        if (old_value.length === 0){
+        if (old_value.length === 0) {
             this.unregister(group_key);
         }
     }
     return this.people.remove(group_key, group_id, callback);
-};
+});
 
 /**
  * Track an event with specific groups.
  * Usage:
  *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
- * @param {Object|string} query
- * @param {string} event_name
+ * @param {Object|String} query
+ * @param {String} event_name
  * @param {Object=} properties
- * @param {Object=} group_properties
- * @param {function(...[*])=} user_callback
+ * @param {Object=} groups
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelLib.prototype.track_with_groups = function(event_name, properties, group_properties, callback){
-    if (this.has_opted_out_tracking())
-        return;
-    if (properties === null){
-        return this.track(event_name, group_properties, callback);
-    }
-    if (group_properties === null){
-        return this.track(event_name, properties, callback);
-    }
-    _.each (group_properties, function(v,k){
-        if (v === null || v === undefined) {
-            return;
+MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(function(event_name, properties, groups, callback) {
+    var tracking_props = _.extend({}, properties || {});
+    _.each(groups, function(v, k) {
+        if (v !== null && v !== undefined) {
+            tracking_props[k] = v;
         }
-        properties[k] = v;
     });
-    return this.track(event_name, properties, callback);
+    return this.track(event_name, tracking_props, callback);
+});
+
+MixpanelLib.prototype._create_map_key = function (group_key, group_id) {
+    return group_key + '_' + JSON.stringify(group_id);
 };
 
-MixpanelLib.prototype._create_map_key = function (group_key, group_id){
-    var map_key = group_key + '_' + JSON.stringify(group_id);
-    return map_key;
+MixpanelLib.prototype._remove_group_from_cache = function (group_key, group_id) {
+    delete this._cached_groups[this._create_map_key(group_key, group_id)];
 };
 
-MixpanelLib.prototype._remove_group_from_cache = function (group_key, group_id){
-    var map_key = this._create_map_key(group_key, group_id);
-    delete this._cached_groups[map_key];
-};
-
-/***
- *
- * Returns a MixpanelGroup identifier
+/**
+ * Look up reference to a Mixpanel group
  * Usage:
  *       mixpanel.get_group(group_key, group_id)
  *
- *  @param   {String} group_key   The name of group key.
- *  @param   {Object} group_id    A valid mixpanel property type.
- *  @returns {Object} reference to a mixpanel group.
- *
+ * @param {String} group_key Group key
+ * @param {Object} group_id A valid Mixpanel property type
+ * @returns {Object} A MixpanelGroup identifier
  */
-
-MixpanelLib.prototype.get_group = function (group_key, group_id){
+MixpanelLib.prototype.get_group = function (group_key, group_id) {
     var map_key = this._create_map_key(group_key, group_id);
     var group = this._cached_groups[map_key];
-    if (group === undefined || group._group_key !== group_key || group._group_id !== group_id ){
+    if (group === undefined || group._group_key !== group_key || group._group_id !== group_id) {
         group = new MixpanelGroup();
         group._init(this, group_key, group_id);
         this._cached_groups[map_key] = group;
@@ -2106,9 +2083,9 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, 
  * @param {Object] Value Value to remove from the given property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(prop, to, callback){
+MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
     var data = this.remove_action(prop, to);
-    if (_.isObject(prop)){
+    if (_.isObject(prop)) {
         callback = to;
     }
     return this._send_request(data, callback);
@@ -2480,11 +2457,6 @@ MixpanelPeople.prototype._is_reserved_property = function(prop) {
     return prop === '$distinct_id' || prop === '$token' || prop === '$device_id' || prop === '$user_id';
 };
 
-//FIXME: monkey patch
-MixpanelPeople.prototype._populate_group_fields = function(data) {
-    console.log(data); //suppress linter's "unused var" warning
-    return;
-};
 
 // Internal class for notification display
 MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
