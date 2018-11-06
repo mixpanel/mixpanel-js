@@ -6,7 +6,7 @@
 /** @define {string} */
 var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
 
-(function(document, mixpanel){
+(function(document, mixpanel) {
     // Only stub out if this is the first time running the snippet.
     if (!mixpanel['__SV']) {
         var win = window;
@@ -65,7 +65,7 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
                     target = target[split[0]];
                     fn = split[1];
                 }
-                target[fn] = function(){
+                target[fn] = function() {
                     target.push([fn].concat(Array.prototype.slice.call(arguments, 0)));
                 };
             }
@@ -77,22 +77,24 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
                 _set_and_defer(target, functions[i]);
             }
 
-            // special case for get_group()
+            // special case for get_group(): chain method calls like mixpanel.get_group('foo', 'bar').unset('baz')
             var group_functions = "set set_once union unset remove delete".split(' ');
-            target['get_group'] = function(){
-                var outer_args = arguments;
+            target['get_group'] = function() {
                 var mock_group = {};
-                var outer_list = ['get_group'].concat(Array.prototype.slice.call(outer_args, 0));
+
+                var call1_args = arguments;
+                var call1 = ['get_group'].concat(Array.prototype.slice.call(call1_args, 0));
+
+                function _set_and_defer_chained(fn_name) {
+                    mock_group[fn_name] = function() {
+                        call2_args = arguments;
+                        call2 = [fn_name].concat(Array.prototype.slice.call(call2_args, 0));
+                        target.push([call1, call2]);
+                    };
+                }
                 for (var i = 0; i < group_functions.length; i++) {
-                    fn_name = group_functions[i]
-                    mock_group[fn_name] = function(func_name){
-                        return function(){
-                            inner_args = arguments;
-                            inner_list = [func_name].concat(Array.prototype.slice.call(inner_args, 0));
-                            target.push([outer_list, inner_list]);
-                        }
-                    }(fn_name);
-                };
+                    _set_and_defer_chained(group_functions[i]);
+                }
                 return mock_group;
             };
 

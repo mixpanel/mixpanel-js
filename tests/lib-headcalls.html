@@ -107,11 +107,11 @@
             mixpanel.headtest.unregister('wookie');
             mixpanel.headtest.set_config({track_links_timeout: 200});
 
-            //b2b APIs
-            mixpanel.headtest.track_with_groups('group_event', {'Name': 'Bob'}, {'Company': 'Google'})
-            mixpanel.headtest.set_group('Company', ['mixpanel','google'])
-            mixpanel.headtest.add_group('Company', 'facebook')
-            mixpanel.headtest.remove_group('Company', 'google')
+            // B2B APIs
+            mixpanel.headtest.track_with_groups('group_event', {'Name': 'Bob'}, {'Company': 'Google'});
+            mixpanel.headtest.set_group('Company', ['mixpanel','google']);
+            mixpanel.headtest.add_group('Company', 'facebook');
+            mixpanel.headtest.remove_group('Company', 'google');
             mixpanel.headtest.get_group('foo', 'bar').set('key', 'value', function() {
                 group_ops['set'] = true;
             });
