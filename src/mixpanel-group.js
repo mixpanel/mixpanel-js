@@ -11,7 +11,7 @@ var MixpanelGroup = function() {};
 
 _.extend(MixpanelGroup.prototype, apiActions);
 
-MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_id){
+MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_id) {
     this._mixpanel = mixpanel_instance;
     this._group_key = group_key;
     this._group_id = group_id;
@@ -63,7 +63,7 @@ MixpanelGroup.prototype.set = addOptOutCheckMixpanelGroup(function(prop, to, cal
  * @param {*} [to] A value to set on the given property name
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to, callback){
+MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to, callback) {
     var data = this.set_once_action(prop, to);
     if (_.isObject(prop)) {
         callback = to;
@@ -81,7 +81,7 @@ MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to
  * @param {String} prop The name of the property.
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(function(prop, callback){
+MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(function(prop, callback) {
     var data = this.unset_action(prop);
     return this._send_request(data, callback);
 });
@@ -133,7 +133,7 @@ MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(function(list_name,
     return this._send_request(data, callback);
 });
 
-MixpanelGroup.prototype._send_request = function(data, callback){
+MixpanelGroup.prototype._send_request = function(data, callback) {
     data['$group_key'] = this._group_key;
     data['$group_id'] = this._group_id;
     data['$token'] = this._get_config('token');
@@ -153,15 +153,15 @@ MixpanelGroup.prototype._send_request = function(data, callback){
     return truncated_data;
 };
 
-MixpanelGroup.prototype._is_reserved_property = function(prop){
+MixpanelGroup.prototype._is_reserved_property = function(prop) {
     return prop === '$group_key' || prop === '$group_id';
 };
 
-MixpanelGroup.prototype._get_config = function(conf){
+MixpanelGroup.prototype._get_config = function(conf) {
     return this._mixpanel.get_config(conf);
 };
 
-MixpanelGroup.prototype.toString = function(){
+MixpanelGroup.prototype.toString = function() {
     return this._mixpanel.toString() + '.group.' + this._group_key + '.' + this._group_id;
 };
 
