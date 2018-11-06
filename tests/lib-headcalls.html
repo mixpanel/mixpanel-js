@@ -34,14 +34,14 @@
                         var props = headtest.cookie.properties();
                         ok(props.wombat);
                         ok(!props.wookie);
-                        same(props['Company'], ['mixpanel', 'facebook'])
+                        same(props['Company'], ['mixpanel', 'facebook']);
                         same(headtest.config.track_links_timeout, 200);
-                        ok(group_ops['set'])
-                        ok(group_ops['set_once'])
-                        ok(group_ops['union'])
-                        ok(group_ops['unset'])
-                        ok(group_ops['remove'])
-                        ok(group_ops['delete'])
+                        ok(group_ops['set']);
+                        ok(group_ops['set_once']);
+                        ok(group_ops['union']);
+                        ok(group_ops['unset']);
+                        ok(group_ops['remove']);
+                        ok(group_ops['delete']);
                         ok(props.distinct_id === 'q-bert' || props.distinct_id === 'spyhunter');
                     });
 
@@ -71,15 +71,15 @@
                         headtest.people.clear_charges();
                         headtest.people.delete_user();
 
-                        headtest.track_with_groups('group_event', {'Name': 'Bob'}, {'Company': 'Google'})
-                        headtest.set_group('Company', ['mixpanel','google'])
-                        headtest.add_group('Company', 'facebook')
-                        headtest.remove_group('Company', 'google')
+                        headtest.track_with_groups('group_event', {'Name': 'Bob'}, {'Company': 'Google'});
+                        headtest.set_group('Company', ['mixpanel','google']);
+                        headtest.add_group('Company', 'facebook');
+                        headtest.remove_group('Company', 'google');
 
                         var props = headtest.cookie.properties();
                         ok(!props.wombat);
                         same(props.wookie, 1521);
-                        same(props['Company'], ['mixpanel', 'facebook'])
+                        same(props['Company'], ['mixpanel', 'facebook']);
                         same(headtest.config.track_links_timeout, 300);
                         ok(props.distinct_id === 'bentley' || props.distinct_id === 'defender');
                     });
@@ -112,12 +112,24 @@
             mixpanel.headtest.set_group('Company', ['mixpanel','google'])
             mixpanel.headtest.add_group('Company', 'facebook')
             mixpanel.headtest.remove_group('Company', 'google')
-            mixpanel.headtest.get_group('foo', 'bar').set('key', 'value', function(){group_ops['set'] = true;})
-            mixpanel.headtest.get_group('foo', 'bar').set_once('key', 'value', function(){group_ops['set_once']=true;})
-            mixpanel.headtest.get_group('foo', 'bar').union('key', ['other_value'], function(){group_ops['union']=true;})
-            mixpanel.headtest.get_group('foo', 'bar').unset('key', function(){group_ops['unset']=true;})
-            mixpanel.headtest.get_group('foo', 'bar').remove('key', 'value', function(){group_ops['remove']=true;})
-            mixpanel.headtest.get_group('foo', 'bar').delete(function(){group_ops['delete']=true;})
+            mixpanel.headtest.get_group('foo', 'bar').set('key', 'value', function() {
+                group_ops['set'] = true;
+            });
+            mixpanel.headtest.get_group('foo', 'bar').set_once('key', 'value', function() {
+                group_ops['set_once'] = true;
+            });
+            mixpanel.headtest.get_group('foo', 'bar').union('key', ['other_value'], function() {
+                group_ops['union'] = true;
+            });
+            mixpanel.headtest.get_group('foo', 'bar').unset('key', function() {
+                group_ops['unset'] = true;
+            });
+            mixpanel.headtest.get_group('foo', 'bar').remove('key', 'value', function() {
+                group_ops['remove'] = true;
+            });
+            mixpanel.headtest.get_group('foo', 'bar').delete(function() {
+                group_ops['delete'] = true;
+            });
 
             mixpanel.headtest.alias('spyhunter');
             mixpanel.headtest.identify('q-bert');
