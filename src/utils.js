@@ -53,7 +53,7 @@ var _ = {
 
 // Console override
 var console = {
-    /** @type {function(...[*])} */
+    /** @type {function(...*)} */
     log: function() {
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             try {
@@ -65,7 +65,7 @@ var console = {
             }
         }
     },
-    /** @type {function(...[*])} */
+    /** @type {function(...*)} */
     error: function() {
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             var args = ['Mixpanel error:'].concat(_.toArray(arguments));
@@ -78,7 +78,7 @@ var console = {
             }
         }
     },
-    /** @type {function(...[*])} */
+    /** @type {function(...*)} */
     critical: function() {
         if (!_.isUndefined(windowConsole) && windowConsole) {
             var args = ['Mixpanel error:'].concat(_.toArray(arguments));
@@ -132,7 +132,7 @@ _.bind_instance_methods = function(obj) {
 
 /**
  * @param {*=} obj
- * @param {function(...[*])=} iterator
+ * @param {function(...*)=} iterator
  * @param {Object=} context
  */
 _.each = function(obj, iterator, context) {
@@ -1112,7 +1112,7 @@ _.register_event = (function() {
     /**
      * @param {Object} element
      * @param {string} type
-     * @param {function(...[*])} handler
+     * @param {function(...*)} handler
      * @param {boolean=} oldSchool
      * @param {boolean=} useCapture
      */

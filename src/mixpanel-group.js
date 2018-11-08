@@ -94,8 +94,8 @@ MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(function(prop, callb
  *     // merge a value to a list, creating it if needed
  *     mixpanel.get_group('company', 'mixpanel').union('Location', ['San Francisco', 'London']);
  *
- * @param {String} Prop Name of the property.
- * @param {Array] Values Values to merge with the given property
+ * @param {String} list_name Name of the property.
+ * @param {Array} values Values to merge with the given property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelGroup.prototype.union = addOptOutCheckMixpanelGroup(function(list_name, values, callback) {
@@ -124,8 +124,8 @@ MixpanelGroup.prototype['delete'] = addOptOutCheckMixpanelGroup(function(callbac
  *
  *     mixpanel.get_group('company', 'mixpanel').remove('Location', 'London');
  *
- * @param {String} Prop Name of the property.
- * @param {Object] Value Value to remove from the given group property
+ * @param {String} list_name Name of the property.
+ * @param {Object} value Value to remove from the given group property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(function(list_name, value, callback) {
