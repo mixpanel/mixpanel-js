@@ -118,7 +118,7 @@ MixpanelGroup.prototype['delete'] = addOptOutCheckMixpanelGroup(function(callbac
 });
 
 /**
- * Remove a property from a group, the value will be ignored if doesn't exist.
+ * Remove a property from a group. The value will be ignored if doesn't exist.
  *
  * ### Usage:
  *
