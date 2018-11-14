@@ -1675,7 +1675,8 @@ MixpanelLib.prototype._init_gdpr_persistence = function() {
     }
 
     // check whether we should opt out by default and update persistence accordingly
-    if ((!this.has_opted_in_tracking() && this.get_config('opt_out_tracking_by_default')) || _.cookie.get('mp_optout')) {
+    var should_default_out = !this.has_opted_in_tracking() && this.get_config('opt_out_tracking_by_default');
+    if (should_default_out || _.cookie.get('mp_optout')) {
         _.cookie.remove('mp_optout');
         this.opt_out_tracking();
     }
