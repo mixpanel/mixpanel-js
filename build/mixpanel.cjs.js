@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.23.0'
+    LIB_VERSION: '2.24.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -23,8 +23,6 @@ if (typeof(window) === 'undefined') {
 } else {
     window$1 = window;
 }
-
-
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -57,7 +55,7 @@ var _ = {
 
 // Console override
 var console$1 = {
-    /** @type {function(...[*])} */
+    /** @type {function(...*)} */
     log: function() {
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             try {
@@ -69,7 +67,7 @@ var console$1 = {
             }
         }
     },
-    /** @type {function(...[*])} */
+    /** @type {function(...*)} */
     error: function() {
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             var args = ['Mixpanel error:'].concat(_.toArray(arguments));
@@ -82,7 +80,7 @@ var console$1 = {
             }
         }
     },
-    /** @type {function(...[*])} */
+    /** @type {function(...*)} */
     critical: function() {
         if (!_.isUndefined(windowConsole) && windowConsole) {
             var args = ['Mixpanel error:'].concat(_.toArray(arguments));
@@ -136,7 +134,7 @@ _.bind_instance_methods = function(obj) {
 
 /**
  * @param {*=} obj
- * @param {function(...[*])=} iterator
+ * @param {function(...*)=} iterator
  * @param {Object=} context
  */
 _.each = function(obj, iterator, context) {
@@ -1116,7 +1114,7 @@ _.register_event = (function() {
     /**
      * @param {Object} element
      * @param {string} type
-     * @param {function(...[*])} handler
+     * @param {function(...*)} handler
      * @param {boolean=} oldSchool
      * @param {boolean=} useCapture
      */
@@ -2234,6 +2232,19 @@ function addOptOutCheckMixpanelPeople(method) {
 }
 
 /**
+ * Wrap a MixpanelGroup method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
+ * If the user has opted out, return early instead of executing the method.
+ * If a callback argument was provided, execute it passing the 0 error code.
+ * @param {function} method - wrapped method to be executed if the user has not opted out
+ * @returns {*} the result of executing method OR undefined if the user has opted out
+ */
+function addOptOutCheckMixpanelGroup(method) {
+    return _addOptOutCheck(method, function(name) {
+        return this._get_config(name);
+    });
+}
+
+/**
  * Clear the user's opt in/out status of data tracking and cookies/localstorage for the given token
  * @param {string} token - Mixpanel project tracking token
  * @param {Object} [options]
@@ -2366,6 +2377,293 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
+/** @const */ var SET_ACTION      = '$set';
+/** @const */ var SET_ONCE_ACTION = '$set_once';
+/** @const */ var UNSET_ACTION    = '$unset';
+/** @const */ var ADD_ACTION      = '$add';
+/** @const */ var APPEND_ACTION   = '$append';
+/** @const */ var UNION_ACTION    = '$union';
+/** @const */ var REMOVE_ACTION   = '$remove';
+/** @const */ var DELETE_ACTION   = '$delete';
+
+// Common internal methods for mixpanel.people and mixpanel.group APIs.
+// These methods shouldn't involve network I/O.
+var apiActions = {
+    set_action: function(prop, to) {
+        var data = {};
+        var $set = {};
+        if (_.isObject(prop)) {
+            _.each(prop, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $set[k] = v;
+                }
+            }, this);
+        } else {
+            $set[prop] = to;
+        }
+
+        data[SET_ACTION] = $set;
+        return data;
+    },
+
+    unset_action: function(prop) {
+        var data = {};
+        var $unset = [];
+        if (!_.isArray(prop)) {
+            prop = [prop];
+        }
+
+        _.each(prop, function(k) {
+            if (!this._is_reserved_property(k)) {
+                $unset.push(k);
+            }
+        }, this);
+
+        data[UNSET_ACTION] = $unset;
+        return data;
+    },
+
+    set_once_action: function(prop, to) {
+        var data = {};
+        var $set_once = {};
+        if (_.isObject(prop)) {
+            _.each(prop, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $set_once[k] = v;
+                }
+            }, this);
+        } else {
+            $set_once[prop] = to;
+        }
+        data[SET_ONCE_ACTION] = $set_once;
+        return data;
+    },
+
+    union_action: function(list_name, values) {
+        var data = {};
+        var $union = {};
+        if (_.isObject(list_name)) {
+            _.each(list_name, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $union[k] = _.isArray(v) ? v : [v];
+                }
+            }, this);
+        } else {
+            $union[list_name] = _.isArray(values) ? values : [values];
+        }
+        data[UNION_ACTION] = $union;
+        return data;
+    },
+
+    append_action: function(list_name, value) {
+        var data = {};
+        var $append = {};
+        if (_.isObject(list_name)) {
+            _.each(list_name, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $append[k] = v;
+                }
+            }, this);
+        } else {
+            $append[list_name] = value;
+        }
+        data[APPEND_ACTION] = $append;
+        return data;
+    },
+
+    remove_action: function(list_name, value) {
+        var data = {};
+        var $remove = {};
+        if (_.isObject(list_name)) {
+            _.each(list_name, function(v, k) {
+                if (!this._is_reserved_property(k)) {
+                    $remove[k] = v;
+                }
+            }, this);
+        } else {
+            $remove[list_name] = value;
+        }
+        data[REMOVE_ACTION] = $remove;
+        return data;
+    },
+
+    delete_action: function() {
+        var data = {};
+        data[DELETE_ACTION] = '';
+        return data;
+    }
+};
+
+/**
+ * Mixpanel Group Object
+ * @constructor
+ */
+var MixpanelGroup = function() {};
+
+_.extend(MixpanelGroup.prototype, apiActions);
+
+MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_id) {
+    this._mixpanel = mixpanel_instance;
+    this._group_key = group_key;
+    this._group_id = group_id;
+};
+
+/**
+ * Set properties on a group.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.get_group('company', 'mixpanel').set('Location', '405 Howard');
+ *
+ *     // or set multiple properties at once
+ *     mixpanel.get_group('company', 'mixpanel').set({
+ *          'Location': '405 Howard',
+ *          'Founded' : 2009,
+ *     });
+ *     // properties can be strings, integers, dates, or lists
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [to] A value to set on the given property name
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.set = addOptOutCheckMixpanelGroup(function(prop, to, callback) {
+    var data = this.set_action(prop, to);
+    if (_.isObject(prop)) {
+        callback = to;
+    }
+    return this._send_request(data, callback);
+});
+
+/**
+ * Set properties on a group, only if they do not yet exist.
+ * This will not overwrite previous group property values, unlike
+ * group.set().
+ *
+ * ### Usage:
+ *
+ *     mixpanel.get_group('company', 'mixpanel').set_once('Location', '405 Howard');
+ *
+ *     // or set multiple properties at once
+ *     mixpanel.get_group('company', 'mixpanel').set_once({
+ *          'Location': '405 Howard',
+ *          'Founded' : 2009,
+ *     });
+ *     // properties can be strings, integers, lists or dates
+ *
+ * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [to] A value to set on the given property name
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to, callback) {
+    var data = this.set_once_action(prop, to);
+    if (_.isObject(prop)) {
+        callback = to;
+    }
+    return this._send_request(data, callback);
+});
+
+/**
+ * Unset properties on a group permanently.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.get_group('company', 'mixpanel').unset('Founded');
+ *
+ * @param {String} prop The name of the property.
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(function(prop, callback) {
+    var data = this.unset_action(prop);
+    return this._send_request(data, callback);
+});
+
+/**
+ * Merge a given list with a list-valued group property, excluding duplicate values.
+ *
+ * ### Usage:
+ *
+ *     // merge a value to a list, creating it if needed
+ *     mixpanel.get_group('company', 'mixpanel').union('Location', ['San Francisco', 'London']);
+ *
+ * @param {String} list_name Name of the property.
+ * @param {Array} values Values to merge with the given property
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.union = addOptOutCheckMixpanelGroup(function(list_name, values, callback) {
+    if (_.isObject(list_name)) {
+        callback = values;
+    }
+    var data = this.union_action(list_name, values);
+    return this._send_request(data, callback);
+});
+
+/**
+ * Permanently delete a group.
+ *
+ * ### Usage:
+ *     mixpanel.get_group('company', 'mixpanel').delete();
+ */
+MixpanelGroup.prototype['delete'] = addOptOutCheckMixpanelGroup(function(callback) {
+    var data = this.delete_action();
+    return this._send_request(data, callback);
+});
+
+/**
+ * Remove a property from a group. The value will be ignored if doesn't exist.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.get_group('company', 'mixpanel').remove('Location', 'London');
+ *
+ * @param {String} list_name Name of the property.
+ * @param {Object} value Value to remove from the given group property
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(function(list_name, value, callback) {
+    var data = this.remove_action(list_name, value);
+    return this._send_request(data, callback);
+});
+
+MixpanelGroup.prototype._send_request = function(data, callback) {
+    data['$group_key'] = this._group_key;
+    data['$group_id'] = this._group_id;
+    data['$token'] = this._get_config('token');
+
+    var date_encoded_data = _.encodeDates(data);
+    var truncated_data    = _.truncate(date_encoded_data, 255);
+    var json_data         = _.JSONEncode(date_encoded_data);
+    var encoded_data      = _.base64Encode(json_data);
+
+    console.log(data);
+    this._mixpanel._send_request(
+        this._mixpanel.get_config('api_host') + '/groups/',
+        {'data': encoded_data},
+        this._mixpanel._prepare_callback(callback, truncated_data)
+    );
+
+    return truncated_data;
+};
+
+MixpanelGroup.prototype._is_reserved_property = function(prop) {
+    return prop === '$group_key' || prop === '$group_id';
+};
+
+MixpanelGroup.prototype._get_config = function(conf) {
+    return this._mixpanel.get_config(conf);
+};
+
+MixpanelGroup.prototype.toString = function() {
+    return this._mixpanel.toString() + '.group.' + this._group_key + '.' + this._group_id;
+};
+
+// MixpanelGroup Exports
+MixpanelGroup.prototype['remove']   = MixpanelGroup.prototype.remove;
+MixpanelGroup.prototype['set']      = MixpanelGroup.prototype.set;
+MixpanelGroup.prototype['set_once'] = MixpanelGroup.prototype.set_once;
+MixpanelGroup.prototype['union']    = MixpanelGroup.prototype.union;
+MixpanelGroup.prototype['unset']    = MixpanelGroup.prototype.unset;
+MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
+
 /*
  * Mixpanel JS Library
  *
@@ -2407,13 +2705,8 @@ var INIT_SNIPPET = 1;
 /** @const */   var UNSET_QUEUE_KEY           = '__mpus';
 /** @const */   var ADD_QUEUE_KEY             = '__mpa';
 /** @const */   var APPEND_QUEUE_KEY          = '__mpap';
+/** @const */   var REMOVE_QUEUE_KEY          = '__mpr';
 /** @const */   var UNION_QUEUE_KEY           = '__mpu';
-/** @const */   var SET_ACTION                = '$set';
-/** @const */   var SET_ONCE_ACTION           = '$set_once';
-/** @const */   var UNSET_ACTION              = '$unset';
-/** @const */   var ADD_ACTION                = '$add';
-/** @const */   var APPEND_ACTION             = '$append';
-/** @const */   var UNION_ACTION              = '$union';
 // This key is deprecated, but we want to check for it to see whether aliasing is allowed.
 /** @const */   var PEOPLE_DISTINCT_ID_KEY    = '$people_distinct_id';
 /** @const */   var ALIAS_ID_KEY              = '__alias';
@@ -2425,6 +2718,7 @@ var INIT_SNIPPET = 1;
     UNSET_QUEUE_KEY,
     ADD_QUEUE_KEY,
     APPEND_QUEUE_KEY,
+    REMOVE_QUEUE_KEY,
     UNION_QUEUE_KEY,
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
@@ -2485,6 +2779,7 @@ var DOM_LOADED = false;
  * @constructor
  */
 var DomTracker = function() {};
+
 
 // interface
 DomTracker.prototype.create_properties = function() {};
@@ -2908,6 +3203,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         unset_q = this._get_or_create_queue(UNSET_ACTION),
         add_q = this._get_or_create_queue(ADD_ACTION),
         union_q = this._get_or_create_queue(UNION_ACTION),
+        remove_q = this._get_or_create_queue(REMOVE_ACTION, []),
         append_q = this._get_or_create_queue(APPEND_ACTION, []);
 
     if (q_key === SET_QUEUE_KEY) {
@@ -2973,6 +3269,9 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
             }
         });
         this._pop_from_people_queue(UNSET_ACTION, q_data);
+    } else if (q_key === REMOVE_QUEUE_KEY) {
+        remove_q.push(q_data);
+        this._pop_from_people_queue(APPEND_ACTION, q_data);
     } else if (q_key === APPEND_QUEUE_KEY) {
         append_q.push(q_data);
         this._pop_from_people_queue(UNSET_ACTION, q_data);
@@ -2988,7 +3287,18 @@ MixpanelPersistence.prototype._pop_from_people_queue = function(queue, data) {
     var q = this._get_queue(queue);
     if (!_.isUndefined(q)) {
         _.each(data, function(v, k) {
-            delete q[k];
+            if (queue === APPEND_ACTION || queue === REMOVE_ACTION) {
+                // list actions: only remove if both k+v match
+                // e.g. remove should not override append in a case like
+                // append({foo: 'bar'}); remove({foo: 'qux'})
+                _.each(q, function(queued_action) {
+                    if (queued_action[k] === v) {
+                        delete queued_action[k];
+                    }
+                });
+            } else {
+                delete q[k];
+            }
         }, this);
 
         this.save();
@@ -3006,6 +3316,8 @@ MixpanelPersistence.prototype._get_queue_key = function(queue) {
         return ADD_QUEUE_KEY;
     } else if (queue === APPEND_ACTION) {
         return APPEND_QUEUE_KEY;
+    } else if (queue === REMOVE_ACTION) {
+        return REMOVE_QUEUE_KEY;
     } else if (queue === UNION_ACTION) {
         return UNION_QUEUE_KEY;
     } else {
@@ -3054,6 +3366,9 @@ var MixpanelPeople = function() {};
 
 var MPNotif;
 
+
+_.extend(MixpanelPeople.prototype, apiActions);
+
 /**
  * create_mplib(token:string, config:object, name:string)
  *
@@ -3080,6 +3395,8 @@ var create_mplib = function(token, config, name) {
 
     instance['people'] = new MixpanelPeople();
     instance['people']._init(instance);
+
+    instance._cached_groups = {}; // cache groups in a pool
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true
@@ -3380,7 +3697,9 @@ MixpanelLib.prototype._execute_array = function(array) {
     _.each(array, function(item) {
         if (item) {
             fn_name = item[0];
-            if (typeof(item) === 'function') {
+            if (_.isArray(fn_name)) {
+                tracking_calls.push(item); // chained call e.g. mixpanel.get_group().set()
+            } else if (typeof(item) === 'function') {
                 item.call(this);
             } else if (_.isArray(item) && fn_name === 'alias') {
                 alias_calls.push(item);
@@ -3394,7 +3713,15 @@ MixpanelLib.prototype._execute_array = function(array) {
 
     var execute = function(calls, context) {
         _.each(calls, function(item) {
-            this[item[0]].apply(this, item.slice(1));
+            if (_.isArray(item[0])) {
+                // chained call
+                var caller = context;
+                _.each(item, function(call) {
+                    caller = caller[call[0]].apply(caller, call.slice(1));
+                });
+            } else {
+                this[item[0]].apply(this, item.slice(1));
+            }
         }, context);
     };
 
@@ -3525,6 +3852,126 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
 
     return truncated_data;
 });
+
+/**
+ * Register the current user into one/many groups.
+ *
+ * Usage:
+ *      mixpanel.set_group('company', ['mixpanel', 'google']) # an array of IDs
+ *      mixpanel.set_group('company', 'mixpanel')
+ *      mixpanel.set_group('company', 128746312)
+ *
+ * @param {String} group_key Group key
+ * @param {Array|String|Number} group_ids An array of group IDs, or a singular group ID
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ *
+ */
+MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, group_ids, callback) {
+    if (!_.isArray(group_ids)) {
+        group_ids = [group_ids];
+    }
+    var prop = {};
+    prop[group_key] = group_ids;
+    this.register(prop);
+    return this['people'].set(group_key, group_ids, callback);
+});
+
+/**
+ * Add a new group for this user.
+ * Usage:
+ *      mixpanel.add_group('company', 'mixpanel')
+ *
+ * @param {String} group_key Group key
+ * @param {*} group_id A valid Mixpanel property type
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
+    var old_values = this.get_property(group_key);
+    if (old_values === undefined) {
+        var prop = {};
+        prop[group_key] = [group_id];
+        this.register(prop);
+    } else {
+        if (old_values.indexOf(group_id) === -1) {
+            old_values.push(group_id);
+            this.register(prop);
+        }
+    }
+    return this['people'].union(group_key, group_id, callback);
+});
+
+/**
+ * Remove a group from this user.
+ * Usage:
+ *      mixpanel.remove_group('company', 'mixpanel')
+ *
+ * @param {String} group_key Group key
+ * @param {*} group_id A valid Mixpanel property type
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
+    var old_value = this.get_property(group_key);
+    // if the value doesn't exist, the persistent store is unchanged
+    if (old_value !== undefined) {
+        var idx = old_value.indexOf(group_id);
+        if (idx > -1) {
+            old_value.splice(idx, 1);
+            this.register({group_key: old_value});
+        }
+        if (old_value.length === 0) {
+            this.unregister(group_key);
+        }
+    }
+    return this['people'].remove(group_key, group_id, callback);
+});
+
+/**
+ * Track an event with specific groups.
+ * Usage:
+ *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
+ * @param {Object|String} query
+ * @param {String} event_name
+ * @param {Object=} properties
+ * @param {Object=} groups
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(function(event_name, properties, groups, callback) {
+    var tracking_props = _.extend({}, properties || {});
+    _.each(groups, function(v, k) {
+        if (v !== null && v !== undefined) {
+            tracking_props[k] = v;
+        }
+    });
+    return this.track(event_name, tracking_props, callback);
+});
+
+MixpanelLib.prototype._create_map_key = function (group_key, group_id) {
+    return group_key + '_' + JSON.stringify(group_id);
+};
+
+MixpanelLib.prototype._remove_group_from_cache = function (group_key, group_id) {
+    delete this._cached_groups[this._create_map_key(group_key, group_id)];
+};
+
+/**
+ * Look up reference to a Mixpanel group
+ * Usage:
+ *       mixpanel.get_group(group_key, group_id)
+ *
+ * @param {String} group_key Group key
+ * @param {Object} group_id A valid Mixpanel property type
+ * @returns {Object} A MixpanelGroup identifier
+ */
+MixpanelLib.prototype.get_group = function (group_key, group_id) {
+    var map_key = this._create_map_key(group_key, group_id);
+    var group = this._cached_groups[map_key];
+    if (group === undefined || group._group_key !== group_key || group._group_id !== group_id) {
+        group = new MixpanelGroup();
+        group._init(this, group_key, group_id);
+        this._cached_groups[map_key] = group;
+    }
+    return group;
+};
 
 /**
  * Track a page view event, which is currently ignored by the server.
@@ -3724,7 +4171,7 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
 MixpanelLib.prototype.identify = function(
-    unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback
+    unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     // Optional Parameters
     //  _set_callback:function  A callback to be run if and when the People set queue is flushed
@@ -3745,7 +4192,7 @@ MixpanelLib.prototype.identify = function(
     this._check_and_handle_notifications(this.get_distinct_id());
     this._flags.identify_called = true;
     // Flush any queued up people requests
-    this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback);
+    this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
 };
 
 /**
@@ -4217,34 +4664,22 @@ MixpanelPeople.prototype._init = function(mixpanel_instance) {
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
-    var data = {};
-    var $set = {};
+    var data = this.set_action(prop, to);
     if (_.isObject(prop)) {
-        _.each(prop, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $set[k] = v;
-            }
-        }, this);
         callback = to;
-    } else {
-        $set[prop] = to;
     }
-
     // make sure that the referrer info has been updated and saved
     if (this._get_config('save_referrer')) {
         this._mixpanel['persistence'].update_referrer_info(document$1.referrer);
     }
 
     // update $set object with default people properties
-    $set = _.extend(
+    data[SET_ACTION] = _.extend(
         {},
         _.info.people_properties(),
         this._mixpanel['persistence'].get_referrer_info(),
-        $set
+        data[SET_ACTION]
     );
-
-    data[SET_ACTION] = $set;
-
     return this._send_request(data, callback);
 });
 
@@ -4270,19 +4705,10 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
-    var data = {};
-    var $set_once = {};
+    var data = this.set_once_action(prop, to);
     if (_.isObject(prop)) {
-        _.each(prop, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $set_once[k] = v;
-            }
-        }, this);
         callback = to;
-    } else {
-        $set_once[prop] = to;
     }
-    data[SET_ONCE_ACTION] = $set_once;
     return this._send_request(data, callback);
 });
 
@@ -4299,23 +4725,10 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, 
  * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelPeople.prototype.unset = function(prop, callback) {
-    var data = {};
-    var $unset = [];
-    if (!_.isArray(prop)) {
-        prop = [prop];
-    }
-
-    _.each(prop, function(k) {
-        if (!this._is_reserved_property(k)) {
-            $unset.push(k);
-        }
-    }, this);
-
-    data[UNSET_ACTION] = $unset;
-
+MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(function(prop, callback) {
+    var data = this.unset_action(prop);
     return this._send_request(data, callback);
-};
+});
 
 /*
  * Increment/decrement numeric people analytics properties.
@@ -4385,25 +4798,34 @@ MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop,
  *         list2: 123
  *     });
  *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
- * @param {*} [value] An item to append to the list
+ * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [value] value An item to append to the list
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
-    var data = {};
-    var $append = {};
     if (_.isObject(list_name)) {
-        _.each(list_name, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $append[k] = v;
-            }
-        }, this);
         callback = value;
-    } else {
-        $append[list_name] = value;
     }
-    data[APPEND_ACTION] = $append;
+    var data = this.append_action(list_name, value);
+    return this._send_request(data, callback);
+});
 
+/*
+ * Remove a value from a list-valued people analytics property.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.remove('School', 'UCB');
+ *
+ * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {*} [value] value Item to remove from the list
+ * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ */
+MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
+    if (_.isObject(list_name)) {
+        callback = value;
+    }
+    var data = this.remove_action(list_name, value);
     return this._send_request(data, callback);
 });
 
@@ -4429,25 +4851,15 @@ MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_nam
  *         list1: ['bob', 'billy']
  *     });
  *
- * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
+ * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [value] Value / values to merge with the given property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
 MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name, values, callback) {
-    var data = {};
-    var $union = {};
     if (_.isObject(list_name)) {
-        _.each(list_name, function(v, k) {
-            if (!this._is_reserved_property(k)) {
-                $union[k] = _.isArray(v) ? v : [v];
-            }
-        }, this);
         callback = values;
-    } else {
-        $union[list_name] = _.isArray(values) ? values : [values];
     }
-    data[UNION_ACTION] = $union;
-
+    var data = this.union_action(list_name, values);
     return this._send_request(data, callback);
 });
 
@@ -4582,6 +4994,8 @@ MixpanelPeople.prototype._enqueue = function(data) {
         this._mixpanel['persistence']._add_to_people_queue(ADD_ACTION, data);
     } else if (APPEND_ACTION in data) {
         this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, data);
+    } else if (REMOVE_ACTION in data) {
+        this._mixpanel['persistence']._add_to_people_queue(REMOVE_ACTION, data);
     } else if (UNION_ACTION in data) {
         this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, data);
     } else {
@@ -4614,10 +5028,11 @@ MixpanelPeople.prototype._flush_one_queue = function(action, action_method, call
 // Flush queued engage operations - order does not matter,
 // and there are network level race conditions anyway
 MixpanelPeople.prototype._flush = function(
-    _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback
+    _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     var _this = this;
     var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);
+    var $remove_queue = this._mixpanel['persistence']._get_queue(REMOVE_ACTION);
 
     this._flush_one_queue(SET_ACTION, this.set, _set_callback);
     this._flush_one_queue(SET_ONCE_ACTION, this.set_once, _set_once_callback);
@@ -4629,7 +5044,7 @@ MixpanelPeople.prototype._flush = function(
     // no concat method server side
     if (!_.isUndefined($append_queue) && _.isArray($append_queue) && $append_queue.length) {
         var $append_item;
-        var callback = function(response, data) {
+        var append_callback = function(response, data) {
             if (response === 0) {
                 _this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, $append_item);
             }
@@ -4639,9 +5054,31 @@ MixpanelPeople.prototype._flush = function(
         };
         for (var i = $append_queue.length - 1; i >= 0; i--) {
             $append_item = $append_queue.pop();
-            _this.append($append_item, callback);
+            if (!_.isEmptyObject($append_item)) {
+                _this.append($append_item, append_callback);
+            }
         }
         // Save the shortened append queue
+        _this._mixpanel['persistence'].save();
+    }
+
+    // same for $remove
+    if (!_.isUndefined($remove_queue) && _.isArray($remove_queue) && $remove_queue.length) {
+        var $remove_item;
+        var remove_callback = function(response, data) {
+            if (response === 0) {
+                _this._mixpanel['persistence']._add_to_people_queue(REMOVE_ACTION, $remove_item);
+            }
+            if (!_.isUndefined(_remove_callback)) {
+                _remove_callback(response, data);
+            }
+        };
+        for (var j = $remove_queue.length - 1; j >= 0; j--) {
+            $remove_item = $remove_queue.pop();
+            if (!_.isEmptyObject($remove_item)) {
+                _this.remove($remove_item, remove_callback);
+            }
+        }
         _this._mixpanel['persistence'].save();
     }
 };
@@ -5948,6 +6385,11 @@ MixpanelLib.prototype['opt_in_tracking']                 = MixpanelLib.prototype
 MixpanelLib.prototype['has_opted_out_tracking']          = MixpanelLib.prototype.has_opted_out_tracking;
 MixpanelLib.prototype['has_opted_in_tracking']           = MixpanelLib.prototype.has_opted_in_tracking;
 MixpanelLib.prototype['clear_opt_in_out_tracking']       = MixpanelLib.prototype.clear_opt_in_out_tracking;
+MixpanelLib.prototype['get_group']                       = MixpanelLib.prototype.get_group;
+MixpanelLib.prototype['set_group']                       = MixpanelLib.prototype.set_group;
+MixpanelLib.prototype['add_group']                       = MixpanelLib.prototype.add_group;
+MixpanelLib.prototype['remove_group']                    = MixpanelLib.prototype.remove_group;
+MixpanelLib.prototype['track_with_groups']               = MixpanelLib.prototype.track_with_groups;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
@@ -5962,6 +6404,7 @@ MixpanelPeople.prototype['set_once']      = MixpanelPeople.prototype.set_once;
 MixpanelPeople.prototype['unset']         = MixpanelPeople.prototype.unset;
 MixpanelPeople.prototype['increment']     = MixpanelPeople.prototype.increment;
 MixpanelPeople.prototype['append']        = MixpanelPeople.prototype.append;
+MixpanelPeople.prototype['remove']        = MixpanelPeople.prototype.remove;
 MixpanelPeople.prototype['union']         = MixpanelPeople.prototype.union;
 MixpanelPeople.prototype['track_charge']  = MixpanelPeople.prototype.track_charge;
 MixpanelPeople.prototype['clear_charges'] = MixpanelPeople.prototype.clear_charges;
@@ -5969,6 +6412,7 @@ MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user
 MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
 _.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
+
 
 var instances = {};
 var extend_mp = function() {
