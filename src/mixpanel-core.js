@@ -1789,7 +1789,7 @@ MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLi
     if (
         !distinct_id ||
         this._flags.identify_called ||
-        this.get_config('disable_notifications')
+        this.get_config('disable_notifications') || this.has_opted_out_tracking()
     ) {
         return;
     }

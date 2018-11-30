@@ -1757,6 +1757,14 @@
                     ok(this.requests[0].url.match(/decide\//));
                 });
 
+                test("_check_and_handle_notifications should not make a decide request if user has opted out of tracking", 1, function() {
+                    var initial_requests = this.requests.length;
+                    mixpanel.test.opt_out_tracking();
+                    mixpanel.test._check_and_handle_notifications(this.id);
+                    same(this.requests.length - initial_requests, 0, "_check_and_handle_notifications should not have fired off a request");
+                    mixpanel.test.opt_in_tracking();
+                });
+
                 test("notifications are never checked again after identify()", 2, function() {
                     mixpanel.test.identify(this.id);
                     ok(this.requests.length >= 1, "identify should have fired off a request");
