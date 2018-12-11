@@ -3656,11 +3656,13 @@
 	        }
 	    };
 
-	    MixpanelLib.prototype._send_request = function(url, data, callback) {
+	    MixpanelLib.prototype._send_request = function(url, data, callback, http_request_type) {
 	        if (ENQUEUE_REQUESTS) {
 	            this.__request_queue.push(arguments);
 	            return;
 	        }
+
+	        http_request_type = http_request_type || 'GET';
 
 	        // needed to correctly format responses
 	        var verbose_mode = this.get_config('verbose');
@@ -3683,16 +3685,21 @@
 
 	        data['ip'] = this.get_config('ip')?1:0;
 	        data['_'] = new Date().getTime().toString();
-	        url += '?' + _.HTTPBuildQuery(data);
 
 	        if ('img' in data) {
 	            var img = document$1.createElement('img');
+	            url += '?' + _.HTTPBuildQuery(data);
 	            img.src = url;
 	            document$1.body.appendChild(img);
 	        } else if (USE_XHR) {
 	            try {
 	                var req = new XMLHttpRequest();
-	                req.open('GET', url, true);
+	                if(http_request_type === 'GET') {
+	                    url += '?' + _.HTTPBuildQuery(data);
+	                    req.open('GET', url, true);
+	                } else {
+	                    req.open('POST', url, true);
+	                }
 
 	                var headers = this.get_config('xhr_headers');
 	                _.each(headers, function(headerValue, headerName) {
@@ -3732,7 +3739,11 @@
 	                        }
 	                    }
 	                };
-	                req.send(null);
+	                if(http_request_type === 'GET') {
+	                    req.send(null);
+	                } else {
+	                    req.send(_.HTTPBuildQuery(data));
+	                }
 	            } catch (e) {
 	                console$1.error(e);
 	            }
@@ -3741,6 +3752,7 @@
 	            script.type = 'text/javascript';
 	            script.async = true;
 	            script.defer = true;
+	            url += '?' + _.HTTPBuildQuery(data);
 	            script.src = url;
 	            var s = document$1.getElementsByTagName('script')[0];
 	            s.parentNode.insertBefore(script, s);
@@ -3904,6 +3916,7 @@
 	            'event': event_name,
 	            'properties': properties
 	        };
+	        var http_request_type = this.get_config('track_request_type') || 'GET';
 	        var truncated_data = _.truncate(data, 255);
 	        var json_data      = _.JSONEncode(truncated_data);
 	        var encoded_data   = _.base64Encode(json_data);
@@ -3914,7 +3927,8 @@
 	        this._send_request(
 	            this.get_config('api_host') + '/track/',
 	            { 'data': encoded_data },
-	            this._prepare_callback(callback, truncated_data)
+	            this._prepare_callback(callback, truncated_data),
+	            http_request_type
 	        );
 
 	        return truncated_data;
