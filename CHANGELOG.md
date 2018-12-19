@@ -1,3 +1,7 @@
+**2.25.0** (19 Dec 2018)
+- Change the behavior of `opt_out_tracking_by_default` to no longer override any existing opt status when the user has an opt-in cookie. It also no longer clears persistence when set to true.
+- Create a new param called `opt_out_persistence_by_default` which will determine whether SDK persistence is turned off during initialization
+
 **2.23.0** (23 Oct 2018)
 - Track `time` prop automatically with all events recording UTC timestamp (in seconds)
   as the client (browser) sees it. The automatic value can be overridden by setting the
