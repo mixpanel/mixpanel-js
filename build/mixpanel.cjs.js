@@ -2766,6 +2766,7 @@ var DEFAULT_CONFIG = {
     'secure_cookie':                     false,
     'ip':                                true,
     'opt_out_tracking_by_default':       false,
+    'opt_out_persistence_by_default':    false,
     'opt_out_tracking_persistence_type': 'localStorage',
     'opt_out_tracking_cookie_prefix':    null,
     'property_blacklist':                [],
@@ -3492,7 +3493,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     };
 
     this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
-    this._init_gdpr_persistence();
+    this._gdpr_init();
 
     var uuid = _.UUID();
     if (!this.get_distinct_id()) {
@@ -3507,13 +3508,6 @@ MixpanelLib.prototype._init = function(token, config, name) {
 };
 
 // Private methods
-
-MixpanelLib.prototype._update_persistence = function() {
-    var disablePersistence = this.get_config('disable_persistence') || this.has_opted_out_tracking();
-    if (this['persistence'].disabled !== disablePersistence) {
-        this['persistence'].set_disabled(disablePersistence);
-    }
-};
 
 MixpanelLib.prototype._loaded = function() {
     this.get_config('loaded')(this);
@@ -4318,6 +4312,9 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // opt users out of tracking by this Mixpanel instance by default
  *       opt_out_tracking_by_default: false
  *
+ *       // opt users out of browser data storage by this Mixpanel instance by default
+ *       opt_out_persistence_by_default: false
+ *
  *       // persistence mechanism used by opt-in/opt-out methods - cookie
  *       // or localStorage - falls back to cookie if localStorage is unavailable
  *       opt_out_tracking_persistence_type: 'localStorage'
@@ -4460,31 +4457,64 @@ MixpanelLib.prototype._show_notification = function(notification_data) {
     notification.show();
 };
 
-// perform some housekeeping around GDPR persistence of opt-in/out state
-MixpanelLib.prototype._init_gdpr_persistence = function() {
+// perform some housekeeping around GDPR opt-in/out state
+MixpanelLib.prototype._gdpr_init = function() {
     var is_localStorage_requested = this.get_config('opt_out_tracking_persistence_type') === 'localStorage';
 
     // try to convert opt-in/out cookies to localStorage if possible
     if (is_localStorage_requested && _.localStorage.is_supported()) {
         if (!this.has_opted_in_tracking() && this.has_opted_in_tracking({'persistence_type': 'cookie'})) {
-            this.opt_in_tracking();
+            this.opt_in_tracking({'enable_persistence': false});
         }
         if (!this.has_opted_out_tracking() && this.has_opted_out_tracking({'persistence_type': 'cookie'})) {
-            this.opt_out_tracking();
+            this.opt_out_tracking({'clear_persistence': false});
         }
-        this.clear_opt_in_out_tracking({'persistence_type': 'cookie'});
+        this.clear_opt_in_out_tracking({
+            'persistence_type': 'cookie',
+            'enable_persistence': false
+        });
     }
 
-    // check whether we should opt out by default and update persistence accordingly
-    if (this.get_config('opt_out_tracking_by_default') || _.cookie.get('mp_optout')) {
+    // check whether the user has already opted out - if so, clear & disable persistence
+    if (this.has_opted_out_tracking()) {
+        this._gdpr_update_persistence({'clear_persistence': true});
+
+    // check whether we should opt out by default
+    // note: we don't clear persistence here by default since opt-out default state is often
+    //       used as an initial state while GDPR information is being collected
+    } else if (!this.has_opted_in_tracking() && (
+        this.get_config('opt_out_tracking_by_default') || _.cookie.get('mp_optout')
+    )) {
         _.cookie.remove('mp_optout');
-        this.opt_out_tracking();
+        this.opt_out_tracking({
+            'clear_persistence': this.get_config('opt_out_persistence_by_default')
+        });
     }
-    this._update_persistence();
+};
+
+/**
+ * Enable or disable persistence based on options
+ * only enable/disable if persistence is not already in this state
+ * @param {boolean} [options.clear_persistence] If true, will delete all data stored by the sdk in persistence and disable it
+ * @param {boolean} [options.enable_persistence] If true, will re-enable sdk persistence
+ */
+MixpanelLib.prototype._gdpr_update_persistence = function(options) {
+    var disabled;
+    if (options && options['clear_persistence']) {
+        disabled = true;
+    } else if (options && options['enable_persistence']) {
+        disabled = false;
+    } else {
+        return;
+    }
+
+    if (!this.get_config('disable_persistence') && this['persistence'].disabled !== disabled) {
+        this['persistence'].set_disabled(disabled);
+    }
 };
 
 // call a base gdpr function after constructing the appropriate token and options args
-MixpanelLib.prototype._call_gdpr_func = function(func, options) {
+MixpanelLib.prototype._gdpr_call_func = function(func, options) {
     options = _.extend({
         'track': _.bind(this.track, this),
         'persistence_type': this.get_config('opt_out_tracking_persistence_type'),
@@ -4533,6 +4563,7 @@ MixpanelLib.prototype._call_gdpr_func = function(func, options) {
  * @param {function} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
  * @param {string} [options.track_event_name=$opt_in] Event name to be used for tracking the opt-in action
  * @param {Object} [options.track_properties] Set of properties to be tracked along with the opt-in action
+ * @param {boolean} [options.enable_persistence=true] If true, will re-enable sdk persistence
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
@@ -4540,8 +4571,12 @@ MixpanelLib.prototype._call_gdpr_func = function(func, options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.opt_in_tracking = function(options) {
-    this._call_gdpr_func(optIn, options);
-    this._update_persistence();
+    options = _.extend({
+        'enable_persistence': true
+    }, options);
+
+    this._gdpr_call_func(optIn, options);
+    this._gdpr_update_persistence(options);
 };
 
 /**
@@ -4560,6 +4595,7 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.delete_user=true] If true, will delete the currently identified user's profile and clear all charges after opting the user out
+ * @param {boolean} [options.clear_persistence=true] If true, will delete all data stored by the sdk in persistence
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
@@ -4567,15 +4603,19 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.opt_out_tracking = function(options) {
+    options = _.extend({
+        'clear_persistence': true,
+        'delete_user': true
+    }, options);
+
     // delete use and clear charges since these methods may be disabled by opt-out
-    options = _.extend({'delete_user': true}, options);
     if (options['delete_user'] && this['people'] && this['people']._identify_called()) {
         this['people'].delete_user();
         this['people'].clear_charges();
     }
 
-    this._call_gdpr_func(optOut, options);
-    this._update_persistence();
+    this._gdpr_call_func(optOut, options);
+    this._gdpr_update_persistence(options);
 };
 
 /**
@@ -4592,7 +4632,7 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
  * @returns {boolean} current opt-in status
  */
 MixpanelLib.prototype.has_opted_in_tracking = function(options) {
-    return this._call_gdpr_func(hasOptedIn, options);
+    return this._gdpr_call_func(hasOptedIn, options);
 };
 
 /**
@@ -4609,7 +4649,7 @@ MixpanelLib.prototype.has_opted_in_tracking = function(options) {
  * @returns {boolean} current opt-out status
  */
 MixpanelLib.prototype.has_opted_out_tracking = function(options) {
-    return this._call_gdpr_func(hasOptedOut, options);
+    return this._gdpr_call_func(hasOptedOut, options);
 };
 
 /**
@@ -4628,6 +4668,7 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  *     });
  *
  * @param {Object} [options] A dictionary of config options to override
+ * @param {boolean} [options.enable_persistence=true] If true, will re-enable sdk persistence
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
@@ -4635,8 +4676,12 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
-    this._call_gdpr_func(clearOptInOut, options);
-    this._update_persistence();
+    options = _.extend({
+        'enable_persistence': true
+    }, options);
+
+    this._gdpr_call_func(clearOptInOut, options);
+    this._gdpr_update_persistence(options);
 };
 
 
