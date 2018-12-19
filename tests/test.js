@@ -3423,10 +3423,10 @@
                         });
                     }
 
-                    var persistence_types = [`cookie`];
+                    var persistence_types = ['cookie'];
 
                     if (window.localStorage) {
-                        persistence_types.push(`localStorage`);
+                        persistence_types.push('localStorage');
                     }
 
                     for (var i = 0; i < persistence_types.length; i++) {
@@ -3475,6 +3475,19 @@
                                 mixpanel.gdpr.opt_in_tracking();
                             }
                         });
+
+                        gdprTest(method + ' tracking is enabled with opt-in cookie and opt-out default', {
+                            config: {
+                                opt_out_tracking_by_default: true,
+                                opt_out_tracking_persistence_type: persistence_type
+                            },
+                            pre_init: function() {
+                                // Set the opt in cookie to make sure it overrides opt_out_tracking_by_default
+                                mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
+                                mixpanel.gdpr.opt_in_tracking();
+                                clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                            },
+                        })
 
                         gdprTest(method + ' tracking is disabled by opt-out as default', {
                             opt_in: false,
@@ -3574,8 +3587,32 @@
                 gdprTestMethod('union'       , ['prop_name' , 'prop_value'   ]);
                 gdprTestMethod('track_charge', [1           , {prop: 'value'}]);
 
-                test('opt out of cookies', 18, function() {
+                test('opt out of cookies', 42, function() {
                     var name;
+
+                    // test cookie behavior during library init
+
+                    // undecided before init:
+                    mixpanel.init('gdpr', {}, 'gdpr');
+                    name = mixpanel.gdpr.persistence.name;
+                    ok(cookie.exists(name), 'cookie should exist');
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // opted-out before init:
+                    mixpanel.init('gdpr', {}, 'gdpr');
+                    mixpanel.gdpr.opt_out_tracking();
+                    clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                    mixpanel.init('gdpr', {}, 'gdpr');
+                    notOk(cookie.exists(name), 'cookie should not exist');
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // opted-in before init:
+                    mixpanel.init('gdpr', {}, 'gdpr');
+                    mixpanel.gdpr.opt_in_tracking();
+                    clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                    mixpanel.init('gdpr', {}, 'gdpr');
+                    ok(cookie.exists(name), 'cookie should exist');
+                    clearLibInstance(mixpanel.gdpr);
 
                     // test cookie behavior during opt in/out
                     mixpanel.init('gdpr', {}, 'gdpr');
@@ -3589,9 +3626,49 @@
 
                     clearLibInstance(mixpanel.gdpr);
 
-                    // test cookie behavior with opt-out as default
+                    // test cookie behavior during opt in/out with clear_persistence disabled
+                    mixpanel.init('gdpr', {}, 'gdpr');
+                    name = mixpanel.gdpr.persistence.name;
+
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_out_tracking({clear_persistence: false});
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_in_tracking();
+                    ok(cookie.exists(name), 'cookie should exist');
+
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // test cookie behavior during opt in/out with enable_persistence disabled
+                    mixpanel.init('gdpr', {}, 'gdpr');
+                    name = mixpanel.gdpr.persistence.name;
+
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_out_tracking();
+                    notOk(cookie.exists(name), 'cookie should not exist');
+                    mixpanel.gdpr.opt_in_tracking({enable_persistence: false});
+                    notOk(cookie.exists(name), 'cookie should not exist');
+
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // test cookie behavior with opt-out tracking as default
+                    // persistence should not be cleared via default opt-out so cookie should initially exist
                     mixpanel.init('gdpr', {
                         opt_out_tracking_by_default: true
+                    }, 'gdpr');
+                    name = mixpanel.gdpr.persistence.name;
+
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_in_tracking();
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_out_tracking();
+                    notOk(cookie.exists(name), 'cookie should not exist');
+
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // test cookie behavior with opt-out tracking and persistence as default
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_by_default: true,
+                        opt_out_persistence_by_default: true
                     }, 'gdpr');
                     name = mixpanel.gdpr.persistence.name;
 
@@ -3604,17 +3681,52 @@
                     clearLibInstance(mixpanel.gdpr);
 
                     // test cookie behavior with mp_optout cookie set
+                    // persistence should not be cleared via default opt-out so cookie should initially exist
                     mixpanel._.cookie.set('mp_optout');
                     mixpanel.init('gdpr', {}, 'gdpr');
                     name = mixpanel.gdpr.persistence.name;
 
-                    notOk(cookie.exists(name), 'cookie should not exist');
+                    ok(cookie.exists(name), 'cookie should exist');
                     mixpanel.gdpr.opt_in_tracking();
                     ok(cookie.exists(name), 'cookie should exist');
                     mixpanel.gdpr.opt_out_tracking();
                     notOk(cookie.exists(name), 'cookie should not exist');
 
                     mixpanel._.cookie.remove('mp_optout');
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // test cookie behavior during library init with localStorage as persistence type
+
+                    // undecided before init:
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_persistence_type: 'localStorage'
+                    }, 'gdpr');
+                    name = mixpanel.gdpr.persistence.name;
+                    ok(cookie.exists(name), 'cookie should exist');
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // opted-out before init:
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_persistence_type: 'localStorage'
+                    }, 'gdpr');
+                    mixpanel.gdpr.opt_out_tracking();
+                    clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_persistence_type: 'localStorage'
+                    }, 'gdpr');
+                    notOk(cookie.exists(name), 'cookie should not exist');
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // opted-in before init:
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_persistence_type: 'localStorage'
+                    }, 'gdpr');
+                    mixpanel.gdpr.opt_in_tracking();
+                    clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_persistence_type: 'localStorage'
+                    }, 'gdpr');
+                    ok(cookie.exists(name), 'cookie should exist');
                     clearLibInstance(mixpanel.gdpr);
 
                     // test cookie behavior during opt in/out and localStorage as persistence type
@@ -3631,10 +3743,55 @@
 
                     clearLibInstance(mixpanel.gdpr);
 
+                    // test cookie behavior during opt in/out with localStorage as persistence type and  clear_persistence disabled
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_persistence_type: 'localStorage'
+                    }, 'gdpr');
+                    name = mixpanel.gdpr.persistence.name;
+
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_out_tracking({clear_persistence: false});
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_in_tracking();
+                    ok(cookie.exists(name), 'cookie should exist');
+
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // test cookie behavior during opt in/out with localStorage as persistence type and enable_persistence disabled
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_persistence_type: 'localStorage'
+                    }, 'gdpr');
+                    name = mixpanel.gdpr.persistence.name;
+
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_out_tracking();
+                    notOk(cookie.exists(name), 'cookie should not exist');
+                    mixpanel.gdpr.opt_in_tracking({enable_persistence: false});
+                    notOk(cookie.exists(name), 'cookie should not exist');
+
+                    clearLibInstance(mixpanel.gdpr);
+
                     // test cookie behavior with opt-out as default and localStorage as persistence type
+                    // persistence should not be cleared via default opt-out so cookie should initially exist
                     mixpanel.init('gdpr', {
                         opt_out_tracking_by_default: true,
-                        opt_out_tracking_persistence_type: 'localStorage'
+                        opt_out_tracking_persistence_type: 'localstorage'
+                    }, 'gdpr');
+                    name = mixpanel.gdpr.persistence.name;
+
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_in_tracking();
+                    ok(cookie.exists(name), 'cookie should exist');
+                    mixpanel.gdpr.opt_out_tracking();
+                    notOk(cookie.exists(name), 'cookie should not exist');
+
+                    clearLibInstance(mixpanel.gdpr);
+
+                    // test cookie behavior with opt-out tracking and persistence as default and localStorage as persistence type
+                    mixpanel.init('gdpr', {
+                        opt_out_tracking_by_default: true,
+                        opt_out_persistence_by_default: true,
+                        opt_out_tracking_persistence_type: 'localstorage'
                     }, 'gdpr');
                     name = mixpanel.gdpr.persistence.name;
 
@@ -3647,13 +3804,14 @@
                     clearLibInstance(mixpanel.gdpr);
 
                     // test cookie behavior with mp_optout cookie set and localStorage as persistence type
+                    // persistence should not be cleared via default opt-out so cookie should initially exist
                     mixpanel._.cookie.set('mp_optout');
                     mixpanel.init('gdpr', {
                         opt_out_tracking_persistence_type: 'localStorage'
                     }, 'gdpr');
                     name = mixpanel.gdpr.persistence.name;
 
-                    notOk(cookie.exists(name), 'cookie should not exist');
+                    ok(cookie.exists(name), 'cookie should exist');
                     mixpanel.gdpr.opt_in_tracking();
                     ok(cookie.exists(name), 'cookie should exist');
                     mixpanel.gdpr.opt_out_tracking();
@@ -3664,8 +3822,42 @@
                 });
 
                 if (window.localStorage) {
-                    test('opt out of localstorage', 18, function() {
+                    test('opt out of localstorage', 42, function() {
                         var name;
+
+                        // test localstorage behavior during library init
+
+                        // undecided before init:
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage'
+                        }, 'gdpr');
+                        name = mixpanel.gdpr.persistence.name;
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // opted-out before init:
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage'
+                        }, 'gdpr');
+                        mixpanel.gdpr.opt_out_tracking();
+                        clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage'
+                        }, 'gdpr');
+                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // opted-in before init:
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage'
+                        }, 'gdpr');
+                        mixpanel.gdpr.opt_in_tracking();
+                        clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage'
+                        }, 'gdpr');
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        clearLibInstance(mixpanel.gdpr);
 
                         // test localstorage behavior during opt in/out
                         mixpanel.init('gdpr', {
@@ -3681,10 +3873,55 @@
 
                         clearLibInstance(mixpanel.gdpr);
 
+                        // test localstorage behavior during opt in/out with clear_persistence disabled
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage'
+                        }, 'gdpr');
+                        name = mixpanel.gdpr.persistence.name;
+
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_out_tracking({clear_persistence: false});
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_in_tracking();
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // test localstorage behavior during opt in/out with enable_persistence disabled
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage'
+                        }, 'gdpr');
+                        name = mixpanel.gdpr.persistence.name;
+
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_out_tracking();
+                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+                        mixpanel.gdpr.opt_in_tracking({enable_persistence: false});
+                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+
+                        clearLibInstance(mixpanel.gdpr);
+
                         // test localstorage behavior with opt-out as default
+                        // persistence should not be cleared via default opt-out so localstorage entry should initially exist
                         mixpanel.init('gdpr', {
                             persistence: 'localStorage',
                             opt_out_tracking_by_default: true
+                        }, 'gdpr');
+                        name = mixpanel.gdpr.persistence.name;
+
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_in_tracking();
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_out_tracking();
+                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // test localstorage behavior with opt-out tracking and persistence as default
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_by_default: true,
+                            opt_out_persistence_by_default: true,
                         }, 'gdpr');
                         name = mixpanel.gdpr.persistence.name;
 
@@ -3697,19 +3934,59 @@
                         clearLibInstance(mixpanel.gdpr);
 
                         // test localstorage behavior with mp_optout cookie set
+                        // persistence should not be cleared via default opt-out so localstorage entry should initially exist
                         mixpanel._.cookie.set('mp_optout');
                         mixpanel.init('gdpr', {
                             persistence: 'localStorage'
                         }, 'gdpr');
                         name = mixpanel.gdpr.persistence.name;
 
-                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
                         mixpanel.gdpr.opt_in_tracking();
                         ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
                         mixpanel.gdpr.opt_out_tracking();
                         notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
 
                         mixpanel._.cookie.remove('mp_optout');
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // test localstorage behavior during library init with localStorage as persistence type
+
+                        // undecided before init:
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_persistence_type: 'localStorage'
+                        }, 'gdpr');
+                        name = mixpanel.gdpr.persistence.name;
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // opted-out before init:
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_persistence_type: 'localStorage'
+                        }, 'gdpr');
+                        mixpanel.gdpr.opt_out_tracking();
+                        clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_persistence_type: 'localStorage'
+                        }, 'gdpr');
+                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // opted-in before init:
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_persistence_type: 'localStorage'
+                        }, 'gdpr');
+                        mixpanel.gdpr.opt_in_tracking();
+                        clearLibInstance(mixpanel.gdpr, /* clear_opt_in_out */ false);
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_persistence_type: 'localStorage'
+                        }, 'gdpr');
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
                         clearLibInstance(mixpanel.gdpr);
 
                         // test localstorage behavior during opt in/out with localStorage as persistence type
@@ -3727,11 +4004,59 @@
 
                         clearLibInstance(mixpanel.gdpr);
 
+                        // test localstorage behavior during opt in/out with localStorage as persistence type and clear_persistence disabled
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_persistence_type: 'localStorage'
+                        }, 'gdpr');
+                        name = mixpanel.gdpr.persistence.name;
+
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_out_tracking({clear_persistence: false});
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_in_tracking();
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // test localstorage behavior during opt in/out with localStorage as persistence type and enable_persistence disabled
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_persistence_type: 'localStorage'
+                        }, 'gdpr');
+                        name = mixpanel.gdpr.persistence.name;
+
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_out_tracking();
+                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+                        mixpanel.gdpr.opt_in_tracking({enable_persistence: false});
+                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+
+                        clearLibInstance(mixpanel.gdpr);
+
                         // test localstorage behavior with opt-out as default with localStorage as persistence type
+                        // persistence should not be cleared via default opt-out so localstorage entry should initially exist
                         mixpanel.init('gdpr', {
                             persistence: 'localStorage',
                             opt_out_tracking_by_default: true,
                             opt_out_tracking_persistence_type: 'localStorage'
+                        }, 'gdpr');
+                        name = mixpanel.gdpr.persistence.name;
+
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_in_tracking();
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
+                        mixpanel.gdpr.opt_out_tracking();
+                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+
+                        clearLibInstance(mixpanel.gdpr);
+
+                        // test localstorage behavior with opt-out tracking and persistence as default and localStorage as persistence type
+                        mixpanel.init('gdpr', {
+                            persistence: 'localStorage',
+                            opt_out_tracking_by_default: true,
+                            opt_out_persistence_by_default: true,
+                            opt_out_tracking_persistence_type: 'localstorage'
                         }, 'gdpr');
                         name = mixpanel.gdpr.persistence.name;
 
@@ -3744,6 +4069,7 @@
                         clearLibInstance(mixpanel.gdpr);
 
                         // test localstorage behavior with mp_optout cookie set with localStorage as persistence type
+                        // persistence should not be cleared via default opt-out so localstorage entry should initially exist
                         mixpanel._.cookie.set('mp_optout');
                         mixpanel.init('gdpr', {
                             persistence: 'localStorage',
@@ -3751,7 +4077,7 @@
                         }, 'gdpr');
                         name = mixpanel.gdpr.persistence.name;
 
-                        notOk(!!window.localStorage.getItem(name), 'localstorage entry should not exist');
+                        ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
                         mixpanel.gdpr.opt_in_tracking();
                         ok(!!window.localStorage.getItem(name), 'localstorage entry should exist');
                         mixpanel.gdpr.opt_out_tracking();
@@ -3814,7 +4140,7 @@
                     });
                 }
 
-                asyncTest("opt in/out cookie secure", 4, function() {
+                asyncTest("opt out cookie secure http", 1, function() {
                     mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
                     var cookie_name = '__mp_opt_in_out_gdpr';
 
@@ -3822,51 +4148,64 @@
                     mixpanel.gdpr.set_config({secure_cookie: false});
                     mixpanel.gdpr.opt_out_tracking();
 
-                    stop();
                     cookie_included(cookie_name, function(resp) {
                         same(resp, 1, "opt-out cookie is included in request to server");
+                        clearLibInstance(mixpanel.gdpr);
                         start();
                     });
+                });
+
+                asyncTest("opt out cookie secure https", 1, function() {
+                    mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
+                    var cookie_name = '__mp_opt_in_out_gdpr';
 
                     mixpanel.gdpr.clear_opt_in_out_tracking();
                     mixpanel.gdpr.set_config({secure_cookie: true});
                     mixpanel.gdpr.opt_out_tracking();
 
-                    stop();
                     cookie_included(cookie_name, function(resp) {
                         same(
                             resp,
                             document.location.protocol === "https:" ? 1 : 0,
                             "opt-out cookie is only included in request to server if https"
                         );
+                        clearLibInstance(mixpanel.gdpr);
                         start();
                     });
+                });
+
+                asyncTest("opt in cookie secure http", 1, function() {
+                    mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
+                    var cookie_name = '__mp_opt_in_out_gdpr';
 
                     mixpanel.gdpr.clear_opt_in_out_tracking();
                     mixpanel.gdpr.set_config({secure_cookie: false});
                     mixpanel.gdpr.opt_in_tracking();
 
-                    stop();
                     cookie_included(cookie_name, function(resp) {
                         same(resp, 1, "opt-in cookie is included in request to server");
+                        clearLibInstance(mixpanel.gdpr);
                         start();
                     });
+                });
+
+                asyncTest("opt in cookie secure https", 1, function() {
+                    mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
+                    var cookie_name = '__mp_opt_in_out_gdpr';
 
                     mixpanel.gdpr.clear_opt_in_out_tracking();
                     mixpanel.gdpr.set_config({secure_cookie: true});
                     mixpanel.gdpr.opt_in_tracking();
 
-                    // stop() here hangs the test
                     cookie_included(cookie_name, function(resp) {
                         same(
                             resp,
                             document.location.protocol === "https:" ? 1 : 0,
-                            "opt-out cookie is only included in request to server if https"
+                            "opt-in cookie is only included in request to server if https"
                         );
+                        clearLibInstance(mixpanel.gdpr);
                         start();
                     });
-
-                    clearLibInstance(mixpanel.gdpr);
                 });
             }
         }, 10);
