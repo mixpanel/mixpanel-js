@@ -77,7 +77,7 @@ export function hasOptedIn(token, options) {
  * @returns {boolean} whether the user has opted out of the given opt type
  */
 export function hasOptedOut(token, options) {
-    if (_hasDoNotTrackFlagOn()) {
+    if (_hasDoNotTrackFlagOn(options)) {
         return true;
     }
     return _getStorageValue(token, options) === '0';
@@ -175,10 +175,26 @@ function _getStorageValue(token, options) {
 
 /**
  * Check whether the user has set the DNT/doNotTrack setting to true in their browser
+ * @param {Object} [options]
+ * @param {string} [options.window] - alternate window object to check; used to force various DNT settings in browser tests
  * @returns {boolean} whether the DNT setting is true
  */
-function _hasDoNotTrackFlagOn() {
-    return !!(window.navigator && window.navigator.doNotTrack === '1');
+function _hasDoNotTrackFlagOn(options) {
+    var win = (options && options.window) || window;
+    var nav = win['navigator'] || {};
+    var hasDntOn = false;
+
+    _.each([
+        nav['doNotTrack'], // standard
+        nav['msDoNotTrack'],
+        win['doNotTrack']
+    ], function(dntValue) {
+        if (_.includes([true, 1, '1', 'yes'], dntValue)) {
+            hasDntOn = true;
+        }
+    });
+
+    return hasDntOn;
 }
 
 /**
@@ -231,11 +247,13 @@ function _addOptOutCheck(method, getConfigValue) {
             var token = getConfigValue.call(this, 'token');
             var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
             var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
+            var win = getConfigValue.call(this, 'window'); // used to override window during browser tests
 
             if (token) { // if there was an issue getting the token, continue method execution as normal
                 optedOut = hasOptedOut(token, {
                     persistenceType: persistenceType,
-                    persistencePrefix: persistencePrefix
+                    persistencePrefix: persistencePrefix,
+                    window: win
                 });
             }
         } catch(err) {

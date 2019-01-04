@@ -3552,6 +3552,32 @@
                                 mixpanel.gdpr.opt_in_tracking();
                             }
                         });
+
+                        // test cases using browser DoNotTrack (DNT) setting
+
+                        // standard case: navigator.doNotTrack="1"
+                        gdprTest(method + ' tracking is disabled by browser DoNotTrack setting (navigator.doNotTrack="1")', {
+                            opt_in: false,
+                            config: {window: {navigator: {doNotTrack: '1'}}},
+                        });
+
+                        // legacy Firefox case: navigator.doNotTrack="yes"
+                        gdprTest(method + ' tracking is disabled by browser DoNotTrack setting (navigator.doNotTrack="yes")', {
+                            opt_in: false,
+                            config: {window: {navigator: {doNotTrack: 'yes'}}},
+                        });
+
+                        // legacy Safari case: window.doNotTrack="1"
+                        gdprTest(method + ' tracking is disabled by browser DoNotTrack setting (window.doNotTrack="1")', {
+                            opt_in: false,
+                            config: {window: {doNotTrack: '1'}},
+                        });
+
+                        // legacy MSIE/Edge case: navigator.msDoNotTrack="1"
+                        gdprTest(method + ' tracking is disabled by browser DoNotTrack setting (navigator.msDoNotTrack="1")', {
+                            opt_in: false,
+                            config: {window: {navigator: {msDoNotTrack: '1'}}},
+                        });
                     }
 
                     if (window.localStorage) {

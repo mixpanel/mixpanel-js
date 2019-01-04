@@ -1539,6 +1539,17 @@ MixpanelLib.prototype.identify = function(
     // if it's new, blow away the alias as well.
     var distinct_id = this.get_distinct_id();
     this.register({'$user_id': unique_id});
+
+    if (!this.get_property('$device_id')) {
+        // The persisted distinct id might not actually be a device id at all
+        // it might be a distinct id of the user from before
+        var device_id = distinct_id;
+        this.register_once({
+            '$had_persisted_distinct_id': true,
+            '$device_id': device_id
+        }, '');
+    }
+
     if (unique_id !== distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
         this.unregister(ALIAS_ID_KEY);
         this.register({'distinct_id': unique_id});
@@ -2343,11 +2354,15 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     data['$distinct_id'] = this._mixpanel.get_distinct_id();
     var device_id = this._mixpanel.get_property('$device_id');
     var user_id = this._mixpanel.get_property('$user_id');
+    var had_persisted_distinct_id = this._mixpanel.get_property('$had_persisted_distinct_id');
     if (device_id) {
         data['$device_id'] = device_id;
     }
     if (user_id) {
         data['$user_id'] = user_id;
+    }
+    if (had_persisted_distinct_id) {
+        data['$had_persisted_distinct_id'] = had_persisted_distinct_id;
     }
 
     var date_encoded_data = _.encodeDates(data);
@@ -2489,7 +2504,7 @@ MixpanelPeople.prototype._flush = function(
 };
 
 MixpanelPeople.prototype._is_reserved_property = function(prop) {
-    return prop === '$distinct_id' || prop === '$token' || prop === '$device_id' || prop === '$user_id';
+    return prop === '$distinct_id' || prop === '$token' || prop === '$device_id' || prop === '$user_id' || prop === '$had_persisted_distinct_id';
 };
 
 
