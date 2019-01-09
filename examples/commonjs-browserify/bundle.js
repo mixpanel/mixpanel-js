@@ -2200,7 +2200,7 @@ function hasOptedIn(token, options) {
  * @returns {boolean} whether the user has opted out of the given opt type
  */
 function hasOptedOut(token, options) {
-    if (_hasDoNotTrackFlagOn()) {
+    if (_hasDoNotTrackFlagOn(options)) {
         return true;
     }
     return _getStorageValue(token, options) === '0';
@@ -2298,10 +2298,26 @@ function _getStorageValue(token, options) {
 
 /**
  * Check whether the user has set the DNT/doNotTrack setting to true in their browser
+ * @param {Object} [options]
+ * @param {string} [options.window] - alternate window object to check; used to force various DNT settings in browser tests
  * @returns {boolean} whether the DNT setting is true
  */
-function _hasDoNotTrackFlagOn() {
-    return !!(window$1.navigator && window$1.navigator.doNotTrack === '1');
+function _hasDoNotTrackFlagOn(options) {
+    var win = (options && options.window) || window$1;
+    var nav = win['navigator'] || {};
+    var hasDntOn = false;
+
+    _.each([
+        nav['doNotTrack'], // standard
+        nav['msDoNotTrack'],
+        win['doNotTrack']
+    ], function(dntValue) {
+        if (_.includes([true, 1, '1', 'yes'], dntValue)) {
+            hasDntOn = true;
+        }
+    });
+
+    return hasDntOn;
 }
 
 /**
@@ -2354,11 +2370,13 @@ function _addOptOutCheck(method, getConfigValue) {
             var token = getConfigValue.call(this, 'token');
             var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
             var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
+            var win = getConfigValue.call(this, 'window'); // used to override window during browser tests
 
             if (token) { // if there was an issue getting the token, continue method execution as normal
                 optedOut = hasOptedOut(token, {
                     persistenceType: persistenceType,
-                    persistencePrefix: persistencePrefix
+                    persistencePrefix: persistencePrefix,
+                    window: win
                 });
             }
         } catch(err) {
@@ -4180,6 +4198,17 @@ MixpanelLib.prototype.identify = function(
     // if it's new, blow away the alias as well.
     var distinct_id = this.get_distinct_id();
     this.register({'$user_id': unique_id});
+
+    if (!this.get_property('$device_id')) {
+        // The persisted distinct id might not actually be a device id at all
+        // it might be a distinct id of the user from before
+        var device_id = distinct_id;
+        this.register_once({
+            '$had_persisted_distinct_id': true,
+            '$device_id': device_id
+        }, '');
+    }
+
     if (unique_id !== distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
         this.unregister(ALIAS_ID_KEY);
         this.register({'distinct_id': unique_id});
@@ -4984,11 +5013,15 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     data['$distinct_id'] = this._mixpanel.get_distinct_id();
     var device_id = this._mixpanel.get_property('$device_id');
     var user_id = this._mixpanel.get_property('$user_id');
+    var had_persisted_distinct_id = this._mixpanel.get_property('$had_persisted_distinct_id');
     if (device_id) {
         data['$device_id'] = device_id;
     }
     if (user_id) {
         data['$user_id'] = user_id;
+    }
+    if (had_persisted_distinct_id) {
+        data['$had_persisted_distinct_id'] = had_persisted_distinct_id;
     }
 
     var date_encoded_data = _.encodeDates(data);
@@ -5130,7 +5163,7 @@ MixpanelPeople.prototype._flush = function(
 };
 
 MixpanelPeople.prototype._is_reserved_property = function(prop) {
-    return prop === '$distinct_id' || prop === '$token' || prop === '$device_id' || prop === '$user_id';
+    return prop === '$distinct_id' || prop === '$token' || prop === '$device_id' || prop === '$user_id' || prop === '$had_persisted_distinct_id';
 };
 
 
