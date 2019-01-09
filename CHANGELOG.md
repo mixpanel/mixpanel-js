@@ -1,3 +1,7 @@
+**2.26.0** (9 Jan 2019)
+- Fix minification issue with DoNotTrack browser setting
+- Pass flag to backend indicating when $distinct_id might have been set to a pre-existing $distinct_id value instead of a generated UUID (used when resolving aliases)
+
 **2.25.0** (19 Dec 2018)
 - Change the behavior of `opt_out_tracking_by_default` to no longer override any existing opt status when the user has an opt-in cookie. It also no longer clears persistence when set to true.
 - Create a new param called `opt_out_persistence_by_default` which will determine whether SDK persistence is turned off during initialization
