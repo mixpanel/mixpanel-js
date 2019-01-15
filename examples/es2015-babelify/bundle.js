@@ -6071,7 +6071,7 @@ _.cookie = {
             secure = '';
 
         if (cross_subdomain) {
-            var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i),
+            var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]+$/i),
                 domain = matches ? matches[0] : '';
 
             cdomain = domain ? '; domain=.' + domain : '';
@@ -6096,7 +6096,7 @@ _.cookie = {
             secure = '';
 
         if (cross_subdomain) {
-            var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i),
+            var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]+$/i),
                 domain = matches ? matches[0] : '';
 
             cdomain = domain ? '; domain=.' + domain : '';
