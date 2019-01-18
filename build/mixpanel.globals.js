@@ -3355,10 +3355,16 @@
         return this['props'][key] || (this['props'][key] = default_val);
     };
 
-    MixpanelPersistence.prototype.set_event_timer = function(event_name, timestamp) {
+    MixpanelPersistence.prototype.set_event_timer = function(event_name, timestamp, callback) {
         var timers = this['props'][EVENT_TIMERS_KEY] || {};
         timers[event_name] = timestamp;
         this['props'][EVENT_TIMERS_KEY] = timers;
+
+        if (callback && (typeof(callback) === 'function')) {
+            var callbacks = this['event_timer_callbacks'] || {};
+            callbacks[event_name] = callback;
+            this['event_timer_callbacks'] = callbacks;
+        }
         this.save();
     };
 
@@ -3369,7 +3375,15 @@
             delete this['props'][EVENT_TIMERS_KEY][event_name];
             this.save();
         }
-        return timestamp;
+
+        var callbacks = this['event_timer_callbacks'] || {};
+        var callback = callbacks[event_name];
+        if (!_.isUndefined(callback)) {
+            delete this['event_timer_callbacks'];
+            this.save;
+        }
+
+        return [timestamp, callback];
     };
 
     /**
@@ -3813,10 +3827,16 @@
         properties['token'] = this.get_config('token');
 
         // set $duration if time_event was previously called for this event
-        var start_timestamp = this['persistence'].remove_event_timer(event_name);
+        var start_timestamp_with_callback = this['persistence'].remove_event_timer(event_name);
+        var start_timestamp = start_timestamp_with_callback[0];
+        var timer_callback = start_timestamp_with_callback[1];
         if (!_.isUndefined(start_timestamp)) {
             var duration_in_ms = new Date().getTime() - start_timestamp;
-            properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
+            var end_timestamp = parseFloat((duration_in_ms / 1000).toFixed(3));
+            if (!_.isUndefined(timer_callback)) {
+                end_timestamp = timer_callback(end_timestamp);
+            }
+            properties['$duration'] = end_timestamp;
         }
 
         // update persistence
@@ -4081,7 +4101,7 @@
      *
      * @param {String} event_name The name of the event.
      */
-    MixpanelLib.prototype.time_event = function(event_name) {
+    MixpanelLib.prototype.time_event = function(event_name, callback) {
         if (_.isUndefined(event_name)) {
             console$1.error('No event name provided to mixpanel.time_event');
             return;
@@ -4091,7 +4111,7 @@
             return;
         }
 
-        this['persistence'].set_event_timer(event_name,  new Date().getTime());
+        this['persistence'].set_event_timer(event_name,  new Date().getTime(), callback);
     };
 
     /**
