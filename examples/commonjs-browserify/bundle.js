@@ -2731,7 +2731,6 @@ var INIT_SNIPPET = 1;
 /** @const */   var ALIAS_ID_KEY              = '__alias';
 /** @const */   var CAMPAIGN_IDS_KEY          = '__cmpns';
 /** @const */   var EVENT_TIMERS_KEY          = '__timers';
-/** @const */   var EVENT_TIMERS_KEY_CALLBACK = '__timers_callback';
 /** @const */   var RESERVED_PROPERTIES       = [
     SET_QUEUE_KEY,
     SET_ONCE_QUEUE_KEY,
@@ -2743,8 +2742,7 @@ var INIT_SNIPPET = 1;
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
     CAMPAIGN_IDS_KEY,
-    EVENT_TIMERS_KEY,
-    EVENT_TIMERS_KEY_CALLBACK
+    EVENT_TIMERS_KEY
 ];
 
 /*
@@ -3363,9 +3361,9 @@ MixpanelPersistence.prototype.set_event_timer = function(event_name, timestamp, 
     this['props'][EVENT_TIMERS_KEY] = timers;
 
     if (callback && (typeof(callback) === 'function')) {
-        var callbacks = this['props'][EVENT_TIMERS_KEY_CALLBACK] || {};
+        var callbacks = this['event_timer_callbacks'] || {};
         callbacks[event_name] = callback;
-        this['props'][EVENT_TIMERS_KEY_CALLBACK] = callbacks;
+        this['event_timer_callbacks'] = callbacks;
     }
     this.save();
 };
@@ -3378,10 +3376,10 @@ MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
         this.save();
     }
 
-    var callbacks = this['props'][EVENT_TIMERS_KEY_CALLBACK] || {};
+    var callbacks = this['event_timer_callbacks'] || {};
     var callback = callbacks[event_name];
     if (!_.isUndefined(callback)) {
-        delete this['props'][EVENT_TIMERS_KEY_CALLBACK][event_name];
+        delete this['event_timer_callbacks'];
         this.save;
     }
 

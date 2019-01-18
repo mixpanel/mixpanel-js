@@ -610,7 +610,7 @@
                 same(data.properties.$duration, 0.123);
             });
 
-            test("it allows a callback to modify the duration value", 1, function() {
+            test("it allows a callback to modify the duration value on next track", 2, function() {
                 mixpanel.test.time_event('test', function (elapsed) {
                     return elapsed + 100;
                 });
@@ -618,6 +618,10 @@
                 var data = mixpanel.test.track('test');
                 same(data.properties.$duration, 100.123);
 
+                mixpanel.test.time_event('test');
+                this.clock.tick(123);
+                var data_without_callback = mixpanel.test.track('test')
+                same(data_without_callback.properties.$duration, 0.123);
             });
 
             mpmodule("json");
