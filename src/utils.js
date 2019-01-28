@@ -44,6 +44,8 @@ var nativeBind = FuncProto.bind,
     nativeIsArray = Array.isArray,
     breaker = {};
 
+var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]+$/i;
+
 var _ = {
     trim: function(str) {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
@@ -985,7 +987,7 @@ _.cookie = {
             secure = '';
 
         if (cross_subdomain) {
-            var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]+$/i),
+            var matches = document.location.hostname.match(DOMAIN_MATCH_REGEX),
                 domain = matches ? matches[0] : '';
 
             cdomain = ((domain) ? '; domain=.' + domain : '');
@@ -1008,7 +1010,7 @@ _.cookie = {
         var cdomain = '', expires = '', secure = '';
 
         if (cross_subdomain) {
-            var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]+$/i),
+            var matches = document.location.hostname.match(DOMAIN_MATCH_REGEX),
                 domain = matches ? matches[0] : '';
 
             cdomain   = ((domain) ? '; domain=.' + domain : '');
