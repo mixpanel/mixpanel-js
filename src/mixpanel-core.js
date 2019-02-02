@@ -1,6 +1,7 @@
 /* eslint camelcase: "off" */
 import Config from './config';
 import { _, console, userAgent, window, document } from './utils';
+import { evaluateSelector } from './property-filters';
 import { autotrack } from './autotrack';
 import { MixpanelGroup } from './mixpanel-group';
 import {
@@ -837,6 +838,7 @@ MixpanelLib.prototype.init = function (token, config, name) {
 MixpanelLib.prototype._init = function(token, config, name) {
     this['__loaded'] = true;
     this['config'] = {};
+    this._triggered_notifs = [];
 
     this.set_config(_.extend({}, DEFAULT_CONFIG, config, {
         'name': name,
@@ -1205,6 +1207,8 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         { 'data': encoded_data },
         this._prepare_callback(callback, truncated_data)
     );
+
+    this._check_and_handle_triggered_notifications(data);
 
     return truncated_data;
 });
@@ -1812,6 +1816,17 @@ MixpanelLib.prototype._event_is_disabled = function(event_name) {
         _.include(this.__disabled_events, event_name);
 };
 
+MixpanelLib.prototype._check_and_handle_triggered_notifications = addOptOutCheckMixpanelLib(function(event_data) {
+    var arr = this._triggered_notifs;
+    for (var i = 0; i < arr.length; i++) {
+        var notif = new MPNotif(arr[i], this);
+        if (notif._matches_event_data(event_data)) {
+            this._show_notification(arr[i]);
+            return;
+        }
+    }
+});
+
 MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLib(function(distinct_id) {
     if (
         !distinct_id ||
@@ -1825,25 +1840,31 @@ MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLi
 
     var data = {
         'verbose':     true,
-        'version':     '2',
+        'version':     '3',
         'lib':         'web',
         'token':       this.get_config('token'),
         'distinct_id': distinct_id
     };
-    var self = this;
     this._send_request(
         this.get_config('api_host') + '/decide/',
         data,
-        this._prepare_callback(function(r) {
-            if (r['notifications'] && r['notifications'].length > 0) {
-                self._show_notification.call(self, r['notifications'][0]);
+        this._prepare_callback(_.bind(function(result) {
+            if (result['notifications'] && result['notifications'].length > 0) {
+                this._triggered_notifs = [];
+                var notifications = [];
+                _.each(result['notifications'], function(notif) {
+                    (notif['display_triggers'] && notif['display_triggers'].length > 0 ? this._triggered_notifs : notifications).push(notif);
+                }, this);
+                if (notifications.length > 0) {
+                    this._show_notification.call(this, notifications[0]);
+                }
             }
-        })
+        }, this))
     );
 });
 
-MixpanelLib.prototype._show_notification = function(notification_data) {
-    var notification = new MPNotif(notification_data, this);
+MixpanelLib.prototype._show_notification = function(notif_data) {
+    var notification = new MPNotif(notif_data, this);
     notification.show();
 };
 
@@ -2547,6 +2568,8 @@ MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
     this.video_width     = MPNotif.VIDEO_WIDTH;
     this.video_height    = MPNotif.VIDEO_HEIGHT;
 
+    this.display_triggers = notif_data['display_triggers'] || [];
+
     // These fields are url-sanitized in the backend already.
     this.dest_url        = notif_data['cta_url'] || null;
     this.image_url       = notif_data['image_url'] || null;
@@ -2811,6 +2834,25 @@ MPNotif.prototype._get_notification_display_el = function() {
 MPNotif.prototype._get_shown_campaigns = function() {
     return this.persistence['props'][CAMPAIGN_IDS_KEY] || (this.persistence['props'][CAMPAIGN_IDS_KEY] = {});
 };
+
+MPNotif.prototype._matches_event_data = _.safewrap(function(event_data) {
+    var event_name = event_data['event'] || '';
+    for (var i = 0; i < this.display_triggers.length; i++) {
+        var display_trigger = this.display_triggers[i];
+        var match_event = display_trigger['event'] || '';
+        if (match_event === '$any_event' || event_name === display_trigger['event']) {
+            if (display_trigger['selector'] && !_.isEmptyObject(display_trigger['selector'])) {
+                if (evaluateSelector(display_trigger['selector'], event_data['properties'])) {
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        }
+    }
+    return false;
+});
+
 
 MPNotif.prototype._browser_lte = function(browser, version) {
     return this.browser_versions[browser] && this.browser_versions[browser] <= version;

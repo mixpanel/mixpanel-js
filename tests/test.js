@@ -2982,8 +2982,8 @@
 
             asyncTest("notification with normal data adds itself to DOM", 1, function() {
                 mixpanel._show_notification({
-                    body: "notification body test",
-                    title: "hallo"
+                    body: 'notification body test',
+                    title: 'hallo'
                 });
                 untilDone(function(done) {
                     if ($('#mixpanel-notification-takeover').length === 1) {
@@ -2994,14 +2994,88 @@
                 });
             });
 
-            asyncTest("mini notification with normal data adds itself to DOM", 1, function() {
+            asyncTest('mini notification with normal data adds itself to DOM', 1, function() {
                 mixpanel._show_notification({
-                    body: "notification body test",
-                    type: "mini"
+                    body: 'notification body test',
+                    type: 'mini'
                 });
                 untilDone(function(done) {
                     if ($('#mixpanel-notification-mini').length === 1) {
                         $('#mixpanel-notification-wrapper').remove();
+                        ok('success');
+                        done();
+                    }
+                });
+            });
+
+            asyncTest('mini triggered notification with normal data adds itself to DOM', 1, function() {
+                mixpanel._triggered_notifs = [{
+                    body: 'notification body test',
+                    type: 'mini',
+                    'display_triggers': [{event: 'test_event', selector: {operator: '==',
+                        children: [{property: 'event', value: '$platform'}, {property: 'literal', value: 'web'}]}}]
+                }];
+
+                mixpanel.track('test_event', {'$platform': 'web'});
+
+                untilDone(function(done) {
+                    if ($('#mixpanel-notification-mini').length === 1) {
+                        $('#mixpanel-notification-wrapper').remove();
+                        ok('success');
+                        done();
+                    }
+                });
+            });
+
+            asyncTest('triggered notification with normal data adds itself to DOM', 1, function() {
+                mixpanel._triggered_notifs = [{
+                    body: 'notification body test',
+                    title: 'hallo',
+                    'display_triggers': [{event: 'test_event', selector: {operator: '==',
+                        children: [{property: 'event', value: '$platform'}, {property: 'literal', value: 'web'}]}}]
+                }];
+
+                mixpanel.track('test_event', {'$platform': 'web'});
+
+                untilDone(function(done) {
+                    if ($('#mixpanel-notification-takeover').length === 1) {
+                        $('#mixpanel-notification-wrapper').remove();
+                        ok('success');
+                        done();
+                    }
+                });
+            });
+
+            asyncTest('triggered notification with that matches any_event adds itself to DOM', 1, function() {
+                mixpanel._triggered_notifs = [{
+                    body: 'notification body test',
+                    title: 'hallo',
+                    'display_triggers': [{event: '$any_event'}]
+                }];
+
+                mixpanel.track('test_event');
+
+                untilDone(function(done) {
+                    if ($('#mixpanel-notification-takeover').length === 1) {
+                        $('#mixpanel-notification-wrapper').remove();
+                        ok('success');
+                        done();
+                    }
+                });
+            });
+
+            asyncTest('triggered notification that does not match event should not add itself to DOM', 1, function() {
+                mixpanel._triggered_notifs = [{
+                    body: 'notification body test',
+                    title: 'hallo',
+                    'display_triggers': [{event: 'test_event', selector: {operator: '==',
+                        children: [{property: 'event', value: '$platform'}, {property: 'literal', value: 'web'}]}}]
+                }];
+
+                mixpanel.track('test_event', {'$platform': 'sdk'});
+
+                untilDone(function(done) {
+                    if ($('#mixpanel-notification-takeover').length === 0) {
                         ok('success');
                         done();
                     }
