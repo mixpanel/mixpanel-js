@@ -2533,7 +2533,7 @@ MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
     this.thumb_image_url = notif_data['thumb_image_url'] || null;
     this.video_url       = notif_data['video_url'] || null;
 
-    if(this.thumb_image_url.startsWith('//')){
+    if(this.thumb_image_url && this.thumb_image_url.startsWith('//')){
         this.thumb_image_url = this.thumb_image_url.replace('//',this.mixpanel.get_config('message_resource_protocol'));
     }
 
@@ -3488,7 +3488,7 @@ MPNotif.prototype._init_video = _.safewrap(function() {
 
             // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
             var tag = document.createElement('script');
-            tag.src = this.mixpanel.get_config('message_resource_protocol') + 'www.youtube.com/iframe_api';
+            tag.src = self.mixpanel.get_config('message_resource_protocol') + 'www.youtube.com/iframe_api';
             var firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
