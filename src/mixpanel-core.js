@@ -131,8 +131,8 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_cookie_prefix':    null,
     'property_blacklist':                [],
     'xhr_headers':                       {}, // { header: value, header2: value }
-    'notification_protocol':             '//',
-    'message_link_new_window':           false
+    'inapp_protocol':                    '//',
+    'inapp_link_new_window':             false
 };
 
 var DOM_LOADED = false;
@@ -1730,10 +1730,13 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // the format {'Header-Name': value}
  *       xhr_headers: {}
  *
- *       // protocol for fetching in-app notification resources, e.g.
+ *       // protocol for fetching in-app message resources, e.g.
  *       // 'https://' or 'http://'; defaults to '//' (which defers to the
  *       // current page's protocol)
- *       notification_protocol: '//'
+ *       inapp_protocol: '//'
+ *
+ *       // whether to open in-app message link in new tab/window
+ *       inapp_link_new_window: false
  *     }
  *
  *
@@ -2521,7 +2524,7 @@ MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
 
     this.mixpanel    = mixpanel_instance;
     this.persistence = this.mixpanel['persistence'];
-    this.protocol    = this.mixpanel.get_config('notification_protocol');
+    this.protocol    = this.mixpanel.get_config('inapp_protocol');
     this.cdn_host    = this.mixpanel.get_config('cdn');
 
     this.campaign_id = _.escapeHTML(notif_data['id']);
@@ -2775,7 +2778,7 @@ MPNotif.prototype._attach_and_animate = _.safewrap(function() {
             self.dismiss();
             if (self.clickthrough) {
                 var tracking_cb = null;
-                if (self.mixpanel.get_config('message_link_new_window')) {
+                if (self.mixpanel.get_config('inapp_link_new_window')) {
                     window.open(self.dest_url);
                 } else {
                     tracking_cb = function() {
