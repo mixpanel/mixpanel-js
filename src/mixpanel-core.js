@@ -2535,7 +2535,7 @@ MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
     this.thumb_image_url = notif_data['thumb_image_url'] || null;
     this.video_url       = notif_data['video_url'] || null;
 
-    if (this.thumb_image_url && this.thumb_image_url.startsWith('//')) {
+    if (this.thumb_image_url && this.thumb_image_url.indexOf('//') === 0) {
         this.thumb_image_url = this.thumb_image_url.replace('//', this.protocol);
     }
 
