@@ -2774,13 +2774,15 @@ MPNotif.prototype._attach_and_animate = _.safewrap(function() {
         } else {
             self.dismiss();
             if (self.clickthrough) {
-                self._track_event('$campaign_open', {'$resource_type': 'link'}, function() {
-                    if(self.mixpanel.get_config('message_link_new_window')){
-                        window.open(self.dest_url);
-                    } else {
+                var tracking_cb = null;
+                if (self.mixpanel.get_config('message_link_new_window')) {
+                    window.open(self.dest_url);
+                } else {
+                    tracking_cb = function() {
                         window.location.href = self.dest_url;
-                    }
-                });
+                    };
+                }
+                self._track_event('$campaign_open', {'$resource_type': 'link'}, tracking_cb);
             }
         }
     });
