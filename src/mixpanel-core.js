@@ -131,7 +131,7 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_cookie_prefix':    null,
     'property_blacklist':                [],
     'xhr_headers':                       {}, // { header: value, header2: value }
-    'message_resource_protocol':         '//'
+    'notification_protocol':             '//'
 };
 
 var DOM_LOADED = false;
@@ -1728,6 +1728,11 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // extra HTTP request headers to set for each API request, in
  *       // the format {'Header-Name': value}
  *       xhr_headers: {}
+ *
+ *       // protocol for fetching in-app notification resources, e.g.
+ *       // 'https://' or 'http://'; defaults to '//' (which defers to the
+ *       // current page's protocol)
+ *       notification_protocol: '//'
  *     }
  *
  *
@@ -2515,7 +2520,7 @@ MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
 
     this.mixpanel    = mixpanel_instance;
     this.persistence = this.mixpanel['persistence'];
-    this.protocol    = this.mixpanel.get_config('message_resource_protocol');
+    this.protocol    = this.mixpanel.get_config('notification_protocol');
     this.cdn_host    = this.mixpanel.get_config('cdn');
 
     this.campaign_id = _.escapeHTML(notif_data['id']);
