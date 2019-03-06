@@ -131,7 +131,8 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_cookie_prefix':    null,
     'property_blacklist':                [],
     'xhr_headers':                       {}, // { header: value, header2: value }
-    'notification_protocol':             '//'
+    'notification_protocol':             '//',
+    'message_link_new_window':           false
 };
 
 var DOM_LOADED = false;
@@ -2774,7 +2775,11 @@ MPNotif.prototype._attach_and_animate = _.safewrap(function() {
             self.dismiss();
             if (self.clickthrough) {
                 self._track_event('$campaign_open', {'$resource_type': 'link'}, function() {
-                    window.location.href = self.dest_url;
+                    if(self.mixpanel.get_config('message_link_new_window')){
+                        window.open(self.dest_url);
+                    } else {
+                        window.location.href = self.dest_url;
+                    }
                 });
             }
         }
