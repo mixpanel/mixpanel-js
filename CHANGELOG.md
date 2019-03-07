@@ -1,3 +1,8 @@
+**2.27.0** (7 Mar 2019)
+- Support cross-subdomain tracking on TLDs longer than 6 chars (thanks @danielbaker)
+- Support configurable network protocol for inapp resources (thanks @mkdai)
+- Allow inapp links to open in new window/tab via config option (thanks @mkdai)
+
 **2.26.0** (9 Jan 2019)
 - Fix minification issue with DoNotTrack browser setting
 - Pass flag to backend indicating when $distinct_id might have been set to a pre-existing $distinct_id value instead of a generated UUID (used when resolving aliases)
