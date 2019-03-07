@@ -5183,10 +5183,10 @@ MixpanelPeople.prototype._is_reserved_property = function(prop) {
 MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
     _.bind_instance_methods(this);
 
-    this.mixpanel    = mixpanel_instance;
-    this.persistence = this.mixpanel['persistence'];
-    this.protocol    = this.mixpanel.get_config('inapp_protocol');
-    this.cdn_host    = this.mixpanel.get_config('cdn');
+    this.mixpanel          = mixpanel_instance;
+    this.persistence       = this.mixpanel['persistence'];
+    this.resource_protocol = this.mixpanel.get_config('inapp_protocol');
+    this.cdn_host          = this.mixpanel.get_config('cdn');
 
     this.campaign_id = _.escapeHTML(notif_data['id']);
     this.message_id  = _.escapeHTML(notif_data['message_id']);
@@ -5206,7 +5206,7 @@ MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
     this.video_url       = notif_data['video_url'] || null;
 
     if (this.thumb_image_url && this.thumb_image_url.indexOf('//') === 0) {
-        this.thumb_image_url = this.thumb_image_url.replace('//', this.protocol);
+        this.thumb_image_url = this.thumb_image_url.replace('//', this.resource_protocol);
     }
 
     this.clickthrough = true;
@@ -5556,7 +5556,7 @@ MPNotif.prototype._init_notification_el = function() {
                 '</div>';
     }
     if (this.youtube_video) {
-        video_src = this.protocol + 'www.youtube.com/embed/' + this.youtube_video +
+        video_src = this.resource_protocol + 'www.youtube.com/embed/' + this.youtube_video +
                 '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0&vq=hd1080';
         if (this.yt_custom) {
             video_src += '&enablejsapi=1&html5=1&controls=0';
@@ -5570,7 +5570,7 @@ MPNotif.prototype._init_notification_el = function() {
                     '</div>';
         }
     } else if (this.vimeo_video) {
-        video_src = this.protocol + 'player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
+        video_src = this.resource_protocol + 'player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
     }
     if (this.show_video) {
         this.video_iframe =
@@ -6166,7 +6166,7 @@ MPNotif.prototype._init_video = _.safewrap(function() {
 
             // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
             var tag = document$1.createElement('script');
-            tag.src = self.protocol + 'www.youtube.com/iframe_api';
+            tag.src = self.resource_protocol + 'www.youtube.com/iframe_api';
             var firstScriptTag = document$1.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }

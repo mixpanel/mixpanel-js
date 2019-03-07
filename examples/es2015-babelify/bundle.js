@@ -3534,7 +3534,7 @@ MixpanelLib._Notification = function (notif_data, mixpanel_instance) {
 
     this.mixpanel = mixpanel_instance;
     this.persistence = this.mixpanel['persistence'];
-    this.protocol = this.mixpanel.get_config('inapp_protocol');
+    this.resource_protocol = this.mixpanel.get_config('inapp_protocol');
     this.cdn_host = this.mixpanel.get_config('cdn');
 
     this.campaign_id = _utils._.escapeHTML(notif_data['id']);
@@ -3555,7 +3555,7 @@ MixpanelLib._Notification = function (notif_data, mixpanel_instance) {
     this.video_url = notif_data['video_url'] || null;
 
     if (this.thumb_image_url && this.thumb_image_url.indexOf('//') === 0) {
-        this.thumb_image_url = this.thumb_image_url.replace('//', this.protocol);
+        this.thumb_image_url = this.thumb_image_url.replace('//', this.resource_protocol);
     }
 
     this.clickthrough = true;
@@ -3857,13 +3857,13 @@ MPNotif.prototype._init_notification_el = function () {
         notification_html = '<div id="mini">' + '<div id="mainbox">' + cancel_html + '<div id="mini-content">' + '<div id="mini-icon">' + '<div id="mini-icon-img"></div>' + '</div>' + '<div id="body">' + '<div id="body-text"><div>' + this.body + '</div></div>' + '</div>' + '</div>' + '</div>' + '<div id="mini-border"></div>' + '</div>';
     }
     if (this.youtube_video) {
-        video_src = this.protocol + 'www.youtube.com/embed/' + this.youtube_video + '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0&vq=hd1080';
+        video_src = this.resource_protocol + 'www.youtube.com/embed/' + this.youtube_video + '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0&vq=hd1080';
         if (this.yt_custom) {
             video_src += '&enablejsapi=1&html5=1&controls=0';
             video_html = '<div id="video-controls">' + '<div id="video-progress" class="video-progress-el">' + '<div id="video-progress-total" class="video-progress-el"></div>' + '<div id="video-elapsed" class="video-progress-el"></div>' + '</div>' + '<div id="video-time" class="video-progress-el"></div>' + '</div>';
         }
     } else if (this.vimeo_video) {
-        video_src = this.protocol + 'player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
+        video_src = this.resource_protocol + 'player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
     }
     if (this.show_video) {
         this.video_iframe = '<iframe id="' + MPNotif.MARKUP_PREFIX + '-video-frame" ' + 'width="' + this.video_width + '" height="' + this.video_height + '" ' + ' src="' + video_src + '"' + ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' + '></iframe>';
@@ -4429,7 +4429,7 @@ MPNotif.prototype._init_video = _utils._.safewrap(function () {
 
             // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
             var tag = _utils.document.createElement('script');
-            tag.src = self.protocol + 'www.youtube.com/iframe_api';
+            tag.src = self.resource_protocol + 'www.youtube.com/iframe_api';
             var firstScriptTag = _utils.document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
