@@ -3,7 +3,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.26.0'
+    LIB_VERSION: '2.27.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -47,6 +47,8 @@ var nativeForEach = ArrayProto.forEach;
 var nativeIndexOf = ArrayProto.indexOf;
 var nativeIsArray = Array.isArray;
 var breaker = {};
+var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]+$/i;
+
 var _ = {
     trim: function(str) {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
@@ -988,7 +990,7 @@ _.cookie = {
             secure = '';
 
         if (cross_subdomain) {
-            var matches = document$1.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i),
+            var matches = document$1.location.hostname.match(DOMAIN_MATCH_REGEX),
                 domain = matches ? matches[0] : '';
 
             cdomain = ((domain) ? '; domain=.' + domain : '');
@@ -1011,7 +1013,7 @@ _.cookie = {
         var cdomain = '', expires = '', secure = '';
 
         if (cross_subdomain) {
-            var matches = document$1.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i),
+            var matches = document$1.location.hostname.match(DOMAIN_MATCH_REGEX),
                 domain = matches ? matches[0] : '';
 
             cdomain   = ((domain) ? '; domain=.' + domain : '');
@@ -2789,7 +2791,9 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_persistence_type': 'localStorage',
     'opt_out_tracking_cookie_prefix':    null,
     'property_blacklist':                [],
-    'xhr_headers':                       {} // { header: value, header2: value }
+    'xhr_headers':                       {}, // { header: value, header2: value }
+    'inapp_protocol':                    '//',
+    'inapp_link_new_window':             false
 };
 
 var DOM_LOADED = false;
@@ -4386,6 +4390,14 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // extra HTTP request headers to set for each API request, in
  *       // the format {'Header-Name': value}
  *       xhr_headers: {}
+ *
+ *       // protocol for fetching in-app message resources, e.g.
+ *       // 'https://' or 'http://'; defaults to '//' (which defers to the
+ *       // current page's protocol)
+ *       inapp_protocol: '//'
+ *
+ *       // whether to open in-app message link in new tab/window
+ *       inapp_link_new_window: false
  *     }
  *
  *
@@ -5173,6 +5185,8 @@ MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
 
     this.mixpanel    = mixpanel_instance;
     this.persistence = this.mixpanel['persistence'];
+    this.protocol    = this.mixpanel.get_config('inapp_protocol');
+    this.cdn_host    = this.mixpanel.get_config('cdn');
 
     this.campaign_id = _.escapeHTML(notif_data['id']);
     this.message_id  = _.escapeHTML(notif_data['message_id']);
@@ -5190,6 +5204,10 @@ MixpanelLib._Notification = function(notif_data, mixpanel_instance) {
     this.image_url       = notif_data['image_url'] || null;
     this.thumb_image_url = notif_data['thumb_image_url'] || null;
     this.video_url       = notif_data['video_url'] || null;
+
+    if (this.thumb_image_url && this.thumb_image_url.indexOf('//') === 0) {
+        this.thumb_image_url = this.thumb_image_url.replace('//', this.protocol);
+    }
 
     this.clickthrough = true;
     if (!this.dest_url) {
@@ -5420,9 +5438,15 @@ MPNotif.prototype._attach_and_animate = _.safewrap(function() {
         } else {
             self.dismiss();
             if (self.clickthrough) {
-                self._track_event('$campaign_open', {'$resource_type': 'link'}, function() {
-                    window$1.location.href = self.dest_url;
-                });
+                var tracking_cb = null;
+                if (self.mixpanel.get_config('inapp_link_new_window')) {
+                    window$1.open(self.dest_url);
+                } else {
+                    tracking_cb = function() {
+                        window$1.location.href = self.dest_url;
+                    };
+                }
+                self._track_event('$campaign_open', {'$resource_type': 'link'}, tracking_cb);
             }
         }
     });
@@ -5468,7 +5492,7 @@ MPNotif.prototype._init_image_html = function() {
             this.thumb_img_html = '';
         }
     } else {
-        this.thumb_image_url = this.thumb_image_url || '//cdn.mxpnl.com/site_media/images/icons/notifications/mini-news-dark.png';
+        this.thumb_image_url = this.thumb_image_url || (this.cdn_host + '/site_media/images/icons/notifications/mini-news-dark.png');
         imgs_to_preload.push(this.thumb_image_url);
     }
 
@@ -5532,7 +5556,7 @@ MPNotif.prototype._init_notification_el = function() {
                 '</div>';
     }
     if (this.youtube_video) {
-        video_src = '//www.youtube.com/embed/' + this.youtube_video +
+        video_src = this.protocol + 'www.youtube.com/embed/' + this.youtube_video +
                 '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0&vq=hd1080';
         if (this.yt_custom) {
             video_src += '&enablejsapi=1&html5=1&controls=0';
@@ -5546,7 +5570,7 @@ MPNotif.prototype._init_notification_el = function() {
                     '</div>';
         }
     } else if (this.vimeo_video) {
-        video_src = '//player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
+        video_src = this.protocol + 'player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
     }
     if (this.show_video) {
         this.video_iframe =
@@ -5899,7 +5923,7 @@ MPNotif.prototype._init_styles = function() {
             'width': '8px',
             'height': '8px',
             'overflow': 'hidden',
-            'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/cancel-x.png)',
+            'background-image': 'url(' + this.cdn_host + '/site_media/images/icons/notifications/cancel-x.png)',
             'opacity': this.style_vals.cancel_opacity
         },
         '#cancel:hover': {
@@ -5922,7 +5946,7 @@ MPNotif.prototype._init_styles = function() {
             'height': '60px',
             'margin-right': '8px',
             'vertical-align': 'top',
-            'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/close-x-' + this.style + '.png)',
+            'background-image': 'url(' + this.cdn_host + '/site_media/images/icons/notifications/close-x-' + this.style + '.png)',
             'background-repeat': 'no-repeat',
             'background-position': '0px 25px'
         },
@@ -5931,7 +5955,7 @@ MPNotif.prototype._init_styles = function() {
             'width': '30px',
             'height': '60px',
             'margin-left': '15px',
-            'background-image': 'url(//cdn.mxpnl.com/site_media/images/icons/notifications/play-' + this.style + '-small.png)',
+            'background-image': 'url(' + this.cdn_host + '/site_media/images/icons/notifications/play-' + this.style + '-small.png)',
             'background-repeat': 'no-repeat',
             'background-position': '0px 15px'
         },
@@ -6142,7 +6166,7 @@ MPNotif.prototype._init_video = _.safewrap(function() {
 
             // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
             var tag = document$1.createElement('script');
-            tag.src = '//www.youtube.com/iframe_api';
+            tag.src = self.protocol + 'www.youtube.com/iframe_api';
             var firstScriptTag = document$1.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
