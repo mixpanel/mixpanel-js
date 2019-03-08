@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.27.0'
+    LIB_VERSION: '2.27.1'
 };
 
 exports['default'] = Config;
@@ -5156,7 +5156,7 @@ var nativeBind = FuncProto.bind,
     nativeIsArray = Array.isArray,
     breaker = {};
 
-var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]+$/i;
+var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i;
 
 var _ = {
     trim: function trim(str) {

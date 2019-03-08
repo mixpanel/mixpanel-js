@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.27.0'
+        LIB_VERSION: '2.27.1'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -50,7 +50,7 @@
     var nativeIndexOf = ArrayProto.indexOf;
     var nativeIsArray = Array.isArray;
     var breaker = {};
-    var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]+$/i;
+    var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i;
 
     var _ = {
         trim: function(str) {
