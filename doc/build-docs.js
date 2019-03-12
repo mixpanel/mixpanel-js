@@ -5,6 +5,7 @@ const path = require(`path`);
 
 const SOURCE_FILE = path.join(__dirname, `..`, `mixpanel.js`);
 const TEMPLATE_FILE = path.join(__dirname, `template.md`);
+const OUTPUT_FILE = path.join(__dirname, `api-reference.md`);
 
 const NAMESPACES = {
   MixpanelLib: `mixpanel`,
@@ -43,4 +44,5 @@ function doxToMD(items) {
 const rawCode = fs.readFileSync(SOURCE_FILE).toString().trim();
 const parsed = dox.parseComments(rawCode);
 
-console.log(doxToMD(parsed));
+fs.writeFileSync(OUTPUT_FILE, doxToMD(parsed));
+console.log(`Wrote docs to ${OUTPUT_FILE}`);
