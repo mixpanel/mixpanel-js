@@ -3,22 +3,25 @@ const fs = require(`fs`);
 const path = require(`path`);
 
 
-const DOCUMENTED = new Set([
-  `MixpanelLib`,
-  `MixpanelPeople`,
-  `MixpanelGroup`,
-]);
+const NAMESPACES = {
+  MixpanelLib: `mixpanel`,
+  MixpanelPeople: `mixpanel.people`,
+  MixpanelGroup: `mixpanel.group`,
+};
 
 function doxToMD(items) {
-  console.log(`before`, items.length);
-  items = items.filter(item =>
-    !item.isPrivate &&
-    item.ctx &&
-    !item.ctx.name.startsWith(`_`) &&
-    DOCUMENTED.has(item.ctx.constructor)
-  );
-  console.log(`after`, items.length);
-  return 'PLACEHOLDER';
+  return items
+    .filter(item =>
+      !item.isPrivate &&
+      item.ctx &&
+      !item.ctx.name.startsWith(`_`) &&
+      !!NAMESPACES[item.ctx.constructor]
+    )
+    .map(item => ({
+      namespace: NAMESPACES[item.ctx.constructor],
+      name: item.ctx.name,
+    }))
+    ;
 }
 
 const rawCode = fs.readFileSync(path.join(__dirname, `mixpanel.js`)).toString().trim();
