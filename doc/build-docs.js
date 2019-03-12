@@ -36,7 +36,7 @@ function doxToMD(items) {
   });
 }
 
-const rawCode = fs.readFileSync(path.join(__dirname, `mixpanel.js`)).toString().trim();
+const rawCode = fs.readFileSync(path.join(__dirname, `..`, `mixpanel.js`)).toString().trim();
 const parsed = dox.parseComments(rawCode);
 
 console.log(doxToMD(parsed));

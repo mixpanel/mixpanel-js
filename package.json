@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "./build.sh",
-    "dox": "node build-docs.js",
+    "dox": "node doc/build-docs.js",
     "integration_test": "echo 'Browse to localhost:3000/tests' && node testServer.js",
     "lint": "eslint ./src",
     "start": "pushd examples; python -m SimpleHTTPServer; popd",
