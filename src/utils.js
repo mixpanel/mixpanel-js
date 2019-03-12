@@ -1181,6 +1181,9 @@ _.register_event = (function() {
     return register_event;
 })();
 
+
+var TOKEN_MATCH_REGEX = new RegExp('^(\\w*)\\[(\\w+)([=~\\|\\^\\$\\*]?)=?"?([^\\]"]*)"?\\]$');
+
 _.dom_query = (function() {
     /* document.getElementsBySelector(selector)
     - returns an array of element objects from the current document
@@ -1277,7 +1280,7 @@ _.dom_query = (function() {
                 continue; // Skip to next token
             }
             // Code to deal with attribute selectors
-            var token_match = token.match(/^(\w*)\[(\w+)([=~\|\^\$\*]?)=?"?([^\]"]*)"?\]$/);
+            var token_match = token.match(TOKEN_MATCH_REGEX);
             if (token_match) {
                 tagName = token_match[1];
                 var attrName = token_match[2];
