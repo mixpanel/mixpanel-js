@@ -158,7 +158,7 @@ DomTracker.prototype.init = function(mixpanel_instance) {
  * @param {Object|string} query
  * @param {string} event_name
  * @param {Object=} properties
- * @param {function(...[*])=} user_callback
+ * @param {function=} user_callback
  */
 DomTracker.prototype.track = function(query, event_name, properties, user_callback) {
     var that = this;
@@ -189,7 +189,7 @@ DomTracker.prototype.track = function(query, event_name, properties, user_callba
 };
 
 /**
- * @param {function(...[*])} user_callback
+ * @param {function} user_callback
  * @param {Object} props
  * @param {boolean=} timeout_occured
  */
