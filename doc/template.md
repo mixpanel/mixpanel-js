@@ -7,21 +7,19 @@ title: Full API Reference
 # <%= namespace.name %>
 
 <% for (const item of namespace.items) { %>
-<!--<%= item.name %>-->
 ## <hr><span style="font-family: courier"><%= item.name %></span>
 <%= item.description %>
-<% } %>
-
-<% } %>
-
+<% if (item.usage)  { %>
 ### Usage:
 ```javascript
-// track submission for form id 'register'
-mixpanel.track_forms('#register', 'Created Account');
+<%= item.usage %>
 ```
-
+<% } %><% if (item.notes)  { %>
 ### Notes:
-Notes when necessary.
+<%= item.notes %><% } %>
+
+<% } %>
+<% } %>
 
 | Argument | Type | Description  |
 | ------------- |:-------------:| -----:|
