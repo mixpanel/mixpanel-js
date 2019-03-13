@@ -16,7 +16,7 @@ const NAMESPACES = {
 
 function parseDescriptionAttrs(html) {
   const [description, usage, _unused, notes] = html
-    .replace(`<br />`, ` `)
+    .replace(/<br \/>/g, ` `)
     .split(/<h3>Usage:<\/h3>[\s\S]*<code>([\s\S]+)<\/code><\/pre>([\s\S]*<h3>Notes:<\/h3>)?/)
     .map(s => s && s.trim());
   return {description, usage, notes};
