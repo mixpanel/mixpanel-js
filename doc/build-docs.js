@@ -14,11 +14,15 @@ const NAMESPACES = {
   MixpanelGroup: `mixpanel.group`,
 };
 
+function codeBlocksToMD(str) {
+  return str.replace(/<pre><code>([\s\S]+?)<\/code><\/pre>/g, '\n```javascript\n$1\n```');
+}
+
 function parseDescriptionAttrs(html) {
   const [description, usage, _unused, notes] = html
     .replace(/<br \/>/g, ` `)
     .split(/<h3>Usage:<\/h3>[\s\S]*<code>([\s\S]+)<\/code><\/pre>([\s\S]*<h3>Notes:<\/h3>)?/)
-    .map(s => s && s.trim());
+    .map(s => s && s.trim() && codeBlocksToMD(s));
   return {description, usage, notes};
 }
 
