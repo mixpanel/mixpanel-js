@@ -16,11 +16,11 @@ title: Full API Reference
 ```
 <% } %><% if (item.notes)  { %>
 ### Notes:
-<%= item.notes %><% } %>
+<%= item.notes %><% } %><% if (item.arguments.length) { %>
+
+| Argument | Type | Description |
+| ------------- |:-------------:| ----- |<% for (const arg of item.arguments) { %>
+| **<%= arg.name %>** | <span style="font-family: courier"><%= arg.types %></span></br></span><% if (arg.required) { %><span style="color: red">required</span><% } %> | <%= arg.description %> |<% } %><% } %>
 
 <% } %>
 <% } %>
-
-| Argument | Type | Description  |
-| ------------- |:-------------:| -----:|
-| **from_date** | <span style="font-family: courier">string</span></br></span><span style="color: red">required</span>       | info about this awesome parameter   |
