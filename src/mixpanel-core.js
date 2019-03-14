@@ -1212,8 +1212,9 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
 /**
  * Register the current user into one/many groups.
  *
- * Usage:
- *      mixpanel.set_group('company', ['mixpanel', 'google']) # an array of IDs
+ * ### Usage:
+ *
+ *      mixpanel.set_group('company', ['mixpanel', 'google']) // an array of IDs
  *      mixpanel.set_group('company', 'mixpanel')
  *      mixpanel.set_group('company', 128746312)
  *
@@ -1234,7 +1235,9 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, 
 
 /**
  * Add a new group for this user.
- * Usage:
+ *
+ * ### Usage:
+ *
  *      mixpanel.add_group('company', 'mixpanel')
  *
  * @param {String} group_key Group key
@@ -1258,7 +1261,9 @@ MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, 
 
 /**
  * Remove a group from this user.
- * Usage:
+ *
+ * ### Usage:
+ *
  *      mixpanel.remove_group('company', 'mixpanel')
  *
  * @param {String} group_key Group key
@@ -1283,8 +1288,11 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_ke
 
 /**
  * Track an event with specific groups.
- * Usage:
+ *
+ * ### Usage:
+ *
  *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
+ *
  * @param {Object|String} query
  * @param {String} event_name
  * @param {Object=} properties
@@ -1311,7 +1319,9 @@ MixpanelLib.prototype._remove_group_from_cache = function (group_key, group_id) 
 
 /**
  * Look up reference to a Mixpanel group
- * Usage:
+ *
+ * ### Usage:
+ *
  *       mixpanel.get_group(group_key, group_id)
  *
  * @param {String} group_key Group key
