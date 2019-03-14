@@ -11,7 +11,8 @@ title: Full API Reference
 <%= item.description %>
 <% if (item.usage)  { %>
 ### Usage:
-<%= item.usage %><% } %><% if (item.notes)  { %>
+<%= item.usage %><% } %>
+<% if (item.notes)  { %>
 ### Notes:
 <%= item.notes %><% } %><% if (item.arguments.length) { %>
 

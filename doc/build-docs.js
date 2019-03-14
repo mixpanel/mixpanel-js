@@ -16,8 +16,8 @@ const NAMESPACES = {
 
 const DESCRIPTION_REGEXES = {
   description: /([\S\s]+?)(<h3>|$)/,
-  usage: /<h3>Usage:<\/h3>([\S\s]+)(<h3>|$)/,
-  notes: /<h3>Notes:<\/h3>([\S\s]+)(<h3>|$)/,
+  usage: /<h3>Usage:<\/h3>([\S\s]+?)(<h3>|$)/,
+  notes: /<h3>Notes:<\/h3>([\S\s]+?)(<h3>|$)/,
 };
 
 function parseDescriptionAttrs(html) {
