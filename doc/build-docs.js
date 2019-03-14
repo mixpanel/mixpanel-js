@@ -1,6 +1,6 @@
 const dox = require(`dox`);
 const fs = require(`fs`);
-const {template, trim} = require(`lodash`);
+const {mapValues, template, trim} = require(`lodash`);
 const path = require(`path`);
 
 
@@ -14,16 +14,21 @@ const NAMESPACES = {
   MixpanelGroup: `mixpanel.group`,
 };
 
-function codeBlocksToMD(str) {
-  return str.replace(/<pre><code>([\s\S]+?)<\/code><\/pre>/g, '\n```javascript\n$1\n```');
-}
+const DESCRIPTION_REGEXES = {
+  description: /([\S\s]+?)(<h3>|$)/,
+  usage: /<h3>Usage:<\/h3>([\S\s]+)(<h3>|$)/,
+  notes: /<h3>Notes:<\/h3>([\S\s]+)(<h3>|$)/,
+};
 
 function parseDescriptionAttrs(html) {
-  const [description, usage, _unused, notes] = html
-    .replace(/<br \/>/g, ` `)
-    .split(/<h3>Usage:<\/h3>[\s\S]*<code>([\s\S]+)<\/code><\/pre>([\s\S]*<h3>Notes:<\/h3>)?/)
-    .map(s => s && s.trim() && codeBlocksToMD(s));
-  return {description, usage, notes};
+  return mapValues(DESCRIPTION_REGEXES, regex => {
+    const match = html.match(regex);
+    return match && match[1]
+      .trim()
+      .replace(/<br \/>/g, ` `)
+      .replace(/<pre><code>([\s\S]+?)<\/code><\/pre>/g, '\n```javascript\n$1\n```')
+      ;
+  });
 }
 
 function doxToMD(items) {
