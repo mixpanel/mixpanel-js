@@ -9,6 +9,7 @@
   "scripts": {
     "build": "./build.sh",
     "dox": "node doc/build-docs.js",
+    "dox-publish": "rdme docs doc/readme.io --key=$RDME_API_KEY --version=1.0",
     "integration_test": "echo 'Browse to localhost:3000/tests' && node testServer.js",
     "lint": "eslint ./src",
     "start": "pushd examples; python -m SimpleHTTPServer; popd",
@@ -42,6 +43,7 @@
     "lodash": "4.17.11",
     "mocha": "2.4.5",
     "morgan": "1.5.2",
+    "rdme": "3.0.0",
     "request": "2.88.0",
     "rollup": "0.25.8",
     "rollup-plugin-npm": "1.4.0",
