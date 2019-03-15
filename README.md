@@ -3,7 +3,7 @@
 
 The Mixpanel JavaScript Library is a set of methods attached to a global `mixpanel` object
 intended to be used by websites wishing to send data to Mixpanel projects. A full reference
-is available [here](https://mixpanel.com/help/reference/javascript).
+is available [here](https://developer.mixpanel.com/docs/javascript-full-api-reference).
 
 ## Alternative installation via NPM
 This library is available as a [package on NPM](https://www.npmjs.com/package/mixpanel-browser) (named `mixpanel-browser` to distinguish it from Mixpanel's server-side Node.js library, available on NPM as `mixpanel`). To install into a project using NPM with a front-end packager such as [Browserify](http://browserify.org/) or [Webpack](https://webpack.github.io/):
@@ -66,6 +66,11 @@ If you originally installed Mixpanel via Bower at its previous home ([https://gi
 
 In the future we plan to automate the last step with a headless browser to streamline development (although
 Mixpanel production releases are tested against a large matrix of browsers and operating systems).
+
+## Generating and publishing documentation
+- Create bundled source build: `npm run build`
+- Generate Markdown: `npm run dox` (result is at `doc/readme.io/javascript-full-api-reference.md`)
+- Publish to readme.io via the [rdme](https://www.npmjs.com/package/rdme) util: `RDME_API_KEY=<API_KEY> npm run dox-publish`
 
 ## Thanks
 For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx, @pkaminski, @austince, @danielbaker, @mkdai
