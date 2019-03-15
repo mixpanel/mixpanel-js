@@ -44,6 +44,7 @@ function doxToMD(items) {
           !item.ctx.name.startsWith(`_`) &&
           item.ctx.constructor === constructor
         )
+        .sort((a, b) => a.ctx.name > b.ctx.name ? 1 : -1)
         .map(item => ({
           name: `${namespace}.${item.ctx.name}`,
           arguments: item.tags
