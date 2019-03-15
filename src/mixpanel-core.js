@@ -1293,7 +1293,6 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_ke
  *
  *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
  *
- * @param {Object|String} query
  * @param {String} event_name
  * @param {Object=} properties
  * @param {Object=} groups

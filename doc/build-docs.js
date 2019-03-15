@@ -6,7 +6,7 @@ const path = require(`path`);
 
 const SOURCE_FILE = path.join(__dirname, `..`, `mixpanel.js`);
 const TEMPLATE_FILE = path.join(__dirname, `template.md`);
-const OUTPUT_FILE = path.join(__dirname, `api-reference.md`);
+const OUTPUT_FILE = path.join(__dirname, `readme.io`, `javascript-full-api-reference.md`);
 
 const NAMESPACES = {
   MixpanelLib: `mixpanel`,
@@ -26,6 +26,7 @@ function parseDescriptionAttrs(html) {
     return match && match[1]
       .trim()
       .replace(/<br \/>/g, ` `)
+      .replace(/<p>([\S\s]+?)<\/?p>/g, `$1`)
       .replace(/<pre><code>([\s\S]+?)<\/code><\/pre>/g, '\n```javascript\n$1\n```')
       ;
   });
@@ -49,7 +50,7 @@ function doxToMD(items) {
             .filter(arg => !!arg.name)
             .map(arg => ({
               name: trim(arg.name, `[]`),
-              description: arg.description,
+              description: arg.description.replace(/<p>([\S\s]+?)<\/?p>/g, `$1`),
               required: !arg.name.startsWith(`[`),
               types: arg.types.join(` or `),
             })),
