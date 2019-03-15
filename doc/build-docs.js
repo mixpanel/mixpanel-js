@@ -52,7 +52,7 @@ function doxToMD(items) {
               name: trim(arg.name, `[]`),
               description: arg.description.replace(/<p>([\S\s]+?)<\/?p>/g, `$1`),
               required: !arg.name.startsWith(`[`),
-              types: arg.types.join(` or `),
+              types: arg.typesDescription === `<code>*</code>` ? `any` : arg.types.join(` or `),
             })),
           ...parseDescriptionAttrs(item.description.full),
         })),

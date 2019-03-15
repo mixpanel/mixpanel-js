@@ -122,7 +122,7 @@ Add a new group for this user.
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **group_key** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Group key |
-| **group_id** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
+| **group_id** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
@@ -141,7 +141,7 @@ Remove a group from this user.
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **group_key** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Group key |
-| **group_id** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
+| **group_id** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
@@ -305,7 +305,7 @@ If default_value is specified, current super properties  with that value will be
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | An associative array of properties to store about the user |
-| **default_value** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-optional">optional</span> | Value to override if already set in super properties (ex: 'False') Default: 'None' |
+| **default_value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | Value to override if already set in super properties (ex: 'False') Default: 'None' |
 | **days** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | How many days since the users last visit to store the super properties |
 
 
@@ -628,7 +628,7 @@ mixpanel.people.set({
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
-| **to** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
+| **to** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
@@ -655,7 +655,7 @@ mixpanel.people.set_once({
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
-| **to** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
+| **to** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
@@ -736,7 +736,7 @@ mixpanel.people.append({
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
-| **value** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-optional">optional</span> | value An item to append to the list |
+| **value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | value An item to append to the list |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
@@ -755,7 +755,7 @@ mixpanel.people.remove('School', 'UCB');
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
-| **value** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-optional">optional</span> | value Item to remove from the list |
+| **value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | value Item to remove from the list |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
@@ -788,7 +788,7 @@ mixpanel.people.union({
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
-| **value** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-optional">optional</span> | Value / values to merge with the given property |
+| **value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | Value / values to merge with the given property |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
@@ -874,7 +874,7 @@ mixpanel.get_group('company', 'mixpanel').set({
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
-| **to** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
+| **to** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
@@ -900,7 +900,7 @@ mixpanel.get_group('company', 'mixpanel').set_once({
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
-| **to** | <span class="mp-arg-type"></span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
+| **to** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
 
 
