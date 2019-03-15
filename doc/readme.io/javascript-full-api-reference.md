@@ -9,16 +9,15 @@ title: JavaScript Full API Reference
 
 <hr>
 ## mixpanel.init
-This function initializes a new instance of the Mixpanel tracking object. 
-All new instances are added to the main mixpanel object as sub properties (such as 
-mixpanel.library_name) and also returned by this function. To define a 
-second instance on the page, you would call:
+This function initializes a new instance of the Mixpanel tracking object.  All new instances are added to the main mixpanel object as sub properties (such as  mixpanel.library_name) and also returned by this function. To define a  second instance on the page, you would call:
+
 
 ```javascript
 mixpanel.init('new token', { your: 'config' }, 'library_name');
 
 ```
 and use it like so:
+
 
 ```javascript
 mixpanel.library_name.track(...);
@@ -35,11 +34,8 @@ mixpanel.library_name.track(...);
 
 <hr>
 ## mixpanel.push
-push() keeps the standard async-array-push 
-behavior around after the lib is loaded. 
-This is only useful for external integrations that 
-do not wish to rely on our convenience methods 
-(created in the snippet).
+push() keeps the standard async-array-push  behavior around after the lib is loaded.  This is only useful for external integrations that  do not wish to rely on our convenience methods  (created in the snippet).
+
 
 ### Usage:
 
@@ -55,12 +51,10 @@ mixpanel.push(['register', { a: 'b' }]);
 
 <hr>
 ## mixpanel.disable
-Disable events on the Mixpanel object. If passed no arguments, 
-this function disables tracking of any event. If passed an 
-array of event names, those events will be disabled, but other 
-events will continue to be tracked.
-Note: this function does not stop other mixpanel functions from 
-firing, such as register() or people.set().
+Disable events on the Mixpanel object. If passed no arguments,  this function disables tracking of any event. If passed an  array of event names, those events will be disabled, but other  events will continue to be tracked.
+
+Note: this function does not stop other mixpanel functions from  firing, such as register() or people.set().
+
 
 
 
@@ -71,8 +65,8 @@ firing, such as register() or people.set().
 
 <hr>
 ## mixpanel.track
-Track an event. This is the most important and 
-frequently used Mixpanel function.
+Track an event. This is the most important and  frequently used Mixpanel function.
+
 
 ### Usage:
 
@@ -82,6 +76,7 @@ mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
 
 ```
 To track link clicks or form submissions, see track_links() or track_forms().
+
 
 
 | Argument | Type | Description |
@@ -94,6 +89,7 @@ To track link clicks or form submissions, see track_links() or track_forms().
 <hr>
 ## mixpanel.set_group
 Register the current user into one/many groups.
+
 
 ### Usage:
 
@@ -115,6 +111,7 @@ Register the current user into one/many groups.
 ## mixpanel.add_group
 Add a new group for this user.
 
+
 ### Usage:
 
 ```javascript
@@ -133,6 +130,7 @@ Add a new group for this user.
 ## mixpanel.remove_group
 Remove a group from this user.
 
+
 ### Usage:
 
 ```javascript
@@ -150,6 +148,7 @@ Remove a group from this user.
 <hr>
 ## mixpanel.track_with_groups
 Track an event with specific groups.
+
 
 ### Usage:
 
@@ -171,6 +170,7 @@ Track an event with specific groups.
 ## mixpanel.get_group
 Look up reference to a Mixpanel group
 
+
 ### Usage:
 
 ```javascript
@@ -186,8 +186,8 @@ Look up reference to a Mixpanel group
 
 <hr>
 ## mixpanel.track_links
-Track clicks on a set of document elements. Selector must be a 
-valid query. Elements must exist on the page at the time track_links is called.
+Track clicks on a set of document elements. Selector must be a  valid query. Elements must exist on the page at the time track_links is called.
+
 
 ### Usage:
 
@@ -198,16 +198,10 @@ mixpanel.track_links('#nav', 'Clicked Nav Link');
 ```
 
 ### Notes:
-This function will wait up to 300 ms for the Mixpanel 
-servers to respond. If they have not responded by that time 
-it will head to the link without ensuring that your event 
-has been tracked.  To configure this timeout please see the 
-set_config() documentation below.
-If you pass a function in as the properties argument, the 
-function will receive the DOMElement that triggered the 
-event as an argument.  You are expected to return an object 
-from the function; any properties defined on this object 
-will be sent to mixpanel as event properties.
+This function will wait up to 300 ms for the Mixpanel  servers to respond. If they have not responded by that time  it will head to the link without ensuring that your event  has been tracked.  To configure this timeout please see the  set_config() documentation below.
+
+If you pass a function in as the properties argument, the  function will receive the DOMElement that triggered the  event as an argument.  You are expected to return an object  from the function; any properties defined on this object  will be sent to mixpanel as event properties.
+
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
@@ -220,6 +214,7 @@ will be sent to mixpanel as event properties.
 ## mixpanel.track_forms
 Track form submissions. Selector must be a valid query.
 
+
 ### Usage:
 
 ```javascript
@@ -229,16 +224,10 @@ mixpanel.track_forms('#register', 'Created Account');
 ```
 
 ### Notes:
-This function will wait up to 300 ms for the mixpanel 
-servers to respond, if they have not responded by that time 
-it will head to the link without ensuring that your event 
-has been tracked.  To configure this timeout please see the 
-set_config() documentation below.
-If you pass a function in as the properties argument, the 
-function will receive the DOMElement that triggered the 
-event as an argument.  You are expected to return an object 
-from the function; any properties defined on this object 
-will be sent to mixpanel as event properties.
+This function will wait up to 300 ms for the mixpanel  servers to respond, if they have not responded by that time  it will head to the link without ensuring that your event  has been tracked.  To configure this timeout please see the  set_config() documentation below.
+
+If you pass a function in as the properties argument, the  function will receive the DOMElement that triggered the  event as an argument.  You are expected to return an object  from the function; any properties defined on this object  will be sent to mixpanel as event properties.
+
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
@@ -249,9 +238,8 @@ will be sent to mixpanel as event properties.
 
 <hr>
 ## mixpanel.time_event
-Time an event by including the time between this call and a 
-later 'track' call for the same event in the properties sent 
-with the event.
+Time an event by including the time between this call and a  later 'track' call for the same event in the properties sent  with the event.
+
 
 ### Usage:
 
@@ -261,9 +249,8 @@ mixpanel.time_event('Registered');
 mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
 
 ```
-When called for a particular event name, the next track call for that event 
-name will include the elapsed time between the 'time_event' and 'track' 
-calls. This value is stored as seconds in the '$duration' property.
+When called for a particular event name, the next track call for that event  name will include the elapsed time between the 'time_event' and 'track'  calls. This value is stored as seconds in the '$duration' property.
+
 
 
 | Argument | Type | Description |
@@ -273,8 +260,8 @@ calls. This value is stored as seconds in the '$duration' property.
 
 <hr>
 ## mixpanel.register
-Register a set of super properties, which are included with all 
-events. This will overwrite previous super property values.
+Register a set of super properties, which are included with all  events. This will overwrite previous super property values.
+
 
 ### Usage:
 
@@ -298,8 +285,8 @@ mixpanel.register({
 
 <hr>
 ## mixpanel.register_once
-Register a set of super properties only once. This will not 
-overwrite previous super property values, unlike register().
+Register a set of super properties only once. This will not  overwrite previous super property values, unlike register().
+
 
 ### Usage:
 
@@ -312,8 +299,8 @@ mixpanel.register_once({
 ```
 
 ### Notes:
-If default_value is specified, current super properties 
-with that value will be overwritten.
+If default_value is specified, current super properties  with that value will be overwritten.
+
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
@@ -328,6 +315,7 @@ Delete a super property stored with the current user.
 
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **property** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the super property to remove |
@@ -335,29 +323,15 @@ Delete a super property stored with the current user.
 
 <hr>
 ## mixpanel.identify
-Identify a user with a unique ID instead of a Mixpanel 
-randomly generated distinct_id. If the method is never called, 
-then unique visitors will be identified by a UUID generated 
-the first time they visit the site.
+Identify a user with a unique ID instead of a Mixpanel  randomly generated distinct_id. If the method is never called,  then unique visitors will be identified by a UUID generated  the first time they visit the site.
+
 
 
 ### Notes:
-You can call this function to overwrite a previously set 
-unique ID for the current user. Mixpanel cannot translate 
-between IDs at this time, so when you change a user's ID 
-they will appear to be a new user.
-When used alone, mixpanel.identify will change the user's 
-distinct_id to the unique ID provided. When used in tandem 
-with mixpanel.alias, it will allow you to identify based on 
-unique ID and map that back to the original, anonymous 
-distinct_id given to the user upon her first arrival to your 
-site (thus connecting anonymous pre-signup activity to 
-post-signup activity). Though the two work together, do not 
-call identify() at the same time as alias(). Calling the two 
-at the same time can cause a race condition, so it is best 
-practice to call identify on the original, anonymous ID 
-right after you've aliased it. 
-<a href="https://mixpanel.com/help/questions/articles/how-should-i-handle-my-user-identity-with-the-mixpanel-javascript-library">Learn more about how mixpanel.identify and mixpanel.alias can be used</a>.
+You can call this function to overwrite a previously set  unique ID for the current user. Mixpanel cannot translate  between IDs at this time, so when you change a user's ID  they will appear to be a new user.
+
+When used alone, mixpanel.identify will change the user's  distinct_id to the unique ID provided. When used in tandem  with mixpanel.alias, it will allow you to identify based on  unique ID and map that back to the original, anonymous  distinct_id given to the user upon her first arrival to your  site (thus connecting anonymous pre-signup activity to  post-signup activity). Though the two work together, do not  call identify() at the same time as alias(). Calling the two  at the same time can cause a race condition, so it is best  practice to call identify on the original, anonymous ID  right after you've aliased it.  <a href="https://mixpanel.com/help/questions/articles/how-should-i-handle-my-user-identity-with-the-mixpanel-javascript-library">Learn more about how mixpanel.identify and mixpanel.alias can be used</a>.
+
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
@@ -366,21 +340,21 @@ right after you've aliased it.
 
 <hr>
 ## mixpanel.reset
-Clears super properties and generates a new random distinct_id for this instance. 
-Useful for clearing data when a user logs out.
+Clears super properties and generates a new random distinct_id for this instance.  Useful for clearing data when a user logs out.
+
 
 
 
 
 <hr>
 ## mixpanel.get_distinct_id
-Returns the current distinct id of the user. This is either the id automatically 
-generated by the library or the id that has been passed by a call to identify().
+Returns the current distinct id of the user. This is either the id automatically  generated by the library or the id that has been passed by a call to identify().
+
 
 
 ### Notes:
-get_distinct_id() can only be called after the Mixpanel library has finished loading. 
-init() has a loaded function available to handle this automatically. For example:
+get_distinct_id() can only be called after the Mixpanel library has finished loading.  init() has a loaded function available to handle this automatically. For example:
+
 
 ```javascript
 // set distinct_id after the mixpanel library has loaded
@@ -394,9 +368,8 @@ mixpanel.init('YOUR PROJECT TOKEN', {
 
 <hr>
 ## mixpanel.alias
-Create an alias, which Mixpanel will use to link two distinct_ids going forward (not retroactively). 
-Multiple aliases can map to the same original ID, but not vice-versa. Aliases can also be chained - the 
-following is a valid scenario:
+Create an alias, which Mixpanel will use to link two distinct_ids going forward (not retroactively).  Multiple aliases can map to the same original ID, but not vice-versa. Aliases can also be chained - the  following is a valid scenario:
+
 
 ```javascript
 mixpanel.alias('new_id', 'existing_id');
@@ -407,11 +380,10 @@ mixpanel.alias('newer_id', 'new_id');
 If the original ID is not passed in, we will use the current distinct_id - probably the auto-generated GUID.
 
 
+
 ### Notes:
-The best practice is to call alias() when a unique ID is first created for a user 
-(e.g., when a user first registers for an account and provides an email address). 
-alias() should never be called more than once for a given user, except to 
-chain a newer ID to a previously new ID, as described above.
+The best practice is to call alias() when a unique ID is first created for a user  (e.g., when a user first registers for an account and provides an email address).  alias() should never be called more than once for a given user, except to  chain a newer ID to a previously new ID, as described above.
+
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
@@ -422,7 +394,9 @@ chain a newer ID to a previously new ID, as described above.
 <hr>
 ## mixpanel.set_config
 Update the configuration of a mixpanel library instance.
+
 The default config is:
+
 
 ```javascript
 {
@@ -516,15 +490,16 @@ returns the current config object for the library.
 
 
 
+
 <hr>
 ## mixpanel.get_property
-Returns the value of the super property named property_name. If no such 
-property is set, get_property() will return the undefined value.
+Returns the value of the super property named property_name. If no such  property is set, get_property() will return the undefined value.
+
 
 
 ### Notes:
-get_property() can only be called after the Mixpanel library has finished loading. 
-init() has a loaded function available to handle this automatically. For example:
+get_property() can only be called after the Mixpanel library has finished loading.  init() has a loaded function available to handle this automatically. For example:
+
 
 ```javascript
 // grab value for 'user_id' after the mixpanel library has loaded
@@ -543,6 +518,7 @@ mixpanel.init('YOUR PROJECT TOKEN', {
 <hr>
 ## mixpanel.opt_in_tracking
 Opt the user in to data tracking and cookies/localstorage for this Mixpanel instance
+
 
 
 
@@ -566,6 +542,7 @@ Opt the user out of data tracking and cookies/localstorage for this Mixpanel ins
 
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override |
@@ -584,6 +561,7 @@ Check whether the user has opted in to data tracking and cookies/localstorage fo
 
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override |
@@ -597,6 +575,7 @@ Check whether the user has opted out of data tracking and cookies/localstorage f
 
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override |
@@ -607,6 +586,7 @@ Check whether the user has opted out of data tracking and cookies/localstorage f
 <hr>
 ## mixpanel.clear_opt_in_out_tracking
 Clear the user's opt in/out status of data tracking and cookies/localstorage for this Mixpanel instance
+
 
 
 
@@ -628,6 +608,7 @@ Clear the user's opt in/out status of data tracking and cookies/localstorage for
 <hr>
 ## mixpanel.people.set
 Set properties on a user record.
+
 
 ### Usage:
 
@@ -653,9 +634,8 @@ mixpanel.people.set({
 
 <hr>
 ## mixpanel.people.set_once
-Set properties on a user record, only if they do not yet exist. 
-This will not overwrite previous people property values, unlike 
-people.set().
+Set properties on a user record, only if they do not yet exist.  This will not overwrite previous people property values, unlike  people.set().
+
 
 ### Usage:
 
@@ -683,6 +663,7 @@ mixpanel.people.set_once({
 ## mixpanel.people.unset
 Unset properties on a user record (permanently removes the properties and their values from a profile).
 
+
 ### Usage:
 
 ```javascript
@@ -702,6 +683,7 @@ mixpanel.people.unset(['gender', 'Company']);
 <hr>
 ## mixpanel.people.increment
 Increment/decrement numeric people analytics properties.
+
 
 ### Usage:
 
@@ -735,6 +717,7 @@ mixpanel.people.increment({
 ## mixpanel.people.append
 Append a value to a list-valued people analytics property.
 
+
 ### Usage:
 
 ```javascript
@@ -761,6 +744,7 @@ mixpanel.people.append({
 ## mixpanel.people.remove
 Remove a value from a list-valued people analytics property.
 
+
 ### Usage:
 
 ```javascript
@@ -777,8 +761,8 @@ mixpanel.people.remove('School', 'UCB');
 
 <hr>
 ## mixpanel.people.union
-Merge a given list with a list-valued people analytics property, 
-excluding duplicate values.
+Merge a given list with a list-valued people analytics property,  excluding duplicate values.
+
 
 ### Usage:
 
@@ -810,9 +794,8 @@ mixpanel.people.union({
 
 <hr>
 ## mixpanel.people.track_charge
-Record that you have charged the current user a certain amount 
-of money. Charges recorded with track_charge() will appear in the 
-Mixpanel revenue report.
+Record that you have charged the current user a certain amount  of money. Charges recorded with track_charge() will appear in the  Mixpanel revenue report.
+
 
 ### Usage:
 
@@ -836,8 +819,8 @@ mixpanel.people.track_charge(30.50, {
 
 <hr>
 ## mixpanel.people.clear_charges
-Permanently clear all revenue report transactions from the 
-current user's people analytics profile.
+Permanently clear all revenue report transactions from the  current user's people analytics profile.
+
 
 ### Usage:
 
@@ -853,8 +836,8 @@ mixpanel.people.clear_charges();
 
 <hr>
 ## mixpanel.people.delete_user
-Permanently deletes the current people analytics profile from 
-Mixpanel (using the current distinct_id).
+Permanently deletes the current people analytics profile from  Mixpanel (using the current distinct_id).
+
 
 ### Usage:
 
@@ -872,6 +855,7 @@ mixpanel.people.delete_user();
 <hr>
 ## mixpanel.group.set
 Set properties on a group.
+
 
 ### Usage:
 
@@ -896,9 +880,8 @@ mixpanel.get_group('company', 'mixpanel').set({
 
 <hr>
 ## mixpanel.group.set_once
-Set properties on a group, only if they do not yet exist. 
-This will not overwrite previous group property values, unlike 
-group.set().
+Set properties on a group, only if they do not yet exist.  This will not overwrite previous group property values, unlike  group.set().
+
 
 ### Usage:
 
@@ -925,6 +908,7 @@ mixpanel.get_group('company', 'mixpanel').set_once({
 ## mixpanel.group.unset
 Unset properties on a group permanently.
 
+
 ### Usage:
 
 ```javascript
@@ -941,6 +925,7 @@ mixpanel.get_group('company', 'mixpanel').unset('Founded');
 <hr>
 ## mixpanel.group.union
 Merge a given list with a list-valued group property, excluding duplicate values.
+
 
 ### Usage:
 
@@ -960,6 +945,7 @@ mixpanel.get_group('company', 'mixpanel').union('Location', ['San Francisco', 'L
 <hr>
 ## mixpanel.group.remove
 Remove a property from a group. The value will be ignored if doesn't exist.
+
 
 ### Usage:
 
