@@ -1220,7 +1220,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
  *
  * @param {String} group_key Group key
  * @param {Array|String|Number} group_ids An array of group IDs, or a singular group ID
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  *
  */
 MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, group_ids, callback) {
@@ -1242,7 +1242,7 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, 
  *
  * @param {String} group_key Group key
  * @param {*} group_id A valid Mixpanel property type
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
     var old_values = this.get_property(group_key);
@@ -1268,7 +1268,7 @@ MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, 
  *
  * @param {String} group_key Group key
  * @param {*} group_id A valid Mixpanel property type
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
     var old_value = this.get_property(group_key);
@@ -1293,10 +1293,10 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_ke
  *
  *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
  *
- * @param {String} event_name
- * @param {Object=} properties
- * @param {Object=} groups
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {String} event_name The name of the event (see `mixpanel.track()`)
+ * @param {Object=} properties A set of properties to include with the event you're sending (see `mixpanel.track()`)
+ * @param {Object=} groups An object mapping group name keys to one or more values
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(function(event_name, properties, groups, callback) {
     var tracking_props = _.extend({}, properties || {});
@@ -2096,7 +2096,7 @@ MixpanelPeople.prototype._init = function(mixpanel_instance) {
  *
  * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [to] A value to set on the given property name
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
     var data = this.set_action(prop, to);
@@ -2137,7 +2137,7 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
  *
  * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [to] A value to set on the given property name
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
     var data = this.set_once_action(prop, to);
@@ -2158,7 +2158,7 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, 
  *     mixpanel.people.unset(['gender', 'Company']);
  *
  * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(function(prop, callback) {
     var data = this.unset_action(prop);
@@ -2188,7 +2188,7 @@ MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(function(prop, cal
  *
  * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
  * @param {Number} [by] An amount to increment the given property
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop, by, callback) {
     var data = {};
@@ -2235,7 +2235,7 @@ MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop,
  *
  * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [value] value An item to append to the list
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
     if (_.isObject(list_name)) {
@@ -2254,7 +2254,7 @@ MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_nam
  *
  * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [value] value Item to remove from the list
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
     if (_.isObject(list_name)) {
@@ -2288,7 +2288,7 @@ MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(list_nam
  *
  * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [value] Value / values to merge with the given property
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name, values, callback) {
     if (_.isObject(list_name)) {
@@ -2339,7 +2339,7 @@ MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(am
  *
  *     mixpanel.people.clear_charges();
  *
- * @param {Function} [callback] If provided, the callback will be called after the tracking event
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 MixpanelPeople.prototype.clear_charges = function(callback) {
     return this.set('$transactions', [], callback);

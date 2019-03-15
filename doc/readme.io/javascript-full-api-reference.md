@@ -104,7 +104,7 @@ Register the current user into one/many groups.
 | ------------- | ------------- | ----- |
 | **group_key** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Group key |
 | **group_ids** | <span class="mp-arg-type">Array or String or Number</span></br></span><span class="mp-arg-required">required</span> | An array of group IDs, or a singular group ID |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -123,7 +123,7 @@ Add a new group for this user.
 | ------------- | ------------- | ----- |
 | **group_key** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Group key |
 | **group_id** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -142,7 +142,7 @@ Remove a group from this user.
 | ------------- | ------------- | ----- |
 | **group_key** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Group key |
 | **group_id** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -159,11 +159,10 @@ Track an event with specific groups.
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
-| **query** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> |  |
-| **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> |  |
-| **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> |  |
-| **groups** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> |  |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the event (see <code>mixpanel.track()</code>) |
+| **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | A set of properties to include with the event you're sending (see <code>mixpanel.track()</code>) |
+| **groups** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | An object mapping group name keys to one or more values |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -629,7 +628,7 @@ mixpanel.people.set({
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
 | **to** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -656,7 +655,7 @@ mixpanel.people.set_once({
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
 | **to** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -677,7 +676,7 @@ mixpanel.people.unset(['gender', 'Company']);
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Array or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an array, this is a list of property names. |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -710,7 +709,7 @@ mixpanel.people.increment({
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and numeric values. |
 | **by** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | An amount to increment the given property |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -737,7 +736,7 @@ mixpanel.people.append({
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
 | **value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | value An item to append to the list |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -756,7 +755,7 @@ mixpanel.people.remove('School', 'UCB');
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
 | **value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | value Item to remove from the list |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -789,7 +788,7 @@ mixpanel.people.union({
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
 | **value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | Value / values to merge with the given property |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
@@ -831,7 +830,7 @@ mixpanel.people.clear_charges();
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
 <hr>
