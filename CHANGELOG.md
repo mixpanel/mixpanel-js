@@ -1,3 +1,6 @@
+**2.28.0** (9 Apr 2019)
+- Support event triggered inapps
+
 **2.27.0** (7 Mar 2019)
 - Support cross-subdomain tracking on TLDs longer than 6 chars (thanks @danielbaker)
 - Support configurable network protocol for inapp resources (thanks @mkdai)
