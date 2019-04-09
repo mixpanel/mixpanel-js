@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.27.1'
+    LIB_VERSION: '2.28.0'
 };
 
 exports['default'] = Config;
@@ -1867,7 +1867,7 @@ MixpanelLib.prototype.init = function (token, config, name) {
 MixpanelLib.prototype._init = function (token, config, name) {
     this['__loaded'] = true;
     this['config'] = {};
-    this._triggered_notifs = [];
+    this['_triggered_notifs'] = [];
 
     this.set_config(_utils._.extend({}, DEFAULT_CONFIG, config, {
         'name': name,
@@ -2849,7 +2849,7 @@ MixpanelLib.prototype._event_is_disabled = function (event_name) {
 };
 
 MixpanelLib.prototype._check_and_handle_triggered_notifications = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function (event_data) {
-    var arr = this._triggered_notifs;
+    var arr = this['_triggered_notifs'];
     for (var i = 0; i < arr.length; i++) {
         var notif = new MPNotif(arr[i], this);
         if (notif._matches_event_data(event_data)) {
@@ -2875,10 +2875,10 @@ MixpanelLib.prototype._check_and_handle_notifications = (0, _gdprUtils.addOptOut
     };
     this._send_request(this.get_config('api_host') + '/decide/', data, this._prepare_callback(_utils._.bind(function (result) {
         if (result['notifications'] && result['notifications'].length > 0) {
-            this._triggered_notifs = [];
+            this['_triggered_notifs'] = [];
             var notifications = [];
             _utils._.each(result['notifications'], function (notif) {
-                (notif['display_triggers'] && notif['display_triggers'].length > 0 ? this._triggered_notifs : notifications).push(notif);
+                (notif['display_triggers'] && notif['display_triggers'].length > 0 ? this['_triggered_notifs'] : notifications).push(notif);
             }, this);
             if (notifications.length > 0) {
                 this._show_notification.call(this, notifications[0]);

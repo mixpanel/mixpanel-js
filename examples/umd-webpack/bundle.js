@@ -69,7 +69,7 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.27.1'
+	        LIB_VERSION: '2.28.0'
 	    };
 
 	    // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -4072,7 +4072,7 @@
 	    MixpanelLib.prototype._init = function(token, config, name) {
 	        this['__loaded'] = true;
 	        this['config'] = {};
-	        this._triggered_notifs = [];
+	        this['_triggered_notifs'] = [];
 
 	        this.set_config(_.extend({}, DEFAULT_CONFIG, config, {
 	            'name': name,
@@ -5051,7 +5051,7 @@
 	    };
 
 	    MixpanelLib.prototype._check_and_handle_triggered_notifications = addOptOutCheckMixpanelLib(function(event_data) {
-	        var arr = this._triggered_notifs;
+	        var arr = this['_triggered_notifs'];
 	        for (var i = 0; i < arr.length; i++) {
 	            var notif = new MPNotif(arr[i], this);
 	            if (notif._matches_event_data(event_data)) {
@@ -5084,10 +5084,10 @@
 	            data,
 	            this._prepare_callback(_.bind(function(result) {
 	                if (result['notifications'] && result['notifications'].length > 0) {
-	                    this._triggered_notifs = [];
+	                    this['_triggered_notifs'] = [];
 	                    var notifications = [];
 	                    _.each(result['notifications'], function(notif) {
-	                        (notif['display_triggers'] && notif['display_triggers'].length > 0 ? this._triggered_notifs : notifications).push(notif);
+	                        (notif['display_triggers'] && notif['display_triggers'].length > 0 ? this['_triggered_notifs'] : notifications).push(notif);
 	                    }, this);
 	                    if (notifications.length > 0) {
 	                        this._show_notification.call(this, notifications[0]);
