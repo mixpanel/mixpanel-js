@@ -1,7 +1,7 @@
 /* eslint camelcase: "off" */
 import { addOptOutCheckMixpanelGroup } from './gdpr-utils';
 import { apiActions } from './api-actions';
-import { _ } from './utils';
+import { _, console } from './utils';
 
 /**
  * Mixpanel Group Object
