@@ -1139,6 +1139,15 @@ MixpanelLib.prototype.disable = function(events) {
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, callback) {
+    return this._track(event_name, properties, {}, callback);
+});
+
+// Used for sending special events like $create_alias, $identify, and $merge that we only want a subset of properties for.
+MixpanelLib.prototype._track_identity_event = addOptOutCheckMixpanelLib(function(event_name, properties, callback) {
+    return this._track(event_name, properties, { exclude_stored_identifiers: true }, callback);
+});
+
+MixpanelLib.prototype._track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
     if (typeof(callback) !== 'function') {
         callback = function() {};
     }
@@ -1174,13 +1183,19 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     // don't write to the persistence properties object and info
     // properties object by passing in a new object
 
-    // update properties with pageview info and super-properties
-    properties = _.extend(
+    // grab page/system info and super properties
+    var default_properties = _.extend(
         {},
         _.info.properties(),
-        this['persistence'].properties(),
-        properties
+        this['persistence'].properties()
     );
+    if (options.exclude_stored_identifiers) {
+        var id_props = ['distinct_id', '$device_id', '$user_id'];
+        _.each(id_props, function(prop) {
+            delete default_properties[prop];
+        });
+    }
+    properties = _.extend(default_properties, properties);
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_.isArray(property_blacklist)) {
@@ -1552,29 +1567,20 @@ MixpanelLib.prototype.identify = function(
 
     // identify only changes the distinct id if it doesn't match either the existing or the alias;
     // if it's new, blow away the alias as well.
-    var distinct_id = this.get_distinct_id();
+    var existing_distinct_id = this.get_distinct_id();
     this.register({'$user_id': unique_id});
 
     if (!this.get_property('$device_id')) {
         // The persisted distinct id might not actually be a device id at all
         // it might be a distinct id of the user from before
-        var device_id = distinct_id;
+        var device_id = existing_distinct_id;
         this.register_once({
             '$had_persisted_distinct_id': true,
             '$device_id': device_id
         }, '');
     }
 
-    var identify_params = {
-        'distinct_id': unique_id,
-        '$previous_id': distinct_id
-    };
-    if (!this.get_property('$had_persisted_distinct_id')) {
-        identify_params.$device_id = this.get_property('$device_id');
-    }
-    this.track('$identify', identify_params);
-
-    if (unique_id !== distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
+    if (unique_id !== existing_distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
         this.unregister(ALIAS_ID_KEY);
         this.register({'distinct_id': unique_id});
     }
@@ -1582,6 +1588,18 @@ MixpanelLib.prototype.identify = function(
     this._flags.identify_called = true;
     // Flush any queued up people requests
     this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
+
+    if (existing_distinct_id !== unique_id) {
+        var identify_params = {
+            'distinct_id': unique_id,
+            '$previous_id': existing_distinct_id
+        };
+        // we can't be sure that the currently set device_id is a real device id, so don't send anything.
+        if (!this.get_property('$had_persisted_distinct_id')) {
+            identify_params.$device_id = this.get_property('$device_id');
+        }
+        return this._track_identity_event('$identify', identify_params);
+    }
 };
 
 /**
@@ -1654,7 +1672,7 @@ MixpanelLib.prototype.alias = function(alias, original) {
     }
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
-        return this.track('$create_alias', { 'alias': alias, 'distinct_id': original }, function() {
+        return this._track_identity_event('$create_alias', { 'alias': alias, 'distinct_id': original }, function() {
             // Flush the people queue
             _this.identify(alias);
         });
@@ -1679,10 +1697,10 @@ MixpanelLib.prototype.alias = function(alias, original) {
  * @private
  * @param {String} id1 A unique identifier that you want to merge with id2.
  * @param {String} id2 Another unique identifier, defaulting to the current stored distinct_id.
- * @param {Function} callback A callback to run that can process the response from the merge request.
+ * @param {Function} [callback] A callback to run that can process the response from the merge request.
  */
 MixpanelLib.prototype.merge = function(id1, id2, callback) {
-    if (_.isUndefined(id1) || _.idUndefined(id2)) {
+    if (_.isUndefined(id1) || _.isUndefined(id2)) {
         console.error('must pass two ids to merge');
         return -1;
     }
@@ -1691,8 +1709,7 @@ MixpanelLib.prototype.merge = function(id1, id2, callback) {
         console.error('merge(id1: ' + id1 + ', id2: ' + id2);
         return -1;
     }
-
-    return this.track('$merge', { 'ids': [id1, id2] }, callback);
+    return this._track_identity_event('$merge', { 'ids': [id1, id2] }, callback);
 };
 
 /**
