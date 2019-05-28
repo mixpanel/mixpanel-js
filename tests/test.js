@@ -1709,8 +1709,8 @@
                 var ev = mixpanel.test.identify(new_id);
                 same(ev["event"], "$identify");
                 same(ev.properties.distinct_id, new_id);
-                same(ev.properties.$previous_id, current_id);
-                same(ev.properties.$device_id, device_id);
+                same(ev.properties.previous_distinct_id, current_id);
+                same(ev.properties.anon_id, device_id);
             });
 
             test("repeated identify with same ID does not send an event", 2, function() {
@@ -1735,8 +1735,8 @@
                 var ev2 = mixpanel.test.identify(new_id2);
                 same(ev2["event"], "$identify");
                 same(ev2.properties.distinct_id, new_id2);
-                same(ev2.properties.$previous_id, new_id1);
-                same(ev2.properties.$device_id, device_id);
+                same(ev2.properties.previous_distinct_id, new_id1);
+                same(ev2.properties.anon_id, device_id);
             });
 
             test("when device id was not set prior to identify don't pass to server until reset is called", 14, function() {
@@ -1750,8 +1750,8 @@
                 var ev = mixpanel.test.identify(new_id1);
                 same(ev["event"], "$identify");
                 same(ev.properties.distinct_id, new_id1);
-                same(ev.properties.$previous_id, current_id);
-                same(ev.properties.$device_id, undefined);
+                same(ev.properties.previous_distinct_id, current_id);
+                same(ev.properties.anon_id, undefined);
 
                 // should get set as a side effect of identify
                 same(mixpanel.test.get_property('$device_id'), current_id);
@@ -1760,8 +1760,8 @@
                 var ev2 = mixpanel.test.identify(new_id2);
                 same(ev2["event"], "$identify");
                 same(ev2.properties.distinct_id, new_id2);
-                same(ev2.properties.$previous_id, new_id1);
-                same(ev2.properties.$device_id, undefined);
+                same(ev2.properties.previous_distinct_id, new_id1);
+                same(ev2.properties.anon_id, undefined);
 
                 mixpanel.test.reset();
                 var after_reset_device_id = mixpanel.test.get_property('$device_id'),
@@ -1773,8 +1773,8 @@
                 var ev3 = mixpanel.test.identify(after_reset_new_id3);
                 same(ev3["event"], "$identify");
                 same(ev3.properties.distinct_id, after_reset_new_id3);
-                same(ev3.properties.$previous_id, after_reset_distinct_id);
-                same(ev3.properties.$device_id, after_reset_device_id);
+                same(ev3.properties.previous_distinct_id, after_reset_distinct_id);
+                same(ev3.properties.anon_id, after_reset_device_id);
             });
 
             module("mixpanel._", {

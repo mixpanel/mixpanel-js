@@ -1567,20 +1567,20 @@ MixpanelLib.prototype.identify = function(
 
     // identify only changes the distinct id if it doesn't match either the existing or the alias;
     // if it's new, blow away the alias as well.
-    var existing_distinct_id = this.get_distinct_id();
+    var previous_distinct_id = this.get_distinct_id();
     this.register({'$user_id': unique_id});
 
     if (!this.get_property('$device_id')) {
         // The persisted distinct id might not actually be a device id at all
         // it might be a distinct id of the user from before
-        var device_id = existing_distinct_id;
+        var device_id = previous_distinct_id;
         this.register_once({
             '$had_persisted_distinct_id': true,
             '$device_id': device_id
         }, '');
     }
 
-    if (unique_id !== existing_distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
+    if (unique_id !== previous_distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
         this.unregister(ALIAS_ID_KEY);
         this.register({'distinct_id': unique_id});
     }
@@ -1589,14 +1589,14 @@ MixpanelLib.prototype.identify = function(
     // Flush any queued up people requests
     this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
 
-    if (existing_distinct_id !== unique_id) {
+    if (previous_distinct_id !== unique_id) {
         var identify_params = {
             'distinct_id': unique_id,
-            '$previous_id': existing_distinct_id
+            'previous_distinct_id': previous_distinct_id
         };
         // we can't be sure that the currently set device_id is a real device id, so don't send anything.
         if (!this.get_property('$had_persisted_distinct_id')) {
-            identify_params.$device_id = this.get_property('$device_id');
+            identify_params['anon_id'] = this.get_property('$device_id'); 
         }
         return this._track_identity_event('$identify', identify_params);
     }
