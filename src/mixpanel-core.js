@@ -1684,35 +1684,6 @@ MixpanelLib.prototype.alias = function(alias, original) {
 };
 
 /**
- * Merge two distinct_ids retroactively. If one or both have already been merged with other distinct_ids,
- * this will combine all the distinct_ids together. Events and people updates sent with either distinct_id will
- * be routed to the same user profile.
- * 
- * ### Notes:
- * 
- * Merge requests are only processed for projects that have migrated to using the new identity management system.
- * Merge is included here for convenience sake, but for most common web scenarios you should just use identify(), which
- * will do a special merge that safely combines anonymous and identified data.
- * 
- * @private
- * @param {String} id1 A unique identifier that you want to merge with id2.
- * @param {String} id2 Another unique identifier, defaulting to the current stored distinct_id.
- * @param {Function} [callback] A callback to run that can process the response from the merge request.
- */
-MixpanelLib.prototype.merge = function(id1, id2, callback) {
-    if (_.isUndefined(id1) || _.isUndefined(id2)) {
-        console.error('must pass two ids to merge');
-        return -1;
-    }
-    if (id1 === id2) {
-        console.error('merging the same id - skipping api call');
-        console.error('merge(id1: ' + id1 + ', id2: ' + id2);
-        return -1;
-    }
-    return this._track_identity_event('$merge', { 'ids': [id1, id2] }, callback);
-};
-
-/**
  * Provide a string to recognize the user by. The string passed to
  * this method will appear in the Mixpanel Streams product rather
  * than an automatically generated name. Name tags do not have to
@@ -3921,7 +3892,6 @@ MixpanelLib.prototype['register_once']                   = MixpanelLib.prototype
 MixpanelLib.prototype['unregister']                      = MixpanelLib.prototype.unregister;
 MixpanelLib.prototype['identify']                        = MixpanelLib.prototype.identify;
 MixpanelLib.prototype['alias']                           = MixpanelLib.prototype.alias;
-MixpanelLib.prototype['merge']                           = MixpanelLib.prototype.merge;
 MixpanelLib.prototype['name_tag']                        = MixpanelLib.prototype.name_tag;
 MixpanelLib.prototype['set_config']                      = MixpanelLib.prototype.set_config;
 MixpanelLib.prototype['get_config']                      = MixpanelLib.prototype.get_config;
