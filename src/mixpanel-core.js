@@ -1566,7 +1566,7 @@ MixpanelLib.prototype.identify = function(
 
     // identify only changes the distinct id if it doesn't match either the existing or the alias;
     // if it's new, blow away the alias as well.
-    if (new_distinct_id !== previous_distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
+    if (new_distinct_id !== previous_distinct_id && new_distinct_id !== this.get_property(ALIAS_ID_KEY)) {
         this.unregister(ALIAS_ID_KEY);
         this.register({'distinct_id': new_distinct_id});
     }
