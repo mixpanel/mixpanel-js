@@ -1139,15 +1139,6 @@ MixpanelLib.prototype.disable = function(events) {
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, callback) {
-    return this._track(event_name, properties, {}, callback);
-});
-
-// Used for sending special events like $create_alias, $identify, and $merge that we only want a subset of properties for.
-MixpanelLib.prototype._track_identity_event = addOptOutCheckMixpanelLib(function(event_name, properties, callback) {
-    return this._track(event_name, properties, { exclude_stored_identifiers: true }, callback);
-});
-
-MixpanelLib.prototype._track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
     if (typeof(callback) !== 'function') {
         callback = function() {};
     }
@@ -1183,19 +1174,13 @@ MixpanelLib.prototype._track = addOptOutCheckMixpanelLib(function(event_name, pr
     // don't write to the persistence properties object and info
     // properties object by passing in a new object
 
-    // grab page/system info and super properties
-    var default_properties = _.extend(
+    // update properties with pageview info and super-properties
+    properties = _.extend(
         {},
         _.info.properties(),
-        this['persistence'].properties()
+        this['persistence'].properties(),
+        properties
     );
-    if (options.exclude_stored_identifiers) {
-        var id_props = ['distinct_id', '$device_id', '$user_id'];
-        _.each(id_props, function(prop) {
-            delete default_properties[prop];
-        });
-    }
-    properties = _.extend(default_properties, properties);
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_.isArray(property_blacklist)) {
@@ -1593,7 +1578,7 @@ MixpanelLib.prototype.identify = function(
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
     if (new_distinct_id !== previous_distinct_id) {
-        return this._track_identity_event('$identify', {
+        return this.track('$identify', {
             'distinct_id': new_distinct_id,
             'anon_distinct_id': previous_distinct_id
         });
@@ -1670,7 +1655,7 @@ MixpanelLib.prototype.alias = function(alias, original) {
     }
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
-        return this._track_identity_event('$create_alias', { 'alias': alias, 'distinct_id': original }, function() {
+        return this.track('$create_alias', { 'alias': alias, 'distinct_id': original }, function() {
             // Flush the people queue
             _this.identify(alias);
         });
