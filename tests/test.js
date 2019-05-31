@@ -1829,7 +1829,6 @@
                 });
             }
 
-
             module("mixpanel._", {
                 setup: function() {
                     this.p = mixpanel._;
