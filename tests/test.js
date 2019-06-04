@@ -1728,7 +1728,7 @@
                     same(events.length, 1);
                     same(events[0]["event"], "$identify");
                     same(events[0].properties.distinct_id, new_id);
-                    same(events[0].properties.anon_distinct_id, current_id);
+                    same(events[0].properties.$anon_distinct_id, current_id);
                 });
 
                 test("repeated identify with same ID does not send an event", 1, function() {
@@ -1759,11 +1759,11 @@
 
                     same(ev1["event"], "$identify");
                     same(ev1.properties.distinct_id, new_id1);
-                    same(ev1.properties.anon_distinct_id, current_id);
+                    same(ev1.properties.$anon_distinct_id, current_id);
 
                     same(ev2["event"], "$identify");
                     same(ev2.properties.distinct_id, new_id2);
-                    same(ev2.properties.anon_distinct_id, new_id1);
+                    same(ev2.properties.$anon_distinct_id, new_id1);
                 });
 
                 test("same user logging in after reset sends an event", 13, function() {
@@ -1785,7 +1785,7 @@
                     var first_identify_event = events[0];
                     same(first_identify_event["event"], "$identify");
                     same(first_identify_event.properties.distinct_id, new_id1);
-                    same(first_identify_event.properties.anon_distinct_id, current_id);
+                    same(first_identify_event.properties.$anon_distinct_id, current_id);
 
                     var fake_event_after_identify = events[1];
                     same(fake_event_after_identify["event"], "fake event after identify");
@@ -1798,7 +1798,7 @@
                     var identify_after_reset = events[3];
                     same(identify_after_reset["event"], "$identify");
                     same(identify_after_reset.properties.distinct_id, new_id2);
-                    same(identify_after_reset.properties.anon_distinct_id, after_reset_id);
+                    same(identify_after_reset.properties.$anon_distinct_id, after_reset_id);
 
                     var fake_event_after_second_identify = events[4];
                     same(fake_event_after_second_identify["event"], "fake event after second identify");
@@ -1826,7 +1826,7 @@
                     var identify_event = events[1];
                     same(identify_event["event"], "$identify");
                     same(identify_event.properties.distinct_id, new_id);
-                    same(identify_event.properties.anon_distinct_id, current_id);
+                    same(identify_event.properties.$anon_distinct_id, current_id);
                 });
             }
 
