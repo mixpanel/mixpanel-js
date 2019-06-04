@@ -1704,16 +1704,17 @@
 
             // we are testing internal logic, not browser behavior, so only run these tests
             // in browsers that use xhr requests and support base64 decoding
-            if (USE_XHR && window.btoa) {
+            if (USE_XHR && window.btoa && Array.prototype.filter && Array.prototype.map) {
 
                 function getEventsFromTrackRequests(requests) {
-                    requests = (requests || []).filter(function(item) { return item.url.indexOf('https://api.mixpanel.com/track/?data=') == 0 });
-                    var events = [];
-                    for (var i = 0; i < requests.length; i++) {
-                        var b64 = decodeURIComponent(requests[i].url.split('data=')[1].split('&')[0]);
-                        events.push(JSON.parse(atob(b64)));
-                    }
-                    return events;
+                    return (requests || [])
+                        .filter(function(item) {
+                            return item.url.indexOf('https://api.mixpanel.com/track/?data=') === 0;
+                        })
+                        .map(function(request) {
+                            var b64 = decodeURIComponent(request.url.split('data=')[1].split('&')[0]);
+                            return JSON.parse(atob(b64));
+                        });
                 }
 
                 test("identify sends an event", 4, function() {
