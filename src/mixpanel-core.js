@@ -1540,7 +1540,7 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
 MixpanelLib.prototype.identify = function(
-    unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
+    new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     // Optional Parameters
     //  _set_callback:function  A callback to be run if and when the People set queue is flushed
@@ -1550,7 +1550,6 @@ MixpanelLib.prototype.identify = function(
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
 
-    var new_distinct_id = unique_id;
     var previous_distinct_id = this.get_distinct_id();
     this.register({'$user_id': new_distinct_id});
 
