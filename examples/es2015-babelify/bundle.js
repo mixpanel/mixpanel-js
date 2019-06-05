@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.28.0'
+    LIB_VERSION: '2.29.0-rc1'
 };
 
 exports['default'] = Config;
@@ -2575,7 +2575,7 @@ MixpanelLib.prototype._register_single = function (prop, value) {
  *
  * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
-MixpanelLib.prototype.identify = function (unique_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback) {
+MixpanelLib.prototype.identify = function (new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback) {
     // Optional Parameters
     //  _set_callback:function  A callback to be run if and when the People set queue is flushed
     //  _add_callback:function  A callback to be run if and when the People add queue is flushed
@@ -2584,29 +2584,35 @@ MixpanelLib.prototype.identify = function (unique_id, _set_callback, _add_callba
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
 
-    // identify only changes the distinct id if it doesn't match either the existing or the alias;
-    // if it's new, blow away the alias as well.
-    var distinct_id = this.get_distinct_id();
-    this.register({ '$user_id': unique_id });
+    var previous_distinct_id = this.get_distinct_id();
+    this.register({ '$user_id': new_distinct_id });
 
     if (!this.get_property('$device_id')) {
         // The persisted distinct id might not actually be a device id at all
         // it might be a distinct id of the user from before
-        var device_id = distinct_id;
+        var device_id = previous_distinct_id;
         this.register_once({
             '$had_persisted_distinct_id': true,
             '$device_id': device_id
         }, '');
     }
 
-    if (unique_id !== distinct_id && unique_id !== this.get_property(ALIAS_ID_KEY)) {
+    // identify only changes the distinct id if it doesn't match either the existing or the alias;
+    // if it's new, blow away the alias as well.
+    if (new_distinct_id !== previous_distinct_id && new_distinct_id !== this.get_property(ALIAS_ID_KEY)) {
         this.unregister(ALIAS_ID_KEY);
-        this.register({ 'distinct_id': unique_id });
+        this.register({ 'distinct_id': new_distinct_id });
     }
     this._check_and_handle_notifications(this.get_distinct_id());
     this._flags.identify_called = true;
     // Flush any queued up people requests
     this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
+
+    // send an $identify event any time the distinct_id is changing - logic on the server
+    // will determine whether or not to do anything with it.
+    if (new_distinct_id !== previous_distinct_id) {
+        this.track('$identify', { 'distinct_id': new_distinct_id, '$anon_distinct_id': previous_distinct_id });
+    }
 };
 
 /**
@@ -5122,7 +5128,7 @@ MixpanelGroup.prototype._send_request = function (data, callback) {
     var json_data = _utils._.JSONEncode(date_encoded_data);
     var encoded_data = _utils._.base64Encode(json_data);
 
-    console.log(data);
+    _utils.console.log(data);
     this._mixpanel._send_request(this._mixpanel.get_config('api_host') + '/groups/', { 'data': encoded_data }, this._mixpanel._prepare_callback(callback, truncated_data));
 
     return truncated_data;
