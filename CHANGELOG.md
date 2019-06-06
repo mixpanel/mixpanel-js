@@ -1,3 +1,7 @@
+**2.29.0** (6 Jun 2019)
+- `mixpanel.identify()` now sends special `$identify` event for advanced identity management
+- Fix extraneous logging for Group API calls
+
 **2.28.0** (9 Apr 2019)
 - Support event triggered inapps
 
