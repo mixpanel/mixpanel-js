@@ -3177,6 +3177,28 @@
                 });
             });
 
+            asyncTest('events tracked before decide call trigger notification once decide call returns', 1, function() {
+              mixpanel.init('notif_race', {}, 'notif_race');
+
+              mixpanel.notif_race.track('test_event');
+
+              mixpanel.notif_race._triggered_notifs = [{
+                  body: 'event happened before decide request complete',
+                  title: 'hallo',
+                  'display_triggers': [{event: 'test_event'}],
+              }];
+
+              mixpanel.notif_race._handle_user_decide_check_complete();
+
+              untilDone(function(done) {
+                  if ($('#mixpanel-notification-takeover').length === 1) {
+                      $('#mixpanel-notification-wrapper').remove();
+                      ok('success');
+                      done();
+                  }
+              });
+            });
+
             asyncTest('triggered notification with that matches any_event adds itself to DOM', 1, function() {
                 mixpanel._triggered_notifs = [{
                     body: 'notification body test',
