@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.29.0'
+    LIB_VERSION: '2.29.1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -3928,6 +3928,8 @@ var create_mplib = function(token, config, name) {
     instance['people']._init(instance);
 
     instance._cached_groups = {}; // cache groups in a pool
+    instance._user_decide_check_complete = false;
+    instance._events_tracked_before_user_decide_check_complete = [];
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true
@@ -4990,12 +4992,16 @@ MixpanelLib.prototype._event_is_disabled = function(event_name) {
 };
 
 MixpanelLib.prototype._check_and_handle_triggered_notifications = addOptOutCheckMixpanelLib(function(event_data) {
-    var arr = this['_triggered_notifs'];
-    for (var i = 0; i < arr.length; i++) {
-        var notif = new MPNotif(arr[i], this);
-        if (notif._matches_event_data(event_data)) {
-            this._show_notification(arr[i]);
-            return;
+    if (!this._user_decide_check_complete) {
+        this._events_tracked_before_user_decide_check_complete.push(event_data);
+    } else {
+        var arr = this['_triggered_notifs'];
+        for (var i = 0; i < arr.length; i++) {
+            var notif = new MPNotif(arr[i], this);
+            if (notif._matches_event_data(event_data)) {
+                this._show_notification(arr[i]);
+                return;
+            }
         }
     }
 });
@@ -5032,9 +5038,21 @@ MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLi
                     this._show_notification.call(this, notifications[0]);
                 }
             }
+            this._handle_user_decide_check_complete();
         }, this))
     );
 });
+
+MixpanelLib.prototype._handle_user_decide_check_complete = function() {
+    this._user_decide_check_complete = true;
+
+    // check notifications against events that were tracked before decide call completed
+    var events = this._events_tracked_before_user_decide_check_complete;
+    while (events.length > 0) {
+        var data = events.shift(); // replay in the same order they came in
+        this._check_and_handle_triggered_notifications(data);
+    }
+};
 
 MixpanelLib.prototype._show_notification = function(notif_data) {
     var notification = new MPNotif(notif_data, this);

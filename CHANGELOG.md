@@ -1,3 +1,6 @@
+**2.29.1** (22 Aug 2019)
+- Fix race condition with event-triggered in-apps
+
 **2.29.0** (6 Jun 2019)
 - `mixpanel.identify()` now sends special `$identify` event for advanced identity management
 - Fix extraneous logging for Group API calls
