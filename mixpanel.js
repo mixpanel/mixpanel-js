@@ -1,1 +1,1 @@
-build/mixpanel.globals.js
+dist/mixpanel.globals.js

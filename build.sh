@@ -7,16 +7,11 @@ echo 'Building module and globals bundles'
 ./node_modules/.bin/rollup -i src/loader-globals.js -f iife -o build/mixpanel.globals.js -n mixpanel -c rollup.config.js
 
 echo 'Minifying globals build and snippets'
-if [ -z "$1" ]; then
-    COMPILER=vendor/closure-compiler/compiler.jar
-else
-    COMPILER=$1
-fi
-java -jar $COMPILER --js mixpanel.js --js_output_file mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
+java -jar vendor/closure-compiler/compiler.jar --js mixpanel.js --js_output_file mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
 %output%
 })();"
-java -jar $COMPILER --js mixpanel-jslib-snippet.js --js_output_file mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
-java -jar $COMPILER --js mixpanel-jslib-snippet.js --js_output_file mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../mixpanel.min.js"'
+java -jar vendor/closure-compiler/compiler.jar --js mixpanel-jslib-snippet.js --js_output_file mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
+java -jar vendor/closure-compiler/compiler.jar --js mixpanel-jslib-snippet.js --js_output_file mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../mixpanel.min.js"'
 
 echo 'Bundling module-loader test runners'
 ./node_modules/.bin/webpack tests/module-cjs.js tests/module-cjs.bundle.js
@@ -26,3 +21,11 @@ echo 'Bundling module-loader examples'
 pushd examples/commonjs-browserify; npm install && npm run build; popd
 pushd examples/es2015-babelify; npm install && npm run build; popd
 pushd examples/umd-webpack; npm install && npm run build; popd
+
+if [ ! -z "$DIST" ]; then
+  echo 'Copying to dist/'
+  rm -r dist
+  cp -r build dist
+  cp mixpanel.min.js dist/
+  cp mixpanel-jslib-snippet.min.js dist/
+fi

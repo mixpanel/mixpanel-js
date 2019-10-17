@@ -2,16 +2,18 @@
   "name": "mixpanel-browser",
   "version": "2.29.1",
   "description": "The official Mixpanel JavaScript browser client library",
-  "main": "build/mixpanel.cjs.js",
+  "main": "dist/mixpanel.cjs.js",
   "directories": {
     "test": "tests"
   },
   "scripts": {
     "build": "./build.sh",
+    "build-dist": "DIST=1 ./build.sh",
     "dox": "node doc/build-docs.js",
     "dox-publish": "rdme docs doc/readme.io --key=$RDME_API_KEY --version=1.0",
     "integration_test": "echo 'Browse to localhost:3000/tests' && node testServer.js",
     "lint": "eslint ./src",
+    "prepublishOnly": "npm run build-dist",
     "start": "pushd examples; python -m SimpleHTTPServer; popd",
     "test": "npm run lint && npm run unit-test",
     "unit-test": "BABEL_ENV=test mocha --compilers js:babel-core/register tests/unit/*.js",
