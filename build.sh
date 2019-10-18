@@ -10,8 +10,8 @@ echo 'Minifying globals build and snippets'
 java -jar vendor/closure-compiler/compiler.jar --js mixpanel.js --js_output_file build/mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
 %output%
 })();"
-java -jar vendor/closure-compiler/compiler.jar --js mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
-java -jar vendor/closure-compiler/compiler.jar --js mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="./mixpanel.min.js"'
+java -jar vendor/closure-compiler/compiler.jar --js mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../build/mixpanel.js"'
+java -jar vendor/closure-compiler/compiler.jar --js mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../build/mixpanel.min.js"'
 
 echo 'Bundling module-loader test runners'
 ./node_modules/.bin/webpack tests/module-cjs.js tests/module-cjs.bundle.js
