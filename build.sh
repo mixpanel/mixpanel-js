@@ -7,6 +7,7 @@ fi
 
 echo 'Building main bundle'
 ./node_modules/.bin/rollup -i src/loader-globals.js -f iife -o build/mixpanel.globals.js -n mixpanel -c rollup.config.js
+ln -sf mixpanel.globals.js build/mixpanel.js
 
 if [ ! -z "$FULL" ]; then
     echo 'Minifying main build and snippets'
