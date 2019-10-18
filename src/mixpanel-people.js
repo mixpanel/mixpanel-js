@@ -1,6 +1,15 @@
 /* eslint camelcase: "off" */
 import { addOptOutCheckMixpanelPeople } from './gdpr-utils';
-import { apiActions } from './api-actions';
+import {
+  SET_ACTION,
+  SET_ONCE_ACTION,
+  UNSET_ACTION,
+  ADD_ACTION,
+  APPEND_ACTION,
+  REMOVE_ACTION,
+  UNION_ACTION,
+  apiActions
+} from './api-actions';
 import { _, console } from './utils';
 
 /**

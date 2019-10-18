@@ -21,8 +21,7 @@ import {
     ADD_ACTION,
     APPEND_ACTION,
     REMOVE_ACTION,
-    UNION_ACTION,
-    apiActions
+    UNION_ACTION
 } from './api-actions';
 
 /*
