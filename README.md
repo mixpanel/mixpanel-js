@@ -56,7 +56,7 @@ If you originally installed Mixpanel via Bower at its previous home ([https://gi
 
 ## Building bundles for release
 - Install development dependencies: `npm install`
-- Build: `npm run build`
+- Build: `npm run build-dist`
 
 ## Running tests
 - Install development dependencies: `npm install`
@@ -68,7 +68,7 @@ In the future we plan to automate the last step with a headless browser to strea
 Mixpanel production releases are tested against a large matrix of browsers and operating systems).
 
 ## Generating and publishing documentation
-- Create bundled source build: `npm run build`
+- Create bundled source build: `npm run build-dist`
 - Generate Markdown: `npm run dox` (result is at `doc/readme.io/javascript-full-api-reference.md`)
 - Publish to readme.io via the [rdme](https://www.npmjs.com/package/rdme) util: `RDME_API_KEY=<API_KEY> npm run dox-publish`
 
