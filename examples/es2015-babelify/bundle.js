@@ -356,7 +356,7 @@ function shouldTrackValue(value) {
         // check to see if input value looks like a credit card number
         // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
         var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
-        if (ccRegex.test((value || '').replace(/[\- ]/g, ''))) {
+        if (ccRegex.test((value || '').replace(/[- ]/g, ''))) {
             return false;
         }
 
@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.30.0'
+    LIB_VERSION: '2.30.1'
 };
 
 exports['default'] = Config;
@@ -3471,7 +3471,7 @@ MixpanelNotification.prototype._init_notification_el = function () {
         main_html = (this.mini ? notification_html : '') + '<div id="flipcontainer"><div id="flipper">' + (this.mini ? video_html : main_html) + '</div></div>';
     }
 
-    this.notification_el.innerHTML = ('<div id="overlay" class="' + this.notif_type + '">' + '<div id="campaignid-' + this.campaign_id + '">' + '<div id="bgwrapper">' + '<div id="bg"></div>' + main_html + '</div>' + '</div>' + '</div>').replace(/class=\"/g, 'class="' + MixpanelNotification.MARKUP_PREFIX + '-').replace(/id=\"/g, 'id="' + MixpanelNotification.MARKUP_PREFIX + '-');
+    this.notification_el.innerHTML = ('<div id="overlay" class="' + this.notif_type + '">' + '<div id="campaignid-' + this.campaign_id + '">' + '<div id="bgwrapper">' + '<div id="bg"></div>' + main_html + '</div>' + '</div>' + '</div>').replace(/class="/g, 'class="' + MixpanelNotification.MARKUP_PREFIX + '-').replace(/id="/g, 'id="' + MixpanelNotification.MARKUP_PREFIX + '-');
 };
 
 MixpanelNotification.prototype._init_styles = function () {
@@ -4011,7 +4011,7 @@ MixpanelNotification.prototype._init_video = _utils._.safewrap(function () {
     self.dest_url = self.video_url;
     var youtube_match = self.video_url.match(
     // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
-    /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i),
+    /(?:youtube(?:-nocookie)?\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/ ]{11})/i),
         vimeo_match = self.video_url.match(/vimeo\.com\/.*?(\d+)/i);
     if (youtube_match) {
         self.show_video = true;
@@ -5869,7 +5869,7 @@ var nativeBind = FuncProto.bind,
     nativeIsArray = Array.isArray,
     breaker = {};
 
-var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i;
+var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
 
 var _ = {
     trim: function trim(str) {
@@ -6223,7 +6223,7 @@ _.JSONEncode = (function () {
     return function (mixed_val) {
         var value = mixed_val;
         var quote = function quote(string) {
-            var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g; // eslint-disable-line no-control-regex
+            var escapable = /[\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g; // eslint-disable-line no-control-regex
             var meta = { // table of character substitutions
                 '\b': '\\b',
                 '\t': '\\t',
@@ -6758,7 +6758,7 @@ _.HTTPBuildQuery = function (formdata, arg_separator) {
 _.getQueryParam = function (url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[\[]/, '\\\[').replace(/[\]]/, '\\\]');
+    param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);

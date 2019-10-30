@@ -3,7 +3,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.30.0'
+    LIB_VERSION: '2.30.1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -47,7 +47,7 @@ var nativeForEach = ArrayProto.forEach;
 var nativeIndexOf = ArrayProto.indexOf;
 var nativeIsArray = Array.isArray;
 var breaker = {};
-var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i;
+var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
 
 var _ = {
     trim: function(str) {
@@ -411,7 +411,7 @@ _.JSONEncode = (function() {
     return function(mixed_val) {
         var value = mixed_val;
         var quote = function(string) {
-            var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g; // eslint-disable-line no-control-regex
+            var escapable = /[\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g; // eslint-disable-line no-control-regex
             var meta = { // table of character substitutions
                 '\b': '\\b',
                 '\t': '\\t',
@@ -495,7 +495,7 @@ _.JSONEncode = (function() {
                             gap ? '[\n' + gap +
                             partial.join(',\n' + gap) + '\n' +
                             mind + ']' :
-                            '[' + partial.join(',') + ']';
+                                '[' + partial.join(',') + ']';
                         gap = mind;
                         return v;
                     }
@@ -940,7 +940,7 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[\[]/, '\\\[').replace(/[\]]/, '\\\]');
+    param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);
@@ -1786,7 +1786,7 @@ function shouldTrackValue(value) {
         // check to see if input value looks like a credit card number
         // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
         var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
-        if (ccRegex.test((value || '').replace(/[\- ]/g, ''))) {
+        if (ccRegex.test((value || '').replace(/[- ]/g, ''))) {
             return false;
         }
 
@@ -3945,9 +3945,9 @@ MixpanelNotification.prototype._remove_class = _.safewrap(function(el, class_nam
     }
     if (el.className) {
         el.className = (' ' + el.className + ' ')
-                .replace(' ' + class_name + ' ', '')
-                .replace(/^[\s\xA0]+/, '')
-                .replace(/[\s\xA0]+$/, '');
+            .replace(' ' + class_name + ' ', '')
+            .replace(/^[\s\xA0]+/, '')
+            .replace(/[\s\xA0]+$/, '');
     }
 });
 
@@ -4238,16 +4238,16 @@ MixpanelNotification.prototype._init_notification_el = function() {
     }
 
     this.notification_el.innerHTML =
-            ('<div id="overlay" class="' + this.notif_type + '">' +
-                '<div id="campaignid-' + this.campaign_id + '">' +
-                    '<div id="bgwrapper">' +
-                        '<div id="bg"></div>' +
-                        main_html +
-                    '</div>' +
+        ('<div id="overlay" class="' + this.notif_type + '">' +
+            '<div id="campaignid-' + this.campaign_id + '">' +
+                '<div id="bgwrapper">' +
+                    '<div id="bg"></div>' +
+                    main_html +
                 '</div>' +
-            '</div>')
-            .replace(/class=\"/g, 'class="' + MixpanelNotification.MARKUP_PREFIX + '-')
-            .replace(/id=\"/g, 'id="' + MixpanelNotification.MARKUP_PREFIX + '-');
+            '</div>' +
+        '</div>')
+            .replace(/class="/g, 'class="' + MixpanelNotification.MARKUP_PREFIX + '-')
+            .replace(/id="/g, 'id="' + MixpanelNotification.MARKUP_PREFIX + '-');
 };
 
 MixpanelNotification.prototype._init_styles = function() {
@@ -4724,8 +4724,10 @@ MixpanelNotification.prototype._init_styles = function() {
     }
 
     // add vendor-prefixed style rules
-    var VENDOR_STYLES   = ['backface-visibility', 'border-radius', 'box-shadow', 'opacity',
-                                'perspective', 'transform', 'transform-style', 'transition'],
+    var VENDOR_STYLES = [
+            'backface-visibility', 'border-radius', 'box-shadow', 'opacity',
+            'perspective', 'transform', 'transform-style', 'transition'
+        ],
         VENDOR_PREFIXES = ['khtml', 'moz', 'ms', 'o', 'webkit'];
     for (var selector in notif_styles) {
         for (var si = 0; si < VENDOR_STYLES.length; si++) {
@@ -4744,8 +4746,8 @@ MixpanelNotification.prototype._init_styles = function() {
             var st = '';
             for (var selector in style_defs) {
                 var mp_selector = selector
-                        .replace(/#/g, '#' + MixpanelNotification.MARKUP_PREFIX + '-')
-                        .replace(/\./g, '.' + MixpanelNotification.MARKUP_PREFIX + '-');
+                    .replace(/#/g, '#' + MixpanelNotification.MARKUP_PREFIX + '-')
+                    .replace(/\./g, '.' + MixpanelNotification.MARKUP_PREFIX + '-');
                 st += '\n' + mp_selector + ' {';
                 var props = style_defs[selector];
                 for (var k in props) {
@@ -4788,12 +4790,12 @@ MixpanelNotification.prototype._init_video = _.safewrap(function() {
 
     self.dest_url = self.video_url;
     var youtube_match = self.video_url.match(
-                // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
-                /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
-            ),
+            // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
+            /(?:youtube(?:-nocookie)?\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/ ]{11})/i
+        ),
         vimeo_match = self.video_url.match(
-                /vimeo\.com\/.*?(\d+)/i
-            );
+            /vimeo\.com\/.*?(\d+)/i
+        );
     if (youtube_match) {
         self.show_video = true;
         self.youtube_video = youtube_match[1];
@@ -4939,15 +4941,15 @@ MixpanelNotification.prototype._set_client_config = function() {
     this.body_el = document.body || document.getElementsByTagName('body')[0];
     if (this.body_el) {
         this.doc_width = Math.max(
-                this.body_el.scrollWidth, document.documentElement.scrollWidth,
-                this.body_el.offsetWidth, document.documentElement.offsetWidth,
-                this.body_el.clientWidth, document.documentElement.clientWidth
-            );
+            this.body_el.scrollWidth, document.documentElement.scrollWidth,
+            this.body_el.offsetWidth, document.documentElement.offsetWidth,
+            this.body_el.clientWidth, document.documentElement.clientWidth
+        );
         this.doc_height = Math.max(
-                this.body_el.scrollHeight, document.documentElement.scrollHeight,
-                this.body_el.offsetHeight, document.documentElement.offsetHeight,
-                this.body_el.clientHeight, document.documentElement.clientHeight
-            );
+            this.body_el.scrollHeight, document.documentElement.scrollHeight,
+            this.body_el.offsetHeight, document.documentElement.offsetHeight,
+            this.body_el.clientHeight, document.documentElement.clientHeight
+        );
     }
 
     // detect CSS compatibility
@@ -5500,7 +5502,7 @@ MixpanelPeople.prototype._flush_one_queue = function(action, action_method, call
 // Flush queued engage operations - order does not matter,
 // and there are network level race conditions anyway
 MixpanelPeople.prototype._flush = function(
-  _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
+    _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     var _this = this;
     var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);
@@ -5610,13 +5612,13 @@ var INIT_SNIPPET = 1;
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-    // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
-    // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
+// http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
+// https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
 var USE_XHR = (window$1.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 
-    // IE<10 does not support cross-origin XHR's but script tags
-    // with defer won't block window.onload; ENQUEUE_REQUESTS
-    // should only be true for Opera<12
+// IE<10 does not support cross-origin XHR's but script tags
+// with defer won't block window.onload; ENQUEUE_REQUESTS
+// should only be true for Opera<12
 var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
 
 /*
