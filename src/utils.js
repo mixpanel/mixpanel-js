@@ -44,7 +44,7 @@ var nativeBind = FuncProto.bind,
     nativeIsArray = Array.isArray,
     breaker = {};
 
-var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i;
+var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
 
 var _ = {
     trim: function(str) {
@@ -408,7 +408,7 @@ _.JSONEncode = (function() {
     return function(mixed_val) {
         var value = mixed_val;
         var quote = function(string) {
-            var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g; // eslint-disable-line no-control-regex
+            var escapable = /[\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g; // eslint-disable-line no-control-regex
             var meta = { // table of character substitutions
                 '\b': '\\b',
                 '\t': '\\t',
@@ -492,7 +492,7 @@ _.JSONEncode = (function() {
                             gap ? '[\n' + gap +
                             partial.join(',\n' + gap) + '\n' +
                             mind + ']' :
-                            '[' + partial.join(',') + ']';
+                                '[' + partial.join(',') + ']';
                         gap = mind;
                         return v;
                     }
@@ -937,7 +937,7 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[\[]/, '\\\[').replace(/[\]]/, '\\\]');
+    param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);

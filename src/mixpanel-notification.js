@@ -149,9 +149,9 @@ MixpanelNotification.prototype._remove_class = _.safewrap(function(el, class_nam
     }
     if (el.className) {
         el.className = (' ' + el.className + ' ')
-                .replace(' ' + class_name + ' ', '')
-                .replace(/^[\s\xA0]+/, '')
-                .replace(/[\s\xA0]+$/, '');
+            .replace(' ' + class_name + ' ', '')
+            .replace(/^[\s\xA0]+/, '')
+            .replace(/[\s\xA0]+$/, '');
     }
 });
 
@@ -442,16 +442,16 @@ MixpanelNotification.prototype._init_notification_el = function() {
     }
 
     this.notification_el.innerHTML =
-            ('<div id="overlay" class="' + this.notif_type + '">' +
-                '<div id="campaignid-' + this.campaign_id + '">' +
-                    '<div id="bgwrapper">' +
-                        '<div id="bg"></div>' +
-                        main_html +
-                    '</div>' +
+        ('<div id="overlay" class="' + this.notif_type + '">' +
+            '<div id="campaignid-' + this.campaign_id + '">' +
+                '<div id="bgwrapper">' +
+                    '<div id="bg"></div>' +
+                    main_html +
                 '</div>' +
-            '</div>')
-            .replace(/class=\"/g, 'class="' + MixpanelNotification.MARKUP_PREFIX + '-')
-            .replace(/id=\"/g, 'id="' + MixpanelNotification.MARKUP_PREFIX + '-');
+            '</div>' +
+        '</div>')
+            .replace(/class="/g, 'class="' + MixpanelNotification.MARKUP_PREFIX + '-')
+            .replace(/id="/g, 'id="' + MixpanelNotification.MARKUP_PREFIX + '-');
 };
 
 MixpanelNotification.prototype._init_styles = function() {
@@ -928,8 +928,10 @@ MixpanelNotification.prototype._init_styles = function() {
     }
 
     // add vendor-prefixed style rules
-    var VENDOR_STYLES   = ['backface-visibility', 'border-radius', 'box-shadow', 'opacity',
-                                'perspective', 'transform', 'transform-style', 'transition'],
+    var VENDOR_STYLES = [
+            'backface-visibility', 'border-radius', 'box-shadow', 'opacity',
+            'perspective', 'transform', 'transform-style', 'transition'
+        ],
         VENDOR_PREFIXES = ['khtml', 'moz', 'ms', 'o', 'webkit'];
     for (var selector in notif_styles) {
         for (var si = 0; si < VENDOR_STYLES.length; si++) {
@@ -948,8 +950,8 @@ MixpanelNotification.prototype._init_styles = function() {
             var st = '';
             for (var selector in style_defs) {
                 var mp_selector = selector
-                        .replace(/#/g, '#' + MixpanelNotification.MARKUP_PREFIX + '-')
-                        .replace(/\./g, '.' + MixpanelNotification.MARKUP_PREFIX + '-');
+                    .replace(/#/g, '#' + MixpanelNotification.MARKUP_PREFIX + '-')
+                    .replace(/\./g, '.' + MixpanelNotification.MARKUP_PREFIX + '-');
                 st += '\n' + mp_selector + ' {';
                 var props = style_defs[selector];
                 for (var k in props) {
@@ -992,12 +994,12 @@ MixpanelNotification.prototype._init_video = _.safewrap(function() {
 
     self.dest_url = self.video_url;
     var youtube_match = self.video_url.match(
-                // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
-                /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
-            ),
+            // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
+            /(?:youtube(?:-nocookie)?\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/ ]{11})/i
+        ),
         vimeo_match = self.video_url.match(
-                /vimeo\.com\/.*?(\d+)/i
-            );
+            /vimeo\.com\/.*?(\d+)/i
+        );
     if (youtube_match) {
         self.show_video = true;
         self.youtube_video = youtube_match[1];
@@ -1143,15 +1145,15 @@ MixpanelNotification.prototype._set_client_config = function() {
     this.body_el = document.body || document.getElementsByTagName('body')[0];
     if (this.body_el) {
         this.doc_width = Math.max(
-                this.body_el.scrollWidth, document.documentElement.scrollWidth,
-                this.body_el.offsetWidth, document.documentElement.offsetWidth,
-                this.body_el.clientWidth, document.documentElement.clientWidth
-            );
+            this.body_el.scrollWidth, document.documentElement.scrollWidth,
+            this.body_el.offsetWidth, document.documentElement.offsetWidth,
+            this.body_el.clientWidth, document.documentElement.clientWidth
+        );
         this.doc_height = Math.max(
-                this.body_el.scrollHeight, document.documentElement.scrollHeight,
-                this.body_el.offsetHeight, document.documentElement.offsetHeight,
-                this.body_el.clientHeight, document.documentElement.clientHeight
-            );
+            this.body_el.scrollHeight, document.documentElement.scrollHeight,
+            this.body_el.offsetHeight, document.documentElement.offsetHeight,
+            this.body_el.clientHeight, document.documentElement.clientHeight
+        );
     }
 
     // detect CSS compatibility

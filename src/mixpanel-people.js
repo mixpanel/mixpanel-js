@@ -412,7 +412,7 @@ MixpanelPeople.prototype._flush_one_queue = function(action, action_method, call
 // Flush queued engage operations - order does not matter,
 // and there are network level race conditions anyway
 MixpanelPeople.prototype._flush = function(
-  _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
+    _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     var _this = this;
     var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);

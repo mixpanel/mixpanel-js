@@ -58,13 +58,13 @@ var INIT_SNIPPET = 1;
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
-    // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
-    // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
+// http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
+// https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
 var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 
-    // IE<10 does not support cross-origin XHR's but script tags
-    // with defer won't block window.onload; ENQUEUE_REQUESTS
-    // should only be true for Opera<12
+// IE<10 does not support cross-origin XHR's but script tags
+// with defer won't block window.onload; ENQUEUE_REQUESTS
+// should only be true for Opera<12
 var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
 
 /*
