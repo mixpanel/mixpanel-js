@@ -1,1 +1,0 @@
-mixpanel.globals.js
