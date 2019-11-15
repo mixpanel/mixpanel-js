@@ -62,7 +62,7 @@
                             same(instance.people.val_to_change, 41, "Function pushed onto people array was called");
                         });
                     }
-                    instance.set_config({api_host: 'https://api.mixpanel.com'});
+                    instance.set_config({api_host: 'https://api-js.mixpanel.com'});
                     test('Setting api_host to https in init callback works', function() {
                         stop();
                         instance.track("some event", {}, function(response) {

@@ -1709,7 +1709,7 @@
                 function getEventsFromTrackRequests(requests) {
                     return (requests || [])
                         .filter(function(item) {
-                            return item.url.indexOf('https://api.mixpanel.com/track/?data=') === 0;
+                            return item.url.indexOf('https://api-js.mixpanel.com/track/?data=') === 0;
                         })
                         .map(function(request) {
                             var b64 = decodeURIComponent(request.url.split('data=')[1].split('&')[0]);
