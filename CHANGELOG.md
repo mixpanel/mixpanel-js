@@ -1,3 +1,6 @@
+**2.31.0** (19 Nov 2019)
+- Default API server to api-js.mixpanel.com
+
 **2.29.1** (22 Aug 2019)
 - Fix race condition with event-triggered in-apps
 

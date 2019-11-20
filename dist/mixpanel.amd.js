@@ -2,7 +2,7 @@ define(function () { 'use strict';
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.30.1'
+        LIB_VERSION: '2.31.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -5624,7 +5624,7 @@ define(function () { 'use strict';
      * Module-level globals
      */
     var DEFAULT_CONFIG = {
-        'api_host':                          'https://api.mixpanel.com',
+        'api_host':                          'https://api-js.mixpanel.com',
         'app_host':                          'https://mixpanel.com',
         'autotrack':                         true,
         'cdn':                               'https://cdn.mxpnl.com',

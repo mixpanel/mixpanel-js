@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.30.1'
+    LIB_VERSION: '2.31.0'
 };
 
 exports['default'] = Config;
@@ -1289,7 +1289,7 @@ var ENQUEUE_REQUESTS = !USE_XHR && _utils.userAgent.indexOf('MSIE') === -1 && _u
  * Module-level globals
  */
 var DEFAULT_CONFIG = {
-    'api_host': 'https://api.mixpanel.com',
+    'api_host': 'https://api-js.mixpanel.com',
     'app_host': 'https://mixpanel.com',
     'autotrack': true,
     'cdn': 'https://cdn.mxpnl.com',
