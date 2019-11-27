@@ -3584,6 +3584,46 @@
                         'Content-Length': resp.length
                     }, resp);
                 });
+
+                test("tracking defaults to POST", 5, function() {
+                    mixpanel.test.track('test', {foo: 'bar'});
+
+                    same(this.requests.length, 1, "track should have fired off a request");
+
+                    var req = this.requests[0];
+                    same(req.method, 'POST');
+                    ok(
+                        req.requestHeaders['Content-Type'].indexOf('application/x-www-form-urlencoded') >= 0,
+                        'POST request should have set Content-Type header correctly'
+                    );
+                    same(
+                        req.requestBody.indexOf('data='), 0,
+                        'POST request should have transmitted data in request body'
+                    );
+                    same(
+                        req.url.indexOf('data='), -1,
+                        'POST request should not have transmitted data on URL'
+                    );
+                });
+
+                test("tracking can be configured to GET", 4, function() {
+                    mixpanel.test.set_config({api_method: 'GET'});
+
+                    mixpanel.test.track('test', {foo: 'bar'});
+
+                    same(this.requests.length, 1, "track should have fired off a request");
+
+                    var req = this.requests[0];
+                    same(req.method, 'GET');
+                    ok(
+                        req.url.indexOf('data=') >= 0,
+                        'GET request should have transmitted data on URL'
+                    );
+                    same(
+                        req.requestBody, null,
+                        'GET request should not have transmitted data in request body'
+                    );
+                });
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
