@@ -240,6 +240,7 @@ var autotrack = {
                     'lib': 'web',
                     'token': token
                 },
+                {method: 'GET'},
                 instance._prepare_callback(parseDecideResponse)
             );
         }

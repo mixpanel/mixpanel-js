@@ -72,6 +72,7 @@ var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAg
  */
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
+    'api_method':                        'POST',
     'app_host':                          'https://mixpanel.com',
     'autotrack':                         true,
     'cdn':                               'https://cdn.mxpnl.com',
@@ -329,11 +330,21 @@ MixpanelLib.prototype._prepare_callback = function(callback, data) {
     }
 };
 
-MixpanelLib.prototype._send_request = function(url, data, callback) {
+MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     if (ENQUEUE_REQUESTS) {
         this.__request_queue.push(arguments);
         return;
     }
+
+    var DEFAULT_OPTIONS = {method: this.get_config('api_method')};
+    var body_data = null;
+
+    if (!callback && _.isFunction(options)) {
+        callback = options;
+        options = null;
+    }
+    options = _.extend(DEFAULT_OPTIONS, options || {});
+    var use_post = options.method === 'POST';
 
     // needed to correctly format responses
     var verbose_mode = this.get_config('verbose');
@@ -356,6 +367,12 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
 
     data['ip'] = this.get_config('ip')?1:0;
     data['_'] = new Date().getTime().toString();
+
+    if (use_post) {
+        body_data = 'data=' + data['data'];
+        delete data['data'];
+    }
+
     url += '?' + _.HTTPBuildQuery(data);
 
     if ('img' in data) {
@@ -365,9 +382,12 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
     } else if (USE_XHR) {
         try {
             var req = new XMLHttpRequest();
-            req.open('GET', url, true);
+            req.open(options.method, url, true);
 
             var headers = this.get_config('xhr_headers');
+            if (use_post) {
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
             _.each(headers, function(headerValue, headerName) {
                 req.setRequestHeader(headerName, headerValue);
             });
@@ -405,7 +425,7 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
                     }
                 }
             };
-            req.send(null);
+            req.send(body_data);
         } catch (e) {
             console.error(e);
         }
@@ -1240,6 +1260,7 @@ MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLi
     this._send_request(
         this.get_config('api_host') + '/decide/',
         data,
+        {method: 'GET'},
         this._prepare_callback(_.bind(function(result) {
             if (result['notifications'] && result['notifications'].length > 0) {
                 this['_triggered_notifs'] = [];
