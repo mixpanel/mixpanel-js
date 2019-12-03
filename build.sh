@@ -11,7 +11,7 @@ ln -sf mixpanel.globals.js build/mixpanel.js
 
 if [ ! -z "$FULL" ]; then
     echo 'Minifying main build and snippets'
-    java -jar vendor/closure-compiler/compiler.jar --js mixpanel.js --js_output_file build/mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
+    java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel.js --js_output_file build/mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
 %output%
 })();"
     java -jar vendor/closure-compiler/compiler.jar --js mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
