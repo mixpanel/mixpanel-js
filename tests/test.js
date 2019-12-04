@@ -1268,7 +1268,7 @@
                 ok(mixpanel.get_property(prop) === value, "get_property successfully returns the correct super property's value");
             });
 
-            test("save_search_keyword", 8, function() {
+            test("save_search_keyword", 10, function() {
                 var test_data = [
                     ["google", "http://www.google.com/#sclient=psy&hl=en&site=&source=hp&q=test&aq=f&aqi=g5&aql=f&oq=&pbx=1&bav=on.2,or.r_gc.r_pw.&fp=78e75b26b3ba4591"],
                     ["google", "http://www.google.ca/#sclient=psy&hl=en&biw=1200&bih=1825&source=hp&q=test&aq=f&aqi=g5&aql=&oq=&pbx=1&bav=on.2,or.r_gc.r_pw.&fp=ee961497a1bb4875"],
@@ -1291,6 +1291,16 @@
                     props["$search_engine"] = test_data[i][0];
                     same(mixpanel.persistence.props, props, "Save search keyword parses query " + i);
                 }
+
+                // test URI decoding
+                clear_super_properties();
+                mixpanel.persistence.update_search_keyword("http://duckduckgo.com/?q=foo%25bar");
+                same(mixpanel.persistence.props.mp_keyword, "foo%bar", "Save search keyword performs URI decoding");
+
+                // test malformed URI component
+                clear_super_properties();
+                mixpanel.persistence.update_search_keyword("http://duckduckgo.com/?q=foo%bar");
+                same(mixpanel.persistence.props.mp_keyword, "foo%bar", "Save search keyword is resilient to malformed URI components");
             });
 
             mpmodule("super properties");
