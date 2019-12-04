@@ -944,7 +944,13 @@ _.getQueryParam = function(url, param) {
     if (results === null || (results && typeof(results[1]) !== 'string' && results[1].length)) {
         return '';
     } else {
-        return decodeURIComponent(results[1]).replace(/\+/g, ' ');
+        var result = results[1];
+        try {
+            result = decodeURIComponent(result);
+        } catch(err) {
+            console.error('Skipping decoding for malformed query param: ' + result);
+        }
+        return result.replace(/\+/g, ' ');
     }
 };
 
