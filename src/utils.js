@@ -1577,6 +1577,7 @@ _.info = {
             '$screen_width': screen.width,
             'mp_lib': 'web',
             '$lib_version': Config.LIB_VERSION,
+            '$insert_id': Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10),
             'time': _.timestamp() / 1000 // epoch time in seconds
         });
     },

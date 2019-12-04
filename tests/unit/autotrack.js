@@ -401,7 +401,7 @@ describe('Autotrack system', function() {
 
     it('should add the custom property when an element matching any of the event selectors is clicked', function() {
       lib = {
-        _send_request: sandbox.spy((url, params, callback) => callback({
+        _send_request: sandbox.spy((url, params, options, callback) => callback({
           config: {
             enable_collect_everything: true
           },
@@ -752,7 +752,7 @@ describe('Autotrack system', function() {
       _maybeLoadEditorStub = sandbox.stub(autotrack, '_maybeLoadEditor').returns(false);
       lib = {
         _prepare_callback: sandbox.spy(callback => callback),
-        _send_request: sandbox.spy((url, params, callback) => callback({config: {enable_collect_everything: true}})),
+        _send_request: sandbox.spy((url, params, options, callback) => callback({config: {enable_collect_everything: true}})),
         get_config: sandbox.spy(function(key) {
           switch (key) {
             case 'api_host':
@@ -776,7 +776,7 @@ describe('Autotrack system', function() {
     });
 
     it('should NOT call _addDomEventHandlders if the decide request fails', function() {
-      lib._send_request = sandbox.spy((url, params, callback) => callback({status: 0, error: "Bad HTTP status: 400 Bad Request"}));
+      lib._send_request = sandbox.spy((url, params, options, callback) => callback({status: 0, error: "Bad HTTP status: 400 Bad Request"}));
       autotrack.init(lib);
       expect(autotrack._addDomEventHandlers.called).to.equal(false);
     });
@@ -803,7 +803,7 @@ describe('Autotrack system', function() {
             case 'token':
               return 'anotherproject';
           }
-        }),
+        });
       autotrack.init(lib);
       expect(autotrack._addDomEventHandlers.callCount).to.equal(1);
       autotrack.init(lib2);

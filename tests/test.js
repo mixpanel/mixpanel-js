@@ -97,9 +97,9 @@
         return this.requests || [];
     }
 
-    function getUrlData(url, keyPath) {
+    function getRequestData(request, keyPath) {
         try {
-            var data = JSON.parse(atob(decodeURIComponent(url.match(/data=([^&]+)/)[1])));
+            var data = JSON.parse(atob(decodeURIComponent(request.requestBody.match(/data=([^&]+)/)[1])));
             (keyPath || []).forEach(function(key) {
                 data = data[key];
             });
@@ -1719,10 +1719,10 @@
                 function getEventsFromTrackRequests(requests) {
                     return (requests || [])
                         .filter(function(item) {
-                            return item.url.indexOf('https://api-js.mixpanel.com/track/?data=') === 0;
+                            return item.url.indexOf('https://api-js.mixpanel.com/track/') === 0;
                         })
                         .map(function(request) {
-                            var b64 = decodeURIComponent(request.url.split('data=')[1].split('&')[0]);
+                            var b64 = decodeURIComponent(request.requestBody.split('data=')[1].split('&')[0]);
                             return JSON.parse(atob(b64));
                         });
                 }
@@ -3549,7 +3549,7 @@
                     });
 
                     same(this.requests.length, 1, 'track should have fired off a request');
-                    same(_.keys(this.requests[0].requestHeaders).length, 2, 'both custom headers should be present');
+                    same(_.keys(this.requests[0].requestHeaders).length, 3, 'both custom headers should be present');
                     same(this.requests[0].requestHeaders['x-api-token'], 'test-token', 'x-api-token should be set');
                     same(this.requests[0].requestHeaders['x-api-key'], 'test-key', 'x-api-key should be set');
 
@@ -3593,6 +3593,46 @@
                     this.requests[0].respond(500, {
                         'Content-Length': resp.length
                     }, resp);
+                });
+
+                test("tracking defaults to POST", 5, function() {
+                    mixpanel.test.track('test', {foo: 'bar'});
+
+                    same(this.requests.length, 1, "track should have fired off a request");
+
+                    var req = this.requests[0];
+                    same(req.method, 'POST');
+                    ok(
+                        req.requestHeaders['Content-Type'].indexOf('application/x-www-form-urlencoded') >= 0,
+                        'POST request should have set Content-Type header correctly'
+                    );
+                    same(
+                        req.requestBody.indexOf('data='), 0,
+                        'POST request should have transmitted data in request body'
+                    );
+                    same(
+                        req.url.indexOf('data='), -1,
+                        'POST request should not have transmitted data on URL'
+                    );
+                });
+
+                test("tracking can be configured to GET", 4, function() {
+                    mixpanel.test.set_config({api_method: 'GET'});
+
+                    mixpanel.test.track('test', {foo: 'bar'});
+
+                    same(this.requests.length, 1, "track should have fired off a request");
+
+                    var req = this.requests[0];
+                    same(req.method, 'GET');
+                    ok(
+                        req.url.indexOf('data=') >= 0,
+                        'GET request should have transmitted data on URL'
+                    );
+                    same(
+                        req.requestBody, null,
+                        'GET request should not have transmitted data in request body'
+                    );
                 });
             }
 
@@ -3638,11 +3678,11 @@
                                     });
                                     if (options.assert_user_cleared) {
                                         ok(
-                                            getUrlData(engage_requests[0].url, ['$delete']),
+                                            getRequestData(engage_requests[0], ['$delete']),
                                             "delete_user request should have been made"
                                         );
                                         same(
-                                            getUrlData(engage_requests[1].url, ['$set', '$transactions']),
+                                            getRequestData(engage_requests[1], ['$set', '$transactions']),
                                             [],
                                             "clear_charges request should have been made"
                                         );
