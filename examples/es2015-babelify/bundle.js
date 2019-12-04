@@ -610,7 +610,7 @@ var autotrack = {
                 'version': '1',
                 'lib': 'web',
                 'token': token
-            }, instance._prepare_callback(parseDecideResponse));
+            }, { method: 'GET' }, instance._prepare_callback(parseDecideResponse));
         }
     },
 
@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.31.0'
+    LIB_VERSION: '2.32.0'
 };
 
 exports['default'] = Config;
@@ -1290,6 +1290,7 @@ var ENQUEUE_REQUESTS = !USE_XHR && _utils.userAgent.indexOf('MSIE') === -1 && _u
  */
 var DEFAULT_CONFIG = {
     'api_host': 'https://api-js.mixpanel.com',
+    'api_method': 'POST',
     'app_host': 'https://mixpanel.com',
     'autotrack': true,
     'cdn': 'https://cdn.mxpnl.com',
@@ -1352,14 +1353,14 @@ var create_mplib = function create_mplib(token, config, name) {
         instance = new MixpanelLib();
     }
 
+    instance._cached_groups = {}; // cache groups in a pool
+    instance._user_decide_check_complete = false;
+    instance._events_tracked_before_user_decide_check_complete = [];
+
     instance._init(token, config, name);
 
     instance['people'] = new _mixpanelPeople.MixpanelPeople();
     instance['people']._init(instance);
-
-    instance._cached_groups = {}; // cache groups in a pool
-    instance._user_decide_check_complete = false;
-    instance._events_tracked_before_user_decide_check_complete = [];
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true
@@ -1546,11 +1547,21 @@ MixpanelLib.prototype._prepare_callback = function (callback, data) {
     }
 };
 
-MixpanelLib.prototype._send_request = function (url, data, callback) {
+MixpanelLib.prototype._send_request = function (url, data, options, callback) {
     if (ENQUEUE_REQUESTS) {
         this.__request_queue.push(arguments);
         return;
     }
+
+    var DEFAULT_OPTIONS = { method: this.get_config('api_method') };
+    var body_data = null;
+
+    if (!callback && _utils._.isFunction(options)) {
+        callback = options;
+        options = null;
+    }
+    options = _utils._.extend(DEFAULT_OPTIONS, options || {});
+    var use_post = options.method === 'POST';
 
     // needed to correctly format responses
     var verbose_mode = this.get_config('verbose');
@@ -1581,6 +1592,12 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
 
     data['ip'] = this.get_config('ip') ? 1 : 0;
     data['_'] = new Date().getTime().toString();
+
+    if (use_post) {
+        body_data = 'data=' + data['data'];
+        delete data['data'];
+    }
+
     url += '?' + _utils._.HTTPBuildQuery(data);
 
     if ('img' in data) {
@@ -1590,9 +1607,12 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
     } else if (USE_XHR) {
         try {
             var req = new XMLHttpRequest();
-            req.open('GET', url, true);
+            req.open(options.method, url, true);
 
             var headers = this.get_config('xhr_headers');
+            if (use_post) {
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
             _utils._.each(headers, function (headerValue, headerName) {
                 req.setRequestHeader(headerName, headerValue);
             });
@@ -1631,7 +1651,7 @@ MixpanelLib.prototype._send_request = function (url, data, callback) {
                     }
                 }
             };
-            req.send(null);
+            req.send(body_data);
         } catch (e) {
             _utils.console.error(e);
         }
@@ -2453,7 +2473,7 @@ MixpanelLib.prototype._check_and_handle_notifications = (0, _gdprUtils.addOptOut
         'token': this.get_config('token'),
         'distinct_id': distinct_id
     };
-    this._send_request(this.get_config('api_host') + '/decide/', data, this._prepare_callback(_utils._.bind(function (result) {
+    this._send_request(this.get_config('api_host') + '/decide/', data, { method: 'GET' }, this._prepare_callback(_utils._.bind(function (result) {
         if (result['notifications'] && result['notifications'].length > 0) {
             this['_triggered_notifs'] = [];
             var notifications = [];
@@ -2732,6 +2752,7 @@ MixpanelLib.prototype['get_property'] = MixpanelLib.prototype.get_property;
 MixpanelLib.prototype['get_distinct_id'] = MixpanelLib.prototype.get_distinct_id;
 MixpanelLib.prototype['toString'] = MixpanelLib.prototype.toString;
 MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
+MixpanelLib.prototype['_handle_user_decide_check_complete'] = MixpanelLib.prototype._handle_user_decide_check_complete;
 MixpanelLib.prototype['_show_notification'] = MixpanelLib.prototype._show_notification;
 MixpanelLib.prototype['opt_out_tracking'] = MixpanelLib.prototype.opt_out_tracking;
 MixpanelLib.prototype['opt_in_tracking'] = MixpanelLib.prototype.opt_in_tracking;
@@ -6765,7 +6786,13 @@ _.getQueryParam = function (url, param) {
     if (results === null || results && typeof results[1] !== 'string' && results[1].length) {
         return '';
     } else {
-        return decodeURIComponent(results[1]).replace(/\+/g, ' ');
+        var result = results[1];
+        try {
+            result = decodeURIComponent(result);
+        } catch (err) {
+            console.error('Skipping decoding for malformed query param: ' + result);
+        }
+        return result.replace(/\+/g, ' ');
     }
 };
 
@@ -7392,6 +7419,7 @@ _.info = {
             '$screen_width': screen.width,
             'mp_lib': 'web',
             '$lib_version': _config2['default'].LIB_VERSION,
+            '$insert_id': Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10),
             'time': _.timestamp() / 1000 // epoch time in seconds
         });
     },

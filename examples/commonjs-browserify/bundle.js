@@ -3,7 +3,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.31.0'
+    LIB_VERSION: '2.32.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -947,7 +947,13 @@ _.getQueryParam = function(url, param) {
     if (results === null || (results && typeof(results[1]) !== 'string' && results[1].length)) {
         return '';
     } else {
-        return decodeURIComponent(results[1]).replace(/\+/g, ' ');
+        var result = results[1];
+        try {
+            result = decodeURIComponent(result);
+        } catch(err) {
+            console$1.error('Skipping decoding for malformed query param: ' + result);
+        }
+        return result.replace(/\+/g, ' ');
     }
 };
 
@@ -1574,6 +1580,7 @@ _.info = {
             '$screen_width': screen.width,
             'mp_lib': 'web',
             '$lib_version': Config.LIB_VERSION,
+            '$insert_id': Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10),
             'time': _.timestamp() / 1000 // epoch time in seconds
         });
     },
@@ -2030,6 +2037,7 @@ var autotrack = {
                     'lib': 'web',
                     'token': token
                 },
+                {method: 'GET'},
                 instance._prepare_callback(parseDecideResponse)
             );
         }
@@ -5626,6 +5634,7 @@ var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAg
  */
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
+    'api_method':                        'POST',
     'app_host':                          'https://mixpanel.com',
     'autotrack':                         true,
     'cdn':                               'https://cdn.mxpnl.com',
@@ -5689,14 +5698,14 @@ var create_mplib = function(token, config, name) {
         instance = new MixpanelLib();
     }
 
+    instance._cached_groups = {}; // cache groups in a pool
+    instance._user_decide_check_complete = false;
+    instance._events_tracked_before_user_decide_check_complete = [];
+
     instance._init(token, config, name);
 
     instance['people'] = new MixpanelPeople();
     instance['people']._init(instance);
-
-    instance._cached_groups = {}; // cache groups in a pool
-    instance._user_decide_check_complete = false;
-    instance._events_tracked_before_user_decide_check_complete = [];
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true
@@ -5883,11 +5892,21 @@ MixpanelLib.prototype._prepare_callback = function(callback, data) {
     }
 };
 
-MixpanelLib.prototype._send_request = function(url, data, callback) {
+MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     if (ENQUEUE_REQUESTS) {
         this.__request_queue.push(arguments);
         return;
     }
+
+    var DEFAULT_OPTIONS = {method: this.get_config('api_method')};
+    var body_data = null;
+
+    if (!callback && _.isFunction(options)) {
+        callback = options;
+        options = null;
+    }
+    options = _.extend(DEFAULT_OPTIONS, options || {});
+    var use_post = options.method === 'POST';
 
     // needed to correctly format responses
     var verbose_mode = this.get_config('verbose');
@@ -5910,6 +5929,12 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
 
     data['ip'] = this.get_config('ip')?1:0;
     data['_'] = new Date().getTime().toString();
+
+    if (use_post) {
+        body_data = 'data=' + data['data'];
+        delete data['data'];
+    }
+
     url += '?' + _.HTTPBuildQuery(data);
 
     if ('img' in data) {
@@ -5919,9 +5944,12 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
     } else if (USE_XHR) {
         try {
             var req = new XMLHttpRequest();
-            req.open('GET', url, true);
+            req.open(options.method, url, true);
 
             var headers = this.get_config('xhr_headers');
+            if (use_post) {
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
             _.each(headers, function(headerValue, headerName) {
                 req.setRequestHeader(headerName, headerValue);
             });
@@ -5959,7 +5987,7 @@ MixpanelLib.prototype._send_request = function(url, data, callback) {
                     }
                 }
             };
-            req.send(null);
+            req.send(body_data);
         } catch (e) {
             console$1.error(e);
         }
@@ -6794,6 +6822,7 @@ MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLi
     this._send_request(
         this.get_config('api_host') + '/decide/',
         data,
+        {method: 'GET'},
         this._prepare_callback(_.bind(function(result) {
             if (result['notifications'] && result['notifications'].length > 0) {
                 this['_triggered_notifs'] = [];
@@ -7056,37 +7085,38 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
 // EXPORTS (for closure compiler)
 
 // MixpanelLib Exports
-MixpanelLib.prototype['init']                            = MixpanelLib.prototype.init;
-MixpanelLib.prototype['reset']                           = MixpanelLib.prototype.reset;
-MixpanelLib.prototype['disable']                         = MixpanelLib.prototype.disable;
-MixpanelLib.prototype['time_event']                      = MixpanelLib.prototype.time_event;
-MixpanelLib.prototype['track']                           = MixpanelLib.prototype.track;
-MixpanelLib.prototype['track_links']                     = MixpanelLib.prototype.track_links;
-MixpanelLib.prototype['track_forms']                     = MixpanelLib.prototype.track_forms;
-MixpanelLib.prototype['track_pageview']                  = MixpanelLib.prototype.track_pageview;
-MixpanelLib.prototype['register']                        = MixpanelLib.prototype.register;
-MixpanelLib.prototype['register_once']                   = MixpanelLib.prototype.register_once;
-MixpanelLib.prototype['unregister']                      = MixpanelLib.prototype.unregister;
-MixpanelLib.prototype['identify']                        = MixpanelLib.prototype.identify;
-MixpanelLib.prototype['alias']                           = MixpanelLib.prototype.alias;
-MixpanelLib.prototype['name_tag']                        = MixpanelLib.prototype.name_tag;
-MixpanelLib.prototype['set_config']                      = MixpanelLib.prototype.set_config;
-MixpanelLib.prototype['get_config']                      = MixpanelLib.prototype.get_config;
-MixpanelLib.prototype['get_property']                    = MixpanelLib.prototype.get_property;
-MixpanelLib.prototype['get_distinct_id']                 = MixpanelLib.prototype.get_distinct_id;
-MixpanelLib.prototype['toString']                        = MixpanelLib.prototype.toString;
-MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
-MixpanelLib.prototype['_show_notification']              = MixpanelLib.prototype._show_notification;
-MixpanelLib.prototype['opt_out_tracking']                = MixpanelLib.prototype.opt_out_tracking;
-MixpanelLib.prototype['opt_in_tracking']                 = MixpanelLib.prototype.opt_in_tracking;
-MixpanelLib.prototype['has_opted_out_tracking']          = MixpanelLib.prototype.has_opted_out_tracking;
-MixpanelLib.prototype['has_opted_in_tracking']           = MixpanelLib.prototype.has_opted_in_tracking;
-MixpanelLib.prototype['clear_opt_in_out_tracking']       = MixpanelLib.prototype.clear_opt_in_out_tracking;
-MixpanelLib.prototype['get_group']                       = MixpanelLib.prototype.get_group;
-MixpanelLib.prototype['set_group']                       = MixpanelLib.prototype.set_group;
-MixpanelLib.prototype['add_group']                       = MixpanelLib.prototype.add_group;
-MixpanelLib.prototype['remove_group']                    = MixpanelLib.prototype.remove_group;
-MixpanelLib.prototype['track_with_groups']               = MixpanelLib.prototype.track_with_groups;
+MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
+MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
+MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
+MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
+MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
+MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
+MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
+MixpanelLib.prototype['track_pageview']                     = MixpanelLib.prototype.track_pageview;
+MixpanelLib.prototype['register']                           = MixpanelLib.prototype.register;
+MixpanelLib.prototype['register_once']                      = MixpanelLib.prototype.register_once;
+MixpanelLib.prototype['unregister']                         = MixpanelLib.prototype.unregister;
+MixpanelLib.prototype['identify']                           = MixpanelLib.prototype.identify;
+MixpanelLib.prototype['alias']                              = MixpanelLib.prototype.alias;
+MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
+MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
+MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
+MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
+MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
+MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;
+MixpanelLib.prototype['_check_and_handle_notifications']    = MixpanelLib.prototype._check_and_handle_notifications;
+MixpanelLib.prototype['_handle_user_decide_check_complete'] = MixpanelLib.prototype._handle_user_decide_check_complete;
+MixpanelLib.prototype['_show_notification']                 = MixpanelLib.prototype._show_notification;
+MixpanelLib.prototype['opt_out_tracking']                   = MixpanelLib.prototype.opt_out_tracking;
+MixpanelLib.prototype['opt_in_tracking']                    = MixpanelLib.prototype.opt_in_tracking;
+MixpanelLib.prototype['has_opted_out_tracking']             = MixpanelLib.prototype.has_opted_out_tracking;
+MixpanelLib.prototype['has_opted_in_tracking']              = MixpanelLib.prototype.has_opted_in_tracking;
+MixpanelLib.prototype['clear_opt_in_out_tracking']          = MixpanelLib.prototype.clear_opt_in_out_tracking;
+MixpanelLib.prototype['get_group']                          = MixpanelLib.prototype.get_group;
+MixpanelLib.prototype['set_group']                          = MixpanelLib.prototype.set_group;
+MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
+MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
+MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
