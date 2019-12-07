@@ -1,5 +1,7 @@
 (function() {
-    $('#qunit-tests').addClass('hidepass');
+    // uncomment to show only failures
+    // $('#qunit-tests').addClass('hidepass');
+
     var mixpanelLoading = $.Deferred();
     var mixpanelCELoading = $.Deferred();
     window.mixpanel.init("MIXPANEL_TOKEN",
