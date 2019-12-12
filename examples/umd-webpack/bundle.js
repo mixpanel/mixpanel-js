@@ -5967,11 +5967,14 @@
 	        var DEFAULT_OPTIONS = {method: this.get_config('api_method')};
 	        var body_data = null;
 
-	        if (!callback && _.isFunction(options)) {
+	        if (!callback && (_.isFunction(options) || typeof options === 'string')) {
 	            callback = options;
 	            options = null;
 	        }
 	        options = _.extend(DEFAULT_OPTIONS, options || {});
+	        if (!USE_XHR) {
+	            options.method = 'GET';
+	        }
 	        var use_post = options.method === 'POST';
 
 	        // needed to correctly format responses

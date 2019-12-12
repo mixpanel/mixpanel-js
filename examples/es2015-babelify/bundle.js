@@ -1556,11 +1556,14 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
     var DEFAULT_OPTIONS = { method: this.get_config('api_method') };
     var body_data = null;
 
-    if (!callback && _utils._.isFunction(options)) {
+    if (!callback && (_utils._.isFunction(options) || typeof options === 'string')) {
         callback = options;
         options = null;
     }
     options = _utils._.extend(DEFAULT_OPTIONS, options || {});
+    if (!USE_XHR) {
+        options.method = 'GET';
+    }
     var use_post = options.method === 'POST';
 
     // needed to correctly format responses
