@@ -1,3 +1,9 @@
+**2.32.0** (16 Dec 2019)
+- Default to POST requests for event tracking and profile updates
+- Include `$insert_id` with events for deduplication support
+- Don't throw exception when decoding malformed URI params
+- Notifications test fixes
+
 **2.31.0** (19 Nov 2019)
 - Default API server to api-js.mixpanel.com
 
