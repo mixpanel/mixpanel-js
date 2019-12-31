@@ -3,6 +3,8 @@ import baseOptions from './rollup.base';
 
 export default {
     plugins: [
-        npm(baseOptions)
+        npm(Object.assign({}, baseOptions, {
+          compact: true,
+        }))
     ]
 }

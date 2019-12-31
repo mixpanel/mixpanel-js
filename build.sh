@@ -22,6 +22,9 @@ if [ ! -z "$FULL" ]; then
     ./node_modules/.bin/rollup -i src/loader-module.js -f cjs -o build/mixpanel.cjs.js -c rollup.config.js
     ./node_modules/.bin/rollup -i src/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel -c rollup.config.js
 
+    echo 'Building minified module bundles'
+    # ./node_modules/.bin/rollup -i src/loader-module.js -f cjs -o build/mixpanel.cjs.min.js -c rollup.compact.config.js
+
     echo 'Bundling module-loader test runners'
     ./node_modules/.bin/webpack tests/module-cjs.js tests/module-cjs.bundle.js
     ./node_modules/.bin/browserify tests/module-es2015.js -t [ babelify --compact false ] --outfile tests/module-es2015.bundle.js
