@@ -1487,7 +1487,7 @@ _.info = {
         var browser = _.info.browser(userAgent, vendor, opera);
         var versionRegexs = {
             'Internet Explorer Mobile': /rv:(\d+(\.\d+)?)/,
-            'Microsoft Edge': /Edge\/(\d+(\.\d+)?)/,
+            'Microsoft Edge': /Edge?\/(\d+(\.\d+)?)/,
             'Chrome': /Chrome\/(\d+(\.\d+)?)/,
             'Chrome iOS': /CriOS\/(\d+(\.\d+)?)/,
             'UC Browser' : /(UCBrowser|UCWEB)\/(\d+(\.\d+)?)/,
