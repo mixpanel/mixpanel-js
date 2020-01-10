@@ -3531,6 +3531,14 @@
                 });
             }
 
+            if (navigator.sendBeacon) {
+                mpmodule("sendBeacon tests");
+                test("sendBeacon option supported in .track()", 1, function() {
+                    var data = mixpanel.test.track("test_sendbeacon", {}, {transport: 'sendBeacon'});
+                    same(data['event'], 'test_sendbeacon');
+                });
+            }
+
             if (USE_XHR) {
                 mpmodule("xhr tests", startRecordingXhrRequests, stopRecordingXhrRequests);
 
