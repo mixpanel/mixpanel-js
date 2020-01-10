@@ -1446,7 +1446,7 @@ _.info = {
             return 'BlackBerry';
         } else if (_.includes(user_agent, 'IEMobile') || _.includes(user_agent, 'WPDesktop')) {
             return 'Internet Explorer Mobile';
-        } else if (_.includes(user_agent, 'Edge')) {
+        } else if (_.includes(user_agent, 'Edge') || _.includes(user_agent, 'Edg/')) {
             return 'Microsoft Edge';
         } else if (_.includes(user_agent, 'FBIOS')) {
             return 'Facebook Mobile';
