@@ -78,6 +78,7 @@ if (sendBeacon) {
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
     'api_method':                        'POST',
+    'api_transport':                     'XHR',
     'app_host':                          'https://mixpanel.com',
     'autotrack':                         true,
     'cdn':                               'https://cdn.mxpnl.com',
@@ -341,7 +342,10 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         return;
     }
 
-    var DEFAULT_OPTIONS = {method: this.get_config('api_method')};
+    var DEFAULT_OPTIONS = {
+        method: this.get_config('api_method'),
+        transport: this.get_config('api_transport'),
+    };
     var body_data = null;
 
     if (!callback && (_.isFunction(options) || typeof options === 'string')) {
@@ -352,7 +356,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     if (!USE_XHR) {
         options.method = 'GET';
     }
-    var use_sendBeacon = sendBeacon && (options['transport'] || '').toLowerCase() === 'sendbeacon';
+    var use_sendBeacon = sendBeacon && options.transport.toLowerCase() === 'sendbeacon';
     var use_post = use_sendBeacon || options.method === 'POST';
 
     // needed to correctly format responses
@@ -563,6 +567,10 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         options = null;
     }
     options = options || {};
+    var transport = options['transport'];
+    if (transport) {
+        options.transport = transport;
+    }
     if (!_.isFunction(callback)) {
         callback = function() {};
     }

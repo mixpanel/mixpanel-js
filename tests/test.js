@@ -3533,8 +3533,15 @@
 
             if (navigator.sendBeacon) {
                 mpmodule("sendBeacon tests");
+
                 test("sendBeacon option supported in .track()", 1, function() {
                     var data = mixpanel.test.track("test_sendbeacon", {}, {transport: 'sendBeacon'});
+                    same(data['event'], 'test_sendbeacon');
+                });
+
+                test("sendBeacon supported in library config", 1, function() {
+                    mixpanel.test.set_config({api_transport: 'sendBeacon'});
+                    var data = mixpanel.test.track("test_sendbeacon", {});
                     same(data['event'], 'test_sendbeacon');
                 });
             }
