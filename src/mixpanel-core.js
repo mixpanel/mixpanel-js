@@ -344,7 +344,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 
     var DEFAULT_OPTIONS = {
         method: this.get_config('api_method'),
-        transport: this.get_config('api_transport'),
+        transport: this.get_config('api_transport')
     };
     var body_data = null;
 
