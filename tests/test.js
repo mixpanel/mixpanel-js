@@ -3371,7 +3371,7 @@
                 same(mixpanel._.info.device(a), 'Windows Phone');
             });
 
-            test('browser', 32, function() {
+            test('browser', 36, function() {
                 // facebook mobile
                 var a = "Mozilla/5.0 (iPad; CPU OS 7_0_2 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Mobile/11A501 [FBAN/FBIOS;FBAV/6.9.1;FBBV/1102303;FBDV/iPad2,7;FBMD/iPad;FBSN/iPhone OS;FBSV/7.0.2;FBSS/1; FBCR/Verizon;FBID/tablet;FBLC/en_US;FBOP/1]";
                 same(mixpanel._.info.browser(a), 'Facebook Mobile');
@@ -3405,6 +3405,15 @@
 
                 var a = "Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 5.2; Trident/4.0; Media Center PC 4.0; SLCC1; .NET CLR 3.0.04320)";
                 same(mixpanel._.info.browser(a), 'Internet Explorer');
+                notOk(mixpanel._.isBlockedUA(a));
+
+                // edge
+                var a = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.74 Safari/537.36 Edg/79.0.309.43";
+                same(mixpanel._.info.browser(a), 'Microsoft Edge');
+                notOk(mixpanel._.isBlockedUA(a));
+
+                var a = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14931";
+                same(mixpanel._.info.browser(a), 'Microsoft Edge');
                 notOk(mixpanel._.isBlockedUA(a));
 
                 // firefox
