@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { _, console, userAgent, window, document } from './utils';
+import { _, console, userAgent, window, document, navigator } from './utils';
 import { autotrack } from './autotrack';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { MixpanelGroup } from './mixpanel-group';
@@ -66,6 +66,11 @@ var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest(
 // with defer won't block window.onload; ENQUEUE_REQUESTS
 // should only be true for Opera<12
 var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
+
+var sendBeacon = navigator['sendBeacon'];
+if (sendBeacon) {
+    sendBeacon = _.bind(sendBeacon, navigator);
+}
 
 /*
  * Module-level globals
@@ -347,7 +352,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     if (!USE_XHR) {
         options.method = 'GET';
     }
-    var use_post = options.method === 'POST';
+    var use_sendBeacon = sendBeacon && (options['transport'] || '').toLowerCase() === 'sendbeacon';
+    var use_post = use_sendBeacon || options.method === 'POST';
 
     // needed to correctly format responses
     var verbose_mode = this.get_config('verbose');
@@ -382,6 +388,12 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         var img = document.createElement('img');
         img.src = url;
         document.body.appendChild(img);
+    } else if (use_sendBeacon) {
+        try {
+            sendBeacon(url, body_data);
+        } catch (e) {
+            console.error(e);
+        }
     } else if (USE_XHR) {
         try {
             var req = new XMLHttpRequest();
@@ -541,10 +553,17 @@ MixpanelLib.prototype.disable = function(events) {
  *
  * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
  * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
+ * @param {Object} [options] Optional configuration for this track request.
+ * @param {String} [options.transport] Transport method for network request ('xhr' or 'sendBeacon').
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  */
-MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, callback) {
-    if (typeof(callback) !== 'function') {
+MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
+    if (!callback && _.isFunction(options)) {
+        callback = options;
+        options = null;
+    }
+    options = options || {};
+    if (!_.isFunction(callback)) {
         callback = function() {};
     }
 
@@ -610,6 +629,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     this._send_request(
         this.get_config('api_host') + '/track/',
         { 'data': encoded_data },
+        options,
         this._prepare_callback(callback, truncated_data)
     );
 

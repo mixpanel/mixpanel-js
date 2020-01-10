@@ -1613,4 +1613,4 @@ _['info']['device']     = _.info.device;
 _['info']['browser']    = _.info.browser;
 _['info']['properties'] = _.info.properties;
 
-export { _, userAgent, console, win as window, document };
+export { _, userAgent, console, win as window, document, navigator };
