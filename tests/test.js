@@ -3453,6 +3453,15 @@
                 notOk(mixpanel._.isBlockedUA(a));
             });
 
+            test('browserVersion', 2, function() {
+                // edge
+                var a = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.74 Safari/537.36 Edg/79.0.309.43";
+                same(mixpanel._.info.browserVersion(a), 79.0);
+
+                var a = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14931";
+                same(mixpanel._.info.browserVersion(a), 14.14931);
+            });
+
             test('blocked user agents', 5, function() {
                 var bot_user_agents = [
                     "Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
