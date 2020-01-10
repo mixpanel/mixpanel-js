@@ -1116,6 +1116,18 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  * The default config is:
  *
  *     {
+ *       // HTTP method for tracking requests
+ *       api_method: 'POST'
+ *
+ *       // transport for sending requests ('XHR' or 'sendBeacon')
+ *       // NB: sendBeacon should only be used for scenarios such as
+ *       // page unload where a "best-effort" attempt to send is
+ *       // acceptable; the sendBeacon API does not support callbacks
+ *       // or any way to know the result of the request. Mixpanel
+ *       // tracking via sendBeacon will not support any event-
+ *       // batching or retry mechanisms.
+ *       api_transport: 'XHR'
+ *
  *       // super properties cookie expiration (in days)
  *       cookie_expiration: 365
  *
