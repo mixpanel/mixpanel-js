@@ -3371,7 +3371,7 @@
                 same(mixpanel._.info.device(a), 'Windows Phone');
             });
 
-            test('browser', 36, function() {
+            test('browser', 38, function() {
                 // facebook mobile
                 var a = "Mozilla/5.0 (iPad; CPU OS 7_0_2 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Mobile/11A501 [FBAN/FBIOS;FBAV/6.9.1;FBBV/1102303;FBDV/iPad2,7;FBMD/iPad;FBSN/iPhone OS;FBSV/7.0.2;FBSS/1; FBCR/Verizon;FBID/tablet;FBLC/en_US;FBOP/1]";
                 same(mixpanel._.info.browser(a), 'Facebook Mobile');
@@ -3451,15 +3451,24 @@
                 var a = "Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5355d Safari/8536.25";
                 same(mixpanel._.info.browser(a, "Apple"), 'Mobile Safari');
                 notOk(mixpanel._.isBlockedUA(a));
+
+                // samsung browser
+                var a = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/5.2 Chrome/51.0.2704.106 Safari/537.36";
+                same(mixpanel._.info.browser(a), 'Samsung Internet');
+                notOk(mixpanel._.isBlockedUA(a));
             });
 
-            test('browserVersion', 2, function() {
+            test('browserVersion', 3, function() {
                 // edge
                 var a = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.74 Safari/537.36 Edg/79.0.309.43";
                 same(mixpanel._.info.browserVersion(a), 79.0);
 
                 var a = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14931";
                 same(mixpanel._.info.browserVersion(a), 14.14931);
+
+                // samsung browser
+                var a = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/5.2 Chrome/51.0.2704.106 Safari/537.36";
+                same(mixpanel._.info.browserVersion(a), 5.2);
             });
 
             test('blocked user agents', 5, function() {

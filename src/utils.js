@@ -1446,6 +1446,9 @@ _.info = {
             return 'BlackBerry';
         } else if (_.includes(user_agent, 'IEMobile') || _.includes(user_agent, 'WPDesktop')) {
             return 'Internet Explorer Mobile';
+        } else if (_.includes(user_agent, 'SamsungBrowser/')) {
+            // https://developer.samsung.com/internet/user-agent-string-format
+            return 'Samsung Internet';
         } else if (_.includes(user_agent, 'Edge') || _.includes(user_agent, 'Edg/')) {
             return 'Microsoft Edge';
         } else if (_.includes(user_agent, 'FBIOS')) {
@@ -1499,6 +1502,7 @@ _.info = {
             'Konqueror': /Konqueror:(\d+(\.\d+)?)/,
             'BlackBerry': /BlackBerry (\d+(\.\d+)?)/,
             'Android Mobile': /android\s(\d+(\.\d+)?)/,
+            'Samsung Internet': /SamsungBrowser\/(\d+(\.\d+)?)/,
             'Internet Explorer': /(rv:|MSIE )(\d+(\.\d+)?)/,
             'Mozilla': /rv:(\d+(\.\d+)?)/
         };
