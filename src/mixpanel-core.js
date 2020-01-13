@@ -67,6 +67,7 @@ var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest(
 // should only be true for Opera<12
 var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
 
+// save reference to navigator.sendBeacon so it can be minified
 var sendBeacon = navigator['sendBeacon'];
 if (sendBeacon) {
     sendBeacon = _.bind(sendBeacon, navigator);
@@ -567,9 +568,9 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         options = null;
     }
     options = options || {};
-    var transport = options['transport'];
+    var transport = options['transport']; // external API, don't minify 'transport' prop
     if (transport) {
-        options.transport = transport;
+        options.transport = transport; // 'transport' prop name can be minified internally
     }
     if (!_.isFunction(callback)) {
         callback = function() {};
