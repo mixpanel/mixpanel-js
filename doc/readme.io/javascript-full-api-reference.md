@@ -367,6 +367,18 @@ The default config is:
 
 ```javascript
 {
+  // HTTP method for tracking requests
+  api_method: 'POST'
+
+  // transport for sending requests ('XHR' or 'sendBeacon')
+  // NB: sendBeacon should only be used for scenarios such as
+  // page unload where a &quot;best-effort&quot; attempt to send is
+  // acceptable; the sendBeacon API does not support callbacks
+  // or any way to know the result of the request. Mixpanel
+  // tracking via sendBeacon will not support any event-
+  // batching or retry mechanisms.
+  api_transport: 'XHR'
+
   // super properties cookie expiration (in days)
   cookie_expiration: 365
 
@@ -504,6 +516,9 @@ Track an event. This is the most important and  frequently used Mixpanel functio
 // track an event named 'Registered'
 mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
 
+// track an event using navigator.sendBeacon
+mixpanel.track('Left page', {'duration_seconds': 35}, {transport: 'sendBeacon'});
+
 ```
 To track link clicks or form submissions, see track_links() or track_forms().
 
@@ -513,6 +528,8 @@ To track link clicks or form submissions, see track_links() or track_forms().
 | ------------- | ------------- | ----- |
 | **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc. |
 | **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself. |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Optional configuration for this track request. |
+| **options.transport** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Transport method for network request ('xhr' or 'sendBeacon'). |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback function will be called after tracking the event. |
 
 
