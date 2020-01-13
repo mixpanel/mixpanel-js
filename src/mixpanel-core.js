@@ -554,6 +554,9 @@ MixpanelLib.prototype.disable = function(events) {
  *     // track an event named 'Registered'
  *     mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
  *
+ *     // track an event using navigator.sendBeacon
+ *     mixpanel.track('Left page', {'duration_seconds': 35}, {transport: 'sendBeacon'});
+ *
  * To track link clicks or form submissions, see track_links() or track_forms().
  *
  * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
