@@ -1606,15 +1606,16 @@ _.info = {
 };
 
 // EXPORTS (for closure compiler)
-_['toArray']            = _.toArray;
-_['isObject']           = _.isObject;
-_['JSONEncode']         = _.JSONEncode;
-_['JSONDecode']         = _.JSONDecode;
-_['isBlockedUA']        = _.isBlockedUA;
-_['isEmptyObject']      = _.isEmptyObject;
-_['info']               = _.info;
-_['info']['device']     = _.info.device;
-_['info']['browser']    = _.info.browser;
-_['info']['properties'] = _.info.properties;
+_['toArray']                = _.toArray;
+_['isObject']               = _.isObject;
+_['JSONEncode']             = _.JSONEncode;
+_['JSONDecode']             = _.JSONDecode;
+_['isBlockedUA']            = _.isBlockedUA;
+_['isEmptyObject']          = _.isEmptyObject;
+_['info']                   = _.info;
+_['info']['device']         = _.info.device;
+_['info']['browser']        = _.info.browser;
+_['info']['browserVersion'] = _.info.browserVersion;
+_['info']['properties']     = _.info.properties;
 
 export { _, userAgent, console, win as window, document, navigator };
