@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.32.0'
+        LIB_VERSION: '2.33.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1452,7 +1452,10 @@
                 return 'BlackBerry';
             } else if (_.includes(user_agent, 'IEMobile') || _.includes(user_agent, 'WPDesktop')) {
                 return 'Internet Explorer Mobile';
-            } else if (_.includes(user_agent, 'Edge')) {
+            } else if (_.includes(user_agent, 'SamsungBrowser/')) {
+                // https://developer.samsung.com/internet/user-agent-string-format
+                return 'Samsung Internet';
+            } else if (_.includes(user_agent, 'Edge') || _.includes(user_agent, 'Edg/')) {
                 return 'Microsoft Edge';
             } else if (_.includes(user_agent, 'FBIOS')) {
                 return 'Facebook Mobile';
@@ -1493,7 +1496,7 @@
             var browser = _.info.browser(userAgent, vendor, opera);
             var versionRegexs = {
                 'Internet Explorer Mobile': /rv:(\d+(\.\d+)?)/,
-                'Microsoft Edge': /Edge\/(\d+(\.\d+)?)/,
+                'Microsoft Edge': /Edge?\/(\d+(\.\d+)?)/,
                 'Chrome': /Chrome\/(\d+(\.\d+)?)/,
                 'Chrome iOS': /CriOS\/(\d+(\.\d+)?)/,
                 'UC Browser' : /(UCBrowser|UCWEB)\/(\d+(\.\d+)?)/,
@@ -1505,6 +1508,7 @@
                 'Konqueror': /Konqueror:(\d+(\.\d+)?)/,
                 'BlackBerry': /BlackBerry (\d+(\.\d+)?)/,
                 'Android Mobile': /android\s(\d+(\.\d+)?)/,
+                'Samsung Internet': /SamsungBrowser\/(\d+(\.\d+)?)/,
                 'Internet Explorer': /(rv:|MSIE )(\d+(\.\d+)?)/,
                 'Mozilla': /rv:(\d+(\.\d+)?)/
             };
@@ -1608,16 +1612,17 @@
     };
 
     // EXPORTS (for closure compiler)
-    _['toArray']            = _.toArray;
-    _['isObject']           = _.isObject;
-    _['JSONEncode']         = _.JSONEncode;
-    _['JSONDecode']         = _.JSONDecode;
-    _['isBlockedUA']        = _.isBlockedUA;
-    _['isEmptyObject']      = _.isEmptyObject;
-    _['info']               = _.info;
-    _['info']['device']     = _.info.device;
-    _['info']['browser']    = _.info.browser;
-    _['info']['properties'] = _.info.properties;
+    _['toArray']                = _.toArray;
+    _['isObject']               = _.isObject;
+    _['JSONEncode']             = _.JSONEncode;
+    _['JSONDecode']             = _.JSONDecode;
+    _['isBlockedUA']            = _.isBlockedUA;
+    _['isEmptyObject']          = _.isEmptyObject;
+    _['info']                   = _.info;
+    _['info']['device']         = _.info.device;
+    _['info']['browser']        = _.info.browser;
+    _['info']['browserVersion'] = _.info.browserVersion;
+    _['info']['properties']     = _.info.properties;
 
     /*
      * Get the className of an element, accounting for edge cases where element.className is an object
@@ -5632,12 +5637,19 @@
     // should only be true for Opera<12
     var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
 
+    // save reference to navigator.sendBeacon so it can be minified
+    var sendBeacon = navigator$1['sendBeacon'];
+    if (sendBeacon) {
+        sendBeacon = _.bind(sendBeacon, navigator$1);
+    }
+
     /*
      * Module-level globals
      */
     var DEFAULT_CONFIG = {
         'api_host':                          'https://api-js.mixpanel.com',
         'api_method':                        'POST',
+        'api_transport':                     'XHR',
         'app_host':                          'https://mixpanel.com',
         'autotrack':                         true,
         'cdn':                               'https://cdn.mxpnl.com',
@@ -5901,7 +5913,10 @@
             return;
         }
 
-        var DEFAULT_OPTIONS = {method: this.get_config('api_method')};
+        var DEFAULT_OPTIONS = {
+            method: this.get_config('api_method'),
+            transport: this.get_config('api_transport')
+        };
         var body_data = null;
 
         if (!callback && (_.isFunction(options) || typeof options === 'string')) {
@@ -5912,7 +5927,8 @@
         if (!USE_XHR) {
             options.method = 'GET';
         }
-        var use_post = options.method === 'POST';
+        var use_sendBeacon = sendBeacon && options.transport.toLowerCase() === 'sendbeacon';
+        var use_post = use_sendBeacon || options.method === 'POST';
 
         // needed to correctly format responses
         var verbose_mode = this.get_config('verbose');
@@ -5947,6 +5963,12 @@
             var img = document$1.createElement('img');
             img.src = url;
             document$1.body.appendChild(img);
+        } else if (use_sendBeacon) {
+            try {
+                sendBeacon(url, body_data);
+            } catch (e) {
+                console$1.error(e);
+            }
         } else if (USE_XHR) {
             try {
                 var req = new XMLHttpRequest();
@@ -6102,14 +6124,28 @@
      *     // track an event named 'Registered'
      *     mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
      *
+     *     // track an event using navigator.sendBeacon
+     *     mixpanel.track('Left page', {'duration_seconds': 35}, {transport: 'sendBeacon'});
+     *
      * To track link clicks or form submissions, see track_links() or track_forms().
      *
      * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
      * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
+     * @param {Object} [options] Optional configuration for this track request.
+     * @param {String} [options.transport] Transport method for network request ('xhr' or 'sendBeacon').
      * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
      */
-    MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, callback) {
-        if (typeof(callback) !== 'function') {
+    MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
+        if (!callback && _.isFunction(options)) {
+            callback = options;
+            options = null;
+        }
+        options = options || {};
+        var transport = options['transport']; // external API, don't minify 'transport' prop
+        if (transport) {
+            options.transport = transport; // 'transport' prop name can be minified internally
+        }
+        if (!_.isFunction(callback)) {
             callback = function() {};
         }
 
@@ -6175,6 +6211,7 @@
         this._send_request(
             this.get_config('api_host') + '/track/',
             { 'data': encoded_data },
+            options,
             this._prepare_callback(callback, truncated_data)
         );
 
@@ -6653,6 +6690,18 @@
      * The default config is:
      *
      *     {
+     *       // HTTP method for tracking requests
+     *       api_method: 'POST'
+     *
+     *       // transport for sending requests ('XHR' or 'sendBeacon')
+     *       // NB: sendBeacon should only be used for scenarios such as
+     *       // page unload where a "best-effort" attempt to send is
+     *       // acceptable; the sendBeacon API does not support callbacks
+     *       // or any way to know the result of the request. Mixpanel
+     *       // tracking via sendBeacon will not support any event-
+     *       // batching or retry mechanisms.
+     *       api_transport: 'XHR'
+     *
      *       // super properties cookie expiration (in days)
      *       cookie_expiration: 365
      *
