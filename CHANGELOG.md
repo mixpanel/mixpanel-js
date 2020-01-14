@@ -1,3 +1,7 @@
+**2.33.0** (13 Jan 2020)
+- Support optional navigator.sendBeacon transport for network requests
+- Add user agent detection for Chromium-based Edge and Samsung Internet
+
 **2.32.0** (16 Dec 2019)
 - Default to POST requests for event tracking and profile updates
 - Include `$insert_id` with events for deduplication support
