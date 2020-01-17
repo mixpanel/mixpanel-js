@@ -1,3 +1,6 @@
+**2.33.1** (16 Jan 2020)
+- Fix for native arrow-function track() callbacks not firing
+
 **2.33.0** (13 Jan 2020)
 - Support optional navigator.sendBeacon transport for network requests
 - Add user agent detection for Chromium-based Edge and Samsung Internet
