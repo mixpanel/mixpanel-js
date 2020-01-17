@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.33.0'
+    LIB_VERSION: '2.33.1'
 };
 
 exports['default'] = Config;
@@ -1795,7 +1795,7 @@ MixpanelLib.prototype.disable = function (events) {
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  */
 MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function (event_name, properties, options, callback) {
-    if (!callback && _utils._.isFunction(options)) {
+    if (!callback && typeof options === 'function') {
         callback = options;
         options = null;
     }
@@ -1804,7 +1804,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     if (transport) {
         options.transport = transport; // 'transport' prop name can be minified internally
     }
-    if (!_utils._.isFunction(callback)) {
+    if (typeof callback !== 'function') {
         callback = function () {};
     }
 

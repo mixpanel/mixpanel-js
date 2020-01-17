@@ -3,7 +3,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.33.0'
+    LIB_VERSION: '2.33.1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -6133,7 +6133,7 @@ MixpanelLib.prototype.disable = function(events) {
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
-    if (!callback && _.isFunction(options)) {
+    if (!callback && typeof options === 'function') {
         callback = options;
         options = null;
     }
@@ -6142,7 +6142,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     if (transport) {
         options.transport = transport; // 'transport' prop name can be minified internally
     }
-    if (!_.isFunction(callback)) {
+    if (typeof callback !== 'function') {
         callback = function() {};
     }
 
