@@ -41,6 +41,7 @@ var ArrayProto = Array.prototype,
 var nativeBind = FuncProto.bind,
     nativeForEach = ArrayProto.forEach,
     nativeIndexOf = ArrayProto.indexOf,
+    nativeMap = ArrayProto.map,
     nativeIsArray = Array.isArray,
     breaker = {};
 
@@ -215,6 +216,18 @@ _.toArray = function(iterable) {
         return slice.call(iterable);
     }
     return _.values(iterable);
+};
+
+_.map = function(arr, callback) {
+    if (nativeMap && arr.map === nativeMap) {
+        return arr.map(callback);
+    } else {
+        var results = [];
+        _.each(arr, function(item) {
+            results.push(callback(item));
+        });
+        return results;
+    }
 };
 
 _.keys = function(obj) {
@@ -1587,7 +1600,7 @@ _.info = {
             '$screen_width': screen.width,
             'mp_lib': 'web',
             '$lib_version': Config.LIB_VERSION,
-            '$insert_id': Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10),
+            '$insert_id': cheap_guid(),
             'time': _.timestamp() / 1000 // epoch time in seconds
         });
     },
@@ -1609,6 +1622,10 @@ _.info = {
             'mp_platform': _.info.os()
         });
     }
+};
+
+var cheap_guid = function() {
+    return Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
 };
 
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
@@ -1652,4 +1669,4 @@ _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
-export { _, userAgent, console, win as window, document, navigator, extract_domain };
+export { _, userAgent, console, win as window, document, navigator, cheap_guid, extract_domain };

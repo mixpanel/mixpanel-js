@@ -3,6 +3,7 @@ import Config from './config';
 import { _, console, userAgent, window, document, navigator } from './utils';
 import { autotrack } from './autotrack';
 import { FormTracker, LinkTracker } from './dom-trackers';
+import { RequestQueue } from './request-queue';
 import { MixpanelGroup } from './mixpanel-group';
 import { MixpanelNotification } from './mixpanel-notification';
 import { MixpanelPeople } from './mixpanel-people';
@@ -67,6 +68,9 @@ var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest(
 // should only be true for Opera<12
 var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
 
+// maximum interval between request retries after exponential backoff
+var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000;
+
 // save reference to navigator.sendBeacon so it can be minified
 var sendBeacon = navigator['sendBeacon'];
 if (sendBeacon) {
@@ -112,7 +116,10 @@ var DEFAULT_CONFIG = {
     'xhr_headers':                       {}, // { header: value, header2: value }
     'inapp_protocol':                    '//',
     'inapp_link_new_window':             false,
-    'ignore_dnt':                        false
+    'ignore_dnt':                        false,
+    'batch_requests':                    false, // for now
+    'batch_size':                        50,
+    'batch_flush_interval_ms':           5000
 };
 
 var DOM_LOADED = false;
@@ -186,6 +193,12 @@ var create_mplib = function(token, config, name) {
     return instance;
 };
 
+var encode_data_for_request = function(data) {
+    var json_data = _.JSONEncode(data);
+    var encoded_data = _.base64Encode(json_data);
+    return {'data': encoded_data};
+};
+
 // Initialization methods
 
 /**
@@ -248,6 +261,18 @@ MixpanelLib.prototype._init = function(token, config, name) {
         'disable_all_events': false,
         'identify_called': false
     };
+
+    // set up request queueing/batching
+    this._batch_requests = this.get_config('batch_requests');
+    if (this._batch_requests) {
+        if (!_.localStorage.is_supported()) {
+            this._batch_requests = false;
+            console.warn('No localStorage support; turning off Mixpanel request-queueing');
+        } else {
+            this.request_batch_queue = new RequestQueue('__mpq_' + token + '_ev');
+            this._flush_request_queue();
+        }
+    }
 
     this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
     this._gdpr_init();
@@ -519,6 +544,75 @@ MixpanelLib.prototype._execute_array = function(array) {
     execute(tracking_calls, this);
 };
 
+// request queueing utils
+
+MixpanelLib.prototype._reset_flush = function() {
+    this._schedule_flush(this.get_config('batch_flush_interval_ms'));
+};
+
+MixpanelLib.prototype._schedule_flush = function(flush_ms) {
+    this._batch_flush_interval_ms = flush_ms;
+    setTimeout(_.bind(this._flush_request_queue, this), this._batch_flush_interval_ms);
+};
+
+MixpanelLib.prototype._flush_request_queue = function() {
+    try {
+
+        if (this._request_in_progress) {
+            console.log('[batch] Flush: Request already in progress');
+            return;
+        }
+
+        var batch = this.request_batch_queue.fillBatch(this.get_config('batch_size'));
+        if (batch.length < 1) {
+            console.log('[batch] nothing to do');
+            this._reset_flush();
+            return; // nothing to do
+        }
+
+        this._request_in_progress = true;
+        console.log('[batch] ' + batch.length + ' items to flush');
+        console.log('[batch] items:', batch);
+
+        var data_for_request = _.map(batch, function(item) { return item['payload']; });
+        var batch_send_callback = function(res) {
+            console.log('[batch] callback', res, batch);
+            this._request_in_progress = false;
+
+            try {
+
+                if (res === 1 || (_.isObject(res) && res.status === 1)) {
+                    // success, remove each item in batch from queue
+                    this.request_batch_queue.removeItemsByID(
+                        _.map(batch, function(item) { return item['id']; }),
+                        _.bind(this._flush_request_queue, this) // handle next batch if the queue isn't empty
+                    );
+                } else {
+                    // error, retry
+                    // TODO don't retry for some error types
+                    var retry_ms = Math.min(MAX_RETRY_INTERVAL_MS, this._batch_flush_interval_ms * 2);
+                    console.log('[batch] retry in ' + retry_ms + ' ms');
+                    this._schedule_flush(retry_ms);
+                }
+
+            } catch(err) {
+                console.error('[batch] Error handling API response', err);
+                this._reset_flush();
+            }
+        };
+        this._send_request(
+            this.get_config('api_host') + '/track/',
+            encode_data_for_request(data_for_request),
+            {method: 'POST'},
+            this._prepare_callback(_.bind(batch_send_callback, this), data_for_request)
+        );
+
+    } catch(err) {
+        console.error('[batch] Error flushing request queue', err);
+        this._reset_flush();
+    }
+};
+
 /**
  * push() keeps the standard async-array-push
  * behavior around after the lib is loaded.
@@ -643,18 +737,19 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         'properties': properties
     };
     var truncated_data = _.truncate(data, 255);
-    var json_data      = _.JSONEncode(truncated_data);
-    var encoded_data   = _.base64Encode(json_data);
-
-    console.log('MIXPANEL REQUEST:');
-    console.log(truncated_data);
-
-    var request_initiated = this._send_request(
-        this.get_config('api_host') + '/track/',
-        { 'data': encoded_data },
-        options,
-        this._prepare_callback(callback, truncated_data)
-    );
+    if (this._batch_requests) {
+        // TODO if enqueue fails, send immediately
+        this.request_batch_queue.enqueue(truncated_data, this._batch_flush_interval_ms);
+    } else {
+        console.log('MIXPANEL REQUEST:');
+        console.log(truncated_data);
+        var request_initiated = this._send_request(
+            this.get_config('api_host') + '/track/',
+            encode_data_for_request(truncated_data),
+            options,
+            this._prepare_callback(callback, truncated_data)
+        );
+    }
 
     this._check_and_handle_triggered_notifications(data);
 
