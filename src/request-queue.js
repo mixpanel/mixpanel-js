@@ -1,5 +1,5 @@
 import { SharedLock } from './shared-lock';
-import { cheap_guid, console, _ } from './utils';
+import { cheap_guid, console, _ } from './utils'; // eslint-disable-line camelcase
 
 /**
  * RequestQueue: queue for batching API requests with localStorage backup for retries
