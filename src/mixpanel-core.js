@@ -109,7 +109,8 @@ var DEFAULT_CONFIG = {
     'property_blacklist':                [],
     'xhr_headers':                       {}, // { header: value, header2: value }
     'inapp_protocol':                    '//',
-    'inapp_link_new_window':             false
+    'inapp_link_new_window':             false,
+    'ignore_dnt':                        false
 };
 
 var DOM_LOADED = false;
@@ -1404,7 +1405,8 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
         'cookie_expiration': this.get_config('cookie_expiration'),
         'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
-        'secure_cookie': this.get_config('secure_cookie')
+        'secure_cookie': this.get_config('secure_cookie'),
+        'ignore_dnt': this.get_config('ignore_dnt')
     }, options);
 
     // check if localStorage can be used for recording opt out status, fall back to cookie if not
@@ -1412,7 +1414,7 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         options['persistence_type'] = 'cookie';
     }
 
-    return func(this.get_config('token'), {
+    var funcOptions = {
         track: options['track'],
         trackEventName: options['track_event_name'],
         trackProperties: options['track_properties'],
@@ -1420,8 +1422,11 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         persistencePrefix: options['cookie_prefix'],
         cookieExpiration: options['cookie_expiration'],
         crossSubdomainCookie: options['cross_subdomain_cookie'],
-        secureCookie: options['secure_cookie']
-    });
+        secureCookie: options['secure_cookie'],
+        ignoreDnt: options['ignore_dnt']
+    };
+
+    return func(this.get_config('token'), funcOptions);
 };
 
 /**

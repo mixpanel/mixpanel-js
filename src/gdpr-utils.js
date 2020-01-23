@@ -74,6 +74,7 @@ export function hasOptedIn(token, options) {
  * @param {Object} [options]
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
+ * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
  * @returns {boolean} whether the user has opted out of the given opt type
  */
 export function hasOptedOut(token, options) {
@@ -177,9 +178,13 @@ function _getStorageValue(token, options) {
  * Check whether the user has set the DNT/doNotTrack setting to true in their browser
  * @param {Object} [options]
  * @param {string} [options.window] - alternate window object to check; used to force various DNT settings in browser tests
+ * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
  * @returns {boolean} whether the DNT setting is true
  */
 function _hasDoNotTrackFlagOn(options) {
+    if (options && options.ignoreDnt) {
+        return false;
+    }
     var win = (options && options.window) || window;
     var nav = win['navigator'] || {};
     var hasDntOn = false;
@@ -245,12 +250,14 @@ function _addOptOutCheck(method, getConfigValue) {
 
         try {
             var token = getConfigValue.call(this, 'token');
+            var ignoreDnt = getConfigValue.call(this, 'ignore_dnt');
             var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
             var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
             var win = getConfigValue.call(this, 'window'); // used to override window during browser tests
 
             if (token) { // if there was an issue getting the token, continue method execution as normal
                 optedOut = hasOptedOut(token, {
+                    ignoreDnt: ignoreDnt,
                     persistenceType: persistenceType,
                     persistencePrefix: persistencePrefix,
                     window: win

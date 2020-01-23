@@ -3890,6 +3890,12 @@
                         });
 
                         // test cases using browser DoNotTrack (DNT) setting
+                        
+                        // standard case: navigator.doNotTrack="1" but ignore_dnt=true
+                        gdprTest(method + ' tracking is enabled due to ignore_dnt even with the browser DoNotTrack setting (navigator.doNotTrack="1")', {
+                            opt_in: true,
+                            config: {ignore_dnt: true, window: {navigator: {doNotTrack: '1'}}}
+                        });
 
                         // standard case: navigator.doNotTrack="1"
                         gdprTest(method + ' tracking is disabled by browser DoNotTrack setting (navigator.doNotTrack="1")', {
