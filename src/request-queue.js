@@ -104,10 +104,13 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
 RequestQueue.prototype.read = function() {
     var storageEntry;
     try {
-        storageEntry = _.JSONDecode(this.storage.getItem(this.storageKey));
-        if (!_.isArray(storageEntry)) {
-            console.error('[batch] Invalid storage entry:', storageEntry);
-            storageEntry = null;
+        storageEntry = this.storage.getItem(this.storageKey);
+        if (storageEntry) {
+            storageEntry = _.JSONDecode(storageEntry);
+            if (!_.isArray(storageEntry)) {
+                console.error('[batch] Invalid storage entry:', storageEntry);
+                storageEntry = null;
+            }
         }
     } catch (err) {
         console.error('[batch] Error retrieving queue', err);
