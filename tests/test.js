@@ -3676,6 +3676,23 @@
                         'GET request should not have transmitted data in request body'
                     );
                 });
+
+                if (navigator.sendBeacon) {
+                    test("specifying GET overrides sendBeacon transport", 3, function() {
+                        mixpanel.test.set_config({api_method: 'GET', api_transport: 'sendBeacon'});
+
+                        mixpanel.test.track('test', {foo: 'bar'});
+
+                        same(this.requests.length, 1, "track should have fired off a request");
+
+                        var req = this.requests[0];
+                        same(req.method, 'GET');
+                        ok(
+                            req.url.indexOf('data=') >= 0,
+                            'GET request should have transmitted data on URL'
+                        );
+                    });
+                }
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
