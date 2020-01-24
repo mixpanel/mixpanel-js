@@ -1307,7 +1307,7 @@ MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLi
     this._send_request(
         this.get_config('api_host') + '/decide/',
         data,
-        {method: 'GET'},
+        {method: 'GET', transport: 'XHR'},
         this._prepare_callback(_.bind(function(result) {
             if (result['notifications'] && result['notifications'].length > 0) {
                 this['_triggered_notifs'] = [];
