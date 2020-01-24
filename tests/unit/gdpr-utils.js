@@ -266,19 +266,6 @@ describe(`GDPR utils`, function() {
 
   describe(`hasOptedOut`, function() {
     forPersistenceTypes(function(persistenceType) {
-      it(`should return 'false' if the user hasn't opted out for a given token`, function() {
-        TOKENS.forEach(token => {
-          expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.false;
-        });
-      });
-
-      it(`should return 'true' if the user opts out for a given token`, function() {
-        TOKENS.forEach(token => {
-          gdpr.optOut(token, {persistenceType});
-          expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.true;
-        });
-      });
-
       it(`should return 'false' if the user opts out for any other token`, function() {
         const token = TOKENS[0];
         gdpr.optIn(token, {persistenceType});
@@ -288,47 +275,46 @@ describe(`GDPR utils`, function() {
         });
       });
 
-      it(`should return 'false' if the user opts in`, function() {
-        TOKENS.forEach(token => {
+      TOKENS.forEach(token => {
+        it(`should return 'false' if the user hasn't opted out for a given token`, function() {
+          expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.false;
+        });
+
+        it(`should return 'true' if the user opts out for a given token`, function() {
+          gdpr.optOut(token, {persistenceType});
+          expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.true;
+        });
+
+        it(`should return 'false' if the user opts in`, function() {
           gdpr.optIn(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.false;
         });
-      });
 
-      it(`should return 'true' if the user opts in then opts out`, function() {
-        TOKENS.forEach(token => {
+        it(`should return 'true' if the user opts in then opts out`, function() {
           gdpr.optIn(token, {persistenceType});
           gdpr.optOut(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.true;
         });
-      });
 
-      it(`should return 'false' if the user opts out then opts in`, function() {
-        TOKENS.forEach(token => {
+        it(`should return 'false' if the user opts out then opts in`, function() {
           gdpr.optOut(token, {persistenceType});
           gdpr.optIn(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.false;
         });
-      });
 
-      it(`should return 'false' if the user opts out then clears their opt status`, function() {
-        TOKENS.forEach(token => {
+        it(`should return 'false' if the user opts out then clears their opt status`, function() {
           gdpr.optOut(token, {persistenceType});
           gdpr.clearOptInOut(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.false;
         });
-      });
 
-      it(`should return 'true' if the user clears their opt status then opts out`, function() {
-        TOKENS.forEach(token => {
+        it(`should return 'true' if the user clears their opt status then opts out`, function() {
           gdpr.clearOptInOut(token, {persistenceType});
           gdpr.optOut(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.true;
         });
-      });
 
-      it(`should allow use of a custom "persistence prefix" string`, function() {
-        TOKENS.forEach(token => {
+        it(`should allow use of a custom "persistence prefix" string`, function() {
           gdpr.optOut(token, {persistencePrefix: CUSTOM_PERSISTENCE_PREFIX, persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.false;
           expect(gdpr.hasOptedOut(token, {persistencePrefix: CUSTOM_PERSISTENCE_PREFIX, persistenceType})).to.be.true;
@@ -337,18 +323,16 @@ describe(`GDPR utils`, function() {
           gdpr.optIn(token, {persistencePrefix: CUSTOM_PERSISTENCE_PREFIX, persistenceType});
           expect(gdpr.hasOptedOut(token, {persistencePrefix: CUSTOM_PERSISTENCE_PREFIX, persistenceType})).to.be.false;
         });
-      });
 
-      it(`should return 'true' if the user has navigator.doNotTrack flag set`, function() {
-        const falseyValues = [false, 0, `0`, `no`, `unspecified`];
-        const truthyValues = [true, 1, `1`, `yes`];
-        const setters = [
-          value => navigator.doNotTrack = value,
-          value => navigator.msDoNotTrack = value,
-          value => window.doNotTrack = value,
-        ];
+        it(`should return 'true' if the user has navigator.doNotTrack flag set`, function() {
+          const falseyValues = [false, 0, `0`, `no`, `unspecified`];
+          const truthyValues = [true, 1, `1`, `yes`];
+          const setters = [
+            value => navigator.doNotTrack = value,
+            value => navigator.msDoNotTrack = value,
+            value => window.doNotTrack = value,
+          ];
 
-        TOKENS.forEach(token => {
           gdpr.optIn(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.false;
 
@@ -365,24 +349,17 @@ describe(`GDPR utils`, function() {
               expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.true;
             })
           );
-
-          // cleanup
-          delete navigator.doNotTrack;
-          delete navigator.msDoNotTrack;
-          delete window.doNotTrack;
         });
-      });
       
-      it(`should return 'false' if the user has navigator.doNotTrack flag set but ignoreDnt is true`, function() {
-        const falseyValues = [false, 0, `0`, `no`, `unspecified`];
-        const truthyValues = [true, 1, `1`, `yes`];
-        const setters = [
-          value => navigator.doNotTrack = value,
-          value => navigator.msDoNotTrack = value,
-          value => window.doNotTrack = value,
-        ];
+        it(`should return 'false' if the user has navigator.doNotTrack flag set but ignoreDnt is true`, function() {
+          const falseyValues = [false, 0, `0`, `no`, `unspecified`];
+          const truthyValues = [true, 1, `1`, `yes`];
+          const setters = [
+            value => navigator.doNotTrack = value,
+            value => navigator.msDoNotTrack = value,
+            value => window.doNotTrack = value,
+          ];
 
-        TOKENS.forEach(token => {
           gdpr.optIn(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType, ignoreDnt: true})).to.be.false;
 
@@ -399,11 +376,6 @@ describe(`GDPR utils`, function() {
               expect(gdpr.hasOptedOut(token, {persistenceType, ignoreDnt: true})).to.be.false;
             })
           );
-
-          // cleanup
-          delete navigator.doNotTrack;
-          delete navigator.msDoNotTrack;
-          delete window.doNotTrack;
         });
       });
     });
