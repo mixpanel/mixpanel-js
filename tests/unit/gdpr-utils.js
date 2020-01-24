@@ -324,15 +324,15 @@ describe(`GDPR utils`, function() {
           expect(gdpr.hasOptedOut(token, {persistencePrefix: CUSTOM_PERSISTENCE_PREFIX, persistenceType})).to.be.false;
         });
 
-        it(`should return 'true' if the user has navigator.doNotTrack flag set`, function() {
-          const falseyValues = [false, 0, `0`, `no`, `unspecified`];
-          const truthyValues = [true, 1, `1`, `yes`];
-          const setters = [
-            value => navigator.doNotTrack = value,
-            value => navigator.msDoNotTrack = value,
-            value => window.doNotTrack = value,
-          ];
+        const falseyValues = [false, 0, `0`, `no`, `unspecified`];
+        const truthyValues = [true, 1, `1`, `yes`];
+        const setters = [
+          value => navigator.doNotTrack = value,
+          value => navigator.msDoNotTrack = value,
+          value => window.doNotTrack = value,
+        ];
 
+        it(`should return 'true' if the user has navigator.doNotTrack flag set`, function() {
           gdpr.optIn(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType})).to.be.false;
 
@@ -352,14 +352,6 @@ describe(`GDPR utils`, function() {
         });
       
         it(`should return 'false' if the user has navigator.doNotTrack flag set but ignoreDnt is true`, function() {
-          const falseyValues = [false, 0, `0`, `no`, `unspecified`];
-          const truthyValues = [true, 1, `1`, `yes`];
-          const setters = [
-            value => navigator.doNotTrack = value,
-            value => navigator.msDoNotTrack = value,
-            value => window.doNotTrack = value,
-          ];
-
           gdpr.optIn(token, {persistenceType});
           expect(gdpr.hasOptedOut(token, {persistenceType, ignoreDnt: true})).to.be.false;
 
