@@ -357,8 +357,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     if (!USE_XHR) {
         options.method = 'GET';
     }
-    var use_sendBeacon = sendBeacon && options.method !== 'GET' && options.transport.toLowerCase() === 'sendbeacon';
-    var use_post = use_sendBeacon || options.method === 'POST';
+    var use_post = options.method === 'POST';
+    var use_sendBeacon = sendBeacon && use_post && options.transport.toLowerCase() === 'sendbeacon';
 
     // needed to correctly format responses
     var verbose_mode = this.get_config('verbose');
