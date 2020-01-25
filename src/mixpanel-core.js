@@ -1417,7 +1417,7 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         options['persistence_type'] = 'cookie';
     }
 
-    var funcOptions = {
+    return func(this.get_config('token'), {
         track: options['track'],
         trackEventName: options['track_event_name'],
         trackProperties: options['track_properties'],
@@ -1427,9 +1427,7 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         crossSubdomainCookie: options['cross_subdomain_cookie'],
         secureCookie: options['secure_cookie'],
         ignoreDnt: options['ignore_dnt']
-    };
-
-    return func(this.get_config('token'), funcOptions);
+    });
 };
 
 /**
