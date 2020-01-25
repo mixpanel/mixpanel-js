@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.33.1'
+        LIB_VERSION: '2.34.0-rc1'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2045,7 +2045,7 @@
                         'lib': 'web',
                         'token': token
                     },
-                    {method: 'GET'},
+                    {method: 'GET', transport: 'XHR'},
                     instance._prepare_callback(parseDecideResponse)
                 );
             }
@@ -2367,6 +2367,7 @@
      * @param {Object} [options]
      * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
      * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
+     * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
      * @returns {boolean} whether the user has opted out of the given opt type
      */
     function hasOptedOut(token, options) {
@@ -2470,9 +2471,13 @@
      * Check whether the user has set the DNT/doNotTrack setting to true in their browser
      * @param {Object} [options]
      * @param {string} [options.window] - alternate window object to check; used to force various DNT settings in browser tests
+     * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
      * @returns {boolean} whether the DNT setting is true
      */
     function _hasDoNotTrackFlagOn(options) {
+        if (options && options.ignoreDnt) {
+            return false;
+        }
         var win = (options && options.window) || window$1;
         var nav = win['navigator'] || {};
         var hasDntOn = false;
@@ -2538,12 +2543,14 @@
 
             try {
                 var token = getConfigValue.call(this, 'token');
+                var ignoreDnt = getConfigValue.call(this, 'ignore_dnt');
                 var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
                 var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
                 var win = getConfigValue.call(this, 'window'); // used to override window during browser tests
 
                 if (token) { // if there was an issue getting the token, continue method execution as normal
                     optedOut = hasOptedOut(token, {
+                        ignoreDnt: ignoreDnt,
                         persistenceType: persistenceType,
                         persistencePrefix: persistencePrefix,
                         window: win
@@ -5679,7 +5686,8 @@
         'property_blacklist':                [],
         'xhr_headers':                       {}, // { header: value, header2: value }
         'inapp_protocol':                    '//',
-        'inapp_link_new_window':             false
+        'inapp_link_new_window':             false,
+        'ignore_dnt':                        false
     };
 
     var DOM_LOADED = false;
@@ -5927,8 +5935,8 @@
         if (!USE_XHR) {
             options.method = 'GET';
         }
-        var use_sendBeacon = sendBeacon && options.transport.toLowerCase() === 'sendbeacon';
-        var use_post = use_sendBeacon || options.method === 'POST';
+        var use_post = options.method === 'POST';
+        var use_sendBeacon = sendBeacon && use_post && options.transport.toLowerCase() === 'sendbeacon';
 
         // needed to correctly format responses
         var verbose_mode = this.get_config('verbose');
@@ -6775,6 +6783,9 @@
      *
      *       // whether to open in-app message link in new tab/window
      *       inapp_link_new_window: false
+     *
+     *       // whether to ignore or respect the web browser's Do Not Track setting
+     *       ignore_dnt: false
      *     }
      *
      *
@@ -6877,7 +6888,7 @@
         this._send_request(
             this.get_config('api_host') + '/decide/',
             data,
-            {method: 'GET'},
+            {method: 'GET', transport: 'XHR'},
             this._prepare_callback(_.bind(function(result) {
                 if (result['notifications'] && result['notifications'].length > 0) {
                     this['_triggered_notifs'] = [];
@@ -6974,7 +6985,8 @@
             'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
             'cookie_expiration': this.get_config('cookie_expiration'),
             'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
-            'secure_cookie': this.get_config('secure_cookie')
+            'secure_cookie': this.get_config('secure_cookie'),
+            'ignore_dnt': this.get_config('ignore_dnt')
         }, options);
 
         // check if localStorage can be used for recording opt out status, fall back to cookie if not
@@ -6990,7 +7002,8 @@
             persistencePrefix: options['cookie_prefix'],
             cookieExpiration: options['cookie_expiration'],
             crossSubdomainCookie: options['cross_subdomain_cookie'],
-            secureCookie: options['secure_cookie']
+            secureCookie: options['secure_cookie'],
+            ignoreDnt: options['ignore_dnt']
         });
     };
 

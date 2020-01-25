@@ -610,7 +610,7 @@ var autotrack = {
                 'version': '1',
                 'lib': 'web',
                 'token': token
-            }, { method: 'GET' }, instance._prepare_callback(parseDecideResponse));
+            }, { method: 'GET', transport: 'XHR' }, instance._prepare_callback(parseDecideResponse));
         }
     },
 
@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.33.1'
+    LIB_VERSION: '2.34.0-rc1'
 };
 
 exports['default'] = Config;
@@ -995,6 +995,7 @@ function hasOptedIn(token, options) {
  * @param {Object} [options]
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
+ * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
  * @returns {boolean} whether the user has opted out of the given opt type
  */
 
@@ -1103,9 +1104,13 @@ function _getStorageValue(token, options) {
  * Check whether the user has set the DNT/doNotTrack setting to true in their browser
  * @param {Object} [options]
  * @param {string} [options.window] - alternate window object to check; used to force various DNT settings in browser tests
+ * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
  * @returns {boolean} whether the DNT setting is true
  */
 function _hasDoNotTrackFlagOn(options) {
+    if (options && options.ignoreDnt) {
+        return false;
+    }
     var win = options && options.window || _utils.window;
     var nav = win['navigator'] || {};
     var hasDntOn = false;
@@ -1163,6 +1168,7 @@ function _addOptOutCheck(method, getConfigValue) {
 
         try {
             var token = getConfigValue.call(this, 'token');
+            var ignoreDnt = getConfigValue.call(this, 'ignore_dnt');
             var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
             var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
             var win = getConfigValue.call(this, 'window'); // used to override window during browser tests
@@ -1170,6 +1176,7 @@ function _addOptOutCheck(method, getConfigValue) {
             if (token) {
                 // if there was an issue getting the token, continue method execution as normal
                 optedOut = hasOptedOut(token, {
+                    ignoreDnt: ignoreDnt,
                     persistenceType: persistenceType,
                     persistencePrefix: persistencePrefix,
                     window: win
@@ -1327,7 +1334,8 @@ var DEFAULT_CONFIG = {
     'property_blacklist': [],
     'xhr_headers': {}, // { header: value, header2: value }
     'inapp_protocol': '//',
-    'inapp_link_new_window': false
+    'inapp_link_new_window': false,
+    'ignore_dnt': false
 };
 
 var DOM_LOADED = false;
@@ -1574,8 +1582,8 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
     if (!USE_XHR) {
         options.method = 'GET';
     }
-    var use_sendBeacon = sendBeacon && options.transport.toLowerCase() === 'sendbeacon';
-    var use_post = use_sendBeacon || options.method === 'POST';
+    var use_post = options.method === 'POST';
+    var use_sendBeacon = sendBeacon && use_post && options.transport.toLowerCase() === 'sendbeacon';
 
     // needed to correctly format responses
     var verbose_mode = this.get_config('verbose');
@@ -2426,6 +2434,9 @@ MixpanelLib.prototype.name_tag = function (name_tag) {
  *
  *       // whether to open in-app message link in new tab/window
  *       inapp_link_new_window: false
+ *
+ *       // whether to ignore or respect the web browser's Do Not Track setting
+ *       ignore_dnt: false
  *     }
  *
  *
@@ -2519,7 +2530,7 @@ MixpanelLib.prototype._check_and_handle_notifications = (0, _gdprUtils.addOptOut
         'token': this.get_config('token'),
         'distinct_id': distinct_id
     };
-    this._send_request(this.get_config('api_host') + '/decide/', data, { method: 'GET' }, this._prepare_callback(_utils._.bind(function (result) {
+    this._send_request(this.get_config('api_host') + '/decide/', data, { method: 'GET', transport: 'XHR' }, this._prepare_callback(_utils._.bind(function (result) {
         if (result['notifications'] && result['notifications'].length > 0) {
             this['_triggered_notifs'] = [];
             var notifications = [];
@@ -2612,7 +2623,8 @@ MixpanelLib.prototype._gdpr_call_func = function (func, options) {
         'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
         'cookie_expiration': this.get_config('cookie_expiration'),
         'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
-        'secure_cookie': this.get_config('secure_cookie')
+        'secure_cookie': this.get_config('secure_cookie'),
+        'ignore_dnt': this.get_config('ignore_dnt')
     }, options);
 
     // check if localStorage can be used for recording opt out status, fall back to cookie if not
@@ -2628,7 +2640,8 @@ MixpanelLib.prototype._gdpr_call_func = function (func, options) {
         persistencePrefix: options['cookie_prefix'],
         cookieExpiration: options['cookie_expiration'],
         crossSubdomainCookie: options['cross_subdomain_cookie'],
-        secureCookie: options['secure_cookie']
+        secureCookie: options['secure_cookie'],
+        ignoreDnt: options['ignore_dnt']
     });
 };
 
