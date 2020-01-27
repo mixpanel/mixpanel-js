@@ -1,3 +1,7 @@
+**2.34.0** (27 Jan 2020)
+- Add config option to allow ignoring DNT browser setting
+- Fix for /decide checks failing when lib initialized with sendBeacon transport
+
 **2.33.1** (16 Jan 2020)
 - Fix for native arrow-function track() callbacks not firing
 
