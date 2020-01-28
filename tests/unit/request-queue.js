@@ -1,5 +1,8 @@
 import { expect } from 'chai';
 import localStorage from 'localStorage';
+import intersection from 'lodash/intersection';
+import map from 'lodash/map';
+import uniq from 'lodash/uniq';
 
 import { RequestQueue } from '../../src/request-queue';
 
@@ -123,6 +126,78 @@ describe(`RequestQueue`, function() {
     it(`gracefully accepts requests for more items than are in the queue`, function() {
       const batch = queue.fillBatch(50);
       expect(batch).to.have.lengthOf(items.length);
+    });
+
+    context(`with orphaned items in the persisted queue (localStorage)`, function() {
+      let persistedItems;
+
+      beforeEach(function() {
+        persistedItems = [
+          // orphaned, flush anytime
+          {id: `abc`, flushAfter: +(new Date()) - 60000, payload: {event: `foo6`, properties: {bar6: `baz6`}}},
+
+          // not yet time to flush
+          {id: `def`, flushAfter: +(new Date()) + 60000, payload: {event: `foo7`, properties: {bar7: `baz7`}}},
+
+          // orphaned, flush anytime
+          {id: `ghi`, flushAfter: +(new Date()) - 60000, payload: {event: `foo8`, properties: {bar8: `baz8`}}},
+        ];
+        queue.save(persistedItems);
+      });
+
+      it(`does not look in the persisted queue if the in-mem queue has enough items`, function() {
+        const batch = queue.fillBatch(3);
+        expect(batch).to.have.lengthOf(3);
+        const persistedIDs = map(persistedItems, `id`);
+        const batchIDs = map(batch, `id`);
+        expect(intersection(batchIDs, persistedIDs)).to.be.empty;
+      });
+
+      it(`adds persisted items to the batch which are past their flushAfter time`, function() {
+        const batch = queue.fillBatch(7);
+        expect(batch).to.have.lengthOf(7);
+        const batchIDs = map(batch, `id`);
+        expect(batchIDs).to.include(`abc`);
+        expect(batchIDs).not.to.include(`def`);
+        expect(batchIDs).to.include(`ghi`);
+      });
+
+      it(`does not add persisted items to the batch which are not yet past their flushAfter time`, function() {
+        const batch = queue.fillBatch(10);
+        expect(batch).to.have.lengthOf(7);
+        const batchIDs = map(batch, `id`);
+        expect(batchIDs).not.to.include(`def`);
+      });
+
+      it(`does not duplicate in-mem items which are already in the batch`, function() {
+        // duplicate the ID of an in-mem item into persistence with a past flushAfter time
+        persistedItems[0].id = queue.memQueue[0].id;
+        queue.save(persistedItems);
+
+        const batch = queue.fillBatch(7);
+        expect(batch).to.have.lengthOf(6);
+        const batchIDs = map(batch, `id`);
+        expect(uniq(batchIDs).length).to.equal(batchIDs.length);
+        expect(batchIDs).to.include(`ghi`); // good persisted item
+      });
+
+      it(`is resilient to malformed localStorage entries`, function() {
+        let batch;
+        const origStorageEntry = localStorage.getItem(`fake-rq-key`);
+
+        localStorage.setItem(`fake-rq-key`, `garbage`);
+        batch = queue.fillBatch(10);
+        expect(batch).to.have.lengthOf(5);
+
+        localStorage.setItem(`fake-rq-key`, `{}`); // valid JSON, wrong type
+        batch = queue.fillBatch(10);
+        expect(batch).to.have.lengthOf(5);
+
+        // just to verify that the storage (de)serialization here works
+        localStorage.setItem(`fake-rq-key`, origStorageEntry);
+        batch = queue.fillBatch(10);
+        expect(batch).to.have.lengthOf(7);
+      });
     });
   });
 });

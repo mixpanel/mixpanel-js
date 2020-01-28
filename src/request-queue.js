@@ -52,12 +52,18 @@ RequestQueue.prototype.fillBatch = function(batchSize) {
         // and the worst that could happen is a duplicate send of some
         // orphaned events, which will be deduplicated on the server side
         var storedQueue = this.read();
-        for (var i = 0; i < storedQueue.length; i++) {
-            var item = storedQueue[i];
-            if (+(new Date()) > item['flushAfter']) {
-                batch.push(item);
-                if (batch.length >= batchSize) {
-                    break;
+        if (storedQueue.length) {
+            // item IDs already in batch; don't duplicate out of storage
+            var idsInBatch = {}; // poor man's Set
+            _.each(batch, function(item) { idsInBatch[item[`id`]] = true; });
+
+            for (var i = 0; i < storedQueue.length; i++) {
+                var item = storedQueue[i];
+                if (+(new Date()) > item['flushAfter'] && !idsInBatch[item[`id`]]) {
+                    batch.push(item);
+                    if (batch.length >= batchSize) {
+                        break;
+                    }
                 }
             }
         }
