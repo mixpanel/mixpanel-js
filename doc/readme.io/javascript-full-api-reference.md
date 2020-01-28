@@ -452,6 +452,9 @@ The default config is:
 
   // whether to open in-app message link in new tab/window
   inapp_link_new_window: false
+
+  // whether to ignore or respect the web browser's Do Not Track setting
+  ignore_dnt: false
 }
 ```
 
