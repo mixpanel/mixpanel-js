@@ -277,4 +277,47 @@ describe(`RequestQueue`, function() {
       });
     });
   });
+
+  describe(`read`, function() {
+    it(`decodes any serialized array from localStorage`, function() {
+      localStorage.setItem(`fake-rq-key`, `[]`);
+      expect(queue.read()).to.eql([]);
+
+      localStorage.setItem(`fake-rq-key`, `[3, 2, "a"]`);
+      expect(queue.read()).to.eql([3, 2, `a`]);
+
+      localStorage.setItem(`fake-rq-key`, `[{"id":"abc","payload":{"foo":"bar"}},{"id":"def","payload":{"baz":"quux"}}]`);
+      expect(queue.read()).to.eql([
+        {id: `abc`, payload: {foo: `bar`}},
+        {id: `def`, payload: {baz: `quux`}},
+      ]);
+    });
+
+    it(`turns non-array serialized data into an empty array`, function() {
+      localStorage.setItem(`fake-rq-key`, `5`);
+      expect(queue.read()).to.eql([]);
+
+      localStorage.setItem(`fake-rq-key`, `"a"`);
+      expect(queue.read()).to.eql([]);
+
+      localStorage.setItem(`fake-rq-key`, `{}`);
+      expect(queue.read()).to.eql([]);
+
+      localStorage.setItem(`fake-rq-key`, ``);
+      expect(queue.read()).to.eql([]);
+    });
+
+    it(`turns malformed serialized data into an empty array`, function() {
+      localStorage.setItem(`fake-rq-key`, `asdf{xc`);
+      expect(queue.read()).to.eql([]);
+
+      localStorage.setItem(`fake-rq-key`, `[{"foo":"bar"},`);
+      expect(queue.read()).to.eql([]);
+    });
+
+    it(`returns an empty array when the storage entry is missing`, function() {
+      localStorage.removeItem(`fake-rq-key`);
+      expect(queue.read()).to.eql([]);
+    });
+  });
 });
