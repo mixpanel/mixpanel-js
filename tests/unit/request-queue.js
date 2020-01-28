@@ -200,4 +200,81 @@ describe(`RequestQueue`, function() {
       });
     });
   });
+
+  describe(`removeItemsByID`, function() {
+    const items = [
+      {event: `foo1`, properties: {bar1: `baz1`}},
+      {event: `foo2`, properties: {bar2: `baz2`}},
+      {event: `foo3`, properties: {bar3: `baz3`}},
+      {event: `foo4`, properties: {bar4: `baz4`}},
+      {event: `foo5`, properties: {bar5: `baz5`}},
+    ];
+    let origIDs; // generated item IDs from initial queue
+
+    beforeEach(function() {
+      for (const item of items) {
+        queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+      }
+      expect(queue.read()).to.have.lengthOf(items.length);
+      origIDs = map(queue.memQueue, `id`);
+    });
+
+    it(`removes items with the given IDs from the in-mem queue`, function() {
+      queue.removeItemsByID([origIDs[0], origIDs[3]]); // remove 1st and 4th entries
+      expect(queue.memQueue).to.have.lengthOf(3);
+      expect(queue.memQueue[0].payload.event).to.equal(`foo2`);
+      expect(queue.memQueue[1].payload.event).to.equal(`foo3`);
+      expect(queue.memQueue[2].payload.event).to.equal(`foo5`);
+    });
+
+    it(`removes items with the given IDs from the persisted queue`, function() {
+      queue.removeItemsByID([origIDs[1], origIDs[2]]); // remove 2nd and 3rd entries
+      const storedQueue = queue.read();
+      expect(storedQueue).to.have.lengthOf(3);
+      expect(storedQueue[0].payload.event).to.equal(`foo1`);
+      expect(storedQueue[1].payload.event).to.equal(`foo4`);
+      expect(storedQueue[2].payload.event).to.equal(`foo5`);
+    });
+
+    it(`runs callback after persisting`, function(done) {
+      queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
+        expect(succeeded).to.be.ok;
+        const storedQueue = queue.read();
+        expect(storedQueue).to.have.lengthOf(3);
+        expect(storedQueue[0].payload.event).to.equal(`foo1`);
+        expect(storedQueue[1].payload.event).to.equal(`foo4`);
+        expect(storedQueue[2].payload.event).to.equal(`foo5`);
+        done();
+      });
+    });
+
+    context(`when persistence fails`, function() {
+      beforeEach(function() {
+        queue.storage = {
+          getItem: localStorage.getItem.bind(localStorage),
+          setItem: () => {
+            throw new Error(`persistence failure`);
+          },
+        };
+      });
+
+      it(`reports failure in callback`, function(done) {
+        queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
+          expect(succeeded).not.to.be.ok;
+          done();
+        });
+      });
+
+      it(`still removes items from in-mem queue`, function(done) {
+        queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
+          expect(succeeded).not.to.be.ok;
+          expect(queue.memQueue).to.have.lengthOf(3);
+          expect(queue.memQueue[0].payload.event).to.equal(`foo1`);
+          expect(queue.memQueue[1].payload.event).to.equal(`foo4`);
+          expect(queue.memQueue[2].payload.event).to.equal(`foo5`);
+          done();
+        });
+      });
+    });
+  });
 });
