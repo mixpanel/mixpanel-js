@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import localStorage from 'localStorage';
 
+import { acquireLockForPid } from './lock-test-utils';
 import { SharedLock } from '../../src/shared-lock';
 
 describe(`SharedLock`, function() {
@@ -29,11 +30,26 @@ describe(`SharedLock`, function() {
       });
     });
 
+    it(`waits for previous acquirer to release lock`, function(done) {
+      const sharedArray = [];
+
+      acquireLockForPid(sharedLock, `foobar`);
+
+      // this should block until 'foobar' process releases below
+      sharedLock.withLock(function() {
+        sharedArray.push(`B`);
+        expect(sharedArray).to.eql([`A`, `B`]);
+        done();
+      });
+
+      // 'foobar' process
+      sharedLock.withLock(function() {
+        sharedArray.push(`A`);
+      }, `foobar`);
+    });
+
     it(`clears the lock when one caller does not release it`, function(done) {
-      // fake out a previous lock acquisition
-      sharedLock.storage.setItem(sharedLock.storageKey + ':X', `foobar`);
-      sharedLock.storage.setItem(sharedLock.storageKey + ':Y', `foobar`);
-      sharedLock.storage.setItem(sharedLock.storageKey + ':Z', `foobar`);
+      acquireLockForPid(sharedLock, `foobar`);
 
       const startTime = Date.now();
       sharedLock.withLock(function() {

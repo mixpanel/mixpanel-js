@@ -11,6 +11,8 @@ var RequestQueue = function(key, options) {
     this.storage = options.storage || window.localStorage;
     this.lock = new SharedLock(key, {storage: this.storage});
 
+    this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
+
     this.memQueue = [];
 };
 
@@ -36,7 +38,7 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         if (cb) {
             cb(succeeded);
         }
-    }, this));
+    }, this), this.pid);
 };
 
 /**
@@ -104,7 +106,7 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
         if (cb) {
             cb(succeeded);
         }
-    }, this));
+    }, this), this.pid);
 };
 
 RequestQueue.prototype.read = function() {

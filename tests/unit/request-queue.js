@@ -4,6 +4,7 @@ import intersection from 'lodash/intersection';
 import map from 'lodash/map';
 import uniq from 'lodash/uniq';
 
+import { acquireLockForPid } from './lock-test-utils';
 import { RequestQueue } from '../../src/request-queue';
 
 const DEFAULT_FLUSH_INTERVAL = 10000;
@@ -58,6 +59,26 @@ describe(`RequestQueue`, function() {
 
         done();
       });
+    });
+
+    it(`waits for current lock holder to release`, function(done) {
+      const firstHolder = new RequestQueue(`fake-rq-key`, {storage: localStorage, pid: `first-holder`});
+      const firstItem = {event: `first`};
+      acquireLockForPid(queue.lock, `first-holder`);
+
+      expect(queue.read()).to.be.empty;
+
+      // should not get enqueued until after firstHolder's enqueue() below, since
+      // firstHolder has the lock
+      queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function() {
+        const storedQueue = queue.read();
+        expect(storedQueue).to.have.lengthOf(2);
+        expect(storedQueue[0].payload).to.deep.equal(firstItem);
+        expect(storedQueue[1].payload).to.deep.equal(item);
+        done();
+      });
+
+      firstHolder.enqueue(firstItem, DEFAULT_FLUSH_INTERVAL);
     });
 
     context(`when persistence fails`, function() {
@@ -320,7 +341,6 @@ describe(`RequestQueue`, function() {
       expect(queue.read()).to.eql([]);
     });
   });
-
 
   describe(`save`, function() {
     it(`serializes any array to localStorage`, function() {
