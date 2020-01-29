@@ -3717,6 +3717,33 @@
                 }
             }
 
+            if (USE_XHR && window.localStorage) {
+                var BATCH_TOKEN = 'FAKE_TOKEN_BATCHTEST';
+
+                mpmodule("batch_requests tests", function() {
+                    startRecordingXhrRequests.call(this);
+                    localStorage.removeItem('__mpq_' + BATCH_TOKEN + '_ev');
+                    if (mixpanel.batchtest) {
+                        clearLibInstance(mixpanel.batchtest);
+                    }
+                }, function() {
+                    stopRecordingXhrRequests.call(this);
+                    localStorage.removeItem('__mpq_' + BATCH_TOKEN + '_ev');
+                    if (mixpanel.batchtest) {
+                        clearLibInstance(mixpanel.batchtest);
+                    }
+                });
+
+                test('tracking does not fire a request immediately', 2, function() {
+                    mixpanel.init(BATCH_TOKEN, {batch_requests: true}, 'batchtest');
+                    mixpanel.batchtest.track('queued event');
+
+                    // only 1 request: decide
+                    same(this.requests.length, 1, "track should not have fired off a request");
+                    ok(this.requests[0].url.indexOf('/decide') >= 0, "only initial request should be to /decide");
+                });
+            }
+
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
 
                 mpmodule('GDPR', null, function() {
