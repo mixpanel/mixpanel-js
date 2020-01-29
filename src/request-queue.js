@@ -1,5 +1,5 @@
 import { SharedLock } from './shared-lock';
-import { cheap_guid, console, _ } from './utils'; // eslint-disable-line camelcase
+import { cheap_guid, console, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
 
 /**
  * RequestQueue: queue for batching API requests with localStorage backup for retries
@@ -55,11 +55,11 @@ RequestQueue.prototype.fillBatch = function(batchSize) {
         if (storedQueue.length) {
             // item IDs already in batch; don't duplicate out of storage
             var idsInBatch = {}; // poor man's Set
-            _.each(batch, function(item) { idsInBatch[item[`id`]] = true; });
+            _.each(batch, function(item) { idsInBatch[item['id']] = true; });
 
             for (var i = 0; i < storedQueue.length; i++) {
                 var item = storedQueue[i];
-                if (+(new Date()) > item['flushAfter'] && !idsInBatch[item[`id`]]) {
+                if (+(new Date()) > item['flushAfter'] && !idsInBatch[item['id']]) {
                     batch.push(item);
                     if (batch.length >= batchSize) {
                         break;
@@ -112,7 +112,7 @@ RequestQueue.prototype.read = function() {
     try {
         storageEntry = this.storage.getItem(this.storageKey);
         if (storageEntry) {
-            storageEntry = _.JSONDecode(storageEntry);
+            storageEntry = JSONParse(storageEntry);
             if (!_.isArray(storageEntry)) {
                 console.error('[batch] Invalid storage entry:', storageEntry);
                 storageEntry = null;
@@ -127,7 +127,7 @@ RequestQueue.prototype.read = function() {
 
 RequestQueue.prototype.save = function(queue) {
     try {
-        this.storage.setItem(this.storageKey, _.JSONEncode(queue));
+        this.storage.setItem(this.storageKey, JSONStringify(queue));
         return true;
     } catch (err) {
         console.error('[batch] Error saving queue', err);

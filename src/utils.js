@@ -1656,6 +1656,14 @@ var extract_domain = function(hostname) {
     return matches ? matches[0] : '';
 };
 
+var JSONStringify = null, JSONParse = null;
+if (typeof JSON !== 'undefined') {
+    JSONStringify = JSON.stringify;
+    JSONParse = JSON.parse;
+}
+JSONStringify = JSONStringify || _.JSONEncode;
+JSONParse = JSONParse || _.JSONDecode;
+
 // EXPORTS (for closure compiler)
 _['toArray']                = _.toArray;
 _['isObject']               = _.isObject;
@@ -1669,4 +1677,4 @@ _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
-export { _, userAgent, console, win as window, document, navigator, cheap_guid, extract_domain };
+export { _, userAgent, console, win as window, document, navigator, cheap_guid, extract_domain, JSONStringify, JSONParse };

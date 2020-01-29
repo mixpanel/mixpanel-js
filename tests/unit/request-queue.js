@@ -320,4 +320,15 @@ describe(`RequestQueue`, function() {
       expect(queue.read()).to.eql([]);
     });
   });
+
+
+  describe(`save`, function() {
+    it(`serializes any array to localStorage`, function() {
+      queue.save([]);
+      expect(localStorage.getItem(`fake-rq-key`)).to.equal(`[]`);
+
+      queue.save([`a`, `b`, {foo: `bar`}]);
+      expect(localStorage.getItem(`fake-rq-key`)).to.equal(`["a","b",{"foo":"bar"}]`);
+    });
+  });
 });
