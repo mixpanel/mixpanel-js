@@ -12,6 +12,7 @@
 
     if (!document.referrer) {
         // force referrer for tests
-        redirect (window.location + "?ref");
+        var qschar = window.location.href.indexOf('?') === -1 ? '?' : '&';
+        redirect(window.location + qschar + "ref");
     }
 }());
