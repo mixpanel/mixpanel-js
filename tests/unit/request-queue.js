@@ -330,5 +330,15 @@ describe(`RequestQueue`, function() {
       queue.save([`a`, `b`, {foo: `bar`}]);
       expect(localStorage.getItem(`fake-rq-key`)).to.equal(`["a","b",{"foo":"bar"}]`);
     });
+
+    it(`returns true on success`, function() {
+      expect(queue.save([1, 2, 3])).to.be.ok;
+    });
+
+    it(`returns false on failure`, function() {
+      const unstringifyable = {};
+      unstringifyable.foo = unstringifyable; // circular reference
+      expect(queue.save(unstringifyable)).not.to.be.ok;
+    });
   });
 });
