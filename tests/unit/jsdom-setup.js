@@ -55,6 +55,7 @@ export default function jsdomSetup(options={}) {
   let teardown;
 
   beforeEach(function() {
+    this.timeout(5000);
     teardown = jsdom(options.html, jsdomOptions);
     const modules = reImport(options.reImportModules);
     if (typeof(options.beforeCallback) === `function`) {
