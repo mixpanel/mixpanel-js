@@ -3728,7 +3728,11 @@
                     if (mixpanel.batchtest) {
                         clearLibInstance(mixpanel.batchtest);
                     }
-                    mixpanel.init(BATCH_TOKEN, {batch_requests: true, autotrack: false}, 'batchtest');
+                    mixpanel.init(BATCH_TOKEN, {
+                        batch_requests: true,
+                        autotrack: false,
+                        track_pageview: false
+                    }, 'batchtest');
                 }, function() {
                     stopRecordingXhrRequests.call(this);
                     localStorage.removeItem('__mpq_' + BATCH_TOKEN + '_ev');
@@ -3745,7 +3749,7 @@
                     same(this.requests.length, 0, "track should not have sent a request");
                 });
 
-                test('tracking sends request after flush interval', 6, function() {
+                test('tracking sends request after flush interval', 5, function() {
                     mixpanel.batchtest.track('queued event 1');
                     mixpanel.batchtest.track('queued event 2');
                     this.clock.tick(7000); // default batch_flush_interval_ms is 5000
@@ -3753,21 +3757,81 @@
                     same(this.requests.length, 1, "batch should have sent a single request");
                     ok(this.requests[0].url.indexOf('/track/') >= 0, "only request should be to /track");
                     var tracked_events = getRequestData(this.requests[0]);
-                    same(tracked_events.length, 3, "should have sent 3 events in batch");
-                    same(tracked_events[0].event, 'mp_page_view');
-                    same(tracked_events[1].event, 'queued event 1');
-                    same(tracked_events[2].event, 'queued event 2');
+                    same(tracked_events.length, 2, "should have sent both events in batch");
+                    same(tracked_events[0].event, 'queued event 1');
+                    same(tracked_events[1].event, 'queued event 2');
                 });
 
-                // TODO test flush interval configuration
+                test('flush interval is configurable', 2, function() {
+                    // kill off existing instance which has already scheduled its first flush
+                    clearLibInstance(mixpanel.batchtest);
+                    mixpanel.init(BATCH_TOKEN, {
+                        batch_requests: true,
+                        autotrack: false,
+                        batch_flush_interval_ms: 45000
+                    }, 'batchtest');
+
+                    mixpanel.batchtest.track('queued event');
+
+                    this.clock.tick(7000);
+                    same(this.requests.length, 0, "batch request should not have been sent yet");
+
+                    this.clock.tick(40000);
+                    same(this.requests.length, 1, "batch request should have been sent");
+                });
+
+                test('chains multiple requests when queue exceeds configured batch size', 14, function() {
+                    mixpanel.batchtest.set_config({batch_size: 3});
+
+                    for (var i = 1; i <= 8; i++) { // 3 batches (3/3/2 events)
+                        mixpanel.batchtest.track('queued event ' + i);
+                    }
+
+                    this.clock.tick(100);
+                    same(this.requests.length, 0, "batch requests should not have been sent yet");
+
+                    this.clock.tick(7000);
+                    // first request has now been made; respond
+                    this.requests[0].respond(200, {}, '1');
+                    // second request has now been made; respond
+                    this.requests[1].respond(200, {}, '1');
+
+                    same(this.requests.length, 3, "3 batch requests should have been sent");
+
+                    var tracked_events = getRequestData(this.requests[0]);
+                    same(tracked_events.length, 3, "should have sent 3 events in first request");
+                    same(tracked_events[0].event, 'queued event 1');
+                    same(tracked_events[1].event, 'queued event 2');
+                    same(tracked_events[2].event, 'queued event 3');
+
+                    tracked_events = getRequestData(this.requests[1]);
+                    same(tracked_events.length, 3, "should have sent 3 events in second request");
+                    same(tracked_events[0].event, 'queued event 4');
+                    same(tracked_events[1].event, 'queued event 5');
+                    same(tracked_events[2].event, 'queued event 6');
+
+                    tracked_events = getRequestData(this.requests[2]);
+                    same(tracked_events.length, 2, "should have sent 2 events in final request");
+                    same(tracked_events[0].event, 'queued event 7');
+                    same(tracked_events[1].event, 'queued event 8');
+
+                    this.clock.tick(7000);
+                    same(this.requests.length, 3, "no new requests should have been sent after queue is clear");
+                });
+
                 // TODO test batch size configuration
                 // TODO test multi-batch flush
                 // TODO test request failure / retry backoff
                 // TODO test flush interval reset after retry success
                 // TODO test malformed /track response
+                // TODO test leftover data in localstorage
+                    // orphaned
+                    // non-orphaned, becomes orphaned
+                // TODO test localstorage is cleared after events are queued
                 // TODO test malformed localstorage data
                 // TODO test malformed individual events in localstorage array
                 // TODO test opt-out with events queued already
+                // TODO test sendBeacon hail-mary on unload
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
