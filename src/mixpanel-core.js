@@ -552,7 +552,9 @@ MixpanelLib.prototype._reset_flush = function() {
 
 MixpanelLib.prototype._schedule_flush = function(flush_ms) {
     this._batch_flush_interval_ms = flush_ms;
-    setTimeout(_.bind(this._flush_request_queue, this), this._batch_flush_interval_ms);
+    if (this._batch_requests) { // don't schedule anymore if batching has been stopped
+        this._batch_timeout_id = setTimeout(_.bind(this._flush_request_queue, this), this._batch_flush_interval_ms);
+    }
 };
 
 MixpanelLib.prototype._flush_request_queue = function() {
@@ -610,6 +612,14 @@ MixpanelLib.prototype._flush_request_queue = function() {
     } catch(err) {
         console.error('[batch] Error flushing request queue', err);
         this._reset_flush();
+    }
+};
+
+MixpanelLib.prototype.stop_batch_requests = function() {
+    this._batch_requests = false;
+    if (this._batch_timeout_id) {
+        clearTimeout(this._batch_timeout_id);
+        this._batch_timeout_id = null;
     }
 };
 
@@ -1745,6 +1755,7 @@ MixpanelLib.prototype['set_group']                          = MixpanelLib.protot
 MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
 MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
 MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
+MixpanelLib.prototype['stop_batch_requests']                = MixpanelLib.prototype.stop_batch_requests;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;

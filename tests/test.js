@@ -143,6 +143,7 @@
         }
 
         instance.persistence.clear();
+        instance.stop_batch_requests();
 
         if (clear_opt_in_out) {
             instance.clear_opt_in_out_tracking();
@@ -3721,26 +3722,41 @@
                 var BATCH_TOKEN = 'FAKE_TOKEN_BATCHTEST';
 
                 mpmodule("batch_requests tests", function() {
+                    this.clock = sinon.useFakeTimers('setTimeout', 'clearTimeout');
                     startRecordingXhrRequests.call(this);
                     localStorage.removeItem('__mpq_' + BATCH_TOKEN + '_ev');
                     if (mixpanel.batchtest) {
                         clearLibInstance(mixpanel.batchtest);
                     }
+                    mixpanel.init(BATCH_TOKEN, {batch_requests: true, autotrack: false}, 'batchtest');
                 }, function() {
                     stopRecordingXhrRequests.call(this);
                     localStorage.removeItem('__mpq_' + BATCH_TOKEN + '_ev');
                     if (mixpanel.batchtest) {
                         clearLibInstance(mixpanel.batchtest);
                     }
+                    this.clock.restore();
                 });
 
-                test('tracking does not fire a request immediately', 2, function() {
-                    mixpanel.init(BATCH_TOKEN, {batch_requests: true}, 'batchtest');
+                test('tracking does not send a request immediately', 1, function() {
                     mixpanel.batchtest.track('queued event');
+                    this.clock.tick(100);
 
-                    // only 1 request: decide
-                    same(this.requests.length, 1, "track should not have fired off a request");
-                    ok(this.requests[0].url.indexOf('/decide') >= 0, "only initial request should be to /decide");
+                    same(this.requests.length, 0, "track should not have sent a request");
+                });
+
+                test('tracking sends request after flush interval', 6, function() {
+                    mixpanel.batchtest.track('queued event 1');
+                    mixpanel.batchtest.track('queued event 2');
+                    this.clock.tick(7000); // default batch_flush_interval_ms is 5000
+
+                    same(this.requests.length, 1, "batch should have sent a single request");
+                    ok(this.requests[0].url.indexOf('/track/') >= 0, "only request should be to /track");
+                    var tracked_events = getRequestData(this.requests[0]);
+                    same(tracked_events.length, 3, "should have sent 3 events in batch");
+                    same(tracked_events[0].event, 'mp_page_view');
+                    same(tracked_events[1].event, 'queued event 1');
+                    same(tracked_events[2].event, 'queued event 2');
                 });
             }
 
