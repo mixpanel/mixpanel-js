@@ -3758,6 +3758,16 @@
                     same(tracked_events[1].event, 'queued event 1');
                     same(tracked_events[2].event, 'queued event 2');
                 });
+
+                // TODO test flush interval configuration
+                // TODO test batch size configuration
+                // TODO test multi-batch flush
+                // TODO test request failure / retry backoff
+                // TODO test flush interval reset after retry success
+                // TODO test malformed /track response
+                // TODO test malformed localstorage data
+                // TODO test malformed individual events in localstorage array
+                // TODO test opt-out with events queued already
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
