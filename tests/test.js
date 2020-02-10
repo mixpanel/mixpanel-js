@@ -3819,15 +3819,51 @@
                     same(this.requests.length, 3, "no new requests should have been sent after queue is clear");
                 });
 
-                // TODO test batch size configuration
-                // TODO test multi-batch flush
-                // TODO test request failure / retry backoff
+                test('tracking failures retry with exponential backoff', 9, function() {
+                    mixpanel.batchtest.track('queued event 1');
+                    mixpanel.batchtest.track('queued event 2');
+
+                    this.clock.tick(5000);
+                    same(this.requests.length, 1, "first batch request should have been sent after 5s");
+
+                    this.requests[0].respond(500, {}, '<html>message from an exploded load balancer</html>');
+
+                    this.clock.tick(5000);
+                    same(this.requests.length, 1, "no new requests should have been sent yet after failure (10s)");
+                    this.clock.tick(5000);
+                    same(this.requests.length, 2, "batch request should have retried 10s after the first failure");
+                    same(this.requests[0].requestBody, this.requests[1].requestBody, "retry should have sent the same data");
+
+                    this.requests[1].respond(503, {}, '<html>another explosion</html>');
+                    this.clock.tick(10000);
+                    same(this.requests.length, 2, "no new requests should have been sent yet after failure (20s)");
+                    this.clock.tick(10000);
+                    same(this.requests.length, 3, "batch request should have retried 20s after the previous failure");
+
+                    this.requests[2].respond(503, {}, '<html>another explosion</html>');
+                    this.clock.tick(20000);
+                    same(this.requests.length, 3, "no new requests should have been sent yet after failure (40s)");
+                    this.clock.tick(20000);
+                    same(this.requests.length, 4, "batch request should have retried 40s after the previous failure");
+
+                    // will the madness ever end? finally the API call succeeds
+                    this.requests[3].respond(200, {}, '1');
+                    this.clock.tick(240000); // a long time
+                    same(this.requests.length, 4, "no new requests should have been sent after batch succeeded");
+                });
+
+                // TODO test request failure with new events between retries
+                // TODO test some failure types are not retried
+                // TODO test 413 response reduces batch size
+                // TODO test retry-after response header affects flush interval
                 // TODO test flush interval reset after retry success
                 // TODO test malformed /track response
+                // TODO test requests get queued in localstorage
+                // TODO test only success responses clear requests from localstorage
                 // TODO test leftover data in localstorage
                     // orphaned
                     // non-orphaned, becomes orphaned
-                // TODO test localstorage is cleared after events are queued
+                // TODO test localstorage gets accidentally cleared after events are queued
                 // TODO test malformed localstorage data
                 // TODO test malformed individual events in localstorage array
                 // TODO test opt-out with events queued already
