@@ -3852,11 +3852,81 @@
                     same(this.requests.length, 4, "no new requests should have been sent after batch succeeded");
                 });
 
-                // TODO test request failure with new events between retries
+                test('tracking backoff caps out at 10 minutes', 5, function() {
+                    mixpanel.batchtest.track('queued event 1');
+                    mixpanel.batchtest.track('queued event 2');
+
+                    var total_requests = 0;
+                    var try_after = 5000;
+                    var TEN_MINUTES = 10 * 60 * 1000;
+                    while (try_after <= TEN_MINUTES) {
+                        this.clock.tick(try_after);
+                        this.requests[total_requests++].respond(503, {}, '<html>sry we r down</html>');
+                        try_after *= 2;
+                    }
+
+                    same(this.requests.length, total_requests);
+                    this.clock.tick(TEN_MINUTES - 1);
+                    same(this.requests.length, total_requests, "should not have made another request before 10 minutes");
+                    this.clock.tick(1);
+                    same(this.requests.length, total_requests + 1, "should have made another request after 10 minutes");
+
+                    this.requests[this.requests.length - 1].respond(503, {}, '<html>sry we r down</html>');
+                    this.clock.tick(TEN_MINUTES - 1);
+                    same(this.requests.length, total_requests + 1, "should not have made another request before 10 minutes");
+                    this.clock.tick(1);
+                    same(this.requests.length, total_requests + 2, "should have made another request after 10 minutes");
+                });
+
+                test('flush interval gets reset when request succeeds after backoff', 3, function() {
+                    mixpanel.batchtest.track('queued event 1');
+                    mixpanel.batchtest.track('queued event 2');
+
+                    this.clock.tick(5000);
+                    this.requests[0].respond(503, {}, '<html>sry we r down</html>');
+                    this.clock.tick(10000);
+                    this.requests[1].respond(503, {}, '<html>sry we r down</html>');
+
+                    // configuring default flush interval shouldn't affect anything during failure backoff
+                    mixpanel.batchtest.set_config({batch_flush_interval_ms: 8000});
+
+                    this.clock.tick(20000);
+                    this.requests[2].respond(503, {}, '<html>sry we r down</html>');
+                    this.clock.tick(40000);
+                    this.requests[3].respond(200, {}, '1');
+                    same(this.requests.length, 4, "should have made 4 requests total");
+
+                    // at this point the success response should have reset the interval to the 8000
+                    // configured above
+                    mixpanel.batchtest.track('queued event 3');
+                    this.clock.tick(7000);
+                    same(this.requests.length, 4, "should not have made a new request yet");
+                    this.clock.tick(1000);
+                    same(this.requests.length, 5, "should have made request after configured flush interval (8s)");
+                });
+
+                test('new events can queue up while failing requests are retrying', 4, function() {
+                    mixpanel.batchtest.track('queued event 1');
+                    mixpanel.batchtest.track('queued event 2');
+
+                    this.clock.tick(5000);
+                    this.requests[0].respond(503, {}, '<html>sry we r down</html>');
+                    this.clock.tick(10000);
+                    this.requests[1].respond(503, {}, '<html>sry we r down</html>');
+
+                    mixpanel.batchtest.track('queued event 3');
+
+                    this.clock.tick(20000);
+                    var batch1_events = getRequestData(this.requests[2]);
+                    same(batch1_events.length, 3, "should have included all events in retry request");
+                    same(batch1_events[0].event, 'queued event 1');
+                    same(batch1_events[1].event, 'queued event 2');
+                    same(batch1_events[2].event, 'queued event 3');
+                });
+
                 // TODO test some failure types are not retried
                 // TODO test 413 response reduces batch size
                 // TODO test retry-after response header affects flush interval
-                // TODO test flush interval reset after retry success
                 // TODO test malformed /track response
                 // TODO test requests get queued in localstorage
                 // TODO test only success responses clear requests from localstorage
@@ -3868,6 +3938,7 @@
                 // TODO test malformed individual events in localstorage array
                 // TODO test opt-out with events queued already
                 // TODO test sendBeacon hail-mary on unload
+                // TODO test track callback
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
