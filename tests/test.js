@@ -3997,7 +3997,21 @@
                     same(this.requests.length, 3, "should have reset flush interval after retry success");
                 });
 
-                // TODO test malformed /track response
+                test('malformed track response does not break batching', 3, function() {
+                    mixpanel.batchtest.track('queued event 1');
+                    mixpanel.batchtest.track('queued event 2');
+
+                    this.clock.tick(5000);
+                    this.requests[0].respond(200, {}, '{"something":"malformed');
+
+                    mixpanel.batchtest.track('queued event 3');
+                    this.clock.tick(5000);
+                    same(this.requests.length, 2, "should have sent both requests with no backoff");
+                    var batch2_events = getRequestData(this.requests[1]);
+                    same(batch2_events.length, 1, "should have included only one new event in last batch");
+                    same(batch2_events[0].event, 'queued event 3');
+                });
+
                 // TODO test requests get queued in localstorage
                 // TODO test only successful posts clear requests from localstorage (including 0 response)
                 // TODO test leftover data in localstorage

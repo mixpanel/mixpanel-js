@@ -458,7 +458,11 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                                     response = _.JSONDecode(req.responseText);
                                 } catch (e) {
                                     console.error(e);
-                                    return;
+                                    if (options.ignore_json_errors) {
+                                        response = req.responseText;
+                                    } else {
+                                        return;
+                                    }
                                 }
                                 callback(response);
                             } else {
@@ -612,7 +616,8 @@ MixpanelLib.prototype._flush_request_queue = function() {
                         remove_items_from_queue = true;
                     }
                 } else {
-                    // successful POST, remove each item in batch from queue
+                    // successful network request+response; remove each item in batch from queue
+                    // (even if it was e.g. a 400, in which case retrying won't help)
                     remove_items_from_queue = true;
                 }
 
@@ -631,7 +636,7 @@ MixpanelLib.prototype._flush_request_queue = function() {
         this._send_request(
             this.get_config('api_host') + '/track/',
             encode_data_for_request(data_for_request),
-            {method: 'POST', verbose: true},
+            {method: 'POST', verbose: true, ignore_json_errors: true},
             this._prepare_callback(_.bind(batch_send_callback, this), data_for_request)
         );
 
