@@ -375,7 +375,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 
     var DEFAULT_OPTIONS = {
         method: this.get_config('api_method'),
-        transport: this.get_config('api_transport')
+        transport: this.get_config('api_transport'),
+        verbose: this.get_config('verbose')
     };
     var body_data = null;
 
@@ -391,7 +392,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     var use_sendBeacon = sendBeacon && use_post && options.transport.toLowerCase() === 'sendbeacon';
 
     // needed to correctly format responses
-    var verbose_mode = this.get_config('verbose');
+    var verbose_mode = options.verbose;
     if (data['verbose']) { verbose_mode = true; }
 
     if (this.get_config('test')) { data['test'] = 1; }
@@ -468,7 +469,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         console.error(error);
                         if (callback) {
                             if (verbose_mode) {
-                                callback({status: 0, error: error});
+                                callback({status: 0, error: error, xhr_req: req});
                             } else {
                                 callback(0);
                             }
@@ -583,18 +584,19 @@ MixpanelLib.prototype._flush_request_queue = function() {
 
             try {
 
-                if (res === 1 || (_.isObject(res) && res.status === 1)) {
-                    // success, remove each item in batch from queue
+                if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
+                    // network or API error, retry
+                    var retry_ms = Math.min(MAX_RETRY_INTERVAL_MS, this._batch_flush_interval_ms * 2);
+                    console.log('[batch] retry in ' + retry_ms + ' ms');
+                    this._schedule_flush(retry_ms);
+                } else {
+                    // successful POST, remove each item in batch from queue
+                    // don't retry 400s
+                    // TODO reduce batch size on 413
                     this.request_batch_queue.removeItemsByID(
                         _.map(batch, function(item) { return item['id']; }),
                         _.bind(this._flush_request_queue, this) // handle next batch if the queue isn't empty
                     );
-                } else {
-                    // error, retry
-                    // TODO don't retry for some error types
-                    var retry_ms = Math.min(MAX_RETRY_INTERVAL_MS, this._batch_flush_interval_ms * 2);
-                    console.log('[batch] retry in ' + retry_ms + ' ms');
-                    this._schedule_flush(retry_ms);
                 }
 
             } catch(err) {
@@ -605,7 +607,7 @@ MixpanelLib.prototype._flush_request_queue = function() {
         this._send_request(
             this.get_config('api_host') + '/track/',
             encode_data_for_request(data_for_request),
-            {method: 'POST'},
+            {method: 'POST', verbose: true},
             this._prepare_callback(_.bind(batch_send_callback, this), data_for_request)
         );
 

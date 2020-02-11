@@ -3639,16 +3639,15 @@
                     }, resp);
                 });
 
-                asyncTest('xhr error handling code supports verbose', 2, function() {
+                asyncTest('xhr error handling code supports verbose', 4, function() {
                     mixpanel.test.set_config({
                         verbose: true
                     });
 
                     mixpanel.test.track('test', {}, function(response) {
-                        same(response, {
-                            status: 0,
-                            error: "Bad HTTP status: 500 Internal Server Error"
-                        }, "xhr returned verbose error");
+                        same(response.status, 0, "xhr returned verbose error status");
+                        same(response.error, "Bad HTTP status: 500 Internal Server Error", "xhr returned verbose error");
+                        ok(response.xhr_req, "xhr returned reference to request object");
                         start();
                     });
 
@@ -3924,12 +3923,23 @@
                     same(batch1_events[2].event, 'queued event 3');
                 });
 
+                test('successful posts with response 0 are not retried', 1, function() {
+                    mixpanel.batchtest.track('queued event 1');
+                    mixpanel.batchtest.track('queued event 2');
+
+                    this.clock.tick(5000);
+                    this.requests[0].respond(400, {}, '0');
+
+                    this.clock.tick(240000);
+                    same(this.requests.length, 1, "should not have retried after successful post");
+                });
+
                 // TODO test some failure types are not retried
                 // TODO test 413 response reduces batch size
                 // TODO test retry-after response header affects flush interval
                 // TODO test malformed /track response
                 // TODO test requests get queued in localstorage
-                // TODO test only success responses clear requests from localstorage
+                // TODO test only successful posts clear requests from localstorage (including 0 response)
                 // TODO test leftover data in localstorage
                     // orphaned
                     // non-orphaned, becomes orphaned
