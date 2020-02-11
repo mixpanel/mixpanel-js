@@ -270,6 +270,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
             console.warn('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
         } else {
             this.request_batch_queue = new RequestQueue('__mpq_' + token + '_ev');
+            this._batch_size = this.get_config('batch_size');
             this._flush_request_queue();
         }
     }
@@ -566,8 +567,8 @@ MixpanelLib.prototype._flush_request_queue = function() {
             return;
         }
 
-        var batch_size = this.get_config('batch_size');
-        var batch = this.request_batch_queue.fillBatch(batch_size);
+        var current_batch_size = this._batch_size;
+        var batch = this.request_batch_queue.fillBatch(current_batch_size);
         if (batch.length < 1) {
             console.log('[batch] nothing to do');
             this._reset_flush();
@@ -585,6 +586,7 @@ MixpanelLib.prototype._flush_request_queue = function() {
 
             try {
 
+                var remove_items_from_queue = false;
                 if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
                     // network or API error, retry
                     var retry_ms = this._batch_flush_interval_ms * 2;
@@ -599,14 +601,22 @@ MixpanelLib.prototype._flush_request_queue = function() {
                     this._schedule_flush(retry_ms);
                 } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status === 413) {
                     // 413 Payload Too Large
-                    batch_size = Math.max(1, Math.floor(batch_size / 2));
-                    this.set_config({'batch_size': batch_size});
-                    console.log('[batch] 413 response; reducing batch size to ' + batch_size);
-                    this._reset_flush();
+                    if (batch.length > 1) {
+                        var halved_batch_size = Math.max(1, Math.floor(current_batch_size / 2));
+                        this._batch_size = Math.min(this._batch_size, halved_batch_size, batch.length - 1);
+                        console.log('[batch] 413 response; reducing batch size to ' + this._batch_size);
+                        this._reset_flush();
+                    } else {
+                        console.error('[batch] single-event request too large; dropping', batch);
+                        this._batch_size = this.get_config('batch_size'); // restore configured batch size
+                        remove_items_from_queue = true;
+                    }
                 } else {
                     // successful POST, remove each item in batch from queue
-                    // don't retry 400s
-                    // TODO reduce batch size on 413
+                    remove_items_from_queue = true;
+                }
+
+                if (remove_items_from_queue) {
                     this.request_batch_queue.removeItemsByID(
                         _.map(batch, function(item) { return item['id']; }),
                         _.bind(this._flush_request_queue, this) // handle next batch if the queue isn't empty
@@ -1370,6 +1380,11 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
 MixpanelLib.prototype.set_config = function(config) {
     if (_.isObject(config)) {
         _.extend(this['config'], config);
+
+        var new_batch_size = config['batch_size'];
+        if (new_batch_size) {
+            this._batch_size = new_batch_size;
+        }
 
         if (!this.get_config('persistence_name')) {
             this['config']['persistence_name'] = this['config']['cookie_name'];

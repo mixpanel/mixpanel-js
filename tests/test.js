@@ -3962,6 +3962,23 @@
                     same(batch2_events[2].event, 'queued event 7');
                 });
 
+                test('413 response from a single event does not retry', 5, function() {
+                    mixpanel.batchtest.track('bloated event');
+                    this.clock.tick(5000);
+                    this.requests[0].respond(413, {}, '0'); // Payload Too Large
+                    this.clock.tick(240000);
+                    same(this.requests.length, 1, "should not have retried after 413 from a single event");
+
+                    mixpanel.batchtest.track('normal event 1');
+                    mixpanel.batchtest.track('normal event 2');
+                    this.clock.tick(5000);
+                    same(this.requests.length, 2, "should have gone back to batching after dropped event");
+                    var batch2_events = getRequestData(this.requests[1]);
+                    same(batch2_events.length, 2, "should have included only two new events in last batch");
+                    same(batch2_events[0].event, 'normal event 1');
+                    same(batch2_events[1].event, 'normal event 2');
+                });
+
                 test('Retry-After response header changes flush interval for one retry', 3, function() {
                     mixpanel.batchtest.track('queued event 1');
                     mixpanel.batchtest.track('queued event 2');
@@ -3992,6 +4009,7 @@
                 // TODO test opt-out with events queued already
                 // TODO test sendBeacon hail-mary on unload
                 // TODO test track callback
+                // TODO people + group updates
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
