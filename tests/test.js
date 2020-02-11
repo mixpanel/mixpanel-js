@@ -3934,8 +3934,34 @@
                     same(this.requests.length, 1, "should not have retried after successful post");
                 });
 
-                // TODO test some failure types are not retried
-                // TODO test 413 response reduces batch size
+                test('413 response reduces batch size', 9, function() {
+                    mixpanel.batchtest.set_config({batch_size: 9}); // nice odd number
+
+                    for (var i = 1; i <= 7; i++) {
+                        mixpanel.batchtest.track('queued event ' + i);
+                    }
+
+                    this.clock.tick(5000);
+                    var batch1_events = getRequestData(this.requests[0]);
+                    same(batch1_events.length, 7, "should have included all 7 events in first request");
+
+                    this.requests[0].respond(413, {}, '0'); // Payload Too Large
+                    this.clock.tick(5000);
+                    same(this.requests.length, 2, "should have retried after 413 without backoff");
+                    var batch1_events = getRequestData(this.requests[1]);
+                    same(batch1_events.length, 4, "should have reduced batch size after 413");
+                    same(batch1_events[0].event, 'queued event 1');
+                    same(batch1_events[3].event, 'queued event 4');
+
+                    this.requests[1].respond(200, {}, '1');
+                    this.clock.tick(5000);
+                    same(this.requests.length, 3, "should have split original batch into two");
+                    var batch2_events = getRequestData(this.requests[2]);
+                    same(batch2_events.length, 3, "should have included only remaining events in last batch");
+                    same(batch2_events[0].event, 'queued event 5');
+                    same(batch2_events[2].event, 'queued event 7');
+                });
+
                 // TODO test retry-after response header affects flush interval
                 // TODO test malformed /track response
                 // TODO test requests get queued in localstorage

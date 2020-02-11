@@ -566,7 +566,8 @@ MixpanelLib.prototype._flush_request_queue = function() {
             return;
         }
 
-        var batch = this.request_batch_queue.fillBatch(this.get_config('batch_size'));
+        var batch_size = this.get_config('batch_size');
+        var batch = this.request_batch_queue.fillBatch(batch_size);
         if (batch.length < 1) {
             console.log('[batch] nothing to do');
             this._reset_flush();
@@ -589,6 +590,12 @@ MixpanelLib.prototype._flush_request_queue = function() {
                     var retry_ms = Math.min(MAX_RETRY_INTERVAL_MS, this._batch_flush_interval_ms * 2);
                     console.log('[batch] retry in ' + retry_ms + ' ms');
                     this._schedule_flush(retry_ms);
+                } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status === 413) {
+                    // 413 Payload Too Large
+                    batch_size = Math.max(1, Math.floor(batch_size / 2));
+                    this.set_config({'batch_size': batch_size});
+                    console.log('[batch] 413 response; reducing batch size to ' + batch_size);
+                    this._reset_flush();
                 } else {
                     // successful POST, remove each item in batch from queue
                     // don't retry 400s
