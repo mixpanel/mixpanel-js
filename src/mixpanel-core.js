@@ -587,7 +587,14 @@ MixpanelLib.prototype._flush_request_queue = function() {
 
                 if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
                     // network or API error, retry
-                    var retry_ms = Math.min(MAX_RETRY_INTERVAL_MS, this._batch_flush_interval_ms * 2);
+                    var retry_ms = this._batch_flush_interval_ms * 2;
+                    if (res.xhr_req.responseHeaders) {
+                        var retry_after = res.xhr_req.responseHeaders['Retry-After'];
+                        if (retry_after) {
+                            retry_ms = (parseInt(retry_after, 10) * 1000) || retry_ms;;
+                        }
+                    }
+                    retry_ms = Math.min(MAX_RETRY_INTERVAL_MS, retry_ms);
                     console.log('[batch] retry in ' + retry_ms + ' ms');
                     this._schedule_flush(retry_ms);
                 } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status === 413) {
