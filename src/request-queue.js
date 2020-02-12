@@ -74,10 +74,11 @@ RequestQueue.prototype.fillBatch = function(batchSize) {
 };
 
 // remove items with matching 'id' from array (immutably)
-var filterOutIDs = function(items, idSet) {
+// also remove any item without a valid id
+var filterOutIDsAndInvalid = function(items, idSet) {
     var filteredItems = [];
     _.each(items, function(item) {
-        if (!idSet[item['id']]) {
+        if (item['id'] && !idSet[item['id']]) {
             filteredItems.push(item);
         }
     });
@@ -92,12 +93,12 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     var idSet = {}; // poor man's Set
     _.each(ids, function(id) { idSet[id] = true; });
 
-    this.memQueue = filterOutIDs(this.memQueue, idSet);
+    this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
     this.lock.withLock(_.bind(function() {
         var succeeded;
         try {
             var storedQueue = this.read();
-            storedQueue = filterOutIDs(storedQueue, idSet);
+            storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
             succeeded = this.save(storedQueue);
         } catch(err) {
             console.error('[batch] Error removing items', ids);

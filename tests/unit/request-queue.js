@@ -257,6 +257,30 @@ describe(`RequestQueue`, function() {
       expect(storedQueue[2].payload.event).to.equal(`foo5`);
     });
 
+    it(`removes invalid items from both queues`, function() {
+      // sprinkle some bad items into the queue
+      queue.memQueue.splice(1, 0, `garbage entry {{`);
+      queue.memQueue.push({pure: `nonsense`});
+      queue.save(queue.memQueue);
+
+      expect(queue.memQueue).to.have.lengthOf(7);
+      let storedQueue = queue.read();
+      expect(storedQueue).to.have.lengthOf(7);
+
+      queue.removeItemsByID([origIDs[0], origIDs[3]]); // remove foo1 and foo4
+
+      expect(queue.memQueue).to.have.lengthOf(3); // 7 total minus 2 invalid minus 2 removed by ID
+      expect(queue.memQueue[0].payload.event).to.equal(`foo2`);
+      expect(queue.memQueue[1].payload.event).to.equal(`foo3`);
+      expect(queue.memQueue[2].payload.event).to.equal(`foo5`);
+
+      storedQueue = queue.read();
+      expect(storedQueue).to.have.lengthOf(3);
+      expect(storedQueue[0].payload.event).to.equal(`foo2`);
+      expect(storedQueue[1].payload.event).to.equal(`foo3`);
+      expect(storedQueue[2].payload.event).to.equal(`foo5`);
+    });
+
     it(`runs callback after persisting`, function(done) {
       queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
         expect(succeeded).to.be.ok;

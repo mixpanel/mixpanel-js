@@ -4160,8 +4160,54 @@
                     same(batch_events[1].event, 'storagetest 2');
                 });
 
-                // TODO test malformed localstorage data
-                // TODO test malformed individual events in localstorage array
+                test('malformed localStorage entry is ignored and overwritten', 8, function() {
+                    clearLibInstance(mixpanel.batchtest);
+                    localStorage.setItem(LOCALSTORAGE_KEY, 'just some garbage {{{');
+                    initBatchLibInstance();
+                    same(this.requests.length, 0, "no request should have been made");
+
+                    mixpanel.batchtest.track('storagetest 1');
+                    mixpanel.batchtest.track('storagetest 2');
+                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 2, "malformed localStorage entry should have been rewritten with new events");
+                    same(stored_requests[0].payload.event, 'storagetest 1');
+                    same(stored_requests[1].payload.event, 'storagetest 2');
+
+                    this.clock.tick(5000);
+                    same(this.requests.length, 1, "request should have been made");
+                    batch_events = getRequestData(this.requests[0]);
+                    same(batch_events.length, 2);
+                    same(batch_events[0].event, 'storagetest 1');
+                    same(batch_events[1].event, 'storagetest 2');
+                });
+
+                test('malformed items in localStorage entry are dropped', 6, function() {
+                    clearLibInstance(mixpanel.batchtest);
+                    var stored_items = [
+                        {id: 'fakeID1', flushAfter: +(new Date()) - 10000, payload: {
+                            'event': 'valid event 1', 'properties': {'foo': 'bar'}
+                        }},
+                        'I am just a string. Why am I in the queue?',
+                        {id: 'fakeID2', flushAfter: +(new Date()) - 10000, payload: {
+                            'event': 'valid event 2', 'properties': {'foo': 'bar'}
+                        }},
+                    ];
+                    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(stored_items));
+                    same(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)).length, 3);
+
+                    initBatchLibInstance();
+                    same(this.requests.length, 1, "request should have been made");
+                    var batch_events = getRequestData(this.requests[0]);
+                    same(batch_events.length, 2, "only valid events should have been sent");
+                    same(batch_events[0].event, 'valid event 1');
+                    same(batch_events[1].event, 'valid event 2');
+
+                    this.requests[0].respond(200, {}, '1');
+
+                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 0, "localStorage entry should be clear of invalid items");
+                });
+
                 // TODO test opt-out with events queued already
                 // TODO test sendBeacon hail-mary on unload
                 // TODO test track callback
