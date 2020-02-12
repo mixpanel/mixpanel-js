@@ -3719,22 +3719,28 @@
 
             if (USE_XHR && window.localStorage) {
                 var BATCH_TOKEN = 'FAKE_TOKEN_BATCHTEST';
+                var LOCALSTORAGE_KEY = '__mpq_' + BATCH_TOKEN + '_ev';
+
+                var initBatchLibInstance = function(options) {
+                    options = _.extend({
+                        batch_requests: true,
+                        autotrack: false,
+                        track_pageview: false
+                    }, options);
+                    mixpanel.init(BATCH_TOKEN, options, 'batchtest');
+                };
 
                 mpmodule("batch_requests tests", function() {
                     this.clock = sinon.useFakeTimers('setTimeout', 'clearTimeout');
                     startRecordingXhrRequests.call(this);
-                    localStorage.removeItem('__mpq_' + BATCH_TOKEN + '_ev');
+                    localStorage.removeItem(LOCALSTORAGE_KEY);
                     if (mixpanel.batchtest) {
                         clearLibInstance(mixpanel.batchtest);
                     }
-                    mixpanel.init(BATCH_TOKEN, {
-                        batch_requests: true,
-                        autotrack: false,
-                        track_pageview: false
-                    }, 'batchtest');
+                    initBatchLibInstance();
                 }, function() {
                     stopRecordingXhrRequests.call(this);
-                    localStorage.removeItem('__mpq_' + BATCH_TOKEN + '_ev');
+                    localStorage.removeItem(LOCALSTORAGE_KEY);
                     if (mixpanel.batchtest) {
                         clearLibInstance(mixpanel.batchtest);
                     }
@@ -3764,11 +3770,7 @@
                 test('flush interval is configurable', 2, function() {
                     // kill off existing instance which has already scheduled its first flush
                     clearLibInstance(mixpanel.batchtest);
-                    mixpanel.init(BATCH_TOKEN, {
-                        batch_requests: true,
-                        autotrack: false,
-                        batch_flush_interval_ms: 45000
-                    }, 'batchtest');
+                    initBatchLibInstance({batch_flush_interval_ms: 45000});
 
                     mixpanel.batchtest.track('queued event');
 
@@ -4012,17 +4014,159 @@
                     same(batch2_events[0].event, 'queued event 3');
                 });
 
-                // TODO test requests get queued in localstorage
-                // TODO test only successful posts clear requests from localstorage (including 0 response)
-                // TODO test leftover data in localstorage
-                    // orphaned
-                    // non-orphaned, becomes orphaned
-                // TODO test localstorage gets accidentally cleared after events are queued
+                test('batched requests get queued in localStorage', 6, function() {
+                    mixpanel.batchtest.track('storagetest 1');
+                    mixpanel.batchtest.track('storagetest 2');
+                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 2, "both events should be in localStorage");
+                    same(stored_requests[0].payload.event, 'storagetest 1');
+                    same(stored_requests[1].payload.event, 'storagetest 2');
+                    same(stored_requests[0].payload.properties.mp_lib, 'web', "should include event properties");
+                    ok(stored_requests[0].id !== stored_requests[1].id, "stored request should include unique IDs");
+                    ok(stored_requests[0].flushAfter > Date.now(), "stored request should include valid flushAfter time");
+                });
+
+                test('requests are cleared from localStorage after network response', 4, function() {
+                    var stored_requests;
+
+                    mixpanel.batchtest.track('storagetest 1');
+                    mixpanel.batchtest.track('storagetest 2');
+                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 2, "both events should be in localStorage");
+
+                    this.clock.tick(5000);
+                    this.requests[0].respond(200, {}, '1');
+
+                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 0, "both events should have been removed from localStorage");
+
+                    // try again with '0' response
+                    mixpanel.batchtest.track('storagetest 1');
+                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 1, "event should be in localStorage");
+
+                    this.clock.tick(5000);
+                    this.requests[1].respond(400, {}, '0');
+
+                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 0, "event should have been removed from localStorage even after 400");
+                });
+
+                test('requests are not cleared from localStorage after 50x response', 3, function() {
+                    mixpanel.batchtest.track('storagetest 1');
+                    mixpanel.batchtest.track('storagetest 2');
+                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 2, "both events should be in localStorage");
+
+                    this.clock.tick(5000);
+                    this.requests[0].respond(503, {}, 'unavailable');
+
+                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 2, "both events should still be in localStorage");
+                    this.clock.tick(10000);
+                    same(stored_requests.length, 2, "both events should still be in localStorage");
+                });
+
+                test('orphaned data in localStorage gets sent on init', 6, function() {
+                    clearLibInstance(mixpanel.batchtest);
+                    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
+                        {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
+                            'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
+                        }},
+                        {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
+                            'event': 'orphaned event 2'
+                        }}
+                    ]));
+                    same(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)).length, 2);
+
+                    initBatchLibInstance();
+                    same(this.requests.length, 1, "request should have been made to send orphaned events");
+                    var batch_events = getRequestData(this.requests[0]);
+                    same(batch_events.length, 2, "should have included only orphaned events");
+                    same(batch_events[0].event, 'orphaned event 1');
+                    same(batch_events[1].event, 'orphaned event 2');
+
+                    this.requests[0].respond(200, {}, '1');
+                    same(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)).length, 0, "orphaned events should have been removed from localStorage");
+                });
+
+                test('existing localStorage data gets sent only when it becomes orphaned', 11, function() {
+                    clearLibInstance(mixpanel.batchtest);
+                    var stored_items = [
+                        {id: 'fakeID1', flushAfter: +(new Date()) + 59000, payload: {
+                            'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
+                        }},
+                        {id: 'fakeID2', flushAfter: +(new Date()) + 120000, payload: {
+                            'event': 'orphaned event 2'
+                        }}
+                    ];
+                    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(stored_items));
+                    same(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)).length, 2);
+
+                    initBatchLibInstance();
+                    same(this.requests.length, 0, "request should not have been made yet");
+
+                    this.clock.tick(58000);
+                    mixpanel.batchtest.track('new event 1');
+                    stored_items = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_items.length, 3, "new event should have been added to localStorage");
+
+                    // we can't fake Date() safely in this environment, so we're going to
+                    // reset one of the localStorage entries' flushAfter to orphan it
+                    stored_items[0].flushAfter = +(new Date()) - 10000
+                    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(stored_items));
+
+                    this.clock.tick(2000);
+                    same(this.requests.length, 1, "first request should have been made");
+
+                    var batch_events = getRequestData(this.requests[0]);
+                    same(batch_events.length, 2);
+                    same(batch_events[0].event, 'new event 1');
+                    same(batch_events[1].event, 'orphaned event 1');
+
+                    this.requests[0].respond(200, {}, '1');
+                    stored_items = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_items.length, 1, "one not-yet-orphaned event should remain");
+
+                    // orphan it
+                    stored_items[0].flushAfter = +(new Date()) - 10000
+                    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(stored_items));
+
+                    this.clock.tick(60000);
+                    same(this.requests.length, 2, "second request should have been made for newly-orphaned event");
+                    batch_events = getRequestData(this.requests[1]);
+                    same(batch_events.length, 1);
+                    same(batch_events[0].event, 'orphaned event 2');
+                });
+
+                test('batched requests are still sent if localStorage gets cleared', 8, function() {
+                    mixpanel.batchtest.track('storagetest 1');
+                    mixpanel.batchtest.track('storagetest 2');
+                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 2, "both events should be in localStorage");
+                    same(stored_requests[0].payload.event, 'storagetest 1');
+                    same(stored_requests[1].payload.event, 'storagetest 2');
+
+                    // kill it
+                    localStorage.removeItem(LOCALSTORAGE_KEY);
+
+                    same(this.requests.length, 0, "no requests should have been made yet");
+
+                    this.clock.tick(5000);
+                    same(this.requests.length, 1, "request should have been made even though localStorage was cleared");
+                    batch_events = getRequestData(this.requests[0]);
+                    same(batch_events.length, 2);
+                    same(batch_events[0].event, 'storagetest 1');
+                    same(batch_events[1].event, 'storagetest 2');
+                });
+
                 // TODO test malformed localstorage data
                 // TODO test malformed individual events in localstorage array
                 // TODO test opt-out with events queued already
                 // TODO test sendBeacon hail-mary on unload
                 // TODO test track callback
+                // TODO test failed enqueue sends event immediately
+                // TODO test network response hangs?
                 // TODO people + group updates
             }
 

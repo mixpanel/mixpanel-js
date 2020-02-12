@@ -597,7 +597,7 @@ MixpanelLib.prototype._flush_request_queue = function() {
                     if (res.xhr_req.responseHeaders) {
                         var retry_after = res.xhr_req.responseHeaders['Retry-After'];
                         if (retry_after) {
-                            retry_ms = (parseInt(retry_after, 10) * 1000) || retry_ms;;
+                            retry_ms = (parseInt(retry_after, 10) * 1000) || retry_ms;
                         }
                     }
                     retry_ms = Math.min(MAX_RETRY_INTERVAL_MS, retry_ms);
