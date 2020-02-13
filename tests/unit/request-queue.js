@@ -3,6 +3,7 @@ import localStorage from 'localStorage';
 import intersection from 'lodash/intersection';
 import map from 'lodash/map';
 import uniq from 'lodash/uniq';
+import sinon from 'sinon';
 
 import { acquireLockForPid } from './lock-test-utils';
 import { RequestQueue } from '../../src/request-queue';
@@ -82,33 +83,50 @@ describe(`RequestQueue`, function() {
     });
 
     context(`when persistence fails`, function() {
-      beforeEach(function() {
-        queue.storage = {
-          getItem: localStorage.getItem.bind(localStorage),
-          setItem: () => {
-            throw new Error(`persistence failure`);
-          },
-        };
-      });
-
-      it(`reports failure in callback`, function(done) {
-        expect(queue.read()).to.be.empty;
-        queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function(succeeded) {
-          expect(succeeded).not.to.be.ok;
-          expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
+      function persistenceFailureTests() {
+        it(`reports failure in callback`, function(done) {
           expect(queue.read()).to.be.empty;
-          done();
+          queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function(succeeded) {
+            expect(succeeded).not.to.be.ok;
+            expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
+            expect(queue.read()).to.be.empty;
+            done();
+          });
         });
+
+        it(`does not add item to in-mem queue`, function(done) {
+          expect(queue.read()).to.be.empty;
+          queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function(succeeded) {
+            expect(succeeded).not.to.be.ok;
+            expect(queue.memQueue).to.have.lengthOf(0);
+            done();
+          });
+        });
+      }
+
+      context(`during lock acquisition`, function() {
+        beforeEach(function() {
+          sinon.stub(localStorage, `setItem`).throws(`localStorage disabled`);
+        });
+
+        afterEach(function() {
+          localStorage.setItem.restore();
+        });
+
+        persistenceFailureTests();
       });
 
-      it(`keeps item in in-mem queue`, function(done) {
-        expect(queue.read()).to.be.empty;
-        queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function(succeeded) {
-          expect(succeeded).not.to.be.ok;
-          expect(queue.memQueue).to.have.lengthOf(1);
-          expect(queue.memQueue[0].payload).to.deep.equal(item);
-          done();
+      context(`after lock acquisition`, function() {
+        beforeEach(function() {
+          queue.storage = {
+            getItem: localStorage.getItem.bind(localStorage),
+            setItem: () => {
+              throw new Error(`persistence failure`);
+            },
+          };
         });
+
+        persistenceFailureTests();
       });
     });
   });

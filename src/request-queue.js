@@ -24,21 +24,31 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
     };
     console.log('[batch] enqueueing:', queueEntry);
 
-    this.memQueue.push(queueEntry);
-    this.lock.withLock(_.bind(function() {
-        var succeeded;
-        try {
-            var storedQueue = this.read();
-            storedQueue.push(queueEntry);
-            succeeded = this.save(storedQueue);
-        } catch(err) {
-            console.error('[batch] Error enqueueing item', item);
-            succeeded = false;
-        }
+    try {
+        this.lock.withLock(_.bind(function() {
+            var succeeded;
+            try {
+                var storedQueue = this.read();
+                storedQueue.push(queueEntry);
+                succeeded = this.save(storedQueue);
+                if (succeeded) {
+                    // only add to in-memory queue when storage succeeds
+                    this.memQueue.push(queueEntry);
+                }
+            } catch(err) {
+                console.error('[batch] Error enqueueing item', item);
+                succeeded = false;
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), this.pid);
+    } catch(err) {
+        console.error('[batch] Error acquiring storage lock', err);
         if (cb) {
-            cb(succeeded);
+            cb(false);
         }
-    }, this), this.pid);
+    }
 };
 
 /**
@@ -94,20 +104,27 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     _.each(ids, function(id) { idSet[id] = true; });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-    this.lock.withLock(_.bind(function() {
-        var succeeded;
-        try {
-            var storedQueue = this.read();
-            storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-            succeeded = this.save(storedQueue);
-        } catch(err) {
-            console.error('[batch] Error removing items', ids);
-            succeeded = false;
-        }
+    try {
+        this.lock.withLock(_.bind(function() {
+            var succeeded;
+            try {
+                var storedQueue = this.read();
+                storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                succeeded = this.save(storedQueue);
+            } catch(err) {
+                console.error('[batch] Error removing items', ids);
+                succeeded = false;
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), this.pid);
+    } catch(err) {
+        console.error('[batch] Error acquiring storage lock', err);
         if (cb) {
-            cb(succeeded);
+            cb(false);
         }
-    }, this), this.pid);
+    }
 };
 
 RequestQueue.prototype.read = function() {
