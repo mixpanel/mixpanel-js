@@ -707,6 +707,7 @@ MixpanelLib.prototype.disable = function(events) {
  * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
  * @param {Object} [options] Optional configuration for this track request.
  * @param {String} [options.transport] Transport method for network request ('xhr' or 'sendBeacon').
+ * @param {Boolean} [options.send_immediately] Whether to bypass batching/queueing and send track request immediately.
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
@@ -721,6 +722,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     if (transport) {
         options.transport = transport; // 'transport' prop name can be minified internally
     }
+    var should_send_immediately = options['send_immediately'];
     if (typeof callback !== 'function') {
         callback = function() {};
     }
@@ -778,10 +780,8 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         'properties': properties
     };
     var truncated_data = _.truncate(data, 255);
-    if (this._batch_requests) {
-        // TODO if enqueue fails, send immediately
-        this.request_batch_queue.enqueue(truncated_data, this._batch_flush_interval_ms);
-    } else {
+
+    var send_request_immediately = _.bind(function() {
         console.log('MIXPANEL REQUEST:');
         console.log(truncated_data);
         var request_initiated = this._send_request(
@@ -790,6 +790,18 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
             options,
             this._prepare_callback(callback, truncated_data)
         );
+    }, this);
+
+    if (this._batch_requests && !should_send_immediately) {
+        this.request_batch_queue.enqueue(truncated_data, this._batch_flush_interval_ms, function(succeeded) {
+            if (succeeded) {
+                callback(1, truncated_data);
+            } else {
+                send_request_immediately();
+            }
+        });
+    } else {
+        send_request_immediately();
     }
 
     this._check_and_handle_triggered_notifications(data);

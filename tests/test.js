@@ -3745,6 +3745,10 @@
                         clearLibInstance(mixpanel.batchtest);
                     }
                     this.clock.restore();
+                    if (this.failedSetItem) {
+                        this.failedSetItem.restore();
+                        this.failedSetItem = null;
+                    }
                 });
 
                 test('tracking does not send a request immediately', 1, function() {
@@ -4208,10 +4212,38 @@
                     same(stored_requests.length, 0, "localStorage entry should be clear of invalid items");
                 });
 
+                test('track callback runs when item is successfully enqueued', 2, function() {
+                    mixpanel.batchtest.track('callback test 1', {}, function(response, data) {
+                        same(response, 1, "should have passed 1 to callback for success");
+                        same(data.event, 'callback test 1', "should have passed enqueued data to callback");
+                    });
+                });
+
+                test('failure to enqueue in localStorage causes immediate track request', 3, function() {
+                    this.failedSetItem = sinon.stub(localStorage, 'setItem').throws('localStorage disabled');
+                    mixpanel.batchtest.track('failure event');
+                    same(this.requests.length, 1, "request should have been made immediately upon storage failure");
+                    var request_data = getRequestData(this.requests[0]);
+                    same(request_data.event, 'failure event', "should have sent event that failed to queue");
+
+                    this.clock.tick(30000);
+                    same(this.requests.length, 1, "should not have made any new requests after event was sent");
+                });
+
+                test('send_immediately track option bypasses queue', 4, function() {
+                    mixpanel.batchtest.track('immediate event', {}, {send_immediately: true});
+                    same(this.requests.length, 1, "request should have been made immediately");
+                    var request_data = getRequestData(this.requests[0]);
+                    same(request_data.event, 'immediate event', "should have sent event in immediate request");
+
+                    same(localStorage.getItem(LOCALSTORAGE_KEY), null, "send_immediately event should not have been enqueued");
+
+                    this.clock.tick(30000);
+                    same(this.requests.length, 1, "should not have made any new requests after event was sent");
+                });
+
                 // TODO test opt-out with events queued already
                 // TODO test sendBeacon hail-mary on unload
-                // TODO test track callback
-                // TODO test failed enqueue sends event immediately
                 // TODO test network response hangs?
                 // TODO people + group updates
             }
