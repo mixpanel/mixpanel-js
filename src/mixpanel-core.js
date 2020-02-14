@@ -119,7 +119,8 @@ var DEFAULT_CONFIG = {
     'ignore_dnt':                        false,
     'batch_requests':                    false, // for now
     'batch_size':                        50,
-    'batch_flush_interval_ms':           5000
+    'batch_flush_interval_ms':           5000,
+    'batch_request_timeout_ms':          90000
 };
 
 var DOM_LOADED = false;
@@ -445,6 +446,10 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                 req.setRequestHeader(headerName, headerValue);
             });
 
+            if (options.timeout_ms && typeof req.timeout !== 'undefined') {
+                req.timeout = options.timeout_ms;
+            }
+
             // send the mp_optout cookie
             // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
             req.withCredentials = true;
@@ -470,7 +475,12 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                             }
                         }
                     } else {
-                        var error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                        var error;
+                        if (req.timeout && !req.status) {
+                            error = 'timeout';
+                        } else {
+                            error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                        }
                         console.error(error);
                         if (callback) {
                             if (verbose_mode) {
@@ -591,7 +601,10 @@ MixpanelLib.prototype._flush_request_queue = function() {
             try {
 
                 var remove_items_from_queue = false;
-                if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
+                if (_.isObject(res) && res.error === 'timeout') {
+                    console.log('[batch] network timeout; retrying');
+                    this._flush_request_queue();
+                } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
                     // network or API error, retry
                     var retry_ms = this._batch_flush_interval_ms * 2;
                     if (res.xhr_req.responseHeaders) {
@@ -636,7 +649,7 @@ MixpanelLib.prototype._flush_request_queue = function() {
         this._send_request(
             this.get_config('api_host') + '/track/',
             encode_data_for_request(data_for_request),
-            {method: 'POST', verbose: true, ignore_json_errors: true},
+            {method: 'POST', verbose: true, ignore_json_errors: true, timeout_ms: this.get_config('batch_request_timeout_ms')},
             this._prepare_callback(_.bind(batch_send_callback, this), data_for_request)
         );
 

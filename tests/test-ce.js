@@ -51,7 +51,7 @@
 
                 test("click on svg with class", 4, function() {
                     var svgTag = document.querySelector('.svg-class');
-                    ceTrackSpy.reset();
+                    ceTrackSpy.resetHistory();
                     simulateEvent(svgTag, 'click');
                     ok(ceTrackSpy.calledOnce, "Clicking an svg with a class fires an event for CE lib");
 

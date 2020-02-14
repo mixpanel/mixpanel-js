@@ -3731,7 +3731,9 @@
                 };
 
                 mpmodule("batch_requests tests", function() {
-                    this.clock = sinon.useFakeTimers('setTimeout', 'clearTimeout');
+                    this.clock = sinon.useFakeTimers({toFake: [
+                        'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
+                    ]});
                     startRecordingXhrRequests.call(this);
                     localStorage.removeItem(LOCALSTORAGE_KEY);
                     if (mixpanel.batchtest) {
@@ -4242,9 +4244,18 @@
                     same(this.requests.length, 1, "should not have made any new requests after event was sent");
                 });
 
+                test('batch retries after network timeout', 2, function() {
+                    mixpanel.batchtest.track('queued event');
+                    this.clock.tick(5000);
+                    same(this.requests.length, 1, "should have made request after flush interval");
+
+                    this.clock.tick(100000); // let 90s network timeout elapse
+                    this.requests[0].triggerTimeout();
+                    same(this.requests.length, 2, "should have retried after first request timed out");
+                });
+
                 // TODO test opt-out with events queued already
                 // TODO test sendBeacon hail-mary on unload
-                // TODO test network response hangs?
                 // TODO people + group updates
             }
 

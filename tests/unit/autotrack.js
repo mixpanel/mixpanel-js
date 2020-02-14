@@ -388,7 +388,7 @@ describe('Autotrack system', function() {
     };
 
     beforeEach(function() {
-      sandbox = sinon.sandbox.create();
+      sandbox = sinon.createSandbox();
       lib = {
         _ceElementTextProperties: [],
         track: sandbox.spy(),
@@ -746,7 +746,7 @@ describe('Autotrack system', function() {
 
     beforeEach(function() {
       document.title = 'test page';
-      sandbox = sinon.sandbox.create();
+      sandbox = sinon.createSandbox();
       sandbox.spy(autotrack, '_addDomEventHandlers');
       autotrack._initializedTokens = [];
       _maybeLoadEditorStub = sandbox.stub(autotrack, '_maybeLoadEditor').returns(false);
@@ -854,7 +854,7 @@ describe('Autotrack system', function() {
 
       this.clock = sinon.useFakeTimers();
 
-      sandbox = sinon.sandbox.create();
+      sandbox = sinon.createSandbox();
       sandbox.stub(autotrack, '_loadEditor');
       lib.get_config = sandbox.stub();
       lib.get_config.withArgs('token').returns('test_token');
@@ -940,7 +940,7 @@ describe('Autotrack system', function() {
 
     beforeEach(function() {
       autotrack._editorLoaded = false;
-      sandbox = sinon.sandbox.create();
+      sandbox = sinon.createSandbox();
       sandbox.stub(autotrack, '_loadScript').callsFake((path, callback) => callback());
       lib.get_config = sandbox.stub();
       lib.get_config.withArgs('app_host').returns('example.com');

@@ -51,7 +51,7 @@
     "request": "2.88.0",
     "rollup": "0.25.8",
     "rollup-plugin-npm": "1.4.0",
-    "sinon": "4.4.2",
+    "sinon": "8.1.1",
     "webpack": "1.12.2"
   }
 }
