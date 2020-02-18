@@ -72,9 +72,12 @@ var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAg
 var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000;
 
 // save reference to navigator.sendBeacon so it can be minified
-var sendBeacon = navigator['sendBeacon'];
-if (sendBeacon) {
-    sendBeacon = _.bind(sendBeacon, navigator);
+var sendBeacon = null;
+if (navigator['sendBeacon']) {
+    sendBeacon = function() {
+        // late reference to navigator.sendBeacon to allow patching/spying
+        navigator['sendBeacon'].apply(navigator, arguments);
+    };
 }
 
 /*
@@ -273,6 +276,15 @@ MixpanelLib.prototype._init = function(token, config, name) {
             this.request_batch_queue = new RequestQueue('__mpq_' + token + '_ev');
             this._batch_size = this.get_config('batch_size');
             this._flush_request_queue();
+            if (sendBeacon && window.addEventListener) {
+                window.addEventListener('unload', _.bind(function() {
+                    // Before page closes, attempt to flush anything queued up via navigator.sendBeacon.
+                    // Since sendBeacon doesn't report success/failure, events will not be removed from
+                    // the persistent store; if the site is loaded again, the events will be flushed again
+                    // on startup and deduplicated on the Mixpanel server side.
+                    this._flush_request_queue({sendBeacon: true});
+                }, this));
+            }
         }
     }
 
@@ -573,7 +585,7 @@ MixpanelLib.prototype._schedule_flush = function(flush_ms) {
     }
 };
 
-MixpanelLib.prototype._flush_request_queue = function() {
+MixpanelLib.prototype._flush_request_queue = function(options) {
     try {
 
         if (this._request_in_progress) {
@@ -581,6 +593,7 @@ MixpanelLib.prototype._flush_request_queue = function() {
             return;
         }
 
+        options = options || {};
         var current_batch_size = this._batch_size;
         var batch = this.request_batch_queue.fillBatch(current_batch_size);
         if (batch.length < 1) {
@@ -646,10 +659,19 @@ MixpanelLib.prototype._flush_request_queue = function() {
                 this._reset_flush();
             }
         };
+        var request_options = {
+            method: 'POST',
+            verbose: true,
+            ignore_json_errors: true,
+            timeout_ms: this.get_config('batch_request_timeout_ms')
+        };
+        if (options.sendBeacon) {
+            request_options.transport = 'sendBeacon';
+        }
         this._send_request(
             this.get_config('api_host') + '/track/',
             encode_data_for_request(data_for_request),
-            {method: 'POST', verbose: true, ignore_json_errors: true, timeout_ms: this.get_config('batch_request_timeout_ms')},
+            request_options,
             this._prepare_callback(_.bind(batch_send_callback, this), data_for_request)
         );
 

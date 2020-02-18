@@ -3735,6 +3735,7 @@
                         'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
                     ]});
                     startRecordingXhrRequests.call(this);
+                    this.sendBeaconSpy = sinon.spy(navigator, 'sendBeacon');
                     localStorage.removeItem(LOCALSTORAGE_KEY);
                     if (mixpanel.batchtest) {
                         clearLibInstance(mixpanel.batchtest);
@@ -3742,6 +3743,7 @@
                     initBatchLibInstance();
                 }, function() {
                     stopRecordingXhrRequests.call(this);
+                    this.sendBeaconSpy.restore();
                     localStorage.removeItem(LOCALSTORAGE_KEY);
                     if (mixpanel.batchtest) {
                         clearLibInstance(mixpanel.batchtest);
@@ -4254,8 +4256,16 @@
                     same(this.requests.length, 2, "should have retried after first request timed out");
                 });
 
+                test('queued requests are flushed via sendBeacon before page unload', 3, function() {
+                    mixpanel.batchtest.track('queued event');
+                    window.dispatchEvent(new Event('unload'));
+                    ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
+                    var request_data = getRequestData({requestBody: this.sendBeaconSpy.args[0][1]});
+                    same(request_data.length, 1, "sendBeacon should have sent a single event");
+                    same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
+                });
+
                 // TODO test opt-out with events queued already
-                // TODO test sendBeacon hail-mary on unload
                 // TODO people + group updates
             }
 
