@@ -403,4 +403,24 @@ describe(`RequestQueue`, function() {
       expect(queue.save(unstringifyable)).not.to.be.ok;
     });
   });
+
+  describe(`clear`, function() {
+    beforeEach(function() {
+      queue.enqueue({event: `foo1`, properties: {bar1: `baz1`}}, DEFAULT_FLUSH_INTERVAL);
+      queue.enqueue({event: `foo2`, properties: {bar2: `baz2`}}, DEFAULT_FLUSH_INTERVAL);
+      expect(queue.read()).to.have.lengthOf(2);
+    });
+
+    it(`removes all items from in-mem queue`, function() {
+      expect(queue.memQueue).to.have.lengthOf(2);
+      queue.clear();
+      expect(queue.memQueue).to.be.empty;
+    });
+
+    it(`removes all items from localStorage`, function() {
+      queue.clear();
+      expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
+      expect(queue.read()).to.eql([]);
+    });
+  });
 });

@@ -244,7 +244,9 @@ function _optInOut(optValue, token, options) {
     );
 
     if (options.track && optValue) { // only track event if opting in (optValue=true)
-        options.track(options.trackEventName || '$opt_in', options.trackProperties);
+        options.track(options.trackEventName || '$opt_in', options.trackProperties, {
+            send_immediately: true // eslint-disable-line camelcase
+        });
     }
 }
 

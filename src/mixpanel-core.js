@@ -1618,6 +1618,10 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
     if (!this.get_config('disable_persistence') && this['persistence'].disabled !== disabled) {
         this['persistence'].set_disabled(disabled);
     }
+
+    if (disabled && this.request_batch_queue) {
+        this.request_batch_queue.clear();
+    }
 };
 
 // call a base gdpr function after constructing the appropriate token and options args
@@ -1725,7 +1729,7 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
         'delete_user': true
     }, options);
 
-    // delete use and clear charges since these methods may be disabled by opt-out
+    // delete user and clear charges since these methods may be disabled by opt-out
     if (options['delete_user'] && this['people'] && this['people']._identify_called()) {
         this['people'].delete_user();
         this['people'].clear_charges();

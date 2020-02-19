@@ -155,4 +155,9 @@ RequestQueue.prototype.save = function(queue) {
     }
 };
 
+RequestQueue.prototype.clear = function() {
+    this.memQueue = [];
+    this.storage.removeItem(this.storageKey);
+};
+
 export { RequestQueue };

@@ -4265,7 +4265,76 @@
                     same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
                 });
 
-                // TODO test opt-out with events queued already
+                test('queued requests are cancelled if opt-out is called', 2, function() {
+                    mixpanel.batchtest.track('pre-opt-out event 1');
+                    mixpanel.batchtest.track('pre-opt-out event 2');
+                    mixpanel.batchtest.opt_out_tracking();
+                    mixpanel.batchtest.track('post-opt-out event');
+
+                    same(localStorage.getItem(LOCALSTORAGE_KEY), null, "localStorage entry should have been cleared by opt-out");
+                    this.clock.tick(240000);
+                    same(this.requests.length, 0, "should not have made any requests after opt-out");
+                });
+
+                test('success callback works if opt-out is called after request has been sent', 3, function() {
+                    mixpanel.batchtest.track('pre-opt-out event 1');
+                    mixpanel.batchtest.track('pre-opt-out event 2');
+
+                    this.clock.tick(5000);
+                    same(this.requests.length, 1, "should have made request after flush interval");
+
+                    mixpanel.batchtest.opt_out_tracking();
+                    mixpanel.batchtest.track('post-opt-out event');
+
+                    this.requests[0].respond(200, {}, '1');
+                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
+                    same(stored_requests.length, 0, "localStorage entry should be clear");
+
+                    this.clock.tick(240000);
+                    same(this.requests.length, 1, "no new requests should have been made");
+                });
+
+                test('opt-out after request has been sent kills retry', 2, function() {
+                    mixpanel.batchtest.track('pre-opt-out event 1');
+                    mixpanel.batchtest.track('pre-opt-out event 2');
+
+                    this.clock.tick(5000);
+                    same(this.requests.length, 1, "should have made request after flush interval");
+
+                    mixpanel.batchtest.opt_out_tracking();
+
+                    this.clock.tick(100000); // let 90s network timeout elapse
+                    this.requests[0].triggerTimeout();
+
+                    this.clock.tick(240000);
+                    same(this.requests.length, 1, "should not have retried failing request after opt-out");
+                });
+
+                test('batching resumes upon opt-in', 7, function() {
+                    mixpanel.batchtest.track('pre-opt-out event 1');
+                    mixpanel.batchtest.track('pre-opt-out event 2');
+                    mixpanel.batchtest.opt_out_tracking();
+                    mixpanel.batchtest.track('post-opt-out event');
+
+                    same(this.requests.length, 0, "should not have made any requests yet");
+                    mixpanel.batchtest.opt_in_tracking();
+                    same(this.requests.length, 1, "should have tracked $opt_in immediately");
+
+                    mixpanel.batchtest.track('post-opt-in event 1');
+                    mixpanel.batchtest.track('post-opt-in event 2');
+
+                    this.clock.tick(5000);
+                    same(this.requests.length, 2, "should have made request after flush interval");
+
+                    var batch_events = getRequestData(this.requests[1]);
+                    same(batch_events.length, 2, "should have included only two new events in last batch");
+                    same(batch_events[0].event, 'post-opt-in event 1');
+                    same(batch_events[1].event, 'post-opt-in event 2');
+
+                    this.clock.tick(240000);
+                    same(this.requests.length, 2, "no new requests should have been made with orphaned data");
+                });
+
                 // TODO people + group updates
             }
 
