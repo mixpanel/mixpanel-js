@@ -3,7 +3,7 @@ import Config from './config';
 import { _, console, userAgent, window, document, navigator } from './utils';
 import { autotrack } from './autotrack';
 import { FormTracker, LinkTracker } from './dom-trackers';
-import { RequestQueue } from './request-queue';
+import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
 import { MixpanelNotification } from './mixpanel-notification';
 import { MixpanelPeople } from './mixpanel-people';
@@ -67,9 +67,6 @@ var USE_XHR = (window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest(
 // with defer won't block window.onload; ENQUEUE_REQUESTS
 // should only be true for Opera<12
 var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
-
-// maximum interval between request retries after exponential backoff
-var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000;
 
 // save reference to navigator.sendBeacon so it can be minified
 var sendBeacon = null;
@@ -273,16 +270,31 @@ MixpanelLib.prototype._init = function(token, config, name) {
             this._batch_requests = false;
             console.warn('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
         } else {
-            this.request_batch_queue = new RequestQueue('__mpq_' + token + '_ev');
-            this._batch_size = this.get_config('batch_size');
-            this._flush_request_queue();
+            this.request_batchers = {
+                events: new RequestBatcher('__mpq_' + token + '_ev', {
+                    endpoint: '/track/',
+                    libConfig: this['config'],
+                    sendRequestFunc: _.bind(function(endpoint, data, options, cb) {
+                        this._send_request(
+                            this.get_config('api_host') + endpoint,
+                            encode_data_for_request(data),
+                            options,
+                            this._prepare_callback(cb, data)
+                        );
+                    }, this)
+                })
+            };
+            _.each(this.request_batchers, function(batcher) {
+                batcher.start();
+            });
+
             if (sendBeacon && window.addEventListener) {
                 window.addEventListener('unload', _.bind(function() {
-                    // Before page closes, attempt to flush anything queued up via navigator.sendBeacon.
+                    // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
                     // Since sendBeacon doesn't report success/failure, events will not be removed from
                     // the persistent store; if the site is loaded again, the events will be flushed again
                     // on startup and deduplicated on the Mixpanel server side.
-                    this._flush_request_queue({sendBeacon: true});
+                    this.request_batchers.events.flush({sendBeacon: true});
                 }, this));
             }
         }
@@ -574,119 +586,11 @@ MixpanelLib.prototype._execute_array = function(array) {
 
 // request queueing utils
 
-MixpanelLib.prototype._reset_flush = function() {
-    this._schedule_flush(this.get_config('batch_flush_interval_ms'));
-};
-
-MixpanelLib.prototype._schedule_flush = function(flush_ms) {
-    this._batch_flush_interval_ms = flush_ms;
-    if (this._batch_requests) { // don't schedule anymore if batching has been stopped
-        this._batch_timeout_id = setTimeout(_.bind(this._flush_request_queue, this), this._batch_flush_interval_ms);
-    }
-};
-
-MixpanelLib.prototype._flush_request_queue = function(options) {
-    try {
-
-        if (this._request_in_progress) {
-            console.log('[batch] Flush: Request already in progress');
-            return;
-        }
-
-        options = options || {};
-        var current_batch_size = this._batch_size;
-        var batch = this.request_batch_queue.fillBatch(current_batch_size);
-        if (batch.length < 1) {
-            console.log('[batch] nothing to do');
-            this._reset_flush();
-            return; // nothing to do
-        }
-
-        this._request_in_progress = true;
-        console.log('[batch] ' + batch.length + ' items to flush');
-        console.log('[batch] items:', batch);
-
-        var data_for_request = _.map(batch, function(item) { return item['payload']; });
-        var batch_send_callback = function(res) {
-            console.log('[batch] callback', res, batch);
-            this._request_in_progress = false;
-
-            try {
-
-                var remove_items_from_queue = false;
-                if (_.isObject(res) && res.error === 'timeout') {
-                    console.log('[batch] network timeout; retrying');
-                    this._flush_request_queue();
-                } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
-                    // network or API error, retry
-                    var retry_ms = this._batch_flush_interval_ms * 2;
-                    if (res.xhr_req.responseHeaders) {
-                        var retry_after = res.xhr_req.responseHeaders['Retry-After'];
-                        if (retry_after) {
-                            retry_ms = (parseInt(retry_after, 10) * 1000) || retry_ms;
-                        }
-                    }
-                    retry_ms = Math.min(MAX_RETRY_INTERVAL_MS, retry_ms);
-                    console.log('[batch] retry in ' + retry_ms + ' ms');
-                    this._schedule_flush(retry_ms);
-                } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status === 413) {
-                    // 413 Payload Too Large
-                    if (batch.length > 1) {
-                        var halved_batch_size = Math.max(1, Math.floor(current_batch_size / 2));
-                        this._batch_size = Math.min(this._batch_size, halved_batch_size, batch.length - 1);
-                        console.log('[batch] 413 response; reducing batch size to ' + this._batch_size);
-                        this._reset_flush();
-                    } else {
-                        console.error('[batch] single-event request too large; dropping', batch);
-                        this._batch_size = this.get_config('batch_size'); // restore configured batch size
-                        remove_items_from_queue = true;
-                    }
-                } else {
-                    // successful network request+response; remove each item in batch from queue
-                    // (even if it was e.g. a 400, in which case retrying won't help)
-                    remove_items_from_queue = true;
-                }
-
-                if (remove_items_from_queue) {
-                    this.request_batch_queue.removeItemsByID(
-                        _.map(batch, function(item) { return item['id']; }),
-                        _.bind(this._flush_request_queue, this) // handle next batch if the queue isn't empty
-                    );
-                }
-
-            } catch(err) {
-                console.error('[batch] Error handling API response', err);
-                this._reset_flush();
-            }
-        };
-        var request_options = {
-            method: 'POST',
-            verbose: true,
-            ignore_json_errors: true,
-            timeout_ms: this.get_config('batch_request_timeout_ms')
-        };
-        if (options.sendBeacon) {
-            request_options.transport = 'sendBeacon';
-        }
-        this._send_request(
-            this.get_config('api_host') + '/track/',
-            encode_data_for_request(data_for_request),
-            request_options,
-            this._prepare_callback(_.bind(batch_send_callback, this), data_for_request)
-        );
-
-    } catch(err) {
-        console.error('[batch] Error flushing request queue', err);
-        this._reset_flush();
-    }
-};
-
 MixpanelLib.prototype.stop_batch_requests = function() {
     this._batch_requests = false;
-    if (this._batch_timeout_id) {
-        clearTimeout(this._batch_timeout_id);
-        this._batch_timeout_id = null;
-    }
+    _.each(this.request_batchers, function(batcher) {
+        batcher.stop();
+    });
 };
 
 /**
@@ -828,7 +732,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     }, this);
 
     if (this._batch_requests && !should_send_immediately) {
-        this.request_batch_queue.enqueue(truncated_data, this._batch_flush_interval_ms, function(succeeded) {
+        this.request_batchers.events.enqueue(truncated_data, function(succeeded) {
             if (succeeded) {
                 callback(1, truncated_data);
             } else {
@@ -1435,7 +1339,9 @@ MixpanelLib.prototype.set_config = function(config) {
 
         var new_batch_size = config['batch_size'];
         if (new_batch_size) {
-            this._batch_size = new_batch_size;
+            _.each(this.request_batchers, function(batcher) {
+                batcher.resetBatchSize();
+            });
         }
 
         if (!this.get_config('persistence_name')) {
@@ -1619,8 +1525,10 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
         this['persistence'].set_disabled(disabled);
     }
 
-    if (disabled && this.request_batch_queue) {
-        this.request_batch_queue.clear();
+    if (disabled) {
+        _.each(this.request_batchers, function(batcher) {
+            batcher.clear();
+        });
     }
 };
 
