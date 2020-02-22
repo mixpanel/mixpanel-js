@@ -10,6 +10,16 @@
 
 (function(window) {
 
+// MIXPANEL HACK
+// In some timing conditions, qunit calls these timeout
+// functions in between test code and teardown, which
+// borks everything when sinon's fakeTimers have taken
+// them over and have not yet restored them in the teardown.
+// We'll just make sure qunit always uses the pre-patched
+// versions.
+var windowSetTimeout = window.setTimeout,
+    windowClearTimeout = window.clearTimeout;
+
 var defined = {
 	setTimeout: typeof window.setTimeout !== "undefined",
 	sessionStorage: (function() {
@@ -399,9 +409,9 @@ var QUnit = {
 		}
 		// A slight delay, to avoid any current callbacks
 		if ( defined.setTimeout ) {
-			window.setTimeout(function() {
+			windowSetTimeout(function() {
 				if ( config.timeout ) {
-					clearTimeout(config.timeout);
+					windowClearTimeout(config.timeout);
 				}
 
 				config.blocking = false;
@@ -418,8 +428,8 @@ var QUnit = {
 		config.blocking = true;
 
 		if ( timeout && defined.setTimeout ) {
-			clearTimeout(config.timeout);
-			config.timeout = window.setTimeout(function() {
+			windowClearTimeout(config.timeout);
+			config.timeout = windowSetTimeout(function() {
 				QUnit.ok( false, "Test timed out" );
 				QUnit.start();
 			}, timeout);
@@ -858,7 +868,7 @@ function process() {
 		if ( config.updateRate <= 0 || (((new Date()).getTime() - start) < config.updateRate) ) {
 			config.queue.shift()();
 		} else {
-			window.setTimeout( process, 13 );
+			windowSetTimeout( process, 13 );
 			break;
 		}
 	}
