@@ -3728,6 +3728,7 @@
                         track_pageview: false
                     }, options);
                     mixpanel.init(BATCH_TOKEN, options, 'batchtest');
+                    mixpanel.batchtest.clear_opt_in_out_tracking();
                 };
 
                 mpmodule("batch_requests tests", function() {
@@ -4335,7 +4336,18 @@
                     same(this.requests.length, 2, "no new requests should have been made with orphaned data");
                 });
 
-                // TODO people + group updates
+                test('people updates do not send a request immediately', 3, function() {
+                    mixpanel.batchtest.identify('pat');
+                    same(this.requests.length, 1, "identify() should have made immediate request");
+                    ok(this.requests[0].url.indexOf('/decide/') >= 0, "request should be to /decide");
+
+                    mixpanel.batchtest.people.set('foo', 'bar');
+                    this.clock.tick(100);
+
+                    same(this.requests.length, 1, "people.set should not have sent a request");
+                });
+
+                // TODO group updates
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies

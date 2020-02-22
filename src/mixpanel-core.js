@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { _, console, userAgent, window, document, navigator } from './utils';
+import { _, console, encode_data_for_request, userAgent, window, document, navigator } from './utils';
 import { autotrack } from './autotrack';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
@@ -194,12 +194,6 @@ var create_mplib = function(token, config, name) {
     return instance;
 };
 
-var encode_data_for_request = function(data) {
-    var json_data = _.JSONEncode(data);
-    var encoded_data = _.base64Encode(json_data);
-    return {'data': encoded_data};
-};
-
 // Initialization methods
 
 /**
@@ -270,19 +264,21 @@ MixpanelLib.prototype._init = function(token, config, name) {
             this._batch_requests = false;
             console.warn('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
         } else {
+            var batcher_config = {
+                libConfig: this['config'],
+                sendRequestFunc: _.bind(function(endpoint, data, options, cb) {
+                    this._send_request(
+                        this.get_config('api_host') + endpoint,
+                        encode_data_for_request(data),
+                        options,
+                        this._prepare_callback(cb, data)
+                    );
+                }, this)
+            };
             this.request_batchers = {
-                events: new RequestBatcher('__mpq_' + token + '_ev', {
-                    endpoint: '/track/',
-                    libConfig: this['config'],
-                    sendRequestFunc: _.bind(function(endpoint, data, options, cb) {
-                        this._send_request(
-                            this.get_config('api_host') + endpoint,
-                            encode_data_for_request(data),
-                            options,
-                            this._prepare_callback(cb, data)
-                        );
-                    }, this)
-                })
+                events: new RequestBatcher('__mpq_' + token + '_ev', '/track/', batcher_config),
+                people: new RequestBatcher('__mpq_' + token + '_pp', '/engage/', batcher_config),
+                groups: new RequestBatcher('__mpq_' + token + '_gr', '/groups/', batcher_config)
             };
             _.each(this.request_batchers, function(batcher) {
                 batcher.start();
@@ -590,6 +586,7 @@ MixpanelLib.prototype.stop_batch_requests = function() {
     this._batch_requests = false;
     _.each(this.request_batchers, function(batcher) {
         batcher.stop();
+        batcher.clear();
     });
 };
 

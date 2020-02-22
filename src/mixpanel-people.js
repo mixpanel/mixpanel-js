@@ -10,7 +10,7 @@ import {
     UNION_ACTION,
     apiActions
 } from './api-actions';
-import { _, console } from './utils';
+import { _, console, encode_data_for_request } from './utils';
 
 /**
  * Mixpanel People Object
@@ -330,9 +330,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     }
 
     var date_encoded_data = _.encodeDates(data);
-    var truncated_data    = _.truncate(date_encoded_data, 255);
-    var json_data         = _.JSONEncode(date_encoded_data);
-    var encoded_data      = _.base64Encode(json_data);
+    var truncated_data = _.truncate(date_encoded_data, 255);
 
     if (!this._identify_called()) {
         this._enqueue(data);
@@ -346,14 +344,29 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
         return truncated_data;
     }
 
-    console.log('MIXPANEL PEOPLE REQUEST:');
-    console.log(truncated_data);
+    var send_request_immediately = _.bind(function() {
+        console.log('MIXPANEL PEOPLE REQUEST:');
+        console.log(truncated_data);
+        this._mixpanel._send_request(
+            this._get_config('api_host') + '/engage/',
+            encode_data_for_request(truncated_data),
+            this._mixpanel._prepare_callback(callback, truncated_data)
+        );
+    }, this);
 
-    this._mixpanel._send_request(
-        this._get_config('api_host') + '/engage/',
-        {'data': encoded_data},
-        this._mixpanel._prepare_callback(callback, truncated_data)
-    );
+    if (this._mixpanel._batch_requests) {
+        this._mixpanel.request_batchers.people.enqueue(truncated_data, function(succeeded) {
+            if (succeeded) {
+                if (callback) {
+                    callback(1, truncated_data);
+                }
+            } else {
+                send_request_immediately();
+            }
+        });
+    } else {
+        send_request_immediately();
+    }
 
     return truncated_data;
 };

@@ -9,10 +9,10 @@ var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
  * Uses RequestQueue to manage the backing store.
  * @constructor
  */
-var RequestBatcher = function(key, options) {
+var RequestBatcher = function(key, endpoint, options) {
     this.queue = new RequestQueue(key);
+    this.endpoint = endpoint;
 
-    this.endpoint = options.endpoint;
     this.libConfig = options.libConfig;
     this.sendRequest = options.sendRequestFunc;
 

@@ -1628,6 +1628,12 @@ var cheap_guid = function() {
     return Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
 };
 
+var encode_data_for_request = function(data) {
+    var json_data = _.JSONEncode(data);
+    var encoded_data = _.base64Encode(json_data);
+    return {'data': encoded_data};
+};
+
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
 var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
@@ -1677,4 +1683,16 @@ _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
-export { _, userAgent, console, win as window, document, navigator, cheap_guid, extract_domain, JSONStringify, JSONParse };
+export {
+    _,
+    userAgent,
+    console,
+    win as window,
+    document,
+    navigator,
+    cheap_guid,
+    encode_data_for_request,
+    extract_domain,
+    JSONStringify,
+    JSONParse
+};
