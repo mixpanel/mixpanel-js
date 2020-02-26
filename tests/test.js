@@ -4367,7 +4367,33 @@
                     same(people_updates[1].$distinct_id, 'pat');
                 });
 
-                // TODO group updates
+                test('group updates do not send a request immediately', 1, function() {
+                    mixpanel.batchtest.get_group('font', 'Times').set('serif', true);
+                    this.clock.tick(100);
+                    same(this.requests.length, 0, "group.set should not have sent a request");
+                });
+
+                test('group updates send request after flush interval', 5, function() {
+                    mixpanel.batchtest.get_group('font', 'Times').set('serif', true);
+                    mixpanel.batchtest.get_group('font', 'Comic Sans').delete();
+
+                    this.clock.tick(7000); // default batch_flush_interval_ms is 5000
+                    same(this.requests.length, 1, "group updates should have made request");
+
+                    var group_updates = getRequestData(this.requests[0]);
+                    same(group_updates.length, 2, "should have sent both updates in batch");
+
+                    ok(contains_obj(group_updates[0], {
+                        $group_key: 'font',
+                        $group_id: 'Times'
+                    }));
+                    ok(contains_obj(group_updates[0].$set, {serif: true}));
+                    ok(contains_obj(group_updates[1], {
+                        $group_key: 'font',
+                        $group_id: 'Comic Sans',
+                        $delete: ''
+                    }));
+                });
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
