@@ -4347,6 +4347,26 @@
                     same(this.requests.length, 1, "people.set should not have sent a request");
                 });
 
+                test('people updates send request after flush interval', 6, function() {
+                    mixpanel.batchtest.identify('pat');
+
+                    mixpanel.batchtest.people.set('foo', 'bar');
+                    mixpanel.batchtest.people.increment('llamas');
+                    this.clock.tick(7000); // default batch_flush_interval_ms is 5000
+
+                    // first request was to /decide upon identify()
+                    var engage_request = _.find(this.requests, function(req) {
+                        return req.url.indexOf('/engage/') >= 0;
+                    });
+                    ok(engage_request, "should have made /engage request");
+                    var people_updates = getRequestData(engage_request);
+                    same(people_updates.length, 2, "should have sent both updates in batch");
+                    ok(contains_obj(people_updates[0].$set, {foo: 'bar'}));
+                    ok(contains_obj(people_updates[1].$add, {llamas: 1}));
+                    same(people_updates[0].$distinct_id, 'pat');
+                    same(people_updates[1].$distinct_id, 'pat');
+                });
+
                 // TODO group updates
             }
 
