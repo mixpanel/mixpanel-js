@@ -1618,4 +1618,4 @@ _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
-export { _, userAgent, console, win as window, document, navigator };
+export { _, userAgent, console, win as window, document, navigator, DOMAIN_MATCH_REGEX };
