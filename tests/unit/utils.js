@@ -18,4 +18,13 @@ describe(`DOMAIN_MATCH_REGEX`, function() {
   it(`supports many labels in a single hostname`, function() {
     expect(`my.sub.domain.mixpanel.com`.match(DOMAIN_MATCH_REGEX)[0]).to.equal(`mixpanel.com`);
   });
+
+  it(`supports a few common country code second-level domain names (ccSLD)`, function() {
+    expect(`www.oxford.ac.uk`.match(DOMAIN_MATCH_REGEX)[0]).to.equal(`oxford.ac.uk`);
+    expect(`www.dmv.ca.gov`.match(DOMAIN_MATCH_REGEX)[0]).to.equal(`dmv.ca.gov`);
+    expect(`www.imcc.isa.us`.match(DOMAIN_MATCH_REGEX)[0]).to.equal(`imcc.isa.us`);
+
+    // unfortunately can't do a real (sub)domain extraction without a list
+    // cases like www.avignon.aeroport.fr will still fail
+  });
 });
