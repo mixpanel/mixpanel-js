@@ -44,8 +44,6 @@ var nativeBind = FuncProto.bind,
     nativeIsArray = Array.isArray,
     breaker = {};
 
-var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
-
 var _ = {
     trim: function(str) {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
@@ -993,10 +991,8 @@ _.cookie = {
             secure = '';
 
         if (cross_subdomain) {
-            var matches = document.location.hostname.match(DOMAIN_MATCH_REGEX),
-                domain = matches ? matches[0] : '';
-
-            cdomain = ((domain) ? '; domain=.' + domain : '');
+            var domain = extract_domain(document.location.hostname);
+            cdomain = domain ? '; domain=.' + domain : '';
         }
 
         if (seconds) {
@@ -1016,10 +1012,8 @@ _.cookie = {
         var cdomain = '', expires = '', secure = '';
 
         if (cross_subdomain) {
-            var matches = document.location.hostname.match(DOMAIN_MATCH_REGEX),
-                domain = matches ? matches[0] : '';
-
-            cdomain   = ((domain) ? '; domain=.' + domain : '');
+            var domain = extract_domain(document.location.hostname);
+            cdomain = domain ? '; domain=.' + domain : '';
         }
 
         if (days) {
@@ -1605,6 +1599,18 @@ _.info = {
     }
 };
 
+// naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
+var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
+// this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
+// it's a pretty blunt heuristic and you can't do this reliably without a list like at https://publicsuffix.org/
+// but it maintains backwards compatibility with existing Mixpanel integrations
+var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
+var extract_domain = function(hostname) {
+    var domain_regex = (hostname.endsWith('.com') || hostname.endsWith('.org')) ? SIMPLE_DOMAIN_MATCH_REGEX : DOMAIN_MATCH_REGEX;
+    var matches = hostname.match(domain_regex);
+    return matches ? matches[0] : '';
+};
+
 // EXPORTS (for closure compiler)
 _['toArray']                = _.toArray;
 _['isObject']               = _.isObject;
@@ -1618,4 +1624,4 @@ _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
-export { _, userAgent, console, win as window, document, navigator, DOMAIN_MATCH_REGEX };
+export { _, userAgent, console, win as window, document, navigator, extract_domain };
