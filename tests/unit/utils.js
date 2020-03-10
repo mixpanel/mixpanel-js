@@ -34,4 +34,9 @@ describe(`extract_domain`, function() {
     expect(extract_domain(`x.org`)).to.equal(`x.org`);
     expect(extract_domain(`subdomain.x.org`)).to.equal(`x.org`);
   });
+
+  it(`supports long TLDs`, function() {
+    expect(extract_domain(`supercool.company`)).to.equal(`supercool.company`);
+    expect(extract_domain(`sub.supercool.company`)).to.equal(`supercool.company`);
+  });
 });

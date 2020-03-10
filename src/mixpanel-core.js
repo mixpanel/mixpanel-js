@@ -86,6 +86,7 @@ var DEFAULT_CONFIG = {
     'cross_subdomain_cookie':            true,
     'persistence':                       'cookie',
     'persistence_name':                  '',
+    'cookie_domain':                     '',
     'cookie_name':                       '',
     'loaded':                            function() {},
     'store_google':                      true,
@@ -1132,6 +1133,12 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // tracking via sendBeacon will not support any event-
  *       // batching or retry mechanisms.
  *       api_transport: 'XHR'
+ *
+ *       // override value for cookie domain, only useful for ensuring
+ *       // correct cross-subdomain cookies on unusual domains like
+ *       // subdomain.mainsite.avocat.fr; NB this cannot be used to
+ *       // set cookies on a different domain than the current origin
+ *       cookie_domain: ''
  *
  *       // super properties cookie expiration (in days)
  *       cookie_expiration: 365

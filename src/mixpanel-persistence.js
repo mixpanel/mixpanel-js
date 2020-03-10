@@ -157,14 +157,15 @@ MixpanelPersistence.prototype.save = function() {
         _.JSONEncode(this['props']),
         this.expire_days,
         this.cross_subdomain,
-        this.secure
+        this.secure,
+        this.cookie_domain
     );
 };
 
 MixpanelPersistence.prototype.remove = function() {
     // remove both domain and subdomain cookies
-    this.storage.remove(this.name, false);
-    this.storage.remove(this.name, true);
+    this.storage.remove(this.name, false, this.cookie_domain);
+    this.storage.remove(this.name, true, this.cookie_domain);
 };
 
 // removes the storage entry and deletes all loaded data
@@ -280,6 +281,7 @@ MixpanelPersistence.prototype.safe_merge = function(props) {
 MixpanelPersistence.prototype.update_config = function(config) {
     this.default_expiry = this.expire_days = config['cookie_expiration'];
     this.set_disabled(config['disable_persistence']);
+    this.set_cookie_domain(config['cookie_domain']);
     this.set_cross_subdomain(config['cross_subdomain_cookie']);
     this.set_secure(config['secure_cookie']);
 };
@@ -289,6 +291,14 @@ MixpanelPersistence.prototype.set_disabled = function(disabled) {
     if (this.disabled) {
         this.remove();
     } else {
+        this.save();
+    }
+};
+
+MixpanelPersistence.prototype.set_cookie_domain = function(cookie_domain) {
+    if (cookie_domain !== this.cookie_domain) {
+        this.remove();
+        this.cookie_domain = cookie_domain;
         this.save();
     }
 };

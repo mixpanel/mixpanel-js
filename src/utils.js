@@ -985,12 +985,14 @@ _.cookie = {
         return cookie;
     },
 
-    set_seconds: function(name, value, seconds, cross_subdomain, is_secure) {
+    set_seconds: function(name, value, seconds, cross_subdomain, is_secure, domain_override) {
         var cdomain = '',
             expires = '',
             secure = '';
 
-        if (cross_subdomain) {
+        if (domain_override) {
+            cdomain = '; domain=' + domain_override;
+        } else if (cross_subdomain) {
             var domain = extract_domain(document.location.hostname);
             cdomain = domain ? '; domain=.' + domain : '';
         }
@@ -1008,10 +1010,12 @@ _.cookie = {
         document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
     },
 
-    set: function(name, value, days, cross_subdomain, is_secure) {
+    set: function(name, value, days, cross_subdomain, is_secure, domain_override) {
         var cdomain = '', expires = '', secure = '';
 
-        if (cross_subdomain) {
+        if (domain_override) {
+            cdomain = '; domain=' + domain_override;
+        } else if (cross_subdomain) {
             var domain = extract_domain(document.location.hostname);
             cdomain = domain ? '; domain=.' + domain : '';
         }
@@ -1031,8 +1035,8 @@ _.cookie = {
         return new_cookie_val;
     },
 
-    remove: function(name, cross_subdomain) {
-        _.cookie.set(name, '', -1, cross_subdomain);
+    remove: function(name, cross_subdomain, domain_override) {
+        _.cookie.set(name, '', -1, cross_subdomain, false, domain_override);
     }
 };
 
@@ -1605,8 +1609,15 @@ var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // it's a pretty blunt heuristic and you can't do this reliably without a list like at https://publicsuffix.org/
 // but it maintains backwards compatibility with existing Mixpanel integrations
 var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
+var has_long_tld = function(hostname) {
+    var parts = hostname.split('.');
+    return parts[parts.length - 1].length > 4;
+};
 var extract_domain = function(hostname) {
-    var domain_regex = (hostname.endsWith('.com') || hostname.endsWith('.org')) ? SIMPLE_DOMAIN_MATCH_REGEX : DOMAIN_MATCH_REGEX;
+    var domain_regex = DOMAIN_MATCH_REGEX;
+    if (hostname.endsWith('.com') || hostname.endsWith('.org') || has_long_tld(hostname)) {
+        domain_regex = SIMPLE_DOMAIN_MATCH_REGEX;
+    }
     var matches = hostname.match(domain_regex);
     return matches ? matches[0] : '';
 };

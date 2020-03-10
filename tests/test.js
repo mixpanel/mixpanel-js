@@ -720,6 +720,15 @@
                     ok(cookie.exists(name), "Cookie should still exist for current subdomain");
                 });
 
+                if (document.location.hostname.split('.').length > 3) {
+                    test("custom cookie domain", 1, function() {
+                        var cname = mixpanel.test.config.cookie_name;
+                        var cdomain = document.location.hostname.split('.').slice(1).join('.');
+                        mixpanel.test.set_config({cookie_domain: cdomain});
+                        ok(cookie.exists(cname), "Cookie should still exist for current subdomain");
+                    });
+                }
+
                 test("Old values loaded", 1, function() {
                     var c1 = {
                         distinct_id: '12345',
