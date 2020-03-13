@@ -985,14 +985,14 @@ _.cookie = {
         return cookie;
     },
 
-    set_seconds: function(name, value, seconds, cross_subdomain, is_secure, is_cross_site, domain_override) {
+    set_seconds: function(name, value, seconds, is_cross_subdomain, is_secure, is_cross_site, domain_override) {
         var cdomain = '',
             expires = '',
             secure = '';
 
         if (domain_override) {
             cdomain = '; domain=' + domain_override;
-        } else if (cross_subdomain) {
+        } else if (is_cross_subdomain) {
             var domain = extract_domain(document.location.hostname);
             cdomain = domain ? '; domain=.' + domain : '';
         }
@@ -1014,12 +1014,12 @@ _.cookie = {
         document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
     },
 
-    set: function(name, value, days, cross_subdomain, is_secure, is_cross_site, domain_override) {
+    set: function(name, value, days, is_cross_subdomain, is_secure, is_cross_site, domain_override) {
         var cdomain = '', expires = '', secure = '';
 
         if (domain_override) {
             cdomain = '; domain=' + domain_override;
-        } else if (cross_subdomain) {
+        } else if (is_cross_subdomain) {
             var domain = extract_domain(document.location.hostname);
             cdomain = domain ? '; domain=.' + domain : '';
         }
@@ -1043,8 +1043,8 @@ _.cookie = {
         return new_cookie_val;
     },
 
-    remove: function(name, cross_subdomain, domain_override) {
-        _.cookie.set(name, '', -1, cross_subdomain, false, false, domain_override);
+    remove: function(name, is_cross_subdomain, domain_override) {
+        _.cookie.set(name, '', -1, is_cross_subdomain, false, false, domain_override);
     }
 };
 
