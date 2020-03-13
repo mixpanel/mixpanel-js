@@ -1614,13 +1614,25 @@ _.info = {
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
 var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
-// it's a pretty blunt heuristic and you can't do this reliably without a list like at https://publicsuffix.org/
-// but it maintains backwards compatibility with existing Mixpanel integrations
 var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
+// does the hostname have a long TLD like .company?
 var has_long_tld = function(hostname) {
     var parts = hostname.split('.');
     return parts[parts.length - 1].length > 4;
 };
+/**
+ * Attempts to extract main domain name from full hostname, using a few blunt heuristics. For
+ * common TLDs like .com/.org that always have a simple SLD.TLD structure (example.com), we
+ * simply extract the last two .-separated parts of the hostname (SIMPLE_DOMAIN_MATCH_REGEX).
+ * For others, we attempt to account for short ccSLD+TLD combos (.ac.uk) with the legacy
+ * DOMAIN_MATCH_REGEX (kept to maintain backwards compatibility with existing Mixpanel
+ * integrations). The only _reliable_ way to extract domain from hostname is with an up-to-date
+ * list like at https://publicsuffix.org/ so for cases that this helper fails at, the SDK
+ * offers the 'cookie_domain' config option to set it explicitly.
+ * @example
+ * extract_domain('my.sub.example.com')
+ * // 'example.com'
+ */
 var extract_domain = function(hostname) {
     var domain_regex = DOMAIN_MATCH_REGEX;
     if (hostname.endsWith('.com') || hostname.endsWith('.org') || has_long_tld(hostname)) {
