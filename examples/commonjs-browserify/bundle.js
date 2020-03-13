@@ -3,7 +3,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.34.0'
+    LIB_VERSION: '2.35.0-rc1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -47,8 +47,6 @@ var nativeForEach = ArrayProto.forEach;
 var nativeIndexOf = ArrayProto.indexOf;
 var nativeIsArray = Array.isArray;
 var breaker = {};
-var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
-
 var _ = {
     trim: function(str) {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
@@ -990,16 +988,16 @@ _.cookie = {
         return cookie;
     },
 
-    set_seconds: function(name, value, seconds, cross_subdomain, is_secure) {
+    set_seconds: function(name, value, seconds, is_cross_subdomain, is_secure, is_cross_site, domain_override) {
         var cdomain = '',
             expires = '',
             secure = '';
 
-        if (cross_subdomain) {
-            var matches = document$1.location.hostname.match(DOMAIN_MATCH_REGEX),
-                domain = matches ? matches[0] : '';
-
-            cdomain = ((domain) ? '; domain=.' + domain : '');
+        if (domain_override) {
+            cdomain = '; domain=' + domain_override;
+        } else if (is_cross_subdomain) {
+            var domain = extract_domain(document$1.location.hostname);
+            cdomain = domain ? '; domain=.' + domain : '';
         }
 
         if (seconds) {
@@ -1008,21 +1006,25 @@ _.cookie = {
             expires = '; expires=' + date.toGMTString();
         }
 
+        if (is_cross_site) {
+            is_secure = true;
+            secure = '; SameSite=None';
+        }
         if (is_secure) {
-            secure = '; secure';
+            secure += '; secure';
         }
 
         document$1.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
     },
 
-    set: function(name, value, days, cross_subdomain, is_secure) {
+    set: function(name, value, days, is_cross_subdomain, is_secure, is_cross_site, domain_override) {
         var cdomain = '', expires = '', secure = '';
 
-        if (cross_subdomain) {
-            var matches = document$1.location.hostname.match(DOMAIN_MATCH_REGEX),
-                domain = matches ? matches[0] : '';
-
-            cdomain   = ((domain) ? '; domain=.' + domain : '');
+        if (domain_override) {
+            cdomain = '; domain=' + domain_override;
+        } else if (is_cross_subdomain) {
+            var domain = extract_domain(document$1.location.hostname);
+            cdomain = domain ? '; domain=.' + domain : '';
         }
 
         if (days) {
@@ -1031,8 +1033,12 @@ _.cookie = {
             expires = '; expires=' + date.toGMTString();
         }
 
+        if (is_cross_site) {
+            is_secure = true;
+            secure = '; SameSite=None';
+        }
         if (is_secure) {
-            secure = '; secure';
+            secure += '; secure';
         }
 
         var new_cookie_val = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
@@ -1040,8 +1046,8 @@ _.cookie = {
         return new_cookie_val;
     },
 
-    remove: function(name, cross_subdomain) {
-        _.cookie.set(name, '', -1, cross_subdomain);
+    remove: function(name, is_cross_subdomain, domain_override) {
+        _.cookie.set(name, '', -1, is_cross_subdomain, false, false, domain_override);
     }
 };
 
@@ -1606,6 +1612,34 @@ _.info = {
             'mp_platform': _.info.os()
         });
     }
+};
+
+// naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
+var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
+// this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
+var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
+/**
+ * Attempts to extract main domain name from full hostname, using a few blunt heuristics. For
+ * common TLDs like .com/.org that always have a simple SLD.TLD structure (example.com), we
+ * simply extract the last two .-separated parts of the hostname (SIMPLE_DOMAIN_MATCH_REGEX).
+ * For others, we attempt to account for short ccSLD+TLD combos (.ac.uk) with the legacy
+ * DOMAIN_MATCH_REGEX (kept to maintain backwards compatibility with existing Mixpanel
+ * integrations). The only _reliable_ way to extract domain from hostname is with an up-to-date
+ * list like at https://publicsuffix.org/ so for cases that this helper fails at, the SDK
+ * offers the 'cookie_domain' config option to set it explicitly.
+ * @example
+ * extract_domain('my.sub.example.com')
+ * // 'example.com'
+ */
+var extract_domain = function(hostname) {
+    var domain_regex = DOMAIN_MATCH_REGEX;
+    var parts = hostname.split('.');
+    var tld = parts[parts.length - 1];
+    if (tld.length > 4 || tld === 'com' || tld === 'org') {
+        domain_regex = SIMPLE_DOMAIN_MATCH_REGEX;
+    }
+    var matches = hostname.match(domain_regex);
+    return matches ? matches[0] : '';
 };
 
 // EXPORTS (for closure compiler)
@@ -2325,6 +2359,8 @@ var GDPR_DEFAULT_PERSISTENCE_PREFIX = '__mp_opt_in_out_';
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
+ * @param {string} [options.cookieDomain] - custom cookie domain
+ * @param {boolean} [options.crossSiteCookie] - whether the opt-in cookie is set as cross-site-enabled
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
  */
@@ -2339,6 +2375,8 @@ function optIn(token, options) {
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-out cookie expires
+ * @param {string} [options.cookieDomain] - custom cookie domain
+ * @param {boolean} [options.crossSiteCookie] - whether the opt-in cookie is set as cross-site-enabled
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-out cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-out cookie is set as secure or not
  */
@@ -2420,12 +2458,16 @@ function addOptOutCheckMixpanelGroup(method) {
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
+ * @param {string} [options.cookieDomain] - custom cookie domain
+ * @param {boolean} [options.crossSiteCookie] - whether the opt-in cookie is set as cross-site-enabled
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
  */
 function clearOptInOut(token, options) {
     options = options || {};
-    _getStorage(options).remove(_getStorageKey(token, options), !!options.crossSubdomainCookie);
+    _getStorage(options).remove(
+        _getStorageKey(token, options), !!options.crossSubdomainCookie, options.cookieDomain
+    );
 }
 
 /** Private **/
@@ -2502,6 +2544,8 @@ function _hasDoNotTrackFlagOn(options) {
  * @param {Object} [options.trackProperties] - set of properties to be tracked along with the opt-in action
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
+ * @param {string} [options.cookieDomain] - custom cookie domain
+ * @param {boolean} [options.crossSiteCookie] - whether the opt-in cookie is set as cross-site-enabled
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
  */
@@ -2518,7 +2562,9 @@ function _optInOut(optValue, token, options) {
         optValue ? 1 : 0,
         _.isNumber(options.cookieExpiration) ? options.cookieExpiration : null,
         !!options.crossSubdomainCookie,
-        !!options.secureCookie
+        !!options.secureCookie,
+        !!options.crossSiteCookie,
+        options.cookieDomain
     );
 
     if (options.track && optValue) { // only track event if opting in (optValue=true)
@@ -3002,14 +3048,16 @@ MixpanelPersistence.prototype.save = function() {
         _.JSONEncode(this['props']),
         this.expire_days,
         this.cross_subdomain,
-        this.secure
+        this.secure,
+        this.cross_site,
+        this.cookie_domain
     );
 };
 
 MixpanelPersistence.prototype.remove = function() {
     // remove both domain and subdomain cookies
-    this.storage.remove(this.name, false);
-    this.storage.remove(this.name, true);
+    this.storage.remove(this.name, false, this.cookie_domain);
+    this.storage.remove(this.name, true, this.cookie_domain);
 };
 
 // removes the storage entry and deletes all loaded data
@@ -3125,6 +3173,8 @@ MixpanelPersistence.prototype.safe_merge = function(props) {
 MixpanelPersistence.prototype.update_config = function(config) {
     this.default_expiry = this.expire_days = config['cookie_expiration'];
     this.set_disabled(config['disable_persistence']);
+    this.set_cookie_domain(config['cookie_domain']);
+    this.set_cross_site(config['cross_site_cookie']);
     this.set_cross_subdomain(config['cross_subdomain_cookie']);
     this.set_secure(config['secure_cookie']);
 };
@@ -3134,6 +3184,22 @@ MixpanelPersistence.prototype.set_disabled = function(disabled) {
     if (this.disabled) {
         this.remove();
     } else {
+        this.save();
+    }
+};
+
+MixpanelPersistence.prototype.set_cookie_domain = function(cookie_domain) {
+    if (cookie_domain !== this.cookie_domain) {
+        this.remove();
+        this.cookie_domain = cookie_domain;
+        this.save();
+    }
+};
+
+MixpanelPersistence.prototype.set_cross_site = function(cross_site) {
+    if (cross_site !== this.cross_site) {
+        this.cross_site = cross_site;
+        this.remove();
         this.save();
     }
 };
@@ -5657,9 +5723,11 @@ var DEFAULT_CONFIG = {
     'app_host':                          'https://mixpanel.com',
     'autotrack':                         true,
     'cdn':                               'https://cdn.mxpnl.com',
+    'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
     'persistence':                       'cookie',
     'persistence_name':                  '',
+    'cookie_domain':                     '',
     'cookie_name':                       '',
     'loaded':                            function() {},
     'store_google':                      true,
@@ -6707,8 +6775,19 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // batching or retry mechanisms.
  *       api_transport: 'XHR'
  *
+ *       // override value for cookie domain, only useful for ensuring
+ *       // correct cross-subdomain cookies on unusual domains like
+ *       // subdomain.mainsite.avocat.fr; NB this cannot be used to
+ *       // set cookies on a different domain than the current origin
+ *       cookie_domain: ''
+ *
  *       // super properties cookie expiration (in days)
  *       cookie_expiration: 365
+ *
+ *       // if true, cookie will be set with SameSite=None; Secure
+ *       // this is only useful in special situations, like embedded
+ *       // 3rd-party iframes that set up a Mixpanel instance
+ *       cross_site_cookie: false
  *
  *       // super properties span subdomains
  *       cross_subdomain_cookie: true
@@ -6981,7 +7060,9 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         'persistence_type': this.get_config('opt_out_tracking_persistence_type'),
         'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
         'cookie_expiration': this.get_config('cookie_expiration'),
+        'cross_site_cookie': this.get_config('cross_site_cookie'),
         'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
+        'cookie_domain': this.get_config('cookie_domain'),
         'secure_cookie': this.get_config('secure_cookie'),
         'ignore_dnt': this.get_config('ignore_dnt')
     }, options);
@@ -6997,7 +7078,9 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         trackProperties: options['track_properties'],
         persistenceType: options['persistence_type'],
         persistencePrefix: options['cookie_prefix'],
+        cookieDomain: options['cookie_domain'],
         cookieExpiration: options['cookie_expiration'],
+        crossSiteCookie: options['cross_site_cookie'],
         crossSubdomainCookie: options['cross_subdomain_cookie'],
         secureCookie: options['secure_cookie'],
         ignoreDnt: options['ignore_dnt']
@@ -7030,6 +7113,8 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {string} [options.cookie_domain] Custom cookie domain (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_site_cookie] Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
@@ -7062,6 +7147,8 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {string} [options.cookie_domain] Custom cookie domain (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_site_cookie] Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
@@ -7135,6 +7222,8 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {string} [options.cookie_domain] Custom cookie domain (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_site_cookie] Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
