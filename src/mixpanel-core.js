@@ -83,6 +83,7 @@ var DEFAULT_CONFIG = {
     'app_host':                          'https://mixpanel.com',
     'autotrack':                         true,
     'cdn':                               'https://cdn.mxpnl.com',
+    'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
     'persistence':                       'cookie',
     'persistence_name':                  '',
@@ -1142,6 +1143,11 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *
  *       // super properties cookie expiration (in days)
  *       cookie_expiration: 365
+ *
+ *       // if true, cookie will be set with SameSite=None; Secure
+ *       // this is only useful in special situations, like embedded
+ *       // 3rd-party iframes that set up a Mixpanel instance
+ *       cross_site_cookie: false
  *
  *       // super properties span subdomains
  *       cross_subdomain_cookie: true

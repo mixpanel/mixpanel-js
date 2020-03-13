@@ -703,6 +703,17 @@
                     clearLibInstance(mixpanel.cn2);
                 });
 
+                test("cross-site option doesn't break functionality", 2, function() {
+                    // we can only really test that setting cross_site_cookie works and
+                    // doesn't kill functionality, since you can't access cookie config
+                    // after setting it
+
+                    var cname = mixpanel.test.cookie.name;
+                    ok(cookie.exists(cname), "Cookie should exist");
+                    mixpanel.test.set_config({cross_site_cookie: true});
+                    ok(cookie.exists(cname), "Cookie should still exist");
+                });
+
                 test("cross subdomain", 4, function() {
                     var name = mixpanel.test.config.cookie_name;
 
@@ -722,7 +733,7 @@
 
                 if (document.location.hostname.split('.').length > 3) {
                     test("custom cookie domain", 1, function() {
-                        var cname = mixpanel.test.config.cookie_name;
+                        var cname = mixpanel.test.cookie.name;
                         var cdomain = document.location.hostname.split('.').slice(1).join('.');
                         mixpanel.test.set_config({cookie_domain: cdomain});
                         ok(cookie.exists(cname), "Cookie should still exist for current subdomain");

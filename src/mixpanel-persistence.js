@@ -158,6 +158,7 @@ MixpanelPersistence.prototype.save = function() {
         this.expire_days,
         this.cross_subdomain,
         this.secure,
+        this.cross_site,
         this.cookie_domain
     );
 };
@@ -282,6 +283,7 @@ MixpanelPersistence.prototype.update_config = function(config) {
     this.default_expiry = this.expire_days = config['cookie_expiration'];
     this.set_disabled(config['disable_persistence']);
     this.set_cookie_domain(config['cookie_domain']);
+    this.set_cross_site(config['cross_site_cookie']);
     this.set_cross_subdomain(config['cross_subdomain_cookie']);
     this.set_secure(config['secure_cookie']);
 };
@@ -299,6 +301,14 @@ MixpanelPersistence.prototype.set_cookie_domain = function(cookie_domain) {
     if (cookie_domain !== this.cookie_domain) {
         this.remove();
         this.cookie_domain = cookie_domain;
+        this.save();
+    }
+};
+
+MixpanelPersistence.prototype.set_cross_site = function(cross_site) {
+    if (cross_site !== this.cross_site) {
+        this.cross_site = cross_site;
+        this.remove();
         this.save();
     }
 };

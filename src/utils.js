@@ -985,7 +985,7 @@ _.cookie = {
         return cookie;
     },
 
-    set_seconds: function(name, value, seconds, cross_subdomain, is_secure, domain_override) {
+    set_seconds: function(name, value, seconds, cross_subdomain, is_secure, is_cross_site, domain_override) {
         var cdomain = '',
             expires = '',
             secure = '';
@@ -1003,14 +1003,18 @@ _.cookie = {
             expires = '; expires=' + date.toGMTString();
         }
 
+        if (is_cross_site) {
+            is_secure = true;
+            secure = '; SameSite=None';
+        }
         if (is_secure) {
-            secure = '; secure';
+            secure += '; secure';
         }
 
         document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
     },
 
-    set: function(name, value, days, cross_subdomain, is_secure, domain_override) {
+    set: function(name, value, days, cross_subdomain, is_secure, is_cross_site, domain_override) {
         var cdomain = '', expires = '', secure = '';
 
         if (domain_override) {
@@ -1026,8 +1030,12 @@ _.cookie = {
             expires = '; expires=' + date.toGMTString();
         }
 
+        if (is_cross_site) {
+            is_secure = true;
+            secure = '; SameSite=None';
+        }
         if (is_secure) {
-            secure = '; secure';
+            secure += '; secure';
         }
 
         var new_cookie_val = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
@@ -1036,7 +1044,7 @@ _.cookie = {
     },
 
     remove: function(name, cross_subdomain, domain_override) {
-        _.cookie.set(name, '', -1, cross_subdomain, false, domain_override);
+        _.cookie.set(name, '', -1, cross_subdomain, false, false, domain_override);
     }
 };
 
