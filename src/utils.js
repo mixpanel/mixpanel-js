@@ -1615,11 +1615,6 @@ _.info = {
 var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
 var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
-// does the hostname have a long TLD like .company?
-var has_long_tld = function(hostname) {
-    var parts = hostname.split('.');
-    return parts[parts.length - 1].length > 4;
-};
 /**
  * Attempts to extract main domain name from full hostname, using a few blunt heuristics. For
  * common TLDs like .com/.org that always have a simple SLD.TLD structure (example.com), we
@@ -1635,7 +1630,9 @@ var has_long_tld = function(hostname) {
  */
 var extract_domain = function(hostname) {
     var domain_regex = DOMAIN_MATCH_REGEX;
-    if (hostname.endsWith('.com') || hostname.endsWith('.org') || has_long_tld(hostname)) {
+    var parts = hostname.split('.');
+    var tld = parts[parts.length - 1];
+    if (tld.length > 4 || tld === 'com' || tld === 'org') {
         domain_regex = SIMPLE_DOMAIN_MATCH_REGEX;
     }
     var matches = hostname.match(domain_regex);
