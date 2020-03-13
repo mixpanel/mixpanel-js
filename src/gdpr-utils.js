@@ -35,6 +35,8 @@ var GDPR_DEFAULT_PERSISTENCE_PREFIX = '__mp_opt_in_out_';
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
+ * @param {string} [options.cookieDomain] - custom cookie domain
+ * @param {boolean} [options.crossSiteCookie] - whether the opt-in cookie is set as cross-site-enabled
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
  */
@@ -49,6 +51,8 @@ export function optIn(token, options) {
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-out cookie expires
+ * @param {string} [options.cookieDomain] - custom cookie domain
+ * @param {boolean} [options.crossSiteCookie] - whether the opt-in cookie is set as cross-site-enabled
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-out cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-out cookie is set as secure or not
  */
@@ -130,12 +134,16 @@ export function addOptOutCheckMixpanelGroup(method) {
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
+ * @param {string} [options.cookieDomain] - custom cookie domain
+ * @param {boolean} [options.crossSiteCookie] - whether the opt-in cookie is set as cross-site-enabled
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
  */
 export function clearOptInOut(token, options) {
     options = options || {};
-    _getStorage(options).remove(_getStorageKey(token, options), !!options.crossSubdomainCookie);
+    _getStorage(options).remove(
+        _getStorageKey(token, options), !!options.crossSubdomainCookie, options.cookieDomain
+    );
 }
 
 /** Private **/
@@ -212,6 +220,8 @@ function _hasDoNotTrackFlagOn(options) {
  * @param {Object} [options.trackProperties] - set of properties to be tracked along with the opt-in action
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookieExpiration] - number of days until the opt-in cookie expires
+ * @param {string} [options.cookieDomain] - custom cookie domain
+ * @param {boolean} [options.crossSiteCookie] - whether the opt-in cookie is set as cross-site-enabled
  * @param {boolean} [options.crossSubdomainCookie] - whether the opt-in cookie is set as cross-subdomain or not
  * @param {boolean} [options.secureCookie] - whether the opt-in cookie is set as secure or not
  */
@@ -228,7 +238,9 @@ function _optInOut(optValue, token, options) {
         optValue ? 1 : 0,
         _.isNumber(options.cookieExpiration) ? options.cookieExpiration : null,
         !!options.crossSubdomainCookie,
-        !!options.secureCookie
+        !!options.secureCookie,
+        !!options.crossSiteCookie,
+        options.cookieDomain
     );
 
     if (options.track && optValue) { // only track event if opting in (optValue=true)

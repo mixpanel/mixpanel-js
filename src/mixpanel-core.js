@@ -1420,7 +1420,9 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         'persistence_type': this.get_config('opt_out_tracking_persistence_type'),
         'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
         'cookie_expiration': this.get_config('cookie_expiration'),
+        'cross_site_cookie': this.get_config('cross_site_cookie'),
         'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
+        'cookie_domain': this.get_config('cookie_domain'),
         'secure_cookie': this.get_config('secure_cookie'),
         'ignore_dnt': this.get_config('ignore_dnt')
     }, options);
@@ -1436,7 +1438,9 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         trackProperties: options['track_properties'],
         persistenceType: options['persistence_type'],
         persistencePrefix: options['cookie_prefix'],
+        cookieDomain: options['cookie_domain'],
         cookieExpiration: options['cookie_expiration'],
+        crossSiteCookie: options['cross_site_cookie'],
         crossSubdomainCookie: options['cross_subdomain_cookie'],
         secureCookie: options['secure_cookie'],
         ignoreDnt: options['ignore_dnt']
@@ -1469,6 +1473,8 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {string} [options.cookie_domain] Custom cookie domain (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_site_cookie] Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
@@ -1501,6 +1507,8 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {string} [options.cookie_domain] Custom cookie domain (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_site_cookie] Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
@@ -1574,6 +1582,8 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @param {Number} [options.cookie_expiration] Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config)
+ * @param {string} [options.cookie_domain] Custom cookie domain (overrides value specified in this Mixpanel instance's config)
+ * @param {boolean} [options.cross_site_cookie] Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.cross_subdomain_cookie] Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config)
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
