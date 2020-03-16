@@ -703,16 +703,18 @@
                     clearLibInstance(mixpanel.cn2);
                 });
 
-                test("cross-site option doesn't break functionality", 2, function() {
-                    // we can only really test that setting cross_site_cookie works and
-                    // doesn't kill functionality, since you can't access cookie config
-                    // after setting it
+                if (document.location.protocol === "https:") {
+                    test("cross-site option doesn't break functionality", 2, function() {
+                        // we can only really test that setting cross_site_cookie works and
+                        // doesn't kill functionality, since you can't access cookie config
+                        // after setting it
 
-                    var cname = mixpanel.test.cookie.name;
-                    ok(cookie.exists(cname), "Cookie should exist");
-                    mixpanel.test.set_config({cross_site_cookie: true});
-                    ok(cookie.exists(cname), "Cookie should still exist");
-                });
+                        var cname = mixpanel.test.cookie.name;
+                        ok(cookie.exists(cname), "Cookie should exist");
+                        mixpanel.test.set_config({cross_site_cookie: true});
+                        ok(cookie.exists(cname), "Cookie should still exist");
+                    });
+                }
 
                 test("cross subdomain", 4, function() {
                     var name = mixpanel.test.config.cookie_name;
@@ -4476,7 +4478,7 @@
                     });
                 }
 
-                if (document.location.hostname !== 'localhost') {
+                if (document.location.hostname.split('.').length > 1) {
                     test("opt in/out cookie cross-subdomain", 28, function() {
                         mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
                         var name = '__mp_opt_in_out_gdpr';
