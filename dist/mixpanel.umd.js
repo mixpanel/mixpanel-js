@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.35.0-rc1'
+        LIB_VERSION: '2.35.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -5984,9 +5984,11 @@
     };
 
     MixpanelLib.prototype._send_request = function(url, data, options, callback) {
+        var succeeded = true;
+
         if (ENQUEUE_REQUESTS) {
             this.__request_queue.push(arguments);
-            return;
+            return succeeded;
         }
 
         var DEFAULT_OPTIONS = {
@@ -6041,9 +6043,10 @@
             document$1.body.appendChild(img);
         } else if (use_sendBeacon) {
             try {
-                sendBeacon(url, body_data);
+                succeeded = sendBeacon(url, body_data);
             } catch (e) {
                 console$1.error(e);
+                succeeded = false;
             }
         } else if (USE_XHR) {
             try {
@@ -6094,6 +6097,7 @@
                 req.send(body_data);
             } catch (e) {
                 console$1.error(e);
+                succeeded = false;
             }
         } else {
             var script = document$1.createElement('script');
@@ -6104,6 +6108,8 @@
             var s = document$1.getElementsByTagName('script')[0];
             s.parentNode.insertBefore(script, s);
         }
+
+        return succeeded;
     };
 
     /**
@@ -6210,6 +6216,8 @@
      * @param {Object} [options] Optional configuration for this track request.
      * @param {String} [options.transport] Transport method for network request ('xhr' or 'sendBeacon').
      * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
+     * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
+     * with the tracking payload sent to the API server is returned; otherwise false.
      */
     MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
         if (!callback && typeof options === 'function') {
@@ -6284,7 +6292,7 @@
         console$1.log('MIXPANEL REQUEST:');
         console$1.log(truncated_data);
 
-        this._send_request(
+        var request_initiated = this._send_request(
             this.get_config('api_host') + '/track/',
             { 'data': encoded_data },
             options,
@@ -6293,7 +6301,7 @@
 
         this._check_and_handle_triggered_notifications(data);
 
-        return truncated_data;
+        return request_initiated && truncated_data;
     });
 
     /**
