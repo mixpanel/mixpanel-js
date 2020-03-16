@@ -1,6 +1,8 @@
 (function() {
-    // uncomment to show only failures
-    // $('#qunit-tests').addClass('hidepass');
+    // add ?hidepass query param to hide results of successful test cases
+    if (window.location.href.indexOf('hidepass') >= 0) {
+        $('#qunit-tests').addClass('hidepass');
+    }
 
     var mixpanelLoading = $.Deferred();
     var mixpanelCELoading = $.Deferred();
