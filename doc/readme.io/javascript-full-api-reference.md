@@ -65,6 +65,8 @@ Clear the user's opt in/out status of data tracking and cookies/localstorage for
 | **options.persistence_type=localStorage** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable |
 | **options.cookie_prefix=__mp_opt_in_out** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Custom prefix to be used in the cookie/localstorage name |
 | **options.cookie_expiration** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config) |
+| **options.cookie_domain** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Custom cookie domain (overrides value specified in this Mixpanel instance's config) |
+| **options.cross_site_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config) |
 | **options.cross_subdomain_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config) |
 | **options.secure_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config) |
 
@@ -240,6 +242,8 @@ Opt the user in to data tracking and cookies/localstorage for this Mixpanel inst
 | **options.persistence_type=localStorage** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable |
 | **options.cookie_prefix=__mp_opt_in_out** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Custom prefix to be used in the cookie/localstorage name |
 | **options.cookie_expiration** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config) |
+| **options.cookie_domain** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Custom cookie domain (overrides value specified in this Mixpanel instance's config) |
+| **options.cross_site_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config) |
 | **options.cross_subdomain_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config) |
 | **options.secure_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config) |
 
@@ -259,6 +263,8 @@ Opt the user out of data tracking and cookies/localstorage for this Mixpanel ins
 | **options.persistence_type=localStorage** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable |
 | **options.cookie_prefix=__mp_opt_in_out** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Custom prefix to be used in the cookie/localstorage name |
 | **options.cookie_expiration** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | Number of days until the opt-in cookie expires (overrides value specified in this Mixpanel instance's config) |
+| **options.cookie_domain** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Custom cookie domain (overrides value specified in this Mixpanel instance's config) |
+| **options.cross_site_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as cross-site-enabled (overrides value specified in this Mixpanel instance's config) |
 | **options.cross_subdomain_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as cross-subdomain or not (overrides value specified in this Mixpanel instance's config) |
 | **options.secure_cookie** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config) |
 
@@ -379,8 +385,19 @@ The default config is:
   // batching or retry mechanisms.
   api_transport: 'XHR'
 
+  // override value for cookie domain, only useful for ensuring
+  // correct cross-subdomain cookies on unusual domains like
+  // subdomain.mainsite.avocat.fr; NB this cannot be used to
+  // set cookies on a different domain than the current origin
+  cookie_domain: ''
+
   // super properties cookie expiration (in days)
   cookie_expiration: 365
+
+  // if true, cookie will be set with SameSite=None; Secure
+  // this is only useful in special situations, like embedded
+  // 3rd-party iframes that set up a Mixpanel instance
+  cross_site_cookie: false
 
   // super properties span subdomains
   cross_subdomain_cookie: true
