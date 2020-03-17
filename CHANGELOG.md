@@ -1,3 +1,9 @@
+**2.35.0** (17 Mar 2020)
+- Fix cross-subdomain tracking for various edge cases (extra-long TLDs, very short .com/.org domains)
+- Add `cookie_domain` config option to allow specifying domain explicitly for cross-subdomain tracking
+- Add `cross_site_cookie` config option to add `SameSite=None;Secure` for special integrations (iframes/extensions)
+- Return falsey value from track() if navigator.sendBeacon transport fails to enqueue data
+
 **2.34.0** (27 Jan 2020)
 - Add config option to allow ignoring DNT browser setting
 - Fix for /decide checks failing when lib initialized with sendBeacon transport
