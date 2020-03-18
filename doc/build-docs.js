@@ -44,6 +44,10 @@ function parseDescriptionAttrs(html) {
   });
 }
 
+function stripPTags(str) {
+  return str.replace(/<p>([\S\s]+?)<\/?p>/g, `$1`);
+}
+
 // transform the structured data dox parses out of our JSDoc and feed it through
 // the lodash template at template.md
 function doxToMD(items) {
@@ -72,9 +76,15 @@ function doxToMD(items) {
             .filter(arg => !!arg.name)
             .map(arg => ({
               name: trim(arg.name, `[]`),
-              description: arg.description.replace(/<p>([\S\s]+?)<\/?p>/g, `$1`),
+              description: stripPTags(arg.description),
               required: !arg.name.startsWith(`[`),
               types: arg.typesDescription === `<code>*</code>` ? `any` : arg.types.join(` or `),
+            })),
+          returns: item.tags
+            .filter(tag => tag.type === `returns`)
+            .map(tag => ({
+              description: stripPTags(tag.description),
+              types: tag.types.join(` or `),
             })),
           ...parseDescriptionAttrs(item.description.full),
         })),

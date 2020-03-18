@@ -19,7 +19,11 @@ title: JavaScript Full API Reference
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |<% for (const arg of item.arguments) { %>
-| **<%= arg.name %>** | <span class="mp-arg-type"><%= arg.types %></span></br></span><% if (arg.required) { %><span class="mp-arg-required">required</span><% } else { %><span class="mp-arg-optional">optional</span><% } %> | <%= arg.description %> |<% } %><% } %>
+| **<%= arg.name %>** | <span class="mp-arg-type"><%= arg.types %></span></br></span><% if (arg.required) { %><span class="mp-arg-required">required</span><% } else { %><span class="mp-arg-optional">optional</span><% } %> | <%= arg.description %> |<% } %><% } %><% if (item.returns.length) { %>
+#### Returns:
+| Type | Description |
+| ----- | ------------- |<% for (const ret of item.returns) { %>
+| <span class="mp-arg-type"><%= ret.types %></span> | <%= ret.description %> |<% } %><% } %>
 
 <% } %>
 <% } %>

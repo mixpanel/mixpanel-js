@@ -129,6 +129,10 @@ Look up reference to a Mixpanel group
 | ------------- | ------------- | ----- |
 | **group_key** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Group key |
 | **group_id** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
+#### Returns:
+| Type | Description |
+| ----- | ------------- |
+| <span class="mp-arg-type">Object</span> | A MixpanelGroup identifier |
 
 
 <hr>
@@ -167,6 +171,10 @@ Check whether the user has opted in to data tracking and cookies/localstorage fo
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override |
 | **options.persistence_type=localStorage** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable |
 | **options.cookie_prefix=__mp_opt_in_out** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Custom prefix to be used in the cookie/localstorage name |
+#### Returns:
+| Type | Description |
+| ----- | ------------- |
+| <span class="mp-arg-type">boolean</span> | current opt-in status |
 
 
 <hr>
@@ -181,6 +189,10 @@ Check whether the user has opted out of data tracking and cookies/localstorage f
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override |
 | **options.persistence_type=localStorage** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable |
 | **options.cookie_prefix=__mp_opt_in_out** | <span class="mp-arg-type">string</span></br></span><span class="mp-arg-optional">optional</span> | Custom prefix to be used in the cookie/localstorage name |
+#### Returns:
+| Type | Description |
+| ----- | ------------- |
+| <span class="mp-arg-type">boolean</span> | current opt-out status |
 
 
 <hr>
@@ -551,6 +563,10 @@ To track link clicks or form submissions, see track_links() or track_forms().
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Optional configuration for this track request. |
 | **options.transport** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Transport method for network request ('xhr' or 'sendBeacon'). |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback function will be called after tracking the event. |
+#### Returns:
+| Type | Description |
+| ----- | ------------- |
+| <span class="mp-arg-type">Boolean or Object</span> | If the tracking request was successfully initiated/queued, an object with the tracking payload sent to the API server is returned; otherwise false. |
 
 
 <hr>
