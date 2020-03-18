@@ -28,21 +28,39 @@ Add a new group for this user.
 
 <hr>
 ## mixpanel.alias
-Create an alias, which Mixpanel will use to link two distinct_ids going forward (not retroactively).  Multiple aliases can map to the same original ID, but not vice-versa. Aliases can also be chained - the  following is a valid scenario:
+The alias method creates an alias which Mixpanel will use to  remap one id to another. Multiple aliases can point to the  same identifier.
+
+The following is a valid use of alias:
 
 
 ```javascript
 mixpanel.alias('new_id', 'existing_id');
-...
+// You can add multiple id aliases to the existing ID
+mixpanel.alias('newer_id', 'existing_id');
+
+```
+Aliases can also be chained - the following is a valid example:
+
+
+```javascript
+mixpanel.alias('new_id', 'existing_id');
+// chain newer_id -&gt; new_id -&gt; existing_id
 mixpanel.alias('newer_id', 'new_id');
 
 ```
-If the original ID is not passed in, we will use the current distinct_id - probably the auto-generated GUID.
+Aliases cannot point to multiple identifiers - the following  example will not work:
 
+
+```javascript
+mixpanel.alias('new_id', 'existing_id');
+// this is invalid as 'new_id' already points to 'existing_id'
+mixpanel.alias('new_id', 'newer_id');
+
+```
 
 
 ### Notes:
-The best practice is to call alias() when a unique ID is first created for a user  (e.g., when a user first registers for an account and provides an email address).  alias() should never be called more than once for a given user, except to  chain a newer ID to a previously new ID, as described above.
+If your project does not have  <a href="https://help.mixpanel.com/hc/en-us/articles/360039133851">ID Merge</a>  enabled, the best practice is to call alias once when a unique  ID is first created for a user (e.g., when a user first registers  for an account). Do not use alias multiple times for a single  user without ID Merge enabled.
 
 
 | Argument | Type | Description |
@@ -197,14 +215,16 @@ Check whether the user has opted out of data tracking and cookies/localstorage f
 
 <hr>
 ## mixpanel.identify
-Identify a user with a unique ID instead of a Mixpanel  randomly generated distinct_id. If the method is never called,  then unique visitors will be identified by a UUID generated  the first time they visit the site.
+Identify a user with a unique ID to track user activity across  devices, tie a user to their events, and create a user profile.  If you never call this method, unique visitors are tracked using  a UUID generated the first time they visit the site.
+
+Call identify when you know the identity of the current user,  typically after login or signup. We recommend against using  identify for anonymous visitors to your site.
 
 
 
 ### Notes:
-You can call this function to overwrite a previously set  unique ID for the current user. Mixpanel cannot translate  between IDs at this time, so when you change a user's ID  they will appear to be a new user.
+If your project has  <a href="https://help.mixpanel.com/hc/en-us/articles/360039133851">ID Merge</a>  enabled, the identify method will connect pre- and  post-authentication events when appropriate.
 
-When used alone, mixpanel.identify will change the user's  distinct_id to the unique ID provided. When used in tandem  with mixpanel.alias, it will allow you to identify based on  unique ID and map that back to the original, anonymous  distinct_id given to the user upon her first arrival to your  site (thus connecting anonymous pre-signup activity to  post-signup activity). Though the two work together, do not  call identify() at the same time as alias(). Calling the two  at the same time can cause a race condition, so it is best  practice to call identify on the original, anonymous ID  right after you've aliased it.  <a href="https://mixpanel.com/help/questions/articles/how-should-i-handle-my-user-identity-with-the-mixpanel-javascript-library">Learn more about how mixpanel.identify and mixpanel.alias can be used</a>.
+If your project does not have ID Merge enabled, identify will  change the user's local distinct_id to the unique ID you pass.  Events tracked prior to authentication will not be connected  to the same user identity. If ID Merge is disabled, alias can  be used to connect pre- and post-registration events.
 
 
 | Argument | Type | Description |
