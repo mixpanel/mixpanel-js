@@ -19,7 +19,7 @@ var RequestQueue = function(key, options) {
 RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
     var queueEntry = {
         'id': cheap_guid(),
-        'flushAfter': +(new Date()) + flushInterval * 2,
+        'flushAfter': new Date().getTime() + flushInterval * 2,
         'payload': item
     };
     console.log('[batch] enqueueing:', queueEntry);
@@ -71,7 +71,7 @@ RequestQueue.prototype.fillBatch = function(batchSize) {
 
             for (var i = 0; i < storedQueue.length; i++) {
                 var item = storedQueue[i];
-                if (+(new Date()) > item['flushAfter'] && !idsInBatch[item['id']]) {
+                if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
                     batch.push(item);
                     if (batch.length >= batchSize) {
                         break;

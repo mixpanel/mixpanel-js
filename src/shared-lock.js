@@ -30,8 +30,8 @@ var SharedLock = function(key, options) {
 // pass in a specific pid to test contention scenarios; otherwise
 // it is chosen randomly for each acquisition attempt
 SharedLock.prototype.withLock = function(lockedCB, pid) {
-    var i = pid || (+(new Date()) + '|' + Math.random());
-    var startTime = +(new Date());
+    var i = pid || (new Date().getTime() + '|' + Math.random());
+    var startTime = new Date().getTime();
 
     var key = this.storageKey;
     var pollIntervalMS = this.pollIntervalMS;
@@ -43,7 +43,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     var keyZ = key + ':Z';
 
     var delay = function(cb) {
-        if ((new Date()) - startTime > timeoutMS) {
+        if (new Date().getTime() - startTime > timeoutMS) {
             console.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
             storage.removeItem(keyZ);
             storage.removeItem(keyY);
