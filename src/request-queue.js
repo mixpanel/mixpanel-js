@@ -28,9 +28,9 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         this.lock.withLock(_.bind(function() {
             var succeeded;
             try {
-                var storedQueue = this.read();
+                var storedQueue = this.readFromStorage();
                 storedQueue.push(queueEntry);
-                succeeded = this.save(storedQueue);
+                succeeded = this.saveToStorage(storedQueue);
                 if (succeeded) {
                     // only add to in-memory queue when storage succeeds
                     this.memQueue.push(queueEntry);
@@ -63,7 +63,7 @@ RequestQueue.prototype.fillBatch = function(batchSize) {
         // don't need lock just to read events; localStorage is thread-safe
         // and the worst that could happen is a duplicate send of some
         // orphaned events, which will be deduplicated on the server side
-        var storedQueue = this.read();
+        var storedQueue = this.readFromStorage();
         if (storedQueue.length) {
             // item IDs already in batch; don't duplicate out of storage
             var idsInBatch = {}; // poor man's Set
@@ -108,9 +108,9 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
         this.lock.withLock(_.bind(function() {
             var succeeded;
             try {
-                var storedQueue = this.read();
+                var storedQueue = this.readFromStorage();
                 storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-                succeeded = this.save(storedQueue);
+                succeeded = this.saveToStorage(storedQueue);
             } catch(err) {
                 console.error('[batch] Error removing items', ids);
                 succeeded = false;
@@ -127,7 +127,7 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     }
 };
 
-RequestQueue.prototype.read = function() {
+RequestQueue.prototype.readFromStorage = function() {
     var storageEntry;
     try {
         storageEntry = this.storage.getItem(this.storageKey);
@@ -145,7 +145,7 @@ RequestQueue.prototype.read = function() {
     return storageEntry || [];
 };
 
-RequestQueue.prototype.save = function(queue) {
+RequestQueue.prototype.saveToStorage = function(queue) {
     try {
         this.storage.setItem(this.storageKey, JSONStringify(queue));
         return true;
