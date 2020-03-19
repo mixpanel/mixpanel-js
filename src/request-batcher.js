@@ -86,6 +86,9 @@ RequestBatcher.prototype.flush = function(options) {
 
             try {
 
+                // handle API response in a try-catch to make sure we can reset the
+                // flush operation if something goes wrong
+
                 var removeItemsFromQueue = false;
                 if (_.isObject(res) && res.error === 'timeout') {
                     console.log('[batch] network timeout; retrying');
