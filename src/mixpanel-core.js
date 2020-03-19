@@ -73,7 +73,7 @@ var sendBeacon = null;
 if (navigator['sendBeacon']) {
     sendBeacon = function() {
         // late reference to navigator.sendBeacon to allow patching/spying
-        navigator['sendBeacon'].apply(navigator, arguments);
+        return navigator['sendBeacon'].apply(navigator, arguments);
     };
 }
 
