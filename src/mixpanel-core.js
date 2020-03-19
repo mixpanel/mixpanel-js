@@ -717,10 +717,11 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     };
     var truncated_data = _.truncate(data, 255);
 
+    var request_enqueued_or_initiated = true;
     var send_request_immediately = _.bind(function() {
         console.log('MIXPANEL REQUEST:');
         console.log(truncated_data);
-        var request_initiated = this._send_request(
+        return this._send_request(
             this.get_config('api_host') + '/track/',
             encode_data_for_request(truncated_data),
             options,
@@ -737,12 +738,12 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
             }
         });
     } else {
-        send_request_immediately();
+        request_enqueued_or_initiated = send_request_immediately();
     }
 
     this._check_and_handle_triggered_notifications(data);
 
-    return request_initiated && truncated_data;
+    return request_enqueued_or_initiated && truncated_data;
 });
 
 /**
