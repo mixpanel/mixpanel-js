@@ -1,5 +1,7 @@
 import { SharedLock } from './shared-lock';
-import { cheap_guid, console, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
+import { cheap_guid, console_with_prefix, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
+
+var logger = console_with_prefix('batch');
 
 /**
  * RequestQueue: queue for batching API requests with localStorage backup for retries
@@ -22,7 +24,7 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         'flushAfter': new Date().getTime() + flushInterval * 2,
         'payload': item
     };
-    console.log('[batch] enqueueing:', queueEntry);
+    logger.log('enqueueing:', queueEntry);
 
     try {
         this.lock.withLock(_.bind(function() {
@@ -36,7 +38,7 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
                     this.memQueue.push(queueEntry);
                 }
             } catch(err) {
-                console.error('[batch] Error enqueueing item', item);
+                logger.error('Error enqueueing item', item);
                 succeeded = false;
             }
             if (cb) {
@@ -44,7 +46,7 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
             }
         }, this), this.pid);
     } catch(err) {
-        console.error('[batch] Error acquiring storage lock', err);
+        logger.error('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
@@ -112,7 +114,7 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
                 storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
                 succeeded = this.saveToStorage(storedQueue);
             } catch(err) {
-                console.error('[batch] Error removing items', ids);
+                logger.error('Error removing items', ids);
                 succeeded = false;
             }
             if (cb) {
@@ -120,7 +122,7 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
             }
         }, this), this.pid);
     } catch(err) {
-        console.error('[batch] Error acquiring storage lock', err);
+        logger.error('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
@@ -134,12 +136,12 @@ RequestQueue.prototype.readFromStorage = function() {
         if (storageEntry) {
             storageEntry = JSONParse(storageEntry);
             if (!_.isArray(storageEntry)) {
-                console.error('[batch] Invalid storage entry:', storageEntry);
+                logger.error('Invalid storage entry:', storageEntry);
                 storageEntry = null;
             }
         }
     } catch (err) {
-        console.error('[batch] Error retrieving queue', err);
+        logger.error('Error retrieving queue', err);
         storageEntry = null;
     }
     return storageEntry || [];
@@ -150,7 +152,7 @@ RequestQueue.prototype.saveToStorage = function(queue) {
         this.storage.setItem(this.storageKey, JSONStringify(queue));
         return true;
     } catch (err) {
-        console.error('[batch] Error saving queue', err);
+        logger.error('Error saving queue', err);
         return false;
     }
 };

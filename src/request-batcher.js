@@ -1,8 +1,10 @@
 import { RequestQueue } from './request-queue';
-import { console, _ } from './utils';
+import { console_with_prefix, _ } from './utils'; // eslint-disable-line camelcase
 
 // maximum interval between request retries after exponential backoff
 var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+var logger = console_with_prefix('batch');
 
 /**
  * RequestBatcher: manages the queueing, flushing, retry etc of requests of one type (events, people, groups).
@@ -62,7 +64,7 @@ RequestBatcher.prototype.flush = function(options) {
     try {
 
         if (this.requestInProgress) {
-            console.log('[batch] Flush: Request already in progress');
+            logger.log('Flush: Request already in progress');
             return;
         }
 
@@ -70,18 +72,18 @@ RequestBatcher.prototype.flush = function(options) {
         var currentBatchSize = this.batchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
         if (batch.length < 1) {
-            console.log('[batch] nothing to do');
+            logger.log('nothing to do');
             this.resetFlush();
             return; // nothing to do
         }
 
         this.requestInProgress = true;
-        console.log('[batch] ' + batch.length + ' items to flush');
-        console.log('[batch] items:', batch);
+        logger.log('' + batch.length + ' items to flush');
+        logger.log('items:', batch);
 
         var dataForRequest = _.map(batch, function(item) { return item['payload']; });
         var batchSendCallback = _.bind(function(res) {
-            console.log('[batch] callback', res, batch);
+            logger.log('callback', res, batch);
             this.requestInProgress = false;
 
             try {
@@ -91,7 +93,7 @@ RequestBatcher.prototype.flush = function(options) {
 
                 var removeItemsFromQueue = false;
                 if (_.isObject(res) && res.error === 'timeout') {
-                    console.log('[batch] network timeout; retrying');
+                    logger.log('network timeout; retrying');
                     this.flush();
                 } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
                     // network or API error, retry
@@ -103,14 +105,14 @@ RequestBatcher.prototype.flush = function(options) {
                         }
                     }
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
-                    console.log('[batch] retry in ' + retryMS + ' ms');
+                    logger.log('retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
                 } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
                         this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
-                        console.log('[batch] 413 response; reducing batch size to ' + this.batchSize);
+                        logger.log('413 response; reducing batch size to ' + this.batchSize);
                         this.resetFlush();
                     } else {
                         console.error('[batch] single-event request too large; dropping', batch);

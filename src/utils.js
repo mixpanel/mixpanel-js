@@ -94,6 +94,20 @@ var console = {
     }
 };
 
+var log_func_with_prefix = function(func, prefix) {
+    return function() {
+        arguments[0] = '[' + prefix + '] ' + arguments[0];
+        return func.apply(console, arguments);
+    };
+};
+var console_with_prefix = function(prefix) {
+    return {
+        log: log_func_with_prefix(console.log, prefix),
+        error: log_func_with_prefix(console.error, prefix),
+        critical: log_func_with_prefix(console.critical, prefix)
+    };
+};
+
 
 // UNDERSCORE
 // Embed part of the Underscore Library
@@ -1685,6 +1699,7 @@ export {
     document,
     navigator,
     cheap_guid,
+    console_with_prefix,
     extract_domain,
     JSONStringify,
     JSONParse

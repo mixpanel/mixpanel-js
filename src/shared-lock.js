@@ -1,3 +1,7 @@
+import { console_with_prefix } from './utils'; // eslint-disable-line camelcase
+
+var logger = console_with_prefix('lock');
+
 /**
  * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
  * window/tab at a time will be able to access shared resources.
@@ -44,7 +48,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
 
     var delay = function(cb) {
         if (new Date().getTime() - startTime > timeoutMS) {
-            console.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+            logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
             storage.removeItem(keyZ);
             storage.removeItem(keyY);
             loop();
