@@ -24,7 +24,6 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         'flushAfter': new Date().getTime() + flushInterval * 2,
         'payload': item
     };
-    logger.log('enqueueing:', queueEntry);
 
     try {
         this.lock.withLock(_.bind(function() {

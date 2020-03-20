@@ -72,18 +72,14 @@ RequestBatcher.prototype.flush = function(options) {
         var currentBatchSize = this.batchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
         if (batch.length < 1) {
-            logger.log('nothing to do');
             this.resetFlush();
             return; // nothing to do
         }
 
         this.requestInProgress = true;
-        logger.log('' + batch.length + ' items to flush');
-        logger.log('items:', batch);
 
         var dataForRequest = _.map(batch, function(item) { return item['payload']; });
         var batchSendCallback = _.bind(function(res) {
-            logger.log('callback', res, batch);
             this.requestInProgress = false;
 
             try {
@@ -93,7 +89,7 @@ RequestBatcher.prototype.flush = function(options) {
 
                 var removeItemsFromQueue = false;
                 if (_.isObject(res) && res.error === 'timeout') {
-                    logger.log('network timeout; retrying');
+                    logger.error('Network timeout; retrying');
                     this.flush();
                 } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
                     // network or API error, retry
@@ -105,17 +101,17 @@ RequestBatcher.prototype.flush = function(options) {
                         }
                     }
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
-                    logger.log('retry in ' + retryMS + ' ms');
+                    logger.error('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
                 } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
                         this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
-                        logger.log('413 response; reducing batch size to ' + this.batchSize);
+                        logger.error('413 response; reducing batch size to ' + this.batchSize);
                         this.resetFlush();
                     } else {
-                        console.error('[batch] single-event request too large; dropping', batch);
+                        logger.error('Single-event request too large; dropping', batch);
                         this.resetBatchSize();
                         removeItemsFromQueue = true;
                     }
@@ -133,7 +129,7 @@ RequestBatcher.prototype.flush = function(options) {
                 }
 
             } catch(err) {
-                console.error('[batch] Error handling API response', err);
+                logger.error('Error handling API response', err);
                 this.resetFlush();
             }
         }, this);
@@ -149,7 +145,7 @@ RequestBatcher.prototype.flush = function(options) {
         this.sendRequest(this.endpoint, dataForRequest, requestOptions, batchSendCallback);
 
     } catch(err) {
-        console.error('[batch] Error flushing request queue', err);
+        logger.error('Error flushing request queue', err);
         this.resetFlush();
     }
 };
