@@ -10,7 +10,7 @@ import {
     UNION_ACTION,
     apiActions
 } from './api-actions';
-import { _, console, encode_data_for_request } from './utils';
+import { _, console } from './utils';
 
 /**
  * Mixpanel People Object
@@ -344,31 +344,11 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
         return truncated_data;
     }
 
-    var send_request_immediately = _.bind(function() {
-        console.log('MIXPANEL PEOPLE REQUEST:');
-        console.log(truncated_data);
-        this._mixpanel._send_request(
-            this._get_config('api_host') + '/engage/',
-            encode_data_for_request(truncated_data),
-            this._mixpanel._prepare_callback(callback, truncated_data)
-        );
-    }, this);
-
-    if (this._mixpanel._batch_requests) {
-        this._mixpanel.request_batchers.people.enqueue(truncated_data, function(succeeded) {
-            if (succeeded) {
-                if (callback) {
-                    callback(1, truncated_data);
-                }
-            } else {
-                send_request_immediately();
-            }
-        });
-    } else {
-        send_request_immediately();
-    }
-
-    return truncated_data;
+    return this._mixpanel._track_or_batch({
+        truncated_data: truncated_data,
+        endpoint: this._get_config('api_host') + '/engage/',
+        batcher: this._mixpanel.request_batchers.people
+    }, callback);
 };
 
 MixpanelPeople.prototype._get_config = function(conf_var) {

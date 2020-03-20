@@ -1,7 +1,7 @@
 /* eslint camelcase: "off" */
 import { addOptOutCheckMixpanelGroup } from './gdpr-utils';
 import { apiActions } from './api-actions';
-import { _, console, encode_data_for_request } from './utils';
+import { _ } from './utils';
 
 /**
  * Mixpanel Group Object
@@ -139,33 +139,11 @@ MixpanelGroup.prototype._send_request = function(data, callback) {
     data['$token'] = this._get_config('token');
 
     var date_encoded_data = _.encodeDates(data);
-    var truncated_data = _.truncate(date_encoded_data, 255);
-
-    var send_request_immediately = _.bind(function() {
-        console.log('MIXPANEL GROUP REQUEST:');
-        console.log(truncated_data);
-        this._mixpanel._send_request(
-            this._mixpanel.get_config('api_host') + '/groups/',
-            encode_data_for_request(truncated_data),
-            this._mixpanel._prepare_callback(callback, truncated_data)
-        );
-    }, this);
-
-    if (this._mixpanel._batch_requests) {
-        this._mixpanel.request_batchers.groups.enqueue(truncated_data, function(succeeded) {
-            if (succeeded) {
-                if (callback) {
-                    callback(1, truncated_data);
-                }
-            } else {
-                send_request_immediately();
-            }
-        });
-    } else {
-        send_request_immediately();
-    }
-
-    return truncated_data;
+    return this._mixpanel._track_or_batch({
+        truncated_data: _.truncate(date_encoded_data, 255),
+        endpoint: this._get_config('api_host') + '/groups/',
+        batcher: this._mixpanel.request_batchers.groups
+    }, callback);
 };
 
 MixpanelGroup.prototype._is_reserved_property = function(prop) {

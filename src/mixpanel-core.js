@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { _, console, encode_data_for_request, userAgent, window, document, navigator } from './utils';
+import { _, console, userAgent, window, document, navigator } from './utils';
 import { autotrack } from './autotrack';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
@@ -194,6 +194,12 @@ var create_mplib = function(token, config, name) {
     return instance;
 };
 
+var encode_data_for_request = function(data) {
+    var json_data = _.JSONEncode(data);
+    var encoded_data = _.base64Encode(json_data);
+    return {'data': encoded_data};
+};
+
 // Initialization methods
 
 /**
@@ -258,6 +264,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     };
 
     // set up request queueing/batching
+    this.request_batchers = {};
     this._batch_requests = this.get_config('batch_requests');
     if (this._batch_requests) {
         if (!_.localStorage.is_supported() || !USE_XHR) {
@@ -565,7 +572,7 @@ MixpanelLib.prototype._execute_array = function(array) {
 
 MixpanelLib.prototype.start_batch_requests = function() {
     var token = this.get_config('token');
-    if (!this.request_batchers) {
+    if (!this.request_batchers.events) { // no batchers initialized yet
         var batcher_config = {
             libConfig: this['config'],
             sendRequestFunc: _.bind(function(endpoint, data, options, cb) {
@@ -629,6 +636,42 @@ MixpanelLib.prototype.disable = function(events) {
     } else {
         this.__disabled_events = this.__disabled_events.concat(events);
     }
+};
+
+// internal method for handling track vs batch-enqueue logic
+MixpanelLib.prototype._track_or_batch = function(options, callback) {
+    var truncated_data = options.truncated_data;
+    var endpoint = options.endpoint;
+    var batcher = options.batcher;
+    var should_send_immediately = options.should_send_immediately;
+    var send_request_options = options.send_request_options || {};
+    callback = callback || function() {};
+
+    var request_enqueued_or_initiated = true;
+    var send_request_immediately = _.bind(function() {
+        console.log('MIXPANEL REQUEST:');
+        console.log(truncated_data);
+        return this._send_request(
+            endpoint,
+            encode_data_for_request(truncated_data),
+            send_request_options,
+            this._prepare_callback(callback, truncated_data)
+        );
+    }, this);
+
+    if (this._batch_requests && !should_send_immediately) {
+        batcher.enqueue(truncated_data, function(succeeded) {
+            if (succeeded) {
+                callback(1, truncated_data);
+            } else {
+                send_request_immediately();
+            }
+        });
+    } else {
+        request_enqueued_or_initiated = send_request_immediately();
+    }
+
+    return request_enqueued_or_initiated && truncated_data;
 };
 
 /**
@@ -721,35 +764,17 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         'event': event_name,
         'properties': properties
     };
-    var truncated_data = _.truncate(data, 255);
-
-    var request_enqueued_or_initiated = true;
-    var send_request_immediately = _.bind(function() {
-        console.log('MIXPANEL REQUEST:');
-        console.log(truncated_data);
-        return this._send_request(
-            this.get_config('api_host') + '/track/',
-            encode_data_for_request(truncated_data),
-            options,
-            this._prepare_callback(callback, truncated_data)
-        );
-    }, this);
-
-    if (this._batch_requests && !should_send_immediately) {
-        this.request_batchers.events.enqueue(truncated_data, function(succeeded) {
-            if (succeeded) {
-                callback(1, truncated_data);
-            } else {
-                send_request_immediately();
-            }
-        });
-    } else {
-        request_enqueued_or_initiated = send_request_immediately();
-    }
+    var ret = this._track_or_batch({
+        truncated_data: _.truncate(data, 255),
+        endpoint: this.get_config('api_host') + '/track/',
+        batcher: this.request_batchers.events,
+        should_send_immediately: should_send_immediately,
+        send_request_options: options
+    }, callback);
 
     this._check_and_handle_triggered_notifications(data);
 
-    return request_enqueued_or_initiated && truncated_data;
+    return ret;
 });
 
 /**
