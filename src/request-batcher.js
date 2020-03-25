@@ -142,6 +142,7 @@ RequestBatcher.prototype.flush = function(options) {
         if (options.sendBeacon) {
             requestOptions.transport = 'sendBeacon';
         }
+        logger.log('MIXPANEL REQUEST:', this.endpoint, dataForRequest);
         this.sendRequest(this.endpoint, dataForRequest, requestOptions, batchSendCallback);
 
     } catch(err) {
