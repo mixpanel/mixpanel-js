@@ -13,7 +13,7 @@ var logger = console_with_prefix('batch');
  * @constructor
  */
 var RequestBatcher = function(storageKey, endpoint, options) {
-    this.queue = new RequestQueue(storageKey);
+    this.queue = new RequestQueue(storageKey, {storage: options.storage});
     this.endpoint = endpoint;
 
     this.libConfig = options.libConfig;
