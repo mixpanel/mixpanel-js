@@ -7,7 +7,7 @@ title: JavaScript Full API Reference
 # <%= namespace.name %>
 
 <% for (const item of namespace.items) { %>
-<hr>
+___
 ## <%= item.name %>
 <%= item.description %>
 <% if (item.usage)  { %>
