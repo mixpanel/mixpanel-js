@@ -19,6 +19,7 @@ Add a new group for this user.
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **group_key** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Group key |
@@ -39,15 +40,17 @@ mixpanel.alias('new_id', 'existing_id');
 mixpanel.alias('newer_id', 'existing_id');
 
 ```
+
 Aliases can also be chained - the following is a valid example:
 
 
 ```javascript
 mixpanel.alias('new_id', 'existing_id');
-// chain newer_id -&gt; new_id -&gt; existing_id
+// chain newer_id - new_id - existing_id
 mixpanel.alias('newer_id', 'new_id');
 
 ```
+
 Aliases cannot point to multiple identifiers - the following  example will not work:
 
 
@@ -57,6 +60,7 @@ mixpanel.alias('new_id', 'existing_id');
 mixpanel.alias('new_id', 'newer_id');
 
 ```
+
 
 
 ### Notes:
@@ -131,6 +135,7 @@ mixpanel.init('YOUR PROJECT TOKEN', {
 ```
 
 
+
 ___
 ## mixpanel.get_group
 Look up reference to a Mixpanel group
@@ -141,6 +146,7 @@ Look up reference to a Mixpanel group
 ```javascript
   mixpanel.get_group(group_key, group_id)
 ```
+
 
 
 | Argument | Type | Description |
@@ -171,6 +177,7 @@ mixpanel.init('YOUR PROJECT TOKEN', {
     }
 });
 ```
+
 
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
@@ -241,12 +248,14 @@ This function initializes a new instance of the Mixpanel tracking object.  All n
 mixpanel.init('new token', { your: 'config' }, 'library_name');
 
 ```
+
 and use it like so:
 
 
 ```javascript
 mixpanel.library_name.track(...);
 ```
+
 
 
 
@@ -313,6 +322,7 @@ mixpanel.push(['register', { a: 'b' }]);
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **item** | <span class="mp-arg-type">Array</span></br></span><span class="mp-arg-required">required</span> | A [function_name, args...] array to be executed |
@@ -337,6 +347,7 @@ mixpanel.register({
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | An associative array of properties to store about the user |
@@ -357,6 +368,7 @@ mixpanel.register_once({
 });
 
 ```
+
 
 ### Notes:
 If default_value is specified, current super properties  with that value will be overwritten.
@@ -379,6 +391,7 @@ Remove a group from this user.
 ```javascript
  mixpanel.remove_group('company', 'mixpanel')
 ```
+
 
 
 | Argument | Type | Description |
@@ -509,6 +522,7 @@ The default config is:
 
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **config** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | A dictionary of new configuration values to update |
@@ -526,6 +540,7 @@ Register the current user into one/many groups.
  mixpanel.set_group('company', 'mixpanel')
  mixpanel.set_group('company', 128746312)
 ```
+
 
 
 | Argument | Type | Description |
@@ -548,6 +563,7 @@ mixpanel.time_event('Registered');
 mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
 
 ```
+
 When called for a particular event name, the next track call for that event  name will include the elapsed time between the 'time_event' and 'track'  calls. This value is stored as seconds in the '$duration' property.
 
 
@@ -572,6 +588,7 @@ mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
 mixpanel.track('Left page', {'duration_seconds': 35}, {transport: 'sendBeacon'});
 
 ```
+
 To track link clicks or form submissions, see track_links() or track_forms().
 
 
@@ -603,6 +620,7 @@ mixpanel.track_forms('#register', 'Created Account');
 
 ```
 
+
 ### Notes:
 This function will wait up to 300 ms for the mixpanel  servers to respond, if they have not responded by that time  it will head to the link without ensuring that your event  has been tracked.  To configure this timeout please see the  set_config() documentation below.
 
@@ -629,6 +647,7 @@ mixpanel.track_links('#nav', 'Clicked Nav Link');
 
 ```
 
+
 ### Notes:
 This function will wait up to 300 ms for the Mixpanel  servers to respond. If they have not responded by that time  it will head to the link without ensuring that your event  has been tracked.  To configure this timeout please see the  set_config() documentation below.
 
@@ -652,6 +671,7 @@ Track an event with specific groups.
 ```javascript
  mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
 ```
+
 
 
 | Argument | Type | Description |
@@ -698,6 +718,7 @@ mixpanel.people.append({
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
@@ -717,6 +738,7 @@ mixpanel.people.clear_charges();
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
@@ -733,6 +755,7 @@ Permanently deletes the current people analytics profile from  Mixpanel (using t
 // remove the all data you have stored about the current user
 mixpanel.people.delete_user();
 ```
+
 
 
 
@@ -762,6 +785,7 @@ mixpanel.people.increment({
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and numeric values. |
@@ -779,6 +803,7 @@ Remove a value from a list-valued people analytics property.
 ```javascript
 mixpanel.people.remove('School', 'UCB');
 ```
+
 
 
 | Argument | Type | Description |
@@ -808,6 +833,7 @@ mixpanel.people.set({
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
@@ -835,6 +861,7 @@ mixpanel.people.set_once({
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
@@ -858,6 +885,7 @@ mixpanel.people.track_charge(30.50, {
     '$time': new Date('jan 1 2012')
 });
 ```
+
 
 
 | Argument | Type | Description |
@@ -893,6 +921,7 @@ mixpanel.people.union({
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
@@ -915,6 +944,7 @@ mixpanel.people.unset(['gender', 'Company']);
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Array or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an array, this is a list of property names. |
@@ -935,6 +965,7 @@ Remove a property from a group. The value will be ignored if doesn't exist.
 ```javascript
 mixpanel.get_group('company', 'mixpanel').remove('Location', 'London');
 ```
+
 
 
 | Argument | Type | Description |
@@ -963,6 +994,7 @@ mixpanel.get_group('company', 'mixpanel').set({
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
@@ -989,6 +1021,7 @@ mixpanel.get_group('company', 'mixpanel').set_once({
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
@@ -1009,6 +1042,7 @@ mixpanel.get_group('company', 'mixpanel').union('Location', ['San Francisco', 'L
 ```
 
 
+
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **list_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Name of the property. |
@@ -1026,6 +1060,7 @@ Unset properties on a group permanently.
 ```javascript
 mixpanel.get_group('company', 'mixpanel').unset('Founded');
 ```
+
 
 
 | Argument | Type | Description |

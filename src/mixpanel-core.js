@@ -1189,7 +1189,7 @@ MixpanelLib.prototype.get_distinct_id = function() {
  * Aliases can also be chained - the following is a valid example:
  *
  *     mixpanel.alias('new_id', 'existing_id');
- *     // chain newer_id -> new_id -> existing_id
+ *     // chain newer_id - new_id - existing_id
  *     mixpanel.alias('newer_id', 'new_id');
  *
  * Aliases cannot point to multiple identifiers - the following

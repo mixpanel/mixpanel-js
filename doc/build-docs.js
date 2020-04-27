@@ -39,7 +39,7 @@ function parseDescriptionAttrs(html) {
       .trim()
       .replace(/<br \/>/g, ` `)
       .replace(/<p>([\S\s]+?)<\/p>/g, (str, match) => match.replace(/\n/g, ` `) + `\n`)
-      .replace(/<pre><code>([\s\S]+?)<\/code><\/pre>/g, '\n```javascript\n$1\n```')
+      .replace(/<pre><code>([\s\S]+?)<\/code><\/pre>/g, '\n```javascript\n$1\n```\n')
       ;
   });
 }
