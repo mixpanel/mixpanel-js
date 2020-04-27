@@ -17,7 +17,7 @@
     "prepublishOnly": "npm run build-dist",
     "start": "pushd examples; python -m SimpleHTTPServer; popd",
     "test": "npm run lint && npm run unit-test",
-    "unit-test": "BABEL_ENV=test mocha --compilers js:babel-core/register tests/unit/*.js",
+    "unit-test": "BABEL_ENV=test mocha --require babel-core/register tests/unit/*.js",
     "validate": "npm ls"
   },
   "repository": {
@@ -45,7 +45,7 @@
     "jsdom-global": "3.0.2",
     "localStorage": "1.0.4",
     "lodash": "4.17.13",
-    "mocha": "2.4.5",
+    "mocha": "7.1.1",
     "morgan": "1.9.1",
     "rdme": "3.0.0",
     "request": "2.88.0",
