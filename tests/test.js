@@ -3639,7 +3639,7 @@
                     }, resp);
                 });
 
-                asyncTest('xhr error handling code supports verbose', 4, function() {
+                asyncTest('xhr error handling code supports verbose', 3, function() {
                     mixpanel.test.set_config({
                         verbose: true
                     });
@@ -3647,7 +3647,6 @@
                     mixpanel.test.track('test', {}, function(response) {
                         same(response.status, 0, "xhr returned verbose error status");
                         same(response.error, "Bad HTTP status: 500 Internal Server Error", "xhr returned verbose error");
-                        ok(response.xhr_req, "xhr returned reference to request object");
                         start();
                     });
 
