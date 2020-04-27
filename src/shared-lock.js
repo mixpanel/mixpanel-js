@@ -1,4 +1,4 @@
-import { console_with_prefix } from './utils'; // eslint-disable-line camelcase
+import { console_with_prefix, localStorageSupported } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
 
@@ -46,6 +46,14 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     var keyY = key + ':Y';
     var keyZ = key + ':Z';
 
+    var setStorageItem = function(k, v) {
+        try {
+            storage.setItem(k, v);
+        } catch(err) {
+            logger.error('localStorage error', err);
+        }
+    };
+
     var delay = function(cb) {
         if (new Date().getTime() - startTime > timeoutMS) {
             logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
@@ -72,13 +80,20 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
         if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
             return false;
         } else {
-            storage.setItem(keyY, i);
-            return true;
+            setStorageItem(keyY, i);
+            if (storage.getItem(keyY) === i) {
+                return true;
+            } else {
+                if (!localStorageSupported(storage, true)) {
+                    throw new Error('localStorage support dropped while acquiring lock');
+                }
+                return false;
+            }
         }
     };
 
     var loop = function() {
-        storage.setItem(keyX, i);
+        setStorageItem(keyX, i);
 
         waitFor(getSetY, function() {
             if (storage.getItem(keyX) === i) {
@@ -99,7 +114,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     };
 
     var criticalSection = function() {
-        storage.setItem(keyZ, '1');
+        setStorageItem(keyZ, '1');
         try {
             lockedCB();
         } finally {
@@ -113,7 +128,11 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
         }
     };
 
-    loop();
+    if (localStorageSupported(storage, true)) {
+        loop();
+    } else {
+        throw new Error('localStorage support check failed');
+    }
 };
 
 export { SharedLock };

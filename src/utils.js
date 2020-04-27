@@ -1075,31 +1075,37 @@ _.cookie = {
     }
 };
 
-// _.localStorage
-var _localStorage_supported = null;
-_.localStorage = {
-    is_supported: function() {
-        if (_localStorage_supported !== null) {
-            return _localStorage_supported;
-        }
+var _localStorageSupported = null;
+var localStorageSupported = function(storage, forceCheck) {
+    if (_localStorageSupported !== null && !forceCheck) {
+        return _localStorageSupported;
+    }
 
-        var supported = true;
-        try {
-            var key = '__mplssupport__',
-                val = 'xyz';
-            _.localStorage.set(key, val);
-            if (_.localStorage.get(key) !== val) {
-                supported = false;
-            }
-            _.localStorage.remove(key);
-        } catch (err) {
+    var supported = true;
+    try {
+        storage = storage || window.localStorage;
+        var key = '__mplss_' + cheap_guid(8),
+            val = 'xyz';
+        storage.setItem(key, val);
+        if (storage.getItem(key) !== val) {
             supported = false;
         }
+        storage.removeItem(key);
+    } catch (err) {
+        supported = false;
+    }
+
+    _localStorageSupported = supported;
+    return supported;
+};
+
+// _.localStorage
+_.localStorage = {
+    is_supported: function() {
+        var supported = localStorageSupported();
         if (!supported) {
             console.error('localStorage unsupported; falling back to cookie store');
         }
-
-        _localStorage_supported = supported;
         return supported;
     },
 
@@ -1638,8 +1644,9 @@ _.info = {
     }
 };
 
-var cheap_guid = function() {
-    return Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+var cheap_guid = function(maxlen) {
+    var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+    return maxlen ? guid.substring(0, maxlen) : guid;
 };
 
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
@@ -1701,6 +1708,7 @@ export {
     cheap_guid,
     console_with_prefix,
     extract_domain,
+    localStorageSupported,
     JSONStringify,
     JSONParse
 };
