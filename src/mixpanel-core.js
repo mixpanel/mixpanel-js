@@ -267,7 +267,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.request_batchers = {};
     this._batch_requests = this.get_config('batch_requests');
     if (this._batch_requests) {
-        if (!_.localStorage.is_supported() || !USE_XHR) {
+        if (!_.localStorage.is_supported(true) || !USE_XHR) {
             this._batch_requests = false;
             console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
         } else {

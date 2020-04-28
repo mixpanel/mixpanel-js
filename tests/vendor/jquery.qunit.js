@@ -451,7 +451,8 @@ var config = {
 	
 	// by default, run previously failed tests first
 	// very useful in combination with "Hide passed tests" checked
-	reorder: true,
+	// Mixpanel: nope, this is a terrible idea, defaulting to false
+	reorder: false,
 
 	noglobals: false,
 	notrycatch: false

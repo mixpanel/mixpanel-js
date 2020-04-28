@@ -1101,8 +1101,8 @@ var localStorageSupported = function(storage, forceCheck) {
 
 // _.localStorage
 _.localStorage = {
-    is_supported: function() {
-        var supported = localStorageSupported();
+    is_supported: function(force_check) {
+        var supported = localStorageSupported(null, force_check);
         if (!supported) {
             console.error('localStorage unsupported; falling back to cookie store');
         }

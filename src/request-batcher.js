@@ -125,11 +125,12 @@ RequestBatcher.prototype.flush = function(options) {
                 if (_.isObject(res) && res.error === 'timeout') {
                     logger.error('Network timeout; retrying');
                     this.flush();
-                } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status >= 500) {
+                } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] >= 500) {
                     // network or API error, retry
                     var retryMS = this.flushInterval * 2;
-                    if (res.xhr_req.responseHeaders) {
-                        var retryAfter = res.xhr_req.responseHeaders['Retry-After'];
+                    var headers = res.xhr_req['responseHeaders'];
+                    if (headers) {
+                        var retryAfter = headers['Retry-After'];
                         if (retryAfter) {
                             retryMS = (parseInt(retryAfter, 10) * 1000) || retryMS;
                         }
@@ -137,7 +138,7 @@ RequestBatcher.prototype.flush = function(options) {
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
                     logger.error('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
-                } else if (_.isObject(res) && res.xhr_req && res.xhr_req.status === 413) {
+                } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
