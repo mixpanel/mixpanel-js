@@ -52,6 +52,7 @@
     "rollup": "0.25.8",
     "rollup-plugin-npm": "1.4.0",
     "sinon": "8.1.1",
+    "sinon-chai": "3.5.0",
     "webpack": "1.12.2"
   }
 }
