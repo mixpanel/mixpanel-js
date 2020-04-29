@@ -7,6 +7,7 @@ chai.use(sinonChai);
 
 import { RequestBatcher } from '../../src/request-batcher';
 
+const LOCALSTORAGE_KEY = `fake-rb-key`;
 const START_TIME = 100000;
 
 describe(`RequestBatcher`, function() {
@@ -14,7 +15,7 @@ describe(`RequestBatcher`, function() {
   let clock = null;
 
   function getLocalStorageItems() {
-    return JSON.parse(localStorage.getItem(`fake-rb-key`));
+    return JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
   }
 
   function sendResponse(status, requestIndex = null) {
@@ -34,7 +35,7 @@ describe(`RequestBatcher`, function() {
     clock = sinon.useFakeTimers(START_TIME);
     localStorage.clear();
 
-    batcher = new RequestBatcher(`fake-rb-key`, `/fake-track/`, {
+    batcher = new RequestBatcher(LOCALSTORAGE_KEY, `/fake-track/`, {
       libConfig: {
         batch_flush_interval_ms: 5000,
         batch_size: 50,
@@ -79,9 +80,50 @@ describe(`RequestBatcher`, function() {
     expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
   });
 
+  describe(`flush`, function() {
+    it(`does not call sendRequest when queue is empty`, function() {
+      batcher.flush();
+      expect(batcher.sendRequest).not.to.have.been.called;
+    });
+
+    it(`calls sendRequest with items to flush`, function() {
+      batcher.enqueue({foo: `bar`});
+      batcher.flush();
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
+    });
+
+    it(`removes items from queue on successful response`, function() {
+      batcher.enqueue({foo: `bar`});
+      batcher.flush();
+
+      expect(batcher.queue.memQueue).to.have.lengthOf(1);
+      expect(getLocalStorageItems()).to.have.lengthOf(1);
+      sendResponse(200);
+      expect(batcher.queue.memQueue).to.be.empty;
+      expect(getLocalStorageItems()).to.be.empty;
+    });
+
+    it(`prevents reentrant flushes`, function() {
+      batcher.enqueue({foo: `bar`});
+      batcher.flush();
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+
+      batcher.enqueue({foo2: `bar2`});
+      batcher.flush();
+      expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+
+      sendResponse(200);
+      expect(batcher.sendRequest).to.have.been.calledTwice;
+
+      expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
+      expect(batcher.sendRequest.args[1][1]).to.deep.equal([{foo2: `bar2`}]);
+    });
+  });
+
   context(`when items already exist in localStorage`, function() {
     it(`flushes orphaned items immediately`, function() {
-      localStorage.setItem(`fake-rb-key`, JSON.stringify([
+      localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
         {id: `fakeID1`, flushAfter: Date.now() - 60000, payload: {
             'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
         }},
@@ -103,7 +145,7 @@ describe(`RequestBatcher`, function() {
     });
 
     it(`ignores non-orphaned items`, function() {
-      localStorage.setItem(`fake-rb-key`, JSON.stringify([
+      localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
         {id: `fakeID1`, flushAfter: Date.now() - 60000, payload: {
             'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
         }},
@@ -124,7 +166,7 @@ describe(`RequestBatcher`, function() {
     });
 
     it(`sends pre-existing items as they become orphaned later`, function() {
-      localStorage.setItem(`fake-rb-key`, JSON.stringify([
+      localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
         {id: `fakeID1`, flushAfter: Date.now() + 60000, payload: {
             'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
         }},
