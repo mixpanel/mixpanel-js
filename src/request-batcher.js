@@ -112,6 +112,8 @@ RequestBatcher.prototype.flush = function(options) {
 
         this.requestInProgress = true;
 
+        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+        var startTime = new Date().getTime();
         var dataForRequest = _.map(batch, function(item) { return item['payload']; });
         var batchSendCallback = _.bind(function(res) {
             this.requestInProgress = false;
@@ -122,10 +124,20 @@ RequestBatcher.prototype.flush = function(options) {
                 // flush operation if something goes wrong
 
                 var removeItemsFromQueue = false;
-                if (_.isObject(res) && res.error === 'timeout') {
+                if (
+                    _.isObject(res) &&
+                    res.error === 'timeout' &&
+                    new Date().getTime() - startTime >= timeoutMS
+                ) {
                     logger.error('Network timeout; retrying');
                     this.flush();
-                } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] >= 500) {
+                } else if (
+                    _.isObject(res) &&
+                    (
+                        (res.xhr_req && res.xhr_req['status'] >= 500) ||
+                        res.error
+                    )
+                ) {
                     // network or API error, retry
                     var retryMS = this.flushInterval * 2;
                     var headers = res.xhr_req['responseHeaders'];
@@ -172,7 +184,7 @@ RequestBatcher.prototype.flush = function(options) {
             method: 'POST',
             verbose: true,
             ignore_json_errors: true, // eslint-disable-line camelcase
-            timeout_ms: this.libConfig['batch_request_timeout_ms'] // eslint-disable-line camelcase
+            timeout_ms: timeoutMS // eslint-disable-line camelcase
         };
         if (options.sendBeacon) {
             requestOptions.transport = 'sendBeacon';

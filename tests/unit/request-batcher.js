@@ -9,6 +9,8 @@ import { RequestBatcher } from '../../src/request-batcher';
 
 const LOCALSTORAGE_KEY = `fake-rb-key`;
 const START_TIME = 100000;
+const DEFAULT_FLUSH_INTERVAL = 5000;
+const REQUEST_TIMEOUT_MS = 90000;
 
 describe(`RequestBatcher`, function() {
   let batcher;
@@ -18,13 +20,12 @@ describe(`RequestBatcher`, function() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
   }
 
-  function sendResponse(status, requestIndex = null) {
-    if (requestIndex === null) {
-      // default to last request sent
-      requestIndex = batcher.sendRequest.args.length - 1;
-    }
+  function sendResponse(status, error) {
+    // respond to last request sent
+    const requestIndex = batcher.sendRequest.args.length - 1;
     batcher.sendRequest.args[requestIndex][3]({
       'xhr_req': {status},
+      error,
     });
   }
 
@@ -37,7 +38,8 @@ describe(`RequestBatcher`, function() {
 
     batcher = new RequestBatcher(LOCALSTORAGE_KEY, `/fake-track/`, {
       libConfig: {
-        batch_flush_interval_ms: 5000,
+        batch_flush_interval_ms: DEFAULT_FLUSH_INTERVAL,
+        batch_request_timeout_ms: REQUEST_TIMEOUT_MS,
         batch_size: 50,
       },
       sendRequestFunc: sinon.spy(),
@@ -118,6 +120,49 @@ describe(`RequestBatcher`, function() {
 
       expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
       expect(batcher.sendRequest.args[1][1]).to.deep.equal([{foo2: `bar2`}]);
+    });
+
+    context(`when request times out`, function() {
+      function timeOutRequest() {
+        sendResponse(0, `timeout`);
+      }
+
+      it(`keeps items in the queue`, function() {
+        batcher.enqueue({foo: `bar`});
+        batcher.flush();
+        clock.tick(REQUEST_TIMEOUT_MS);
+        timeOutRequest();
+        expect(batcher.queue.memQueue).to.have.lengthOf(1);
+        expect(getLocalStorageItems()).to.have.lengthOf(1);
+      });
+
+      it(`retries immediately`, function() {
+        batcher.enqueue({foo: `bar`});
+        batcher.flush();
+        clock.tick(REQUEST_TIMEOUT_MS);
+        timeOutRequest();
+        expect(batcher.sendRequest).to.have.been.calledTwice;
+        expect(batcher.sendRequest.args[1][1]).to.deep.equal([{foo: `bar`}]);
+      });
+
+      it(`checks clock before treating it as a real timeout`, function() {
+        // ensure flush is resilient to "timed out" responses coming too
+        // quickly and causing a fast flush/fail loop
+
+        batcher.enqueue({foo: `bar`});
+        batcher.flush();
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+        timeOutRequest();
+
+        // no new request; there was no significant time between sending
+        // the original request and getting the "timeout" response
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+
+        // should have been treated like a normal error and backed off
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
+        expect(batcher.sendRequest).to.have.been.calledTwice;
+        expect(batcher.sendRequest.args[1][1]).to.deep.equal([{foo: `bar`}]);
+      });
     });
   });
 

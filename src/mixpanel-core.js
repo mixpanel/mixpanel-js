@@ -456,6 +456,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 
             if (options.timeout_ms && typeof req.timeout !== 'undefined') {
                 req.timeout = options.timeout_ms;
+                var start_time = new Date().getTime();
             }
 
             // send the mp_optout cookie
@@ -484,7 +485,11 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         }
                     } else {
                         var error;
-                        if (req.timeout && !req.status) {
+                        if (
+                            req.timeout &&
+                            !req.status &&
+                            new Date().getTime() - start_time >= req.timeout
+                        ) {
                             error = 'timeout';
                         } else {
                             error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
