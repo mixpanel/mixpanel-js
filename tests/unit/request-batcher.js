@@ -1,6 +1,9 @@
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import localStorage from 'localStorage';
 import sinon from 'sinon';
+import sinonChai from 'sinon-chai';
+
+chai.use(sinonChai);
 
 import { RequestBatcher } from '../../src/request-batcher';
 
@@ -16,11 +19,13 @@ describe(`RequestBatcher`, function() {
     }
     clock = sinon.useFakeTimers(START_TIME);
     localStorage.clear();
+
     batcher = new RequestBatcher(`fake-rb-key`, `/fake-track/`, {
       libConfig: {
         batch_flush_interval_ms: 5000,
         batch_size: 50,
       },
+      sendRequestFunc: sinon.spy(),
       storage: localStorage,
     });
   });
@@ -49,10 +54,32 @@ describe(`RequestBatcher`, function() {
   it(`does not flush until started`, function() {
     batcher.enqueue({foo: `bar`});
     clock.tick(20000);
-debugger;
-batcher.start();
+    expect(batcher.sendRequest).not.to.have.been.called;
   });
 
-  it(`flushes immediately on start`);
-  it(`picks up orphaned items`);
+  it(`flushes immediately on start`, function() {
+    batcher.enqueue({foo: `bar`});
+    clock.tick(20000);
+    batcher.start();
+    expect(batcher.sendRequest).to.have.been.calledOnce;
+    expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
+  });
+
+  it(`picks up orphaned items immediately`, function() {
+    localStorage.setItem(`fake-rb-key`, JSON.stringify([
+      {id: `fakeID1`, flushAfter: Date.now() - 60000, payload: {
+          'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
+      }},
+      {id: `fakeID2`, flushAfter: Date.now() - 240000, payload: {
+          'event': `orphaned event 2`,
+      }}
+    ]));
+
+    batcher.start();
+    expect(batcher.sendRequest).to.have.been.calledOnce;
+    const batchEvents = batcher.sendRequest.args[0][1];
+    expect(batchEvents).to.have.lengthOf(2);
+    expect(batchEvents[0].event).to.equal(`orphaned event 1`);
+    expect(batchEvents[1].event).to.equal(`orphaned event 2`);
+  });
 });
