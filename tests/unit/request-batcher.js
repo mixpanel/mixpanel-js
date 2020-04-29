@@ -13,6 +13,20 @@ describe(`RequestBatcher`, function() {
   let batcher;
   let clock = null;
 
+  function getLocalStorageItems() {
+    return JSON.parse(localStorage.getItem(`fake-rb-key`));
+  }
+
+  function sendResponse(status, requestIndex = null) {
+    if (requestIndex === null) {
+      // default to last request sent
+      requestIndex = batcher.sendRequest.args.length - 1;
+    }
+    batcher.sendRequest.args[requestIndex][3]({
+      'xhr_req': {status},
+    });
+  }
+
   beforeEach(function() {
     if (clock) {
       clock.restore();
@@ -65,12 +79,6 @@ describe(`RequestBatcher`, function() {
     expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
   });
 
-  function sendResponse(status) {
-    batcher.sendRequest.args[0][3]({
-      'xhr_req': {status},
-    });
-  }
-
   context(`when items already exist in localStorage`, function() {
     it(`flushes orphaned items immediately`, function() {
       localStorage.setItem(`fake-rb-key`, JSON.stringify([
@@ -89,9 +97,9 @@ describe(`RequestBatcher`, function() {
       expect(batchEvents[0].event).to.equal(`orphaned event 1`);
       expect(batchEvents[1].event).to.equal(`orphaned event 2`);
 
-      expect(JSON.parse(localStorage.getItem(`fake-rb-key`))).to.have.lengthOf(2);
+      expect(getLocalStorageItems()).to.have.lengthOf(2);
       sendResponse(200);
-      expect(JSON.parse(localStorage.getItem(`fake-rb-key`))).to.be.empty;
+      expect(getLocalStorageItems()).to.be.empty;
     });
 
     it(`ignores non-orphaned items`, function() {
@@ -110,9 +118,51 @@ describe(`RequestBatcher`, function() {
       expect(batchEvents).to.have.lengthOf(1);
       expect(batchEvents[0].event).to.equal(`orphaned event 1`);
 
-      expect(JSON.parse(localStorage.getItem(`fake-rb-key`))).to.have.lengthOf(2);
+      expect(getLocalStorageItems()).to.have.lengthOf(2);
       sendResponse(200);
-      expect(JSON.parse(localStorage.getItem(`fake-rb-key`))).to.have.lengthOf(1);
+      expect(getLocalStorageItems()).to.have.lengthOf(1);
+    });
+
+    it(`sends pre-existing items as they become orphaned later`, function() {
+      localStorage.setItem(`fake-rb-key`, JSON.stringify([
+        {id: `fakeID1`, flushAfter: Date.now() + 60000, payload: {
+            'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
+        }},
+        {id: `fakeID2`, flushAfter: Date.now() + 240000, payload: {
+            'event': `orphaned event 2`,
+        }}
+      ]));
+
+      batcher.start();
+
+      clock.tick(20000);
+      expect(batcher.sendRequest).not.to.have.been.called;
+
+      // first event becomes orphaned
+
+      clock.tick(80000);
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      let batchEvents = batcher.sendRequest.args[0][1];
+      expect(batchEvents).to.have.lengthOf(1);
+      expect(batchEvents[0].event).to.equal(`orphaned event 1`);
+
+      expect(getLocalStorageItems()).to.have.lengthOf(2);
+      sendResponse(200);
+      expect(getLocalStorageItems()).to.have.lengthOf(1);
+
+      clock.tick(20000);
+      expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+
+      // second event becomes orphaned
+
+      clock.tick(200000);
+      expect(batcher.sendRequest).to.have.been.calledTwice;
+      batchEvents = batcher.sendRequest.args[1][1];
+      expect(batchEvents[0].event).to.equal(`orphaned event 2`);
+
+      expect(getLocalStorageItems()).to.have.lengthOf(1);
+      sendResponse(200);
+      expect(getLocalStorageItems()).to.be.empty;
     });
   });
 });
