@@ -65,21 +65,54 @@ describe(`RequestBatcher`, function() {
     expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
   });
 
-  it(`picks up orphaned items immediately`, function() {
-    localStorage.setItem(`fake-rb-key`, JSON.stringify([
-      {id: `fakeID1`, flushAfter: Date.now() - 60000, payload: {
-          'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
-      }},
-      {id: `fakeID2`, flushAfter: Date.now() - 240000, payload: {
-          'event': `orphaned event 2`,
-      }}
-    ]));
+  function sendResponse(status) {
+    batcher.sendRequest.args[0][3]({
+      'xhr_req': {status},
+    });
+  }
 
-    batcher.start();
-    expect(batcher.sendRequest).to.have.been.calledOnce;
-    const batchEvents = batcher.sendRequest.args[0][1];
-    expect(batchEvents).to.have.lengthOf(2);
-    expect(batchEvents[0].event).to.equal(`orphaned event 1`);
-    expect(batchEvents[1].event).to.equal(`orphaned event 2`);
+  context(`when items already exist in localStorage`, function() {
+    it(`flushes orphaned items immediately`, function() {
+      localStorage.setItem(`fake-rb-key`, JSON.stringify([
+        {id: `fakeID1`, flushAfter: Date.now() - 60000, payload: {
+            'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
+        }},
+        {id: `fakeID2`, flushAfter: Date.now() - 240000, payload: {
+            'event': `orphaned event 2`,
+        }}
+      ]));
+
+      batcher.start();
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      const batchEvents = batcher.sendRequest.args[0][1];
+      expect(batchEvents).to.have.lengthOf(2);
+      expect(batchEvents[0].event).to.equal(`orphaned event 1`);
+      expect(batchEvents[1].event).to.equal(`orphaned event 2`);
+
+      expect(JSON.parse(localStorage.getItem(`fake-rb-key`))).to.have.lengthOf(2);
+      sendResponse(200);
+      expect(JSON.parse(localStorage.getItem(`fake-rb-key`))).to.be.empty;
+    });
+
+    it(`ignores non-orphaned items`, function() {
+      localStorage.setItem(`fake-rb-key`, JSON.stringify([
+        {id: `fakeID1`, flushAfter: Date.now() - 60000, payload: {
+            'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
+        }},
+        {id: `fakeID2`, flushAfter: Date.now() + 240000, payload: {
+            'event': `orphaned event 2`,
+        }}
+      ]));
+
+      batcher.start();
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      const batchEvents = batcher.sendRequest.args[0][1];
+      expect(batchEvents).to.have.lengthOf(1);
+      expect(batchEvents[0].event).to.equal(`orphaned event 1`);
+
+      expect(JSON.parse(localStorage.getItem(`fake-rb-key`))).to.have.lengthOf(2);
+      sendResponse(200);
+      expect(JSON.parse(localStorage.getItem(`fake-rb-key`))).to.have.lengthOf(1);
+    });
   });
 });
