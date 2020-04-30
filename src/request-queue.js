@@ -49,31 +49,29 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         'payload': item
     };
 
-    try {
-        this.lock.withLock(_.bind(function() {
-            var succeeded;
-            try {
-                var storedQueue = this.readFromStorage();
-                storedQueue.push(queueEntry);
-                succeeded = this.saveToStorage(storedQueue);
-                if (succeeded) {
-                    // only add to in-memory queue when storage succeeds
-                    this.memQueue.push(queueEntry);
-                }
-            } catch(err) {
-                logger.error('Error enqueueing item', item);
-                succeeded = false;
+    this.lock.withLock(_.bind(function lockAcquired() {
+        var succeeded;
+        try {
+            var storedQueue = this.readFromStorage();
+            storedQueue.push(queueEntry);
+            succeeded = this.saveToStorage(storedQueue);
+            if (succeeded) {
+                // only add to in-memory queue when storage succeeds
+                this.memQueue.push(queueEntry);
             }
-            if (cb) {
-                cb(succeeded);
-            }
-        }, this), this.pid);
-    } catch(err) {
+        } catch(err) {
+            logger.error('Error enqueueing item', item);
+            succeeded = false;
+        }
+        if (cb) {
+            cb(succeeded);
+        }
+    }, this), function lockFailure(err) {
         logger.error('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
-    }
+    }, this.pid);
 };
 
 /**
@@ -132,27 +130,25 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     _.each(ids, function(id) { idSet[id] = true; });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-    try {
-        this.lock.withLock(_.bind(function() {
-            var succeeded;
-            try {
-                var storedQueue = this.readFromStorage();
-                storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-                succeeded = this.saveToStorage(storedQueue);
-            } catch(err) {
-                logger.error('Error removing items', ids);
-                succeeded = false;
-            }
-            if (cb) {
-                cb(succeeded);
-            }
-        }, this), this.pid);
-    } catch(err) {
+    this.lock.withLock(_.bind(function lockAcquired() {
+        var succeeded;
+        try {
+            var storedQueue = this.readFromStorage();
+            storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+            succeeded = this.saveToStorage(storedQueue);
+        } catch(err) {
+            logger.error('Error removing items', ids);
+            succeeded = false;
+        }
+        if (cb) {
+            cb(succeeded);
+        }
+    }, this), function lockFailure(err) {
         logger.error('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
-    }
+    }, this.pid);
 };
 
 /**

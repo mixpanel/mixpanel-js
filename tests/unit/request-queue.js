@@ -9,13 +9,26 @@ import { acquireLockForPid } from './lock-test-utils';
 import { RequestQueue } from '../../src/request-queue';
 
 const DEFAULT_FLUSH_INTERVAL = 10000;
+const START_TIME = 50000;
 
 describe(`RequestQueue`, function() {
+  let clock = null;
   let queue;
 
   beforeEach(function() {
+    if (clock) {
+      clock.restore();
+    }
+    clock = sinon.useFakeTimers(START_TIME);
     localStorage.clear();
     queue = new RequestQueue(`fake-rq-key`, {storage: localStorage});
+  });
+
+  afterEach(function() {
+    if (clock) {
+      clock.restore();
+    }
+    clock = null;
   });
 
   it(`initializes a mutex with the same key`, function() {
@@ -80,6 +93,8 @@ describe(`RequestQueue`, function() {
       });
 
       firstHolder.enqueue(firstItem, DEFAULT_FLUSH_INTERVAL);
+
+      clock.tick(1000);
     });
 
     context(`when persistence fails`, function() {
@@ -92,6 +107,7 @@ describe(`RequestQueue`, function() {
             expect(queue.readFromStorage()).to.be.empty;
             done();
           });
+          clock.tick(1000);
         });
 
         it(`does not add item to in-mem queue`, function(done) {
@@ -101,12 +117,35 @@ describe(`RequestQueue`, function() {
             expect(queue.memQueue).to.have.lengthOf(0);
             done();
           });
+          clock.tick(1000);
         });
       }
 
       context(`during lock acquisition`, function() {
         beforeEach(function() {
           sinon.stub(localStorage, `setItem`).throws(`localStorage disabled`);
+        });
+
+        afterEach(function() {
+          localStorage.setItem.restore();
+        });
+
+        persistenceFailureTests();
+      });
+
+      context(`mid-acquisition`, function() {
+        beforeEach(function() {
+          localStorage.clear();
+          queue = new RequestQueue(`fake-rq-key`, {storage: localStorage, pid: `mypid`});
+          sinon.stub(localStorage, `setItem`)
+            .withArgs(`fake-rq-key:Y`, `mypid`)
+            .onCall(0).returns(null)
+            .onCall(1).callsFake(function() {
+              // now break it for every call, as though it just got disabled
+              localStorage.setItem.restore();
+              sinon.stub(localStorage, `setItem`).returns(null);
+            });
+          localStorage.setItem.callThrough();
         });
 
         afterEach(function() {

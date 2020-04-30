@@ -64,31 +64,40 @@ describe(`SharedLock`, function() {
         localStorage.setItem.restore();
       });
 
-      it(`throws immediately if setItem throws`, function() {
+      it(`runs error callback immediately if setItem throws`, function(done) {
         sinon.stub(localStorage, `setItem`).throws(`localStorage disabled`);
-        expect(() => sharedLock.withLock()).to.throw(`localStorage support check failed`);
+        sharedLock.withLock(function() {}, function(err) {
+          expect(String(err)).to.equal(`Error: localStorage support check failed`);
+          done();
+        });
       });
 
-      it(`throws immediately if setItem silently fails`, function() {
+      it(`runs error callback immediately if setItem silently fails`, function(done) {
         sinon.stub(localStorage, `setItem`).callsFake(function() {
           // Does nothing, but doesn't throw either. (Yes, this behavior has been
           // observed in the wild thanks to monkeypatching...)
         });
-        expect(() => sharedLock.withLock()).to.throw(`localStorage support check failed`);
+        sharedLock.withLock(function() {}, function(err) {
+          expect(String(err)).to.equal(`Error: localStorage support check failed`);
+          done();
+        });
       });
 
-      it(`throws quickly if setItem starts failing mid-acquisition`, function() {
+      it(`runs error callback quickly if setItem starts failing mid-acquisition`, function(done) {
         sinon.stub(localStorage, `setItem`)
           .withArgs(`some-key:Y`, `mypid`)
-          .callsFake(function() {
+          .onCall(0).returns(null)
+          .onCall(1).callsFake(function() {
             // now break it for every call, as though it just got disabled
             localStorage.setItem.restore();
             sinon.stub(localStorage, `setItem`).returns(null);
           });
         localStorage.setItem.callThrough();
-        expect(function() {
-          sharedLock.withLock(function() {}, `mypid`);
-        }).to.throw(`localStorage support dropped while acquiring lock`);
+
+        sharedLock.withLock(function() {}, function(err) {
+          expect(String(err)).to.equal(`Error: localStorage support dropped while acquiring lock`);
+          done();
+        }, `mypid`);
       });
     });
   });

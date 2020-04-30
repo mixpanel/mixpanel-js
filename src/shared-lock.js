@@ -33,7 +33,12 @@ var SharedLock = function(key, options) {
 
 // pass in a specific pid to test contention scenarios; otherwise
 // it is chosen randomly for each acquisition attempt
-SharedLock.prototype.withLock = function(lockedCB, pid) {
+SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
+    if (!pid && typeof errorCB !== 'function') {
+        pid = errorCB;
+        errorCB = null;
+    }
+
     var i = pid || (new Date().getTime() + '|' + Math.random());
     var startTime = new Date().getTime();
 
@@ -46,12 +51,8 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     var keyY = key + ':Y';
     var keyZ = key + ':Z';
 
-    var setStorageItem = function(k, v) {
-        try {
-            storage.setItem(k, v);
-        } catch(err) {
-            logger.error('localStorage error', err);
-        }
+    var reportError = function(err) {
+        errorCB && errorCB(err);
     };
 
     var delay = function(cb) {
@@ -62,7 +63,13 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
             loop();
             return;
         }
-        setTimeout(cb, pollIntervalMS * (Math.random() + 0.1));
+        setTimeout(function() {
+            try {
+                cb();
+            } catch(err) {
+                reportError(err);
+            }
+        }, pollIntervalMS * (Math.random() + 0.1));
     };
 
     var waitFor = function(predicate, cb) {
@@ -80,7 +87,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
         if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
             return false;
         } else {
-            setStorageItem(keyY, i);
+            storage.setItem(keyY, i);
             if (storage.getItem(keyY) === i) {
                 return true;
             } else {
@@ -93,7 +100,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     };
 
     var loop = function() {
-        setStorageItem(keyX, i);
+        storage.setItem(keyX, i);
 
         waitFor(getSetY, function() {
             if (storage.getItem(keyX) === i) {
@@ -114,7 +121,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     };
 
     var criticalSection = function() {
-        setStorageItem(keyZ, '1');
+        storage.setItem(keyZ, '1');
         try {
             lockedCB();
         } finally {
@@ -128,10 +135,14 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
         }
     };
 
-    if (localStorageSupported(storage, true)) {
-        loop();
-    } else {
-        throw new Error('localStorage support check failed');
+    try {
+        if (localStorageSupported(storage, true)) {
+            loop();
+        } else {
+            throw new Error('localStorage support check failed');
+        }
+    } catch(err) {
+        reportError(err);
     }
 };
 
