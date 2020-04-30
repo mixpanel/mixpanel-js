@@ -4207,16 +4207,6 @@
                     same(this.requests.length, 1, "should not have made any new requests after event was sent");
                 });
 
-                test('batch retries after network timeout', 2, function() {
-                    mixpanel.batchtest.track('queued event');
-                    this.clock.tick(5000);
-                    same(this.requests.length, 1, "should have made request after flush interval");
-
-                    this.clock.tick(100000); // let 90s network timeout elapse
-                    this.requests[0].triggerTimeout();
-                    same(this.requests.length, 2, "should have retried after first request timed out");
-                });
-
                 test('queued requests are flushed via sendBeacon before page unload', 3, function() {
                     mixpanel.batchtest.track('queued event');
                     window.dispatchEvent(new Event('unload'));
