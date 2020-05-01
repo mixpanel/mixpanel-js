@@ -238,6 +238,113 @@ describe(`RequestBatcher`, function() {
         expect(getLocalStorageItems()).to.be.empty;
       });
 
+      it(`caps backoff at 10 minutes`, function() {
+        batcher.enqueue({foo: `bar`});
+        batcher.flush();
+
+        let expectedRequests = 1;
+        let tryAfter = DEFAULT_FLUSH_INTERVAL * 2;
+        const TEN_MINUTES = 10 * 60 * 1000;
+        while (tryAfter <= TEN_MINUTES) {
+          expect(batcher.sendRequest).to.have.callCount(expectedRequests);
+          sendResponse(503);
+
+          clock.tick(tryAfter);
+          tryAfter *= 2;
+          expectedRequests++;
+        }
+
+        expect(batcher.sendRequest).to.have.callCount(expectedRequests);
+        sendResponse(503);
+        clock.tick(TEN_MINUTES - 1);
+        expect(batcher.sendRequest).to.have.callCount(expectedRequests); // no new request
+        clock.tick(1);
+        expect(batcher.sendRequest).to.have.callCount(++expectedRequests);
+
+        // do it again, exactly 10 minutes til next request
+        expect(batcher.sendRequest).to.have.callCount(expectedRequests);
+        sendResponse(503);
+        clock.tick(TEN_MINUTES - 1);
+        expect(batcher.sendRequest).to.have.callCount(expectedRequests); // no new request
+        clock.tick(1);
+        expect(batcher.sendRequest).to.have.callCount(++expectedRequests);
+      });
+
+      it(`resets flush interval when request succeeds after backoff`, function() {
+        batcher.flush();
+        batcher.enqueue({ev: `queued event 1`});
+        batcher.enqueue({ev: `queued event 2`});
+
+        // fail a couple times
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+        sendResponse(503);
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
+        expect(batcher.sendRequest).to.have.been.calledTwice;
+        sendResponse(503);
+
+        // configuring default flush interval shouldn't affect anything during failure backoff
+        libConfig.batch_flush_interval_ms = 8000;
+
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 4);
+        expect(batcher.sendRequest).to.have.been.calledThrice;
+        sendResponse(503);
+
+        // succeed!
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 8);
+        expect(batcher.sendRequest).to.have.callCount(4);
+        sendResponse(200);
+
+        // at this point the success response should have reset the interval to the 8000
+        // configured above
+        batcher.enqueue({ev: `queued event 3`});
+        clock.tick(7000);
+        expect(batcher.sendRequest).to.have.callCount(4); // no new request yet
+        clock.tick(1000);
+        expect(batcher.sendRequest).to.have.callCount(5);
+      });
+
+      it(`can queue up new events while failing requests are retrying`, function() {
+        batcher.flush();
+        batcher.enqueue({ev: `queued event 1`});
+        batcher.enqueue({ev: `queued event 2`});
+
+        // fail a couple times
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+        sendResponse(503);
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
+        expect(batcher.sendRequest).to.have.been.calledTwice;
+        sendResponse(503);
+
+        batcher.enqueue({ev: `queued event 3`});
+
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 4);
+        expect(batcher.sendRequest).to.have.callCount(3);
+
+        // should include all events in current retry
+        expect(batcher.sendRequest.args[2][1]).to.deep.equal([
+          {ev: `queued event 1`},
+          {ev: `queued event 2`},
+          {ev: `queued event 3`},
+        ]);
+      });
+
+      it(`does not retry 400s / successful API rejections`, function() {
+        batcher.enqueue({ev: `queued event 1`});
+        batcher.enqueue({ev: `queued event 2`});
+        batcher.flush();
+
+        expect(batcher.queue.memQueue).to.have.lengthOf(2);
+        expect(getLocalStorageItems()).to.have.lengthOf(2);
+        sendResponse(400);
+
+        clock.tick(100000);
+        expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+        expect(batcher.queue.memQueue).to.be.empty;
+        expect(getLocalStorageItems()).to.be.empty;
+      });
+
       context(`when request times out`, function() {
         function timeOutRequest() {
           sendResponse(0, `timeout`);
