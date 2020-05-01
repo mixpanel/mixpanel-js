@@ -3768,7 +3768,6 @@
                 test('tracking does not send a request immediately', 1, function() {
                     mixpanel.batchtest.track('queued event');
                     this.clock.tick(100);
-
                     same(this.requests.length, 0, "track should not have sent a request");
                 });
 
@@ -3797,78 +3796,6 @@
 
                     this.clock.tick(40000);
                     same(this.requests.length, 1, "batch request should have been sent");
-                });
-
-                test('chains multiple requests when queue exceeds configured batch size', 14, function() {
-                    mixpanel.batchtest.set_config({batch_size: 3});
-
-                    for (var i = 1; i <= 8; i++) { // 3 batches (3/3/2 events)
-                        mixpanel.batchtest.track('queued event ' + i);
-                    }
-
-                    this.clock.tick(100);
-                    same(this.requests.length, 0, "batch requests should not have been sent yet");
-
-                    this.clock.tick(7000);
-                    // first request has now been made; respond
-                    this.requests[0].respond(200, {}, '1');
-                    // second request has now been made; respond
-                    this.requests[1].respond(200, {}, '1');
-
-                    same(this.requests.length, 3, "3 batch requests should have been sent");
-
-                    var tracked_events = getRequestData(this.requests[0]);
-                    same(tracked_events.length, 3, "should have sent 3 events in first request");
-                    same(tracked_events[0].event, 'queued event 1');
-                    same(tracked_events[1].event, 'queued event 2');
-                    same(tracked_events[2].event, 'queued event 3');
-
-                    tracked_events = getRequestData(this.requests[1]);
-                    same(tracked_events.length, 3, "should have sent 3 events in second request");
-                    same(tracked_events[0].event, 'queued event 4');
-                    same(tracked_events[1].event, 'queued event 5');
-                    same(tracked_events[2].event, 'queued event 6');
-
-                    tracked_events = getRequestData(this.requests[2]);
-                    same(tracked_events.length, 2, "should have sent 2 events in final request");
-                    same(tracked_events[0].event, 'queued event 7');
-                    same(tracked_events[1].event, 'queued event 8');
-
-                    this.clock.tick(7000);
-                    same(this.requests.length, 3, "no new requests should have been sent after queue is clear");
-                });
-
-                test('tracking failures retry with exponential backoff', 9, function() {
-                    mixpanel.batchtest.track('queued event 1');
-                    mixpanel.batchtest.track('queued event 2');
-
-                    this.clock.tick(5000);
-                    same(this.requests.length, 1, "first batch request should have been sent after 5s");
-
-                    this.requests[0].respond(500, {}, '<html>message from an exploded load balancer</html>');
-
-                    this.clock.tick(5000);
-                    same(this.requests.length, 1, "no new requests should have been sent yet after failure (10s)");
-                    this.clock.tick(5000);
-                    same(this.requests.length, 2, "batch request should have retried 10s after the first failure");
-                    same(this.requests[0].requestBody, this.requests[1].requestBody, "retry should have sent the same data");
-
-                    this.requests[1].respond(503, {}, '<html>another explosion</html>');
-                    this.clock.tick(10000);
-                    same(this.requests.length, 2, "no new requests should have been sent yet after failure (20s)");
-                    this.clock.tick(10000);
-                    same(this.requests.length, 3, "batch request should have retried 20s after the previous failure");
-
-                    this.requests[2].respond(503, {}, '<html>another explosion</html>');
-                    this.clock.tick(20000);
-                    same(this.requests.length, 3, "no new requests should have been sent yet after failure (40s)");
-                    this.clock.tick(20000);
-                    same(this.requests.length, 4, "batch request should have retried 40s after the previous failure");
-
-                    // will the madness ever end? finally the API call succeeds
-                    this.requests[3].respond(200, {}, '1');
-                    this.clock.tick(240000); // a long time
-                    same(this.requests.length, 4, "no new requests should have been sent after batch succeeded");
                 });
 
                 test('tracking backoff caps out at 10 minutes', 5, function() {
