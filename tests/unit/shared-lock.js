@@ -5,17 +5,32 @@ import sinon from 'sinon';
 import { acquireLockForPid } from './lock-test-utils';
 import { SharedLock } from '../../src/shared-lock';
 
+const START_TIME = 200000;
+const TIMEOUT_MS = 1000;
+
 describe(`SharedLock`, function() {
+  let clock = null;
   let sharedLock;
 
   beforeEach(function() {
+    if (clock) {
+      clock.restore();
+    }
+    clock = sinon.useFakeTimers(START_TIME);
     localStorage.clear();
-    sharedLock = new SharedLock(`some-key`, {storage: localStorage, timeoutMS: 1000});
+    sharedLock = new SharedLock(`some-key`, {storage: localStorage, timeoutMS: TIMEOUT_MS});
+  });
+
+  afterEach(function() {
+    if (clock) {
+      clock.restore();
+    }
+    clock = null;
   });
 
   it(`stores the given key and options`, function() {
     expect(sharedLock.storageKey).to.equal(`some-key`);
-    expect(sharedLock.timeoutMS).to.equal(1000);
+    expect(sharedLock.timeoutMS).to.equal(TIMEOUT_MS);
   });
 
   describe(`withLock()`, function() {
@@ -47,6 +62,8 @@ describe(`SharedLock`, function() {
       sharedLock.withLock(function() {
         sharedArray.push(`A`);
       }, `foobar`);
+
+      clock.tick(1000);
     });
 
     it(`clears the lock when one caller does not release it`, function(done) {
@@ -54,9 +71,11 @@ describe(`SharedLock`, function() {
 
       const startTime = Date.now();
       sharedLock.withLock(function() {
-        expect(Date.now() - startTime).to.be.above(1000); // timeout MS
+        expect(Date.now() - startTime).to.be.above(TIMEOUT_MS);
         done();
       });
+
+      clock.tick(TIMEOUT_MS * 2);
     });
 
     context(`when localStorage.setItem breaks`, function() {
@@ -98,6 +117,8 @@ describe(`SharedLock`, function() {
           expect(String(err)).to.equal(`Error: localStorage support dropped while acquiring lock`);
           done();
         }, `mypid`);
+
+        clock.tick(1000);
       });
     });
   });
