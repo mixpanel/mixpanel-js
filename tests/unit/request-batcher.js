@@ -17,6 +17,11 @@ describe(`RequestBatcher`, function() {
   let libConfig;
   let clock = null;
 
+  function configureBatchSize(batchSize) {
+      libConfig.batch_size = batchSize;
+      batcher.resetBatchSize();
+  }
+
   function getLocalStorageItems() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
   }
@@ -133,8 +138,7 @@ describe(`RequestBatcher`, function() {
     });
 
     it(`chains multiple requests when queue exceeds configured batch size`, function() {
-      libConfig.batch_size = 3;
-      batcher.resetBatchSize();
+      configureBatchSize(3);
       for (let i = 1; i <= 8; i++) { // 3 batches (3/3/2 events)
         batcher.enqueue({ev: `queued event ${i}`});
       }
@@ -343,6 +347,58 @@ describe(`RequestBatcher`, function() {
         expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
         expect(batcher.queue.memQueue).to.be.empty;
         expect(getLocalStorageItems()).to.be.empty;
+      });
+
+      it(`reduces batch size after 413 Payload Too Large`, function() {
+        configureBatchSize(9); // nice odd number
+
+        for (let i = 1; i <= 7; i++) {
+            batcher.enqueue({ev: `queued event ${i}`});
+        }
+        batcher.flush();
+
+        // should have tried to send all 7 items in one go
+        expect(batcher.sendRequest.args[0][1]).to.have.lengthOf(7);
+
+        sendResponse(413);
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.been.calledTwice; // no backoff
+        // reduced batch size
+        expect(batcher.sendRequest.args[1][1]).to.deep.equal([
+          {ev: `queued event 1`},
+          {ev: `queued event 2`},
+          {ev: `queued event 3`},
+          {ev: `queued event 4`},
+        ]);
+
+        sendResponse(200);
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.been.calledThrice;
+        // remaining items from original batch
+        expect(batcher.sendRequest.args[2][1]).to.deep.equal([
+          {ev: `queued event 5`},
+          {ev: `queued event 6`},
+          {ev: `queued event 7`},
+        ]);
+      });
+
+      it(`does not retry single item which produces 413 Payload Too Large`, function() {
+        batcher.enqueue({ev: `bloated item`});
+        batcher.flush();
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+        sendResponse(413);
+        clock.tick(240000);
+        expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+
+        // first item should have been dropped, and we resume normal batching
+        batcher.enqueue({ev: `normal item 1`});
+        batcher.enqueue({ev: `normal item 2`});
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.been.calledTwice;
+        expect(batcher.sendRequest.args[1][1]).to.deep.equal([
+          {ev: `normal item 1`},
+          {ev: `normal item 2`},
+        ]);
       });
 
       context(`when request times out`, function() {
