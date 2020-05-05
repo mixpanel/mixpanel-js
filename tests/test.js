@@ -3798,24 +3798,6 @@
                     same(this.requests.length, 1, "batch request should have been sent");
                 });
 
-                test('Retry-After response header changes flush interval for one retry', 3, function() {
-                    mixpanel.batchtest.track('queued event 1');
-                    mixpanel.batchtest.track('queued event 2');
-
-                    this.clock.tick(5000);
-                    this.requests[0].respond(503, {'Retry-After': '20'}, '0'); // 20 seconds
-
-                    this.clock.tick(10000);
-                    same(this.requests.length, 1, "should not have retried yet");
-                    this.clock.tick(10000);
-                    same(this.requests.length, 2, "should have retried after 20s specified in Retry-After header");
-                    this.requests[1].respond(200, {}, '1');
-
-                    mixpanel.batchtest.track('queued event 3');
-                    this.clock.tick(5000);
-                    same(this.requests.length, 3, "should have reset flush interval after retry success");
-                });
-
                 test('malformed track response does not break batching', 3, function() {
                     mixpanel.batchtest.track('queued event 1');
                     mixpanel.batchtest.track('queued event 2');

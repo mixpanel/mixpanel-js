@@ -26,11 +26,14 @@ describe(`RequestBatcher`, function() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
   }
 
-  function sendResponse(status, error) {
+  function sendResponse(status, {error, responseHeaders} = {}) {
     // respond to last request sent
     const requestIndex = batcher.sendRequest.args.length - 1;
     batcher.sendRequest.args[requestIndex][3]({
-      'xhr_req': {status},
+      'xhr_req': {
+        status,
+        responseHeaders,
+      },
       error,
     });
   }
@@ -401,9 +404,30 @@ describe(`RequestBatcher`, function() {
         ]);
       });
 
+      it(`respects Retry-After response header for one retry`, function() {
+        batcher.enqueue({ev: `queued event 1`});
+        batcher.enqueue({ev: `queued event 2`});
+        batcher.flush();
+
+        sendResponse(503, {responseHeaders: {'Retry-After': `20`}});
+        clock.tick(10000);
+        expect(batcher.sendRequest).to.have.been.calledOnce; // no retry yet
+        clock.tick(10000);
+        expect(batcher.sendRequest).to.have.been.calledTwice; // 20s have passed
+
+        // after success, should reset to configured flush interval
+        sendResponse(200);
+        batcher.enqueue({ev: `queued event 3`});
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.been.calledThrice;
+        expect(batcher.sendRequest.args[2][1]).to.deep.equal([
+          {ev: `queued event 3`},
+        ]);
+      });
+
       context(`when request times out`, function() {
         function timeOutRequest() {
-          sendResponse(0, `timeout`);
+          sendResponse(0, {error: `timeout`});
         }
 
         it(`keeps items in the queue`, function() {
