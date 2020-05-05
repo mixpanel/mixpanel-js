@@ -64,44 +64,6 @@ describe(`RequestBatcher`, function() {
     clock = null;
   });
 
-  context(`before starting`, function() {
-    it(`does not flush`, function() {
-      batcher.enqueue({foo: `bar`});
-      clock.tick(20000);
-      expect(batcher.sendRequest).not.to.have.been.called;
-    });
-
-    it(`flushes immediately on start`, function() {
-      batcher.enqueue({foo: `bar`});
-      clock.tick(20000);
-      batcher.start();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
-    });
-  });
-
-  context(`after starting`, function() {
-    beforeEach(function() {
-      batcher.start();
-    });
-
-    it(`does not send requests until flush interval`, function() {
-      batcher.enqueue({first: `event`});
-      expect(batcher.sendRequest).not.to.have.been.called;
-      clock.tick(1000);
-      expect(batcher.sendRequest).not.to.have.been.called;
-      batcher.enqueue({second: `event`});
-      expect(batcher.sendRequest).not.to.have.been.called;
-      clock.tick(1000);
-      expect(batcher.sendRequest).not.to.have.been.called;
-      clock.tick(DEFAULT_FLUSH_INTERVAL);
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][1]).to.deep.equal([
-        {first: `event`}, {second: `event`},
-      ]);
-    });
-  });
-
   describe(`enqueue`, function() {
     it(`stores the item with the configured flush interval`, function(done) {
       batcher.enqueue({foo: `bar`}, function(succeeded) {
@@ -470,6 +432,64 @@ describe(`RequestBatcher`, function() {
     });
   });
 
+  context(`before starting`, function() {
+    it(`does not flush`, function() {
+      batcher.enqueue({foo: `bar`});
+      clock.tick(20000);
+      expect(batcher.sendRequest).not.to.have.been.called;
+    });
+
+    it(`flushes immediately on start`, function() {
+      batcher.enqueue({foo: `bar`});
+      clock.tick(20000);
+      batcher.start();
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.sendRequest.args[0][1]).to.deep.equal([{foo: `bar`}]);
+    });
+  });
+
+  context(`after starting`, function() {
+    beforeEach(function() {
+      batcher.start();
+    });
+
+    it(`does not send requests until flush interval`, function() {
+      batcher.enqueue({first: `event`});
+      expect(batcher.sendRequest).not.to.have.been.called;
+      clock.tick(1000);
+      expect(batcher.sendRequest).not.to.have.been.called;
+      batcher.enqueue({second: `event`});
+      expect(batcher.sendRequest).not.to.have.been.called;
+      clock.tick(1000);
+      expect(batcher.sendRequest).not.to.have.been.called;
+      clock.tick(DEFAULT_FLUSH_INTERVAL);
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.sendRequest.args[0][1]).to.deep.equal([
+        {first: `event`}, {second: `event`},
+      ]);
+    });
+
+    it(`still sends batched requests if localStorage gets cleared`, function() {
+      batcher.enqueue({name: `storagetest 1`});
+      batcher.enqueue({name: `storagetest 2`});
+      expect(getLocalStorageItems().map(item => item.payload)).to.deep.equal([
+        {name: `storagetest 1`},
+        {name: `storagetest 2`},
+      ]);
+
+      // kill it
+      localStorage.removeItem(LOCALSTORAGE_KEY);
+
+      expect(batcher.sendRequest).not.to.have.been.called;
+      clock.tick(DEFAULT_FLUSH_INTERVAL);
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.sendRequest.args[0][1]).to.deep.equal([
+        {name: `storagetest 1`},
+        {name: `storagetest 2`},
+      ]);
+    });
+  });
+
   context(`when items already exist in localStorage`, function() {
     it(`flushes orphaned items immediately`, function() {
       localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
@@ -533,9 +553,9 @@ describe(`RequestBatcher`, function() {
 
       clock.tick(80000);
       expect(batcher.sendRequest).to.have.been.calledOnce;
-      let batchEvents = batcher.sendRequest.args[0][1];
-      expect(batchEvents).to.have.lengthOf(1);
-      expect(batchEvents[0].event).to.equal(`orphaned event 1`);
+      expect(batcher.sendRequest.args[0][1]).to.deep.equal([
+        {'event': `orphaned event 1`, 'properties': {'foo': 'bar'}},
+      ]);
 
       expect(getLocalStorageItems()).to.have.lengthOf(2);
       sendResponse(200);
@@ -548,12 +568,59 @@ describe(`RequestBatcher`, function() {
 
       clock.tick(200000);
       expect(batcher.sendRequest).to.have.been.calledTwice;
-      batchEvents = batcher.sendRequest.args[1][1];
-      expect(batchEvents[0].event).to.equal(`orphaned event 2`);
+      expect(batcher.sendRequest.args[1][1]).to.deep.equal([
+        {'event': `orphaned event 2`},
+      ]);
 
       expect(getLocalStorageItems()).to.have.lengthOf(1);
       sendResponse(200);
       expect(getLocalStorageItems()).to.be.empty;
+    });
+
+    it(`ignores and overwrites malformed localStorage entries`, function() {
+      localStorage.setItem(LOCALSTORAGE_KEY, `just some garbage {{{`);
+      batcher.start();
+      expect(batcher.sendRequest).not.to.have.been.called;
+
+      // should clear and overwrite garbage localStorage when enqueueing
+      batcher.enqueue({foo: `bar`});
+      batcher.enqueue({baz: `quux`});
+      expect(getLocalStorageItems().map(item => item.payload)).to.deep.equal([
+        {foo: `bar`},
+        {baz: `quux`},
+      ]);
+
+      clock.tick(DEFAULT_FLUSH_INTERVAL);
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.sendRequest.args[0][1]).to.deep.equal([
+        {foo: `bar`},
+        {baz: `quux`},
+      ]);
+    });
+
+    it(`drops malformed individual items in the localStorage queue`, function() {
+      localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
+        {id: `fakeID1`, flushAfter: Date.now() - 10000, payload: {
+            'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
+        }},
+
+        `HOW DID THIS RANDOM STRING GET IN MY QUEUE??`,
+
+        {id: `fakeID2`, flushAfter: Date.now() - 10000, payload: {
+            'event': `orphaned event 2`,
+        }}
+      ]));
+      expect(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY))).to.have.lengthOf(3);
+
+      batcher.start();
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.sendRequest.args[0][1]).to.deep.equal([
+        {'event': `orphaned event 1`, 'properties': {'foo': 'bar'}},
+        {'event': `orphaned event 2`},
+      ]);
+
+      sendResponse(200);
+      expect(getLocalStorageItems()).to.be.empty; // invalid item got cleared
     });
   });
 });
