@@ -430,6 +430,20 @@ The default config is:
   // batching or retry mechanisms.
   api_transport: 'XHR'
 
+  // turn on request-batching/queueing/retry
+  batch_requests: false,
+
+  // maximum number of events/updates to send in a single
+  // network request
+  batch_size: 50,
+
+  // milliseconds to wait between sending batch requests
+  batch_flush_interval_ms: 5000,
+
+  // milliseconds to wait for network response to batch requests
+  // before they are considered timed-out and retried
+  batch_request_timeout_ms: 90000,
+
   // override value for cookie domain, only useful for ensuring
   // correct cross-subdomain cookies on unusual domains like
   // subdomain.mainsite.avocat.fr; NB this cannot be used to
