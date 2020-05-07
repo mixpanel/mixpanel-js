@@ -155,7 +155,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":15}],3:[function(require,module,exports){
+},{"./utils":18}],3:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -370,7 +370,7 @@ function shouldTrackValue(value) {
     return true;
 }
 
-},{"./utils":15}],4:[function(require,module,exports){
+},{"./utils":18}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -724,7 +724,7 @@ _utils._.safewrap_instance_methods(autotrack);
 
 exports.autotrack = autotrack;
 
-},{"./autotrack-utils":3,"./utils":15}],5:[function(require,module,exports){
+},{"./autotrack-utils":3,"./utils":18}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.35.0'
+    LIB_VERSION: '2.36.0'
 };
 
 exports['default'] = Config;
@@ -901,7 +901,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":15}],7:[function(require,module,exports){
+},{"./utils":18}],7:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -1158,7 +1158,9 @@ function _optInOut(optValue, token, options) {
 
     if (options.track && optValue) {
         // only track event if opting in (optValue=true)
-        options.track(options.trackEventName || '$opt_in', options.trackProperties);
+        options.track(options.trackEventName || '$opt_in', options.trackProperties, {
+            'send_immediately': true
+        });
     }
 }
 
@@ -1207,7 +1209,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":15}],8:[function(require,module,exports){
+},{"./utils":18}],8:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -1243,6 +1245,8 @@ var _utils = require('./utils');
 var _autotrack = require('./autotrack');
 
 var _domTrackers = require('./dom-trackers');
+
+var _requestBatcher = require('./request-batcher');
 
 var _mixpanelGroup = require('./mixpanel-group');
 
@@ -1301,9 +1305,12 @@ var USE_XHR = _utils.window.XMLHttpRequest && 'withCredentials' in new XMLHttpRe
 var ENQUEUE_REQUESTS = !USE_XHR && _utils.userAgent.indexOf('MSIE') === -1 && _utils.userAgent.indexOf('Mozilla') === -1;
 
 // save reference to navigator.sendBeacon so it can be minified
-var sendBeacon = _utils.navigator['sendBeacon'];
-if (sendBeacon) {
-    sendBeacon = _utils._.bind(sendBeacon, _utils.navigator);
+var sendBeacon = null;
+if (_utils.navigator['sendBeacon']) {
+    sendBeacon = function () {
+        // late reference to navigator.sendBeacon to allow patching/spying
+        return _utils.navigator['sendBeacon'].apply(_utils.navigator, arguments);
+    };
 }
 
 /*
@@ -1345,7 +1352,11 @@ var DEFAULT_CONFIG = {
     'xhr_headers': {}, // { header: value, header2: value }
     'inapp_protocol': '//',
     'inapp_link_new_window': false,
-    'ignore_dnt': false
+    'ignore_dnt': false,
+    'batch_requests': false, // for now
+    'batch_size': 50,
+    'batch_flush_interval_ms': 5000,
+    'batch_request_timeout_ms': 90000
 };
 
 var DOM_LOADED = false;
@@ -1418,6 +1429,12 @@ var create_mplib = function create_mplib(token, config, name) {
     return instance;
 };
 
+var encode_data_for_request = function encode_data_for_request(data) {
+    var json_data = _utils._.JSONEncode(data);
+    var encoded_data = _utils._.base64Encode(json_data);
+    return { 'data': encoded_data };
+};
+
 // Initialization methods
 
 /**
@@ -1480,6 +1497,27 @@ MixpanelLib.prototype._init = function (token, config, name) {
         'disable_all_events': false,
         'identify_called': false
     };
+
+    // set up request queueing/batching
+    this.request_batchers = {};
+    this._batch_requests = this.get_config('batch_requests');
+    if (this._batch_requests) {
+        if (!_utils._.localStorage.is_supported(true) || !USE_XHR) {
+            this._batch_requests = false;
+            _utils.console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
+        } else {
+            this.start_batch_requests();
+            if (sendBeacon && _utils.window.addEventListener) {
+                _utils.window.addEventListener('unload', _utils._.bind(function () {
+                    // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
+                    // Since sendBeacon doesn't report success/failure, events will not be removed from
+                    // the persistent store; if the site is loaded again, the events will be flushed again
+                    // on startup and deduplicated on the Mixpanel server side.
+                    this.request_batchers.events.flush({ sendBeacon: true });
+                }, this));
+            }
+        }
+    }
 
     this['persistence'] = this['cookie'] = new _mixpanelPersistence.MixpanelPersistence(this['config']);
     this._gdpr_init();
@@ -1582,7 +1620,8 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
 
     var DEFAULT_OPTIONS = {
         method: this.get_config('api_method'),
-        transport: this.get_config('api_transport')
+        transport: this.get_config('api_transport'),
+        verbose: this.get_config('verbose')
     };
     var body_data = null;
 
@@ -1598,7 +1637,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
     var use_sendBeacon = sendBeacon && use_post && options.transport.toLowerCase() === 'sendbeacon';
 
     // needed to correctly format responses
-    var verbose_mode = this.get_config('verbose');
+    var verbose_mode = options.verbose;
     if (data['verbose']) {
         verbose_mode = true;
     }
@@ -1658,6 +1697,11 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
                 req.setRequestHeader(headerName, headerValue);
             });
 
+            if (options.timeout_ms && typeof req.timeout !== 'undefined') {
+                req.timeout = options.timeout_ms;
+                var start_time = new Date().getTime();
+            }
+
             // send the mp_optout cookie
             // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
             req.withCredentials = true;
@@ -1672,7 +1716,11 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
                                     response = _utils._.JSONDecode(req.responseText);
                                 } catch (e) {
                                     _utils.console.error(e);
-                                    return;
+                                    if (options.ignore_json_errors) {
+                                        response = req.responseText;
+                                    } else {
+                                        return;
+                                    }
                                 }
                                 callback(response);
                             } else {
@@ -1680,11 +1728,16 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
                             }
                         }
                     } else {
-                        var error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                        var error;
+                        if (req.timeout && !req.status && new Date().getTime() - start_time >= req.timeout) {
+                            error = 'timeout';
+                        } else {
+                            error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                        }
                         _utils.console.error(error);
                         if (callback) {
                             if (verbose_mode) {
-                                callback({ status: 0, error: error });
+                                callback({ status: 0, error: error, xhr_req: req });
                             } else {
                                 callback(0);
                             }
@@ -1763,6 +1816,37 @@ MixpanelLib.prototype._execute_array = function (array) {
     execute(tracking_calls, this);
 };
 
+// request queueing utils
+
+MixpanelLib.prototype.start_batch_requests = function () {
+    var token = this.get_config('token');
+    if (!this.request_batchers.events) {
+        // no batchers initialized yet
+        var batcher_config = {
+            libConfig: this['config'],
+            sendRequestFunc: _utils._.bind(function (endpoint, data, options, cb) {
+                this._send_request(this.get_config('api_host') + endpoint, encode_data_for_request(data), options, this._prepare_callback(cb, data));
+            }, this)
+        };
+        this.request_batchers = {
+            events: new _requestBatcher.RequestBatcher('__mpq_' + token + '_ev', '/track/', batcher_config),
+            people: new _requestBatcher.RequestBatcher('__mpq_' + token + '_pp', '/engage/', batcher_config),
+            groups: new _requestBatcher.RequestBatcher('__mpq_' + token + '_gr', '/groups/', batcher_config)
+        };
+    }
+    _utils._.each(this.request_batchers, function (batcher) {
+        batcher.start();
+    });
+};
+
+MixpanelLib.prototype.stop_batch_requests = function () {
+    this._batch_requests = false;
+    _utils._.each(this.request_batchers, function (batcher) {
+        batcher.stop();
+        batcher.clear();
+    });
+};
+
 /**
  * push() keeps the standard async-array-push
  * behavior around after the lib is loaded.
@@ -1798,6 +1882,37 @@ MixpanelLib.prototype.disable = function (events) {
     }
 };
 
+// internal method for handling track vs batch-enqueue logic
+MixpanelLib.prototype._track_or_batch = function (options, callback) {
+    var truncated_data = options.truncated_data;
+    var endpoint = options.endpoint;
+    var batcher = options.batcher;
+    var should_send_immediately = options.should_send_immediately;
+    var send_request_options = options.send_request_options || {};
+    callback = callback || function () {};
+
+    var request_enqueued_or_initiated = true;
+    var send_request_immediately = _utils._.bind(function () {
+        _utils.console.log('MIXPANEL REQUEST:');
+        _utils.console.log(truncated_data);
+        return this._send_request(endpoint, encode_data_for_request(truncated_data), send_request_options, this._prepare_callback(callback, truncated_data));
+    }, this);
+
+    if (this._batch_requests && !should_send_immediately) {
+        batcher.enqueue(truncated_data, function (succeeded) {
+            if (succeeded) {
+                callback(1, truncated_data);
+            } else {
+                send_request_immediately();
+            }
+        });
+    } else {
+        request_enqueued_or_initiated = send_request_immediately();
+    }
+
+    return request_enqueued_or_initiated && truncated_data;
+};
+
 /**
  * Track an event. This is the most important and
  * frequently used Mixpanel function.
@@ -1816,6 +1931,7 @@ MixpanelLib.prototype.disable = function (events) {
  * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
  * @param {Object} [options] Optional configuration for this track request.
  * @param {String} [options.transport] Transport method for network request ('xhr' or 'sendBeacon').
+ * @param {Boolean} [options.send_immediately] Whether to bypass batching/queueing and send track request immediately.
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
@@ -1830,6 +1946,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     if (transport) {
         options.transport = transport; // 'transport' prop name can be minified internally
     }
+    var should_send_immediately = options['send_immediately'];
     if (typeof callback !== 'function') {
         callback = function () {};
     }
@@ -1885,18 +2002,17 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
         'event': event_name,
         'properties': properties
     };
-    var truncated_data = _utils._.truncate(data, 255);
-    var json_data = _utils._.JSONEncode(truncated_data);
-    var encoded_data = _utils._.base64Encode(json_data);
-
-    _utils.console.log('MIXPANEL REQUEST:');
-    _utils.console.log(truncated_data);
-
-    var request_initiated = this._send_request(this.get_config('api_host') + '/track/', { 'data': encoded_data }, options, this._prepare_callback(callback, truncated_data));
+    var ret = this._track_or_batch({
+        truncated_data: _utils._.truncate(data, 255),
+        endpoint: this.get_config('api_host') + '/track/',
+        batcher: this.request_batchers.events,
+        should_send_immediately: should_send_immediately,
+        send_request_options: options
+    }, callback);
 
     this._check_and_handle_triggered_notifications(data);
 
-    return request_initiated && truncated_data;
+    return ret;
 });
 
 /**
@@ -2198,30 +2314,26 @@ MixpanelLib.prototype._register_single = function (prop, value) {
 };
 
 /**
- * Identify a user with a unique ID instead of a Mixpanel
- * randomly generated distinct_id. If the method is never called,
- * then unique visitors will be identified by a UUID generated
- * the first time they visit the site.
+ * Identify a user with a unique ID to track user activity across
+ * devices, tie a user to their events, and create a user profile.
+ * If you never call this method, unique visitors are tracked using
+ * a UUID generated the first time they visit the site.
+ *
+ * Call identify when you know the identity of the current user,
+ * typically after login or signup. We recommend against using
+ * identify for anonymous visitors to your site.
  *
  * ### Notes:
+ * If your project has
+ * <a href="https://help.mixpanel.com/hc/en-us/articles/360039133851">ID Merge</a>
+ * enabled, the identify method will connect pre- and
+ * post-authentication events when appropriate.
  *
- * You can call this function to overwrite a previously set
- * unique ID for the current user. Mixpanel cannot translate
- * between IDs at this time, so when you change a user's ID
- * they will appear to be a new user.
- *
- * When used alone, mixpanel.identify will change the user's
- * distinct_id to the unique ID provided. When used in tandem
- * with mixpanel.alias, it will allow you to identify based on
- * unique ID and map that back to the original, anonymous
- * distinct_id given to the user upon her first arrival to your
- * site (thus connecting anonymous pre-signup activity to
- * post-signup activity). Though the two work together, do not
- * call identify() at the same time as alias(). Calling the two
- * at the same time can cause a race condition, so it is best
- * practice to call identify on the original, anonymous ID
- * right after you've aliased it.
- * <a href="https://mixpanel.com/help/questions/articles/how-should-i-handle-my-user-identity-with-the-mixpanel-javascript-library">Learn more about how mixpanel.identify and mixpanel.alias can be used</a>.
+ * If your project does not have ID Merge enabled, identify will
+ * change the user's local distinct_id to the unique ID you pass.
+ * Events tracked prior to authentication will not be connected
+ * to the same user identity. If ID Merge is disabled, alias can
+ * be used to connect pre- and post-registration events.
  *
  * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
@@ -2300,22 +2412,37 @@ MixpanelLib.prototype.get_distinct_id = function () {
 };
 
 /**
- * Create an alias, which Mixpanel will use to link two distinct_ids going forward (not retroactively).
- * Multiple aliases can map to the same original ID, but not vice-versa. Aliases can also be chained - the
- * following is a valid scenario:
+ * The alias method creates an alias which Mixpanel will use to
+ * remap one id to another. Multiple aliases can point to the
+ * same identifier.
+ *
+ * The following is a valid use of alias:
  *
  *     mixpanel.alias('new_id', 'existing_id');
- *     ...
+ *     // You can add multiple id aliases to the existing ID
+ *     mixpanel.alias('newer_id', 'existing_id');
+ *
+ * Aliases can also be chained - the following is a valid example:
+ *
+ *     mixpanel.alias('new_id', 'existing_id');
+ *     // chain newer_id - new_id - existing_id
  *     mixpanel.alias('newer_id', 'new_id');
  *
- * If the original ID is not passed in, we will use the current distinct_id - probably the auto-generated GUID.
+ * Aliases cannot point to multiple identifiers - the following
+ * example will not work:
+ *
+ *     mixpanel.alias('new_id', 'existing_id');
+ *     // this is invalid as 'new_id' already points to 'existing_id'
+ *     mixpanel.alias('new_id', 'newer_id');
  *
  * ### Notes:
  *
- * The best practice is to call alias() when a unique ID is first created for a user
- * (e.g., when a user first registers for an account and provides an email address).
- * alias() should never be called more than once for a given user, except to
- * chain a newer ID to a previously new ID, as described above.
+ * If your project does not have
+ * <a href="https://help.mixpanel.com/hc/en-us/articles/360039133851">ID Merge</a>
+ * enabled, the best practice is to call alias once when a unique
+ * ID is first created for a user (e.g., when a user first registers
+ * for an account). Do not use alias multiple times for a single
+ * user without ID Merge enabled.
  *
  * @param {String} alias A unique identifier that you want to use for this user in the future.
  * @param {String} [original] The current identifier being used for this user.
@@ -2378,6 +2505,20 @@ MixpanelLib.prototype.name_tag = function (name_tag) {
  *       // tracking via sendBeacon will not support any event-
  *       // batching or retry mechanisms.
  *       api_transport: 'XHR'
+ *
+ *       // turn on request-batching/queueing/retry
+ *       batch_requests: false,
+ *
+ *       // maximum number of events/updates to send in a single
+ *       // network request
+ *       batch_size: 50,
+ *
+ *       // milliseconds to wait between sending batch requests
+ *       batch_flush_interval_ms: 5000,
+ *
+ *       // milliseconds to wait for network response to batch requests
+ *       // before they are considered timed-out and retried
+ *       batch_request_timeout_ms: 90000,
  *
  *       // override value for cookie domain, only useful for ensuring
  *       // correct cross-subdomain cookies on unusual domains like
@@ -2474,6 +2615,13 @@ MixpanelLib.prototype.name_tag = function (name_tag) {
 MixpanelLib.prototype.set_config = function (config) {
     if (_utils._.isObject(config)) {
         _utils._.extend(this['config'], config);
+
+        var new_batch_size = config['batch_size'];
+        if (new_batch_size) {
+            _utils._.each(this.request_batchers, function (batcher) {
+                batcher.resetBatchSize();
+            });
+        }
 
         if (!this.get_config('persistence_name')) {
             this['config']['persistence_name'] = this['config']['cookie_name'];
@@ -2642,6 +2790,12 @@ MixpanelLib.prototype._gdpr_update_persistence = function (options) {
     if (!this.get_config('disable_persistence') && this['persistence'].disabled !== disabled) {
         this['persistence'].set_disabled(disabled);
     }
+
+    if (disabled) {
+        _utils._.each(this.request_batchers, function (batcher) {
+            batcher.clear();
+        });
+    }
 };
 
 // call a base gdpr function after constructing the appropriate token and options args
@@ -2749,7 +2903,7 @@ MixpanelLib.prototype.opt_out_tracking = function (options) {
         'delete_user': true
     }, options);
 
-    // delete use and clear charges since these methods may be disabled by opt-out
+    // delete user and clear charges since these methods may be disabled by opt-out
     if (options['delete_user'] && this['people'] && this['people']._identify_called()) {
         this['people'].delete_user();
         this['people'].clear_charges();
@@ -2862,6 +3016,7 @@ MixpanelLib.prototype['set_group'] = MixpanelLib.prototype.set_group;
 MixpanelLib.prototype['add_group'] = MixpanelLib.prototype.add_group;
 MixpanelLib.prototype['remove_group'] = MixpanelLib.prototype.remove_group;
 MixpanelLib.prototype['track_with_groups'] = MixpanelLib.prototype.track_with_groups;
+MixpanelLib.prototype['stop_batch_requests'] = MixpanelLib.prototype.stop_batch_requests;
 
 // MixpanelPersistence Exports
 _mixpanelPersistence.MixpanelPersistence.prototype['properties'] = _mixpanelPersistence.MixpanelPersistence.prototype.properties;
@@ -3028,7 +3183,7 @@ function init_as_module() {
     return mixpanel_master;
 }
 
-},{"./autotrack":4,"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":10,"./mixpanel-notification":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./utils":15}],10:[function(require,module,exports){
+},{"./autotrack":4,"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":10,"./mixpanel-notification":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./request-batcher":15,"./utils":18}],10:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -3178,14 +3333,11 @@ MixpanelGroup.prototype._send_request = function (data, callback) {
     data['$token'] = this._get_config('token');
 
     var date_encoded_data = _utils._.encodeDates(data);
-    var truncated_data = _utils._.truncate(date_encoded_data, 255);
-    var json_data = _utils._.JSONEncode(date_encoded_data);
-    var encoded_data = _utils._.base64Encode(json_data);
-
-    _utils.console.log(data);
-    this._mixpanel._send_request(this._mixpanel.get_config('api_host') + '/groups/', { 'data': encoded_data }, this._mixpanel._prepare_callback(callback, truncated_data));
-
-    return truncated_data;
+    return this._mixpanel._track_or_batch({
+        truncated_data: _utils._.truncate(date_encoded_data, 255),
+        endpoint: this._get_config('api_host') + '/groups/',
+        batcher: this._mixpanel.request_batchers.groups
+    }, callback);
 };
 
 MixpanelGroup.prototype._is_reserved_property = function (prop) {
@@ -3210,7 +3362,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":2,"./gdpr-utils":7,"./utils":15}],11:[function(require,module,exports){
+},{"./api-actions":2,"./gdpr-utils":7,"./utils":18}],11:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -4422,7 +4574,7 @@ MixpanelNotification.prototype._yt_video_ready = _utils._.safewrap(function () {
 
 exports.MixpanelNotification = MixpanelNotification;
 
-},{"./mixpanel-persistence":13,"./property-filters":14,"./utils":15}],12:[function(require,module,exports){
+},{"./mixpanel-persistence":13,"./property-filters":14,"./utils":18}],12:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -4750,8 +4902,6 @@ MixpanelPeople.prototype._send_request = function (data, callback) {
 
     var date_encoded_data = _utils._.encodeDates(data);
     var truncated_data = _utils._.truncate(date_encoded_data, 255);
-    var json_data = _utils._.JSONEncode(date_encoded_data);
-    var encoded_data = _utils._.base64Encode(json_data);
 
     if (!this._identify_called()) {
         this._enqueue(data);
@@ -4765,12 +4915,11 @@ MixpanelPeople.prototype._send_request = function (data, callback) {
         return truncated_data;
     }
 
-    _utils.console.log('MIXPANEL PEOPLE REQUEST:');
-    _utils.console.log(truncated_data);
-
-    this._mixpanel._send_request(this._get_config('api_host') + '/engage/', { 'data': encoded_data }, this._mixpanel._prepare_callback(callback, truncated_data));
-
-    return truncated_data;
+    return this._mixpanel._track_or_batch({
+        truncated_data: truncated_data,
+        endpoint: this._get_config('api_host') + '/engage/',
+        batcher: this._mixpanel.request_batchers.people
+    }, callback);
 };
 
 MixpanelPeople.prototype._get_config = function (conf_var) {
@@ -4901,7 +5050,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":2,"./gdpr-utils":7,"./utils":15}],13:[function(require,module,exports){
+},{"./api-actions":2,"./gdpr-utils":7,"./utils":18}],13:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -5392,7 +5541,7 @@ exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.CAMPAIGN_IDS_KEY = CAMPAIGN_IDS_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":2,"./config":5,"./utils":15}],14:[function(require,module,exports){
+},{"./api-actions":2,"./config":5,"./utils":18}],14:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -5949,7 +6098,582 @@ function evaluateSelector(filters, properties) {
     }
 }
 
-},{"./utils":15}],15:[function(require,module,exports){
+},{"./utils":18}],15:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _requestQueue = require('./request-queue');
+
+var _utils = require('./utils');
+
+// eslint-disable-line camelcase
+
+// maximum interval between request retries after exponential backoff
+var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+var logger = (0, _utils.console_with_prefix)('batch');
+
+/**
+ * RequestBatcher: manages the queueing, flushing, retry etc of requests of one
+ * type (events, people, groups).
+ * Uses RequestQueue to manage the backing store.
+ * @constructor
+ */
+var RequestBatcher = function RequestBatcher(storageKey, endpoint, options) {
+    this.queue = new _requestQueue.RequestQueue(storageKey, { storage: options.storage });
+    this.endpoint = endpoint;
+
+    this.libConfig = options.libConfig;
+    this.sendRequest = options.sendRequestFunc;
+
+    // seed variable batch size + flush interval with configured values
+    this.batchSize = this.libConfig['batch_size'];
+    this.flushInterval = this.libConfig['batch_flush_interval_ms'];
+
+    this.stopped = false;
+};
+
+/**
+ * Add one item to queue.
+ */
+RequestBatcher.prototype.enqueue = function (item, cb) {
+    this.queue.enqueue(item, this.flushInterval, cb);
+};
+
+/**
+ * Start flushing batches at the configured time interval. Must call
+ * this method upon SDK init in order to send anything over the network.
+ */
+RequestBatcher.prototype.start = function () {
+    this.stopped = false;
+    this.flush();
+};
+
+/**
+ * Stop flushing batches. Can be restarted by calling start().
+ */
+RequestBatcher.prototype.stop = function () {
+    this.stopped = true;
+    if (this.timeoutID) {
+        clearTimeout(this.timeoutID);
+        this.timeoutID = null;
+    }
+};
+
+/**
+ * Clear out queue.
+ */
+RequestBatcher.prototype.clear = function () {
+    this.queue.clear();
+};
+
+/**
+ * Restore batch size configuration to whatever is set in the main SDK.
+ */
+RequestBatcher.prototype.resetBatchSize = function () {
+    this.batchSize = this.libConfig['batch_size'];
+};
+
+/**
+ * Restore flush interval time configuration to whatever is set in the main SDK.
+ */
+RequestBatcher.prototype.resetFlush = function () {
+    this.scheduleFlush(this.libConfig['batch_flush_interval_ms']);
+};
+
+/**
+ * Schedule the next flush in the given number of milliseconds.
+ */
+RequestBatcher.prototype.scheduleFlush = function (flushMS) {
+    this.flushInterval = flushMS;
+    if (!this.stopped) {
+        // don't schedule anymore if batching has been stopped
+        this.timeoutID = setTimeout(_utils._.bind(this.flush, this), this.flushInterval);
+    }
+};
+
+/**
+ * Flush one batch to network. Depending on success/failure modes, it will either
+ * remove the batch from the queue or leave it in for retry, and schedule the next
+ * flush. In cases of most network or API failures, it will back off exponentially
+ * when retrying.
+ * @param {Object} [options]
+ * @param {boolean} [options.sendBeacon] - whether to send batch with
+ * navigator.sendBeacon (only useful for sending batches before page unloads, as
+ * sendBeacon offers no callbacks or status indications)
+ */
+RequestBatcher.prototype.flush = function (options) {
+    try {
+
+        if (this.requestInProgress) {
+            logger.log('Flush: Request already in progress');
+            return;
+        }
+
+        options = options || {};
+        var currentBatchSize = this.batchSize;
+        var batch = this.queue.fillBatch(currentBatchSize);
+        if (batch.length < 1) {
+            this.resetFlush();
+            return; // nothing to do
+        }
+
+        this.requestInProgress = true;
+
+        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+        var startTime = new Date().getTime();
+        var dataForRequest = _utils._.map(batch, function (item) {
+            return item['payload'];
+        });
+        var batchSendCallback = _utils._.bind(function (res) {
+            this.requestInProgress = false;
+
+            try {
+
+                // handle API response in a try-catch to make sure we can reset the
+                // flush operation if something goes wrong
+
+                var removeItemsFromQueue = false;
+                if (_utils._.isObject(res) && res.error === 'timeout' && new Date().getTime() - startTime >= timeoutMS) {
+                    logger.error('Network timeout; retrying');
+                    this.flush();
+                } else if (_utils._.isObject(res) && res.xhr_req && (res.xhr_req['status'] >= 500 || res.xhr_req['status'] <= 0)) {
+                    // network or API error, retry
+                    var retryMS = this.flushInterval * 2;
+                    var headers = res.xhr_req['responseHeaders'];
+                    if (headers) {
+                        var retryAfter = headers['Retry-After'];
+                        if (retryAfter) {
+                            retryMS = parseInt(retryAfter, 10) * 1000 || retryMS;
+                        }
+                    }
+                    retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
+                    logger.error('Error; retry in ' + retryMS + ' ms');
+                    this.scheduleFlush(retryMS);
+                } else if (_utils._.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
+                    // 413 Payload Too Large
+                    if (batch.length > 1) {
+                        var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
+                        this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
+                        logger.error('413 response; reducing batch size to ' + this.batchSize);
+                        this.resetFlush();
+                    } else {
+                        logger.error('Single-event request too large; dropping', batch);
+                        this.resetBatchSize();
+                        removeItemsFromQueue = true;
+                    }
+                } else {
+                    // successful network request+response; remove each item in batch from queue
+                    // (even if it was e.g. a 400, in which case retrying won't help)
+                    removeItemsFromQueue = true;
+                }
+
+                if (removeItemsFromQueue) {
+                    this.queue.removeItemsByID(_utils._.map(batch, function (item) {
+                        return item['id'];
+                    }), _utils._.bind(this.flush, this) // handle next batch if the queue isn't empty
+                    );
+                }
+            } catch (err) {
+                logger.error('Error handling API response', err);
+                this.resetFlush();
+            }
+        }, this);
+        var requestOptions = {
+            method: 'POST',
+            verbose: true,
+            ignore_json_errors: true, // eslint-disable-line camelcase
+            timeout_ms: timeoutMS // eslint-disable-line camelcase
+        };
+        if (options.sendBeacon) {
+            requestOptions.transport = 'sendBeacon';
+        }
+        logger.log('MIXPANEL REQUEST:', this.endpoint, dataForRequest);
+        this.sendRequest(this.endpoint, dataForRequest, requestOptions, batchSendCallback);
+    } catch (err) {
+        logger.error('Error flushing request queue', err);
+        this.resetFlush();
+    }
+};
+
+exports.RequestBatcher = RequestBatcher;
+
+},{"./request-queue":16,"./utils":18}],16:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _sharedLock = require('./shared-lock');
+
+var _utils = require('./utils');
+
+// eslint-disable-line camelcase
+
+var logger = (0, _utils.console_with_prefix)('batch');
+
+/**
+ * RequestQueue: queue for batching API requests with localStorage backup for retries.
+ * Maintains an in-memory queue which represents the source of truth for the current
+ * page, but also writes all items out to a copy in the browser's localStorage, which
+ * can be read on subsequent pageloads and retried. For batchability, all the request
+ * items in the queue should be of the same type (events, people updates, group updates)
+ * so they can be sent in a single request to the same API endpoint.
+ *
+ * LocalStorage keying and locking: In order for reloads and subsequent pageloads of
+ * the same site to access the same persisted data, they must share the same localStorage
+ * key (for instance based on project token and queue type). Therefore access to the
+ * localStorage entry is guarded by an asynchronous mutex (SharedLock) to prevent
+ * simultaneously open windows/tabs from overwriting each other's data (which would lead
+ * to data loss in some situations).
+ * @constructor
+ */
+var RequestQueue = function RequestQueue(storageKey, options) {
+    options = options || {};
+    this.storageKey = storageKey;
+    this.storage = options.storage || window.localStorage;
+    this.lock = new _sharedLock.SharedLock(storageKey, { storage: this.storage });
+
+    this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
+
+    this.memQueue = [];
+};
+
+/**
+ * Add one item to queues (memory and localStorage). The queued entry includes
+ * the given item along with an auto-generated ID and a "flush-after" timestamp.
+ * It is expected that the item will be sent over the network and dequeued
+ * before the flush-after time; if this doesn't happen it is considered orphaned
+ * (e.g., the original tab where it was enqueued got closed before it could be
+ * sent) and the item can be sent by any tab that finds it in localStorage.
+ *
+ * The final callback param is called with a param indicating success or
+ * failure of the enqueue operation; it is asynchronous because the localStorage
+ * lock is asynchronous.
+ */
+RequestQueue.prototype.enqueue = function (item, flushInterval, cb) {
+    var queueEntry = {
+        'id': (0, _utils.cheap_guid)(),
+        'flushAfter': new Date().getTime() + flushInterval * 2,
+        'payload': item
+    };
+
+    this.lock.withLock(_utils._.bind(function lockAcquired() {
+        var succeeded;
+        try {
+            var storedQueue = this.readFromStorage();
+            storedQueue.push(queueEntry);
+            succeeded = this.saveToStorage(storedQueue);
+            if (succeeded) {
+                // only add to in-memory queue when storage succeeds
+                this.memQueue.push(queueEntry);
+            }
+        } catch (err) {
+            logger.error('Error enqueueing item', item);
+            succeeded = false;
+        }
+        if (cb) {
+            cb(succeeded);
+        }
+    }, this), function lockFailure(err) {
+        logger.error('Error acquiring storage lock', err);
+        if (cb) {
+            cb(false);
+        }
+    }, this.pid);
+};
+
+/**
+ * Read out the given number of queue entries. If this.memQueue
+ * has fewer than batchSize items, then look for "orphaned" items
+ * in the persisted queue (items where the 'flushAfter' time has
+ * already passed).
+ */
+RequestQueue.prototype.fillBatch = function (batchSize) {
+    var batch = this.memQueue.slice(0, batchSize);
+    if (batch.length < batchSize) {
+        // don't need lock just to read events; localStorage is thread-safe
+        // and the worst that could happen is a duplicate send of some
+        // orphaned events, which will be deduplicated on the server side
+        var storedQueue = this.readFromStorage();
+        if (storedQueue.length) {
+            // item IDs already in batch; don't duplicate out of storage
+            var idsInBatch = {}; // poor man's Set
+            _utils._.each(batch, function (item) {
+                idsInBatch[item['id']] = true;
+            });
+
+            for (var i = 0; i < storedQueue.length; i++) {
+                var item = storedQueue[i];
+                if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                    batch.push(item);
+                    if (batch.length >= batchSize) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return batch;
+};
+
+/**
+ * Remove items with matching 'id' from array (immutably)
+ * also remove any item without a valid id (e.g., malformed
+ * storage entries).
+ */
+var filterOutIDsAndInvalid = function filterOutIDsAndInvalid(items, idSet) {
+    var filteredItems = [];
+    _utils._.each(items, function (item) {
+        if (item['id'] && !idSet[item['id']]) {
+            filteredItems.push(item);
+        }
+    });
+    return filteredItems;
+};
+
+/**
+ * Remove items with matching IDs from both in-memory queue
+ * and persisted queue
+ */
+RequestQueue.prototype.removeItemsByID = function (ids, cb) {
+    var idSet = {}; // poor man's Set
+    _utils._.each(ids, function (id) {
+        idSet[id] = true;
+    });
+
+    this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
+    this.lock.withLock(_utils._.bind(function lockAcquired() {
+        var succeeded;
+        try {
+            var storedQueue = this.readFromStorage();
+            storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+            succeeded = this.saveToStorage(storedQueue);
+        } catch (err) {
+            logger.error('Error removing items', ids);
+            succeeded = false;
+        }
+        if (cb) {
+            cb(succeeded);
+        }
+    }, this), function lockFailure(err) {
+        logger.error('Error acquiring storage lock', err);
+        if (cb) {
+            cb(false);
+        }
+    }, this.pid);
+};
+
+/**
+ * Read and parse items array from localStorage entry, handling
+ * malformed/missing data if necessary.
+ */
+RequestQueue.prototype.readFromStorage = function () {
+    var storageEntry;
+    try {
+        storageEntry = this.storage.getItem(this.storageKey);
+        if (storageEntry) {
+            storageEntry = (0, _utils.JSONParse)(storageEntry);
+            if (!_utils._.isArray(storageEntry)) {
+                logger.error('Invalid storage entry:', storageEntry);
+                storageEntry = null;
+            }
+        }
+    } catch (err) {
+        logger.error('Error retrieving queue', err);
+        storageEntry = null;
+    }
+    return storageEntry || [];
+};
+
+/**
+ * Serialize the given items array to localStorage.
+ */
+RequestQueue.prototype.saveToStorage = function (queue) {
+    try {
+        this.storage.setItem(this.storageKey, (0, _utils.JSONStringify)(queue));
+        return true;
+    } catch (err) {
+        logger.error('Error saving queue', err);
+        return false;
+    }
+};
+
+/**
+ * Clear out queues (memory and localStorage).
+ */
+RequestQueue.prototype.clear = function () {
+    this.memQueue = [];
+    this.storage.removeItem(this.storageKey);
+};
+
+exports.RequestQueue = RequestQueue;
+
+},{"./shared-lock":17,"./utils":18}],17:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _utils = require('./utils');
+
+// eslint-disable-line camelcase
+
+var logger = (0, _utils.console_with_prefix)('lock');
+
+/**
+ * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
+ * window/tab at a time will be able to access shared resources.
+ *
+ * Based on the Alur and Taubenfeld fast lock
+ * (http://www.cs.rochester.edu/research/synchronization/pseudocode/fastlock.html)
+ * with an added timeout to ensure there will be eventual progress in the event
+ * that a window is closed in the middle of the callback.
+ *
+ * Implementation based on the original version by David Wolever (https://github.com/wolever)
+ * at https://gist.github.com/wolever/5fd7573d1ef6166e8f8c4af286a69432.
+ *
+ * @example
+ * const myLock = new SharedLock('some-key');
+ * myLock.withLock(function() {
+ *   console.log('I hold the mutex!');
+ * });
+ *
+ * @constructor
+ */
+var SharedLock = function SharedLock(key, options) {
+    options = options || {};
+
+    this.storageKey = key;
+    this.storage = options.storage || window.localStorage;
+    this.pollIntervalMS = options.pollIntervalMS || 100;
+    this.timeoutMS = options.timeoutMS || 2000;
+};
+
+// pass in a specific pid to test contention scenarios; otherwise
+// it is chosen randomly for each acquisition attempt
+SharedLock.prototype.withLock = function (lockedCB, errorCB, pid) {
+    if (!pid && typeof errorCB !== 'function') {
+        pid = errorCB;
+        errorCB = null;
+    }
+
+    var i = pid || new Date().getTime() + '|' + Math.random();
+    var startTime = new Date().getTime();
+
+    var key = this.storageKey;
+    var pollIntervalMS = this.pollIntervalMS;
+    var timeoutMS = this.timeoutMS;
+    var storage = this.storage;
+
+    var keyX = key + ':X';
+    var keyY = key + ':Y';
+    var keyZ = key + ':Z';
+
+    var reportError = function reportError(err) {
+        errorCB && errorCB(err);
+    };
+
+    var delay = function delay(cb) {
+        if (new Date().getTime() - startTime > timeoutMS) {
+            logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+            storage.removeItem(keyZ);
+            storage.removeItem(keyY);
+            loop();
+            return;
+        }
+        setTimeout(function () {
+            try {
+                cb();
+            } catch (err) {
+                reportError(err);
+            }
+        }, pollIntervalMS * (Math.random() + 0.1));
+    };
+
+    var waitFor = function waitFor(predicate, cb) {
+        if (predicate()) {
+            cb();
+        } else {
+            delay(function () {
+                waitFor(predicate, cb);
+            });
+        }
+    };
+
+    var getSetY = function getSetY() {
+        var valY = storage.getItem(keyY);
+        if (valY && valY !== i) {
+            // if Y == i then this process already has the lock (useful for test cases)
+            return false;
+        } else {
+            storage.setItem(keyY, i);
+            if (storage.getItem(keyY) === i) {
+                return true;
+            } else {
+                if (!(0, _utils.localStorageSupported)(storage, true)) {
+                    throw new Error('localStorage support dropped while acquiring lock');
+                }
+                return false;
+            }
+        }
+    };
+
+    var loop = function loop() {
+        storage.setItem(keyX, i);
+
+        waitFor(getSetY, function () {
+            if (storage.getItem(keyX) === i) {
+                criticalSection();
+                return;
+            }
+
+            delay(function () {
+                if (storage.getItem(keyY) !== i) {
+                    loop();
+                    return;
+                }
+                waitFor(function () {
+                    return !storage.getItem(keyZ);
+                }, criticalSection);
+            });
+        });
+    };
+
+    var criticalSection = function criticalSection() {
+        storage.setItem(keyZ, '1');
+        try {
+            lockedCB();
+        } finally {
+            storage.removeItem(keyZ);
+            if (storage.getItem(keyY) === i) {
+                storage.removeItem(keyY);
+            }
+            if (storage.getItem(keyX) === i) {
+                storage.removeItem(keyX);
+            }
+        }
+    };
+
+    try {
+        if ((0, _utils.localStorageSupported)(storage, true)) {
+            loop();
+        } else {
+            throw new Error('localStorage support check failed');
+        }
+    } catch (err) {
+        reportError(err);
+    }
+};
+
+exports.SharedLock = SharedLock;
+
+},{"./utils":18}],18:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -6003,6 +6727,7 @@ var ArrayProto = Array.prototype,
 var nativeBind = FuncProto.bind,
     nativeForEach = ArrayProto.forEach,
     nativeIndexOf = ArrayProto.indexOf,
+    nativeMap = ArrayProto.map,
     nativeIsArray = Array.isArray,
     breaker = {};
 
@@ -6053,6 +6778,20 @@ var console = {
             }
         }
     }
+};
+
+var log_func_with_prefix = function log_func_with_prefix(func, prefix) {
+    return function () {
+        arguments[0] = '[' + prefix + '] ' + arguments[0];
+        return func.apply(console, arguments);
+    };
+};
+var console_with_prefix = function console_with_prefix(prefix) {
+    return {
+        log: log_func_with_prefix(console.log, prefix),
+        error: log_func_with_prefix(console.error, prefix),
+        critical: log_func_with_prefix(console.critical, prefix)
+    };
 };
 
 // UNDERSCORE
@@ -6172,6 +6911,18 @@ _.toArray = function (iterable) {
         return slice.call(iterable);
     }
     return _.values(iterable);
+};
+
+_.map = function (arr, callback) {
+    if (nativeMap && arr.map === nativeMap) {
+        return arr.map(callback);
+    } else {
+        var results = [];
+        _.each(arr, function (item) {
+            results.push(callback(item));
+        });
+        return results;
+    }
 };
 
 _.keys = function (obj) {
@@ -7008,31 +7759,37 @@ _.cookie = {
     }
 };
 
-// _.localStorage
-var _localStorage_supported = null;
-_.localStorage = {
-    is_supported: function is_supported() {
-        if (_localStorage_supported !== null) {
-            return _localStorage_supported;
-        }
+var _localStorageSupported = null;
+var localStorageSupported = function localStorageSupported(storage, forceCheck) {
+    if (_localStorageSupported !== null && !forceCheck) {
+        return _localStorageSupported;
+    }
 
-        var supported = true;
-        try {
-            var key = '__mplssupport__',
-                val = 'xyz';
-            _.localStorage.set(key, val);
-            if (_.localStorage.get(key) !== val) {
-                supported = false;
-            }
-            _.localStorage.remove(key);
-        } catch (err) {
+    var supported = true;
+    try {
+        storage = storage || window.localStorage;
+        var key = '__mplss_' + cheap_guid(8),
+            val = 'xyz';
+        storage.setItem(key, val);
+        if (storage.getItem(key) !== val) {
             supported = false;
         }
+        storage.removeItem(key);
+    } catch (err) {
+        supported = false;
+    }
+
+    _localStorageSupported = supported;
+    return supported;
+};
+
+// _.localStorage
+_.localStorage = {
+    is_supported: function is_supported(force_check) {
+        var supported = localStorageSupported(null, force_check);
         if (!supported) {
             console.error('localStorage unsupported; falling back to cookie store');
         }
-
-        _localStorage_supported = supported;
         return supported;
     },
 
@@ -7545,7 +8302,7 @@ _.info = {
             '$screen_width': screen.width,
             'mp_lib': 'web',
             '$lib_version': _config2['default'].LIB_VERSION,
-            '$insert_id': Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10),
+            '$insert_id': cheap_guid(),
             'time': _.timestamp() / 1000 // epoch time in seconds
         });
     },
@@ -7567,6 +8324,11 @@ _.info = {
             'mp_platform': _.info.os()
         });
     }
+};
+
+var cheap_guid = function cheap_guid(maxlen) {
+    var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+    return maxlen ? guid.substring(0, maxlen) : guid;
 };
 
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
@@ -7597,6 +8359,15 @@ var extract_domain = function extract_domain(hostname) {
     return matches ? matches[0] : '';
 };
 
+var JSONStringify = null,
+    JSONParse = null;
+if (typeof JSON !== 'undefined') {
+    exports.JSONStringify = JSONStringify = JSON.stringify;
+    exports.JSONParse = JSONParse = JSON.parse;
+}
+exports.JSONStringify = JSONStringify = JSONStringify || _.JSONEncode;
+exports.JSONParse = JSONParse = JSONParse || _.JSONDecode;
+
 // EXPORTS (for closure compiler)
 _['toArray'] = _.toArray;
 _['isObject'] = _.isObject;
@@ -7616,6 +8387,11 @@ exports.console = console;
 exports.window = win;
 exports.document = document;
 exports.navigator = navigator;
+exports.cheap_guid = cheap_guid;
+exports.console_with_prefix = console_with_prefix;
 exports.extract_domain = extract_domain;
+exports.localStorageSupported = localStorageSupported;
+exports.JSONStringify = JSONStringify;
+exports.JSONParse = JSONParse;
 
 },{"./config":5}]},{},[1]);

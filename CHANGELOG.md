@@ -1,3 +1,6 @@
+**2.36.0** (7 May 2020)
+- Add batch/queue/retry support for event-tracking and people/group profile updates
+
 **2.35.0** (17 Mar 2020)
 - Fix cross-subdomain tracking for various edge cases (extra-long TLDs, very short .com/.org domains)
 - Add `cookie_domain` config option to allow specifying domain explicitly for cross-subdomain tracking
