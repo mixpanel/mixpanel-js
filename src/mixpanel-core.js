@@ -1285,7 +1285,7 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // milliseconds to wait between sending batch requests
  *       batch_flush_interval_ms: 5000,
  *
- *       // milliseconds to wait for network response to batch requests
+ *       // milliseconds to wait for network responses to batch requests
  *       // before they are considered timed-out and retried
  *       batch_request_timeout_ms: 90000,
  *
