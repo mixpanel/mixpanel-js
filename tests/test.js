@@ -3743,9 +3743,11 @@
                         'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
                     ]});
                     startRecordingXhrRequests.call(this);
-                    this.sendBeaconSpy = sinon.spy(navigator, 'sendBeacon');
-                    if (localStorage.setItem.restore) {
-                        localStorage.setItem.restore();
+                    if (navigator.sendBeacon) {
+                        this.sendBeaconSpy = sinon.spy(navigator, 'sendBeacon');
+                    }
+                    if (Storage.prototype.setItem.restore) {
+                        Storage.prototype.setItem.restore();
                     }
                     clearBatchLocalStorage();
                     if (mixpanel.batchtest) {
@@ -3754,14 +3756,16 @@
                     initBatchLibInstance();
                 }, function() {
                     stopRecordingXhrRequests.call(this);
-                    this.sendBeaconSpy.restore();
+                    if (this.sendBeaconSpy) {
+                        this.sendBeaconSpy.restore();
+                    }
                     clearBatchLocalStorage();
                     if (mixpanel.batchtest) {
                         clearLibInstance(mixpanel.batchtest);
                     }
                     this.clock.restore();
-                    if (localStorage.setItem.restore) {
-                        localStorage.setItem.restore();
+                    if (Storage.prototype.setItem.restore) {
+                        Storage.prototype.setItem.restore();
                     }
                 });
 
@@ -3897,7 +3901,7 @@
                 });
 
                 test('failure to enqueue in localStorage causes immediate track request', 3, function() {
-                    sinon.stub(localStorage, 'setItem').throws('localStorage disabled');
+                    sinon.stub(Storage.prototype, 'setItem').throws('localStorage disabled');
                     mixpanel.batchtest.track('failure event');
                     same(this.requests.length, 1, "request should have been made immediately upon storage failure");
                     var request_data = getRequestData(this.requests[0]);
@@ -3919,14 +3923,16 @@
                     same(this.requests.length, 1, "should not have made any new requests after event was sent");
                 });
 
-                test('queued requests are flushed via sendBeacon before page unload', 3, function() {
-                    mixpanel.batchtest.track('queued event');
-                    window.dispatchEvent(new Event('unload'));
-                    ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
-                    var request_data = getRequestData({requestBody: this.sendBeaconSpy.args[0][1]});
-                    same(request_data.length, 1, "sendBeacon should have sent a single event");
-                    same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
-                });
+                if (navigator.sendBeacon && window.addEventListener) {
+                    test('queued requests are flushed via sendBeacon before page unload', 3, function() {
+                        mixpanel.batchtest.track('queued event');
+                        window.dispatchEvent(new Event('unload'));
+                        ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
+                        var request_data = getRequestData({requestBody: this.sendBeaconSpy.args[0][1]});
+                        same(request_data.length, 1, "sendBeacon should have sent a single event");
+                        same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
+                    });
+                }
 
                 test('queued requests are cancelled if opt-out is called', 2, function() {
                     mixpanel.batchtest.track('pre-opt-out event 1');
