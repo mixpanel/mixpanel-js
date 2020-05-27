@@ -99,7 +99,7 @@ var DEFAULT_CONFIG = {
     'test':                              false,
     'verbose':                           false,
     'img':                               false,
-    'track_pageview':                    true,
+    'track_pageview':                    false,
     'debug':                             false,
     'track_links_timeout':               300,
     'cookie_expiration':                 365,
@@ -1358,9 +1358,6 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // the amount of time track_links will
  *       // wait for Mixpanel's servers to respond
  *       track_links_timeout: 300
- *
- *       // should we track a page view on page load
- *       track_pageview: true
  *
  *       // if you set upgrade to be true, the library will check for
  *       // a cookie from our old js library and import super
