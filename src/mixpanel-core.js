@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { _, console, userAgent, window, document, navigator } from './utils';
+import { _, console, userAgent, window, document, navigator, determine_eligibility } from './utils';
 import { autotrack } from './autotrack';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
@@ -247,7 +247,14 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this['config'] = {};
     this['_triggered_notifs'] = [];
 
-    this.set_config(_.extend({}, DEFAULT_CONFIG, config, {
+    // rollout: enable batch_requests by default for 10% of projects
+    // (only if they have not specified a value in their init config)
+    var variable_features = {};
+    if (!('batch_requests' in (config || {})) && determine_eligibility(token, 'batch', 10)) {
+        variable_features['batch_requests'] = true;
+    }
+
+    this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
         'name': name,
         'token': token,
         'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
