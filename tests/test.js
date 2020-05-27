@@ -20,6 +20,7 @@
 
                 mixpanel.init(this.token, {
                     track_pageview: false,
+                    batch_requests: false,
                     debug: true
                 }, "test");
                 _.each(_jsc, function(key) {
@@ -3211,7 +3212,7 @@
             });
 
             asyncTest('events tracked before decide call trigger notification once decide call returns', 1, function() {
-              mixpanel.init('notif_race', {}, 'notif_race');
+              mixpanel.init('notif_race', {batch_requests: false}, 'notif_race');
 
               mixpanel.notif_race.track('test_event');
 
