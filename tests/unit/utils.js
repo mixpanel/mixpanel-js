@@ -1,6 +1,37 @@
 import { expect } from 'chai';
 
-import { extract_domain } from '../../src/utils';
+import { extract_domain, determine_eligibility } from '../../src/utils';
+
+describe(`determine_eligibility`, function() {
+  it(`returns different results for different strings`, function() {
+    expect(determine_eligibility(`foobar`, 50)).to.be.ok;
+    expect(determine_eligibility(`Obrecht`, 50)).not.to.be.ok;
+    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, 50)).not.to.be.ok;
+    expect(determine_eligibility(`259bc8bc47e5d846a5f605291d6a3081`, 50)).to.be.ok;
+    expect(determine_eligibility(`4d7e557043413032be13f331d67075f0`, 50)).to.be.ok;
+    expect(determine_eligibility(`9297ad31ef1e5b2abca601c17e31e2ca`, 50)).not.to.be.ok;
+    expect(determine_eligibility(`93d75eb9284e619c62e9d3213246ae7a`, 50)).not.to.be.ok;
+  });
+
+  it(`respects percentage threshold deterministically`, function() {
+    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, 10)).not.to.be.ok;
+    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, 25)).not.to.be.ok;
+    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, 50)).not.to.be.ok;
+    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, 55)).to.be.ok;
+    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, 75)).to.be.ok;
+    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, 95)).to.be.ok;
+  });
+
+  it(`lets everything through at 100%`, function() {
+    expect(determine_eligibility(`foobar`, 100)).to.be.ok;
+    expect(determine_eligibility(`Obrecht`, 100)).to.be.ok;
+    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, 100)).to.be.ok;
+    expect(determine_eligibility(`259bc8bc47e5d846a5f605291d6a3081`, 100)).to.be.ok;
+    expect(determine_eligibility(`4d7e557043413032be13f331d67075f0`, 100)).to.be.ok;
+    expect(determine_eligibility(`9297ad31ef1e5b2abca601c17e31e2ca`, 100)).to.be.ok;
+    expect(determine_eligibility(`93d75eb9284e619c62e9d3213246ae7a`, 100)).to.be.ok;
+  });
+});
 
 describe(`extract_domain`, function() {
   it(`matches simple domain names`, function() {
