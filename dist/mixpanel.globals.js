@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.36.0'
+        LIB_VERSION: '2.37.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1651,6 +1651,28 @@
         var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
         return maxlen ? guid.substring(0, maxlen) : guid;
     };
+
+    /**
+     * Check deterministically whether to include or exclude from a feature rollout/test based on the
+     * given string and the desired percentage to include.
+     * @param {String} str - string to run the check against (for instance a project's token)
+     * @param {String} feature - name of feature (for inclusion in hash, to ensure different results
+     * for different features)
+     * @param {Number} percent_allowed - percentage chance that a given string will be included
+     * @returns {Boolean} whether the given string should be included
+     */
+    var determine_eligibility = _.safewrap(function(str, feature, percent_allowed) {
+        str = str + feature;
+
+        // Bernstein's hash: http://www.cse.yorku.ca/~oz/hash.html#djb2
+        var hash = 5381;
+        for (var i = 0; i < str.length; i++) {
+            hash = ((hash << 5) + hash) + str.charCodeAt(i);
+            hash = hash & hash;
+        }
+        var dart = (hash >>> 0) % 100;
+        return dart < percent_allowed;
+    });
 
     // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
     var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
@@ -6313,7 +6335,7 @@
         'test':                              false,
         'verbose':                           false,
         'img':                               false,
-        'track_pageview':                    true,
+        'track_pageview':                    false,
         'debug':                             false,
         'track_links_timeout':               300,
         'cookie_expiration':                 365,
@@ -6461,7 +6483,14 @@
         this['config'] = {};
         this['_triggered_notifs'] = [];
 
-        this.set_config(_.extend({}, DEFAULT_CONFIG, config, {
+        // rollout: enable batch_requests by default for 10% of projects
+        // (only if they have not specified a value in their init config)
+        var variable_features = {};
+        if (!('batch_requests' in (config || {})) && determine_eligibility(token, 'batch', 10)) {
+            variable_features['batch_requests'] = true;
+        }
+
+        this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
             'name': name,
             'token': token,
             'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
@@ -7499,7 +7528,7 @@
      *       // milliseconds to wait between sending batch requests
      *       batch_flush_interval_ms: 5000,
      *
-     *       // milliseconds to wait for network response to batch requests
+     *       // milliseconds to wait for network responses to batch requests
      *       // before they are considered timed-out and retried
      *       batch_request_timeout_ms: 90000,
      *
@@ -7565,9 +7594,6 @@
      *       // the amount of time track_links will
      *       // wait for Mixpanel's servers to respond
      *       track_links_timeout: 300
-     *
-     *       // should we track a page view on page load
-     *       track_pageview: true
      *
      *       // if you set upgrade to be true, the library will check for
      *       // a cookie from our old js library and import super
