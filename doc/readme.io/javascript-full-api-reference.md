@@ -440,7 +440,7 @@ The default config is:
   // milliseconds to wait between sending batch requests
   batch_flush_interval_ms: 5000,
 
-  // milliseconds to wait for network response to batch requests
+  // milliseconds to wait for network responses to batch requests
   // before they are considered timed-out and retried
   batch_request_timeout_ms: 90000,
 
@@ -506,9 +506,6 @@ The default config is:
   // the amount of time track_links will
   // wait for Mixpanel's servers to respond
   track_links_timeout: 300
-
-  // should we track a page view on page load
-  track_pageview: true
 
   // if you set upgrade to be true, the library will check for
   // a cookie from our old js library and import super
