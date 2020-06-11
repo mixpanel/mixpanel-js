@@ -310,11 +310,17 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
 MixpanelLib.prototype._loaded = function() {
     this.get_config('loaded')(this);
+    this._set_default_superprops();
+};
 
-    // this happens after so a user can call identify/name_tag in
-    // the loaded callback
-    if (this.get_config('track_pageview')) {
-        this.track_pageview();
+// update persistence with info on referrer, UTM params, etc
+MixpanelLib.prototype._set_default_superprops = function() {
+    this['persistence'].update_search_keyword(document.referrer);
+    if (this.get_config('store_google')) {
+        this['persistence'].update_campaign_params();
+    }
+    if (this.get_config('save_referrer')) {
+        this['persistence'].update_referrer_info(document.referrer);
     }
 };
 
@@ -745,11 +751,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
     }
 
-    // update persistence
-    this['persistence'].update_search_keyword(document.referrer);
-
-    if (this.get_config('store_google')) { this['persistence'].update_campaign_params(); }
-    if (this.get_config('save_referrer')) { this['persistence'].update_referrer_info(document.referrer); }
+    this._set_default_superprops();
 
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
