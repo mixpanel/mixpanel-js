@@ -99,7 +99,6 @@ var DEFAULT_CONFIG = {
     'test':                              false,
     'verbose':                           false,
     'img':                               false,
-    'track_pageview':                    false,
     'debug':                             false,
     'track_links_timeout':               300,
     'cookie_expiration':                 365,
