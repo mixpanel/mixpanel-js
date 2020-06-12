@@ -48,6 +48,10 @@ function stripPTags(str) {
   return str.replace(/<p>([\S\s]+?)<\/?p>/g, `$1`);
 }
 
+function isDeprecated(item) {
+  return item.tags.find(tag => tag.type === `deprecated`);
+}
+
 // transform the structured data dox parses out of our JSDoc and feed it through
 // the lodash template at template.md
 function doxToMD(items) {
@@ -62,7 +66,8 @@ function doxToMD(items) {
           !item.isPrivate &&
           item.ctx &&
           !item.ctx.name.startsWith(`_`) &&
-          item.ctx.constructor === constructor
+          item.ctx.constructor === constructor &&
+          !isDeprecated(item)
         )
 
         // sort by method name within each namespace
