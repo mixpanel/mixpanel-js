@@ -1178,8 +1178,14 @@
 
             mpmodule("mixpanel");
 
-            var get_props_without_internal_ids = function(instance) {
-                return _.omit(instance.persistence.properties(), 'distinct_id', '$device_id');
+            var get_superprops_without_defaults = function(instance) {
+                return _.omit(
+                    instance.persistence.properties(),
+                    'distinct_id',
+                    '$initial_referrer',
+                    '$initial_referring_domain',
+                    '$device_id'
+                );
             };
 
 
@@ -1213,7 +1219,7 @@
                     persistence_name: 'mpl_t',
                     track_pageview: false
                 }, 'mpl3');
-                same(get_props_without_internal_ids(mixpanel.mpl3), {}, "Super properties shouldn't be loaded from mixpanel persistence")
+                same(get_superprops_without_defaults(mixpanel.mpl3), {}, "Super properties shouldn't be loaded from mixpanel persistence")
 
                 clearLibInstance(mixpanel.mpl);
                 clearLibInstance(mixpanel.mpl2);
@@ -1333,13 +1339,13 @@
                 var props = {
                         'hi': 'there'
                     },
-                    persisted_props = get_props_without_internal_ids(mixpanel.test);
+                    persisted_props = get_superprops_without_defaults(mixpanel.test);
 
                 same(persisted_props, {}, "empty before setting");
 
                 mixpanel.test.register(props);
 
-                same(get_props_without_internal_ids(mixpanel.test), props, "properties set properly");
+                same(get_superprops_without_defaults(mixpanel.test), props, "properties set properly");
             });
 
             test("register_once", 4, function() {
@@ -1350,17 +1356,17 @@
                         'hi': 'ho'
                     }
 
-                same(get_props_without_internal_ids(mixpanel.test), {}, "empty before setting");
+                same(get_superprops_without_defaults(mixpanel.test), {}, "empty before setting");
 
                 mixpanel.test.register_once(props);
-                same(get_props_without_internal_ids(mixpanel.test), props, "properties set properly");
+                same(get_superprops_without_defaults(mixpanel.test), props, "properties set properly");
 
                 mixpanel.test.register_once(props1);
-                same(get_props_without_internal_ids(mixpanel.test), props, "register_once doesn't override already set super property");
+                same(get_superprops_without_defaults(mixpanel.test), props, "register_once doesn't override already set super property");
 
                 mixpanel.test.register_once({falsey: 0});
                 mixpanel.test.register_once({falsey: 1});
-                ok(contains_obj(get_props_without_internal_ids(mixpanel.test), {falsey: 0}), "register_once doesn't override already-set falsey value");
+                ok(contains_obj(get_superprops_without_defaults(mixpanel.test), {falsey: 0}), "register_once doesn't override already-set falsey value");
             });
 
             test("identify", 3, function() {
@@ -1373,10 +1379,10 @@
 
             test("name_tag", 2, function() {
                 var name_tag = "fake name";
-                same(get_props_without_internal_ids(mixpanel.test), {}, "empty before setting");
+                same(get_superprops_without_defaults(mixpanel.test), {}, "empty before setting");
 
                 mixpanel.test.name_tag(name_tag);
-                same(get_props_without_internal_ids(mixpanel.test), {
+                same(get_superprops_without_defaults(mixpanel.test), {
                     'mp_name_tag': name_tag
                 }, "name tag set");
             });
