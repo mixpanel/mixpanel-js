@@ -1,3 +1,7 @@
+**2.38.0** (12 Jun 2020)
+- Ensure that first-touch referrer/UTM params get saved in superproperty storage even if no events are tracked on the page
+- Remove `track_pageview` config option altogether
+
 **2.37.0** (27 May 2020)
 - Turn off default pageview-tracking (these mp_page_view events have been dropped server-side for years already)
 - Begin rollout of batching as default mode for tracking (10% of projects)
