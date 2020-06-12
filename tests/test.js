@@ -19,7 +19,6 @@
                 this.id = rand_name();
 
                 mixpanel.init(this.token, {
-                    track_pageview: false,
                     batch_requests: false,
                     debug: true
                 }, "test");
@@ -1195,10 +1194,7 @@
                         'test': 'all'
                     };
 
-                mixpanel.init(token, {
-                    persistence_name: 'mpl_t2',
-                    track_pageview: false
-                }, 'mpl');
+                mixpanel.init(token, {persistence_name: 'mpl_t2'}, 'mpl');
                 mixpanel.mpl.register(sp);
                 ok(contains_obj(mixpanel.mpl.persistence.props, sp), "Super properties set correctly");
                 var props = mixpanel.mpl.persistence.properties();
@@ -1207,18 +1203,12 @@
                 same(distinct_id, device_id);
 
                 // Recreate object - should pull super props from persistence
-                mixpanel.init(token, {
-                    persistence_name: 'mpl_t2',
-                    track_pageview: false
-                }, 'mpl2');
+                mixpanel.init(token, {persistence_name: 'mpl_t2'}, 'mpl2');
                 if (!window.COOKIE_FAILURE_TEST) {
                     ok(contains_obj(mixpanel.mpl2.persistence.props, sp), "Super properties saved to persistence");
                 }
 
-                mixpanel.init(token, {
-                    persistence_name: 'mpl_t',
-                    track_pageview: false
-                }, 'mpl3');
+                mixpanel.init(token, {persistence_name: 'mpl_t'}, 'mpl3');
                 same(get_superprops_without_defaults(mixpanel.mpl3), {}, "Super properties shouldn't be loaded from mixpanel persistence")
 
                 clearLibInstance(mixpanel.mpl);
@@ -1239,9 +1229,6 @@
                 var i_ref = "$initial_referrer",
                     i_ref_d = "$initial_referring_domain",
                     none_val = "$direct";
-
-                // force properties to be created
-                mixpanel.test.track_pageview();
 
                 ok(i_ref in mixpanel.test.persistence.props, "initial referrer saved");
                 ok(i_ref_d in mixpanel.test.persistence.props, "initial referring domain saved");
@@ -3739,7 +3726,6 @@
                     options = _.extend({
                         batch_requests: true,
                         autotrack: false,
-                        track_pageview: false
                     }, options);
                     mixpanel.init(BATCH_TOKEN, options, 'batchtest');
                     mixpanel.batchtest.clear_opt_in_out_tracking();
