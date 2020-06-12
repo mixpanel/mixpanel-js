@@ -2,7 +2,7 @@ define(function () { 'use strict';
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.37.0'
+        LIB_VERSION: '2.38.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -6334,7 +6334,6 @@ define(function () { 'use strict';
         'test':                              false,
         'verbose':                           false,
         'img':                               false,
-        'track_pageview':                    false,
         'debug':                             false,
         'track_links_timeout':               300,
         'cookie_expiration':                 365,
@@ -6545,11 +6544,17 @@ define(function () { 'use strict';
 
     MixpanelLib.prototype._loaded = function() {
         this.get_config('loaded')(this);
+        this._set_default_superprops();
+    };
 
-        // this happens after so a user can call identify/name_tag in
-        // the loaded callback
-        if (this.get_config('track_pageview')) {
-            this.track_pageview();
+    // update persistence with info on referrer, UTM params, etc
+    MixpanelLib.prototype._set_default_superprops = function() {
+        this['persistence'].update_search_keyword(document$1.referrer);
+        if (this.get_config('store_google')) {
+            this['persistence'].update_campaign_params();
+        }
+        if (this.get_config('save_referrer')) {
+            this['persistence'].update_referrer_info(document$1.referrer);
         }
     };
 
@@ -6980,11 +6985,7 @@ define(function () { 'use strict';
             properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
         }
 
-        // update persistence
-        this['persistence'].update_search_keyword(document$1.referrer);
-
-        if (this.get_config('store_google')) { this['persistence'].update_campaign_params(); }
-        if (this.get_config('save_referrer')) { this['persistence'].update_referrer_info(document$1.referrer); }
+        this._set_default_superprops();
 
         // note: extend writes to the first object, so lets make sure we
         // don't write to the persistence properties object and info
@@ -7154,12 +7155,10 @@ define(function () { 'use strict';
     };
 
     /**
-     * Track a page view event, which is currently ignored by the server.
-     * This function is called by default on page load unless the
-     * track_pageview configuration variable is false.
+     * Track mp_page_view event. This is now ignored by the server.
      *
      * @param {String} [page] The url of the page to record. If you don't include this, it defaults to the current url.
-     * @api private
+     * @deprecated
      */
     MixpanelLib.prototype.track_pageview = function(page) {
         if (_.isUndefined(page)) {
@@ -7493,7 +7492,7 @@ define(function () { 'use strict';
      * This value will only be included in Streams data.
      *
      * @param {String} name_tag A human readable name for the user
-     * @api private
+     * @deprecated
      */
     MixpanelLib.prototype.name_tag = function(name_tag) {
         this._register_single('mp_name_tag', name_tag);
