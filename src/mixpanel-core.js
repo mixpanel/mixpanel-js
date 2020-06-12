@@ -920,12 +920,10 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
 };
 
 /**
- * Track a page view event, which is currently ignored by the server.
- * This function is called by default on page load unless the
- * track_pageview configuration variable is false.
+ * Track mp_page_view event. This is now ignored by the server.
  *
  * @param {String} [page] The url of the page to record. If you don't include this, it defaults to the current url.
- * @api private
+ * @deprecated
  */
 MixpanelLib.prototype.track_pageview = function(page) {
     if (_.isUndefined(page)) {
@@ -1259,7 +1257,7 @@ MixpanelLib.prototype.alias = function(alias, original) {
  * This value will only be included in Streams data.
  *
  * @param {String} name_tag A human readable name for the user
- * @api private
+ * @deprecated
  */
 MixpanelLib.prototype.name_tag = function(name_tag) {
     this._register_single('mp_name_tag', name_tag);
