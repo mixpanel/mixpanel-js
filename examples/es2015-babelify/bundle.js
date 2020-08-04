@@ -1482,9 +1482,10 @@ MixpanelLib.prototype._init = function (token, config, name) {
     this['_triggered_notifs'] = [];
 
     // rollout: enable batch_requests by default for 10% of projects
-    // (only if they have not specified a value in their init config)
+    // (only if they have not specified a value in their init config
+    // and they aren't using a custom API)
     var variable_features = {};
-    if (!('batch_requests' in (config || {})) && (0, _utils.determine_eligibility)(token, 'batch', 10)) {
+    if (!('batch_requests' in (config || {})) && !('api_host' in (config || {})) && (0, _utils.determine_eligibility)(token, 'batch', 10)) {
         variable_features['batch_requests'] = true;
     }
 
