@@ -3673,6 +3673,25 @@
                     );
                 });
 
+                test("tracking should escape the body data of POST request", 5, function() {
+                    // this body tends to generate the characters + and = when using encode_data_for_request
+                    mixpanel.test.track('test', {title: 'Opatření na zadržení vody v krajině'});
+
+                    same(this.requests.length, 1, "track should have fired off a request");
+
+                    var req = this.requests[0];
+                    same(req.method, 'POST');
+                    var bodyData = req.requestBody.replace('data=', '');
+                    var badCharacters = ['+', '/', '='];
+                    for (var i = 0; i < badCharacters.length; i += 1) {
+                        var badCharacter = badCharacters[i];
+                        same(
+                            bodyData.indexOf(badCharacter), -1,
+                            'POST request body has invalid character ' + badCharacter
+                        );
+                    }
+                });
+
                 test("tracking can be configured to GET", 4, function() {
                     mixpanel.test.set_config({api_method: 'GET'});
 
@@ -4252,7 +4271,7 @@
                         });
 
                         // test cases using browser DoNotTrack (DNT) setting
-                        
+
                         // standard case: navigator.doNotTrack="1" but ignore_dnt=true
                         gdprTest(method + ' tracking is enabled due to ignore_dnt even with the browser DoNotTrack setting (navigator.doNotTrack="1")', {
                             opt_in: true,
