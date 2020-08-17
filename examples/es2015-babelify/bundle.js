@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.38.0'
+    LIB_VERSION: '2.39.0'
 };
 
 exports['default'] = Config;
@@ -1477,14 +1477,19 @@ MixpanelLib.prototype.init = function (token, config, name) {
 // init(...) method sets up a new library and calls _init on it.
 //
 MixpanelLib.prototype._init = function (token, config, name) {
+    config = config || {};
+
     this['__loaded'] = true;
     this['config'] = {};
     this['_triggered_notifs'] = [];
 
-    // rollout: enable batch_requests by default for 10% of projects
-    // (only if they have not specified a value in their init config)
+    // rollout: enable batch_requests by default for 30% of projects
+    // (only if they have not specified a value in their init config
+    // and they aren't using a custom API host)
     var variable_features = {};
-    if (!('batch_requests' in (config || {})) && (0, _utils.determine_eligibility)(token, 'batch', 10)) {
+    var api_host = config['api_host'];
+    var is_custom_api = !!api_host && !api_host.match(/\.mixpanel\.com$/);
+    if (!('batch_requests' in config) && !is_custom_api && (0, _utils.determine_eligibility)(token, 'batch', 30)) {
         variable_features['batch_requests'] = true;
     }
 
@@ -1679,7 +1684,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
     data['_'] = new Date().getTime().toString();
 
     if (use_post) {
-        body_data = 'data=' + data['data'];
+        body_data = 'data=' + encodeURIComponent(data['data']);
         delete data['data'];
     }
 

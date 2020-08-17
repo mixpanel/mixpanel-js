@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.38.0'
+        LIB_VERSION: '2.39.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -6481,14 +6481,19 @@
     // init(...) method sets up a new library and calls _init on it.
     //
     MixpanelLib.prototype._init = function(token, config, name) {
+        config = config || {};
+
         this['__loaded'] = true;
         this['config'] = {};
         this['_triggered_notifs'] = [];
 
-        // rollout: enable batch_requests by default for 10% of projects
-        // (only if they have not specified a value in their init config)
+        // rollout: enable batch_requests by default for 30% of projects
+        // (only if they have not specified a value in their init config
+        // and they aren't using a custom API host)
         var variable_features = {};
-        if (!('batch_requests' in (config || {})) && determine_eligibility(token, 'batch', 10)) {
+        var api_host = config['api_host'];
+        var is_custom_api = !!api_host && !api_host.match(/\.mixpanel\.com$/);
+        if (!('batch_requests' in config) && !is_custom_api && determine_eligibility(token, 'batch', 30)) {
             variable_features['batch_requests'] = true;
         }
 
@@ -6675,7 +6680,7 @@
         data['_'] = new Date().getTime().toString();
 
         if (use_post) {
-            body_data = 'data=' + data['data'];
+            body_data = 'data=' + encodeURIComponent(data['data']);
             delete data['data'];
         }
 
