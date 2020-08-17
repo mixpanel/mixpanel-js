@@ -1449,19 +1449,25 @@
             asyncTest("supports changing the timeout", 3, function() {
                 var e1 = ele_with_class();
 
-                same(mixpanel.config.track_links_timeout, 300, "track_links_timeout defaults to a sane value");
-                mixpanel.set_config({
+                mixpanel.init(this.token, {
+                    batch_requests: true,
+                    debug: true
+                }, "batching");
+
+                same(mixpanel.batching.config.track_links_timeout, 300, "track_links_timeout defaults to a sane value");
+                mixpanel.batching.set_config({
                     "track_links_timeout": 1000
                 });
-                same(mixpanel.config.track_links_timeout, 1000, "track_links_timeout can be changed");
+                same(mixpanel.batching.config.track_links_timeout, 1000, "track_links_timeout can be changed");
 
+                // this part is only relevant to non-batching configs
                 // setting it to 1 so the callback fires right away
-                mixpanel.set_config({
+                mixpanel.nonbatching.set_config({
                     "track_links_timeout": 1
                 });
-                mixpanel.track_links(e1.class_name, "do de do", {}, function(timeout_occured) {
+                mixpanel.nonbatching.track_links(e1.class_name, "do de do", {}, function(timeout_occured) {
                     ok(timeout_occured, "track_links_timeout successfully modified the timeout");
-                    mixpanel.set_config({
+                    mixpanel.nonbatching.set_config({
                         "track_links_timeout": 300
                     });
                     start();
@@ -1578,23 +1584,18 @@
                 simulateEvent(e1.e, 'submit');
             });
 
-            asyncTest("supports changing the timeout", 3, function() {
+            asyncTest("supports changing the timeout", 1, function() {
                 var e1 = form_with_class();
 
-                same(mixpanel.config.track_links_timeout, 300, "track_links_timeout defaults to a sane value");
-                mixpanel.set_config({
-                    "track_links_timeout": 1000
-                });
-                same(mixpanel.config.track_links_timeout, 1000, "track_links_timeout can be changed");
-
+                // this part is only relevant to non-batching configs
                 // setting it to 1 so the callback fires right away
-                mixpanel.set_config({
+                mixpanel.nonbatching.set_config({
                     "track_links_timeout": 1
                 });
-                mixpanel.track_forms(e1.class_name, "do de do", {}, function(timeout_occured) {
+                mixpanel.nonbatching.track_forms(e1.class_name, "do de do", {}, function(timeout_occured) {
                     start();
                     ok(timeout_occured, "track_links_timeout successfully modified the timeout (track_forms)");
-                    mixpanel.set_config({
+                    mixpanel.nonbatching.set_config({
                         "track_links_timeout": 300
                     });
                     return false;
@@ -3940,7 +3941,13 @@
                         mixpanel.batchtest.track('queued event');
                         window.dispatchEvent(new Event('unload'));
                         ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
-                        var request_data = getRequestData({requestBody: this.sendBeaconSpy.args[0][1]});
+                        var request_data = this.sendBeaconSpy.args
+                            .map(function(args) {
+                                return getRequestData({requestBody: args[1]});
+                            })
+                            .filter(function(data) {
+                                return data[0].properties.token === BATCH_TOKEN;
+                            })[0];
                         same(request_data.length, 1, "sendBeacon should have sent a single event");
                         same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
                     });

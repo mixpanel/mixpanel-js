@@ -13,6 +13,11 @@
         reset_cookie: true,
         debug: true,
         loaded: function(mixpanel) {
+            mixpanel.init("MIXPANEL_NONBATCHING_TOKEN", {
+                autotrack: false,
+                batch_requests: false,
+                debug: true,
+            }, "nonbatching");
             mixpanelLoading.resolve(mixpanel);
             testMixpanel(mixpanel);
         }
