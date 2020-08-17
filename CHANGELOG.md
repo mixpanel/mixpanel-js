@@ -1,3 +1,8 @@
+**2.39.0** (17 Aug 2020)
+- Escape body of POST requests to ensure valid base64 is sent to APIs (thanks @dpraul)
+- Don't opt in to request-batching automatically if using a custom API host (thanks @chriszamierowski)
+- Increase batch_requests default rollout to 30% of projects
+
 **2.38.0** (12 Jun 2020)
 - Ensure that first-touch referrer/UTM params get saved in superproperty storage even if no events are tracked on the page
 - Remove `track_pageview` config option altogether
