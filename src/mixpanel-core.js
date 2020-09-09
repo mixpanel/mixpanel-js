@@ -1035,6 +1035,17 @@ MixpanelLib.prototype.time_event = function(event_name) {
 var REGISTER_DEFAULTS = {
     'persistent': true,
 };
+var options_for_register = function(days_or_options) {
+    var options;
+    if (_.isObject(days_or_options)) {
+        options = days_or_options;
+    } else if (!_.isUndefined(days_or_options)) {
+        options = {'days': days_or_options};
+    } else {
+        options = {};
+    }
+    return _.extend({}, REGISTER_DEFAULTS, options);
+};
 
 /**
  * Register a set of super properties, which are included with all
@@ -1051,15 +1062,18 @@ var REGISTER_DEFAULTS = {
  *         'Account Type': 'Free'
  *     });
  *
+ *     // register only for the current pageload
+ *     mixpanel.register({'Name': 'Pat'}, {persistent: false});
+ *
  * @param {Object} properties An associative array of properties to store about the user
- * @param {Number} [days] How many days since the user's last visit to store the super properties (only valid for persisted props)
- * @param {Object} [options]
- * @param {boolean} [options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
+ * @param {Number|Object} [days_or_options] Options object or number of days since the user's last visit to store the super properties (only valid for persisted props)
+ * @param {boolean} [days_or_options.days] - number of days since the user's last visit to store the super properties (only valid for persisted props)
+ * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
-MixpanelLib.prototype.register = function(props, days, options) {
-    options = _.extend({}, REGISTER_DEFAULTS, options);
+MixpanelLib.prototype.register = function(props, days_or_options) {
+    var options = options_for_register(days_or_options);
     if (options['persistent']) {
-        this['persistence'].register(props, days);
+        this['persistence'].register(props, options['days']);
     } else {
         _.extend(this.unpersisted_superprops, props);
     }
@@ -1076,6 +1090,11 @@ MixpanelLib.prototype.register = function(props, days, options) {
  *         'First Login Date': new Date().toISOString()
  *     });
  *
+ *     // register once, only for the current pageload
+ *     mixpanel.register_once({
+ *         'First interaction time': new Date().toISOString()
+ *     }, 'None', {persistent: false});
+ *
  * ### Notes:
  *
  * If default_value is specified, current super properties
@@ -1083,14 +1102,14 @@ MixpanelLib.prototype.register = function(props, days, options) {
  *
  * @param {Object} properties An associative array of properties to store about the user
  * @param {*} [default_value] Value to override if already set in super properties (ex: 'False') Default: 'None'
- * @param {Number} [days] How many days since the users last visit to store the super properties
- * @param {Object} [options]
- * @param {boolean} [options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
+ * @param {Number|Object} [days_or_options] Options object or number of days since the user's last visit to store the super properties (only valid for persisted props)
+ * @param {boolean} [days_or_options.days] - number of days since the user's last visit to store the super properties (only valid for persisted props)
+ * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
-MixpanelLib.prototype.register_once = function(props, default_value, days, options) {
-    options = _.extend({}, REGISTER_DEFAULTS, options);
+MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+    var options = options_for_register(days_or_options);
     if (options['persistent']) {
-        this['persistence'].register_once(props, default_value, days);
+        this['persistence'].register_once(props, default_value, options['days']);
     } else {
         if (typeof(default_value) === 'undefined') {
             default_value = 'None';
@@ -1111,7 +1130,7 @@ MixpanelLib.prototype.register_once = function(props, default_value, days, optio
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
-    options = _.extend({}, REGISTER_DEFAULTS, options);
+    options = options_for_register(options);
     if (options['persistent']) {
         this['persistence'].unregister(property);
     } else {
