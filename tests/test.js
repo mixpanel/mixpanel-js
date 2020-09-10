@@ -1409,6 +1409,96 @@
                 }), 'super properties included correctly');
             });
 
+            test("register (non-persistent)", 3, function() {
+                var props = {'hi': 'there'};
+
+                same(get_superprops_without_defaults(mixpanel.test), {}, "persisted props are empty before setting");
+                mixpanel.test.register(props, {persistent: false});
+                same(get_superprops_without_defaults(mixpanel.test), {}, "persisted props are empty after setting");
+
+                var data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {
+                    'foo': 'bar',
+                    'hi': 'there'
+                }), 'non-persistent super properties included in track calls');
+            });
+
+            test("register_once (non-persistent)", 5, function() {
+                var props1 = {'hi': 'there'},
+                    props2 = {'hi': 'ho'};
+
+                same(get_superprops_without_defaults(mixpanel.test), {}, "persisted props are empty before setting");
+                mixpanel.test.register_once(props1, 'None', {persistent: false});
+                same(get_superprops_without_defaults(mixpanel.test), {}, "persisted props are empty after setting");
+
+                var data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {
+                    'foo': 'bar',
+                    'hi': 'there'
+                }), 'non-persistent super properties included in track calls');
+
+                mixpanel.test.register_once(props2, 'None', {persistent: false});
+                data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {
+                    'foo': 'bar',
+                    'hi': 'there'
+                }), "register_once doesn't override already set super property");
+
+                mixpanel.test.register_once({falsey: 0}, null, {persistent: false});
+                mixpanel.test.register_once({falsey: 1}, null, {persistent: false});
+                data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {
+                    falsey: 0
+                }), "register_once doesn't override already-set falsey value");
+            });
+
+            test("register: precedence of superprops and props", 3, function() {
+                var non_persisted_props = {'hi': 'there'},
+                    persisted_props = {'hi': 'ho'};
+
+                mixpanel.test.register(persisted_props, {persistent: true});
+                var data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {
+                    'foo': 'bar',
+                    'hi': 'ho'
+                }), 'persistent super properties included in track calls');
+
+                mixpanel.test.register(non_persisted_props, {persistent: false});
+                data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {
+                    'foo': 'bar',
+                    'hi': 'there'
+                }), 'non-persistent super properties take precedence over persistent');
+
+                data = mixpanel.test.track('test', {'foo': 'bar', 'hi': 'you'});
+                ok(contains_obj(data.properties, {
+                    'foo': 'bar',
+                    'hi': 'you'
+                }), 'explicitly-set props take precedence over all superprops');
+            });
+
+            test("unregister (non-persistent)", 4, function() {
+                mixpanel.test.register({'foo': 'persisted'}, {persistent: true});
+                mixpanel.test.unregister('foo', {persistent: false});
+                same(get_superprops_without_defaults(mixpanel.test), {
+                    'foo': 'persisted'
+                }, "non-persistent unregister does not unset persisted superprops");
+
+                mixpanel.test.register({'bar': 'not persisted'}, {persistent: false});
+                var data = mixpanel.test.track('test', {'hello': 'world'});
+                ok(contains_obj(data.properties, {
+                    'hello': 'world',
+                    'foo': 'persisted',
+                    'bar': 'not persisted'
+                }));
+
+                mixpanel.test.unregister('bar', {persistent: false});
+                data = mixpanel.test.track('test', {'hello': 'world'});
+
+                same(data.properties.foo, 'persisted', 'still tracks persisted superprop');
+                same(data.properties.bar, undefined, 'unregistered prop is not tracked');
+            });
+
             module("mixpanel.track_links");
 
             asyncTest("callback test", 1, function() {
