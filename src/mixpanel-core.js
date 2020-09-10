@@ -1033,7 +1033,7 @@ MixpanelLib.prototype.time_event = function(event_name) {
 };
 
 var REGISTER_DEFAULTS = {
-    'persistent': true,
+    'persistent': true
 };
 var options_for_register = function(days_or_options) {
     var options;
