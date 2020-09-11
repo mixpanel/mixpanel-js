@@ -1035,6 +1035,12 @@ MixpanelLib.prototype.time_event = function(event_name) {
 var REGISTER_DEFAULTS = {
     'persistent': true
 };
+/**
+ * Helper to parse options param for register methods, maintaining
+ * legacy support for plain "days" param instead of options object
+ * @param {Number|Object} [days_or_options] 'days' option (Number), or Options object for register methods
+ * @returns {Object} options object
+ */
 var options_for_register = function(days_or_options) {
     var options;
     if (_.isObject(days_or_options)) {
