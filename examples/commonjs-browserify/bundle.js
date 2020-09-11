@@ -3,7 +3,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.39.0'
+    LIB_VERSION: '2.40.0-rc1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -6532,6 +6532,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     }
 
     this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
+    this.unpersisted_superprops = {};
     this._gdpr_init();
 
     var uuid = _.UUID();
@@ -7002,6 +7003,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         {},
         _.info.properties(),
         this['persistence'].properties(),
+        this.unpersisted_superprops,
         properties
     );
 
@@ -7266,6 +7268,27 @@ MixpanelLib.prototype.time_event = function(event_name) {
     this['persistence'].set_event_timer(event_name,  new Date().getTime());
 };
 
+var REGISTER_DEFAULTS = {
+    'persistent': true
+};
+/**
+ * Helper to parse options param for register methods, maintaining
+ * legacy support for plain "days" param instead of options object
+ * @param {Number|Object} [days_or_options] 'days' option (Number), or Options object for register methods
+ * @returns {Object} options object
+ */
+var options_for_register = function(days_or_options) {
+    var options;
+    if (_.isObject(days_or_options)) {
+        options = days_or_options;
+    } else if (!_.isUndefined(days_or_options)) {
+        options = {'days': days_or_options};
+    } else {
+        options = {};
+    }
+    return _.extend({}, REGISTER_DEFAULTS, options);
+};
+
 /**
  * Register a set of super properties, which are included with all
  * events. This will overwrite previous super property values.
@@ -7281,11 +7304,21 @@ MixpanelLib.prototype.time_event = function(event_name) {
  *         'Account Type': 'Free'
  *     });
  *
+ *     // register only for the current pageload
+ *     mixpanel.register({'Name': 'Pat'}, {persistent: false});
+ *
  * @param {Object} properties An associative array of properties to store about the user
- * @param {Number} [days] How many days since the user's last visit to store the super properties
+ * @param {Number|Object} [days_or_options] Options object or number of days since the user's last visit to store the super properties (only valid for persisted props)
+ * @param {boolean} [days_or_options.days] - number of days since the user's last visit to store the super properties (only valid for persisted props)
+ * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
-MixpanelLib.prototype.register = function(props, days) {
-    this['persistence'].register(props, days);
+MixpanelLib.prototype.register = function(props, days_or_options) {
+    var options = options_for_register(days_or_options);
+    if (options['persistent']) {
+        this['persistence'].register(props, options['days']);
+    } else {
+        _.extend(this.unpersisted_superprops, props);
+    }
 };
 
 /**
@@ -7299,6 +7332,11 @@ MixpanelLib.prototype.register = function(props, days) {
  *         'First Login Date': new Date().toISOString()
  *     });
  *
+ *     // register once, only for the current pageload
+ *     mixpanel.register_once({
+ *         'First interaction time': new Date().toISOString()
+ *     }, 'None', {persistent: false});
+ *
  * ### Notes:
  *
  * If default_value is specified, current super properties
@@ -7306,19 +7344,40 @@ MixpanelLib.prototype.register = function(props, days) {
  *
  * @param {Object} properties An associative array of properties to store about the user
  * @param {*} [default_value] Value to override if already set in super properties (ex: 'False') Default: 'None'
- * @param {Number} [days] How many days since the users last visit to store the super properties
+ * @param {Number|Object} [days_or_options] Options object or number of days since the user's last visit to store the super properties (only valid for persisted props)
+ * @param {boolean} [days_or_options.days] - number of days since the user's last visit to store the super properties (only valid for persisted props)
+ * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
-MixpanelLib.prototype.register_once = function(props, default_value, days) {
-    this['persistence'].register_once(props, default_value, days);
+MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+    var options = options_for_register(days_or_options);
+    if (options['persistent']) {
+        this['persistence'].register_once(props, default_value, options['days']);
+    } else {
+        if (typeof(default_value) === 'undefined') {
+            default_value = 'None';
+        }
+        _.each(props, function(val, prop) {
+            if (!this.unpersisted_superprops.hasOwnProperty(prop) || this.unpersisted_superprops[prop] === default_value) {
+                this.unpersisted_superprops[prop] = val;
+            }
+        }, this);
+    }
 };
 
 /**
  * Delete a super property stored with the current user.
  *
  * @param {String} property The name of the super property to remove
+ * @param {Object} [options]
+ * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
-MixpanelLib.prototype.unregister = function(property) {
-    this['persistence'].unregister(property);
+MixpanelLib.prototype.unregister = function(property, options) {
+    options = options_for_register(options);
+    if (options['persistent']) {
+        this['persistence'].unregister(property);
+    } else {
+        delete this.unpersisted_superprops[property];
+    }
 };
 
 MixpanelLib.prototype._register_single = function(prop, value) {
