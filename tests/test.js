@@ -3679,6 +3679,23 @@
                     var data = mixpanel.test.track("test_sendbeacon", {});
                     same(data['event'], 'test_sendbeacon');
                 });
+
+                asyncTest("sendBeacon calls track callback", 1, function() {
+                    mixpanel.test.set_config({api_transport: 'sendBeacon'});
+                    mixpanel.test.track("test_sendbeacon", {}, function(response) {
+                        same(response, 1, "sendBeacon returned success");
+                        start();
+                    });
+                });
+
+                test("sendBeacon tracking handles callback errors", 2, function() {
+                    mixpanel.test.set_config({api_transport: 'sendBeacon'});
+                    var data = mixpanel.test.track("test_sendbeacon", {}, function(response) {
+                        same(response, 1, "sendBeacon returned success");
+                        throw new Error('kaboom');
+                    });
+                    same(data['event'], 'test_sendbeacon');
+                });
             }
 
             if (USE_XHR) {

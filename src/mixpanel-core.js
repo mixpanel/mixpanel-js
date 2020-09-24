@@ -459,6 +459,13 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
             console.error(e);
             succeeded = false;
         }
+        try {
+            if (callback) {
+                callback(succeeded ? 1 : 0);
+            }
+        } catch (e) {
+            console.error(e);
+        }
     } else if (USE_XHR) {
         try {
             var req = new XMLHttpRequest();
