@@ -4044,19 +4044,48 @@
                 });
 
                 if (navigator.sendBeacon && window.addEventListener) {
-                    test('queued requests are flushed via sendBeacon before page unload', 3, function() {
-                        mixpanel.batchtest.track('queued event');
-                        window.dispatchEvent(new Event('unload'));
-                        ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
-                        var request_data = this.sendBeaconSpy.args
+                    var getBatchSendBeaconRequestData = function(sendBeaconSpy) {
+                        return sendBeaconSpy.args
                             .map(function(args) {
                                 return getRequestData({requestBody: args[1]});
                             })
                             .filter(function(data) {
                                 return data[0].properties.token === BATCH_TOKEN;
-                            })[0];
+                            });
+                    };
+
+                    test('queued requests are flushed via sendBeacon before page unload', 3, function() {
+                        mixpanel.batchtest.track('queued event');
+                        window.dispatchEvent(new Event('unload'));
+                        ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
+                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
                         same(request_data.length, 1, "sendBeacon should have sent a single event");
                         same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
+                    });
+
+                    test('batch/flush cycle works in sendBeacon mode', 8, function() {
+                        mixpanel.batchtest.set_config({api_transport: 'sendBeacon'});
+
+                        mixpanel.batchtest.track('queued event 1');
+                        mixpanel.batchtest.track('queued event 2');
+                        notOk(this.sendBeaconSpy.called, "batch request should not have been sent yet");
+
+                        this.clock.tick(5000);
+
+                        ok(this.sendBeaconSpy.calledOnce, "batch should have sent a single request");
+                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                        same(request_data.length, 2, "sendBeacon should have sent both queued events");
+                        same(request_data[0].event, 'queued event 1');
+                        same(request_data[1].event, 'queued event 2');
+
+                        mixpanel.batchtest.track('queued event 3');
+                        ok(this.sendBeaconSpy.calledOnce, "second batch should not have been sent yet");
+
+                        this.clock.tick(5000);
+
+                        ok(this.sendBeaconSpy.calledTwice, "second batch should have been sent");
+                        request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[1];
+                        same(request_data[0].event, 'queued event 3');
                     });
                 }
 
