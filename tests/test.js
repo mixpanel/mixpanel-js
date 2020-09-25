@@ -143,7 +143,7 @@
         }
 
         instance.persistence.clear();
-        instance.stop_batch_requests();
+        instance.stop_batch_senders();
 
         if (clear_opt_in_out) {
             instance.clear_opt_in_out_tracking();

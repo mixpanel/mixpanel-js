@@ -23,7 +23,7 @@ var RequestBatcher = function(storageKey, endpoint, options) {
     this.batchSize = this.libConfig['batch_size'];
     this.flushInterval = this.libConfig['batch_flush_interval_ms'];
 
-    this.stopped = false;
+    this.stopped = !this.libConfig['batch_autostart'];
 };
 
 /**

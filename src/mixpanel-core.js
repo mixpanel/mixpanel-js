@@ -119,7 +119,8 @@ var DEFAULT_CONFIG = {
     'batch_requests':                    false, // for now
     'batch_size':                        50,
     'batch_flush_interval_ms':           5000,
-    'batch_request_timeout_ms':          90000
+    'batch_request_timeout_ms':          90000,
+    'batch_autostart':                   true
 };
 
 var DOM_LOADED = false;
@@ -282,7 +283,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
             this._batch_requests = false;
             console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
         } else {
-            this.start_batch_requests();
+            this.init_batchers();
             if (sendBeacon && window.addEventListener) {
                 window.addEventListener('unload', _.bind(function() {
                     // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
@@ -600,7 +601,7 @@ MixpanelLib.prototype._execute_array = function(array) {
 
 // request queueing utils
 
-MixpanelLib.prototype.start_batch_requests = function() {
+MixpanelLib.prototype.init_batchers = function() {
     var token = this.get_config('token');
     if (!this.request_batchers.events) { // no batchers initialized yet
         var batcher_config = {
@@ -620,12 +621,19 @@ MixpanelLib.prototype.start_batch_requests = function() {
             groups: new RequestBatcher('__mpq_' + token + '_gr', '/groups/', batcher_config)
         };
     }
+    if (this.get_config('batch_autostart')) {
+        this.start_batch_senders();
+    }
+};
+
+MixpanelLib.prototype.start_batch_senders = function() {
+    this._batch_requests = true;
     _.each(this.request_batchers, function(batcher) {
         batcher.start();
     });
 };
 
-MixpanelLib.prototype.stop_batch_requests = function() {
+MixpanelLib.prototype.stop_batch_senders = function() {
     this._batch_requests = false;
     _.each(this.request_batchers, function(batcher) {
         batcher.stop();
@@ -1872,7 +1880,8 @@ MixpanelLib.prototype['set_group']                          = MixpanelLib.protot
 MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
 MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
 MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
-MixpanelLib.prototype['stop_batch_requests']                = MixpanelLib.prototype.stop_batch_requests;
+MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
+MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
