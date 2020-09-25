@@ -4159,6 +4159,52 @@
                     same(this.requests.length, 2, "no new requests should have been made with orphaned data");
                 });
 
+                test('with batch_autostart=false, requests are not sent until explicit start', 6, function() {
+                    clearLibInstance(mixpanel.batchtest);
+                    initBatchLibInstance({batch_autostart: false});
+
+                    mixpanel.batchtest.track('pre-start event 1');
+                    mixpanel.batchtest.track('pre-start event 2');
+
+                    this.clock.tick(10000);
+                    same(this.requests.length, 0, "should not have made any requests yet");
+
+                    mixpanel.batchtest.start_batch_senders();
+                    same(this.requests.length, 1, "should have sent events after batcher start");
+                    var batch_events = getRequestData(this.requests[0]);
+                    same(batch_events[0].event, 'pre-start event 1');
+                    same(batch_events[1].event, 'pre-start event 2');
+                    this.requests[0].respond(200, {}, '1');
+
+                    mixpanel.batchtest.track('post-start event');
+                    this.clock.tick(5000);
+                    same(this.requests.length, 2, "should continue to flush after batcher start");
+                    batch_events = getRequestData(this.requests[1]);
+                    same(batch_events[0].event, 'post-start event');
+                });
+
+                test('with batch_autostart=false, orphaned data in localStorage gets sent after explicit start', 5, function() {
+                    clearLibInstance(mixpanel.batchtest);
+                    localStorage.setItem(LOCALSTORAGE_EVENTS_KEY, JSON.stringify([
+                        {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
+                            'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
+                        }},
+                        {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
+                            'event': 'orphaned event 2'
+                        }}
+                    ]));
+
+                    initBatchLibInstance({batch_autostart: false});
+                    same(this.requests.length, 0, "no requests should have been sent yet");
+
+                    mixpanel.batchtest.start_batch_senders();
+                    same(this.requests.length, 1, "request should have been made to send orphaned events");
+                    var batch_events = getRequestData(this.requests[0]);
+                    same(batch_events.length, 2, "should have included only orphaned events");
+                    same(batch_events[0].event, 'orphaned event 1');
+                    same(batch_events[1].event, 'orphaned event 2');
+                });
+
                 test('people updates do not send a request immediately', 3, function() {
                     mixpanel.batchtest.identify('pat');
                     same(this.requests.length, 1, "identify() should have made immediate request");
