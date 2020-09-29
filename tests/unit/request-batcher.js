@@ -49,6 +49,7 @@ describe(`RequestBatcher`, function() {
       batch_flush_interval_ms: DEFAULT_FLUSH_INTERVAL,
       batch_request_timeout_ms: REQUEST_TIMEOUT_MS,
       batch_size: 50,
+      batch_autostart: true,
     };
     batcher = new RequestBatcher(LOCALSTORAGE_KEY, `/fake-track/`, {
       libConfig,
