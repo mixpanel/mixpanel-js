@@ -695,10 +695,12 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     var batcher = options.batcher;
     var should_send_immediately = options.should_send_immediately;
     var send_request_options = options.send_request_options || {};
+    var before_send_hook = this._get_hook('before_send_' + options.type);
     callback = callback || NOOP_FUNC;
 
     var request_enqueued_or_initiated = true;
     var send_request_immediately = _.bind(function() {
+        truncated_data = before_send_hook(truncated_data);
         console.log('MIXPANEL REQUEST:');
         console.log(truncated_data);
         return this._send_request(
@@ -812,6 +814,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         'properties': properties
     };
     var ret = this._track_or_batch({
+        type: 'events',
         data: data,
         endpoint: this.get_config('api_host') + '/track/',
         batcher: this.request_batchers.events,

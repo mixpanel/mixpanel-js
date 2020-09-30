@@ -1499,6 +1499,70 @@
                 same(data.properties.bar, undefined, 'unregistered prop is not tracked');
             });
 
+            mpmodule("hooks");
+
+            test("before_send_events hook", 1, function() {
+                mixpanel.test.set_config({
+                    hooks: {
+                        before_send_events: function append_42(event_data) {
+                            return {
+                                event: event_data.event + ' 42',
+                                properties: event_data.properties
+                            };
+                        }
+                    }
+                });
+                var data = mixpanel.test.track('my event', {'foo': 'bar'});
+                same(data.event, 'my event 42', 'should transform tracked event with hook');
+            });
+
+            test("before_send_people hook", 3, function() {
+                mixpanel.test.set_config({
+                    hooks: {
+                        before_send_people: function uppercase_name(profile_data) {
+                            return _.extend(profile_data, {
+                                $set: _.extend(profile_data.$set, {
+                                    name: profile_data.$set.name.toUpperCase()
+                                })
+                            });
+                        }
+                    }
+                });
+                mixpanel.test.people.set('name', 'stravinsky');
+
+                stop();
+                mixpanel.test.identify(this.id, function(resp, data) {
+                    ok(resp == 1, "Successful write");
+                    same(data.$set.name, 'STRAVINSKY', 'should transform previously-queued profile update with hook');
+
+                    data = mixpanel.test.people.set('name', 'bob');
+                    same(data.$set.name, 'BOB', 'after identify, should apply hooks when sending immediately');
+
+                    start();
+                });
+            });
+
+            test("before_send_groups hook", 1, function() {
+                mixpanel.test.set_config({
+                    hooks: {
+                        before_send_groups: function lowercase_owner(group_data) {
+                            return _.extend(group_data, {
+                                $set: _.extend(group_data.$set, {
+                                    owner: group_data.$set.owner.toLowerCase()
+                                })
+                            });
+                        }
+                    }
+                });
+
+                var group = mixpanel.test.get_group('storefront', 'Pro Kitten Trader');
+                var data = group.set('owner', 'Brak');
+                same(data.$set.owner, 'brak', 'should transform group update with hook');
+            });
+
+            // test doesn't affect $identify or $create_alias
+            // test track_with_groups
+
             module("mixpanel.track_links");
 
             asyncTest("callback test", 1, function() {
