@@ -232,13 +232,13 @@ _.toArray = function(iterable) {
     return _.values(iterable);
 };
 
-_.map = function(arr, callback) {
+_.map = function(arr, callback, context) {
     if (nativeMap && arr.map === nativeMap) {
-        return arr.map(callback);
+        return arr.map(callback, context);
     } else {
         var results = [];
         _.each(arr, function(item) {
-            results.push(callback(item));
+            results.push(callback.call(context, item));
         });
         return results;
     }

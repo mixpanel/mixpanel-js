@@ -53,6 +53,9 @@ var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
 
+var IDENTITY_FUNC = function(x) {return x;};
+var NOOP_FUNC = function() {};
+
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 
 
@@ -93,7 +96,7 @@ var DEFAULT_CONFIG = {
     'persistence_name':                  '',
     'cookie_domain':                     '',
     'cookie_name':                       '',
-    'loaded':                            function() {},
+    'loaded':                            NOOP_FUNC,
     'store_google':                      true,
     'save_referrer':                     true,
     'test':                              false,
@@ -120,7 +123,8 @@ var DEFAULT_CONFIG = {
     'batch_size':                        50,
     'batch_flush_interval_ms':           5000,
     'batch_request_timeout_ms':          90000,
-    'batch_autostart':                   true
+    'batch_autostart':                   true,
+    'hooks':                             {}
 };
 
 var DOM_LOADED = false;
@@ -265,7 +269,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
     }));
 
-    this['_jsc'] = function() {};
+    this['_jsc'] = NOOP_FUNC;
 
     this.__dom_loaded_queue = [];
     this.__request_queue = [];
@@ -604,21 +608,29 @@ MixpanelLib.prototype._execute_array = function(array) {
 MixpanelLib.prototype.init_batchers = function() {
     var token = this.get_config('token');
     if (!this.request_batchers.events) { // no batchers initialized yet
-        var batcher_config = {
-            libConfig: this['config'],
-            sendRequestFunc: _.bind(function(endpoint, data, options, cb) {
-                this._send_request(
-                    this.get_config('api_host') + endpoint,
-                    encode_data_for_request(data),
-                    options,
-                    this._prepare_callback(cb, data)
-                );
-            }, this)
-        };
+        var batcher_for = _.bind(function(attrs) {
+            return new RequestBatcher(
+                '__mpq_' + token + attrs.queue_suffix,
+                {
+                    libConfig: this['config'],
+                    sendRequestFunc: _.bind(function(data, options, cb) {
+                        this._send_request(
+                            this.get_config('api_host') + attrs.endpoint,
+                            encode_data_for_request(data),
+                            options,
+                            this._prepare_callback(cb, data)
+                        );
+                    }, this),
+                    beforeSendHook: _.bind(function(item) {
+                        return this._get_hook('before_send_' + attrs.type)(item);
+                    }, this)
+                }
+            );
+        }, this);
         this.request_batchers = {
-            events: new RequestBatcher('__mpq_' + token + '_ev', '/track/', batcher_config),
-            people: new RequestBatcher('__mpq_' + token + '_pp', '/engage/', batcher_config),
-            groups: new RequestBatcher('__mpq_' + token + '_gr', '/groups/', batcher_config)
+            events: batcher_for({type: 'events', endpoint: '/track/', queue_suffix: '_ev'}),
+            people: batcher_for({type: 'people', endpoint: '/engage/', queue_suffix: '_pp'}),
+            groups: batcher_for({type: 'groups', endpoint: '/groups/', queue_suffix: '_gr'})
         };
     }
     if (this.get_config('batch_autostart')) {
@@ -683,7 +695,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     var batcher = options.batcher;
     var should_send_immediately = options.should_send_immediately;
     var send_request_options = options.send_request_options || {};
-    callback = callback || function() {};
+    callback = callback || NOOP_FUNC;
 
     var request_enqueued_or_initiated = true;
     var send_request_immediately = _.bind(function() {
@@ -747,7 +759,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     }
     var should_send_immediately = options['send_immediately'];
     if (typeof callback !== 'function') {
-        callback = function() {};
+        callback = NOOP_FUNC;
     }
 
     if (_.isUndefined(event_name)) {
@@ -1493,6 +1505,14 @@ MixpanelLib.prototype.set_config = function(config) {
  */
 MixpanelLib.prototype.get_config = function(prop_name) {
     return this['config'][prop_name];
+};
+
+/**
+ * TODO
+ * @param {string} hook_name
+ */
+MixpanelLib.prototype._get_hook = function(hook_name) {
+    return this['config']['hooks'][hook_name] || IDENTITY_FUNC;
 };
 
 /**

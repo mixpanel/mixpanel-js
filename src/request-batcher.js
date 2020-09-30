@@ -12,12 +12,12 @@ var logger = console_with_prefix('batch');
  * Uses RequestQueue to manage the backing store.
  * @constructor
  */
-var RequestBatcher = function(storageKey, endpoint, options) {
+var RequestBatcher = function(storageKey, options) {
     this.queue = new RequestQueue(storageKey, {storage: options.storage});
-    this.endpoint = endpoint;
 
     this.libConfig = options.libConfig;
     this.sendRequest = options.sendRequestFunc;
+    this.beforeSendHook = options.beforeSendHook;
 
     // seed variable batch size + flush interval with configured values
     this.batchSize = this.libConfig['batch_size'];
@@ -114,7 +114,10 @@ RequestBatcher.prototype.flush = function(options) {
 
         var timeoutMS = this.libConfig['batch_request_timeout_ms'];
         var startTime = new Date().getTime();
-        var dataForRequest = _.map(batch, function(item) { return item['payload']; });
+        var dataForRequest = _.map(batch, function(item) {
+            var payload = item['payload'];
+            return this.beforeSendHook ? this.beforeSendHook(payload) : payload;
+        }, this);
         var batchSendCallback = _.bind(function(res) {
             this.requestInProgress = false;
 
@@ -187,8 +190,8 @@ RequestBatcher.prototype.flush = function(options) {
         if (options.sendBeacon) {
             requestOptions.transport = 'sendBeacon';
         }
-        logger.log('MIXPANEL REQUEST:', this.endpoint, dataForRequest);
-        this.sendRequest(this.endpoint, dataForRequest, requestOptions, batchSendCallback);
+        logger.log('MIXPANEL REQUEST:', dataForRequest);
+        this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
 
     } catch(err) {
         logger.error('Error flushing request queue', err);
