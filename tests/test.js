@@ -4205,6 +4205,44 @@
                     same(batch_events[1].event, 'orphaned event 2');
                 });
 
+                test('before_send_events hook is applied retroactively to batched but not orphaned events', 7, function() {
+                    clearLibInstance(mixpanel.batchtest);
+                    localStorage.setItem(LOCALSTORAGE_EVENTS_KEY, JSON.stringify([
+                        {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
+                            'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
+                        }},
+                        {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
+                            'event': 'orphaned event 2'
+                        }}
+                    ]));
+                    initBatchLibInstance({
+                        batch_autostart: false,
+                        hooks: {
+                            before_send_events: function(event_data) {
+                                return _.extend(event_data, {event: event_data.event.toUpperCase()});
+                            }
+                        }
+                    });
+                    mixpanel.batchtest.track('Non-orphaned event', {'hello': 'world'});
+
+                    mixpanel.batchtest.start_batch_senders();
+                    same(this.requests.length, 1);
+
+                    var batch_events = getRequestData(this.requests[0]);
+                    same(batch_events.length, 3, "should have included all events");
+                    same(batch_events[0].event, 'NON-ORPHANED EVENT', "should have applied hook to non-orphaned event");
+                    same(batch_events[0].properties['hello'], 'world', "should not have affected properties");
+                    same(batch_events[1].event, 'orphaned event 1', "should not have applied hook to orphaned event");
+                    same(batch_events[2].event, 'orphaned event 2', "should not have applied hook to orphaned event");
+
+                    this.requests[0].respond(200, {}, '1');
+
+                    mixpanel.batchtest.track('post-start event');
+                    this.clock.tick(5000);
+                    batch_events = getRequestData(this.requests[1]);
+                    same(batch_events[0].event, 'POST-START EVENT', "should continue applying hook");
+                });
+
                 test('people updates do not send a request immediately', 3, function() {
                     mixpanel.batchtest.identify('pat');
                     same(this.requests.length, 1, "identify() should have made immediate request");
