@@ -690,7 +690,7 @@ MixpanelLib.prototype.disable = function(events) {
 
 // internal method for handling track vs batch-enqueue logic
 MixpanelLib.prototype._track_or_batch = function(options, callback) {
-    var truncated_data = options.truncated_data;
+    var truncated_data = _.truncate(options.data, 255);
     var endpoint = options.endpoint;
     var batcher = options.batcher;
     var should_send_immediately = options.should_send_immediately;
@@ -812,7 +812,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         'properties': properties
     };
     var ret = this._track_or_batch({
-        truncated_data: _.truncate(data, 255),
+        data: data,
         endpoint: this.get_config('api_host') + '/track/',
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,

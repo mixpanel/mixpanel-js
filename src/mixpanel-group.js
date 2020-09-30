@@ -140,7 +140,7 @@ MixpanelGroup.prototype._send_request = function(data, callback) {
 
     var date_encoded_data = _.encodeDates(data);
     return this._mixpanel._track_or_batch({
-        truncated_data: _.truncate(date_encoded_data, 255),
+        data: date_encoded_data,
         endpoint: this._get_config('api_host') + '/groups/',
         batcher: this._mixpanel.request_batchers.groups
     }, callback);

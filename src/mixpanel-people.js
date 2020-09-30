@@ -330,7 +330,6 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     }
 
     var date_encoded_data = _.encodeDates(data);
-    var truncated_data = _.truncate(date_encoded_data, 255);
 
     if (!this._identify_called()) {
         this._enqueue(data);
@@ -341,11 +340,11 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
                 callback(-1);
             }
         }
-        return truncated_data;
+        return _.truncate(date_encoded_data, 255);
     }
 
     return this._mixpanel._track_or_batch({
-        truncated_data: truncated_data,
+        data: date_encoded_data,
         endpoint: this._get_config('api_host') + '/engage/',
         batcher: this._mixpanel.request_batchers.people
     }, callback);
