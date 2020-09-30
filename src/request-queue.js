@@ -95,6 +95,7 @@ RequestQueue.prototype.fillBatch = function(batchSize) {
             for (var i = 0; i < storedQueue.length; i++) {
                 var item = storedQueue[i];
                 if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                    item.orphaned = true;
                     batch.push(item);
                     if (batch.length >= batchSize) {
                         break;

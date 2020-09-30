@@ -259,6 +259,23 @@ describe(`RequestQueue`, function() {
         expect(batchIDs).to.include(`ghi`); // good persisted item
       });
 
+      it(`marks orphaned items`, function() {
+        const batchAttrs = queue.fillBatch(7).map(item => ({
+          event: item.payload.event,
+          orphaned: !!item.orphaned,
+        }));
+        expect(batchAttrs).to.deep.equal([
+          {event: `foo1`, orphaned: false},
+          {event: `foo2`, orphaned: false},
+          {event: `foo3`, orphaned: false},
+          {event: `foo4`, orphaned: false},
+          {event: `foo5`, orphaned: false},
+          {event: `foo6`, orphaned: true},
+          // foo7 is not yet ready to flush
+          {event: `foo8`, orphaned: true},
+        ]);
+      });
+
       it(`is resilient to malformed localStorage entries`, function() {
         let batch;
         const origStorageEntry = localStorage.getItem(`fake-rq-key`);

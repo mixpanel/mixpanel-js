@@ -591,6 +591,33 @@ describe(`RequestBatcher`, function() {
       expect(getLocalStorageItems()).to.be.empty;
     });
 
+    it(`does not apply before-send hooks to orphaned items`, function() {
+      batcher.beforeSendHook = item => mapValues(item, v => v.toUpperCase());
+
+      localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
+        {id: `fakeID1`, flushAfter: Date.now() - 60000, payload: {
+            'event': `orphaned event 1`,
+        }},
+        {id: `fakeID2`, flushAfter: Date.now() - 240000, payload: {
+            'event': `orphaned event 2`,
+        }}
+      ]));
+      batcher.enqueue({Hello: `World`});
+      batcher.enqueue({foo: `bar`});
+
+      batcher.start();
+      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
+        {Hello: `WORLD`},
+        {foo: `BAR`},
+        {event: `orphaned event 1`}, // did not get uppercased
+        {event: `orphaned event 2`},
+      ]);
+      expect(getLocalStorageItems()).to.have.lengthOf(4);
+      sendResponse(200);
+      expect(getLocalStorageItems()).to.be.empty;
+    });
+
     it(`ignores and overwrites malformed localStorage entries`, function() {
       localStorage.setItem(LOCALSTORAGE_KEY, `just some garbage {{{`);
       batcher.start();

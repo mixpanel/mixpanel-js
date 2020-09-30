@@ -116,7 +116,10 @@ RequestBatcher.prototype.flush = function(options) {
         var startTime = new Date().getTime();
         var dataForRequest = _.map(batch, function(item) {
             var payload = item['payload'];
-            return this.beforeSendHook ? this.beforeSendHook(payload) : payload;
+            if (this.beforeSendHook && !item.orphaned) {
+                payload = this.beforeSendHook(payload);
+            }
+            return payload;
         }, this);
         var batchSendCallback = _.bind(function(res) {
             this.requestInProgress = false;
