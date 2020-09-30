@@ -1560,7 +1560,6 @@
                 same(data.$set.owner, 'brak', 'should transform group update with hook');
             });
 
-            // test doesn't affect $identify or $create_alias
             // test track_with_groups
 
             module("mixpanel.track_links");
@@ -2009,6 +2008,29 @@
                     same(identify_event["event"], "$identify");
                     same(identify_event.properties.distinct_id, new_id);
                     same(identify_event.properties.$anon_distinct_id, current_id);
+                });
+
+                test("$identify and $create_alias events are not transformed by hooks", 2, function() {
+                    mixpanel.test.set_config({
+                        hooks: {
+                            before_send_events: function append_42(event_data) {
+                                return {
+                                    event: event_data.event + ' 42',
+                                    properties: event_data.properties
+                                };
+                            }
+                        }
+                    });
+
+                    mixpanel.test.alias(rand_name());
+                    var requests = this.requests;
+                    for (var i = 0; i < requests.length; i++) {
+                        requests[i].respond(200, {}, '1');
+                    }
+
+                    var events = getEventsFromTrackRequests(this.requests);
+                    same(events[0]["event"], "$create_alias", "should not have transformed $create_alias event");
+                    same(events[1]["event"], "$identify", "should not have transformed $identify event");
                 });
             }
 

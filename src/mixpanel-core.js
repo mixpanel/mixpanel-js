@@ -700,7 +700,9 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
 
     var request_enqueued_or_initiated = true;
     var send_request_immediately = _.bind(function() {
-        truncated_data = before_send_hook(truncated_data);
+        if (!send_request_options.skip_hooks) {
+            truncated_data = before_send_hook(truncated_data);
+        }
         console.log('MIXPANEL REQUEST:');
         console.log(truncated_data);
         return this._send_request(
@@ -1242,7 +1244,10 @@ MixpanelLib.prototype.identify = function(
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
     if (new_distinct_id !== previous_distinct_id) {
-        this.track('$identify', { 'distinct_id': new_distinct_id, '$anon_distinct_id': previous_distinct_id });
+        this.track('$identify', {
+            'distinct_id': new_distinct_id,
+            '$anon_distinct_id': previous_distinct_id
+        }, {skip_hooks: true});
     }
 };
 
@@ -1331,7 +1336,12 @@ MixpanelLib.prototype.alias = function(alias, original) {
     }
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
-        return this.track('$create_alias', { 'alias': alias, 'distinct_id': original }, function() {
+        return this.track('$create_alias', {
+            'alias': alias,
+            'distinct_id': original
+        }, {
+            skip_hooks: true
+        }, function() {
             // Flush the people queue
             _this.identify(alias);
         });
