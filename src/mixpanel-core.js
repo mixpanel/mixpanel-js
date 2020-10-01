@@ -1521,8 +1521,8 @@ MixpanelLib.prototype.get_config = function(prop_name) {
 };
 
 /**
- * TODO
- * @param {string} hook_name
+ * Fetch a hook function from config, with safe default
+ * @param {string} hook_name which hook to retrieve
  */
 MixpanelLib.prototype._get_hook = function(hook_name) {
     return this['config']['hooks'][hook_name] || IDENTITY_FUNC;
