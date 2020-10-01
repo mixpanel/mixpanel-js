@@ -1560,7 +1560,26 @@
                 same(data.$set.owner, 'brak', 'should transform group update with hook');
             });
 
-            // test track_with_groups
+            test("before_send_events hook affects track_with_groups", 1, function() {
+                mixpanel.test.set_config({
+                    hooks: {
+                        before_send_events: function uppercase_storefront(event_data) {
+                            return {
+                                event: event_data.event,
+                                properties: _.extend(event_data.properties, {
+                                    storefront: event_data.properties.storefront.toUpperCase()
+                                })
+                            };
+                        }
+                    }
+                });
+                var data = mixpanel.test.track_with_groups('my event', {
+                    'foo': 'bar'
+                }, {
+                    'storefront': 'Pro Kitten Trader'
+                });
+                same(data.properties.storefront, 'PRO KITTEN TRADER', 'should transform group prop with hook');
+            });
 
             module("mixpanel.track_links");
 
