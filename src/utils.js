@@ -1733,5 +1733,6 @@ export {
     extract_domain,
     localStorageSupported,
     JSONStringify,
-    JSONParse
+    JSONParse,
+    slice
 };

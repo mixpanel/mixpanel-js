@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { _, console, userAgent, window, document, navigator, determine_eligibility } from './utils';
+import { _, console, userAgent, window, document, navigator, determine_eligibility, slice } from './utils';
 import { autotrack } from './autotrack';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
@@ -622,7 +622,7 @@ MixpanelLib.prototype.init_batchers = function() {
                         );
                     }, this),
                     beforeSendHook: _.bind(function(item) {
-                        return this._get_hook('before_send_' + attrs.type)(item);
+                        return this._run_hook('before_send_' + attrs.type, item);
                     }, this)
                 }
             );
@@ -695,22 +695,25 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     var batcher = options.batcher;
     var should_send_immediately = options.should_send_immediately;
     var send_request_options = options.send_request_options || {};
-    var before_send_hook = this._get_hook('before_send_' + options.type);
     callback = callback || NOOP_FUNC;
 
     var request_enqueued_or_initiated = true;
     var send_request_immediately = _.bind(function() {
         if (!send_request_options.skip_hooks) {
-            truncated_data = before_send_hook(truncated_data);
+            truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
         }
-        console.log('MIXPANEL REQUEST:');
-        console.log(truncated_data);
-        return this._send_request(
-            endpoint,
-            encode_data_for_request(truncated_data),
-            send_request_options,
-            this._prepare_callback(callback, truncated_data)
-        );
+        if (truncated_data) {
+            console.log('MIXPANEL REQUEST:');
+            console.log(truncated_data);
+            return this._send_request(
+                endpoint,
+                encode_data_for_request(truncated_data),
+                send_request_options,
+                this._prepare_callback(callback, truncated_data)
+            );
+        } else {
+            return null;
+        }
     }, this);
 
     if (this._batch_requests && !should_send_immediately) {
@@ -1521,11 +1524,18 @@ MixpanelLib.prototype.get_config = function(prop_name) {
 };
 
 /**
- * Fetch a hook function from config, with safe default
+ * Fetch a hook function from config, with safe default, and run it
+ * against the given arguments
  * @param {string} hook_name which hook to retrieve
+ * @returns {any|null} return value of user-provided hook, or null if nothing was returned
  */
-MixpanelLib.prototype._get_hook = function(hook_name) {
-    return this['config']['hooks'][hook_name] || IDENTITY_FUNC;
+MixpanelLib.prototype._run_hook = function(hook_name) {
+    var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, slice.call(arguments, 1));
+    if (typeof ret === 'undefined') {
+        console.error(hook_name + ' hook did not return a value');
+        ret = null;
+    }
+    return ret;
 };
 
 /**

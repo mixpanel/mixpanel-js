@@ -1581,6 +1581,19 @@
                 same(data.properties.storefront, 'PRO KITTEN TRADER', 'should transform group prop with hook');
             });
 
+            test("before_send_ hook prevents track if no value is returned", 1, function() {
+                mixpanel.test.set_config({
+                    hooks: {
+                        before_send_events: function(event_data) {
+                            // mutates arg but doesn't return anything
+                            event_data.event = 'foo';
+                        }
+                    }
+                });
+                var data = mixpanel.test.track('my event', {'foo': 'bar'});
+                same(data, null);
+            });
+
             module("mixpanel.track_links");
 
             asyncTest("callback test", 1, function() {
@@ -4346,6 +4359,28 @@
                     this.clock.tick(5000);
                     batch_events = getRequestData(this.requests[1]);
                     same(batch_events[0].event, 'POST-START EVENT', "should continue applying hook");
+                });
+
+                test('queued events are dropped if before_send_events hook returns null', 4, function() {
+                    mixpanel.batchtest.set_config({
+                        hooks: {
+                            before_send_events: function(event_data) {
+                                return event_data.event === 'dropme' ? null : event_data;
+                            }
+                        }
+                    });
+                    mixpanel.batchtest.track('dropme', {'hello': 'world'});
+                    mixpanel.batchtest.track('track me 1');
+                    mixpanel.batchtest.track('dropme');
+                    mixpanel.batchtest.track('track me 2');
+
+                    this.clock.tick(5000);
+                    same(this.requests.length, 1);
+
+                    var batch_events = getRequestData(this.requests[0]);
+                    same(batch_events.length, 2);
+                    same(batch_events[0].event, 'track me 1');
+                    same(batch_events[1].event, 'track me 2');
                 });
 
                 test('people updates do not send a request immediately', 3, function() {

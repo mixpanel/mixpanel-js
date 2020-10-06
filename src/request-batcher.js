@@ -103,24 +103,27 @@ RequestBatcher.prototype.flush = function(options) {
         }
 
         options = options || {};
+        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+        var startTime = new Date().getTime();
         var currentBatchSize = this.batchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
-        if (batch.length < 1) {
+        var dataForRequest = [];
+        _.each(batch, function(item) {
+            var payload = item['payload'];
+            if (this.beforeSendHook && !item.orphaned) {
+                payload = this.beforeSendHook(payload);
+            }
+            if (payload) {
+                dataForRequest.push(payload);
+            }
+        }, this);
+        if (dataForRequest.length < 1) {
             this.resetFlush();
             return; // nothing to do
         }
 
         this.requestInProgress = true;
 
-        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
-        var startTime = new Date().getTime();
-        var dataForRequest = _.map(batch, function(item) {
-            var payload = item['payload'];
-            if (this.beforeSendHook && !item.orphaned) {
-                payload = this.beforeSendHook(payload);
-            }
-            return payload;
-        }, this);
         var batchSendCallback = _.bind(function(res) {
             this.requestInProgress = false;
 
