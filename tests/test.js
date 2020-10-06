@@ -4205,6 +4205,25 @@
                         request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[1];
                         same(request_data[0].event, 'queued event 3');
                     });
+
+                    test('before_send hooks are applied to events flushed via sendBeacon before page unload', 3, function() {
+                        mixpanel.batchtest.set_config({
+                            hooks: {
+                                before_send_events: function(event_data) {
+                                    event_data.event += ' (transformed)';
+                                    return event_data;
+                                }
+                            }
+                        });
+                        mixpanel.batchtest.track('queued event');
+                        window.dispatchEvent(new Event('unload'));
+                        ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
+                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                        same(request_data.length, 1, "sendBeacon should have sent a single event");
+                        same(request_data[0].event, 'queued event (transformed)', "before_hook should be applied to event on unload");
+
+                        // TODO update localStorage too
+                    });
                 }
 
                 test('queued requests are cancelled if opt-out is called', 2, function() {
