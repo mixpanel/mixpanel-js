@@ -160,7 +160,7 @@ var updatePayloads = function(existingItems, itemsToUpdate) {
         if (id in itemsToUpdate) {
             var newPayload = itemsToUpdate[id];
             if (newPayload !== null) {
-                item.payload = newPayload;
+                item['payload'] = newPayload;
                 newItems.push(item);
             }
         } else {
