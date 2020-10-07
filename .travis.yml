@@ -4,5 +4,3 @@ node_js:
 language: node_js
 script:
 - npm test
-branches:
-  only: master
