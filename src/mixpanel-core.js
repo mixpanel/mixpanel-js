@@ -294,7 +294,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
                     // Since sendBeacon doesn't report success/failure, events will not be removed from
                     // the persistent store; if the site is loaded again, the events will be flushed again
                     // on startup and deduplicated on the Mixpanel server side.
-                    this.request_batchers.events.flush({unloading: true});
+                    if (!this.request_batchers.events.stopped) {
+                        this.request_batchers.events.flush({unloading: true});
+                    }
                 }, this));
             }
         }
