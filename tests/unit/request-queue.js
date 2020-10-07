@@ -397,6 +397,69 @@ describe(`RequestQueue`, function() {
     });
   });
 
+  describe(`updatePayloads`, function() {
+    const items = [
+      {event: `foo1`, properties: {bar1: `baz1`}},
+      {event: `foo2`, properties: {bar2: `baz2`}},
+      {event: `foo3`, properties: {bar3: `baz3`}},
+      {event: `foo4`, properties: {bar4: `baz4`}},
+      {event: `foo5`, properties: {bar5: `baz5`}},
+    ];
+    let origIDs; // generated item IDs from initial queue
+
+    beforeEach(function() {
+      for (const item of items) {
+        queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+      }
+      expect(queue.readFromStorage()).to.have.lengthOf(items.length);
+      origIDs = map(queue.memQueue, `id`);
+    });
+
+    it(`replaces payloads in in-mem queue`, function() {
+      queue.updatePayloads({
+        [origIDs[0]]: {foo: `bar`},
+      });
+      expect(queue.memQueue[0].id).to.equal(origIDs[0]);
+      expect(queue.memQueue[0].payload).to.deep.equal({foo: `bar`});
+    });
+
+    it(`replaces payloads in persisted queue`, function() {
+      queue.updatePayloads({
+        [origIDs[3]]: {foo: `bar`},
+      });
+      expect(queue.readFromStorage()[3].payload).to.deep.equal({foo: `bar`});
+    });
+
+    it(`doesn't affect items which are not in itemsToUpdate`, function() {
+      queue.updatePayloads({
+        [origIDs[1]]: {foo1: `bar`},
+        [origIDs[3]]: {foo3: `bar`},
+      });
+      expect(map(queue.readFromStorage(), `payload`)).to.deep.equal([
+        {event: `foo1`, properties: {bar1: `baz1`}},
+        {foo1: `bar`},
+        {event: `foo3`, properties: {bar3: `baz3`}},
+        {foo3: `bar`},
+        {event: `foo5`, properties: {bar5: `baz5`}},
+      ]);
+    });
+
+    it(`removes items which are set to null`, function() {
+      queue.updatePayloads({
+        [origIDs[1]]: null,
+        [origIDs[3]]: {foo3: `bar`},
+        [origIDs[4]]: null,
+      });
+      expect(map(queue.readFromStorage(), `payload`)).to.deep.equal([
+        {event: `foo1`, properties: {bar1: `baz1`}},
+        // deleted item
+        {event: `foo3`, properties: {bar3: `baz3`}},
+        {foo3: `bar`},
+        // deleted item
+      ]);
+    });
+  });
+
   describe(`readFromStorage`, function() {
     it(`decodes any serialized array from localStorage`, function() {
       localStorage.setItem(`fake-rq-key`, `[]`);

@@ -152,6 +152,52 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     }, this.pid);
 };
 
+// internal helper for RequestQueue.updatePayloads
+var updatePayloads = function(existingItems, itemsToUpdate) {
+    var newItems = [];
+    _.each(existingItems, function(item) {
+        var id = item['id'];
+        if (id in itemsToUpdate) {
+            var newPayload = itemsToUpdate[id];
+            if (newPayload !== null) {
+                item.payload = newPayload;
+                newItems.push(item);
+            }
+        } else {
+            // no update
+            newItems.push(item);
+        }
+    });
+    return newItems;
+};
+
+/**
+ * Update payloads of given items in both in-memory queue and
+ * persisted queue. Items set to null are removed from queues.
+ */
+RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
+    this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
+    this.lock.withLock(_.bind(function lockAcquired() {
+        var succeeded;
+        try {
+            var storedQueue = this.readFromStorage();
+            storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+            succeeded = this.saveToStorage(storedQueue);
+        } catch(err) {
+            logger.error('Error updating items', itemsToUpdate);
+            succeeded = false;
+        }
+        if (cb) {
+            cb(succeeded);
+        }
+    }, this), function lockFailure(err) {
+        logger.error('Error acquiring storage lock', err);
+        if (cb) {
+            cb(false);
+        }
+    }, this.pid);
+};
+
 /**
  * Read and parse items array from localStorage entry, handling
  * malformed/missing data if necessary.

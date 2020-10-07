@@ -108,6 +108,7 @@ RequestBatcher.prototype.flush = function(options) {
         var currentBatchSize = this.batchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
         var dataForRequest = [];
+        var transformedItems = {};
         _.each(batch, function(item) {
             var payload = item['payload'];
             if (this.beforeSendHook && !item.orphaned) {
@@ -116,6 +117,7 @@ RequestBatcher.prototype.flush = function(options) {
             if (payload) {
                 dataForRequest.push(payload);
             }
+            transformedItems[item['id']] = payload;
         }, this);
         if (dataForRequest.length < 1) {
             this.resetFlush();
@@ -133,7 +135,10 @@ RequestBatcher.prototype.flush = function(options) {
                 // flush operation if something goes wrong
 
                 var removeItemsFromQueue = false;
-                if (
+                if (options.unloading) {
+                    // update persisted data to include hook transformations
+                    this.queue.updatePayloads(transformedItems);
+                } else if (
                     _.isObject(res) &&
                     res.error === 'timeout' &&
                     new Date().getTime() - startTime >= timeoutMS
@@ -193,7 +198,7 @@ RequestBatcher.prototype.flush = function(options) {
             ignore_json_errors: true, // eslint-disable-line camelcase
             timeout_ms: timeoutMS // eslint-disable-line camelcase
         };
-        if (options.sendBeacon) {
+        if (options.unloading) {
             requestOptions.transport = 'sendBeacon';
         }
         logger.log('MIXPANEL REQUEST:', dataForRequest);
