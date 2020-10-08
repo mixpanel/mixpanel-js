@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.40.0-rc1'
+    LIB_VERSION: '2.40.0-rc2'
 };
 
 exports['default'] = Config;
@@ -1290,6 +1290,11 @@ var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE = 0;
 var INIT_SNIPPET = 1;
 
+var IDENTITY_FUNC = function IDENTITY_FUNC(x) {
+    return x;
+};
+var NOOP_FUNC = function NOOP_FUNC() {};
+
 /** @const */var PRIMARY_INSTANCE_NAME = 'mixpanel';
 
 /*
@@ -1329,7 +1334,7 @@ var DEFAULT_CONFIG = {
     'persistence_name': '',
     'cookie_domain': '',
     'cookie_name': '',
-    'loaded': function loaded() {},
+    'loaded': NOOP_FUNC,
     'store_google': true,
     'save_referrer': true,
     'test': false,
@@ -1355,7 +1360,9 @@ var DEFAULT_CONFIG = {
     'batch_requests': false, // for now
     'batch_size': 50,
     'batch_flush_interval_ms': 5000,
-    'batch_request_timeout_ms': 90000
+    'batch_request_timeout_ms': 90000,
+    'batch_autostart': true,
+    'hooks': {}
 };
 
 var DOM_LOADED = false;
@@ -1483,13 +1490,13 @@ MixpanelLib.prototype._init = function (token, config, name) {
     this['config'] = {};
     this['_triggered_notifs'] = [];
 
-    // rollout: enable batch_requests by default for 30% of projects
+    // rollout: enable batch_requests by default for 60% of projects
     // (only if they have not specified a value in their init config
     // and they aren't using a custom API host)
     var variable_features = {};
     var api_host = config['api_host'];
     var is_custom_api = !!api_host && !api_host.match(/\.mixpanel\.com$/);
-    if (!('batch_requests' in config) && !is_custom_api && (0, _utils.determine_eligibility)(token, 'batch', 30)) {
+    if (!('batch_requests' in config) && !is_custom_api && (0, _utils.determine_eligibility)(token, 'batch', 60)) {
         variable_features['batch_requests'] = true;
     }
 
@@ -1499,7 +1506,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
         'callback_fn': (name === PRIMARY_INSTANCE_NAME ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
     }));
 
-    this['_jsc'] = function () {};
+    this['_jsc'] = NOOP_FUNC;
 
     this.__dom_loaded_queue = [];
     this.__request_queue = [];
@@ -1517,14 +1524,16 @@ MixpanelLib.prototype._init = function (token, config, name) {
             this._batch_requests = false;
             _utils.console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
         } else {
-            this.start_batch_requests();
+            this.init_batchers();
             if (sendBeacon && _utils.window.addEventListener) {
                 _utils.window.addEventListener('unload', _utils._.bind(function () {
                     // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
                     // Since sendBeacon doesn't report success/failure, events will not be removed from
                     // the persistent store; if the site is loaded again, the events will be flushed again
                     // on startup and deduplicated on the Mixpanel server side.
-                    this.request_batchers.events.flush({ sendBeacon: true });
+                    if (!this.request_batchers.events.stopped) {
+                        this.request_batchers.events.flush({ unloading: true });
+                    }
                 }, this));
             }
         }
@@ -1702,6 +1711,13 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
             _utils.console.error(e);
             succeeded = false;
         }
+        try {
+            if (callback) {
+                callback(succeeded ? 1 : 0);
+            }
+        } catch (e) {
+            _utils.console.error(e);
+        }
     } else if (USE_XHR) {
         try {
             var req = new XMLHttpRequest();
@@ -1836,28 +1852,40 @@ MixpanelLib.prototype._execute_array = function (array) {
 
 // request queueing utils
 
-MixpanelLib.prototype.start_batch_requests = function () {
+MixpanelLib.prototype.init_batchers = function () {
     var token = this.get_config('token');
     if (!this.request_batchers.events) {
         // no batchers initialized yet
-        var batcher_config = {
-            libConfig: this['config'],
-            sendRequestFunc: _utils._.bind(function (endpoint, data, options, cb) {
-                this._send_request(this.get_config('api_host') + endpoint, encode_data_for_request(data), options, this._prepare_callback(cb, data));
-            }, this)
-        };
+        var batcher_for = _utils._.bind(function (attrs) {
+            return new _requestBatcher.RequestBatcher('__mpq_' + token + attrs.queue_suffix, {
+                libConfig: this['config'],
+                sendRequestFunc: _utils._.bind(function (data, options, cb) {
+                    this._send_request(this.get_config('api_host') + attrs.endpoint, encode_data_for_request(data), options, this._prepare_callback(cb, data));
+                }, this),
+                beforeSendHook: _utils._.bind(function (item) {
+                    return this._run_hook('before_send_' + attrs.type, item);
+                }, this)
+            });
+        }, this);
         this.request_batchers = {
-            events: new _requestBatcher.RequestBatcher('__mpq_' + token + '_ev', '/track/', batcher_config),
-            people: new _requestBatcher.RequestBatcher('__mpq_' + token + '_pp', '/engage/', batcher_config),
-            groups: new _requestBatcher.RequestBatcher('__mpq_' + token + '_gr', '/groups/', batcher_config)
+            events: batcher_for({ type: 'events', endpoint: '/track/', queue_suffix: '_ev' }),
+            people: batcher_for({ type: 'people', endpoint: '/engage/', queue_suffix: '_pp' }),
+            groups: batcher_for({ type: 'groups', endpoint: '/groups/', queue_suffix: '_gr' })
         };
     }
+    if (this.get_config('batch_autostart')) {
+        this.start_batch_senders();
+    }
+};
+
+MixpanelLib.prototype.start_batch_senders = function () {
+    this._batch_requests = true;
     _utils._.each(this.request_batchers, function (batcher) {
         batcher.start();
     });
 };
 
-MixpanelLib.prototype.stop_batch_requests = function () {
+MixpanelLib.prototype.stop_batch_senders = function () {
     this._batch_requests = false;
     _utils._.each(this.request_batchers, function (batcher) {
         batcher.stop();
@@ -1902,18 +1930,25 @@ MixpanelLib.prototype.disable = function (events) {
 
 // internal method for handling track vs batch-enqueue logic
 MixpanelLib.prototype._track_or_batch = function (options, callback) {
-    var truncated_data = options.truncated_data;
+    var truncated_data = _utils._.truncate(options.data, 255);
     var endpoint = options.endpoint;
     var batcher = options.batcher;
     var should_send_immediately = options.should_send_immediately;
     var send_request_options = options.send_request_options || {};
-    callback = callback || function () {};
+    callback = callback || NOOP_FUNC;
 
     var request_enqueued_or_initiated = true;
     var send_request_immediately = _utils._.bind(function () {
-        _utils.console.log('MIXPANEL REQUEST:');
-        _utils.console.log(truncated_data);
-        return this._send_request(endpoint, encode_data_for_request(truncated_data), send_request_options, this._prepare_callback(callback, truncated_data));
+        if (!send_request_options.skip_hooks) {
+            truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
+        }
+        if (truncated_data) {
+            _utils.console.log('MIXPANEL REQUEST:');
+            _utils.console.log(truncated_data);
+            return this._send_request(endpoint, encode_data_for_request(truncated_data), send_request_options, this._prepare_callback(callback, truncated_data));
+        } else {
+            return null;
+        }
     }, this);
 
     if (this._batch_requests && !should_send_immediately) {
@@ -1966,7 +2001,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     }
     var should_send_immediately = options['send_immediately'];
     if (typeof callback !== 'function') {
-        callback = function () {};
+        callback = NOOP_FUNC;
     }
 
     if (_utils._.isUndefined(event_name)) {
@@ -2013,7 +2048,8 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
         'properties': properties
     };
     var ret = this._track_or_batch({
-        truncated_data: _utils._.truncate(data, 255),
+        type: 'events',
+        data: data,
         endpoint: this.get_config('api_host') + '/track/',
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
@@ -2438,7 +2474,10 @@ MixpanelLib.prototype.identify = function (new_distinct_id, _set_callback, _add_
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
     if (new_distinct_id !== previous_distinct_id) {
-        this.track('$identify', { 'distinct_id': new_distinct_id, '$anon_distinct_id': previous_distinct_id });
+        this.track('$identify', {
+            'distinct_id': new_distinct_id,
+            '$anon_distinct_id': previous_distinct_id
+        }, { skip_hooks: true });
     }
 };
 
@@ -2527,7 +2566,12 @@ MixpanelLib.prototype.alias = function (alias, original) {
     }
     if (alias !== original) {
         this._register_single(_mixpanelPersistence.ALIAS_ID_KEY, alias);
-        return this.track('$create_alias', { 'alias': alias, 'distinct_id': original }, function () {
+        return this.track('$create_alias', {
+            'alias': alias,
+            'distinct_id': original
+        }, {
+            skip_hooks: true
+        }, function () {
             // Flush the people queue
             _this.identify(alias);
         });
@@ -2704,6 +2748,21 @@ MixpanelLib.prototype.set_config = function (config) {
  */
 MixpanelLib.prototype.get_config = function (prop_name) {
     return this['config'][prop_name];
+};
+
+/**
+ * Fetch a hook function from config, with safe default, and run it
+ * against the given arguments
+ * @param {string} hook_name which hook to retrieve
+ * @returns {any|null} return value of user-provided hook, or null if nothing was returned
+ */
+MixpanelLib.prototype._run_hook = function (hook_name) {
+    var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, _utils.slice.call(arguments, 1));
+    if (typeof ret === 'undefined') {
+        _utils.console.error(hook_name + ' hook did not return a value');
+        ret = null;
+    }
+    return ret;
 };
 
 /**
@@ -3078,7 +3137,8 @@ MixpanelLib.prototype['set_group'] = MixpanelLib.prototype.set_group;
 MixpanelLib.prototype['add_group'] = MixpanelLib.prototype.add_group;
 MixpanelLib.prototype['remove_group'] = MixpanelLib.prototype.remove_group;
 MixpanelLib.prototype['track_with_groups'] = MixpanelLib.prototype.track_with_groups;
-MixpanelLib.prototype['stop_batch_requests'] = MixpanelLib.prototype.stop_batch_requests;
+MixpanelLib.prototype['start_batch_senders'] = MixpanelLib.prototype.start_batch_senders;
+MixpanelLib.prototype['stop_batch_senders'] = MixpanelLib.prototype.stop_batch_senders;
 
 // MixpanelPersistence Exports
 _mixpanelPersistence.MixpanelPersistence.prototype['properties'] = _mixpanelPersistence.MixpanelPersistence.prototype.properties;
@@ -3396,7 +3456,8 @@ MixpanelGroup.prototype._send_request = function (data, callback) {
 
     var date_encoded_data = _utils._.encodeDates(data);
     return this._mixpanel._track_or_batch({
-        truncated_data: _utils._.truncate(date_encoded_data, 255),
+        type: 'groups',
+        data: date_encoded_data,
         endpoint: this._get_config('api_host') + '/groups/',
         batcher: this._mixpanel.request_batchers.groups
     }, callback);
@@ -4963,7 +5024,6 @@ MixpanelPeople.prototype._send_request = function (data, callback) {
     }
 
     var date_encoded_data = _utils._.encodeDates(data);
-    var truncated_data = _utils._.truncate(date_encoded_data, 255);
 
     if (!this._identify_called()) {
         this._enqueue(data);
@@ -4974,11 +5034,12 @@ MixpanelPeople.prototype._send_request = function (data, callback) {
                 callback(-1);
             }
         }
-        return truncated_data;
+        return _utils._.truncate(date_encoded_data, 255);
     }
 
     return this._mixpanel._track_or_batch({
-        truncated_data: truncated_data,
+        type: 'people',
+        data: date_encoded_data,
         endpoint: this._get_config('api_host') + '/engage/',
         batcher: this._mixpanel.request_batchers.people
     }, callback);
@@ -6184,18 +6245,18 @@ var logger = (0, _utils.console_with_prefix)('batch');
  * Uses RequestQueue to manage the backing store.
  * @constructor
  */
-var RequestBatcher = function RequestBatcher(storageKey, endpoint, options) {
+var RequestBatcher = function RequestBatcher(storageKey, options) {
     this.queue = new _requestQueue.RequestQueue(storageKey, { storage: options.storage });
-    this.endpoint = endpoint;
 
     this.libConfig = options.libConfig;
     this.sendRequest = options.sendRequestFunc;
+    this.beforeSendHook = options.beforeSendHook;
 
     // seed variable batch size + flush interval with configured values
     this.batchSize = this.libConfig['batch_size'];
     this.flushInterval = this.libConfig['batch_flush_interval_ms'];
 
-    this.stopped = false;
+    this.stopped = !this.libConfig['batch_autostart'];
 };
 
 /**
@@ -6276,20 +6337,29 @@ RequestBatcher.prototype.flush = function (options) {
         }
 
         options = options || {};
+        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+        var startTime = new Date().getTime();
         var currentBatchSize = this.batchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
-        if (batch.length < 1) {
+        var dataForRequest = [];
+        var transformedItems = {};
+        _utils._.each(batch, function (item) {
+            var payload = item['payload'];
+            if (this.beforeSendHook && !item.orphaned) {
+                payload = this.beforeSendHook(payload);
+            }
+            if (payload) {
+                dataForRequest.push(payload);
+            }
+            transformedItems[item['id']] = payload;
+        }, this);
+        if (dataForRequest.length < 1) {
             this.resetFlush();
             return; // nothing to do
         }
 
         this.requestInProgress = true;
 
-        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
-        var startTime = new Date().getTime();
-        var dataForRequest = _utils._.map(batch, function (item) {
-            return item['payload'];
-        });
         var batchSendCallback = _utils._.bind(function (res) {
             this.requestInProgress = false;
 
@@ -6299,7 +6369,10 @@ RequestBatcher.prototype.flush = function (options) {
                 // flush operation if something goes wrong
 
                 var removeItemsFromQueue = false;
-                if (_utils._.isObject(res) && res.error === 'timeout' && new Date().getTime() - startTime >= timeoutMS) {
+                if (options.unloading) {
+                    // update persisted data to include hook transformations
+                    this.queue.updatePayloads(transformedItems);
+                } else if (_utils._.isObject(res) && res.error === 'timeout' && new Date().getTime() - startTime >= timeoutMS) {
                     logger.error('Network timeout; retrying');
                     this.flush();
                 } else if (_utils._.isObject(res) && res.xhr_req && (res.xhr_req['status'] >= 500 || res.xhr_req['status'] <= 0)) {
@@ -6350,11 +6423,11 @@ RequestBatcher.prototype.flush = function (options) {
             ignore_json_errors: true, // eslint-disable-line camelcase
             timeout_ms: timeoutMS // eslint-disable-line camelcase
         };
-        if (options.sendBeacon) {
+        if (options.unloading) {
             requestOptions.transport = 'sendBeacon';
         }
-        logger.log('MIXPANEL REQUEST:', this.endpoint, dataForRequest);
-        this.sendRequest(this.endpoint, dataForRequest, requestOptions, batchSendCallback);
+        logger.log('MIXPANEL REQUEST:', dataForRequest);
+        this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
     } catch (err) {
         logger.error('Error flushing request queue', err);
         this.resetFlush();
@@ -6472,6 +6545,7 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
             for (var i = 0; i < storedQueue.length; i++) {
                 var item = storedQueue[i];
                 if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                    item.orphaned = true;
                     batch.push(item);
                     if (batch.length >= batchSize) {
                         break;
@@ -6517,6 +6591,52 @@ RequestQueue.prototype.removeItemsByID = function (ids, cb) {
             succeeded = this.saveToStorage(storedQueue);
         } catch (err) {
             logger.error('Error removing items', ids);
+            succeeded = false;
+        }
+        if (cb) {
+            cb(succeeded);
+        }
+    }, this), function lockFailure(err) {
+        logger.error('Error acquiring storage lock', err);
+        if (cb) {
+            cb(false);
+        }
+    }, this.pid);
+};
+
+// internal helper for RequestQueue.updatePayloads
+var updatePayloads = function updatePayloads(existingItems, itemsToUpdate) {
+    var newItems = [];
+    _utils._.each(existingItems, function (item) {
+        var id = item['id'];
+        if (id in itemsToUpdate) {
+            var newPayload = itemsToUpdate[id];
+            if (newPayload !== null) {
+                item['payload'] = newPayload;
+                newItems.push(item);
+            }
+        } else {
+            // no update
+            newItems.push(item);
+        }
+    });
+    return newItems;
+};
+
+/**
+ * Update payloads of given items in both in-memory queue and
+ * persisted queue. Items set to null are removed from queues.
+ */
+RequestQueue.prototype.updatePayloads = function (itemsToUpdate, cb) {
+    this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
+    this.lock.withLock(_utils._.bind(function lockAcquired() {
+        var succeeded;
+        try {
+            var storedQueue = this.readFromStorage();
+            storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+            succeeded = this.saveToStorage(storedQueue);
+        } catch (err) {
+            logger.error('Error updating items', itemsToUpdate);
             succeeded = false;
         }
         if (cb) {
@@ -6975,13 +7095,13 @@ _.toArray = function (iterable) {
     return _.values(iterable);
 };
 
-_.map = function (arr, callback) {
+_.map = function (arr, callback, context) {
     if (nativeMap && arr.map === nativeMap) {
-        return arr.map(callback);
+        return arr.map(callback, context);
     } else {
         var results = [];
         _.each(arr, function (item) {
-            results.push(callback(item));
+            results.push(callback.call(context, item));
         });
         return results;
     }
@@ -8478,5 +8598,6 @@ exports.extract_domain = extract_domain;
 exports.localStorageSupported = localStorageSupported;
 exports.JSONStringify = JSONStringify;
 exports.JSONParse = JSONParse;
+exports.slice = slice;
 
 },{"./config":5}]},{},[1]);

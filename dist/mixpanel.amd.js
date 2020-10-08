@@ -2,7 +2,7 @@ define(function () { 'use strict';
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.40.0-rc1'
+        LIB_VERSION: '2.40.0-rc2'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -234,13 +234,13 @@ define(function () { 'use strict';
         return _.values(iterable);
     };
 
-    _.map = function(arr, callback) {
+    _.map = function(arr, callback, context) {
         if (nativeMap && arr.map === nativeMap) {
-            return arr.map(callback);
+            return arr.map(callback, context);
         } else {
             var results = [];
             _.each(arr, function(item) {
-                results.push(callback(item));
+                results.push(callback.call(context, item));
             });
             return results;
         }
@@ -2649,6 +2649,7 @@ define(function () { 'use strict';
                 for (var i = 0; i < storedQueue.length; i++) {
                     var item = storedQueue[i];
                     if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                        item.orphaned = true;
                         batch.push(item);
                         if (batch.length >= batchSize) {
                             break;
@@ -2692,6 +2693,52 @@ define(function () { 'use strict';
                 succeeded = this.saveToStorage(storedQueue);
             } catch(err) {
                 logger$1.error('Error removing items', ids);
+                succeeded = false;
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), function lockFailure(err) {
+            logger$1.error('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this.pid);
+    };
+
+    // internal helper for RequestQueue.updatePayloads
+    var updatePayloads = function(existingItems, itemsToUpdate) {
+        var newItems = [];
+        _.each(existingItems, function(item) {
+            var id = item['id'];
+            if (id in itemsToUpdate) {
+                var newPayload = itemsToUpdate[id];
+                if (newPayload !== null) {
+                    item['payload'] = newPayload;
+                    newItems.push(item);
+                }
+            } else {
+                // no update
+                newItems.push(item);
+            }
+        });
+        return newItems;
+    };
+
+    /**
+     * Update payloads of given items in both in-memory queue and
+     * persisted queue. Items set to null are removed from queues.
+     */
+    RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
+        this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                succeeded = this.saveToStorage(storedQueue);
+            } catch(err) {
+                logger$1.error('Error updating items', itemsToUpdate);
                 succeeded = false;
             }
             if (cb) {
@@ -2761,18 +2808,18 @@ define(function () { 'use strict';
      * Uses RequestQueue to manage the backing store.
      * @constructor
      */
-    var RequestBatcher = function(storageKey, endpoint, options) {
+    var RequestBatcher = function(storageKey, options) {
         this.queue = new RequestQueue(storageKey, {storage: options.storage});
-        this.endpoint = endpoint;
 
         this.libConfig = options.libConfig;
         this.sendRequest = options.sendRequestFunc;
+        this.beforeSendHook = options.beforeSendHook;
 
         // seed variable batch size + flush interval with configured values
         this.batchSize = this.libConfig['batch_size'];
         this.flushInterval = this.libConfig['batch_flush_interval_ms'];
 
-        this.stopped = false;
+        this.stopped = !this.libConfig['batch_autostart'];
     };
 
     /**
@@ -2852,18 +2899,29 @@ define(function () { 'use strict';
             }
 
             options = options || {};
+            var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+            var startTime = new Date().getTime();
             var currentBatchSize = this.batchSize;
             var batch = this.queue.fillBatch(currentBatchSize);
-            if (batch.length < 1) {
+            var dataForRequest = [];
+            var transformedItems = {};
+            _.each(batch, function(item) {
+                var payload = item['payload'];
+                if (this.beforeSendHook && !item.orphaned) {
+                    payload = this.beforeSendHook(payload);
+                }
+                if (payload) {
+                    dataForRequest.push(payload);
+                }
+                transformedItems[item['id']] = payload;
+            }, this);
+            if (dataForRequest.length < 1) {
                 this.resetFlush();
                 return; // nothing to do
             }
 
             this.requestInProgress = true;
 
-            var timeoutMS = this.libConfig['batch_request_timeout_ms'];
-            var startTime = new Date().getTime();
-            var dataForRequest = _.map(batch, function(item) { return item['payload']; });
             var batchSendCallback = _.bind(function(res) {
                 this.requestInProgress = false;
 
@@ -2873,7 +2931,10 @@ define(function () { 'use strict';
                     // flush operation if something goes wrong
 
                     var removeItemsFromQueue = false;
-                    if (
+                    if (options.unloading) {
+                        // update persisted data to include hook transformations
+                        this.queue.updatePayloads(transformedItems);
+                    } else if (
                         _.isObject(res) &&
                         res.error === 'timeout' &&
                         new Date().getTime() - startTime >= timeoutMS
@@ -2933,11 +2994,11 @@ define(function () { 'use strict';
                 ignore_json_errors: true, // eslint-disable-line camelcase
                 timeout_ms: timeoutMS // eslint-disable-line camelcase
             };
-            if (options.sendBeacon) {
+            if (options.unloading) {
                 requestOptions.transport = 'sendBeacon';
             }
-            logger.log('MIXPANEL REQUEST:', this.endpoint, dataForRequest);
-            this.sendRequest(this.endpoint, dataForRequest, requestOptions, batchSendCallback);
+            logger.log('MIXPANEL REQUEST:', dataForRequest);
+            this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
 
         } catch(err) {
             logger.error('Error flushing request queue', err);
@@ -3480,7 +3541,8 @@ define(function () { 'use strict';
 
         var date_encoded_data = _.encodeDates(data);
         return this._mixpanel._track_or_batch({
-            truncated_data: _.truncate(date_encoded_data, 255),
+            type: 'groups',
+            data: date_encoded_data,
             endpoint: this._get_config('api_host') + '/groups/',
             batcher: this._mixpanel.request_batchers.groups
         }, callback);
@@ -6109,7 +6171,6 @@ define(function () { 'use strict';
         }
 
         var date_encoded_data = _.encodeDates(data);
-        var truncated_data = _.truncate(date_encoded_data, 255);
 
         if (!this._identify_called()) {
             this._enqueue(data);
@@ -6120,11 +6181,12 @@ define(function () { 'use strict';
                     callback(-1);
                 }
             }
-            return truncated_data;
+            return _.truncate(date_encoded_data, 255);
         }
 
         return this._mixpanel._track_or_batch({
-            truncated_data: truncated_data,
+            type: 'people',
+            data: date_encoded_data,
             endpoint: this._get_config('api_host') + '/engage/',
             batcher: this._mixpanel.request_batchers.people
         }, callback);
@@ -6288,6 +6350,9 @@ define(function () { 'use strict';
     var INIT_MODULE  = 0;
     var INIT_SNIPPET = 1;
 
+    var IDENTITY_FUNC = function(x) {return x;};
+    var NOOP_FUNC = function() {};
+
     /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 
 
@@ -6328,7 +6393,7 @@ define(function () { 'use strict';
         'persistence_name':                  '',
         'cookie_domain':                     '',
         'cookie_name':                       '',
-        'loaded':                            function() {},
+        'loaded':                            NOOP_FUNC,
         'store_google':                      true,
         'save_referrer':                     true,
         'test':                              false,
@@ -6354,7 +6419,9 @@ define(function () { 'use strict';
         'batch_requests':                    false, // for now
         'batch_size':                        50,
         'batch_flush_interval_ms':           5000,
-        'batch_request_timeout_ms':          90000
+        'batch_request_timeout_ms':          90000,
+        'batch_autostart':                   true,
+        'hooks':                             {}
     };
 
     var DOM_LOADED = false;
@@ -6483,13 +6550,13 @@ define(function () { 'use strict';
         this['config'] = {};
         this['_triggered_notifs'] = [];
 
-        // rollout: enable batch_requests by default for 30% of projects
+        // rollout: enable batch_requests by default for 60% of projects
         // (only if they have not specified a value in their init config
         // and they aren't using a custom API host)
         var variable_features = {};
         var api_host = config['api_host'];
         var is_custom_api = !!api_host && !api_host.match(/\.mixpanel\.com$/);
-        if (!('batch_requests' in config) && !is_custom_api && determine_eligibility(token, 'batch', 30)) {
+        if (!('batch_requests' in config) && !is_custom_api && determine_eligibility(token, 'batch', 60)) {
             variable_features['batch_requests'] = true;
         }
 
@@ -6499,7 +6566,7 @@ define(function () { 'use strict';
             'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
         }));
 
-        this['_jsc'] = function() {};
+        this['_jsc'] = NOOP_FUNC;
 
         this.__dom_loaded_queue = [];
         this.__request_queue = [];
@@ -6517,14 +6584,16 @@ define(function () { 'use strict';
                 this._batch_requests = false;
                 console$1.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
             } else {
-                this.start_batch_requests();
+                this.init_batchers();
                 if (sendBeacon && window$1.addEventListener) {
                     window$1.addEventListener('unload', _.bind(function() {
                         // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
                         // Since sendBeacon doesn't report success/failure, events will not be removed from
                         // the persistent store; if the site is loaded again, the events will be flushed again
                         // on startup and deduplicated on the Mixpanel server side.
-                        this.request_batchers.events.flush({sendBeacon: true});
+                        if (!this.request_batchers.events.stopped) {
+                            this.request_batchers.events.flush({unloading: true});
+                        }
                     }, this));
                 }
             }
@@ -6694,6 +6763,13 @@ define(function () { 'use strict';
                 console$1.error(e);
                 succeeded = false;
             }
+            try {
+                if (callback) {
+                    callback(succeeded ? 1 : 0);
+                }
+            } catch (e) {
+                console$1.error(e);
+            }
         } else if (USE_XHR) {
             try {
                 var req = new XMLHttpRequest();
@@ -6828,32 +6904,47 @@ define(function () { 'use strict';
 
     // request queueing utils
 
-    MixpanelLib.prototype.start_batch_requests = function() {
+    MixpanelLib.prototype.init_batchers = function() {
         var token = this.get_config('token');
         if (!this.request_batchers.events) { // no batchers initialized yet
-            var batcher_config = {
-                libConfig: this['config'],
-                sendRequestFunc: _.bind(function(endpoint, data, options, cb) {
-                    this._send_request(
-                        this.get_config('api_host') + endpoint,
-                        encode_data_for_request(data),
-                        options,
-                        this._prepare_callback(cb, data)
-                    );
-                }, this)
-            };
+            var batcher_for = _.bind(function(attrs) {
+                return new RequestBatcher(
+                    '__mpq_' + token + attrs.queue_suffix,
+                    {
+                        libConfig: this['config'],
+                        sendRequestFunc: _.bind(function(data, options, cb) {
+                            this._send_request(
+                                this.get_config('api_host') + attrs.endpoint,
+                                encode_data_for_request(data),
+                                options,
+                                this._prepare_callback(cb, data)
+                            );
+                        }, this),
+                        beforeSendHook: _.bind(function(item) {
+                            return this._run_hook('before_send_' + attrs.type, item);
+                        }, this)
+                    }
+                );
+            }, this);
             this.request_batchers = {
-                events: new RequestBatcher('__mpq_' + token + '_ev', '/track/', batcher_config),
-                people: new RequestBatcher('__mpq_' + token + '_pp', '/engage/', batcher_config),
-                groups: new RequestBatcher('__mpq_' + token + '_gr', '/groups/', batcher_config)
+                events: batcher_for({type: 'events', endpoint: '/track/', queue_suffix: '_ev'}),
+                people: batcher_for({type: 'people', endpoint: '/engage/', queue_suffix: '_pp'}),
+                groups: batcher_for({type: 'groups', endpoint: '/groups/', queue_suffix: '_gr'})
             };
         }
+        if (this.get_config('batch_autostart')) {
+            this.start_batch_senders();
+        }
+    };
+
+    MixpanelLib.prototype.start_batch_senders = function() {
+        this._batch_requests = true;
         _.each(this.request_batchers, function(batcher) {
             batcher.start();
         });
     };
 
-    MixpanelLib.prototype.stop_batch_requests = function() {
+    MixpanelLib.prototype.stop_batch_senders = function() {
         this._batch_requests = false;
         _.each(this.request_batchers, function(batcher) {
             batcher.stop();
@@ -6898,23 +6989,30 @@ define(function () { 'use strict';
 
     // internal method for handling track vs batch-enqueue logic
     MixpanelLib.prototype._track_or_batch = function(options, callback) {
-        var truncated_data = options.truncated_data;
+        var truncated_data = _.truncate(options.data, 255);
         var endpoint = options.endpoint;
         var batcher = options.batcher;
         var should_send_immediately = options.should_send_immediately;
         var send_request_options = options.send_request_options || {};
-        callback = callback || function() {};
+        callback = callback || NOOP_FUNC;
 
         var request_enqueued_or_initiated = true;
         var send_request_immediately = _.bind(function() {
-            console$1.log('MIXPANEL REQUEST:');
-            console$1.log(truncated_data);
-            return this._send_request(
-                endpoint,
-                encode_data_for_request(truncated_data),
-                send_request_options,
-                this._prepare_callback(callback, truncated_data)
-            );
+            if (!send_request_options.skip_hooks) {
+                truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
+            }
+            if (truncated_data) {
+                console$1.log('MIXPANEL REQUEST:');
+                console$1.log(truncated_data);
+                return this._send_request(
+                    endpoint,
+                    encode_data_for_request(truncated_data),
+                    send_request_options,
+                    this._prepare_callback(callback, truncated_data)
+                );
+            } else {
+                return null;
+            }
         }, this);
 
         if (this._batch_requests && !should_send_immediately) {
@@ -6967,7 +7065,7 @@ define(function () { 'use strict';
         }
         var should_send_immediately = options['send_immediately'];
         if (typeof callback !== 'function') {
-            callback = function() {};
+            callback = NOOP_FUNC;
         }
 
         if (_.isUndefined(event_name)) {
@@ -7020,7 +7118,8 @@ define(function () { 'use strict';
             'properties': properties
         };
         var ret = this._track_or_batch({
-            truncated_data: _.truncate(data, 255),
+            type: 'events',
+            data: data,
             endpoint: this.get_config('api_host') + '/track/',
             batcher: this.request_batchers.events,
             should_send_immediately: should_send_immediately,
@@ -7447,7 +7546,10 @@ define(function () { 'use strict';
         // send an $identify event any time the distinct_id is changing - logic on the server
         // will determine whether or not to do anything with it.
         if (new_distinct_id !== previous_distinct_id) {
-            this.track('$identify', { 'distinct_id': new_distinct_id, '$anon_distinct_id': previous_distinct_id });
+            this.track('$identify', {
+                'distinct_id': new_distinct_id,
+                '$anon_distinct_id': previous_distinct_id
+            }, {skip_hooks: true});
         }
     };
 
@@ -7536,7 +7638,12 @@ define(function () { 'use strict';
         }
         if (alias !== original) {
             this._register_single(ALIAS_ID_KEY, alias);
-            return this.track('$create_alias', { 'alias': alias, 'distinct_id': original }, function() {
+            return this.track('$create_alias', {
+                'alias': alias,
+                'distinct_id': original
+            }, {
+                skip_hooks: true
+            }, function() {
                 // Flush the people queue
                 _this.identify(alias);
             });
@@ -7713,6 +7820,21 @@ define(function () { 'use strict';
      */
     MixpanelLib.prototype.get_config = function(prop_name) {
         return this['config'][prop_name];
+    };
+
+    /**
+     * Fetch a hook function from config, with safe default, and run it
+     * against the given arguments
+     * @param {string} hook_name which hook to retrieve
+     * @returns {any|null} return value of user-provided hook, or null if nothing was returned
+     */
+    MixpanelLib.prototype._run_hook = function(hook_name) {
+        var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, slice.call(arguments, 1));
+        if (typeof ret === 'undefined') {
+            console$1.error(hook_name + ' hook did not return a value');
+            ret = null;
+        }
+        return ret;
     };
 
     /**
@@ -8100,7 +8222,8 @@ define(function () { 'use strict';
     MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
     MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
     MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
-    MixpanelLib.prototype['stop_batch_requests']                = MixpanelLib.prototype.stop_batch_requests;
+    MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
+    MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
 
     // MixpanelPersistence Exports
     MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
