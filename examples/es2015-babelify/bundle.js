@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.40.0-rc2'
+    LIB_VERSION: '2.40.0-rc3'
 };
 
 exports['default'] = Config;
@@ -1852,10 +1852,13 @@ MixpanelLib.prototype._execute_array = function (array) {
 
 // request queueing utils
 
+MixpanelLib.prototype.are_batchers_initialized = function () {
+    return !!this.request_batchers.events;
+};
+
 MixpanelLib.prototype.init_batchers = function () {
     var token = this.get_config('token');
-    if (!this.request_batchers.events) {
-        // no batchers initialized yet
+    if (!this.are_batchers_initialized()) {
         var batcher_for = _utils._.bind(function (attrs) {
             return new _requestBatcher.RequestBatcher('__mpq_' + token + attrs.queue_suffix, {
                 libConfig: this['config'],
@@ -1879,10 +1882,12 @@ MixpanelLib.prototype.init_batchers = function () {
 };
 
 MixpanelLib.prototype.start_batch_senders = function () {
-    this._batch_requests = true;
-    _utils._.each(this.request_batchers, function (batcher) {
-        batcher.start();
-    });
+    if (this.are_batchers_initialized()) {
+        this._batch_requests = true;
+        _utils._.each(this.request_batchers, function (batcher) {
+            batcher.start();
+        });
+    }
 };
 
 MixpanelLib.prototype.stop_batch_senders = function () {

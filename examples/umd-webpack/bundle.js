@@ -69,7 +69,7 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.40.0-rc2'
+	        LIB_VERSION: '2.40.0-rc3'
 	    };
 
 	    // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -6971,9 +6971,13 @@
 
 	    // request queueing utils
 
+	    MixpanelLib.prototype.are_batchers_initialized = function() {
+	        return !!this.request_batchers.events;
+	    };
+
 	    MixpanelLib.prototype.init_batchers = function() {
 	        var token = this.get_config('token');
-	        if (!this.request_batchers.events) { // no batchers initialized yet
+	        if (!this.are_batchers_initialized()) {
 	            var batcher_for = _.bind(function(attrs) {
 	                return new RequestBatcher(
 	                    '__mpq_' + token + attrs.queue_suffix,
@@ -7005,10 +7009,12 @@
 	    };
 
 	    MixpanelLib.prototype.start_batch_senders = function() {
-	        this._batch_requests = true;
-	        _.each(this.request_batchers, function(batcher) {
-	            batcher.start();
-	        });
+	        if (this.are_batchers_initialized()) {
+	            this._batch_requests = true;
+	            _.each(this.request_batchers, function(batcher) {
+	                batcher.start();
+	            });
+	        }
 	    };
 
 	    MixpanelLib.prototype.stop_batch_senders = function() {
