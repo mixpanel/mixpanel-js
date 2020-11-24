@@ -344,6 +344,9 @@ mixpanel.register({
     'Email': 'jdoe@example.com',
     'Account Type': 'Free'
 });
+
+// register only for the current pageload
+mixpanel.register({'Name': 'Pat'}, {persistent: false});
 ```
 
 
@@ -351,7 +354,13 @@ mixpanel.register({
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | An associative array of properties to store about the user |
-| **days** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | How many days since the user's last visit to store the super properties |
+| **days_or_options** | <span class="mp-arg-type">Number or Object</span></br></span><span class="mp-arg-optional">optional</span> | Options object or number of days since the user's last visit to store the super properties (only valid for persisted props) |
+| **days_or_options.days** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
+<li>number of days since the user's last visit to store the super properties (only valid for persisted props)</li>
+</ul> |
+| **days_or_options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
+<li>whether to put in persistent storage (cookie/localStorage)</li>
+</ul> |
 
 
 ___
@@ -367,6 +376,11 @@ mixpanel.register_once({
     'First Login Date': new Date().toISOString()
 });
 
+// register once, only for the current pageload
+mixpanel.register_once({
+    'First interaction time': new Date().toISOString()
+}, 'None', {persistent: false});
+
 ```
 
 
@@ -378,7 +392,13 @@ If default_value is specified, current super properties  with that value will be
 | ------------- | ------------- | ----- |
 | **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | An associative array of properties to store about the user |
 | **default_value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | Value to override if already set in super properties (ex: 'False') Default: 'None' |
-| **days** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | How many days since the users last visit to store the super properties |
+| **days_or_options** | <span class="mp-arg-type">Number or Object</span></br></span><span class="mp-arg-optional">optional</span> | Options object or number of days since the user's last visit to store the super properties (only valid for persisted props) |
+| **days_or_options.days** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
+<li>number of days since the user's last visit to store the super properties (only valid for persisted props)</li>
+</ul> |
+| **days_or_options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
+<li>whether to put in persistent storage (cookie/localStorage)</li>
+</ul> |
 
 
 ___
@@ -703,6 +723,10 @@ Delete a super property stored with the current user.
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **property** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the super property to remove |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> |  |
+| **options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
+<li>whether to look in persistent storage (cookie/localStorage)</li>
+</ul> |
 
 
 
