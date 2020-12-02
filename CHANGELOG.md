@@ -1,3 +1,10 @@
+**2.40.0** (2 Dec 2020)
+- Add `persistent` option to `register()`, to support setting superproperties only for the current pageload
+- Add before-send `hooks` for transforming/enriching data before it goes over the network
+- Add `batch_autostart` config option and `start_batch_senders()` method, to allow extra control over when batches start sending over the network
+- Fix request-batching when `sendBeacon` is specified as default API transport
+- Increase batch_requests default rollout to 60% of projects
+
 **2.39.0** (17 Aug 2020)
 - Escape body of POST requests to ensure valid base64 is sent to APIs (thanks @dpraul)
 - Don't opt in to request-batching automatically if using a custom API host (thanks @chriszamierowski)
