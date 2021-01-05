@@ -1724,7 +1724,8 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
         'cookie_domain': this.get_config('cookie_domain'),
         'secure_cookie': this.get_config('secure_cookie'),
-        'ignore_dnt': this.get_config('ignore_dnt')
+        'ignore_dnt': this.get_config('ignore_dnt'),
+        'debug': this.get_config('debug')
     }, options);
 
     // check if localStorage can be used for recording opt out status, fall back to cookie if not
@@ -1743,7 +1744,8 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         crossSiteCookie: options['cross_site_cookie'],
         crossSubdomainCookie: options['cross_subdomain_cookie'],
         secureCookie: options['secure_cookie'],
-        ignoreDnt: options['ignore_dnt']
+        ignoreDnt: options['ignore_dnt'],
+        debug: options['debug']
     });
 };
 
