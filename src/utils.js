@@ -67,6 +67,19 @@ var console = {
         }
     },
     /** @type {function(...*)} */
+    warn: function() {
+        if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
+            var args = ['Mixpanel warning:'].concat(_.toArray(arguments));
+            try {
+                windowConsole.warn.apply(windowConsole, args);
+            } catch (err) {
+                _.each(args, function(arg) {
+                    windowConsole.warn(arg);
+                });
+            }
+        }
+    },
+    /** @type {function(...*)} */
     error: function() {
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             var args = ['Mixpanel error:'].concat(_.toArray(arguments));

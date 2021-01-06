@@ -11,7 +11,7 @@
  * These functions are used internally by the SDK and are not intended to be publicly exposed.
  */
 
-import { _, window } from './utils';
+import { _, console, window } from './utils';
 
 /**
  * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
@@ -83,9 +83,14 @@ export function hasOptedIn(token, options) {
  */
 export function hasOptedOut(token, options) {
     if (_hasDoNotTrackFlagOn(options)) {
+        console.warn('This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
         return true;
     }
-    return _getStorageValue(token, options) === '0';
+    var optedOut = _getStorageValue(token, options) === '0';
+    if (optedOut) {
+        console.warn('You are opted out of Mixpanel tracking. This will prevent the Mixpanel SDK from sending any data.');
+    }
+    return optedOut;
 }
 
 /**
