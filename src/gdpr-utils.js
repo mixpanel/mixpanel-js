@@ -79,19 +79,16 @@ export function hasOptedIn(token, options) {
  * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
  * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
  * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
- * @param {boolean} [options.debug] - flag to show debug statements
  * @returns {boolean} whether the user has opted out of the given opt type
  */
 export function hasOptedOut(token, options) {
     if (_hasDoNotTrackFlagOn(options)) {
-        if (options.debug) {
-            console.warn('[Mixpanel SDK] This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
-        }
+        console.warn('[Mixpanel SDK] This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
         return true;
     }
     var optedOut = _getStorageValue(token, options) === '0';
-    if (optedOut && options.debug) {
-        console.warn('[Mixpanel SDK] You have opted out of Mixpanel tracking. This will prevent the Mixpanel SDK from sending any data.');
+    if (optedOut) {
+        console.warn('[Mixpanel SDK] You are opted out of Mixpanel tracking. This will prevent the Mixpanel SDK from sending any data.');
     }
     return optedOut;
 }
@@ -275,7 +272,6 @@ function _addOptOutCheck(method, getConfigValue) {
             var ignoreDnt = getConfigValue.call(this, 'ignore_dnt');
             var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
             var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
-            var debug = getConfigValue.call(this, 'debug');
             var win = getConfigValue.call(this, 'window'); // used to override window during browser tests
 
             if (token) { // if there was an issue getting the token, continue method execution as normal
@@ -283,7 +279,6 @@ function _addOptOutCheck(method, getConfigValue) {
                     ignoreDnt: ignoreDnt,
                     persistenceType: persistenceType,
                     persistencePrefix: persistencePrefix,
-                    debug: debug,
                     window: win
                 });
             }
