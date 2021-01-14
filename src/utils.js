@@ -945,9 +945,37 @@ _.UUID = (function() {
 // _.isBlockedUA()
 // This is to block various web spiders from executing our JS and
 // sending false tracking data
+var BLOCKED_UA_STRS = [
+    'baiduspider',
+    'bingbot',
+    'bingpreview',
+    'facebookexternal',
+    'pinterest',
+    'screaming frog',
+    'yahoo! slurp',
+    'yandexbot',
+
+    // a whole bunch of goog-specific crawlers
+    // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers
+    'adsbot-google',
+    'apis-google',
+    'duplexweb-google',
+    'feedfetcher-google',
+    'google favicon',
+    'google web preview',
+    'google-read-aloud',
+    'googlebot',
+    'googleweblight',
+    'mediapartners-google',
+    'storebot-google'
+];
 _.isBlockedUA = function(ua) {
-    if (/(google web preview|baiduspider|yandexbot|bingbot|googlebot|yahoo! slurp)/i.test(ua)) {
-        return true;
+    var i;
+    ua = ua.toLowerCase();
+    for (i = 0; i < BLOCKED_UA_STRS.length; i++) {
+        if (ua.indexOf(BLOCKED_UA_STRS[i]) !== -1) {
+            return true;
+        }
     }
     return false;
 };
