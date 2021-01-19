@@ -2057,7 +2057,7 @@ export function init_from_snippet() {
     }
     if (mixpanel_master['__loaded'] || (mixpanel_master['config'] && mixpanel_master['persistence'])) {
         // lib has already been loaded at least once; we don't want to override the global object this time so bomb early
-        console.error('Mixpanel library has already been downloaded at least once.');
+        console.critical('The Mixpanel library has already been downloaded at least once. Ensure that the Mixpanel code snippet only appears once on the page (and is not double-loaded by a tag manager) in order to avoid errors.');
         return;
     }
     var snippet_version = mixpanel_master['__SV'] || 0;
