@@ -45,7 +45,7 @@
                         ok(props.distinct_id === 'q-bert' || props.distinct_id === 'spyhunter');
                     });
 
-                    test('functions continue to work after lib loads', 7, function() {
+                    test('functions continue to work after lib loads', 8, function() {
                         headtest.disable(['purchase capybaras']);
                         headtest.track("purchase capybaras", {}, function(response) {
                             same(response, 0, "tracking disabled event should fail");
