@@ -1,3 +1,8 @@
+**2.40.1** (19 Jan 2021)
+- Add new crawler user agents to blocked list (pinterest, fb, bingpreview, more google crawlers etc)
+- Add debug-mode logging when opt-out/DNT is preventing tracking
+- Add more explicit console warning when embed script has been added multiple times on a single page
+
 **2.40.0** (2 Dec 2020)
 - Add `persistent` option to `register()`, to support setting superproperties only for the current pageload
 - Add before-send `hooks` for transforming/enriching data before it goes over the network
