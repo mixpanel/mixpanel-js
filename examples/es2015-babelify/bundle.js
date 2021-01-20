@@ -732,7 +732,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.40.0'
+    LIB_VERSION: '2.40.1'
 };
 
 exports['default'] = Config;
@@ -1005,9 +1005,14 @@ function hasOptedIn(token, options) {
 
 function hasOptedOut(token, options) {
     if (_hasDoNotTrackFlagOn(options)) {
+        _utils.console.warn('This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
         return true;
     }
-    return _getStorageValue(token, options) === '0';
+    var optedOut = _getStorageValue(token, options) === '0';
+    if (optedOut) {
+        _utils.console.warn('You are opted out of Mixpanel tracking. This will prevent the Mixpanel SDK from sending any data.');
+    }
+    return optedOut;
 }
 
 /**
@@ -1148,7 +1153,7 @@ function _hasDoNotTrackFlagOn(options) {
  */
 function _optInOut(optValue, token, options) {
     if (!_utils._.isString(token) || !token.length) {
-        console.error('gdpr.' + (optValue ? 'optIn' : 'optOut') + ' called with an invalid token');
+        _utils.console.error('gdpr.' + (optValue ? 'optIn' : 'optOut') + ' called with an invalid token');
         return;
     }
 
@@ -1193,7 +1198,7 @@ function _addOptOutCheck(method, getConfigValue) {
                 });
             }
         } catch (err) {
-            console.error('Unexpected error when checking tracking opt-out status: ' + err);
+            _utils.console.error('Unexpected error when checking tracking opt-out status: ' + err);
         }
 
         if (!optedOut) {
@@ -3271,7 +3276,7 @@ function init_from_snippet() {
     }
     if (mixpanel_master['__loaded'] || mixpanel_master['config'] && mixpanel_master['persistence']) {
         // lib has already been loaded at least once; we don't want to override the global object this time so bomb early
-        _utils.console.error('Mixpanel library has already been downloaded at least once.');
+        _utils.console.critical('The Mixpanel library has already been downloaded at least once. Ensure that the Mixpanel code snippet only appears once on the page (and is not double-loaded by a tag manager) in order to avoid errors.');
         return;
     }
     var snippet_version = mixpanel_master['__SV'] || 0;
@@ -6940,6 +6945,19 @@ var console = {
         }
     },
     /** @type {function(...*)} */
+    warn: function warn() {
+        if (_config2['default'].DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
+            var args = ['Mixpanel warning:'].concat(_.toArray(arguments));
+            try {
+                windowConsole.warn.apply(windowConsole, args);
+            } catch (err) {
+                _.each(args, function (arg) {
+                    windowConsole.warn(arg);
+                });
+            }
+        }
+    },
+    /** @type {function(...*)} */
     error: function error() {
         if (_config2['default'].DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             var args = ['Mixpanel error:'].concat(_.toArray(arguments));
@@ -7799,9 +7817,18 @@ _.UUID = (function () {
 // _.isBlockedUA()
 // This is to block various web spiders from executing our JS and
 // sending false tracking data
+var BLOCKED_UA_STRS = ['baiduspider', 'bingbot', 'bingpreview', 'facebookexternal', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandexbot',
+
+// a whole bunch of goog-specific crawlers
+// https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers
+'adsbot-google', 'apis-google', 'duplexweb-google', 'feedfetcher-google', 'google favicon', 'google web preview', 'google-read-aloud', 'googlebot', 'googleweblight', 'mediapartners-google', 'storebot-google'];
 _.isBlockedUA = function (ua) {
-    if (/(google web preview|baiduspider|yandexbot|bingbot|googlebot|yahoo! slurp)/i.test(ua)) {
-        return true;
+    var i;
+    ua = ua.toLowerCase();
+    for (i = 0; i < BLOCKED_UA_STRS.length; i++) {
+        if (ua.indexOf(BLOCKED_UA_STRS[i]) !== -1) {
+            return true;
+        }
     }
     return false;
 };

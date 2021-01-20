@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.40.0'
+        LIB_VERSION: '2.40.1'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -68,6 +68,19 @@
                 } catch (err) {
                     _.each(arguments, function(arg) {
                         windowConsole.log(arg);
+                    });
+                }
+            }
+        },
+        /** @type {function(...*)} */
+        warn: function() {
+            if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
+                var args = ['Mixpanel warning:'].concat(_.toArray(arguments));
+                try {
+                    windowConsole.warn.apply(windowConsole, args);
+                } catch (err) {
+                    _.each(args, function(arg) {
+                        windowConsole.warn(arg);
                     });
                 }
             }
@@ -938,9 +951,37 @@
     // _.isBlockedUA()
     // This is to block various web spiders from executing our JS and
     // sending false tracking data
+    var BLOCKED_UA_STRS = [
+        'baiduspider',
+        'bingbot',
+        'bingpreview',
+        'facebookexternal',
+        'pinterest',
+        'screaming frog',
+        'yahoo! slurp',
+        'yandexbot',
+
+        // a whole bunch of goog-specific crawlers
+        // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers
+        'adsbot-google',
+        'apis-google',
+        'duplexweb-google',
+        'feedfetcher-google',
+        'google favicon',
+        'google web preview',
+        'google-read-aloud',
+        'googlebot',
+        'googleweblight',
+        'mediapartners-google',
+        'storebot-google'
+    ];
     _.isBlockedUA = function(ua) {
-        if (/(google web preview|baiduspider|yandexbot|bingbot|googlebot|yahoo! slurp)/i.test(ua)) {
-            return true;
+        var i;
+        ua = ua.toLowerCase();
+        for (i = 0; i < BLOCKED_UA_STRS.length; i++) {
+            if (ua.indexOf(BLOCKED_UA_STRS[i]) !== -1) {
+                return true;
+            }
         }
         return false;
     };
@@ -3080,9 +3121,14 @@
      */
     function hasOptedOut(token, options) {
         if (_hasDoNotTrackFlagOn(options)) {
+            console$1.warn('This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
             return true;
         }
-        return _getStorageValue(token, options) === '0';
+        var optedOut = _getStorageValue(token, options) === '0';
+        if (optedOut) {
+            console$1.warn('You are opted out of Mixpanel tracking. This will prevent the Mixpanel SDK from sending any data.');
+        }
+        return optedOut;
     }
 
     /**
@@ -3224,7 +3270,7 @@
      */
     function _optInOut(optValue, token, options) {
         if (!_.isString(token) || !token.length) {
-            console.error('gdpr.' + (optValue ? 'optIn' : 'optOut') + ' called with an invalid token');
+            console$1.error('gdpr.' + (optValue ? 'optIn' : 'optOut') + ' called with an invalid token');
             return;
         }
 
@@ -3275,7 +3321,7 @@
                     });
                 }
             } catch(err) {
-                console.error('Unexpected error when checking tracking opt-out status: ' + err);
+                console$1.error('Unexpected error when checking tracking opt-out status: ' + err);
             }
 
             if (!optedOut) {
