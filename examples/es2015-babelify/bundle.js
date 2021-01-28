@@ -17,7 +17,7 @@ _srcLoaderModule2['default'].init("FAKE_TOKEN", {
 
 _srcLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loader-module":8}],2:[function(require,module,exports){
+},{"../../src/loader-module":6}],2:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -155,576 +155,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":18}],3:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-    value: true
-});
-exports.getClassName = getClassName;
-exports.getSafeText = getSafeText;
-exports.isElementNode = isElementNode;
-exports.isTag = isTag;
-exports.isTextNode = isTextNode;
-exports.shouldTrackDomEvent = shouldTrackDomEvent;
-exports.shouldTrackElement = shouldTrackElement;
-exports.shouldTrackValue = shouldTrackValue;
-
-var _utils = require('./utils');
-
-/*
- * Get the className of an element, accounting for edge cases where element.className is an object
- * @param {Element} el - element to get the className of
- * @returns {string} the element's class
- */
-
-function getClassName(el) {
-    switch (typeof el.className) {
-        case 'string':
-            return el.className;
-        case 'object':
-            // handle cases where className might be SVGAnimatedString or some other type
-            return el.className.baseVal || el.getAttribute('class') || '';
-        default:
-            // future proof
-            return '';
-    }
-}
-
-/*
- * Get the direct text content of an element, protecting against sensitive data collection.
- * Concats textContent of each of the element's text node children; this avoids potential
- * collection of sensitive data that could happen if we used element.textContent and the
- * element had sensitive child elements, since element.textContent includes child content.
- * Scrubs values that look like they could be sensitive (i.e. cc or ssn number).
- * @param {Element} el - element to get the text of
- * @returns {string} the element's direct text content
- */
-
-function getSafeText(el) {
-    var elText = '';
-
-    if (shouldTrackElement(el) && el.childNodes && el.childNodes.length) {
-        _utils._.each(el.childNodes, function (child) {
-            if (isTextNode(child) && child.textContent) {
-                elText += _utils._.trim(child.textContent)
-                // scrub potentially sensitive values
-                .split(/(\s+)/).filter(shouldTrackValue).join('')
-                // normalize whitespace
-                .replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ')
-                // truncate
-                .substring(0, 255);
-            }
-        });
-    }
-
-    return _utils._.trim(elText);
-}
-
-/*
- * Check whether an element has nodeType Node.ELEMENT_NODE
- * @param {Element} el - element to check
- * @returns {boolean} whether el is of the correct nodeType
- */
-
-function isElementNode(el) {
-    return el && el.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
-}
-
-/*
- * Check whether an element is of a given tag type.
- * Due to potential reference discrepancies (such as the webcomponents.js polyfill),
- * we want to match tagNames instead of specific references because something like
- * element === document.body won't always work because element might not be a native
- * element.
- * @param {Element} el - element to check
- * @param {string} tag - tag name (e.g., "div")
- * @returns {boolean} whether el is of the given tag type
- */
-
-function isTag(el, tag) {
-    return el && el.tagName && el.tagName.toLowerCase() === tag.toLowerCase();
-}
-
-/*
- * Check whether an element has nodeType Node.TEXT_NODE
- * @param {Element} el - element to check
- * @returns {boolean} whether el is of the correct nodeType
- */
-
-function isTextNode(el) {
-    return el && el.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
-}
-
-/*
- * Check whether a DOM event should be "tracked" or if it may contain sentitive data
- * using a variety of heuristics.
- * @param {Element} el - element to check
- * @param {Event} event - event to check
- * @returns {boolean} whether the event should be tracked
- */
-
-function shouldTrackDomEvent(el, event) {
-    if (!el || isTag(el, 'html') || !isElementNode(el)) {
-        return false;
-    }
-    var tag = el.tagName.toLowerCase();
-    switch (tag) {
-        case 'html':
-            return false;
-        case 'form':
-            return event.type === 'submit';
-        case 'input':
-            if (['button', 'submit'].indexOf(el.getAttribute('type')) === -1) {
-                return event.type === 'change';
-            } else {
-                return event.type === 'click';
-            }
-        case 'select':
-        case 'textarea':
-            return event.type === 'change';
-        default:
-            return event.type === 'click';
-    }
-}
-
-/*
- * Check whether a DOM element should be "tracked" or if it may contain sentitive data
- * using a variety of heuristics.
- * @param {Element} el - element to check
- * @returns {boolean} whether the element should be tracked
- */
-
-function shouldTrackElement(el) {
-    for (var curEl = el; curEl.parentNode && !isTag(curEl, 'body'); curEl = curEl.parentNode) {
-        var classes = getClassName(curEl).split(' ');
-        if (_utils._.includes(classes, 'mp-sensitive') || _utils._.includes(classes, 'mp-no-track')) {
-            return false;
-        }
-    }
-
-    if (_utils._.includes(getClassName(el).split(' '), 'mp-include')) {
-        return true;
-    }
-
-    // don't send data from inputs or similar elements since there will always be
-    // a risk of clientside javascript placing sensitive data in attributes
-    if (isTag(el, 'input') || isTag(el, 'select') || isTag(el, 'textarea') || el.getAttribute('contenteditable') === 'true') {
-        return false;
-    }
-
-    // don't include hidden or password fields
-    var type = el.type || '';
-    if (typeof type === 'string') {
-        // it's possible for el.type to be a DOM element if el is a form with a child input[name="type"]
-        switch (type.toLowerCase()) {
-            case 'hidden':
-                return false;
-            case 'password':
-                return false;
-        }
-    }
-
-    // filter out data from fields that look like sensitive fields
-    var name = el.name || el.id || '';
-    if (typeof name === 'string') {
-        // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
-        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
-        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/*
- * Check whether a string value should be "tracked" or if it may contain sentitive data
- * using a variety of heuristics.
- * @param {string} value - string value to check
- * @returns {boolean} whether the element should be tracked
- */
-
-function shouldTrackValue(value) {
-    if (value === null || _utils._.isUndefined(value)) {
-        return false;
-    }
-
-    if (typeof value === 'string') {
-        value = _utils._.trim(value);
-
-        // check to see if input value looks like a credit card number
-        // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
-        var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
-        if (ccRegex.test((value || '').replace(/[- ]/g, ''))) {
-            return false;
-        }
-
-        // check to see if input value looks like a social security number
-        var ssnRegex = /(^\d{3}-?\d{2}-?\d{4}$)/;
-        if (ssnRegex.test(value)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-},{"./utils":18}],4:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-    value: true
-});
-
-var _utils = require('./utils');
-
-var _autotrackUtils = require('./autotrack-utils');
-
-var autotrack = {
-    _initializedTokens: [],
-
-    _previousElementSibling: function _previousElementSibling(el) {
-        if (el.previousElementSibling) {
-            return el.previousElementSibling;
-        } else {
-            do {
-                el = el.previousSibling;
-            } while (el && !(0, _autotrackUtils.isElementNode)(el));
-            return el;
-        }
-    },
-
-    _loadScript: function _loadScript(scriptUrlToLoad, callback) {
-        var scriptTag = document.createElement('script');
-        scriptTag.type = 'text/javascript';
-        scriptTag.src = scriptUrlToLoad;
-        scriptTag.onload = callback;
-
-        var scripts = document.getElementsByTagName('script');
-        if (scripts.length > 0) {
-            scripts[0].parentNode.insertBefore(scriptTag, scripts[0]);
-        } else {
-            document.body.appendChild(scriptTag);
-        }
-    },
-
-    _getPropertiesFromElement: function _getPropertiesFromElement(elem) {
-        var props = {
-            'classes': (0, _autotrackUtils.getClassName)(elem).split(' '),
-            'tag_name': elem.tagName.toLowerCase()
-        };
-
-        if ((0, _autotrackUtils.shouldTrackElement)(elem)) {
-            _utils._.each(elem.attributes, function (attr) {
-                if ((0, _autotrackUtils.shouldTrackValue)(attr.value)) {
-                    props['attr__' + attr.name] = attr.value;
-                }
-            });
-        }
-
-        var nthChild = 1;
-        var nthOfType = 1;
-        var currentElem = elem;
-        while (currentElem = this._previousElementSibling(currentElem)) {
-            // eslint-disable-line no-cond-assign
-            nthChild++;
-            if (currentElem.tagName === elem.tagName) {
-                nthOfType++;
-            }
-        }
-        props['nth_child'] = nthChild;
-        props['nth_of_type'] = nthOfType;
-
-        return props;
-    },
-
-    _getDefaultProperties: function _getDefaultProperties(eventType) {
-        return {
-            '$event_type': eventType,
-            '$ce_version': 1,
-            '$host': window.location.host,
-            '$pathname': window.location.pathname
-        };
-    },
-
-    _extractCustomPropertyValue: function _extractCustomPropertyValue(customProperty) {
-        var propValues = [];
-        _utils._.each(document.querySelectorAll(customProperty['css_selector']), function (matchedElem) {
-            var value;
-
-            if (['input', 'select'].indexOf(matchedElem.tagName.toLowerCase()) > -1) {
-                value = matchedElem['value'];
-            } else if (matchedElem['textContent']) {
-                value = matchedElem['textContent'];
-            }
-
-            if ((0, _autotrackUtils.shouldTrackValue)(value)) {
-                propValues.push(value);
-            }
-        });
-        return propValues.join(', ');
-    },
-
-    _getCustomProperties: function _getCustomProperties(targetElementList) {
-        var props = {};
-        _utils._.each(this._customProperties, function (customProperty) {
-            _utils._.each(customProperty['event_selectors'], function (eventSelector) {
-                var eventElements = document.querySelectorAll(eventSelector);
-                _utils._.each(eventElements, function (eventElement) {
-                    if (_utils._.includes(targetElementList, eventElement) && (0, _autotrackUtils.shouldTrackElement)(eventElement)) {
-                        props[customProperty['name']] = this._extractCustomPropertyValue(customProperty);
-                    }
-                }, this);
-            }, this);
-        }, this);
-        return props;
-    },
-
-    _getEventTarget: function _getEventTarget(e) {
-        // https://developer.mozilla.org/en-US/docs/Web/API/Event/target#Compatibility_notes
-        if (typeof e.target === 'undefined') {
-            return e.srcElement;
-        } else {
-            return e.target;
-        }
-    },
-
-    _trackEvent: function _trackEvent(e, instance) {
-        /*** Don't mess with this code without running IE8 tests on it ***/
-        var target = this._getEventTarget(e);
-        if ((0, _autotrackUtils.isTextNode)(target)) {
-            // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
-            target = target.parentNode;
-        }
-
-        if ((0, _autotrackUtils.shouldTrackDomEvent)(target, e)) {
-            var targetElementList = [target];
-            var curEl = target;
-            while (curEl.parentNode && !(0, _autotrackUtils.isTag)(curEl, 'body')) {
-                targetElementList.push(curEl.parentNode);
-                curEl = curEl.parentNode;
-            }
-
-            var elementsJson = [];
-            var href,
-                explicitNoTrack = false;
-            _utils._.each(targetElementList, function (el) {
-                var shouldTrackEl = (0, _autotrackUtils.shouldTrackElement)(el);
-
-                // if the element or a parent element is an anchor tag
-                // include the href as a property
-                if (el.tagName.toLowerCase() === 'a') {
-                    href = el.getAttribute('href');
-                    href = shouldTrackEl && (0, _autotrackUtils.shouldTrackValue)(href) && href;
-                }
-
-                // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
-                var classes = (0, _autotrackUtils.getClassName)(el).split(' ');
-                if (_utils._.includes(classes, 'mp-no-track')) {
-                    explicitNoTrack = true;
-                }
-
-                elementsJson.push(this._getPropertiesFromElement(el));
-            }, this);
-
-            if (explicitNoTrack) {
-                return false;
-            }
-
-            // only populate text content from target element (not parents)
-            // to prevent text within a sensitive element from being collected
-            // as part of a parent's el.textContent
-            var elementText;
-            var safeElementText = (0, _autotrackUtils.getSafeText)(target);
-            if (safeElementText && safeElementText.length) {
-                elementText = safeElementText;
-            }
-
-            var props = _utils._.extend(this._getDefaultProperties(e.type), {
-                '$elements': elementsJson,
-                '$el_attr__href': href,
-                '$el_text': elementText
-            }, this._getCustomProperties(targetElementList));
-
-            instance.track('$web_event', props);
-            return true;
-        }
-    },
-
-    // only reason is to stub for unit tests
-    // since you can't override window.location props
-    _navigate: function _navigate(href) {
-        window.location.href = href;
-    },
-
-    _addDomEventHandlers: function _addDomEventHandlers(instance) {
-        var handler = _utils._.bind(function (e) {
-            e = e || window.event;
-            this._trackEvent(e, instance);
-        }, this);
-        _utils._.register_event(document, 'submit', handler, false, true);
-        _utils._.register_event(document, 'change', handler, false, true);
-        _utils._.register_event(document, 'click', handler, false, true);
-    },
-
-    _customProperties: {},
-    init: function init(instance) {
-        if (!(document && document.body)) {
-            console.log('document not ready yet, trying again in 500 milliseconds...');
-            var that = this;
-            setTimeout(function () {
-                that.init(instance);
-            }, 500);
-            return;
-        }
-
-        var token = instance.get_config('token');
-        if (this._initializedTokens.indexOf(token) > -1) {
-            console.log('autotrack already initialized for token "' + token + '"');
-            return;
-        }
-        this._initializedTokens.push(token);
-
-        if (!this._maybeLoadEditor(instance)) {
-            // don't autotrack actions when the editor is enabled
-            var parseDecideResponse = _utils._.bind(function (response) {
-                if (response && response['config'] && response['config']['enable_collect_everything'] === true) {
-
-                    if (response['custom_properties']) {
-                        this._customProperties = response['custom_properties'];
-                    }
-
-                    instance.track('$web_event', _utils._.extend({
-                        '$title': document.title
-                    }, this._getDefaultProperties('pageview')));
-
-                    this._addDomEventHandlers(instance);
-                } else {
-                    instance['__autotrack_enabled'] = false;
-                }
-            }, this);
-
-            instance._send_request(instance.get_config('api_host') + '/decide/', {
-                'verbose': true,
-                'version': '1',
-                'lib': 'web',
-                'token': token
-            }, { method: 'GET', transport: 'XHR' }, instance._prepare_callback(parseDecideResponse));
-        }
-    },
-
-    _editorParamsFromHash: function _editorParamsFromHash(instance, hash) {
-        var editorParams;
-        try {
-            var state = _utils._.getHashParam(hash, 'state');
-            state = JSON.parse(decodeURIComponent(state));
-            var expiresInSeconds = _utils._.getHashParam(hash, 'expires_in');
-            editorParams = {
-                'accessToken': _utils._.getHashParam(hash, 'access_token'),
-                'accessTokenExpiresAt': new Date().getTime() + Number(expiresInSeconds) * 1000,
-                'bookmarkletMode': !!state['bookmarkletMode'],
-                'projectId': state['projectId'],
-                'projectOwnerId': state['projectOwnerId'],
-                'projectToken': state['token'],
-                'readOnly': state['readOnly'],
-                'userFlags': state['userFlags'],
-                'userId': state['userId']
-            };
-            window.sessionStorage.setItem('editorParams', JSON.stringify(editorParams));
-
-            if (state['desiredHash']) {
-                window.location.hash = state['desiredHash'];
-            } else if (window.history) {
-                history.replaceState('', document.title, window.location.pathname + window.location.search); // completely remove hash
-            } else {
-                    window.location.hash = ''; // clear hash (but leaves # unfortunately)
-                }
-        } catch (e) {
-            console.error('Unable to parse data from hash', e);
-        }
-        return editorParams;
-    },
-
-    /**
-     * To load the visual editor, we need an access token and other state. That state comes from one of three places:
-     * 1. In the URL hash params if the customer is using an old snippet
-     * 2. From session storage under the key `_mpcehash` if the snippet already parsed the hash
-     * 3. From session storage under the key `editorParams` if the editor was initialized on a previous page
-     */
-    _maybeLoadEditor: function _maybeLoadEditor(instance) {
-        try {
-            var parseFromUrl = false;
-            if (_utils._.getHashParam(window.location.hash, 'state')) {
-                var state = _utils._.getHashParam(window.location.hash, 'state');
-                state = JSON.parse(decodeURIComponent(state));
-                parseFromUrl = state['action'] === 'mpeditor';
-            }
-            var parseFromStorage = !!window.sessionStorage.getItem('_mpcehash');
-            var editorParams;
-
-            if (parseFromUrl) {
-                // happens if they are initializing the editor using an old snippet
-                editorParams = this._editorParamsFromHash(instance, window.location.hash);
-            } else if (parseFromStorage) {
-                // happens if they are initialized the editor and using the new snippet
-                editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'));
-                window.sessionStorage.removeItem('_mpcehash');
-            } else {
-                // get credentials from sessionStorage from a previous initialzation
-                editorParams = JSON.parse(window.sessionStorage.getItem('editorParams') || '{}');
-            }
-
-            if (editorParams['projectToken'] && instance.get_config('token') === editorParams['projectToken']) {
-                this._loadEditor(instance, editorParams);
-                return true;
-            } else {
-                return false;
-            }
-        } catch (e) {
-            return false;
-        }
-    },
-
-    _loadEditor: function _loadEditor(instance, editorParams) {
-        if (!window['_mpEditorLoaded']) {
-            // only load the codeless event editor once, even if there are multiple instances of MixpanelLib
-            window['_mpEditorLoaded'] = true;
-            var editorUrl = instance.get_config('app_host') + '/js-bundle/reports/collect-everything/editor.js?_ts=' + new Date().getTime();
-            this._loadScript(editorUrl, function () {
-                window['mp_load_editor'](editorParams);
-            });
-            return true;
-        }
-        return false;
-    },
-
-    // this is a mechanism to ramp up CE with no server-side interaction.
-    // when CE is active, every page load results in a decide request. we
-    // need to gently ramp this up so we don't overload decide. this decides
-    // deterministically if CE is enabled for this project by modding the char
-    // value of the project token.
-    enabledForProject: function enabledForProject(token, numBuckets, numEnabledBuckets) {
-        numBuckets = !_utils._.isUndefined(numBuckets) ? numBuckets : 10;
-        numEnabledBuckets = !_utils._.isUndefined(numEnabledBuckets) ? numEnabledBuckets : 10;
-        var charCodeSum = 0;
-        for (var i = 0; i < token.length; i++) {
-            charCodeSum += token.charCodeAt(i);
-        }
-        return charCodeSum % numBuckets < numEnabledBuckets;
-    },
-
-    isBrowserSupported: function isBrowserSupported() {
-        return _utils._.isFunction(document.querySelectorAll);
-    }
-};
-
-_utils._.bind_instance_methods(autotrack);
-_utils._.safewrap_instance_methods(autotrack);
-
-exports.autotrack = autotrack;
-
-},{"./autotrack-utils":3,"./utils":18}],5:[function(require,module,exports){
+},{"./utils":16}],3:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -732,13 +163,13 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.40.1'
+    LIB_VERSION: '2.41.0'
 };
 
 exports['default'] = Config;
 module.exports = exports['default'];
 
-},{}],6:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -901,7 +332,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":18}],7:[function(require,module,exports){
+},{"./utils":16}],5:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -1214,7 +645,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":18}],8:[function(require,module,exports){
+},{"./utils":16}],6:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -1229,7 +660,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)();
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"./mixpanel-core":9}],9:[function(require,module,exports){
+},{"./mixpanel-core":7}],7:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -1246,8 +677,6 @@ var _config = require('./config');
 var _config2 = _interopRequireDefault(_config);
 
 var _utils = require('./utils');
-
-var _autotrack = require('./autotrack');
 
 var _domTrackers = require('./dom-trackers');
 
@@ -1331,7 +760,6 @@ var DEFAULT_CONFIG = {
     'api_method': 'POST',
     'api_transport': 'XHR',
     'app_host': 'https://mixpanel.com',
-    'autotrack': true,
     'cdn': 'https://cdn.mxpnl.com',
     'cross_site_cookie': false,
     'cross_subdomain_cookie': true,
@@ -1412,21 +840,6 @@ var create_mplib = function create_mplib(token, config, name) {
     // if any instance on the page has debug = true, we set the
     // global debug to be true
     _config2['default'].DEBUG = _config2['default'].DEBUG || instance.get_config('debug');
-
-    instance['__autotrack_enabled'] = instance.get_config('autotrack');
-    if (instance.get_config('autotrack')) {
-        var num_buckets = 100;
-        var num_enabled_buckets = 100;
-        if (!_autotrack.autotrack.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
-            instance['__autotrack_enabled'] = false;
-            _utils.console.log('Not in active bucket: disabling Automatic Event Collection.');
-        } else if (!_autotrack.autotrack.isBrowserSupported()) {
-            instance['__autotrack_enabled'] = false;
-            _utils.console.log('Disabling Automatic Event Collection because this browser is not supported');
-        } else {
-            _autotrack.autotrack.init(instance);
-        }
-    }
 
     // if target is not defined, we called init after the lib already
     // loaded, so there won't be an array of things to execute
@@ -3315,7 +2728,7 @@ function init_as_module() {
     return mixpanel_master;
 }
 
-},{"./autotrack":4,"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":10,"./mixpanel-notification":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./request-batcher":15,"./utils":18}],10:[function(require,module,exports){
+},{"./config":3,"./dom-trackers":4,"./gdpr-utils":5,"./mixpanel-group":8,"./mixpanel-notification":9,"./mixpanel-people":10,"./mixpanel-persistence":11,"./request-batcher":13,"./utils":16}],8:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -3495,7 +2908,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":2,"./gdpr-utils":7,"./utils":18}],11:[function(require,module,exports){
+},{"./api-actions":2,"./gdpr-utils":5,"./utils":16}],9:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -4707,7 +4120,7 @@ MixpanelNotification.prototype._yt_video_ready = _utils._.safewrap(function () {
 
 exports.MixpanelNotification = MixpanelNotification;
 
-},{"./mixpanel-persistence":13,"./property-filters":14,"./utils":18}],12:[function(require,module,exports){
+},{"./mixpanel-persistence":11,"./property-filters":12,"./utils":16}],10:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -5183,7 +4596,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":2,"./gdpr-utils":7,"./utils":18}],13:[function(require,module,exports){
+},{"./api-actions":2,"./gdpr-utils":5,"./utils":16}],11:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -5674,7 +5087,7 @@ exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.CAMPAIGN_IDS_KEY = CAMPAIGN_IDS_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":2,"./config":5,"./utils":18}],14:[function(require,module,exports){
+},{"./api-actions":2,"./config":3,"./utils":16}],12:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -6231,7 +5644,7 @@ function evaluateSelector(filters, properties) {
     }
 }
 
-},{"./utils":18}],15:[function(require,module,exports){
+},{"./utils":16}],13:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -6446,7 +5859,7 @@ RequestBatcher.prototype.flush = function (options) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./request-queue":16,"./utils":18}],16:[function(require,module,exports){
+},{"./request-queue":14,"./utils":16}],14:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -6705,7 +6118,7 @@ RequestQueue.prototype.clear = function () {
 
 exports.RequestQueue = RequestQueue;
 
-},{"./shared-lock":17,"./utils":18}],17:[function(require,module,exports){
+},{"./shared-lock":15,"./utils":16}],15:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -6865,7 +6278,7 @@ SharedLock.prototype.withLock = function (lockedCB, errorCB, pid) {
 
 exports.SharedLock = SharedLock;
 
-},{"./utils":18}],18:[function(require,module,exports){
+},{"./utils":16}],16:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -7150,10 +6563,6 @@ _.values = function (obj) {
         results[results.length] = value;
     });
     return results;
-};
-
-_.identity = function (value) {
-    return value;
 };
 
 _.include = function (obj, target) {
@@ -7873,11 +7282,6 @@ _.getQueryParam = function (url, param) {
         }
         return result.replace(/\+/g, ' ');
     }
-};
-
-_.getHashParam = function (hash, param) {
-    var matches = hash.match(new RegExp(param + '=([^&]*)'));
-    return matches ? matches[1] : null;
 };
 
 // _.cookie
@@ -8632,4 +8036,4 @@ exports.JSONStringify = JSONStringify;
 exports.JSONParse = JSONParse;
 exports.slice = slice;
 
-},{"./config":5}]},{},[1]);
+},{"./config":3}]},{},[1]);

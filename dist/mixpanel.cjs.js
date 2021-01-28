@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.40.1'
+    LIB_VERSION: '2.41.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -55,7 +55,7 @@ var _ = {
 };
 
 // Console override
-var console$1 = {
+var console = {
     /** @type {function(...*)} */
     log: function() {
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
@@ -112,14 +112,14 @@ var console$1 = {
 var log_func_with_prefix = function(func, prefix) {
     return function() {
         arguments[0] = '[' + prefix + '] ' + arguments[0];
-        return func.apply(console$1, arguments);
+        return func.apply(console, arguments);
     };
 };
 var console_with_prefix = function(prefix) {
     return {
-        log: log_func_with_prefix(console$1.log, prefix),
-        error: log_func_with_prefix(console$1.error, prefix),
-        critical: log_func_with_prefix(console$1.critical, prefix)
+        log: log_func_with_prefix(console.log, prefix),
+        error: log_func_with_prefix(console.error, prefix),
+        critical: log_func_with_prefix(console.critical, prefix)
     };
 };
 
@@ -281,10 +281,6 @@ _.values = function(obj) {
     return results;
 };
 
-_.identity = function(value) {
-    return value;
-};
-
 _.include = function(obj, target) {
     var found = false;
     if (obj === null) {
@@ -385,9 +381,9 @@ _.safewrap = function(f) {
         try {
             return f.apply(this, arguments);
         } catch (e) {
-            console$1.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
+            console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
             if (Config.DEBUG){
-                console$1.critical(e);
+                console.critical(e);
             }
         }
     };
@@ -1016,16 +1012,12 @@ _.getQueryParam = function(url, param) {
         try {
             result = decodeURIComponent(result);
         } catch(err) {
-            console$1.error('Skipping decoding for malformed query param: ' + result);
+            console.error('Skipping decoding for malformed query param: ' + result);
         }
         return result.replace(/\+/g, ' ');
     }
 };
 
-_.getHashParam = function(hash, param) {
-    var matches = hash.match(new RegExp(param + '=([^&]*)'));
-    return matches ? matches[1] : null;
-};
 
 // _.cookie
 // Methods partially borrowed from quirksmode.org/js/cookies.html
@@ -1147,13 +1139,13 @@ _.localStorage = {
     is_supported: function(force_check) {
         var supported = localStorageSupported(null, force_check);
         if (!supported) {
-            console$1.error('localStorage unsupported; falling back to cookie store');
+            console.error('localStorage unsupported; falling back to cookie store');
         }
         return supported;
     },
 
     error: function(msg) {
-        console$1.error('localStorage error: ' + msg);
+        console.error('localStorage error: ' + msg);
     },
 
     get: function(name) {
@@ -1208,7 +1200,7 @@ _.register_event = (function() {
      */
     var register_event = function(element, type, handler, oldSchool, useCapture) {
         if (!element) {
-            console$1.error('No valid element provided to register_event');
+            console.error('No valid element provided to register_event');
             return;
         }
 
@@ -1764,539 +1756,6 @@ _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
-/*
- * Get the className of an element, accounting for edge cases where element.className is an object
- * @param {Element} el - element to get the className of
- * @returns {string} the element's class
- */
-function getClassName(el) {
-    switch(typeof el.className) {
-        case 'string':
-            return el.className;
-        case 'object': // handle cases where className might be SVGAnimatedString or some other type
-            return el.className.baseVal || el.getAttribute('class') || '';
-        default: // future proof
-            return '';
-    }
-}
-
-/*
- * Get the direct text content of an element, protecting against sensitive data collection.
- * Concats textContent of each of the element's text node children; this avoids potential
- * collection of sensitive data that could happen if we used element.textContent and the
- * element had sensitive child elements, since element.textContent includes child content.
- * Scrubs values that look like they could be sensitive (i.e. cc or ssn number).
- * @param {Element} el - element to get the text of
- * @returns {string} the element's direct text content
- */
-function getSafeText(el) {
-    var elText = '';
-
-    if (shouldTrackElement(el) && el.childNodes && el.childNodes.length) {
-        _.each(el.childNodes, function(child) {
-            if (isTextNode(child) && child.textContent) {
-                elText += _.trim(child.textContent)
-                    // scrub potentially sensitive values
-                    .split(/(\s+)/).filter(shouldTrackValue).join('')
-                    // normalize whitespace
-                    .replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ')
-                    // truncate
-                    .substring(0, 255);
-            }
-        });
-    }
-
-    return _.trim(elText);
-}
-
-/*
- * Check whether an element has nodeType Node.ELEMENT_NODE
- * @param {Element} el - element to check
- * @returns {boolean} whether el is of the correct nodeType
- */
-function isElementNode(el) {
-    return el && el.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
-}
-
-/*
- * Check whether an element is of a given tag type.
- * Due to potential reference discrepancies (such as the webcomponents.js polyfill),
- * we want to match tagNames instead of specific references because something like
- * element === document.body won't always work because element might not be a native
- * element.
- * @param {Element} el - element to check
- * @param {string} tag - tag name (e.g., "div")
- * @returns {boolean} whether el is of the given tag type
- */
-function isTag(el, tag) {
-    return el && el.tagName && el.tagName.toLowerCase() === tag.toLowerCase();
-}
-
-/*
- * Check whether an element has nodeType Node.TEXT_NODE
- * @param {Element} el - element to check
- * @returns {boolean} whether el is of the correct nodeType
- */
-function isTextNode(el) {
-    return el && el.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
-}
-
-/*
- * Check whether a DOM event should be "tracked" or if it may contain sentitive data
- * using a variety of heuristics.
- * @param {Element} el - element to check
- * @param {Event} event - event to check
- * @returns {boolean} whether the event should be tracked
- */
-function shouldTrackDomEvent(el, event) {
-    if (!el || isTag(el, 'html') || !isElementNode(el)) {
-        return false;
-    }
-    var tag = el.tagName.toLowerCase();
-    switch (tag) {
-        case 'html':
-            return false;
-        case 'form':
-            return event.type === 'submit';
-        case 'input':
-            if (['button', 'submit'].indexOf(el.getAttribute('type')) === -1) {
-                return event.type === 'change';
-            } else {
-                return event.type === 'click';
-            }
-        case 'select':
-        case 'textarea':
-            return event.type === 'change';
-        default:
-            return event.type === 'click';
-    }
-}
-
-/*
- * Check whether a DOM element should be "tracked" or if it may contain sentitive data
- * using a variety of heuristics.
- * @param {Element} el - element to check
- * @returns {boolean} whether the element should be tracked
- */
-function shouldTrackElement(el) {
-    for (var curEl = el; curEl.parentNode && !isTag(curEl, 'body'); curEl = curEl.parentNode) {
-        var classes = getClassName(curEl).split(' ');
-        if (_.includes(classes, 'mp-sensitive') || _.includes(classes, 'mp-no-track')) {
-            return false;
-        }
-    }
-
-    if (_.includes(getClassName(el).split(' '), 'mp-include')) {
-        return true;
-    }
-
-    // don't send data from inputs or similar elements since there will always be
-    // a risk of clientside javascript placing sensitive data in attributes
-    if (
-        isTag(el, 'input') ||
-        isTag(el, 'select') ||
-        isTag(el, 'textarea') ||
-        el.getAttribute('contenteditable') === 'true'
-    ) {
-        return false;
-    }
-
-    // don't include hidden or password fields
-    var type = el.type || '';
-    if (typeof type === 'string') { // it's possible for el.type to be a DOM element if el is a form with a child input[name="type"]
-        switch(type.toLowerCase()) {
-            case 'hidden':
-                return false;
-            case 'password':
-                return false;
-        }
-    }
-
-    // filter out data from fields that look like sensitive fields
-    var name = el.name || el.id || '';
-    if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
-        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
-        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/*
- * Check whether a string value should be "tracked" or if it may contain sentitive data
- * using a variety of heuristics.
- * @param {string} value - string value to check
- * @returns {boolean} whether the element should be tracked
- */
-function shouldTrackValue(value) {
-    if (value === null || _.isUndefined(value)) {
-        return false;
-    }
-
-    if (typeof value === 'string') {
-        value = _.trim(value);
-
-        // check to see if input value looks like a credit card number
-        // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
-        var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
-        if (ccRegex.test((value || '').replace(/[- ]/g, ''))) {
-            return false;
-        }
-
-        // check to see if input value looks like a social security number
-        var ssnRegex = /(^\d{3}-?\d{2}-?\d{4}$)/;
-        if (ssnRegex.test(value)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-var autotrack = {
-    _initializedTokens: [],
-
-    _previousElementSibling: function(el) {
-        if (el.previousElementSibling) {
-            return el.previousElementSibling;
-        } else {
-            do {
-                el = el.previousSibling;
-            } while (el && !isElementNode(el));
-            return el;
-        }
-    },
-
-    _loadScript: function(scriptUrlToLoad, callback) {
-        var scriptTag = document.createElement('script');
-        scriptTag.type = 'text/javascript';
-        scriptTag.src = scriptUrlToLoad;
-        scriptTag.onload = callback;
-
-        var scripts = document.getElementsByTagName('script');
-        if (scripts.length > 0) {
-            scripts[0].parentNode.insertBefore(scriptTag, scripts[0]);
-        } else {
-            document.body.appendChild(scriptTag);
-        }
-    },
-
-    _getPropertiesFromElement: function(elem) {
-        var props = {
-            'classes': getClassName(elem).split(' '),
-            'tag_name': elem.tagName.toLowerCase()
-        };
-
-        if (shouldTrackElement(elem)) {
-            _.each(elem.attributes, function(attr) {
-                if (shouldTrackValue(attr.value)) {
-                    props['attr__' + attr.name] = attr.value;
-                }
-            });
-        }
-
-        var nthChild = 1;
-        var nthOfType = 1;
-        var currentElem = elem;
-        while (currentElem = this._previousElementSibling(currentElem)) { // eslint-disable-line no-cond-assign
-            nthChild++;
-            if (currentElem.tagName === elem.tagName) {
-                nthOfType++;
-            }
-        }
-        props['nth_child'] = nthChild;
-        props['nth_of_type'] = nthOfType;
-
-        return props;
-    },
-
-    _getDefaultProperties: function(eventType) {
-        return {
-            '$event_type': eventType,
-            '$ce_version': 1,
-            '$host': window.location.host,
-            '$pathname': window.location.pathname
-        };
-    },
-
-    _extractCustomPropertyValue: function(customProperty) {
-        var propValues = [];
-        _.each(document.querySelectorAll(customProperty['css_selector']), function(matchedElem) {
-            var value;
-
-            if (['input', 'select'].indexOf(matchedElem.tagName.toLowerCase()) > -1) {
-                value = matchedElem['value'];
-            } else if (matchedElem['textContent']) {
-                value = matchedElem['textContent'];
-            }
-
-            if (shouldTrackValue(value)) {
-                propValues.push(value);
-            }
-        });
-        return propValues.join(', ');
-    },
-
-    _getCustomProperties: function(targetElementList) {
-        var props = {};
-        _.each(this._customProperties, function(customProperty) {
-            _.each(customProperty['event_selectors'], function(eventSelector) {
-                var eventElements = document.querySelectorAll(eventSelector);
-                _.each(eventElements, function(eventElement) {
-                    if (_.includes(targetElementList, eventElement) && shouldTrackElement(eventElement)) {
-                        props[customProperty['name']] = this._extractCustomPropertyValue(customProperty);
-                    }
-                }, this);
-            }, this);
-        }, this);
-        return props;
-    },
-
-    _getEventTarget: function(e) {
-        // https://developer.mozilla.org/en-US/docs/Web/API/Event/target#Compatibility_notes
-        if (typeof e.target === 'undefined') {
-            return e.srcElement;
-        } else {
-            return e.target;
-        }
-    },
-
-    _trackEvent: function(e, instance) {
-        /*** Don't mess with this code without running IE8 tests on it ***/
-        var target = this._getEventTarget(e);
-        if (isTextNode(target)) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
-            target = target.parentNode;
-        }
-
-        if (shouldTrackDomEvent(target, e)) {
-            var targetElementList = [target];
-            var curEl = target;
-            while (curEl.parentNode && !isTag(curEl, 'body')) {
-                targetElementList.push(curEl.parentNode);
-                curEl = curEl.parentNode;
-            }
-
-            var elementsJson = [];
-            var href, explicitNoTrack = false;
-            _.each(targetElementList, function(el) {
-                var shouldTrackEl = shouldTrackElement(el);
-
-                // if the element or a parent element is an anchor tag
-                // include the href as a property
-                if (el.tagName.toLowerCase() === 'a') {
-                    href = el.getAttribute('href');
-                    href = shouldTrackEl && shouldTrackValue(href) && href;
-                }
-
-                // allow users to programatically prevent tracking of elements by adding class 'mp-no-track'
-                var classes = getClassName(el).split(' ');
-                if (_.includes(classes, 'mp-no-track')) {
-                    explicitNoTrack = true;
-                }
-
-                elementsJson.push(this._getPropertiesFromElement(el));
-            }, this);
-
-            if (explicitNoTrack) {
-                return false;
-            }
-
-            // only populate text content from target element (not parents)
-            // to prevent text within a sensitive element from being collected
-            // as part of a parent's el.textContent
-            var elementText;
-            var safeElementText = getSafeText(target);
-            if (safeElementText && safeElementText.length) {
-                elementText = safeElementText;
-            }
-
-            var props = _.extend(
-                this._getDefaultProperties(e.type),
-                {
-                    '$elements':  elementsJson,
-                    '$el_attr__href': href,
-                    '$el_text': elementText
-                },
-                this._getCustomProperties(targetElementList)
-            );
-
-            instance.track('$web_event', props);
-            return true;
-        }
-    },
-
-    // only reason is to stub for unit tests
-    // since you can't override window.location props
-    _navigate: function(href) {
-        window.location.href = href;
-    },
-
-    _addDomEventHandlers: function(instance) {
-        var handler = _.bind(function(e) {
-            e = e || window.event;
-            this._trackEvent(e, instance);
-        }, this);
-        _.register_event(document, 'submit', handler, false, true);
-        _.register_event(document, 'change', handler, false, true);
-        _.register_event(document, 'click', handler, false, true);
-    },
-
-    _customProperties: {},
-    init: function(instance) {
-        if (!(document && document.body)) {
-            console.log('document not ready yet, trying again in 500 milliseconds...');
-            var that = this;
-            setTimeout(function() { that.init(instance); }, 500);
-            return;
-        }
-
-        var token = instance.get_config('token');
-        if (this._initializedTokens.indexOf(token) > -1) {
-            console.log('autotrack already initialized for token "' + token + '"');
-            return;
-        }
-        this._initializedTokens.push(token);
-
-        if (!this._maybeLoadEditor(instance)) { // don't autotrack actions when the editor is enabled
-            var parseDecideResponse = _.bind(function(response) {
-                if (response && response['config'] && response['config']['enable_collect_everything'] === true) {
-
-                    if (response['custom_properties']) {
-                        this._customProperties = response['custom_properties'];
-                    }
-
-                    instance.track('$web_event', _.extend({
-                        '$title': document.title
-                    }, this._getDefaultProperties('pageview')));
-
-                    this._addDomEventHandlers(instance);
-
-                } else {
-                    instance['__autotrack_enabled'] = false;
-                }
-            }, this);
-
-            instance._send_request(
-                instance.get_config('api_host') + '/decide/', {
-                    'verbose': true,
-                    'version': '1',
-                    'lib': 'web',
-                    'token': token
-                },
-                {method: 'GET', transport: 'XHR'},
-                instance._prepare_callback(parseDecideResponse)
-            );
-        }
-    },
-
-    _editorParamsFromHash: function(instance, hash) {
-        var editorParams;
-        try {
-            var state = _.getHashParam(hash, 'state');
-            state = JSON.parse(decodeURIComponent(state));
-            var expiresInSeconds = _.getHashParam(hash, 'expires_in');
-            editorParams = {
-                'accessToken': _.getHashParam(hash, 'access_token'),
-                'accessTokenExpiresAt': (new Date()).getTime() + (Number(expiresInSeconds) * 1000),
-                'bookmarkletMode': !!state['bookmarkletMode'],
-                'projectId': state['projectId'],
-                'projectOwnerId': state['projectOwnerId'],
-                'projectToken': state['token'],
-                'readOnly': state['readOnly'],
-                'userFlags': state['userFlags'],
-                'userId': state['userId']
-            };
-            window.sessionStorage.setItem('editorParams', JSON.stringify(editorParams));
-
-            if (state['desiredHash']) {
-                window.location.hash = state['desiredHash'];
-            } else if (window.history) {
-                history.replaceState('', document.title, window.location.pathname + window.location.search); // completely remove hash
-            } else {
-                window.location.hash = ''; // clear hash (but leaves # unfortunately)
-            }
-        } catch (e) {
-            console.error('Unable to parse data from hash', e);
-        }
-        return editorParams;
-    },
-
-    /**
-     * To load the visual editor, we need an access token and other state. That state comes from one of three places:
-     * 1. In the URL hash params if the customer is using an old snippet
-     * 2. From session storage under the key `_mpcehash` if the snippet already parsed the hash
-     * 3. From session storage under the key `editorParams` if the editor was initialized on a previous page
-     */
-    _maybeLoadEditor: function(instance) {
-        try {
-            var parseFromUrl = false;
-            if (_.getHashParam(window.location.hash, 'state')) {
-                var state = _.getHashParam(window.location.hash, 'state');
-                state = JSON.parse(decodeURIComponent(state));
-                parseFromUrl = state['action'] === 'mpeditor';
-            }
-            var parseFromStorage = !!window.sessionStorage.getItem('_mpcehash');
-            var editorParams;
-
-            if (parseFromUrl) { // happens if they are initializing the editor using an old snippet
-                editorParams = this._editorParamsFromHash(instance, window.location.hash);
-            } else if (parseFromStorage) { // happens if they are initialized the editor and using the new snippet
-                editorParams = this._editorParamsFromHash(instance, window.sessionStorage.getItem('_mpcehash'));
-                window.sessionStorage.removeItem('_mpcehash');
-            } else { // get credentials from sessionStorage from a previous initialzation
-                editorParams = JSON.parse(window.sessionStorage.getItem('editorParams') || '{}');
-            }
-
-            if (editorParams['projectToken'] && instance.get_config('token') === editorParams['projectToken']) {
-                this._loadEditor(instance, editorParams);
-                return true;
-            } else {
-                return false;
-            }
-        } catch (e) {
-            return false;
-        }
-    },
-
-    _loadEditor: function(instance, editorParams) {
-        if (!window['_mpEditorLoaded']) { // only load the codeless event editor once, even if there are multiple instances of MixpanelLib
-            window['_mpEditorLoaded'] = true;
-            var editorUrl = instance.get_config('app_host')
-              + '/js-bundle/reports/collect-everything/editor.js?_ts='
-              + (new Date()).getTime();
-            this._loadScript(editorUrl, function() {
-                window['mp_load_editor'](editorParams);
-            });
-            return true;
-        }
-        return false;
-    },
-
-    // this is a mechanism to ramp up CE with no server-side interaction.
-    // when CE is active, every page load results in a decide request. we
-    // need to gently ramp this up so we don't overload decide. this decides
-    // deterministically if CE is enabled for this project by modding the char
-    // value of the project token.
-    enabledForProject: function(token, numBuckets, numEnabledBuckets) {
-        numBuckets = !_.isUndefined(numBuckets) ? numBuckets : 10;
-        numEnabledBuckets = !_.isUndefined(numEnabledBuckets) ? numEnabledBuckets : 10;
-        var charCodeSum = 0;
-        for (var i = 0; i < token.length; i++) {
-            charCodeSum += token.charCodeAt(i);
-        }
-        return (charCodeSum % numBuckets) < numEnabledBuckets;
-    },
-
-    isBrowserSupported: function() {
-        return _.isFunction(document.querySelectorAll);
-    }
-};
-
-_.bind_instance_methods(autotrack);
-_.safewrap_instance_methods(autotrack);
-
 /**
  * DomTracker Object
  * @constructor
@@ -2325,7 +1784,7 @@ DomTracker.prototype.track = function(query, event_name, properties, user_callba
     var elements = _.dom_query(query);
 
     if (elements.length === 0) {
-        console$1.error('The DOM query (' + query + ') returned 0 elements');
+        console.error('The DOM query (' + query + ') returned 0 elements');
         return;
     }
 
@@ -3117,12 +2576,12 @@ function hasOptedIn(token, options) {
  */
 function hasOptedOut(token, options) {
     if (_hasDoNotTrackFlagOn(options)) {
-        console$1.warn('This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
+        console.warn('This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
         return true;
     }
     var optedOut = _getStorageValue(token, options) === '0';
     if (optedOut) {
-        console$1.warn('You are opted out of Mixpanel tracking. This will prevent the Mixpanel SDK from sending any data.');
+        console.warn('You are opted out of Mixpanel tracking. This will prevent the Mixpanel SDK from sending any data.');
     }
     return optedOut;
 }
@@ -3266,7 +2725,7 @@ function _hasDoNotTrackFlagOn(options) {
  */
 function _optInOut(optValue, token, options) {
     if (!_.isString(token) || !token.length) {
-        console$1.error('gdpr.' + (optValue ? 'optIn' : 'optOut') + ' called with an invalid token');
+        console.error('gdpr.' + (optValue ? 'optIn' : 'optOut') + ' called with an invalid token');
         return;
     }
 
@@ -3317,7 +2776,7 @@ function _addOptOutCheck(method, getConfigValue) {
                 });
             }
         } catch(err) {
-            console$1.error('Unexpected error when checking tracking opt-out status: ' + err);
+            console.error('Unexpected error when checking tracking opt-out status: ' + err);
         }
 
         if (!optedOut) {
@@ -3659,7 +3118,7 @@ var MixpanelPersistence = function(config) {
 
     var storage_type = config['persistence'];
     if (storage_type !== 'cookie' && storage_type !== 'localStorage') {
-        console$1.critical('Unknown persistence type ' + storage_type + '; falling back to cookie');
+        console.critical('Unknown persistence type ' + storage_type + '; falling back to cookie');
         storage_type = config['persistence'] = 'cookie';
     }
 
@@ -4017,8 +3476,8 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
         this._pop_from_people_queue(UNSET_ACTION, q_data);
     }
 
-    console$1.log('MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):');
-    console$1.log(data);
+    console.log('MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):');
+    console.log(data);
 
     this.save();
 };
@@ -4061,7 +3520,7 @@ MixpanelPersistence.prototype._get_queue_key = function(queue) {
     } else if (queue === UNION_ACTION) {
         return UNION_QUEUE_KEY;
     } else {
-        console$1.error('Invalid queue:', queue);
+        console.error('Invalid queue:', queue);
     }
 };
 
@@ -6029,7 +5488,7 @@ MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop,
         _.each(prop, function(v, k) {
             if (!this._is_reserved_property(k)) {
                 if (isNaN(parseFloat(v))) {
-                    console$1.error('Invalid increment value passed to mixpanel.people.increment - must be a number');
+                    console.error('Invalid increment value passed to mixpanel.people.increment - must be a number');
                     return;
                 } else {
                     $add[k] = v;
@@ -6153,7 +5612,7 @@ MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(am
     if (!_.isNumber(amount)) {
         amount = parseFloat(amount);
         if (isNaN(amount)) {
-            console$1.error('Invalid value passed to mixpanel.people.track_charge - must be a number');
+            console.error('Invalid value passed to mixpanel.people.track_charge - must be a number');
             return;
         }
     }
@@ -6189,7 +5648,7 @@ MixpanelPeople.prototype.clear_charges = function(callback) {
 */
 MixpanelPeople.prototype.delete_user = function() {
     if (!this._identify_called()) {
-        console$1.error('mixpanel.people.delete_user() requires you to call identify() first');
+        console.error('mixpanel.people.delete_user() requires you to call identify() first');
         return;
     }
     var data = {'$delete': this._mixpanel.get_distinct_id()};
@@ -6263,7 +5722,7 @@ MixpanelPeople.prototype._enqueue = function(data) {
     } else if (UNION_ACTION in data) {
         this._mixpanel['persistence']._add_to_people_queue(UNION_ACTION, data);
     } else {
-        console$1.error('Invalid call to _enqueue():', data);
+        console.error('Invalid call to _enqueue():', data);
     }
 };
 
@@ -6431,7 +5890,6 @@ var DEFAULT_CONFIG = {
     'api_method':                        'POST',
     'api_transport':                     'XHR',
     'app_host':                          'https://mixpanel.com',
-    'autotrack':                         true,
     'cdn':                               'https://cdn.mxpnl.com',
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
@@ -6495,7 +5953,7 @@ var create_mplib = function(token, config, name) {
         instance = target;
     } else {
         if (target && !_.isArray(target)) {
-            console$1.error('You have already initialized ' + name);
+            console.error('You have already initialized ' + name);
             return;
         }
         instance = new MixpanelLib();
@@ -6513,21 +5971,6 @@ var create_mplib = function(token, config, name) {
     // if any instance on the page has debug = true, we set the
     // global debug to be true
     Config.DEBUG = Config.DEBUG || instance.get_config('debug');
-
-    instance['__autotrack_enabled'] = instance.get_config('autotrack');
-    if (instance.get_config('autotrack')) {
-        var num_buckets = 100;
-        var num_enabled_buckets = 100;
-        if (!autotrack.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
-            instance['__autotrack_enabled'] = false;
-            console$1.log('Not in active bucket: disabling Automatic Event Collection.');
-        } else if (!autotrack.isBrowserSupported()) {
-            instance['__autotrack_enabled'] = false;
-            console$1.log('Disabling Automatic Event Collection because this browser is not supported');
-        } else {
-            autotrack.init(instance);
-        }
-    }
 
     // if target is not defined, we called init after the lib already
     // loaded, so there won't be an array of things to execute
@@ -6567,11 +6010,11 @@ var encode_data_for_request = function(data) {
  */
 MixpanelLib.prototype.init = function (token, config, name) {
     if (_.isUndefined(name)) {
-        console$1.error('You must name your new library: init(token, config, name)');
+        console.error('You must name your new library: init(token, config, name)');
         return;
     }
     if (name === PRIMARY_INSTANCE_NAME) {
-        console$1.error('You must initialize the main mixpanel object right after you include the Mixpanel js snippet');
+        console.error('You must initialize the main mixpanel object right after you include the Mixpanel js snippet');
         return;
     }
 
@@ -6628,7 +6071,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     if (this._batch_requests) {
         if (!_.localStorage.is_supported(true) || !USE_XHR) {
             this._batch_requests = false;
-            console$1.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
+            console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
         } else {
             this.init_batchers();
             if (sendBeacon && window$1.addEventListener) {
@@ -6696,7 +6139,7 @@ MixpanelLib.prototype._dom_loaded = function() {
 
 MixpanelLib.prototype._track_dom = function(DomClass, args) {
     if (this.get_config('img')) {
-        console$1.error('You can\'t use DOM tracking functions with img = true.');
+        console.error('You can\'t use DOM tracking functions with img = true.');
         return false;
     }
 
@@ -6806,7 +6249,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         try {
             succeeded = sendBeacon(url, body_data);
         } catch (e) {
-            console$1.error(e);
+            console.error(e);
             succeeded = false;
         }
         try {
@@ -6814,7 +6257,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                 callback(succeeded ? 1 : 0);
             }
         } catch (e) {
-            console$1.error(e);
+            console.error(e);
         }
     } else if (USE_XHR) {
         try {
@@ -6846,7 +6289,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                                 try {
                                     response = _.JSONDecode(req.responseText);
                                 } catch (e) {
-                                    console$1.error(e);
+                                    console.error(e);
                                     if (options.ignore_json_errors) {
                                         response = req.responseText;
                                     } else {
@@ -6869,7 +6312,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         } else {
                             error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
                         }
-                        console$1.error(error);
+                        console.error(error);
                         if (callback) {
                             if (verbose_mode) {
                                 callback({status: 0, error: error, xhr_req: req});
@@ -6882,7 +6325,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
             };
             req.send(body_data);
         } catch (e) {
-            console$1.error(e);
+            console.error(e);
             succeeded = false;
         }
     } else {
@@ -7054,8 +6497,8 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
             truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
         }
         if (truncated_data) {
-            console$1.log('MIXPANEL REQUEST:');
-            console$1.log(truncated_data);
+            console.log('MIXPANEL REQUEST:');
+            console.log(truncated_data);
             return this._send_request(
                 endpoint,
                 encode_data_for_request(truncated_data),
@@ -7121,7 +6564,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     }
 
     if (_.isUndefined(event_name)) {
-        console$1.error('No event name provided to mixpanel.track');
+        console.error('No event name provided to mixpanel.track');
         return;
     }
 
@@ -7162,7 +6605,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
             delete properties[blacklisted_prop];
         });
     } else {
-        console$1.error('Invalid value for property_blacklist config: ' + property_blacklist);
+        console.error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
 
     var data = {
@@ -7407,7 +6850,7 @@ MixpanelLib.prototype.track_forms = function() {
  */
 MixpanelLib.prototype.time_event = function(event_name) {
     if (_.isUndefined(event_name)) {
-        console$1.error('No event name provided to mixpanel.time_event');
+        console.error('No event name provided to mixpanel.time_event');
         return;
     }
 
@@ -7680,7 +7123,7 @@ MixpanelLib.prototype.alias = function(alias, original) {
     // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
     // this ID, as it will duplicate users.
     if (alias === this.get_property(PEOPLE_DISTINCT_ID_KEY)) {
-        console$1.critical('Attempting to create alias for existing People user - aborting.');
+        console.critical('Attempting to create alias for existing People user - aborting.');
         return -2;
     }
 
@@ -7700,7 +7143,7 @@ MixpanelLib.prototype.alias = function(alias, original) {
             _this.identify(alias);
         });
     } else {
-        console$1.error('alias matches current distinct_id - skipping api call.');
+        console.error('alias matches current distinct_id - skipping api call.');
         this.identify(alias);
         return -1;
     }
@@ -7883,7 +7326,7 @@ MixpanelLib.prototype.get_config = function(prop_name) {
 MixpanelLib.prototype._run_hook = function(hook_name) {
     var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, slice.call(arguments, 1));
     if (typeof ret === 'undefined') {
-        console$1.error(hook_name + ' hook did not return a value');
+        console.error(hook_name + ' hook did not return a value');
         ret = null;
     }
     return ret;
@@ -7949,7 +7392,7 @@ MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLi
         return;
     }
 
-    console$1.log('MIXPANEL NOTIFICATION CHECK');
+    console.log('MIXPANEL NOTIFICATION CHECK');
 
     var data = {
         'verbose':     true,

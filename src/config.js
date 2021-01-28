@@ -1,6 +1,6 @@
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.40.1'
+    LIB_VERSION: '2.41.0'
 };
 
 export default Config;
