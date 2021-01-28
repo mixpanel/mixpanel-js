@@ -1,3 +1,6 @@
+**2.41.0** (28 Jan 2021)
+- Remove all code related to Autotrack feature
+
 **2.40.1** (19 Jan 2021)
 - Add new crawler user agents to blocked list (pinterest, fb, bingpreview, more google crawlers etc)
 - Add debug-mode logging when opt-out/DNT is preventing tracking
