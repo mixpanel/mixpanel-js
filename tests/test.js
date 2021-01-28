@@ -342,53 +342,6 @@
         }
     };
 
-    window.testCEAsync = function(mixpanel_ce_lib) {
-        /* Tests for async/snippet behavior (prior to load).
-         * Make sure we re-order args, etc.
-         */
-
-        mixpanel = mixpanel_ce_lib;
-
-        var test1 = {
-            id: "asjief32f",
-            name: "bilbo",
-            properties: null
-
-        };
-
-        mixpanel.push(function() {
-            this.persistence.clear();
-        });
-
-        mixpanel.time_event('test ce async');
-        mixpanel.track('test ce async', {}, function(response, data) {
-            test1.properties = data.properties;
-        });
-        var lib_loaded = mixpanel.__loaded;
-        mixpanel.identify(test1.id);
-        mixpanel.name_tag(test1.name);
-
-        // only run pre-load snippet tests if lib didn't finish loading before identify/name_tag calls
-        if (!lib_loaded) {
-            module("async tracking");
-
-            asyncTest("priority functions", 3, function() {
-                untilDone(function(done) {
-                    if (test1.properties !== null) {
-                        var p = test1.properties;
-                        same(p.mp_name_tag, test1.name, "name_tag should fire before track");
-                        same(p.distinct_id, test1.id, "identify should fire before track");
-                        ok(!_.isUndefined(p.$duration), "duration should be set");
-                        done();
-                    }
-                });
-            });
-        } else {
-            var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
-            $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
-        }
-    };
-
     window.testMixpanel = function(mixpanel_test_lib) {
         /* Tests to run once the lib is loaded on the page.
          */
@@ -3985,7 +3938,6 @@
                 var initBatchLibInstance = function(options) {
                     options = _.extend({
                         batch_requests: true,
-                        autotrack: false,
                     }, options);
                     mixpanel.init(BATCH_TOKEN, options, 'batchtest');
                     mixpanel.batchtest.clear_opt_in_out_tracking();

@@ -1,7 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
 import { _, console, userAgent, window, document, navigator, determine_eligibility, slice } from './utils';
-import { autotrack } from './autotrack';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -88,7 +87,6 @@ var DEFAULT_CONFIG = {
     'api_method':                        'POST',
     'api_transport':                     'XHR',
     'app_host':                          'https://mixpanel.com',
-    'autotrack':                         true,
     'cdn':                               'https://cdn.mxpnl.com',
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
@@ -170,21 +168,6 @@ var create_mplib = function(token, config, name) {
     // if any instance on the page has debug = true, we set the
     // global debug to be true
     Config.DEBUG = Config.DEBUG || instance.get_config('debug');
-
-    instance['__autotrack_enabled'] = instance.get_config('autotrack');
-    if (instance.get_config('autotrack')) {
-        var num_buckets = 100;
-        var num_enabled_buckets = 100;
-        if (!autotrack.enabledForProject(instance.get_config('token'), num_buckets, num_enabled_buckets)) {
-            instance['__autotrack_enabled'] = false;
-            console.log('Not in active bucket: disabling Automatic Event Collection.');
-        } else if (!autotrack.isBrowserSupported()) {
-            instance['__autotrack_enabled'] = false;
-            console.log('Disabling Automatic Event Collection because this browser is not supported');
-        } else {
-            autotrack.init(instance);
-        }
-    }
 
     // if target is not defined, we called init after the lib already
     // loaded, so there won't be an array of things to execute
