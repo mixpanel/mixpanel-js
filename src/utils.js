@@ -279,10 +279,6 @@ _.values = function(obj) {
     return results;
 };
 
-_.identity = function(value) {
-    return value;
-};
-
 _.include = function(obj, target) {
     var found = false;
     if (obj === null) {
@@ -1020,10 +1016,6 @@ _.getQueryParam = function(url, param) {
     }
 };
 
-_.getHashParam = function(hash, param) {
-    var matches = hash.match(new RegExp(param + '=([^&]*)'));
-    return matches ? matches[1] : null;
-};
 
 // _.cookie
 // Methods partially borrowed from quirksmode.org/js/cookies.html
