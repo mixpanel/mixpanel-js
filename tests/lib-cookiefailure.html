@@ -50,6 +50,10 @@
                         document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/" + cdomain + secure;
                     };
                     mixpanel._.cookie.failure_mode = true;
+                    mixpanel.init("MIXPANEL_NONBATCHING_TOKEN", {
+                        batch_requests: false,
+                        debug: true,
+                    }, "nonbatching");
                     testMixpanel(mixpanel);
                 }
             });

@@ -6,8 +6,12 @@ mixpanel.init("MIXPANEL_TOKEN", {
     reset_cookie: true,
     debug: true
 });
+mixpanel.init("MIXPANEL_NONBATCHING_TOKEN", {
+    batch_requests: false,
+    debug: true,
+}, "nonbatching");
 
-test_mixpanel(mixpanel);
+testMixpanel(mixpanel);
 
 test('mixpanel object is not attached to window', 1, () => {
     ok(_.isUndefined(window.mixpanel), "window.mixpanel should be undefined");

@@ -28,11 +28,15 @@
                 persistence_name: "test",
                 debug: true,
                 loaded: function(mixpanel) {
-                    test_mixpanel(mixpanel);
+                    mixpanel.init("MIXPANEL_NONBATCHING_TOKEN", {
+                        batch_requests: false,
+                        debug: true,
+                    }, "nonbatching");
+                    testMixpanel(mixpanel);
                 }
             });
 
-            test_async(mixpanel);
+            testAsync(mixpanel);
         </script>
     </body>
 </html>
