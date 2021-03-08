@@ -276,7 +276,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
                 // Since sendBeacon doesn't report success/failure, events will not be removed from
                 // the persistent store; if the site is loaded again, the events will be flushed again
                 // on startup and deduplicated on the Mixpanel server side.
-                // Using pagehide and visibilitychange to listener for
+                // Using pagehide and visibilitychange to listener to listen for page unload
                 window.addEventListener('pagehide', _.bind(function(event) {
                     if (event.persisted) {
                         if (!this.request_batchers.events.stopped) {
