@@ -272,13 +272,23 @@ MixpanelLib.prototype._init = function(token, config, name) {
         } else {
             this.init_batchers();
             if (sendBeacon && window.addEventListener) {
-                window.addEventListener('unload', _.bind(function() {
-                    // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
-                    // Since sendBeacon doesn't report success/failure, events will not be removed from
-                    // the persistent store; if the site is loaded again, the events will be flushed again
-                    // on startup and deduplicated on the Mixpanel server side.
-                    if (!this.request_batchers.events.stopped) {
-                        this.request_batchers.events.flush({unloading: true});
+                // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
+                // Since sendBeacon doesn't report success/failure, events will not be removed from
+                // the persistent store; if the site is loaded again, the events will be flushed again
+                // on startup and deduplicated on the Mixpanel server side.
+                // Using pagehide and visibilitychange to listener for
+                window.addEventListener('pagehide', _.bind(function(event) {
+                    if (event.persisted) {
+                        if (!this.request_batchers.events.stopped) {
+                            this.request_batchers.events.flush({unloading: true});
+                        }
+                    }
+                }, this));
+                window.addEventListener('visibilitychange', _.bind(function() {
+                    if (document.visibilityState === 'hidden') {
+                        if (!this.request_batchers.events.stopped) {
+                            this.request_batchers.events.flush({unloading: true});
+                        }
                     }
                 }, this));
             }
