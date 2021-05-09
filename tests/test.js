@@ -4139,10 +4139,23 @@
                             });
                     };
 
-                    test('queued requests are flushed via sendBeacon before page unload', 3, function() {
+                    test('queued requests are flushed via sendBeacon before page pagehide - pagehide event', 3, function() {
                         mixpanel.batchtest.track('queued event');
-                        window.dispatchEvent(new Event('unload'));
-                        ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
+                        var event = new Event('pagehide');
+                        Object.defineProperty(event, 'persisted', {value: 'true', writable: true});
+                        window.dispatchEvent(event);
+                        ok(this.sendBeaconSpy.called, "pagehide should have called sendBeacon");
+                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                        same(request_data.length, 1, "sendBeacon should have sent a single event");
+                        same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
+                    });
+
+                    test('queued requests are flushed via sendBeacon before page - visibilitychange event', 3, function() {
+                        mixpanel.batchtest.track('queued event');
+                        Object.defineProperty(document, 'visibilityState', {value: 'hidden', writable: true});
+                        Object.defineProperty(document, 'hidden', {value: true, writable: true});
+                        window.dispatchEvent(new Event('visibilitychange'));
+                        ok(this.sendBeaconSpy.called, "visibilitychange should have called sendBeacon");
                         var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
                         same(request_data.length, 1, "sendBeacon should have sent a single event");
                         same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
@@ -4173,7 +4186,7 @@
                         same(request_data[0].event, 'queued event 3');
                     });
 
-                    test('before_send hooks are applied to events flushed via sendBeacon before page unload', 6, function() {
+                    test('before_send hooks are applied to events flushed via sendBeacon before pagehide event', 6, function() {
                         mixpanel.batchtest.set_config({
                             hooks: {
                                 before_send_events: function(event_data) {
@@ -4187,15 +4200,46 @@
                         var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
                         same(stored_requests.length, 1, "event should be persisted in localStorage");
 
-                        window.dispatchEvent(new Event('unload'));
-                        ok(this.sendBeaconSpy.called, "page unload should have called sendBeacon");
+                        var event = new Event('pagehide');
+                        Object.defineProperty(event, 'persisted', {value: 'true', writable: true});
+                        window.dispatchEvent(event);
+
+                        ok(this.sendBeaconSpy.called, "page hide event should have called sendBeacon");
                         var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
                         same(request_data.length, 1, "sendBeacon should have sent a single event");
-                        same(request_data[0].event, 'queued event (transformed)', "before_send hook should be applied to event on unload");
+                        same(request_data[0].event, 'queued event (transformed)', "before_send hook should be applied to event on pagehide");
 
                         stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
                         same(stored_requests.length, 1, "event should still be in localStorage");
-                        same(stored_requests[0].payload.event, 'queued event (transformed)', "before_send hook should be applied to persisted queue before unload");
+                        same(stored_requests[0].payload.event, 'queued event (transformed)', "before_send hook should be applied to persisted queue before pagehide");
+                    });
+
+                    test('before_send hooks are applied to events flushed via sendBeacon before page unloads (visibilitychange changes)', 6, function() {
+                        mixpanel.batchtest.set_config({
+                            hooks: {
+                                before_send_events: function(event_data) {
+                                    event_data.event += ' (transformed)';
+                                    return event_data;
+                                }
+                            }
+                        });
+                        mixpanel.batchtest.track('queued event');
+
+                        var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                        same(stored_requests.length, 1, "event should be persisted in localStorage");
+
+                        Object.defineProperty(document, 'visibilityState', {value: 'hidden', writable: true});
+                        Object.defineProperty(document, 'hidden', {value: true, writable: true});
+                        window.dispatchEvent(new Event('visibilitychange'));
+
+                        ok(this.sendBeaconSpy.called, "visibilitychange event should have called sendBeacon");
+                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                        same(request_data.length, 1, "sendBeacon should have sent a single event");
+                        same(request_data[0].event, 'queued event (transformed)', "before_send hook should be applied to event on visibilitychange");
+
+                        stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                        same(stored_requests.length, 1, "event should still be in localStorage");
+                        same(stored_requests[0].payload.event, 'queued event (transformed)', "before_send hook should be applied to persisted queue before visibilitychange");
                     });
                 }
 

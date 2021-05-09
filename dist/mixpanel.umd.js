@@ -6079,13 +6079,23 @@
             } else {
                 this.init_batchers();
                 if (sendBeacon && window$1.addEventListener) {
-                    window$1.addEventListener('unload', _.bind(function() {
-                        // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
-                        // Since sendBeacon doesn't report success/failure, events will not be removed from
-                        // the persistent store; if the site is loaded again, the events will be flushed again
-                        // on startup and deduplicated on the Mixpanel server side.
-                        if (!this.request_batchers.events.stopped) {
-                            this.request_batchers.events.flush({unloading: true});
+                    // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
+                    // Since sendBeacon doesn't report success/failure, events will not be removed from
+                    // the persistent store; if the site is loaded again, the events will be flushed again
+                    // on startup and deduplicated on the Mixpanel server side.
+                    // Using pagehide and visibilitychange to listener for
+                    window$1.addEventListener('pagehide', _.bind(function(event) {
+                        if (event.persisted) {
+                            if (!this.request_batchers.events.stopped) {
+                                this.request_batchers.events.flush({unloading: true});
+                            }
+                        }
+                    }, this));
+                    window$1.addEventListener('visibilitychange', _.bind(function() {
+                        if (document$1.visibilityState === 'hidden') {
+                            if (!this.request_batchers.events.stopped) {
+                                this.request_batchers.events.flush({unloading: true});
+                            }
                         }
                     }, this));
                 }
