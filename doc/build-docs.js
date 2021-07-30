@@ -97,6 +97,22 @@ function doxToMD(items) {
   });
 }
 
+// Captures prototype bracket notation property assignment, e.g.:
+// `MixpanelGroup.prototype['delete'] = addOptOutCheckMixpanelGroup(function(callback) {`
+// Based on https://github.com/tj/dox/blob/9fe92e17dfcd31c9b6512f6e5bf0b52c2b6b84d4/lib/dox.js#L592
+dox.contextPatternMatchers.push(function (str) {
+  if (/^\s*([\w$.]+)\s*\.\s*prototype\s*\['\s*([\w$]+)'\]\s*=\s*([^\n;]+)/.exec(str)) {
+    return {
+        type: 'property'
+      , constructor: RegExp.$1
+      , cons: RegExp.$1
+      , name: RegExp.$2
+      , value: RegExp.$3.trim()
+      , string: RegExp.$1 + '.prototype.' + RegExp.$2
+    };
+  }
+});
+
 const rawCode = fs.readFileSync(SOURCE_FILE).toString().trim();
 const parsed = dox.parseComments(rawCode);
 

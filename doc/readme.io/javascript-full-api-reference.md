@@ -991,6 +991,24 @@ mixpanel.people.unset(['gender', 'Company']);
 
 
 ___
+## mixpanel.group.delete
+Permanently delete a group.
+
+
+### Usage:
+
+```javascript
+mixpanel.get_group('company', 'mixpanel').delete();
+```
+
+
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after the tracking event |
+
+
+___
 ## mixpanel.group.remove
 Remove a property from a group. The value will be ignored if doesn't exist.
 

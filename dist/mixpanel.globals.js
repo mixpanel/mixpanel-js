@@ -3017,9 +3017,13 @@
      * Permanently delete a group.
      *
      * ### Usage:
+     *
      *     mixpanel.get_group('company', 'mixpanel').delete();
+     *
+     * @param {Function} [callback] If provided, the callback will be called after the tracking event
      */
     MixpanelGroup.prototype['delete'] = addOptOutCheckMixpanelGroup(function(callback) {
+        // bracket notation above prevents a minification error related to reserved words
         var data = this.delete_action();
         return this._send_request(data, callback);
     });
