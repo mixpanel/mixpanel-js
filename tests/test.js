@@ -1033,6 +1033,7 @@
                     var lib1 = mixpanel.init('lib1', {
                         persistence: 'localStorage',
                         persistence_name: name,
+                        batch_requests: false,
                         disable_persistence: true // disable persistence via init config
                     }, 'lib1');
 
@@ -1040,7 +1041,8 @@
 
                     var lib2 = mixpanel.init('lib2', {
                         persistence: 'localStorage',
-                        persistence_name: name
+                        persistence_name: name,
+                        batch_requests: false
                     }, 'lib2');
                     lib2.set_config({
                         disable_persistence: true // disable persistence via post-init set_config
@@ -4454,6 +4456,7 @@
                                 pre_init: function() {},    // override to perform custom setup code before init & identify
                                 post_init: function() {}    // override to perform custom setup code after init & identify
                             }, options);
+                            options.config.batch_requests = false;
 
                             options.pre_init.call(this);
 
