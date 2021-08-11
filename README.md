@@ -1,5 +1,6 @@
 # Mixpanel JavaScript Library
 ![Build Status](https://github.com/mixpanel/mixpanel-js/actions/workflows/tests.yml/badge.svg)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmixpanel%2Fmixpanel-js.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmixpanel%2Fmixpanel-js?ref=badge_shield)
 
 The Mixpanel JavaScript Library is a set of methods attached to a global `mixpanel` object
 intended to be used by websites wishing to send data to Mixpanel projects. A full reference
@@ -74,3 +75,7 @@ Mixpanel production releases are tested against a large matrix of browsers and o
 
 ## Thanks
 For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx, @pkaminski, @austince, @danielbaker, @mkdai, @wolever, @dpraul, @chriszamierowski
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmixpanel%2Fmixpanel-js.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmixpanel%2Fmixpanel-js?ref=badge_large)
