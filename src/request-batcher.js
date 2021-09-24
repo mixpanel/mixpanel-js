@@ -148,7 +148,7 @@ RequestBatcher.prototype.flush = function(options) {
                 } else if (
                     _.isObject(res) &&
                     res.xhr_req &&
-                    (res.xhr_req['status'] >= 500 || res.xhr_req['status'] <= 0)
+                    (res.xhr_req['status'] >= 500 || res.error === 'timeout')
                 ) {
                     // network or API error, retry
                     var retryMS = this.flushInterval * 2;
