@@ -328,6 +328,21 @@ describe(`RequestBatcher`, function() {
         expect(getLocalStorageItems()).to.be.empty;
       });
 
+      it(`does not retry ERR_BLOCKED_BY_CLIENT`, function() {
+        batcher.enqueue({ev: `queued event 1`});
+        batcher.enqueue({ev: `queued event 2`});
+        batcher.flush();
+
+        expect(batcher.queue.memQueue).to.have.lengthOf(2);
+        expect(getLocalStorageItems()).to.have.lengthOf(2);
+        sendResponse(0);
+
+        clock.tick(100000);
+        expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+        expect(batcher.queue.memQueue).to.be.empty;
+        expect(getLocalStorageItems()).to.be.empty;
+      });
+
       it(`reduces batch size after 413 Payload Too Large`, function() {
         configureBatchSize(9); // nice odd number
 
