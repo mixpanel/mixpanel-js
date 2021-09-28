@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.41.0'
+        LIB_VERSION: '2.42.0-rc1'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1688,28 +1688,6 @@
         return maxlen ? guid.substring(0, maxlen) : guid;
     };
 
-    /**
-     * Check deterministically whether to include or exclude from a feature rollout/test based on the
-     * given string and the desired percentage to include.
-     * @param {String} str - string to run the check against (for instance a project's token)
-     * @param {String} feature - name of feature (for inclusion in hash, to ensure different results
-     * for different features)
-     * @param {Number} percent_allowed - percentage chance that a given string will be included
-     * @returns {Boolean} whether the given string should be included
-     */
-    var determine_eligibility = _.safewrap(function(str, feature, percent_allowed) {
-        str = str + feature;
-
-        // Bernstein's hash: http://www.cse.yorku.ca/~oz/hash.html#djb2
-        var hash = 5381;
-        for (var i = 0; i < str.length; i++) {
-            hash = ((hash << 5) + hash) + str.charCodeAt(i);
-            hash = hash & hash;
-        }
-        var dart = (hash >>> 0) % 100;
-        return dart < percent_allowed;
-    });
-
     // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
     var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
     // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
@@ -2448,7 +2426,7 @@
                     } else if (
                         _.isObject(res) &&
                         res.xhr_req &&
-                        (res.xhr_req['status'] >= 500 || res.xhr_req['status'] <= 0)
+                        (res.xhr_req['status'] >= 500 || res.error === 'timeout')
                     ) {
                         // network or API error, retry
                         var retryMS = this.flushInterval * 2;
@@ -5928,7 +5906,7 @@
         'inapp_protocol':                    '//',
         'inapp_link_new_window':             false,
         'ignore_dnt':                        false,
-        'batch_requests':                    false, // for now
+        'batch_requests':                    true,
         'batch_size':                        50,
         'batch_flush_interval_ms':           5000,
         'batch_request_timeout_ms':          90000,
@@ -6047,17 +6025,7 @@
         this['config'] = {};
         this['_triggered_notifs'] = [];
 
-        // rollout: enable batch_requests by default for 60% of projects
-        // (only if they have not specified a value in their init config
-        // and they aren't using a custom API host)
-        var variable_features = {};
-        var api_host = config['api_host'];
-        var is_custom_api = !!api_host && !api_host.match(/\.mixpanel\.com$/);
-        if (!('batch_requests' in config) && !is_custom_api && determine_eligibility(token, 'batch', 60)) {
-            variable_features['batch_requests'] = true;
-        }
-
-        this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
+        this.set_config(_.extend({}, DEFAULT_CONFIG, config, {
             'name': name,
             'token': token,
             'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
@@ -6083,25 +6051,32 @@
             } else {
                 this.init_batchers();
                 if (sendBeacon && window$1.addEventListener) {
-                    // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
-                    // Since sendBeacon doesn't report success/failure, events will not be removed from
-                    // the persistent store; if the site is loaded again, the events will be flushed again
-                    // on startup and deduplicated on the Mixpanel server side.
-                    // Using pagehide and visibilitychange to listener for
-                    window$1.addEventListener('pagehide', _.bind(function(event) {
+                    // Before page closes or hides (user tabs away etc), attempt to flush any events
+                    // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
+                    // events will not be removed from the persistent store; if the site is loaded again,
+                    // the events will be flushed again on startup and deduplicated on the Mixpanel server
+                    // side.
+                    // There is no reliable way to capture only page close events, so we lean on the
+                    // visibilitychange and pagehide events as recommended at
+                    // https://developer.mozilla.org/en-US/docs/Web/API/Window/unload_event#usage_notes.
+                    // These events fire when the user clicks away from the current page/tab, so will occur
+                    // more frequently than page unload, but are the only mechanism currently for capturing
+                    // this scenario somewhat reliably.
+                    var flush_on_unload = _.bind(function() {
+                        if (!this.request_batchers.events.stopped) {
+                            this.request_batchers.events.flush({unloading: true});
+                        }
+                    }, this);
+                    window$1.addEventListener('pagehide', function(event) {
                         if (event.persisted) {
-                            if (!this.request_batchers.events.stopped) {
-                                this.request_batchers.events.flush({unloading: true});
-                            }
+                            flush_on_unload();
                         }
-                    }, this));
-                    window$1.addEventListener('visibilitychange', _.bind(function() {
+                    });
+                    window$1.addEventListener('visibilitychange', function() {
                         if (document$1.visibilityState === 'hidden') {
-                            if (!this.request_batchers.events.stopped) {
-                                this.request_batchers.events.flush({unloading: true});
-                            }
+                            flush_on_unload();
                         }
-                    }, this));
+                    });
                 }
             }
         }
