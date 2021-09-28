@@ -262,25 +262,32 @@ MixpanelLib.prototype._init = function(token, config, name) {
         } else {
             this.init_batchers();
             if (sendBeacon && window.addEventListener) {
-                // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
-                // Since sendBeacon doesn't report success/failure, events will not be removed from
-                // the persistent store; if the site is loaded again, the events will be flushed again
-                // on startup and deduplicated on the Mixpanel server side.
-                // Using pagehide and visibilitychange to listener to listen for page unload
-                window.addEventListener('pagehide', _.bind(function(event) {
+                // Before page closes or hides (user tabs away etc), attempt to flush any events
+                // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
+                // events will not be removed from the persistent store; if the site is loaded again,
+                // the events will be flushed again on startup and deduplicated on the Mixpanel server
+                // side.
+                // There is no reliable way to capture only page close events, so we lean on the
+                // visibilitychange and pagehide events as recommended at
+                // https://developer.mozilla.org/en-US/docs/Web/API/Window/unload_event#usage_notes.
+                // These events fire when the user clicks away from the current page/tab, so will occur
+                // more frequently than page unload, but are the only mechanism currently for capturing
+                // this scenario somewhat reliably.
+                var flush_on_unload = _.bind(function() {
+                    if (!this.request_batchers.events.stopped) {
+                        this.request_batchers.events.flush({unloading: true});
+                    }
+                }, this);
+                window.addEventListener('pagehide', function(event) {
                     if (event.persisted) {
-                        if (!this.request_batchers.events.stopped) {
-                            this.request_batchers.events.flush({unloading: true});
-                        }
+                        flush_on_unload();
                     }
-                }, this));
-                window.addEventListener('visibilitychange', _.bind(function() {
+                });
+                window.addEventListener('visibilitychange', function() {
                     if (document.visibilityState === 'hidden') {
-                        if (!this.request_batchers.events.stopped) {
-                            this.request_batchers.events.flush({unloading: true});
-                        }
+                        flush_on_unload();
                     }
-                }, this));
+                });
             }
         }
     }
