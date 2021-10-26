@@ -1,3 +1,5 @@
+[![](http://img.badgesize.io/https://unpkg.com/mixpanel-browser/mixpanel.min.js)](https://unpkg.com/mixpanel-browser/mixpanel.min.js) [![](http://img.badgesize.io/https://unpkg.com/mixpanel-browser/mixpanel.min.js?compression=gzip)](https://unpkg.com/mixpanel-browser/mixpanel.min.js)
+
 # Mixpanel JavaScript Library
 ![Build Status](https://github.com/mixpanel/mixpanel-js/actions/workflows/tests.yml/badge.svg)
 
