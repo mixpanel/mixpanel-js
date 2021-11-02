@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.42.0-rc1'
+        LIB_VERSION: '2.42.0-rc2'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2423,9 +2423,9 @@
                     } else if (
                         _.isObject(res) &&
                         res.xhr_req &&
-                        (res.xhr_req['status'] >= 500 || res.error === 'timeout')
+                        (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')
                     ) {
-                        // network or API error, retry
+                        // network or API error, or 429 Too Many Requests, retry
                         var retryMS = this.flushInterval * 2;
                         var headers = res.xhr_req['responseHeaders'];
                         if (headers) {

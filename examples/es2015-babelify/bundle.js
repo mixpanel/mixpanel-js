@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.42.0-rc1'
+    LIB_VERSION: '2.42.0-rc2'
 };
 
 exports['default'] = Config;
@@ -5809,8 +5809,8 @@ RequestBatcher.prototype.flush = function (options) {
                 } else if (_utils._.isObject(res) && res.error === 'timeout' && new Date().getTime() - startTime >= timeoutMS) {
                     logger.error('Network timeout; retrying');
                     this.flush();
-                } else if (_utils._.isObject(res) && res.xhr_req && (res.xhr_req['status'] >= 500 || res.error === 'timeout')) {
-                    // network or API error, retry
+                } else if (_utils._.isObject(res) && res.xhr_req && (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')) {
+                    // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.flushInterval * 2;
                     var headers = res.xhr_req['responseHeaders'];
                     if (headers) {
