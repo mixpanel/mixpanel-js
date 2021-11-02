@@ -1667,7 +1667,8 @@
             });
 
             asyncTest("accepts a DOM element as the query", 1, function() {
-                var link = $('<a>', {href: '#test'})[0];
+                var link = ele_with_class().e;
+                link.href = "#test";
 
                 mixpanel.track_links(link, "testing url property", {}, function() {
                     start();
@@ -1679,18 +1680,18 @@
             });
 
             asyncTest("accepts a jquery list of elements as the query", 2, function() {
-                var $link_one = $('<a>');
-                var $link_two = $('<a>');
+                var link_one = ele_with_class().e;
+                var link_two = ele_with_class().e;
 
-                var $links = $link_one.add($link_two);
+                var $links = $(link_one).add(link_two);
                 equal($links.length, 2);
-                mixpanel.track_links($links, "testing url property", {}, function() {
+                mixpanel.track_links($links, "testing jquery links", {}, function() {
                     start();
                     ok(1===1, "track_links callback was fired");
                     return false;
                 });
 
-                simulateMouseClick($link_two[0]);
+                simulateMouseClick(link_two);
             });
 
             asyncTest("accepts an iterable list of DOM elements as the query", 2, function() {
