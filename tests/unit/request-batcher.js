@@ -343,11 +343,30 @@ describe(`RequestBatcher`, function() {
         expect(getLocalStorageItems()).to.be.empty;
       });
 
+      it(`retries with backoff after 429`, function() {
+        batcher.enqueue({foo: `bar`});
+        batcher.enqueue({foo2: `bar2`});
+        batcher.flush();
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+        sendResponse(429);
+
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        // no new requests, items are still in queue
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.queue.memQueue).to.have.lengthOf(2);
+        expect(getLocalStorageItems()).to.have.lengthOf(2);
+
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        // retry with same data
+        expect(batcher.sendRequest).to.have.been.calledTwice;
+        expect(batcher.sendRequest.args[1][0]).to.deep.equal(batcher.sendRequest.args[0][0]);
+      });
+
       it(`reduces batch size after 413 Payload Too Large`, function() {
         configureBatchSize(9); // nice odd number
 
         for (let i = 1; i <= 7; i++) {
-            batcher.enqueue({ev: `queued event ${i}`});
+          batcher.enqueue({ev: `queued event ${i}`});
         }
         batcher.flush();
 
