@@ -950,13 +950,13 @@ MixpanelLib.prototype._init = function (token, config, name) {
                         this.request_batchers.events.flush({ unloading: true });
                     }
                 }, this);
-                _utils.window.addEventListener('pagehide', function (event) {
-                    if (event.persisted) {
+                _utils.window.addEventListener('pagehide', function (ev) {
+                    if (ev['persisted']) {
                         flush_on_unload();
                     }
                 });
                 _utils.window.addEventListener('visibilitychange', function () {
-                    if (_utils.document.visibilityState === 'hidden') {
+                    if (_utils.document['visibilityState'] === 'hidden') {
                         flush_on_unload();
                     }
                 });

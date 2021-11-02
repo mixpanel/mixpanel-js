@@ -6063,13 +6063,13 @@ MixpanelLib.prototype._init = function(token, config, name) {
                         this.request_batchers.events.flush({unloading: true});
                     }
                 }, this);
-                window$1.addEventListener('pagehide', function(event) {
-                    if (event.persisted) {
+                window$1.addEventListener('pagehide', function(ev) {
+                    if (ev['persisted']) {
                         flush_on_unload();
                     }
                 });
                 window$1.addEventListener('visibilitychange', function() {
-                    if (document$1.visibilityState === 'hidden') {
+                    if (document$1['visibilityState'] === 'hidden') {
                         flush_on_unload();
                     }
                 });

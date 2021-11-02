@@ -278,13 +278,13 @@ MixpanelLib.prototype._init = function(token, config, name) {
                         this.request_batchers.events.flush({unloading: true});
                     }
                 }, this);
-                window.addEventListener('pagehide', function(event) {
-                    if (event.persisted) {
+                window.addEventListener('pagehide', function(ev) {
+                    if (ev['persisted']) {
                         flush_on_unload();
                     }
                 });
                 window.addEventListener('visibilitychange', function() {
-                    if (document.visibilityState === 'hidden') {
+                    if (document['visibilityState'] === 'hidden') {
                         flush_on_unload();
                     }
                 });
