@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { _, console, userAgent, window, document, navigator, determine_eligibility, slice } from './utils';
+import { _, console, userAgent, window, document, navigator, slice } from './utils';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -117,7 +117,7 @@ var DEFAULT_CONFIG = {
     'inapp_protocol':                    '//',
     'inapp_link_new_window':             false,
     'ignore_dnt':                        false,
-    'batch_requests':                    false, // for now
+    'batch_requests':                    true,
     'batch_size':                        50,
     'batch_flush_interval_ms':           5000,
     'batch_request_timeout_ms':          90000,
@@ -236,17 +236,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this['config'] = {};
     this['_triggered_notifs'] = [];
 
-    // rollout: enable batch_requests by default for 60% of projects
-    // (only if they have not specified a value in their init config
-    // and they aren't using a custom API host)
-    var variable_features = {};
-    var api_host = config['api_host'];
-    var is_custom_api = !!api_host && !api_host.match(/\.mixpanel\.com$/);
-    if (!('batch_requests' in config) && !is_custom_api && determine_eligibility(token, 'batch', 60)) {
-        variable_features['batch_requests'] = true;
-    }
-
-    this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
+    this.set_config(_.extend({}, DEFAULT_CONFIG, config, {
         'name': name,
         'token': token,
         'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
@@ -272,15 +262,32 @@ MixpanelLib.prototype._init = function(token, config, name) {
         } else {
             this.init_batchers();
             if (sendBeacon && window.addEventListener) {
-                window.addEventListener('unload', _.bind(function() {
-                    // Before page closes, attempt to flush any events queued up via navigator.sendBeacon.
-                    // Since sendBeacon doesn't report success/failure, events will not be removed from
-                    // the persistent store; if the site is loaded again, the events will be flushed again
-                    // on startup and deduplicated on the Mixpanel server side.
+                // Before page closes or hides (user tabs away etc), attempt to flush any events
+                // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
+                // events will not be removed from the persistent store; if the site is loaded again,
+                // the events will be flushed again on startup and deduplicated on the Mixpanel server
+                // side.
+                // There is no reliable way to capture only page close events, so we lean on the
+                // visibilitychange and pagehide events as recommended at
+                // https://developer.mozilla.org/en-US/docs/Web/API/Window/unload_event#usage_notes.
+                // These events fire when the user clicks away from the current page/tab, so will occur
+                // more frequently than page unload, but are the only mechanism currently for capturing
+                // this scenario somewhat reliably.
+                var flush_on_unload = _.bind(function() {
                     if (!this.request_batchers.events.stopped) {
                         this.request_batchers.events.flush({unloading: true});
                     }
-                }, this));
+                }, this);
+                window.addEventListener('pagehide', function(ev) {
+                    if (ev['persisted']) {
+                        flush_on_unload();
+                    }
+                });
+                window.addEventListener('visibilitychange', function() {
+                    if (document['visibilityState'] === 'hidden') {
+                        flush_on_unload();
+                    }
+                });
             }
         }
     }

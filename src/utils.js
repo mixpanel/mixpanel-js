@@ -1682,28 +1682,6 @@ var cheap_guid = function(maxlen) {
     return maxlen ? guid.substring(0, maxlen) : guid;
 };
 
-/**
- * Check deterministically whether to include or exclude from a feature rollout/test based on the
- * given string and the desired percentage to include.
- * @param {String} str - string to run the check against (for instance a project's token)
- * @param {String} feature - name of feature (for inclusion in hash, to ensure different results
- * for different features)
- * @param {Number} percent_allowed - percentage chance that a given string will be included
- * @returns {Boolean} whether the given string should be included
- */
-var determine_eligibility = _.safewrap(function(str, feature, percent_allowed) {
-    str = str + feature;
-
-    // Bernstein's hash: http://www.cse.yorku.ca/~oz/hash.html#djb2
-    var hash = 5381;
-    for (var i = 0; i < str.length; i++) {
-        hash = ((hash << 5) + hash) + str.charCodeAt(i);
-        hash = hash & hash;
-    }
-    var dart = (hash >>> 0) % 100;
-    return dart < percent_allowed;
-});
-
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
 var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
@@ -1762,7 +1740,6 @@ export {
     navigator,
     cheap_guid,
     console_with_prefix,
-    determine_eligibility,
     extract_domain,
     localStorageSupported,
     JSONStringify,

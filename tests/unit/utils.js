@@ -1,44 +1,6 @@
 import { expect } from 'chai';
 
-import { extract_domain, determine_eligibility } from '../../src/utils';
-
-describe(`determine_eligibility`, function() {
-  it(`returns different results for different strings`, function() {
-    expect(determine_eligibility(`foobar`, `my feature`, 50)).not.to.be.ok;
-    expect(determine_eligibility(`Obrecht`, `my feature`, 50)).not.to.be.ok;
-    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, `my feature`, 50)).to.be.ok;
-    expect(determine_eligibility(`259bc8bc47e5d846a5f605291d6a3081`, `my feature`, 50)).to.be.ok;
-    expect(determine_eligibility(`4d7e557043413032be13f331d67075f0`, `my feature`, 50)).to.be.ok;
-    expect(determine_eligibility(`9297ad31ef1e5b2abca601c17e31e2ca`, `my feature`, 50)).not.to.be.ok;
-    expect(determine_eligibility(`93d75eb9284e619c62e9d3213246ae7a`, `my feature`, 50)).to.be.ok;
-  });
-
-  it(`returns different results for different features`, function() {
-    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, `one feature`, 50)).to.be.ok;
-    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, `gr8 feature`, 50)).not.to.be.ok;
-    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, `foo`, 50)).to.be.ok;
-    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, `sooperrolloutz`, 50)).not.to.be.ok;
-  });
-
-  it(`respects percentage threshold deterministically`, function() {
-    expect(determine_eligibility(`f7dc0f73ec3550799049cb8d64fde831`, `new feature`, 10)).not.to.be.ok;
-    expect(determine_eligibility(`f7dc0f73ec3550799049cb8d64fde831`, `new feature`, 25)).not.to.be.ok;
-    expect(determine_eligibility(`f7dc0f73ec3550799049cb8d64fde831`, `new feature`, 35)).not.to.be.ok;
-    expect(determine_eligibility(`f7dc0f73ec3550799049cb8d64fde831`, `new feature`, 50)).to.be.ok;
-    expect(determine_eligibility(`f7dc0f73ec3550799049cb8d64fde831`, `new feature`, 75)).to.be.ok;
-    expect(determine_eligibility(`f7dc0f73ec3550799049cb8d64fde831`, `new feature`, 95)).to.be.ok;
-  });
-
-  it(`lets everything through at 100%`, function() {
-    expect(determine_eligibility(`foobar`, `feature-name`, 100)).to.be.ok;
-    expect(determine_eligibility(`Obrecht`, `feature-name`, 100)).to.be.ok;
-    expect(determine_eligibility(`e7dc0f73ec3550799049cb8d64fde831`, `feature-name`, 100)).to.be.ok;
-    expect(determine_eligibility(`259bc8bc47e5d846a5f605291d6a3081`, `feature-name`, 100)).to.be.ok;
-    expect(determine_eligibility(`4d7e557043413032be13f331d67075f0`, `feature-name`, 100)).to.be.ok;
-    expect(determine_eligibility(`9297ad31ef1e5b2abca601c17e31e2ca`, `feature-name`, 100)).to.be.ok;
-    expect(determine_eligibility(`93d75eb9284e619c62e9d3213246ae7a`, `feature-name`, 100)).to.be.ok;
-  });
-});
+import { extract_domain } from '../../src/utils';
 
 describe(`extract_domain`, function() {
   it(`matches simple domain names`, function() {

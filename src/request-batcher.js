@@ -148,9 +148,9 @@ RequestBatcher.prototype.flush = function(options) {
                 } else if (
                     _.isObject(res) &&
                     res.xhr_req &&
-                    (res.xhr_req['status'] >= 500 || res.xhr_req['status'] <= 0)
+                    (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')
                 ) {
-                    // network or API error, retry
+                    // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.flushInterval * 2;
                     var headers = res.xhr_req['responseHeaders'];
                     if (headers) {
