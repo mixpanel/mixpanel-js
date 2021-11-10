@@ -1,3 +1,9 @@
+**2.42.0** (9 Nov 2021)
+- Make `batch_requests` default-on for all remaining projects
+- Replace `unload` event listener with modern alternatives (thanks @JoaoGomesTW)
+- Don't retry requests blocked by client (adblockers)
+- Retry with backoff after 429
+
 **2.41.0** (28 Jan 2021)
 - Remove all code related to Autotrack feature
 
