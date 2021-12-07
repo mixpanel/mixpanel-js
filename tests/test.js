@@ -2070,92 +2070,6 @@
                 same(mixpanel.persistence.props.value, value, "executed immediately");
             });
 
-            mpmodule("mixpanel._check_and_handle_notifications", startRecordingXhrRequests, stopRecordingXhrRequests);
-
-            if (USE_XHR) {
-                test("_check_and_handle_notifications makes a request to decide/ server", 2, function() {
-                    var initial_requests = this.requests.length;
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    same(this.requests.length - initial_requests, 1, "_check_and_handle_notifications should have fired off a request");
-                    ok(this.requests[0].url.match(/decide\//));
-                });
-
-                test("notifications are never checked again after identify()", 2, function() {
-                    mixpanel.test.identify(this.id);
-                    ok(this.requests.length >= 1, "identify should have fired off a request");
-
-                    var num_requests = this.requests.length;
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    same(this.requests.length, num_requests, "_check_and_handle_notifications after identify should not make requests");
-                });
-
-                test("_check_and_handle_notifications honors disable_notifications config", 1, function() {
-                    var initial_requests = this.requests.length;
-                    mixpanel.test.set_config({
-                        disable_notifications: true
-                    });
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    mixpanel.test.set_config({
-                        disable_notifications: false
-                    });
-                    same(this.requests.length - initial_requests, 0, "_check_and_handle_notifications should not have fired off a request");
-                });
-            } else {
-                test("_check_and_handle_notifications makes a request", 1, function() {
-                    var num_scripts = $('script').length;
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    stop();
-                    untilDone(function(done) {
-                        if ($('script').length === num_scripts + 1) {
-                            ok("_check_and_handle_notifications fired off a request")
-                            done();
-                        }
-                    });
-                });
-
-                asyncTest("notifications are never checked again after identify()", 2, function() {
-                    var num_scripts = $('script').length;
-                    mixpanel.test.identify(this.id);
-                    untilDone(function(done) {
-                        if ($('script').length >= num_scripts + 1) {
-                            ok("identify fired off a request");
-
-                            num_scripts = $('script').length;
-                            mixpanel.test._check_and_handle_notifications(this.id);
-                            mixpanel.test._check_and_handle_notifications(this.id);
-                            mixpanel.test._check_and_handle_notifications(this.id);
-                            mixpanel.test._check_and_handle_notifications(this.id);
-                            mixpanel.test._check_and_handle_notifications(this.id);
-                            setTimeout(function() {
-                                same($('script').length, num_scripts, "_check_and_handle_notifications after identify should not make requests");
-                                done();
-                            }, 500); // TODO: remove the 500 ms wait
-                        }
-                    });
-                });
-
-                asyncTest("_check_and_handle_notifications honors disable_notifications config", 1, function() {
-                    var num_scripts = $('script').length;
-                    mixpanel.test.set_config({
-                        disable_notifications: true
-                    });
-                    mixpanel.test._check_and_handle_notifications(this.id);
-                    mixpanel.test.set_config({
-                        disable_notifications: false
-                    });
-                    untilDone(function(done) {
-                        if ($('script').length === num_scripts) {
-                            ok("_check_and_handle_notifications did not fire off a request");
-                            done();
-                        }
-                    });
-                });
-            }
-
             mpmodule("mixpanel.people.set");
 
             test("set (basic functionality)", 8, function() {
@@ -3110,9 +3024,7 @@
                 mixpanel.test.identify(this.id);
                 stop();
                 setTimeout(function() {
-                    // notification check results in extra script tag when !USE_XHR
-                    var extra_scripts = USE_XHR ? 0 : 1;
-                    same($('script').length, num_scripts + extra_scripts, "No scripts added to page.");
+                    same($('script').length, num_scripts, "No scripts added to page.");
                     start();
                 }, 500);
             });
@@ -3299,172 +3211,6 @@
                 same(gs['$group_key'], 'company');
                 same(gs['$group_id'], 'mixpanel');
                 same($delete, '');
-            });
-
-            mpmodule("in-app notification display");
-
-            asyncTest("notification with normal data adds itself to DOM", 1, function() {
-                mixpanel._show_notification({
-                    body: 'notification body test',
-                    title: 'hallo'
-                });
-                untilDone(function(done) {
-                    if ($('#mixpanel-notification-takeover').length === 1) {
-                        $('#mixpanel-notification-wrapper').remove();
-                        ok('success');
-                        done();
-                    }
-                });
-            });
-
-            asyncTest('mini notification with normal data adds itself to DOM', 1, function() {
-                mixpanel._show_notification({
-                    body: 'notification body test',
-                    type: 'mini'
-                });
-                untilDone(function(done) {
-                    if ($('#mixpanel-notification-mini').length === 1) {
-                        $('#mixpanel-notification-wrapper').remove();
-                        ok('success');
-                        done();
-                    }
-                });
-            });
-
-            asyncTest('mini triggered notification with normal data adds itself to DOM', 1, function() {
-                mixpanel._triggered_notifs = [{
-                    body: 'notification body test',
-                    type: 'mini',
-                    'display_triggers': [{event: 'test_event', selector: {operator: '==',
-                        children: [{property: 'event', value: '$platform'}, {property: 'literal', value: 'web'}]}}]
-                }];
-
-                mixpanel.track('test_event', {'$platform': 'web'});
-
-                untilDone(function(done) {
-                    if ($('#mixpanel-notification-mini').length === 1) {
-                        $('#mixpanel-notification-wrapper').remove();
-                        ok('success');
-                        done();
-                    }
-                });
-            });
-
-            asyncTest('triggered notification with normal data adds itself to DOM', 1, function() {
-                mixpanel._triggered_notifs = [{
-                    body: 'notification body test',
-                    title: 'hallo',
-                    'display_triggers': [{event: 'test_event', selector: {operator: '==',
-                        children: [{property: 'event', value: '$platform'}, {property: 'literal', value: 'web'}]}}]
-                }];
-
-                mixpanel.track('test_event', {'$platform': 'web'});
-
-                untilDone(function(done) {
-                    if ($('#mixpanel-notification-takeover').length === 1) {
-                        $('#mixpanel-notification-wrapper').remove();
-                        ok('success');
-                        done();
-                    }
-                });
-            });
-
-            asyncTest('events tracked before decide call trigger notification once decide call returns', 1, function() {
-              mixpanel.init('notif_race', {batch_requests: false}, 'notif_race');
-
-              mixpanel.notif_race.track('test_event');
-
-              mixpanel.notif_race._triggered_notifs = [{
-                  body: 'event happened before decide request complete',
-                  title: 'hallo',
-                  'display_triggers': [{event: 'test_event'}],
-              }];
-
-              mixpanel.notif_race._handle_user_decide_check_complete();
-
-              untilDone(function(done) {
-                  if ($('#mixpanel-notification-takeover').length === 1) {
-                      $('#mixpanel-notification-wrapper').remove();
-                      ok('success');
-                      done();
-                  }
-              });
-            });
-
-            asyncTest('triggered notification with that matches any_event adds itself to DOM', 1, function() {
-                mixpanel._triggered_notifs = [{
-                    body: 'notification body test',
-                    title: 'hallo',
-                    'display_triggers': [{event: '$any_event'}]
-                }];
-
-                mixpanel.track('test_event');
-
-                untilDone(function(done) {
-                    if ($('#mixpanel-notification-takeover').length === 1) {
-                        $('#mixpanel-notification-wrapper').remove();
-                        ok('success');
-                        done();
-                    }
-                });
-            });
-
-            asyncTest('triggered notification that does not match event should not add itself to DOM', 1, function() {
-                mixpanel._triggered_notifs = [{
-                    body: 'notification body test',
-                    title: 'hallo',
-                    'display_triggers': [{event: 'test_event', selector: {operator: '==',
-                        children: [{property: 'event', value: '$platform'}, {property: 'literal', value: 'web'}]}}]
-                }];
-
-                mixpanel.track('test_event', {'$platform': 'sdk'});
-
-                untilDone(function(done) {
-                    if ($('#mixpanel-notification-takeover').length === 0) {
-                        ok('success');
-                        done();
-                    }
-                });
-            });
-
-            test("notification does not show when images don't load", 1, function() {
-                mixpanel._show_notification({
-                    body: "bad image body test",
-                    image_url: "http://notgonna.loadever.com/blablabla",
-                    title: "bad image title"
-                });
-                stop();
-                setTimeout(function() {
-                    ok($('#mixpanel-notification-takeover').length === 0);
-                    start();
-                }, 500);
-            });
-
-            test("calling _show_notification with bad data does not halt execution", 1, function() {
-                mixpanel.test._show_notification();
-                mixpanel.test._show_notification(15);
-                mixpanel.test._show_notification('hi');
-                mixpanel.test._show_notification({
-                    body: null
-                });
-                mixpanel.test._show_notification({
-                    bla: 'bla'
-                });
-                ok(true);
-            });
-
-            asyncTest("notification prevents script injection", 1, function() {
-                mixpanel._show_notification({
-                    body: 'injection test</div><img src="nope" onerror="window.injectedvar=42;"/>',
-                    title: "bad image title"
-                });
-                untilDone(function(done) {
-                    if ($('#mixpanel-notification-takeover').length === 1) {
-                        $('#mixpanel-notification-wrapper').remove();
-                        ok(_.isUndefined(window.injectedvar), 'window.injectedvar should not exist');
-                        done();
-                    }
-                });
             });
 
             mpmodule("verbose output");
@@ -4422,15 +4168,11 @@
                     same(batch_events[1].event, 'track me 2');
                 });
 
-                test('people updates do not send a request immediately', 3, function() {
+                test('people updates do not send a request immediately', 1, function() {
                     mixpanel.batchtest.identify('pat');
-                    same(this.requests.length, 1, "identify() should have made immediate request");
-                    ok(this.requests[0].url.indexOf('/decide/') >= 0, "request should be to /decide");
-
                     mixpanel.batchtest.people.set('foo', 'bar');
                     this.clock.tick(100);
-
-                    same(this.requests.length, 1, "people.set should not have sent a request");
+                    same(this.requests.length, 0, "people.set should not have sent a request");
                 });
 
                 test('people updates send request after flush interval', 6, function() {

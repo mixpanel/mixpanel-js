@@ -9,7 +9,6 @@ import {
     REMOVE_ACTION,
     UNION_ACTION
 } from './api-actions';
-import Config from './config';
 import { _, console } from './utils';
 
 /*
@@ -25,7 +24,6 @@ import { _, console } from './utils';
 // This key is deprecated, but we want to check for it to see whether aliasing is allowed.
 /** @const */ var PEOPLE_DISTINCT_ID_KEY = '$people_distinct_id';
 /** @const */ var ALIAS_ID_KEY           = '__alias';
-/** @const */ var CAMPAIGN_IDS_KEY       = '__cmpns';
 /** @const */ var EVENT_TIMERS_KEY       = '__timers';
 /** @const */ var RESERVED_PROPERTIES = [
     SET_QUEUE_KEY,
@@ -37,7 +35,6 @@ import { _, console } from './utils';
     UNION_QUEUE_KEY,
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
-    CAMPAIGN_IDS_KEY,
     EVENT_TIMERS_KEY
 ];
 
@@ -151,7 +148,6 @@ MixpanelPersistence.prototype.upgrade = function(config) {
 
 MixpanelPersistence.prototype.save = function() {
     if (this.disabled) { return; }
-    this._expire_notification_campaigns();
     this.storage.set(
         this.name,
         _.JSONEncode(this['props']),
@@ -222,22 +218,6 @@ MixpanelPersistence.prototype.unregister = function(prop) {
         this.save();
     }
 };
-
-MixpanelPersistence.prototype._expire_notification_campaigns = _.safewrap(function() {
-    var campaigns_shown = this['props'][CAMPAIGN_IDS_KEY],
-        EXPIRY_TIME = Config.DEBUG ? 60 * 1000 : 60 * 60 * 1000; // 1 minute (Config.DEBUG) / 1 hour (PDXN)
-    if (!campaigns_shown) {
-        return;
-    }
-    for (var campaign_id in campaigns_shown) {
-        if (1 * new Date() - campaigns_shown[campaign_id] > EXPIRY_TIME) {
-            delete campaigns_shown[campaign_id];
-        }
-    }
-    if (_.isEmptyObject(campaigns_shown)) {
-        delete this['props'][CAMPAIGN_IDS_KEY];
-    }
-});
 
 MixpanelPersistence.prototype.update_campaign_params = function() {
     if (!this.campaign_params_saved) {
@@ -501,6 +481,5 @@ export {
     UNION_QUEUE_KEY,
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
-    CAMPAIGN_IDS_KEY,
     EVENT_TIMERS_KEY
 };
