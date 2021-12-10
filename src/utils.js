@@ -942,10 +942,12 @@ _.UUID = (function() {
 // This is to block various web spiders from executing our JS and
 // sending false tracking data
 var BLOCKED_UA_STRS = [
+    'ahrefsbot',
     'baiduspider',
     'bingbot',
     'bingpreview',
     'facebookexternal',
+    'petalbot',
     'pinterest',
     'screaming frog',
     'yahoo! slurp',

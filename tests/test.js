@@ -3656,6 +3656,7 @@
             test('blocked user agents', function() {
                 var bot_user_agents = [
                     "Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
+                    "Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)",
                     "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
                     "Mozilla/5.0 (Windows Phone 8.1; ARM; Trident/7.0; Touch; rv:11.0; IEMobile/11.0; NOKIA; Lumia 530) like Gecko (compatible; adidxbot/2.0; +http://www.bing.com/bingbot.htm)",
                     "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/534+ (KHTML, like Gecko) BingPreview/1.0b",
@@ -3664,6 +3665,8 @@
                     "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
                     "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
                     "facebookexternalhit/1.1",
+                    "Mozilla/5.0 (compatible;PetalBot;+http://aspiegel.com/petalbot)",
+                    "Mozilla/5.0(Linux;Android7.0;) AppleWebKit/537.36(KHTML,likeGecko) MobileSafari/537.36(compatible;PetalBot;+http://aspiegel.com/petalbot)",
                     "Mozilla/5.0 (compatible; Pinterestbot/1.0; +http://www.pinterest.com/bot.html)",
                     "APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)",
                     "Mediapartners-Google",
