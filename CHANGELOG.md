@@ -1,3 +1,6 @@
+**2.42.1** (20 Dec 2021)
+- Add new crawler user agents to blocked list (ahrefsbot, petalbot)
+
 **2.42.0** (9 Nov 2021)
 - Make `batch_requests` default-on for all remaining projects
 - Replace `unload` event listener with modern alternatives (thanks @JoaoGomesTW)
