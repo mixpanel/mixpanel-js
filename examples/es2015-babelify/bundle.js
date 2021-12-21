@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.42.0'
+    LIB_VERSION: '2.42.1'
 };
 
 exports['default'] = Config;
@@ -7237,7 +7237,7 @@ _.UUID = (function () {
 // _.isBlockedUA()
 // This is to block various web spiders from executing our JS and
 // sending false tracking data
-var BLOCKED_UA_STRS = ['baiduspider', 'bingbot', 'bingpreview', 'facebookexternal', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandexbot',
+var BLOCKED_UA_STRS = ['ahrefsbot', 'baiduspider', 'bingbot', 'bingpreview', 'facebookexternal', 'petalbot', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandexbot',
 
 // a whole bunch of goog-specific crawlers
 // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers

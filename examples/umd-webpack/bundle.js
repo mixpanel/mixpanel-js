@@ -69,7 +69,7 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.42.0'
+	        LIB_VERSION: '2.42.1'
 	    };
 
 	    // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1011,10 +1011,12 @@
 	    // This is to block various web spiders from executing our JS and
 	    // sending false tracking data
 	    var BLOCKED_UA_STRS = [
+	        'ahrefsbot',
 	        'baiduspider',
 	        'bingbot',
 	        'bingpreview',
 	        'facebookexternal',
+	        'petalbot',
 	        'pinterest',
 	        'screaming frog',
 	        'yahoo! slurp',
