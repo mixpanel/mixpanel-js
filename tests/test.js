@@ -98,8 +98,14 @@
     }
 
     function getRequestData(request, keyPath) {
+        var data = decodeURIComponent(request.requestBody.match(/data=([^&]+)/)[1]);
         try {
-            var data = JSON.parse(atob(decodeURIComponent(request.requestBody.match(/data=([^&]+)/)[1])));
+            data = atob(data);
+        } catch (err) {
+            // plain json?
+        }
+        try {
+            data = JSON.parse(data);
             (keyPath || []).forEach(function(key) {
                 data = data[key];
             });
@@ -1881,8 +1887,7 @@
                             return item.url.indexOf('https://api-js.mixpanel.com/track/') === 0;
                         })
                         .map(function(request) {
-                            var b64 = decodeURIComponent(request.requestBody.split('data=')[1].split('&')[0]);
-                            return JSON.parse(atob(b64));
+                            return getRequestData(request);
                         });
                 }
 
