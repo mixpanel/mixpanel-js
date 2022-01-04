@@ -98,14 +98,8 @@
     }
 
     function getRequestData(request, keyPath) {
-        var data = decodeURIComponent(request.requestBody.match(/data=([^&]+)/)[1]);
         try {
-            data = atob(data);
-        } catch (err) {
-            // plain json?
-        }
-        try {
-            data = JSON.parse(data);
+            var data = JSON.parse(decodeURIComponent(request.requestBody.match(/data=([^&]+)/)[1]));
             (keyPath || []).forEach(function(key) {
                 data = data[key];
             });
@@ -3932,6 +3926,15 @@
                         );
                     });
                 }
+
+                test("tracking can be configured to use base64 encoding", 3, function() {
+                    mixpanel.test.set_config({api_payload_format: 'base64'});
+                    mixpanel.test.track('test', {foo: 'bar'});
+                    same(this.requests.length, 1, "track should have fired off a request");
+                    var data = JSON.parse(atob(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1])));
+                    same(data.event, 'test');
+                    same(data.properties.foo, 'bar');
+                });
             }
 
             if (USE_XHR && window.localStorage) {
