@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.42.1'
+    LIB_VERSION: '2.43.0'
 };
 
 exports['default'] = Config;
@@ -730,6 +730,8 @@ var IDENTITY_FUNC = function IDENTITY_FUNC(x) {
 var NOOP_FUNC = function NOOP_FUNC() {};
 
 /** @const */var PRIMARY_INSTANCE_NAME = 'mixpanel';
+/** @const */var PAYLOAD_TYPE_BASE64 = 'base64';
+/** @const */var PAYLOAD_TYPE_JSON = 'json';
 
 /*
  * Dynamic... constants? Is that an oxymoron?
@@ -759,6 +761,7 @@ var DEFAULT_CONFIG = {
     'api_host': 'https://api-js.mixpanel.com',
     'api_method': 'POST',
     'api_transport': 'XHR',
+    'api_payload_format': PAYLOAD_TYPE_BASE64,
     'app_host': 'https://mixpanel.com',
     'cdn': 'https://cdn.mxpnl.com',
     'cross_site_cookie': false,
@@ -853,12 +856,6 @@ var create_mplib = function create_mplib(token, config, name) {
     return instance;
 };
 
-var encode_data_for_request = function encode_data_for_request(data) {
-    var json_data = _utils._.JSONEncode(data);
-    var encoded_data = _utils._.base64Encode(json_data);
-    return { 'data': encoded_data };
-};
-
 // Initialization methods
 
 /**
@@ -908,7 +905,17 @@ MixpanelLib.prototype._init = function (token, config, name) {
     this['config'] = {};
     this['_triggered_notifs'] = [];
 
-    this.set_config(_utils._.extend({}, DEFAULT_CONFIG, config, {
+    var variable_features = {};
+
+    // default to JSON payload for standard mixpanel.com API hosts
+    if (!('api_payload_format' in config)) {
+        var api_host = config['api_host'] || DEFAULT_CONFIG['api_host'];
+        if (api_host.match(/\.mixpanel\.com$/)) {
+            variable_features['api_payload_format'] = PAYLOAD_TYPE_JSON;
+        }
+    }
+
+    this.set_config(_utils._.extend({}, DEFAULT_CONFIG, variable_features, config, {
         'name': name,
         'token': token,
         'callback_fn': (name === PRIMARY_INSTANCE_NAME ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
@@ -1288,7 +1295,7 @@ MixpanelLib.prototype.init_batchers = function () {
             return new _requestBatcher.RequestBatcher('__mpq_' + token + attrs.queue_suffix, {
                 libConfig: this['config'],
                 sendRequestFunc: _utils._.bind(function (data, options, cb) {
-                    this._send_request(this.get_config('api_host') + attrs.endpoint, encode_data_for_request(data), options, this._prepare_callback(cb, data));
+                    this._send_request(this.get_config('api_host') + attrs.endpoint, this._encode_data_for_request(data), options, this._prepare_callback(cb, data));
                 }, this),
                 beforeSendHook: _utils._.bind(function (item) {
                     return this._run_hook('before_send_' + attrs.type, item);
@@ -1358,6 +1365,14 @@ MixpanelLib.prototype.disable = function (events) {
     }
 };
 
+MixpanelLib.prototype._encode_data_for_request = function (data) {
+    var encoded_data = _utils._.JSONEncode(data);
+    if (this.get_config('api_payload_format') === PAYLOAD_TYPE_BASE64) {
+        encoded_data = _utils._.base64Encode(encoded_data);
+    }
+    return { 'data': encoded_data };
+};
+
 // internal method for handling track vs batch-enqueue logic
 MixpanelLib.prototype._track_or_batch = function (options, callback) {
     var truncated_data = _utils._.truncate(options.data, 255);
@@ -1375,7 +1390,7 @@ MixpanelLib.prototype._track_or_batch = function (options, callback) {
         if (truncated_data) {
             _utils.console.log('MIXPANEL REQUEST:');
             _utils.console.log(truncated_data);
-            return this._send_request(endpoint, encode_data_for_request(truncated_data), send_request_options, this._prepare_callback(callback, truncated_data));
+            return this._send_request(endpoint, this._encode_data_for_request(truncated_data), send_request_options, this._prepare_callback(callback, truncated_data));
         } else {
             return null;
         }

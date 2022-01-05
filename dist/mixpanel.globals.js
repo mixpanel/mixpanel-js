@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.42.1'
+        LIB_VERSION: '2.43.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -5844,6 +5844,8 @@
     var NOOP_FUNC = function() {};
 
     /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
+    /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
+    /** @const */ var PAYLOAD_TYPE_JSON     = 'json';
 
 
     /*
@@ -5874,6 +5876,7 @@
         'api_host':                          'https://api-js.mixpanel.com',
         'api_method':                        'POST',
         'api_transport':                     'XHR',
+        'api_payload_format':                PAYLOAD_TYPE_BASE64,
         'app_host':                          'https://mixpanel.com',
         'cdn':                               'https://cdn.mxpnl.com',
         'cross_site_cookie':                 false,
@@ -5969,12 +5972,6 @@
         return instance;
     };
 
-    var encode_data_for_request = function(data) {
-        var json_data = _.JSONEncode(data);
-        var encoded_data = _.base64Encode(json_data);
-        return {'data': encoded_data};
-    };
-
     // Initialization methods
 
     /**
@@ -6024,7 +6021,17 @@
         this['config'] = {};
         this['_triggered_notifs'] = [];
 
-        this.set_config(_.extend({}, DEFAULT_CONFIG, config, {
+        var variable_features = {};
+
+        // default to JSON payload for standard mixpanel.com API hosts
+        if (!('api_payload_format' in config)) {
+            var api_host = config['api_host'] || DEFAULT_CONFIG['api_host'];
+            if (api_host.match(/\.mixpanel\.com$/)) {
+                variable_features['api_payload_format'] = PAYLOAD_TYPE_JSON;
+            }
+        }
+
+        this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
             'name': name,
             'token': token,
             'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
@@ -6400,7 +6407,7 @@
                         sendRequestFunc: _.bind(function(data, options, cb) {
                             this._send_request(
                                 this.get_config('api_host') + attrs.endpoint,
-                                encode_data_for_request(data),
+                                this._encode_data_for_request(data),
                                 options,
                                 this._prepare_callback(cb, data)
                             );
@@ -6474,6 +6481,14 @@
         }
     };
 
+    MixpanelLib.prototype._encode_data_for_request = function(data) {
+        var encoded_data = _.JSONEncode(data);
+        if (this.get_config('api_payload_format') === PAYLOAD_TYPE_BASE64) {
+            encoded_data = _.base64Encode(encoded_data);
+        }
+        return {'data': encoded_data};
+    };
+
     // internal method for handling track vs batch-enqueue logic
     MixpanelLib.prototype._track_or_batch = function(options, callback) {
         var truncated_data = _.truncate(options.data, 255);
@@ -6493,7 +6508,7 @@
                 console.log(truncated_data);
                 return this._send_request(
                     endpoint,
-                    encode_data_for_request(truncated_data),
+                    this._encode_data_for_request(truncated_data),
                     send_request_options,
                     this._prepare_callback(callback, truncated_data)
                 );
