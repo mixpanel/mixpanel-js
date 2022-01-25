@@ -13,7 +13,11 @@ var logger = console_with_prefix('batch');
  * @constructor
  */
 var RequestBatcher = function(storageKey, options) {
-    this.queue = new RequestQueue(storageKey, {storage: options.storage});
+    this.errorReporter = options.errorReporter;
+    this.queue = new RequestQueue(storageKey, {
+        errorReporter: _.bind(this.reportError, this),
+        storage: options.storage,
+    });
 
     this.libConfig = options.libConfig;
     this.sendRequest = options.sendRequestFunc;
@@ -143,7 +147,7 @@ RequestBatcher.prototype.flush = function(options) {
                     res.error === 'timeout' &&
                     new Date().getTime() - startTime >= timeoutMS
                 ) {
-                    logger.error('Network timeout; retrying');
+                    this.reportError('Network timeout; retrying');
                     this.flush();
                 } else if (
                     _.isObject(res) &&
@@ -160,17 +164,17 @@ RequestBatcher.prototype.flush = function(options) {
                         }
                     }
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
-                    logger.error('Error; retry in ' + retryMS + ' ms');
+                    this.reportError('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
                 } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
                         this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
-                        logger.error('413 response; reducing batch size to ' + this.batchSize);
+                        this.reportError('413 response; reducing batch size to ' + this.batchSize);
                         this.resetFlush();
                     } else {
-                        logger.error('Single-event request too large; dropping', batch);
+                        this.reportError('Single-event request too large; dropping', batch);
                         this.resetBatchSize();
                         removeItemsFromQueue = true;
                     }
@@ -183,12 +187,20 @@ RequestBatcher.prototype.flush = function(options) {
                 if (removeItemsFromQueue) {
                     this.queue.removeItemsByID(
                         _.map(batch, function(item) { return item['id']; }),
-                        _.bind(this.flush, this) // handle next batch if the queue isn't empty
+                        _.bind(function(succeeded) {
+                            if (succeeded) {
+                                this.flush(); // handle next batch if the queue isn't empty
+                            } else {
+                                this.reportError('Failed to remove items from queue');
+                                // TODO after debugging: this.resetFlush();
+                                this.flush();
+                            }
+                        }, this)
                     );
                 }
 
             } catch(err) {
-                logger.error('Error handling API response', err);
+                this.reportError('Error handling API response', err);
                 this.resetFlush();
             }
         }, this);
@@ -205,8 +217,25 @@ RequestBatcher.prototype.flush = function(options) {
         this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
 
     } catch(err) {
-        logger.error('Error flushing request queue', err);
+        this.reportError('Error flushing request queue', err);
         this.resetFlush();
+    }
+};
+
+/**
+ * Log error to global logger and optional user-defined logger.
+ */
+RequestBatcher.prototype.reportError = function(msg, err) {
+    logger.error.apply(logger.error, arguments);
+    if (this.errorReporter) {
+        try {
+            if (!(err instanceof Error)) {
+                err = new Error(msg);
+            }
+            this.errorReporter(msg, err);
+        } catch(err) {
+            logger.error(err);
+        }
     }
 };
 

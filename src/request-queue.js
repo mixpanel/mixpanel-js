@@ -23,6 +23,7 @@ var RequestQueue = function(storageKey, options) {
     options = options || {};
     this.storageKey = storageKey;
     this.storage = options.storage || window.localStorage;
+    this.reportError = options.errorReporter || _.bind(logger.error, logger);
     this.lock = new SharedLock(storageKey, {storage: this.storage});
 
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
@@ -60,18 +61,18 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
                 this.memQueue.push(queueEntry);
             }
         } catch(err) {
-            logger.error('Error enqueueing item', item);
+            this.reportError('Error enqueueing item', item);
             succeeded = false;
         }
         if (cb) {
             cb(succeeded);
         }
-    }, this), function lockFailure(err) {
-        logger.error('Error acquiring storage lock', err);
+    }, this), _.bind(function lockFailure(err) {
+        this.reportError('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
-    }, this.pid);
+    }, this), this.pid);
 };
 
 /**
@@ -138,18 +139,18 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
             storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
             succeeded = this.saveToStorage(storedQueue);
         } catch(err) {
-            logger.error('Error removing items', ids);
+            this.reportError('Error removing items', ids);
             succeeded = false;
         }
         if (cb) {
             cb(succeeded);
         }
-    }, this), function lockFailure(err) {
-        logger.error('Error acquiring storage lock', err);
+    }, this), _.bind(function lockFailure(err) {
+        this.reportError('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
-    }, this.pid);
+    }, this), this.pid);
 };
 
 // internal helper for RequestQueue.updatePayloads
@@ -184,18 +185,18 @@ RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
             storedQueue = updatePayloads(storedQueue, itemsToUpdate);
             succeeded = this.saveToStorage(storedQueue);
         } catch(err) {
-            logger.error('Error updating items', itemsToUpdate);
+            this.reportError('Error updating items', itemsToUpdate);
             succeeded = false;
         }
         if (cb) {
             cb(succeeded);
         }
-    }, this), function lockFailure(err) {
-        logger.error('Error acquiring storage lock', err);
+    }, this), _.bind(function lockFailure(err) {
+        this.reportError('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
-    }, this.pid);
+    }, this), this.pid);
 };
 
 /**
@@ -209,12 +210,12 @@ RequestQueue.prototype.readFromStorage = function() {
         if (storageEntry) {
             storageEntry = JSONParse(storageEntry);
             if (!_.isArray(storageEntry)) {
-                logger.error('Invalid storage entry:', storageEntry);
+                this.reportError('Invalid storage entry:', storageEntry);
                 storageEntry = null;
             }
         }
     } catch (err) {
-        logger.error('Error retrieving queue', err);
+        this.reportError('Error retrieving queue', err);
         storageEntry = null;
     }
     return storageEntry || [];
@@ -228,7 +229,7 @@ RequestQueue.prototype.saveToStorage = function(queue) {
         this.storage.setItem(this.storageKey, JSONStringify(queue));
         return true;
     } catch (err) {
-        logger.error('Error saving queue', err);
+        this.reportError('Error saving queue', err);
         return false;
     }
 };

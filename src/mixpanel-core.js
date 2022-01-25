@@ -93,6 +93,7 @@ var DEFAULT_CONFIG = {
     'cdn':                               'https://cdn.mxpnl.com',
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
+    'error_reporter':                    NOOP_FUNC,
     'persistence':                       'cookie',
     'persistence_name':                  '',
     'cookie_domain':                     '',
@@ -626,7 +627,8 @@ MixpanelLib.prototype.init_batchers = function() {
                     }, this),
                     beforeSendHook: _.bind(function(item) {
                         return this._run_hook('before_send_' + attrs.type, item);
-                    }, this)
+                    }, this),
+                    errorReporter: this.get_config('error_reporter')
                 }
             );
         }, this);
