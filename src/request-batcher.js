@@ -16,7 +16,7 @@ var RequestBatcher = function(storageKey, options) {
     this.errorReporter = options.errorReporter;
     this.queue = new RequestQueue(storageKey, {
         errorReporter: _.bind(this.reportError, this),
-        storage: options.storage,
+        storage: options.storage
     });
 
     this.libConfig = options.libConfig;
