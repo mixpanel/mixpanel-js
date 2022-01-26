@@ -1,5 +1,5 @@
 import { SharedLock } from './shared-lock';
-import { cheap_guid, console_with_prefix, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
+import { cheap_guid, console_with_prefix, localStorageSupported, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('batch');
 
@@ -132,7 +132,8 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     _.each(ids, function(id) { idSet[id] = true; });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-    this.lock.withLock(_.bind(function lockAcquired() {
+
+    var removeFromStorage = _.bind(function() {
         var succeeded;
         try {
             var storedQueue = this.readFromStorage();
@@ -142,13 +143,35 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
             this.reportError('Error removing items', ids);
             succeeded = false;
         }
+        return succeeded;
+    }, this);
+
+    this.lock.withLock(function lockAcquired() {
+        var succeeded = removeFromStorage();
         if (cb) {
             cb(succeeded);
         }
-    }, this), _.bind(function lockFailure(err) {
+    }, _.bind(function lockFailure(err) {
+        var succeeded = false;
         this.reportError('Error acquiring storage lock', err);
+        if (!localStorageSupported(this.storage, true)) {
+            // Looks like localStorage writes have stopped working sometime after
+            // initialization (probably full), and so nobody can acquire locks
+            // anymore. Consider it temporarily safe to remove items without the
+            // lock, since nobody's writing successfully anyway.
+            succeeded = removeFromStorage();
+            if (!succeeded) {
+                // OK, we couldn't even write out the smaller queue. Try clearing it
+                // entirely.
+                try {
+                    this.storage.removeItem(this.storageKey);
+                } catch(err) {
+                    this.reportError('Error clearing queue', err);
+                }
+            }
+        }
         if (cb) {
-            cb(false);
+            cb(succeeded);
         }
     }, this), this.pid);
 };

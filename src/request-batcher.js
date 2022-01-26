@@ -192,8 +192,7 @@ RequestBatcher.prototype.flush = function(options) {
                                 this.flush(); // handle next batch if the queue isn't empty
                             } else {
                                 this.reportError('Failed to remove items from queue');
-                                // TODO after debugging: this.resetFlush();
-                                this.flush();
+                                this.resetFlush();
                             }
                         }, this)
                     );
