@@ -22,12 +22,14 @@ var RequestBatcher = function(storageKey, options) {
     this.libConfig = options.libConfig;
     this.sendRequest = options.sendRequestFunc;
     this.beforeSendHook = options.beforeSendHook;
+    this.stopAllBatching = options.stopAllBatchingFunc;
 
     // seed variable batch size + flush interval with configured values
     this.batchSize = this.libConfig['batch_size'];
     this.flushInterval = this.libConfig['batch_flush_interval_ms'];
 
     this.stopped = !this.libConfig['batch_autostart'];
+    this.consecutiveRemovalFailures = 0;
 };
 
 /**
@@ -43,6 +45,7 @@ RequestBatcher.prototype.enqueue = function(item, cb) {
  */
 RequestBatcher.prototype.start = function() {
     this.stopped = false;
+    this.consecutiveRemovalFailures = 0;
     this.flush();
 };
 
@@ -189,10 +192,16 @@ RequestBatcher.prototype.flush = function(options) {
                         _.map(batch, function(item) { return item['id']; }),
                         _.bind(function(succeeded) {
                             if (succeeded) {
+                                this.consecutiveRemovalFailures = 0;
                                 this.flush(); // handle next batch if the queue isn't empty
                             } else {
                                 this.reportError('Failed to remove items from queue');
-                                this.resetFlush();
+                                if (++this.consecutiveRemovalFailures > 5) {
+                                    this.reportError('Too many queue failures; disabling batching system.');
+                                    this.stopAllBatching();
+                                } else {
+                                    this.resetFlush();
+                                }
                             }
                         }, this)
                     );
