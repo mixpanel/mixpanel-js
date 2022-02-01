@@ -394,6 +394,22 @@ describe(`RequestQueue`, function() {
           done();
         });
       });
+
+      it(`reports failure if storage set silently doesn't work`, function() {
+        queue.storage = {
+          getItem: localStorage.getItem.bind(localStorage),
+          setItem: () => {
+            // do nothing
+            return true;
+          },
+        };
+
+        queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
+          expect(succeeded).not.to.be.ok;
+          // still removes from in-mem queue
+          expect(queue.memQueue).to.have.lengthOf(3);
+        });
+      });
     });
   });
 

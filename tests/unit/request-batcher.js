@@ -435,6 +435,59 @@ describe(`RequestBatcher`, function() {
         ]);
       });
 
+      it(`handles failures to remove items from queue and eventually stops batchers`, function() {
+        batcher.stopAllBatching = sinon.spy();
+
+        batcher.enqueue({foo: `bar`});
+        batcher.flush();
+
+        batcher.queue.storage = {
+          getItem: localStorage.getItem.bind(localStorage),
+          setItem: () => {
+            throw new Error(`persistence failure`);
+          },
+        };
+
+        expect(batcher.queue.memQueue).to.have.lengthOf(1);
+        expect(getLocalStorageItems()).to.have.lengthOf(1);
+        sendResponse(200);
+        expect(batcher.queue.memQueue).to.be.empty;
+        expect(getLocalStorageItems()).to.have.lengthOf(1);
+        expect(batcher.consecutiveRemovalFailures).to.equal(1);
+
+        // no immediate flush
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+
+        // make the event orphaned so we try to send it again
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 3);
+        expect(batcher.sendRequest).to.have.been.calledTwice;
+        sendResponse(200);
+        expect(batcher.consecutiveRemovalFailures).to.equal(2);
+
+        // now it will try to send on every flush
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.callCount(3);
+        sendResponse(200);
+        expect(batcher.consecutiveRemovalFailures).to.equal(3);
+
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.callCount(4);
+        sendResponse(200);
+        expect(batcher.consecutiveRemovalFailures).to.equal(4);
+
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.callCount(5);
+        sendResponse(200);
+        expect(batcher.consecutiveRemovalFailures).to.equal(5);
+
+        expect(batcher.stopAllBatching).not.to.have.been.called;
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.callCount(6);
+        sendResponse(200);
+        expect(batcher.consecutiveRemovalFailures).to.equal(6);
+        expect(batcher.stopAllBatching).to.have.been.calledOnce;
+      });
+
       context(`when request times out`, function() {
         function timeOutRequest() {
           sendResponse(0, {error: `timeout`});
