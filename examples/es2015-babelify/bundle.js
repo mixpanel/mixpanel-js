@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.43.0'
+    LIB_VERSION: '2.44.0'
 };
 
 exports['default'] = Config;
@@ -766,6 +766,7 @@ var DEFAULT_CONFIG = {
     'cdn': 'https://cdn.mxpnl.com',
     'cross_site_cookie': false,
     'cross_subdomain_cookie': true,
+    'error_reporter': NOOP_FUNC,
     'persistence': 'cookie',
     'persistence_name': '',
     'cookie_domain': '',
@@ -1299,7 +1300,9 @@ MixpanelLib.prototype.init_batchers = function () {
                 }, this),
                 beforeSendHook: _utils._.bind(function (item) {
                     return this._run_hook('before_send_' + attrs.type, item);
-                }, this)
+                }, this),
+                errorReporter: this.get_config('error_reporter'),
+                stopAllBatchingFunc: _utils._.bind(this.stop_batch_senders, this)
             });
         }, this);
         this.request_batchers = {
@@ -5695,17 +5698,23 @@ var logger = (0, _utils.console_with_prefix)('batch');
  * @constructor
  */
 var RequestBatcher = function RequestBatcher(storageKey, options) {
-    this.queue = new _requestQueue.RequestQueue(storageKey, { storage: options.storage });
+    this.errorReporter = options.errorReporter;
+    this.queue = new _requestQueue.RequestQueue(storageKey, {
+        errorReporter: _utils._.bind(this.reportError, this),
+        storage: options.storage
+    });
 
     this.libConfig = options.libConfig;
     this.sendRequest = options.sendRequestFunc;
     this.beforeSendHook = options.beforeSendHook;
+    this.stopAllBatching = options.stopAllBatchingFunc;
 
     // seed variable batch size + flush interval with configured values
     this.batchSize = this.libConfig['batch_size'];
     this.flushInterval = this.libConfig['batch_flush_interval_ms'];
 
     this.stopped = !this.libConfig['batch_autostart'];
+    this.consecutiveRemovalFailures = 0;
 };
 
 /**
@@ -5721,6 +5730,7 @@ RequestBatcher.prototype.enqueue = function (item, cb) {
  */
 RequestBatcher.prototype.start = function () {
     this.stopped = false;
+    this.consecutiveRemovalFailures = 0;
     this.flush();
 };
 
@@ -5822,7 +5832,7 @@ RequestBatcher.prototype.flush = function (options) {
                     // update persisted data to include hook transformations
                     this.queue.updatePayloads(transformedItems);
                 } else if (_utils._.isObject(res) && res.error === 'timeout' && new Date().getTime() - startTime >= timeoutMS) {
-                    logger.error('Network timeout; retrying');
+                    this.reportError('Network timeout; retrying');
                     this.flush();
                 } else if (_utils._.isObject(res) && res.xhr_req && (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')) {
                     // network or API error, or 429 Too Many Requests, retry
@@ -5835,17 +5845,17 @@ RequestBatcher.prototype.flush = function (options) {
                         }
                     }
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
-                    logger.error('Error; retry in ' + retryMS + ' ms');
+                    this.reportError('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
                 } else if (_utils._.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
                         this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
-                        logger.error('413 response; reducing batch size to ' + this.batchSize);
+                        this.reportError('413 response; reducing batch size to ' + this.batchSize);
                         this.resetFlush();
                     } else {
-                        logger.error('Single-event request too large; dropping', batch);
+                        this.reportError('Single-event request too large; dropping', batch);
                         this.resetBatchSize();
                         removeItemsFromQueue = true;
                     }
@@ -5858,11 +5868,23 @@ RequestBatcher.prototype.flush = function (options) {
                 if (removeItemsFromQueue) {
                     this.queue.removeItemsByID(_utils._.map(batch, function (item) {
                         return item['id'];
-                    }), _utils._.bind(this.flush, this) // handle next batch if the queue isn't empty
-                    );
+                    }), _utils._.bind(function (succeeded) {
+                        if (succeeded) {
+                            this.consecutiveRemovalFailures = 0;
+                            this.flush(); // handle next batch if the queue isn't empty
+                        } else {
+                                this.reportError('Failed to remove items from queue');
+                                if (++this.consecutiveRemovalFailures > 5) {
+                                    this.reportError('Too many queue failures; disabling batching system.');
+                                    this.stopAllBatching();
+                                } else {
+                                    this.resetFlush();
+                                }
+                            }
+                    }, this));
                 }
             } catch (err) {
-                logger.error('Error handling API response', err);
+                this.reportError('Error handling API response', err);
                 this.resetFlush();
             }
         }, this);
@@ -5878,8 +5900,25 @@ RequestBatcher.prototype.flush = function (options) {
         logger.log('MIXPANEL REQUEST:', dataForRequest);
         this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
     } catch (err) {
-        logger.error('Error flushing request queue', err);
+        this.reportError('Error flushing request queue', err);
         this.resetFlush();
+    }
+};
+
+/**
+ * Log error to global logger and optional user-defined logger.
+ */
+RequestBatcher.prototype.reportError = function (msg, err) {
+    logger.error.apply(logger.error, arguments);
+    if (this.errorReporter) {
+        try {
+            if (!(err instanceof Error)) {
+                err = new Error(msg);
+            }
+            this.errorReporter(msg, err);
+        } catch (err) {
+            logger.error(err);
+        }
     }
 };
 
@@ -5920,6 +5959,7 @@ var RequestQueue = function RequestQueue(storageKey, options) {
     options = options || {};
     this.storageKey = storageKey;
     this.storage = options.storage || window.localStorage;
+    this.reportError = options.errorReporter || _utils._.bind(logger.error, logger);
     this.lock = new _sharedLock.SharedLock(storageKey, { storage: this.storage });
 
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
@@ -5957,18 +5997,18 @@ RequestQueue.prototype.enqueue = function (item, flushInterval, cb) {
                 this.memQueue.push(queueEntry);
             }
         } catch (err) {
-            logger.error('Error enqueueing item', item);
+            this.reportError('Error enqueueing item', item);
             succeeded = false;
         }
         if (cb) {
             cb(succeeded);
         }
-    }, this), function lockFailure(err) {
-        logger.error('Error acquiring storage lock', err);
+    }, this), _utils._.bind(function lockFailure(err) {
+        this.reportError('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
-    }, this.pid);
+    }, this), this.pid);
 };
 
 /**
@@ -6032,25 +6072,61 @@ RequestQueue.prototype.removeItemsByID = function (ids, cb) {
     });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-    this.lock.withLock(_utils._.bind(function lockAcquired() {
+
+    var removeFromStorage = _utils._.bind(function () {
         var succeeded;
         try {
             var storedQueue = this.readFromStorage();
             storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
             succeeded = this.saveToStorage(storedQueue);
+
+            // an extra check: did storage report success but somehow
+            // the items are still there?
+            if (succeeded) {
+                storedQueue = this.readFromStorage();
+                for (var i = 0; i < storedQueue.length; i++) {
+                    var item = storedQueue[i];
+                    if (item['id'] && !!idSet[item['id']]) {
+                        this.reportError('Item not removed from storage');
+                        return false;
+                    }
+                }
+            }
         } catch (err) {
-            logger.error('Error removing items', ids);
+            this.reportError('Error removing items', ids);
             succeeded = false;
+        }
+        return succeeded;
+    }, this);
+
+    this.lock.withLock(function lockAcquired() {
+        var succeeded = removeFromStorage();
+        if (cb) {
+            cb(succeeded);
+        }
+    }, _utils._.bind(function lockFailure(err) {
+        var succeeded = false;
+        this.reportError('Error acquiring storage lock', err);
+        if (!(0, _utils.localStorageSupported)(this.storage, true)) {
+            // Looks like localStorage writes have stopped working sometime after
+            // initialization (probably full), and so nobody can acquire locks
+            // anymore. Consider it temporarily safe to remove items without the
+            // lock, since nobody's writing successfully anyway.
+            succeeded = removeFromStorage();
+            if (!succeeded) {
+                // OK, we couldn't even write out the smaller queue. Try clearing it
+                // entirely.
+                try {
+                    this.storage.removeItem(this.storageKey);
+                } catch (err) {
+                    this.reportError('Error clearing queue', err);
+                }
+            }
         }
         if (cb) {
             cb(succeeded);
         }
-    }, this), function lockFailure(err) {
-        logger.error('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this.pid);
+    }, this), this.pid);
 };
 
 // internal helper for RequestQueue.updatePayloads
@@ -6085,18 +6161,18 @@ RequestQueue.prototype.updatePayloads = function (itemsToUpdate, cb) {
             storedQueue = updatePayloads(storedQueue, itemsToUpdate);
             succeeded = this.saveToStorage(storedQueue);
         } catch (err) {
-            logger.error('Error updating items', itemsToUpdate);
+            this.reportError('Error updating items', itemsToUpdate);
             succeeded = false;
         }
         if (cb) {
             cb(succeeded);
         }
-    }, this), function lockFailure(err) {
-        logger.error('Error acquiring storage lock', err);
+    }, this), _utils._.bind(function lockFailure(err) {
+        this.reportError('Error acquiring storage lock', err);
         if (cb) {
             cb(false);
         }
-    }, this.pid);
+    }, this), this.pid);
 };
 
 /**
@@ -6110,12 +6186,12 @@ RequestQueue.prototype.readFromStorage = function () {
         if (storageEntry) {
             storageEntry = (0, _utils.JSONParse)(storageEntry);
             if (!_utils._.isArray(storageEntry)) {
-                logger.error('Invalid storage entry:', storageEntry);
+                this.reportError('Invalid storage entry:', storageEntry);
                 storageEntry = null;
             }
         }
     } catch (err) {
-        logger.error('Error retrieving queue', err);
+        this.reportError('Error retrieving queue', err);
         storageEntry = null;
     }
     return storageEntry || [];
@@ -6129,7 +6205,7 @@ RequestQueue.prototype.saveToStorage = function (queue) {
         this.storage.setItem(this.storageKey, (0, _utils.JSONStringify)(queue));
         return true;
     } catch (err) {
-        logger.error('Error saving queue', err);
+        this.reportError('Error saving queue', err);
         return false;
     }
 };
