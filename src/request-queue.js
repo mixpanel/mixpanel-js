@@ -139,6 +139,19 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
             var storedQueue = this.readFromStorage();
             storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
             succeeded = this.saveToStorage(storedQueue);
+
+            // an extra check: did storage report success but somehow
+            // the items are still there?
+            if (succeeded) {
+                storedQueue = this.readFromStorage();
+                for (var i = 0; i < storedQueue.length; i++) {
+                    var item = storedQueue[i];
+                    if (item['id'] && !!idSet[item['id']]) {
+                        this.reportError('Item not removed from storage');
+                        return false;
+                    }
+                }
+            }
         } catch(err) {
             this.reportError('Error removing items', ids);
             succeeded = false;
