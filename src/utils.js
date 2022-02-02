@@ -150,14 +150,6 @@ _.bind = function(func, context) {
     return bound;
 };
 
-_.bind_instance_methods = function(obj) {
-    for (var func in obj) {
-        if (typeof(obj[func]) === 'function') {
-            obj[func] = _.bind(obj[func], obj);
-        }
-    }
-};
-
 /**
  * @param {*=} obj
  * @param {function(...*)=} iterator
@@ -184,19 +176,6 @@ _.each = function(obj, iterator, context) {
             }
         }
     }
-};
-
-_.escapeHTML = function(s) {
-    var escaped = s;
-    if (escaped && _.isString(escaped)) {
-        escaped = escaped
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-    return escaped;
 };
 
 _.extend = function(obj) {
@@ -390,14 +369,6 @@ _.safewrap = function(f) {
 _.safewrap_class = function(klass, functions) {
     for (var i = 0; i < functions.length; i++) {
         klass.prototype[functions[i]] = _.safewrap(klass.prototype[functions[i]]);
-    }
-};
-
-_.safewrap_instance_methods = function(obj) {
-    for (var func in obj) {
-        if (typeof(obj[func]) === 'function') {
-            obj[func] = _.safewrap(obj[func]);
-        }
     }
 };
 

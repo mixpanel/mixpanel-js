@@ -4,7 +4,6 @@ import { _, console, userAgent, window, document, navigator, slice } from './uti
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
-import { MixpanelNotification } from './mixpanel-notification';
 import { MixpanelPeople } from './mixpanel-people';
 import {
     MixpanelPersistence,
@@ -161,8 +160,6 @@ var create_mplib = function(token, config, name) {
     }
 
     instance._cached_groups = {}; // cache groups in a pool
-    instance._user_decide_check_complete = false;
-    instance._events_tracked_before_user_decide_check_complete = [];
 
     instance._init(token, config, name);
 
@@ -232,7 +229,6 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     this['__loaded'] = true;
     this['config'] = {};
-    this['_triggered_notifs'] = [];
 
     var variable_features = {};
 
@@ -843,8 +839,6 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         send_request_options: options
     }, callback);
 
-    this._check_and_handle_triggered_notifications(data);
-
     return ret;
 });
 
@@ -1255,7 +1249,6 @@ MixpanelLib.prototype.identify = function(
         this.unregister(ALIAS_ID_KEY);
         this.register({'distinct_id': new_distinct_id});
     }
-    this._check_and_handle_notifications(this.get_distinct_id());
     this._flags.identify_called = true;
     // Flush any queued up people requests
     this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
@@ -1590,75 +1583,6 @@ MixpanelLib.prototype._event_is_disabled = function(event_name) {
         _.include(this.__disabled_events, event_name);
 };
 
-MixpanelLib.prototype._check_and_handle_triggered_notifications = addOptOutCheckMixpanelLib(function(event_data) {
-    if (!this._user_decide_check_complete) {
-        this._events_tracked_before_user_decide_check_complete.push(event_data);
-    } else {
-        var arr = this['_triggered_notifs'];
-        for (var i = 0; i < arr.length; i++) {
-            var notif = new MixpanelNotification(arr[i], this);
-            if (notif._matches_event_data(event_data)) {
-                this._show_notification(arr[i]);
-                return;
-            }
-        }
-    }
-});
-
-MixpanelLib.prototype._check_and_handle_notifications = addOptOutCheckMixpanelLib(function(distinct_id) {
-    if (
-        !distinct_id ||
-        this._flags.identify_called ||
-        this.get_config('disable_notifications')
-    ) {
-        return;
-    }
-
-    console.log('MIXPANEL NOTIFICATION CHECK');
-
-    var data = {
-        'verbose':     true,
-        'version':     '3',
-        'lib':         'web',
-        'token':       this.get_config('token'),
-        'distinct_id': distinct_id
-    };
-    this._send_request(
-        this.get_config('api_host') + '/decide/',
-        data,
-        {method: 'GET', transport: 'XHR'},
-        this._prepare_callback(_.bind(function(result) {
-            if (result['notifications'] && result['notifications'].length > 0) {
-                this['_triggered_notifs'] = [];
-                var notifications = [];
-                _.each(result['notifications'], function(notif) {
-                    (notif['display_triggers'] && notif['display_triggers'].length > 0 ? this['_triggered_notifs'] : notifications).push(notif);
-                }, this);
-                if (notifications.length > 0) {
-                    this._show_notification.call(this, notifications[0]);
-                }
-            }
-            this._handle_user_decide_check_complete();
-        }, this))
-    );
-});
-
-MixpanelLib.prototype._handle_user_decide_check_complete = function() {
-    this._user_decide_check_complete = true;
-
-    // check notifications against events that were tracked before decide call completed
-    var events = this._events_tracked_before_user_decide_check_complete;
-    while (events.length > 0) {
-        var data = events.shift(); // replay in the same order they came in
-        this._check_and_handle_triggered_notifications(data);
-    }
-};
-
-MixpanelLib.prototype._show_notification = function(notif_data) {
-    var notification = new MixpanelNotification(notif_data, this);
-    notification.show();
-};
-
 // perform some housekeeping around GDPR opt-in/out state
 MixpanelLib.prototype._gdpr_init = function() {
     var is_localStorage_requested = this.get_config('opt_out_tracking_persistence_type') === 'localStorage';
@@ -1926,9 +1850,6 @@ MixpanelLib.prototype['get_config']                         = MixpanelLib.protot
 MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
 MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
 MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;
-MixpanelLib.prototype['_check_and_handle_notifications']    = MixpanelLib.prototype._check_and_handle_notifications;
-MixpanelLib.prototype['_handle_user_decide_check_complete'] = MixpanelLib.prototype._handle_user_decide_check_complete;
-MixpanelLib.prototype['_show_notification']                 = MixpanelLib.prototype._show_notification;
 MixpanelLib.prototype['opt_out_tracking']                   = MixpanelLib.prototype.opt_out_tracking;
 MixpanelLib.prototype['opt_in_tracking']                    = MixpanelLib.prototype.opt_in_tracking;
 MixpanelLib.prototype['has_opted_out_tracking']             = MixpanelLib.prototype.has_opted_out_tracking;
@@ -1949,7 +1870,7 @@ MixpanelPersistence.prototype['update_referrer_info']  = MixpanelPersistence.pro
 MixpanelPersistence.prototype['get_cross_subdomain']   = MixpanelPersistence.prototype.get_cross_subdomain;
 MixpanelPersistence.prototype['clear']                 = MixpanelPersistence.prototype.clear;
 
-_.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
+_.safewrap_class(MixpanelLib, ['identify']);
 
 
 var instances = {};
