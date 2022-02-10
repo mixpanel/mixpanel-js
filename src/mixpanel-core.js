@@ -200,11 +200,11 @@ var create_mplib = function(token, config, name) {
  */
 MixpanelLib.prototype.init = function (token, config, name) {
     if (_.isUndefined(name)) {
-        console.error('You must name your new library: init(token, config, name)');
+        this.report_error('You must name your new library: init(token, config, name)');
         return;
     }
     if (name === PRIMARY_INSTANCE_NAME) {
-        console.error('You must initialize the main mixpanel object right after you include the Mixpanel js snippet');
+        this.report_error('You must initialize the main mixpanel object right after you include the Mixpanel js snippet');
         return;
     }
 
@@ -345,7 +345,7 @@ MixpanelLib.prototype._dom_loaded = function() {
 
 MixpanelLib.prototype._track_dom = function(DomClass, args) {
     if (this.get_config('img')) {
-        console.error('You can\'t use DOM tracking functions with img = true.');
+        this.report_error('You can\'t use DOM tracking functions with img = true.');
         return false;
     }
 
@@ -447,6 +447,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 
     url += '?' + _.HTTPBuildQuery(data);
 
+    var lib = this;
     if ('img' in data) {
         var img = document.createElement('img');
         img.src = url;
@@ -455,7 +456,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         try {
             succeeded = sendBeacon(url, body_data);
         } catch (e) {
-            console.error(e);
+            lib.report_error(e);
             succeeded = false;
         }
         try {
@@ -463,7 +464,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                 callback(succeeded ? 1 : 0);
             }
         } catch (e) {
-            console.error(e);
+            lib.report_error(e);
         }
     } else if (USE_XHR) {
         try {
@@ -495,7 +496,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                                 try {
                                     response = _.JSONDecode(req.responseText);
                                 } catch (e) {
-                                    console.error(e);
+                                    lib.report_error(e);
                                     if (options.ignore_json_errors) {
                                         response = req.responseText;
                                     } else {
@@ -518,7 +519,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         } else {
                             error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
                         }
-                        console.error(error);
+                        lib.report_error(error);
                         if (callback) {
                             if (verbose_mode) {
                                 callback({status: 0, error: error, xhr_req: req});
@@ -531,7 +532,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
             };
             req.send(body_data);
         } catch (e) {
-            console.error(e);
+            lib.report_error(e);
             succeeded = false;
         }
     } else {
@@ -780,7 +781,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     }
 
     if (_.isUndefined(event_name)) {
-        console.error('No event name provided to mixpanel.track');
+        this.report_error('No event name provided to mixpanel.track');
         return;
     }
 
@@ -821,7 +822,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
             delete properties[blacklisted_prop];
         });
     } else {
-        console.error('Invalid value for property_blacklist config: ' + property_blacklist);
+        this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
 
     var data = {
@@ -1064,7 +1065,7 @@ MixpanelLib.prototype.track_forms = function() {
  */
 MixpanelLib.prototype.time_event = function(event_name) {
     if (_.isUndefined(event_name)) {
-        console.error('No event name provided to mixpanel.time_event');
+        this.report_error('No event name provided to mixpanel.time_event');
         return;
     }
 
@@ -1336,7 +1337,7 @@ MixpanelLib.prototype.alias = function(alias, original) {
     // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
     // this ID, as it will duplicate users.
     if (alias === this.get_property(PEOPLE_DISTINCT_ID_KEY)) {
-        console.critical('Attempting to create alias for existing People user - aborting.');
+        this.report_error('Attempting to create alias for existing People user - aborting.');
         return -2;
     }
 
@@ -1356,7 +1357,7 @@ MixpanelLib.prototype.alias = function(alias, original) {
             _this.identify(alias);
         });
     } else {
-        console.error('alias matches current distinct_id - skipping api call.');
+        this.report_error('alias matches current distinct_id - skipping api call.');
         this.identify(alias);
         return -1;
     }
@@ -1531,7 +1532,7 @@ MixpanelLib.prototype.get_config = function(prop_name) {
 MixpanelLib.prototype._run_hook = function(hook_name) {
     var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, slice.call(arguments, 1));
     if (typeof ret === 'undefined') {
-        console.error(hook_name + ' hook did not return a value');
+        this.report_error(hook_name + ' hook did not return a value');
         ret = null;
     }
     return ret;
@@ -1816,6 +1817,18 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
 
     this._gdpr_call_func(clearOptInOut, options);
     this._gdpr_update_persistence(options);
+};
+
+MixpanelLib.prototype.report_error = function(msg, err) {
+    console.error.apply(console.error, arguments);
+    try {
+        if (!err && !(msg instanceof Error)) {
+            msg = new Error(msg);
+        }
+        this.get_config('error_reporter')(msg, err);
+    } catch(err) {
+        console.error(err);
+    }
 };
 
 // EXPORTS (for closure compiler)
