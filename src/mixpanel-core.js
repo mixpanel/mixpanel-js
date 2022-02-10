@@ -117,8 +117,6 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_cookie_prefix':    null,
     'property_blacklist':                [],
     'xhr_headers':                       {}, // { header: value, header2: value }
-    'inapp_protocol':                    '//',
-    'inapp_link_new_window':             false,
     'ignore_dnt':                        false,
     'batch_requests':                    true,
     'batch_size':                        50,
@@ -1484,14 +1482,6 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // extra HTTP request headers to set for each API request, in
  *       // the format {'Header-Name': value}
  *       xhr_headers: {}
- *
- *       // protocol for fetching in-app message resources, e.g.
- *       // 'https://' or 'http://'; defaults to '//' (which defers to the
- *       // current page's protocol)
- *       inapp_protocol: '//'
- *
- *       // whether to open in-app message link in new tab/window
- *       inapp_link_new_window: false
  *
  *       // whether to ignore or respect the web browser's Do Not Track setting
  *       ignore_dnt: false
