@@ -353,25 +353,6 @@ _.formatDate = function(d) {
         pad(d.getUTCSeconds());
 };
 
-_.safewrap = function(f) {
-    return function() {
-        try {
-            return f.apply(this, arguments);
-        } catch (e) {
-            console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
-            if (Config.DEBUG){
-                console.critical(e);
-            }
-        }
-    };
-};
-
-_.safewrap_class = function(klass, functions) {
-    for (var i = 0; i < functions.length; i++) {
-        klass.prototype[functions[i]] = _.safewrap(klass.prototype[functions[i]]);
-    }
-};
-
 _.strip_empty_properties = function(p) {
     var ret = {};
     _.each(p, function(v, k) {

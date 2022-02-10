@@ -1870,8 +1870,6 @@ MixpanelPersistence.prototype['update_referrer_info']  = MixpanelPersistence.pro
 MixpanelPersistence.prototype['get_cross_subdomain']   = MixpanelPersistence.prototype.get_cross_subdomain;
 MixpanelPersistence.prototype['clear']                 = MixpanelPersistence.prototype.clear;
 
-_.safewrap_class(MixpanelLib, ['identify']);
-
 
 var instances = {};
 var extend_mp = function() {
