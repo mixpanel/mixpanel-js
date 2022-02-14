@@ -68,8 +68,8 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
 
                 function _set_and_defer_chained(fn_name) {
                     mock_group[fn_name] = function() {
-                        call2_args = arguments;
-                        call2 = [fn_name].concat(Array.prototype.slice.call(call2_args, 0));
+                        var call2_args = arguments;
+                        var call2 = [fn_name].concat(Array.prototype.slice.call(call2_args, 0));
                         target.push([call1, call2]);
                     };
                 }
