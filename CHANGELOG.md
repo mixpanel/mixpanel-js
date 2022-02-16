@@ -1,3 +1,9 @@
+**2.45.0** (17 Feb 2022)
+- Remove all code related to in-app messaging feature
+- Add `error_reporter` config option for user-configurable handling of errors
+- Fix missing `var` declarations in HTML script snippet
+- Fixes for some batch/retry edge cases where localStorage write failures resulted in duplicate sends
+
 **2.43.0** (5 Jan 2022)
 - Support plain JSON tracking payloads (no base64-encoding) and use as default when sendinig to *.mixpanel.com API hosts
 
