@@ -155,7 +155,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":16}],3:[function(require,module,exports){
+},{"./utils":14}],3:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.44.0'
+    LIB_VERSION: '2.45.0'
 };
 
 exports['default'] = Config;
@@ -332,7 +332,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":16}],5:[function(require,module,exports){
+},{"./utils":14}],5:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -645,7 +645,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":16}],6:[function(require,module,exports){
+},{"./utils":14}],6:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -683,8 +683,6 @@ var _domTrackers = require('./dom-trackers');
 var _requestBatcher = require('./request-batcher');
 
 var _mixpanelGroup = require('./mixpanel-group');
-
-var _mixpanelNotification = require('./mixpanel-notification');
 
 var _mixpanelPeople = require('./mixpanel-people');
 
@@ -791,8 +789,6 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_cookie_prefix': null,
     'property_blacklist': [],
     'xhr_headers': {}, // { header: value, header2: value }
-    'inapp_protocol': '//',
-    'inapp_link_new_window': false,
     'ignore_dnt': false,
     'batch_requests': true,
     'batch_size': 50,
@@ -833,8 +829,6 @@ var create_mplib = function create_mplib(token, config, name) {
     }
 
     instance._cached_groups = {}; // cache groups in a pool
-    instance._user_decide_check_complete = false;
-    instance._events_tracked_before_user_decide_check_complete = [];
 
     instance._init(token, config, name);
 
@@ -877,11 +871,11 @@ var create_mplib = function create_mplib(token, config, name) {
  */
 MixpanelLib.prototype.init = function (token, config, name) {
     if (_utils._.isUndefined(name)) {
-        _utils.console.error('You must name your new library: init(token, config, name)');
+        this.report_error('You must name your new library: init(token, config, name)');
         return;
     }
     if (name === PRIMARY_INSTANCE_NAME) {
-        _utils.console.error('You must initialize the main mixpanel object right after you include the Mixpanel js snippet');
+        this.report_error('You must initialize the main mixpanel object right after you include the Mixpanel js snippet');
         return;
     }
 
@@ -904,7 +898,6 @@ MixpanelLib.prototype._init = function (token, config, name) {
 
     this['__loaded'] = true;
     this['config'] = {};
-    this['_triggered_notifs'] = [];
 
     var variable_features = {};
 
@@ -1023,7 +1016,7 @@ MixpanelLib.prototype._dom_loaded = function () {
 
 MixpanelLib.prototype._track_dom = function (DomClass, args) {
     if (this.get_config('img')) {
-        _utils.console.error('You can\'t use DOM tracking functions with img = true.');
+        this.report_error('You can\'t use DOM tracking functions with img = true.');
         return false;
     }
 
@@ -1133,6 +1126,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
 
     url += '?' + _utils._.HTTPBuildQuery(data);
 
+    var lib = this;
     if ('img' in data) {
         var img = _utils.document.createElement('img');
         img.src = url;
@@ -1141,7 +1135,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
         try {
             succeeded = sendBeacon(url, body_data);
         } catch (e) {
-            _utils.console.error(e);
+            lib.report_error(e);
             succeeded = false;
         }
         try {
@@ -1149,7 +1143,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
                 callback(succeeded ? 1 : 0);
             }
         } catch (e) {
-            _utils.console.error(e);
+            lib.report_error(e);
         }
     } else if (USE_XHR) {
         try {
@@ -1182,7 +1176,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
                                 try {
                                     response = _utils._.JSONDecode(req.responseText);
                                 } catch (e) {
-                                    _utils.console.error(e);
+                                    lib.report_error(e);
                                     if (options.ignore_json_errors) {
                                         response = req.responseText;
                                     } else {
@@ -1201,7 +1195,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
                         } else {
                             error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
                         }
-                        _utils.console.error(error);
+                        lib.report_error(error);
                         if (callback) {
                             if (verbose_mode) {
                                 callback({ status: 0, error: error, xhr_req: req });
@@ -1214,7 +1208,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
             };
             req.send(body_data);
         } catch (e) {
-            _utils.console.error(e);
+            lib.report_error(e);
             succeeded = false;
         }
     } else {
@@ -1453,7 +1447,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     }
 
     if (_utils._.isUndefined(event_name)) {
-        _utils.console.error('No event name provided to mixpanel.track');
+        this.report_error('No event name provided to mixpanel.track');
         return;
     }
 
@@ -1488,7 +1482,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
             delete properties[blacklisted_prop];
         });
     } else {
-        _utils.console.error('Invalid value for property_blacklist config: ' + property_blacklist);
+        this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
 
     var data = {
@@ -1503,8 +1497,6 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
         should_send_immediately: should_send_immediately,
         send_request_options: options
     }, callback);
-
-    this._check_and_handle_triggered_notifications(data);
 
     return ret;
 });
@@ -1733,7 +1725,7 @@ MixpanelLib.prototype.track_forms = function () {
  */
 MixpanelLib.prototype.time_event = function (event_name) {
     if (_utils._.isUndefined(event_name)) {
-        _utils.console.error('No event name provided to mixpanel.time_event');
+        this.report_error('No event name provided to mixpanel.time_event');
         return;
     }
 
@@ -1914,7 +1906,6 @@ MixpanelLib.prototype.identify = function (new_distinct_id, _set_callback, _add_
         this.unregister(_mixpanelPersistence.ALIAS_ID_KEY);
         this.register({ 'distinct_id': new_distinct_id });
     }
-    this._check_and_handle_notifications(this.get_distinct_id());
     this._flags.identify_called = true;
     // Flush any queued up people requests
     this['people']._flush(_set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
@@ -2004,7 +1995,7 @@ MixpanelLib.prototype.alias = function (alias, original) {
     // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
     // this ID, as it will duplicate users.
     if (alias === this.get_property(_mixpanelPersistence.PEOPLE_DISTINCT_ID_KEY)) {
-        _utils.console.critical('Attempting to create alias for existing People user - aborting.');
+        this.report_error('Attempting to create alias for existing People user - aborting.');
         return -2;
     }
 
@@ -2024,7 +2015,7 @@ MixpanelLib.prototype.alias = function (alias, original) {
             _this.identify(alias);
         });
     } else {
-        _utils.console.error('alias matches current distinct_id - skipping api call.');
+        this.report_error('alias matches current distinct_id - skipping api call.');
         this.identify(alias);
         return -1;
     }
@@ -2151,14 +2142,6 @@ MixpanelLib.prototype.name_tag = function (name_tag) {
  *       // the format {'Header-Name': value}
  *       xhr_headers: {}
  *
- *       // protocol for fetching in-app message resources, e.g.
- *       // 'https://' or 'http://'; defaults to '//' (which defers to the
- *       // current page's protocol)
- *       inapp_protocol: '//'
- *
- *       // whether to open in-app message link in new tab/window
- *       inapp_link_new_window: false
- *
  *       // whether to ignore or respect the web browser's Do Not Track setting
  *       ignore_dnt: false
  *     }
@@ -2207,7 +2190,7 @@ MixpanelLib.prototype.get_config = function (prop_name) {
 MixpanelLib.prototype._run_hook = function (hook_name) {
     var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, _utils.slice.call(arguments, 1));
     if (typeof ret === 'undefined') {
-        _utils.console.error(hook_name + ' hook did not return a value');
+        this.report_error(hook_name + ' hook did not return a value');
         ret = null;
     }
     return ret;
@@ -2245,66 +2228,6 @@ MixpanelLib.prototype.toString = function () {
 
 MixpanelLib.prototype._event_is_disabled = function (event_name) {
     return _utils._.isBlockedUA(_utils.userAgent) || this._flags.disable_all_events || _utils._.include(this.__disabled_events, event_name);
-};
-
-MixpanelLib.prototype._check_and_handle_triggered_notifications = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function (event_data) {
-    if (!this._user_decide_check_complete) {
-        this._events_tracked_before_user_decide_check_complete.push(event_data);
-    } else {
-        var arr = this['_triggered_notifs'];
-        for (var i = 0; i < arr.length; i++) {
-            var notif = new _mixpanelNotification.MixpanelNotification(arr[i], this);
-            if (notif._matches_event_data(event_data)) {
-                this._show_notification(arr[i]);
-                return;
-            }
-        }
-    }
-});
-
-MixpanelLib.prototype._check_and_handle_notifications = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function (distinct_id) {
-    if (!distinct_id || this._flags.identify_called || this.get_config('disable_notifications')) {
-        return;
-    }
-
-    _utils.console.log('MIXPANEL NOTIFICATION CHECK');
-
-    var data = {
-        'verbose': true,
-        'version': '3',
-        'lib': 'web',
-        'token': this.get_config('token'),
-        'distinct_id': distinct_id
-    };
-    this._send_request(this.get_config('api_host') + '/decide/', data, { method: 'GET', transport: 'XHR' }, this._prepare_callback(_utils._.bind(function (result) {
-        if (result['notifications'] && result['notifications'].length > 0) {
-            this['_triggered_notifs'] = [];
-            var notifications = [];
-            _utils._.each(result['notifications'], function (notif) {
-                (notif['display_triggers'] && notif['display_triggers'].length > 0 ? this['_triggered_notifs'] : notifications).push(notif);
-            }, this);
-            if (notifications.length > 0) {
-                this._show_notification.call(this, notifications[0]);
-            }
-        }
-        this._handle_user_decide_check_complete();
-    }, this)));
-});
-
-MixpanelLib.prototype._handle_user_decide_check_complete = function () {
-    this._user_decide_check_complete = true;
-
-    // check notifications against events that were tracked before decide call completed
-    var events = this._events_tracked_before_user_decide_check_complete;
-    while (events.length > 0) {
-        var data = events.shift(); // replay in the same order they came in
-        this._check_and_handle_triggered_notifications(data);
-    }
-};
-
-MixpanelLib.prototype._show_notification = function (notif_data) {
-    var notification = new _mixpanelNotification.MixpanelNotification(notif_data, this);
-    notification.show();
 };
 
 // perform some housekeeping around GDPR opt-in/out state
@@ -2550,6 +2473,18 @@ MixpanelLib.prototype.clear_opt_in_out_tracking = function (options) {
     this._gdpr_update_persistence(options);
 };
 
+MixpanelLib.prototype.report_error = function (msg, err) {
+    _utils.console.error.apply(_utils.console.error, arguments);
+    try {
+        if (!err && !(msg instanceof Error)) {
+            msg = new Error(msg);
+        }
+        this.get_config('error_reporter')(msg, err);
+    } catch (err) {
+        _utils.console.error(err);
+    }
+};
+
 // EXPORTS (for closure compiler)
 
 // MixpanelLib Exports
@@ -2572,9 +2507,6 @@ MixpanelLib.prototype['get_config'] = MixpanelLib.prototype.get_config;
 MixpanelLib.prototype['get_property'] = MixpanelLib.prototype.get_property;
 MixpanelLib.prototype['get_distinct_id'] = MixpanelLib.prototype.get_distinct_id;
 MixpanelLib.prototype['toString'] = MixpanelLib.prototype.toString;
-MixpanelLib.prototype['_check_and_handle_notifications'] = MixpanelLib.prototype._check_and_handle_notifications;
-MixpanelLib.prototype['_handle_user_decide_check_complete'] = MixpanelLib.prototype._handle_user_decide_check_complete;
-MixpanelLib.prototype['_show_notification'] = MixpanelLib.prototype._show_notification;
 MixpanelLib.prototype['opt_out_tracking'] = MixpanelLib.prototype.opt_out_tracking;
 MixpanelLib.prototype['opt_in_tracking'] = MixpanelLib.prototype.opt_in_tracking;
 MixpanelLib.prototype['has_opted_out_tracking'] = MixpanelLib.prototype.has_opted_out_tracking;
@@ -2594,8 +2526,6 @@ _mixpanelPersistence.MixpanelPersistence.prototype['update_search_keyword'] = _m
 _mixpanelPersistence.MixpanelPersistence.prototype['update_referrer_info'] = _mixpanelPersistence.MixpanelPersistence.prototype.update_referrer_info;
 _mixpanelPersistence.MixpanelPersistence.prototype['get_cross_subdomain'] = _mixpanelPersistence.MixpanelPersistence.prototype.get_cross_subdomain;
 _mixpanelPersistence.MixpanelPersistence.prototype['clear'] = _mixpanelPersistence.MixpanelPersistence.prototype.clear;
-
-_utils._.safewrap_class(MixpanelLib, ['identify', '_check_and_handle_notifications', '_show_notification']);
 
 var instances = {};
 var extend_mp = function extend_mp() {
@@ -2753,7 +2683,7 @@ function init_as_module() {
     return mixpanel_master;
 }
 
-},{"./config":3,"./dom-trackers":4,"./gdpr-utils":5,"./mixpanel-group":8,"./mixpanel-notification":9,"./mixpanel-people":10,"./mixpanel-persistence":11,"./request-batcher":13,"./utils":16}],8:[function(require,module,exports){
+},{"./config":3,"./dom-trackers":4,"./gdpr-utils":5,"./mixpanel-group":8,"./mixpanel-people":9,"./mixpanel-persistence":10,"./request-batcher":11,"./utils":14}],8:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -2937,1219 +2867,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":2,"./gdpr-utils":5,"./utils":16}],9:[function(require,module,exports){
-/* eslint camelcase: "off" */
-
-'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-    value: true
-});
-
-var _mixpanelPersistence = require('./mixpanel-persistence');
-
-var _propertyFilters = require('./property-filters');
-
-var _utils = require('./utils');
-
-// Internal class for notification display
-
-var MixpanelNotification = function MixpanelNotification(notif_data, mixpanel_instance) {
-    _utils._.bind_instance_methods(this);
-
-    this.mixpanel = mixpanel_instance;
-    this.persistence = this.mixpanel['persistence'];
-    this.resource_protocol = this.mixpanel.get_config('inapp_protocol');
-    this.cdn_host = this.mixpanel.get_config('cdn');
-
-    this.campaign_id = _utils._.escapeHTML(notif_data['id']);
-    this.message_id = _utils._.escapeHTML(notif_data['message_id']);
-
-    this.body = (_utils._.escapeHTML(notif_data['body']) || '').replace(/\n/g, '<br/>');
-    this.cta = _utils._.escapeHTML(notif_data['cta']) || 'Close';
-    this.notif_type = _utils._.escapeHTML(notif_data['type']) || 'takeover';
-    this.style = _utils._.escapeHTML(notif_data['style']) || 'light';
-    this.title = _utils._.escapeHTML(notif_data['title']) || '';
-    this.video_width = MixpanelNotification.VIDEO_WIDTH;
-    this.video_height = MixpanelNotification.VIDEO_HEIGHT;
-
-    this.display_triggers = notif_data['display_triggers'] || [];
-
-    // These fields are url-sanitized in the backend already.
-    this.dest_url = notif_data['cta_url'] || null;
-    this.image_url = notif_data['image_url'] || null;
-    this.thumb_image_url = notif_data['thumb_image_url'] || null;
-    this.video_url = notif_data['video_url'] || null;
-
-    if (this.thumb_image_url && this.thumb_image_url.indexOf('//') === 0) {
-        this.thumb_image_url = this.thumb_image_url.replace('//', this.resource_protocol);
-    }
-
-    this.clickthrough = true;
-    if (!this.dest_url) {
-        this.dest_url = '#dismiss';
-        this.clickthrough = false;
-    }
-
-    this.mini = this.notif_type === 'mini';
-    if (!this.mini) {
-        this.notif_type = 'takeover';
-    }
-    this.notif_width = !this.mini ? MixpanelNotification.NOTIF_WIDTH : MixpanelNotification.NOTIF_WIDTH_MINI;
-
-    this._set_client_config();
-    this.imgs_to_preload = this._init_image_html();
-    this._init_video();
-};
-
-MixpanelNotification.ANIM_TIME = 200;
-MixpanelNotification.MARKUP_PREFIX = 'mixpanel-notification';
-MixpanelNotification.BG_OPACITY = 0.6;
-MixpanelNotification.NOTIF_TOP = 25;
-MixpanelNotification.NOTIF_START_TOP = 200;
-MixpanelNotification.NOTIF_WIDTH = 388;
-MixpanelNotification.NOTIF_WIDTH_MINI = 420;
-MixpanelNotification.NOTIF_HEIGHT_MINI = 85;
-MixpanelNotification.THUMB_BORDER_SIZE = 5;
-MixpanelNotification.THUMB_IMG_SIZE = 60;
-MixpanelNotification.THUMB_OFFSET = Math.round(MixpanelNotification.THUMB_IMG_SIZE / 2);
-MixpanelNotification.VIDEO_WIDTH = 595;
-MixpanelNotification.VIDEO_HEIGHT = 334;
-
-MixpanelNotification.prototype.show = function () {
-    var self = this;
-    this._set_client_config();
-
-    // don't display until HTML body exists
-    if (!this.body_el) {
-        setTimeout(function () {
-            self.show();
-        }, 300);
-        return;
-    }
-
-    this._init_styles();
-    this._init_notification_el();
-
-    // wait for any images to load before showing notification
-    this._preload_images(this._attach_and_animate);
-};
-
-MixpanelNotification.prototype.dismiss = _utils._.safewrap(function () {
-    if (!this.marked_as_shown) {
-        // unexpected condition: user interacted with notif even though we didn't consider it
-        // visible (see _mark_as_shown()); send tracking signals to mark delivery
-        this._mark_delivery({ 'invisible': true });
-    }
-
-    var exiting_el = this.showing_video ? this._get_el('video') : this._get_notification_display_el();
-    if (this.use_transitions) {
-        this._remove_class('bg', 'visible');
-        this._add_class(exiting_el, 'exiting');
-        setTimeout(this._remove_notification_el, MixpanelNotification.ANIM_TIME);
-    } else {
-        var notif_attr, notif_start, notif_goal;
-        if (this.mini) {
-            notif_attr = 'right';
-            notif_start = 20;
-            notif_goal = -100;
-        } else {
-            notif_attr = 'top';
-            notif_start = MixpanelNotification.NOTIF_TOP;
-            notif_goal = MixpanelNotification.NOTIF_START_TOP + MixpanelNotification.NOTIF_TOP;
-        }
-        this._animate_els([{
-            el: this._get_el('bg'),
-            attr: 'opacity',
-            start: MixpanelNotification.BG_OPACITY,
-            goal: 0.0
-        }, {
-            el: exiting_el,
-            attr: 'opacity',
-            start: 1.0,
-            goal: 0.0
-        }, {
-            el: exiting_el,
-            attr: notif_attr,
-            start: notif_start,
-            goal: notif_goal
-        }], MixpanelNotification.ANIM_TIME, this._remove_notification_el);
-    }
-});
-
-MixpanelNotification.prototype._add_class = _utils._.safewrap(function (el, class_name) {
-    class_name = MixpanelNotification.MARKUP_PREFIX + '-' + class_name;
-    if (typeof el === 'string') {
-        el = this._get_el(el);
-    }
-    if (!el.className) {
-        el.className = class_name;
-    } else if (! ~(' ' + el.className + ' ').indexOf(' ' + class_name + ' ')) {
-        el.className += ' ' + class_name;
-    }
-});
-MixpanelNotification.prototype._remove_class = _utils._.safewrap(function (el, class_name) {
-    class_name = MixpanelNotification.MARKUP_PREFIX + '-' + class_name;
-    if (typeof el === 'string') {
-        el = this._get_el(el);
-    }
-    if (el.className) {
-        el.className = (' ' + el.className + ' ').replace(' ' + class_name + ' ', '').replace(/^[\s\xA0]+/, '').replace(/[\s\xA0]+$/, '');
-    }
-});
-
-MixpanelNotification.prototype._animate_els = _utils._.safewrap(function (anims, mss, done_cb, start_time) {
-    var self = this,
-        in_progress = false,
-        ai,
-        anim,
-        cur_time = 1 * new Date(),
-        time_diff;
-
-    start_time = start_time || cur_time;
-    time_diff = cur_time - start_time;
-
-    for (ai = 0; ai < anims.length; ai++) {
-        anim = anims[ai];
-        if (typeof anim.val === 'undefined') {
-            anim.val = anim.start;
-        }
-        if (anim.val !== anim.goal) {
-            in_progress = true;
-            var anim_diff = anim.goal - anim.start,
-                anim_dir = anim.goal >= anim.start ? 1 : -1;
-            anim.val = anim.start + anim_diff * time_diff / mss;
-            if (anim.attr !== 'opacity') {
-                anim.val = Math.round(anim.val);
-            }
-            if (anim_dir > 0 && anim.val >= anim.goal || anim_dir < 0 && anim.val <= anim.goal) {
-                anim.val = anim.goal;
-            }
-        }
-    }
-    if (!in_progress) {
-        if (done_cb) {
-            done_cb();
-        }
-        return;
-    }
-
-    for (ai = 0; ai < anims.length; ai++) {
-        anim = anims[ai];
-        if (anim.el) {
-            var suffix = anim.attr === 'opacity' ? '' : 'px';
-            anim.el.style[anim.attr] = String(anim.val) + suffix;
-        }
-    }
-    setTimeout(function () {
-        self._animate_els(anims, mss, done_cb, start_time);
-    }, 10);
-});
-
-MixpanelNotification.prototype._attach_and_animate = _utils._.safewrap(function () {
-    var self = this;
-
-    // no possibility to double-display
-    if (this.shown || this._get_shown_campaigns()[this.campaign_id]) {
-        return;
-    }
-    this.shown = true;
-
-    this.body_el.appendChild(this.notification_el);
-    setTimeout(function () {
-        var notif_el = self._get_notification_display_el();
-        if (self.use_transitions) {
-            if (!self.mini) {
-                self._add_class('bg', 'visible');
-            }
-            self._add_class(notif_el, 'visible');
-            self._mark_as_shown();
-        } else {
-            var notif_attr, notif_start, notif_goal;
-            if (self.mini) {
-                notif_attr = 'right';
-                notif_start = -100;
-                notif_goal = 20;
-            } else {
-                notif_attr = 'top';
-                notif_start = MixpanelNotification.NOTIF_START_TOP + MixpanelNotification.NOTIF_TOP;
-                notif_goal = MixpanelNotification.NOTIF_TOP;
-            }
-            self._animate_els([{
-                el: self._get_el('bg'),
-                attr: 'opacity',
-                start: 0.0,
-                goal: MixpanelNotification.BG_OPACITY
-            }, {
-                el: notif_el,
-                attr: 'opacity',
-                start: 0.0,
-                goal: 1.0
-            }, {
-                el: notif_el,
-                attr: notif_attr,
-                start: notif_start,
-                goal: notif_goal
-            }], MixpanelNotification.ANIM_TIME, self._mark_as_shown);
-        }
-    }, 100);
-    _utils._.register_event(self._get_el('cancel'), 'click', function (e) {
-        e.preventDefault();
-        self.dismiss();
-    });
-    var click_el = self._get_el('button') || self._get_el('mini-content');
-    _utils._.register_event(click_el, 'click', function (e) {
-        e.preventDefault();
-        if (self.show_video) {
-            self._track_event('$campaign_open', { '$resource_type': 'video' });
-            self._switch_to_video();
-        } else {
-            self.dismiss();
-            if (self.clickthrough) {
-                var tracking_cb = null;
-                if (self.mixpanel.get_config('inapp_link_new_window')) {
-                    window.open(self.dest_url);
-                } else {
-                    tracking_cb = function () {
-                        window.location.href = self.dest_url;
-                    };
-                }
-                self._track_event('$campaign_open', { '$resource_type': 'link' }, tracking_cb);
-            }
-        }
-    });
-});
-
-MixpanelNotification.prototype._get_el = function (id) {
-    return document.getElementById(MixpanelNotification.MARKUP_PREFIX + '-' + id);
-};
-
-MixpanelNotification.prototype._get_notification_display_el = function () {
-    return this._get_el(this.notif_type);
-};
-
-MixpanelNotification.prototype._get_shown_campaigns = function () {
-    return this.persistence['props'][_mixpanelPersistence.CAMPAIGN_IDS_KEY] || (this.persistence['props'][_mixpanelPersistence.CAMPAIGN_IDS_KEY] = {});
-};
-
-MixpanelNotification.prototype._matches_event_data = _utils._.safewrap(function (event_data) {
-    var event_name = event_data['event'] || '';
-    for (var i = 0; i < this.display_triggers.length; i++) {
-        var display_trigger = this.display_triggers[i];
-        var match_event = display_trigger['event'] || '';
-        if (match_event === '$any_event' || event_name === display_trigger['event']) {
-            if (display_trigger['selector'] && !_utils._.isEmptyObject(display_trigger['selector'])) {
-                if ((0, _propertyFilters.evaluateSelector)(display_trigger['selector'], event_data['properties'])) {
-                    return true;
-                }
-            } else {
-                return true;
-            }
-        }
-    }
-    return false;
-});
-
-MixpanelNotification.prototype._browser_lte = function (browser, version) {
-    return this.browser_versions[browser] && this.browser_versions[browser] <= version;
-};
-
-MixpanelNotification.prototype._init_image_html = function () {
-    var imgs_to_preload = [];
-
-    if (!this.mini) {
-        if (this.image_url) {
-            imgs_to_preload.push(this.image_url);
-            this.img_html = '<img id="img" src="' + this.image_url + '"/>';
-        } else {
-            this.img_html = '';
-        }
-        if (this.thumb_image_url) {
-            imgs_to_preload.push(this.thumb_image_url);
-            this.thumb_img_html = '<div id="thumbborder-wrapper"><div id="thumbborder"></div></div>' + '<img id="thumbnail"' + ' src="' + this.thumb_image_url + '"' + ' width="' + MixpanelNotification.THUMB_IMG_SIZE + '"' + ' height="' + MixpanelNotification.THUMB_IMG_SIZE + '"' + '/>' + '<div id="thumbspacer"></div>';
-        } else {
-            this.thumb_img_html = '';
-        }
-    } else {
-        this.thumb_image_url = this.thumb_image_url || this.cdn_host + '/site_media/images/icons/notifications/mini-news-dark.png';
-        imgs_to_preload.push(this.thumb_image_url);
-    }
-
-    return imgs_to_preload;
-};
-
-MixpanelNotification.prototype._init_notification_el = function () {
-    var notification_html = '';
-    var video_src = '';
-    var video_html = '';
-    var cancel_html = '<div id="cancel">' + '<div id="cancel-icon"></div>' + '</div>';
-
-    this.notification_el = document.createElement('div');
-    this.notification_el.id = MixpanelNotification.MARKUP_PREFIX + '-wrapper';
-    if (!this.mini) {
-        // TAKEOVER notification
-        var close_html = this.clickthrough || this.show_video ? '' : '<div id="button-close"></div>',
-            play_html = this.show_video ? '<div id="button-play"></div>' : '';
-        if (this._browser_lte('ie', 7)) {
-            close_html = '';
-            play_html = '';
-        }
-        notification_html = '<div id="takeover">' + this.thumb_img_html + '<div id="mainbox">' + cancel_html + '<div id="content">' + this.img_html + '<div id="title">' + this.title + '</div>' + '<div id="body">' + this.body + '</div>' + '<div id="tagline">' + '<a href="http://mixpanel.com?from=inapp" target="_blank">POWERED BY MIXPANEL</a>' + '</div>' + '</div>' + '<div id="button">' + close_html + '<a id="button-link" href="' + this.dest_url + '">' + this.cta + '</a>' + play_html + '</div>' + '</div>' + '</div>';
-    } else {
-        // MINI notification
-        notification_html = '<div id="mini">' + '<div id="mainbox">' + cancel_html + '<div id="mini-content">' + '<div id="mini-icon">' + '<div id="mini-icon-img"></div>' + '</div>' + '<div id="body">' + '<div id="body-text"><div>' + this.body + '</div></div>' + '</div>' + '</div>' + '</div>' + '<div id="mini-border"></div>' + '</div>';
-    }
-    if (this.youtube_video) {
-        video_src = this.resource_protocol + 'www.youtube.com/embed/' + this.youtube_video + '?wmode=transparent&showinfo=0&modestbranding=0&rel=0&autoplay=1&loop=0&vq=hd1080';
-        if (this.yt_custom) {
-            video_src += '&enablejsapi=1&html5=1&controls=0';
-            video_html = '<div id="video-controls">' + '<div id="video-progress" class="video-progress-el">' + '<div id="video-progress-total" class="video-progress-el"></div>' + '<div id="video-elapsed" class="video-progress-el"></div>' + '</div>' + '<div id="video-time" class="video-progress-el"></div>' + '</div>';
-        }
-    } else if (this.vimeo_video) {
-        video_src = this.resource_protocol + 'player.vimeo.com/video/' + this.vimeo_video + '?autoplay=1&title=0&byline=0&portrait=0';
-    }
-    if (this.show_video) {
-        this.video_iframe = '<iframe id="' + MixpanelNotification.MARKUP_PREFIX + '-video-frame" ' + 'width="' + this.video_width + '" height="' + this.video_height + '" ' + ' src="' + video_src + '"' + ' frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen="1" scrolling="no"' + '></iframe>';
-        video_html = '<div id="video-' + (this.flip_animate ? '' : 'no') + 'flip">' + '<div id="video">' + '<div id="video-holder"></div>' + video_html + '</div>' + '</div>';
-    }
-    var main_html = video_html + notification_html;
-    if (this.flip_animate) {
-        main_html = (this.mini ? notification_html : '') + '<div id="flipcontainer"><div id="flipper">' + (this.mini ? video_html : main_html) + '</div></div>';
-    }
-
-    this.notification_el.innerHTML = ('<div id="overlay" class="' + this.notif_type + '">' + '<div id="campaignid-' + this.campaign_id + '">' + '<div id="bgwrapper">' + '<div id="bg"></div>' + main_html + '</div>' + '</div>' + '</div>').replace(/class="/g, 'class="' + MixpanelNotification.MARKUP_PREFIX + '-').replace(/id="/g, 'id="' + MixpanelNotification.MARKUP_PREFIX + '-');
-};
-
-MixpanelNotification.prototype._init_styles = function () {
-    if (this.style === 'dark') {
-        this.style_vals = {
-            bg: '#1d1f25',
-            bg_actions: '#282b32',
-            bg_hover: '#3a4147',
-            bg_light: '#4a5157',
-            border_gray: '#32353c',
-            cancel_opacity: '0.4',
-            mini_hover: '#2a3137',
-            text_title: '#fff',
-            text_main: '#9498a3',
-            text_tagline: '#464851',
-            text_hover: '#ddd'
-        };
-    } else {
-        this.style_vals = {
-            bg: '#fff',
-            bg_actions: '#e7eaee',
-            bg_hover: '#eceff3',
-            bg_light: '#f5f5f5',
-            border_gray: '#e4ecf2',
-            cancel_opacity: '1.0',
-            mini_hover: '#fafafa',
-            text_title: '#5c6578',
-            text_main: '#8b949b',
-            text_tagline: '#ced9e6',
-            text_hover: '#7c8598'
-        };
-    }
-    var shadow = '0px 0px 35px 0px rgba(45, 49, 56, 0.7)',
-        video_shadow = shadow,
-        mini_shadow = shadow,
-        thumb_total_size = MixpanelNotification.THUMB_IMG_SIZE + MixpanelNotification.THUMB_BORDER_SIZE * 2,
-        anim_seconds = MixpanelNotification.ANIM_TIME / 1000 + 's';
-    if (this.mini) {
-        shadow = 'none';
-    }
-
-    // don't display on small viewports
-    var notif_media_queries = {},
-        min_width = MixpanelNotification.NOTIF_WIDTH_MINI + 20;
-    notif_media_queries['@media only screen and (max-width: ' + (min_width - 1) + 'px)'] = {
-        '#overlay': {
-            'display': 'none'
-        }
-    };
-    var notif_styles = {
-        '.flipped': {
-            'transform': 'rotateY(180deg)'
-        },
-        '#overlay': {
-            'position': 'fixed',
-            'top': '0',
-            'left': '0',
-            'width': '100%',
-            'height': '100%',
-            'overflow': 'auto',
-            'text-align': 'center',
-            'z-index': '10000',
-            'font-family': '"Helvetica", "Arial", sans-serif',
-            '-webkit-font-smoothing': 'antialiased',
-            '-moz-osx-font-smoothing': 'grayscale'
-        },
-        '#overlay.mini': {
-            'height': '0',
-            'overflow': 'visible'
-        },
-        '#overlay a': {
-            'width': 'initial',
-            'padding': '0',
-            'text-decoration': 'none',
-            'text-transform': 'none',
-            'color': 'inherit'
-        },
-        '#bgwrapper': {
-            'position': 'relative',
-            'width': '100%',
-            'height': '100%'
-        },
-        '#bg': {
-            'position': 'fixed',
-            'top': '0',
-            'left': '0',
-            'width': '100%',
-            'height': '100%',
-            'min-width': this.doc_width * 4 + 'px',
-            'min-height': this.doc_height * 4 + 'px',
-            'background-color': 'black',
-            'opacity': '0.0',
-            '-ms-filter': 'progid:DXImageTransform.Microsoft.Alpha(Opacity=60)', // IE8
-            'filter': 'alpha(opacity=60)', // IE5-7
-            'transition': 'opacity ' + anim_seconds
-        },
-        '#bg.visible': {
-            'opacity': MixpanelNotification.BG_OPACITY
-        },
-        '.mini #bg': {
-            'width': '0',
-            'height': '0',
-            'min-width': '0'
-        },
-        '#flipcontainer': {
-            'perspective': '1000px',
-            'position': 'absolute',
-            'width': '100%'
-        },
-        '#flipper': {
-            'position': 'relative',
-            'transform-style': 'preserve-3d',
-            'transition': '0.3s'
-        },
-        '#takeover': {
-            'position': 'absolute',
-            'left': '50%',
-            'width': MixpanelNotification.NOTIF_WIDTH + 'px',
-            'margin-left': Math.round(-MixpanelNotification.NOTIF_WIDTH / 2) + 'px',
-            'backface-visibility': 'hidden',
-            'transform': 'rotateY(0deg)',
-            'opacity': '0.0',
-            'top': MixpanelNotification.NOTIF_START_TOP + 'px',
-            'transition': 'opacity ' + anim_seconds + ', top ' + anim_seconds
-        },
-        '#takeover.visible': {
-            'opacity': '1.0',
-            'top': MixpanelNotification.NOTIF_TOP + 'px'
-        },
-        '#takeover.exiting': {
-            'opacity': '0.0',
-            'top': MixpanelNotification.NOTIF_START_TOP + 'px'
-        },
-        '#thumbspacer': {
-            'height': MixpanelNotification.THUMB_OFFSET + 'px'
-        },
-        '#thumbborder-wrapper': {
-            'position': 'absolute',
-            'top': -MixpanelNotification.THUMB_BORDER_SIZE + 'px',
-            'left': MixpanelNotification.NOTIF_WIDTH / 2 - MixpanelNotification.THUMB_OFFSET - MixpanelNotification.THUMB_BORDER_SIZE + 'px',
-            'width': thumb_total_size + 'px',
-            'height': thumb_total_size / 2 + 'px',
-            'overflow': 'hidden'
-        },
-        '#thumbborder': {
-            'position': 'absolute',
-            'width': thumb_total_size + 'px',
-            'height': thumb_total_size + 'px',
-            'border-radius': thumb_total_size + 'px',
-            'background-color': this.style_vals.bg_actions,
-            'opacity': '0.5'
-        },
-        '#thumbnail': {
-            'position': 'absolute',
-            'top': '0px',
-            'left': MixpanelNotification.NOTIF_WIDTH / 2 - MixpanelNotification.THUMB_OFFSET + 'px',
-            'width': MixpanelNotification.THUMB_IMG_SIZE + 'px',
-            'height': MixpanelNotification.THUMB_IMG_SIZE + 'px',
-            'overflow': 'hidden',
-            'z-index': '100',
-            'border-radius': MixpanelNotification.THUMB_IMG_SIZE + 'px'
-        },
-        '#mini': {
-            'position': 'absolute',
-            'right': '20px',
-            'top': MixpanelNotification.NOTIF_TOP + 'px',
-            'width': this.notif_width + 'px',
-            'height': MixpanelNotification.NOTIF_HEIGHT_MINI * 2 + 'px',
-            'margin-top': 20 - MixpanelNotification.NOTIF_HEIGHT_MINI + 'px',
-            'backface-visibility': 'hidden',
-            'opacity': '0.0',
-            'transform': 'rotateX(90deg)',
-            'transition': 'opacity 0.3s, transform 0.3s, right 0.3s'
-        },
-        '#mini.visible': {
-            'opacity': '1.0',
-            'transform': 'rotateX(0deg)'
-        },
-        '#mini.exiting': {
-            'opacity': '0.0',
-            'right': '-150px'
-        },
-        '#mainbox': {
-            'border-radius': '4px',
-            'box-shadow': shadow,
-            'text-align': 'center',
-            'background-color': this.style_vals.bg,
-            'font-size': '14px',
-            'color': this.style_vals.text_main
-        },
-        '#mini #mainbox': {
-            'height': MixpanelNotification.NOTIF_HEIGHT_MINI + 'px',
-            'margin-top': MixpanelNotification.NOTIF_HEIGHT_MINI + 'px',
-            'border-radius': '3px',
-            'transition': 'background-color ' + anim_seconds
-        },
-        '#mini-border': {
-            'height': MixpanelNotification.NOTIF_HEIGHT_MINI + 6 + 'px',
-            'width': MixpanelNotification.NOTIF_WIDTH_MINI + 6 + 'px',
-            'position': 'absolute',
-            'top': '-3px',
-            'left': '-3px',
-            'margin-top': MixpanelNotification.NOTIF_HEIGHT_MINI + 'px',
-            'border-radius': '6px',
-            'opacity': '0.25',
-            'background-color': '#fff',
-            'z-index': '-1',
-            'box-shadow': mini_shadow
-        },
-        '#mini-icon': {
-            'position': 'relative',
-            'display': 'inline-block',
-            'width': '75px',
-            'height': MixpanelNotification.NOTIF_HEIGHT_MINI + 'px',
-            'border-radius': '3px 0 0 3px',
-            'background-color': this.style_vals.bg_actions,
-            'background': 'linear-gradient(135deg, ' + this.style_vals.bg_light + ' 0%, ' + this.style_vals.bg_actions + ' 100%)',
-            'transition': 'background-color ' + anim_seconds
-        },
-        '#mini:hover #mini-icon': {
-            'background-color': this.style_vals.mini_hover
-        },
-        '#mini:hover #mainbox': {
-            'background-color': this.style_vals.mini_hover
-        },
-        '#mini-icon-img': {
-            'position': 'absolute',
-            'background-image': 'url(' + this.thumb_image_url + ')',
-            'width': '48px',
-            'height': '48px',
-            'top': '20px',
-            'left': '12px'
-        },
-        '#content': {
-            'padding': '30px 20px 0px 20px'
-        },
-        '#mini-content': {
-            'text-align': 'left',
-            'height': MixpanelNotification.NOTIF_HEIGHT_MINI + 'px',
-            'cursor': 'pointer'
-        },
-        '#img': {
-            'width': '328px',
-            'margin-top': '30px',
-            'border-radius': '5px'
-        },
-        '#title': {
-            'max-height': '600px',
-            'overflow': 'hidden',
-            'word-wrap': 'break-word',
-            'padding': '25px 0px 20px 0px',
-            'font-size': '19px',
-            'font-weight': 'bold',
-            'color': this.style_vals.text_title
-        },
-        '#body': {
-            'max-height': '600px',
-            'margin-bottom': '25px',
-            'overflow': 'hidden',
-            'word-wrap': 'break-word',
-            'line-height': '21px',
-            'font-size': '15px',
-            'font-weight': 'normal',
-            'text-align': 'left'
-        },
-        '#mini #body': {
-            'display': 'inline-block',
-            'max-width': '250px',
-            'margin': '0 0 0 30px',
-            'height': MixpanelNotification.NOTIF_HEIGHT_MINI + 'px',
-            'font-size': '16px',
-            'letter-spacing': '0.8px',
-            'color': this.style_vals.text_title
-        },
-        '#mini #body-text': {
-            'display': 'table',
-            'height': MixpanelNotification.NOTIF_HEIGHT_MINI + 'px'
-        },
-        '#mini #body-text div': {
-            'display': 'table-cell',
-            'vertical-align': 'middle'
-        },
-        '#tagline': {
-            'margin-bottom': '15px',
-            'font-size': '10px',
-            'font-weight': '600',
-            'letter-spacing': '0.8px',
-            'color': '#ccd7e0',
-            'text-align': 'left'
-        },
-        '#tagline a': {
-            'color': this.style_vals.text_tagline,
-            'transition': 'color ' + anim_seconds
-        },
-        '#tagline a:hover': {
-            'color': this.style_vals.text_hover
-        },
-        '#cancel': {
-            'position': 'absolute',
-            'right': '0',
-            'width': '8px',
-            'height': '8px',
-            'padding': '10px',
-            'border-radius': '20px',
-            'margin': '12px 12px 0 0',
-            'box-sizing': 'content-box',
-            'cursor': 'pointer',
-            'transition': 'background-color ' + anim_seconds
-        },
-        '#mini #cancel': {
-            'margin': '7px 7px 0 0'
-        },
-        '#cancel-icon': {
-            'width': '8px',
-            'height': '8px',
-            'overflow': 'hidden',
-            'background-image': 'url(' + this.cdn_host + '/site_media/images/icons/notifications/cancel-x.png)',
-            'opacity': this.style_vals.cancel_opacity
-        },
-        '#cancel:hover': {
-            'background-color': this.style_vals.bg_hover
-        },
-        '#button': {
-            'display': 'block',
-            'height': '60px',
-            'line-height': '60px',
-            'text-align': 'center',
-            'background-color': this.style_vals.bg_actions,
-            'border-radius': '0 0 4px 4px',
-            'overflow': 'hidden',
-            'cursor': 'pointer',
-            'transition': 'background-color ' + anim_seconds
-        },
-        '#button-close': {
-            'display': 'inline-block',
-            'width': '9px',
-            'height': '60px',
-            'margin-right': '8px',
-            'vertical-align': 'top',
-            'background-image': 'url(' + this.cdn_host + '/site_media/images/icons/notifications/close-x-' + this.style + '.png)',
-            'background-repeat': 'no-repeat',
-            'background-position': '0px 25px'
-        },
-        '#button-play': {
-            'display': 'inline-block',
-            'width': '30px',
-            'height': '60px',
-            'margin-left': '15px',
-            'background-image': 'url(' + this.cdn_host + '/site_media/images/icons/notifications/play-' + this.style + '-small.png)',
-            'background-repeat': 'no-repeat',
-            'background-position': '0px 15px'
-        },
-        'a#button-link': {
-            'display': 'inline-block',
-            'vertical-align': 'top',
-            'text-align': 'center',
-            'font-size': '17px',
-            'font-weight': 'bold',
-            'overflow': 'hidden',
-            'word-wrap': 'break-word',
-            'color': this.style_vals.text_title,
-            'transition': 'color ' + anim_seconds
-        },
-        '#button:hover': {
-            'background-color': this.style_vals.bg_hover,
-            'color': this.style_vals.text_hover
-        },
-        '#button:hover a': {
-            'color': this.style_vals.text_hover
-        },
-
-        '#video-noflip': {
-            'position': 'relative',
-            'top': -this.video_height * 2 + 'px'
-        },
-        '#video-flip': {
-            'backface-visibility': 'hidden',
-            'transform': 'rotateY(180deg)'
-        },
-        '#video': {
-            'position': 'absolute',
-            'width': this.video_width - 1 + 'px',
-            'height': this.video_height + 'px',
-            'top': MixpanelNotification.NOTIF_TOP + 'px',
-            'margin-top': '100px',
-            'left': '50%',
-            'margin-left': Math.round(-this.video_width / 2) + 'px',
-            'overflow': 'hidden',
-            'border-radius': '5px',
-            'box-shadow': video_shadow,
-            'transform': 'translateZ(1px)', // webkit rendering bug http://stackoverflow.com/questions/18167981/clickable-link-area-unexpectedly-smaller-after-css-transform
-            'transition': 'opacity ' + anim_seconds + ', top ' + anim_seconds
-        },
-        '#video.exiting': {
-            'opacity': '0.0',
-            'top': this.video_height + 'px'
-        },
-        '#video-holder': {
-            'position': 'absolute',
-            'width': this.video_width - 1 + 'px',
-            'height': this.video_height + 'px',
-            'overflow': 'hidden',
-            'border-radius': '5px'
-        },
-        '#video-frame': {
-            'margin-left': '-1px',
-            'width': this.video_width + 'px'
-        },
-        '#video-controls': {
-            'opacity': '0',
-            'transition': 'opacity 0.5s'
-        },
-        '#video:hover #video-controls': {
-            'opacity': '1.0'
-        },
-        '#video .video-progress-el': {
-            'position': 'absolute',
-            'bottom': '0',
-            'height': '25px',
-            'border-radius': '0 0 0 5px'
-        },
-        '#video-progress': {
-            'width': '90%'
-        },
-        '#video-progress-total': {
-            'width': '100%',
-            'background-color': this.style_vals.bg,
-            'opacity': '0.7'
-        },
-        '#video-elapsed': {
-            'width': '0',
-            'background-color': '#6cb6f5',
-            'opacity': '0.9'
-        },
-        '#video #video-time': {
-            'width': '10%',
-            'right': '0',
-            'font-size': '11px',
-            'line-height': '25px',
-            'color': this.style_vals.text_main,
-            'background-color': '#666',
-            'border-radius': '0 0 5px 0'
-        }
-    };
-
-    // IE hacks
-    if (this._browser_lte('ie', 8)) {
-        _utils._.extend(notif_styles, {
-            '* html #overlay': {
-                'position': 'absolute'
-            },
-            '* html #bg': {
-                'position': 'absolute'
-            },
-            'html, body': {
-                'height': '100%'
-            }
-        });
-    }
-    if (this._browser_lte('ie', 7)) {
-        _utils._.extend(notif_styles, {
-            '#mini #body': {
-                'display': 'inline',
-                'zoom': '1',
-                'border': '1px solid ' + this.style_vals.bg_hover
-            },
-            '#mini #body-text': {
-                'padding': '20px'
-            },
-            '#mini #mini-icon': {
-                'display': 'none'
-            }
-        });
-    }
-
-    // add vendor-prefixed style rules
-    var VENDOR_STYLES = ['backface-visibility', 'border-radius', 'box-shadow', 'opacity', 'perspective', 'transform', 'transform-style', 'transition'],
-        VENDOR_PREFIXES = ['khtml', 'moz', 'ms', 'o', 'webkit'];
-    for (var selector in notif_styles) {
-        for (var si = 0; si < VENDOR_STYLES.length; si++) {
-            var prop = VENDOR_STYLES[si];
-            if (prop in notif_styles[selector]) {
-                var val = notif_styles[selector][prop];
-                for (var pi = 0; pi < VENDOR_PREFIXES.length; pi++) {
-                    notif_styles[selector]['-' + VENDOR_PREFIXES[pi] + '-' + prop] = val;
-                }
-            }
-        }
-    }
-
-    var inject_styles = function inject_styles(styles, media_queries) {
-        var create_style_text = function create_style_text(style_defs) {
-            var st = '';
-            for (var selector in style_defs) {
-                var mp_selector = selector.replace(/#/g, '#' + MixpanelNotification.MARKUP_PREFIX + '-').replace(/\./g, '.' + MixpanelNotification.MARKUP_PREFIX + '-');
-                st += '\n' + mp_selector + ' {';
-                var props = style_defs[selector];
-                for (var k in props) {
-                    st += k + ':' + props[k] + ';';
-                }
-                st += '}';
-            }
-            return st;
-        };
-        var create_media_query_text = function create_media_query_text(mq_defs) {
-            var mqt = '';
-            for (var mq in mq_defs) {
-                mqt += '\n' + mq + ' {' + create_style_text(mq_defs[mq]) + '\n}';
-            }
-            return mqt;
-        };
-
-        var style_text = create_style_text(styles) + create_media_query_text(media_queries),
-            head_el = document.head || document.getElementsByTagName('head')[0] || document.documentElement,
-            style_el = document.createElement('style');
-        head_el.appendChild(style_el);
-        style_el.setAttribute('type', 'text/css');
-        if (style_el.styleSheet) {
-            // IE
-            style_el.styleSheet.cssText = style_text;
-        } else {
-            style_el.textContent = style_text;
-        }
-    };
-    inject_styles(notif_styles, notif_media_queries);
-};
-
-MixpanelNotification.prototype._init_video = _utils._.safewrap(function () {
-    if (!this.video_url) {
-        return;
-    }
-    var self = this;
-
-    // Youtube iframe API compatibility
-    self.yt_custom = 'postMessage' in window;
-
-    self.dest_url = self.video_url;
-    var youtube_match = self.video_url.match(
-    // http://stackoverflow.com/questions/2936467/parse-youtube-video-id-using-preg-match
-    /(?:youtube(?:-nocookie)?\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/ ]{11})/i),
-        vimeo_match = self.video_url.match(/vimeo\.com\/.*?(\d+)/i);
-    if (youtube_match) {
-        self.show_video = true;
-        self.youtube_video = youtube_match[1];
-
-        if (self.yt_custom) {
-            window['onYouTubeIframeAPIReady'] = function () {
-                if (self._get_el('video-frame')) {
-                    self._yt_video_ready();
-                }
-            };
-
-            // load Youtube iframe API; see https://developers.google.com/youtube/iframe_api_reference
-            var tag = document.createElement('script');
-            tag.src = self.resource_protocol + 'www.youtube.com/iframe_api';
-            var firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-        }
-    } else if (vimeo_match) {
-        self.show_video = true;
-        self.vimeo_video = vimeo_match[1];
-    }
-
-    // IE <= 7, FF <= 3: fall through to video link rather than embedded player
-    if (self._browser_lte('ie', 7) || self._browser_lte('firefox', 3)) {
-        self.show_video = false;
-        self.clickthrough = true;
-    }
-});
-
-MixpanelNotification.prototype._mark_as_shown = _utils._.safewrap(function () {
-    // click on background to dismiss
-    var self = this;
-    _utils._.register_event(self._get_el('bg'), 'click', function () {
-        self.dismiss();
-    });
-
-    var get_style = function get_style(el, style_name) {
-        var styles = {};
-        if (document.defaultView && document.defaultView.getComputedStyle) {
-            styles = document.defaultView.getComputedStyle(el, null); // FF3 requires both args
-        } else if (el.currentStyle) {
-                // IE
-                styles = el.currentStyle;
-            }
-        return styles[style_name];
-    };
-
-    if (this.campaign_id) {
-        var notif_el = this._get_el('overlay');
-        if (notif_el && get_style(notif_el, 'visibility') !== 'hidden' && get_style(notif_el, 'display') !== 'none') {
-            this._mark_delivery();
-        }
-    }
-});
-
-MixpanelNotification.prototype._mark_delivery = _utils._.safewrap(function (extra_props) {
-    if (!this.marked_as_shown) {
-        this.marked_as_shown = true;
-
-        if (this.campaign_id) {
-            // mark notification shown (local cache)
-            this._get_shown_campaigns()[this.campaign_id] = 1 * new Date();
-            this.persistence.save();
-        }
-
-        // track delivery
-        this._track_event('$campaign_delivery', extra_props);
-
-        // mark notification shown (mixpanel property)
-        this.mixpanel['people']['append']({
-            '$campaigns': this.campaign_id,
-            '$notifications': {
-                'campaign_id': this.campaign_id,
-                'message_id': this.message_id,
-                'type': 'web',
-                'time': new Date()
-            }
-        });
-    }
-});
-
-MixpanelNotification.prototype._preload_images = function (all_loaded_cb) {
-    var self = this;
-    if (this.imgs_to_preload.length === 0) {
-        all_loaded_cb();
-        return;
-    }
-
-    var preloaded_imgs = 0;
-    var img_objs = [];
-    var onload = function onload() {
-        preloaded_imgs++;
-        if (preloaded_imgs === self.imgs_to_preload.length && all_loaded_cb) {
-            all_loaded_cb();
-            all_loaded_cb = null;
-        }
-    };
-    for (var i = 0; i < this.imgs_to_preload.length; i++) {
-        var img = new Image();
-        img.onload = onload;
-        img.src = this.imgs_to_preload[i];
-        if (img.complete) {
-            onload();
-        }
-        img_objs.push(img);
-    }
-
-    // IE6/7 doesn't fire onload reliably
-    if (this._browser_lte('ie', 7)) {
-        setTimeout(function () {
-            var imgs_loaded = true;
-            for (i = 0; i < img_objs.length; i++) {
-                if (!img_objs[i].complete) {
-                    imgs_loaded = false;
-                }
-            }
-            if (imgs_loaded && all_loaded_cb) {
-                all_loaded_cb();
-                all_loaded_cb = null;
-            }
-        }, 500);
-    }
-};
-
-MixpanelNotification.prototype._remove_notification_el = _utils._.safewrap(function () {
-    window.clearInterval(this._video_progress_checker);
-    this.notification_el.style.visibility = 'hidden';
-    this.body_el.removeChild(this.notification_el);
-});
-
-MixpanelNotification.prototype._set_client_config = function () {
-    var get_browser_version = function get_browser_version(browser_ex) {
-        var match = navigator.userAgent.match(browser_ex);
-        return match && match[1];
-    };
-    this.browser_versions = {};
-    this.browser_versions['chrome'] = get_browser_version(/Chrome\/(\d+)/);
-    this.browser_versions['firefox'] = get_browser_version(/Firefox\/(\d+)/);
-    this.browser_versions['ie'] = get_browser_version(/MSIE (\d+).+/);
-    if (!this.browser_versions['ie'] && !window.ActiveXObject && 'ActiveXObject' in window) {
-        this.browser_versions['ie'] = 11;
-    }
-
-    this.body_el = document.body || document.getElementsByTagName('body')[0];
-    if (this.body_el) {
-        this.doc_width = Math.max(this.body_el.scrollWidth, document.documentElement.scrollWidth, this.body_el.offsetWidth, document.documentElement.offsetWidth, this.body_el.clientWidth, document.documentElement.clientWidth);
-        this.doc_height = Math.max(this.body_el.scrollHeight, document.documentElement.scrollHeight, this.body_el.offsetHeight, document.documentElement.offsetHeight, this.body_el.clientHeight, document.documentElement.clientHeight);
-    }
-
-    // detect CSS compatibility
-    var ie_ver = this.browser_versions['ie'];
-    var sample_styles = document.createElement('div').style,
-        is_css_compatible = function is_css_compatible(rule) {
-        if (rule in sample_styles) {
-            return true;
-        }
-        if (!ie_ver) {
-            rule = rule[0].toUpperCase() + rule.slice(1);
-            var props = ['O' + rule, 'Webkit' + rule, 'Moz' + rule];
-            for (var i = 0; i < props.length; i++) {
-                if (props[i] in sample_styles) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    };
-    this.use_transitions = this.body_el && is_css_compatible('transition') && is_css_compatible('transform');
-    this.flip_animate = (this.browser_versions['chrome'] >= 33 || this.browser_versions['firefox'] >= 15) && this.body_el && is_css_compatible('backfaceVisibility') && is_css_compatible('perspective') && is_css_compatible('transform');
-};
-
-MixpanelNotification.prototype._switch_to_video = _utils._.safewrap(function () {
-    var self = this,
-        anims = [{
-        el: self._get_notification_display_el(),
-        attr: 'opacity',
-        start: 1.0,
-        goal: 0.0
-    }, {
-        el: self._get_notification_display_el(),
-        attr: 'top',
-        start: MixpanelNotification.NOTIF_TOP,
-        goal: -500
-    }, {
-        el: self._get_el('video-noflip'),
-        attr: 'opacity',
-        start: 0.0,
-        goal: 1.0
-    }, {
-        el: self._get_el('video-noflip'),
-        attr: 'top',
-        start: -self.video_height * 2,
-        goal: 0
-    }];
-
-    if (self.mini) {
-        var bg = self._get_el('bg'),
-            overlay = self._get_el('overlay');
-        bg.style.width = '100%';
-        bg.style.height = '100%';
-        overlay.style.width = '100%';
-
-        self._add_class(self._get_notification_display_el(), 'exiting');
-        self._add_class(bg, 'visible');
-
-        anims.push({
-            el: self._get_el('bg'),
-            attr: 'opacity',
-            start: 0.0,
-            goal: MixpanelNotification.BG_OPACITY
-        });
-    }
-
-    var video_el = self._get_el('video-holder');
-    video_el.innerHTML = self.video_iframe;
-
-    var video_ready = function video_ready() {
-        if (window['YT'] && window['YT']['loaded']) {
-            self._yt_video_ready();
-        }
-        self.showing_video = true;
-        self._get_notification_display_el().style.visibility = 'hidden';
-    };
-    if (self.flip_animate) {
-        self._add_class('flipper', 'flipped');
-        setTimeout(video_ready, MixpanelNotification.ANIM_TIME);
-    } else {
-        self._animate_els(anims, MixpanelNotification.ANIM_TIME, video_ready);
-    }
-});
-
-MixpanelNotification.prototype._track_event = function (event_name, properties, cb) {
-    if (this.campaign_id) {
-        properties = properties || {};
-        properties = _utils._.extend(properties, {
-            'campaign_id': this.campaign_id,
-            'message_id': this.message_id,
-            'message_type': 'web_inapp',
-            'message_subtype': this.notif_type
-        });
-        this.mixpanel['track'](event_name, properties, cb);
-    } else if (cb) {
-        cb.call();
-    }
-};
-
-MixpanelNotification.prototype._yt_video_ready = _utils._.safewrap(function () {
-    var self = this;
-    if (self.video_inited) {
-        return;
-    }
-    self.video_inited = true;
-
-    var progress_bar = self._get_el('video-elapsed'),
-        progress_time = self._get_el('video-time'),
-        progress_el = self._get_el('video-progress');
-
-    new window['YT']['Player'](MixpanelNotification.MARKUP_PREFIX + '-video-frame', {
-        'events': {
-            'onReady': function onReady(event) {
-                var ytplayer = event['target'],
-                    video_duration = ytplayer['getDuration'](),
-                    pad = function pad(i) {
-                    return ('00' + i).slice(-2);
-                },
-                    update_video_time = function update_video_time(current_time) {
-                    var secs = Math.round(video_duration - current_time),
-                        mins = Math.floor(secs / 60),
-                        hours = Math.floor(mins / 60);
-                    secs -= mins * 60;
-                    mins -= hours * 60;
-                    progress_time.innerHTML = '-' + (hours ? hours + ':' : '') + pad(mins) + ':' + pad(secs);
-                };
-                update_video_time(0);
-                self._video_progress_checker = window.setInterval(function () {
-                    var current_time = ytplayer['getCurrentTime']();
-                    progress_bar.style.width = current_time / video_duration * 100 + '%';
-                    update_video_time(current_time);
-                }, 250);
-                _utils._.register_event(progress_el, 'click', function (e) {
-                    var clickx = Math.max(0, e.pageX - progress_el.getBoundingClientRect().left);
-                    ytplayer['seekTo'](video_duration * clickx / progress_el.clientWidth, true);
-                });
-            }
-        }
-    });
-});
-
-exports.MixpanelNotification = MixpanelNotification;
-
-},{"./mixpanel-persistence":11,"./property-filters":12,"./utils":16}],10:[function(require,module,exports){
+},{"./api-actions":2,"./gdpr-utils":5,"./utils":14}],9:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -4625,7 +3343,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":2,"./gdpr-utils":5,"./utils":16}],11:[function(require,module,exports){
+},{"./api-actions":2,"./gdpr-utils":5,"./utils":14}],10:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -4634,13 +3352,7 @@ Object.defineProperty(exports, '__esModule', {
     value: true
 });
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
-
 var _apiActions = require('./api-actions');
-
-var _config = require('./config');
-
-var _config2 = _interopRequireDefault(_config);
 
 var _utils = require('./utils');
 
@@ -4657,9 +3369,8 @@ var _utils = require('./utils');
 // This key is deprecated, but we want to check for it to see whether aliasing is allowed.
 /** @const */var PEOPLE_DISTINCT_ID_KEY = '$people_distinct_id';
 /** @const */var ALIAS_ID_KEY = '__alias';
-/** @const */var CAMPAIGN_IDS_KEY = '__cmpns';
 /** @const */var EVENT_TIMERS_KEY = '__timers';
-/** @const */var RESERVED_PROPERTIES = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, UNSET_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, REMOVE_QUEUE_KEY, UNION_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY, CAMPAIGN_IDS_KEY, EVENT_TIMERS_KEY];
+/** @const */var RESERVED_PROPERTIES = [SET_QUEUE_KEY, SET_ONCE_QUEUE_KEY, UNSET_QUEUE_KEY, ADD_QUEUE_KEY, APPEND_QUEUE_KEY, REMOVE_QUEUE_KEY, UNION_QUEUE_KEY, PEOPLE_DISTINCT_ID_KEY, ALIAS_ID_KEY, EVENT_TIMERS_KEY];
 
 /**
  * Mixpanel Persistence Object
@@ -4771,7 +3482,6 @@ MixpanelPersistence.prototype.save = function () {
     if (this.disabled) {
         return;
     }
-    this._expire_notification_campaigns();
     this.storage.set(this.name, _utils._.JSONEncode(this['props']), this.expire_days, this.cross_subdomain, this.secure, this.cross_site, this.cookie_domain);
 };
 
@@ -4836,22 +3546,6 @@ MixpanelPersistence.prototype.unregister = function (prop) {
         this.save();
     }
 };
-
-MixpanelPersistence.prototype._expire_notification_campaigns = _utils._.safewrap(function () {
-    var campaigns_shown = this['props'][CAMPAIGN_IDS_KEY],
-        EXPIRY_TIME = _config2['default'].DEBUG ? 60 * 1000 : 60 * 60 * 1000; // 1 minute (Config.DEBUG) / 1 hour (PDXN)
-    if (!campaigns_shown) {
-        return;
-    }
-    for (var campaign_id in campaigns_shown) {
-        if (1 * new Date() - campaigns_shown[campaign_id] > EXPIRY_TIME) {
-            delete campaigns_shown[campaign_id];
-        }
-    }
-    if (_utils._.isEmptyObject(campaigns_shown)) {
-        delete this['props'][CAMPAIGN_IDS_KEY];
-    }
-});
 
 MixpanelPersistence.prototype.update_campaign_params = function () {
     if (!this.campaign_params_saved) {
@@ -5113,567 +3807,9 @@ exports.REMOVE_QUEUE_KEY = REMOVE_QUEUE_KEY;
 exports.UNION_QUEUE_KEY = UNION_QUEUE_KEY;
 exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
-exports.CAMPAIGN_IDS_KEY = CAMPAIGN_IDS_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":2,"./config":3,"./utils":16}],12:[function(require,module,exports){
-/* eslint camelcase: "off" */
-
-'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-    value: true
-});
-exports.evaluateNumber = evaluateNumber;
-exports.evaluateBoolean = evaluateBoolean;
-exports.evaluateDateTime = evaluateDateTime;
-exports.evaluateList = evaluateList;
-exports.evaluateString = evaluateString;
-exports.evaluateAnd = evaluateAnd;
-exports.evaluateOr = evaluateOr;
-exports.evaluateIn = evaluateIn;
-exports.evaluatePlus = evaluatePlus;
-exports.evaluateArithmetic = evaluateArithmetic;
-exports.evaluateEquality = evaluateEquality;
-exports.evaluateComparison = evaluateComparison;
-exports.evaluateDefined = evaluateDefined;
-exports.evaluateNot = evaluateNot;
-exports.evaluateOperator = evaluateOperator;
-exports.evaluateWindow = evaluateWindow;
-exports.evaluateOperand = evaluateOperand;
-exports.evaluateSelector = evaluateSelector;
-
-var _utils = require('./utils');
-
-/*
- * This file is a js implementation for a subset in eval_node.c
- */
-
-/*
- * Constants
- */
-// Metadata keys
-/** @const */var OPERATOR_KEY = 'operator';
-/** @const */var PROPERTY_KEY = 'property';
-/** @const */var WINDOW_KEY = 'window';
-/** @const */var UNIT_KEY = 'unit';
-/** @const */var VALUE_KEY = 'value';
-/** @const */var HOUR_KEY = 'hour';
-/** @const */var DAY_KEY = 'day';
-/** @const */var WEEK_KEY = 'week';
-/** @const */var MONTH_KEY = 'month';
-
-// Operands
-/** @const */var EVENT_PROPERTY = 'event';
-exports.EVENT_PROPERTY = EVENT_PROPERTY;
-/** @const */var LITERAL_PROPERTY = 'literal';
-
-exports.LITERAL_PROPERTY = LITERAL_PROPERTY;
-// Binary Operators
-/** @const */var AND_OPERATOR = 'and';
-exports.AND_OPERATOR = AND_OPERATOR;
-/** @const */var OR_OPERATOR = 'or';
-exports.OR_OPERATOR = OR_OPERATOR;
-/** @const */var IN_OPERATOR = 'in';
-exports.IN_OPERATOR = IN_OPERATOR;
-/** @const */var NOT_IN_OPERATOR = 'not in';
-exports.NOT_IN_OPERATOR = NOT_IN_OPERATOR;
-/** @const */var PLUS_OPERATOR = '+';
-exports.PLUS_OPERATOR = PLUS_OPERATOR;
-/** @const */var MINUS_OPERATOR = '-';
-exports.MINUS_OPERATOR = MINUS_OPERATOR;
-/** @const */var MUL_OPERATOR = '*';
-exports.MUL_OPERATOR = MUL_OPERATOR;
-/** @const */var DIV_OPERATOR = '/';
-exports.DIV_OPERATOR = DIV_OPERATOR;
-/** @const */var MOD_OPERATOR = '%';
-exports.MOD_OPERATOR = MOD_OPERATOR;
-/** @const */var EQUALS_OPERATOR = '==';
-exports.EQUALS_OPERATOR = EQUALS_OPERATOR;
-/** @const */var NOT_EQUALS_OPERATOR = '!=';
-exports.NOT_EQUALS_OPERATOR = NOT_EQUALS_OPERATOR;
-/** @const */var GREATER_OPERATOR = '>';
-exports.GREATER_OPERATOR = GREATER_OPERATOR;
-/** @const */var LESS_OPERATOR = '<';
-exports.LESS_OPERATOR = LESS_OPERATOR;
-/** @const */var GREATER_EQUAL_OPERATOR = '>=';
-exports.GREATER_EQUAL_OPERATOR = GREATER_EQUAL_OPERATOR;
-/** @const */var LESS_EQUAL_OPERATOR = '<=';
-
-exports.LESS_EQUAL_OPERATOR = LESS_EQUAL_OPERATOR;
-// Typecast Operators
-/** @const */var BOOLEAN_OPERATOR = 'boolean';
-exports.BOOLEAN_OPERATOR = BOOLEAN_OPERATOR;
-/** @const */var DATETIME_OPERATOR = 'datetime';
-exports.DATETIME_OPERATOR = DATETIME_OPERATOR;
-/** @const */var LIST_OPERATOR = 'list';
-exports.LIST_OPERATOR = LIST_OPERATOR;
-/** @const */var NUMBER_OPERATOR = 'number';
-exports.NUMBER_OPERATOR = NUMBER_OPERATOR;
-/** @const */var STRING_OPERATOR = 'string';
-
-exports.STRING_OPERATOR = STRING_OPERATOR;
-// Unary Operators
-/** @const */var NOT_OPERATOR = 'not';
-exports.NOT_OPERATOR = NOT_OPERATOR;
-/** @const */var DEFINED_OPERATOR = 'defined';
-exports.DEFINED_OPERATOR = DEFINED_OPERATOR;
-/** @const */var NOT_DEFINED_OPERATOR = 'not defined';
-
-exports.NOT_DEFINED_OPERATOR = NOT_DEFINED_OPERATOR;
-// Special literals
-/** @const */var NOW_LITERAL = 'now';
-
-exports.NOW_LITERAL = NOW_LITERAL;
-// Type cast functions
-function toNumber(value) {
-    if (value === null) {
-        return null;
-    }
-
-    switch (typeof value) {
-        case 'object':
-            if (_utils._.isDate(value) && value.getTime() >= 0) {
-                return value.getTime();
-            }
-            return null;
-        case 'boolean':
-            return Number(value);
-        case 'number':
-            return value;
-        case 'string':
-            value = Number(value);
-            if (!isNaN(value)) {
-                return value;
-            }
-            return 0;
-    }
-    return null;
-}
-
-function evaluateNumber(op, properties) {
-    if (!op['operator'] || op['operator'] !== NUMBER_OPERATOR || !op['children'] || op['children'].length !== 1) {
-        throw 'Invalid cast operator: number ' + op;
-    }
-
-    return toNumber(evaluateSelector(op['children'][0], properties));
-}
-
-function toBoolean(value) {
-    if (value === null) {
-        return false;
-    }
-
-    switch (typeof value) {
-        case 'boolean':
-            return value;
-        case 'number':
-            return value !== 0.0;
-        case 'string':
-            return value.length > 0;
-        case 'object':
-            if (_utils._.isArray(value) && value.length > 0) {
-                return true;
-            }
-            if (_utils._.isDate(value) && value.getTime() > 0) {
-                return true;
-            }
-            if (_utils._.isObject(value) && !_utils._.isEmptyObject(value)) {
-                return true;
-            }
-            return false;
-    }
-    return false;
-}
-
-function evaluateBoolean(op, properties) {
-    if (!op['operator'] || op['operator'] !== BOOLEAN_OPERATOR || !op['children'] || op['children'].length !== 1) {
-        throw 'Invalid cast operator: boolean ' + op;
-    }
-
-    return toBoolean(evaluateSelector(op['children'][0], properties));
-}
-
-function evaluateDateTime(op, properties) {
-    if (!op['operator'] || op['operator'] !== DATETIME_OPERATOR || !op['children'] || op['children'].length !== 1) {
-        throw 'Invalid cast operator: datetime ' + op;
-    }
-
-    var v = evaluateSelector(op['children'][0], properties);
-    if (v === null) {
-        return null;
-    }
-
-    switch (typeof v) {
-        case 'number':
-        case 'string':
-            var d = new Date(v);
-            if (isNaN(d.getTime())) {
-                return null;
-            }
-            return d;
-        case 'object':
-            if (_utils._.isDate(v)) {
-                return v;
-            }
-    }
-
-    return null;
-}
-
-function evaluateList(op, properties) {
-    if (!op['operator'] || op['operator'] !== LIST_OPERATOR || !op['children'] || op['children'].length !== 1) {
-        throw 'Invalid cast operator: list ' + op;
-    }
-
-    var v = evaluateSelector(op['children'][0], properties);
-    if (v === null) {
-        return null;
-    }
-
-    if (_utils._.isArray(v)) {
-        return v;
-    }
-
-    return null;
-}
-
-function evaluateString(op, properties) {
-    if (!op['operator'] || op['operator'] !== STRING_OPERATOR || !op['children'] || op['children'].length !== 1) {
-        throw 'Invalid cast operator: string ' + op;
-    }
-
-    var v = evaluateSelector(op['children'][0], properties);
-    switch (typeof v) {
-        case 'object':
-            if (_utils._.isDate(v)) {
-                return v.toJSON();
-            }
-            return JSON.stringify(v);
-    }
-    return String(v);
-}
-
-// Operators
-
-function evaluateAnd(op, properties) {
-    if (!op['operator'] || op['operator'] !== AND_OPERATOR || !op['children'] || op['children'].length !== 2) {
-        throw 'Invalid operator: AND ' + op;
-    }
-
-    return toBoolean(evaluateSelector(op['children'][0], properties)) && toBoolean(evaluateSelector(op['children'][1], properties));
-}
-
-function evaluateOr(op, properties) {
-    if (!op['operator'] || op['operator'] !== OR_OPERATOR || !op['children'] || op['children'].length !== 2) {
-        throw 'Invalid operator: OR ' + op;
-    }
-
-    return toBoolean(evaluateSelector(op['children'][0], properties)) || toBoolean(evaluateSelector(op['children'][1], properties));
-}
-
-function evaluateIn(op, properties) {
-    if (!op['operator'] || [IN_OPERATOR, NOT_IN_OPERATOR].indexOf(op['operator']) === -1 || !op['children'] || op['children'].length !== 2) {
-        throw 'Invalid operator: IN/NOT IN ' + op;
-    }
-    var leftValue = evaluateSelector(op['children'][0], properties);
-    var rightValue = evaluateSelector(op['children'][1], properties);
-
-    if (!_utils._.isArray(rightValue) && !_utils._.isString(rightValue)) {
-        throw 'Invalid operand for operator IN: invalid type' + rightValue;
-    }
-
-    var v = rightValue.indexOf(leftValue) > -1;
-    if (op['operator'] === NOT_IN_OPERATOR) {
-        return !v;
-    }
-    return v;
-}
-
-function evaluatePlus(op, properties) {
-    if (!op['operator'] || op['operator'] !== PLUS_OPERATOR || !op['children'] || op['children'].length < 2) {
-        throw 'Invalid operator: PLUS ' + op;
-    }
-    var l = evaluateSelector(op['children'][0], properties);
-    var r = evaluateSelector(op['children'][1], properties);
-
-    if (typeof l === 'number' && typeof r === 'number') {
-        return l + r;
-    }
-    if (typeof l === 'string' && typeof r === 'string') {
-        return l + r;
-    }
-    return null;
-}
-
-function evaluateArithmetic(op, properties) {
-    if (!op['operator'] || [MINUS_OPERATOR, MUL_OPERATOR, DIV_OPERATOR, MOD_OPERATOR].indexOf(op['operator']) === -1 || !op['children'] || op['children'].length < 2) {
-        throw 'Invalid arithmetic operator ' + op;
-    }
-
-    var l = evaluateSelector(op['children'][0], properties);
-    var r = evaluateSelector(op['children'][1], properties);
-
-    if (typeof l === 'number' && typeof r === 'number') {
-        switch (op['operator']) {
-            case MINUS_OPERATOR:
-                return l - r;
-            case MUL_OPERATOR:
-                return l * r;
-            case DIV_OPERATOR:
-                if (r !== 0) {
-                    return l / r;
-                }
-                return null;
-            case MOD_OPERATOR:
-                if (r === 0) {
-                    return null;
-                }
-                if (l === 0) {
-                    return 0;
-                }
-                if (l < 0 && r > 0 || l > 0 && r < 0) {
-                    /* Mimic python modulo - result takes sign of the divisor
-                     * if one operand is negative. */
-                    return -(Math.floor(l / r) * r - l);
-                }
-                return l % r;
-            default:
-                throw 'Unknown operator: ' + op['operator'];
-        }
-    }
-
-    return null;
-}
-
-function _isArrayEqual(l, r) {
-    if (l === r) return true;
-    if (l === null || r === null) return false;
-    if (l.length !== r.length) return false;
-
-    for (var i = 0; i < l.length; i++) {
-        if (l[i] !== r[i]) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-function _isEqual(l, r) {
-    if (l === null && l === r) {
-        return true;
-    }
-    if (typeof l === typeof r) {
-        switch (typeof l) {
-            case 'number':
-            case 'string':
-            case 'boolean':
-                return l === r;
-            case 'object':
-                if (_utils._.isArray(l) && _utils._.isArray(r)) {
-                    return _isArrayEqual(l, r);
-                }
-                if (_utils._.isDate(l) && _utils._.isDate(r)) {
-                    return l.getTime() === r.getTime();
-                }
-                if (_utils._.isObject(l) && _utils._.isObject(r)) {
-                    return JSON.stringify(l) === JSON.stringify(r);
-                }
-        }
-    }
-    return false;
-}
-
-function evaluateEquality(op, properties) {
-    if (!op['operator'] || [EQUALS_OPERATOR, NOT_EQUALS_OPERATOR].indexOf(op['operator']) === -1 || !op['children'] || op['children'].length !== 2) {
-        throw 'Invalid equality operator ' + op;
-    }
-
-    var v = _isEqual(evaluateSelector(op['children'][0], properties), evaluateSelector(op['children'][1], properties));
-
-    switch (op['operator']) {
-        case EQUALS_OPERATOR:
-            return v;
-        case NOT_EQUALS_OPERATOR:
-            return !v;
-    }
-}
-
-function evaluateComparison(op, properties) {
-    if (!op['operator'] || [GREATER_OPERATOR, GREATER_EQUAL_OPERATOR, LESS_OPERATOR, LESS_EQUAL_OPERATOR].indexOf(op['operator']) === -1 || !op['children'] || op['children'].length !== 2) {
-        throw 'Invalid comparison operator ' + op;
-    }
-    var l = evaluateSelector(op['children'][0], properties);
-    var r = evaluateSelector(op['children'][1], properties);
-
-    if (typeof l === typeof r) {
-        if (typeof r === 'number' || _utils._.isDate(r)) {
-            l = toNumber(l);
-            r = toNumber(r);
-            switch (op['operator']) {
-                case GREATER_OPERATOR:
-                    return l > r;
-                case GREATER_EQUAL_OPERATOR:
-                    return l >= r;
-                case LESS_OPERATOR:
-                    return l < r;
-                case LESS_EQUAL_OPERATOR:
-                    return l <= r;
-            }
-        } else if (typeof r === 'string') {
-            var compare = l.localeCompare(r);
-            switch (op['operator']) {
-                case GREATER_OPERATOR:
-                    return compare > 0;
-                case GREATER_EQUAL_OPERATOR:
-                    return compare >= 0;
-                case LESS_OPERATOR:
-                    return compare < 0;
-                case LESS_EQUAL_OPERATOR:
-                    return compare <= 0;
-            }
-        }
-    }
-
-    return null;
-}
-
-function evaluateDefined(op, properties) {
-    if (!op['operator'] || [DEFINED_OPERATOR, NOT_DEFINED_OPERATOR].indexOf(op['operator']) === -1 || !op['children'] || op['children'].length !== 1) {
-        throw 'Invalid defined/not defined operator: ' + op;
-    }
-
-    var b = evaluateSelector(op['children'][0], properties) !== null;
-    if (op['operator'] === NOT_DEFINED_OPERATOR) {
-        return !b;
-    }
-
-    return b;
-}
-
-function evaluateNot(op, properties) {
-    if (!op['operator'] || op['operator'] !== NOT_OPERATOR || !op['children'] || op['children'].length !== 1) {
-        throw 'Invalid not operator: ' + op;
-    }
-
-    var v = evaluateSelector(op['children'][0], properties);
-    if (v === null) {
-        return true;
-    }
-
-    if (typeof v === 'boolean') {
-        return !v;
-    }
-
-    return null;
-}
-
-function evaluateOperator(op, properties) {
-    if (!op['operator']) {
-        throw 'Invalid operator: operator key missing ' + op;
-    }
-
-    switch (op['operator']) {
-        case AND_OPERATOR:
-            return evaluateAnd(op, properties);
-        case OR_OPERATOR:
-            return evaluateOr(op, properties);
-        case IN_OPERATOR:
-        case NOT_IN_OPERATOR:
-            return evaluateIn(op, properties);
-        case PLUS_OPERATOR:
-            return evaluatePlus(op, properties);
-        case MINUS_OPERATOR:
-        case MUL_OPERATOR:
-        case DIV_OPERATOR:
-        case MOD_OPERATOR:
-            return evaluateArithmetic(op, properties);
-        case EQUALS_OPERATOR:
-        case NOT_EQUALS_OPERATOR:
-            return evaluateEquality(op, properties);
-        case GREATER_OPERATOR:
-        case LESS_OPERATOR:
-        case GREATER_EQUAL_OPERATOR:
-        case LESS_EQUAL_OPERATOR:
-            return evaluateComparison(op, properties);
-        case BOOLEAN_OPERATOR:
-            return evaluateBoolean(op, properties);
-        case DATETIME_OPERATOR:
-            return evaluateDateTime(op, properties);
-        case LIST_OPERATOR:
-            return evaluateList(op, properties);
-        case NUMBER_OPERATOR:
-            return evaluateNumber(op, properties);
-        case STRING_OPERATOR:
-            return evaluateString(op, properties);
-        case DEFINED_OPERATOR:
-        case NOT_DEFINED_OPERATOR:
-            return evaluateDefined(op, properties);
-        case NOT_OPERATOR:
-            return evaluateNot(op, properties);
-    }
-}
-
-function evaluateWindow(value) {
-    var win = value[WINDOW_KEY];
-    if (!win || !win[UNIT_KEY] || !win[VALUE_KEY]) {
-        throw 'Invalid window: missing required keys ' + JSON.stringify(value);
-    }
-    var out = new Date();
-    switch (win[UNIT_KEY]) {
-        case HOUR_KEY:
-            out.setTime(out.getTime() + win[VALUE_KEY] * -1 * 60 * 60 * 1000);
-            break;
-        case DAY_KEY:
-            out.setTime(out.getTime() + win[VALUE_KEY] * -1 * 24 * 60 * 60 * 1000);
-            break;
-        case WEEK_KEY:
-            out.setTime(out.getTime() + win[VALUE_KEY] * -1 * 7 * 24 * 60 * 60 * 1000);
-            break;
-        case MONTH_KEY:
-            out.setTime(out.getTime() + win[VALUE_KEY] * -1 * 30 * 24 * 60 * 60 * 1000);
-            break;
-        default:
-            throw 'Invalid unit: ' + win[UNIT_KEY];
-    }
-
-    return out;
-}
-
-function evaluateOperand(op, properties) {
-    if (!op['property'] || !op['value']) {
-        throw 'Invalid operand: missing required keys ' + op;
-    }
-    switch (op['property']) {
-        case EVENT_PROPERTY:
-            if (properties[op['value']] !== undefined) {
-                return properties[op['value']];
-            }
-            return null;
-        case LITERAL_PROPERTY:
-            if (op['value'] === NOW_LITERAL) {
-                return new Date();
-            }
-            if (typeof op['value'] === 'object') {
-                return evaluateWindow(op['value']);
-            }
-            return op['value'];
-        default:
-            throw 'Invalid operand: Invalid property type ' + op['property'];
-    }
-}
-
-function evaluateSelector(filters, properties) {
-    if (filters[PROPERTY_KEY]) {
-        return evaluateOperand(filters, properties);
-    }
-    if (filters[OPERATOR_KEY]) {
-        return evaluateOperator(filters, properties);
-    }
-}
-
-},{"./utils":16}],13:[function(require,module,exports){
+},{"./api-actions":2,"./utils":14}],11:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -5924,7 +4060,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./request-queue":14,"./utils":16}],14:[function(require,module,exports){
+},{"./request-queue":12,"./utils":14}],12:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -6220,7 +4356,7 @@ RequestQueue.prototype.clear = function () {
 
 exports.RequestQueue = RequestQueue;
 
-},{"./shared-lock":15,"./utils":16}],15:[function(require,module,exports){
+},{"./shared-lock":13,"./utils":14}],13:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -6380,7 +4516,7 @@ SharedLock.prototype.withLock = function (lockedCB, errorCB, pid) {
 
 exports.SharedLock = SharedLock;
 
-},{"./utils":16}],16:[function(require,module,exports){
+},{"./utils":14}],14:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -6542,14 +4678,6 @@ _.bind = function (func, context) {
     return bound;
 };
 
-_.bind_instance_methods = function (obj) {
-    for (var func in obj) {
-        if (typeof obj[func] === 'function') {
-            obj[func] = _.bind(obj[func], obj);
-        }
-    }
-};
-
 /**
  * @param {*=} obj
  * @param {function(...*)=} iterator
@@ -6576,14 +4704,6 @@ _.each = function (obj, iterator, context) {
             }
         }
     }
-};
-
-_.escapeHTML = function (s) {
-    var escaped = s;
-    if (escaped && _.isString(escaped)) {
-        escaped = escaped.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-    }
-    return escaped;
 };
 
 _.extend = function (obj) {
@@ -6755,33 +4875,6 @@ _.formatDate = function (d) {
         return n < 10 ? '0' + n : n;
     }
     return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds());
-};
-
-_.safewrap = function (f) {
-    return function () {
-        try {
-            return f.apply(this, arguments);
-        } catch (e) {
-            console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
-            if (_config2['default'].DEBUG) {
-                console.critical(e);
-            }
-        }
-    };
-};
-
-_.safewrap_class = function (klass, functions) {
-    for (var i = 0; i < functions.length; i++) {
-        klass.prototype[functions[i]] = _.safewrap(klass.prototype[functions[i]]);
-    }
-};
-
-_.safewrap_instance_methods = function (obj) {
-    for (var func in obj) {
-        if (typeof obj[func] === 'function') {
-            obj[func] = _.safewrap(obj[func]);
-        }
-    }
 };
 
 _.strip_empty_properties = function (p) {
