@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # building with $DIST=1 also implies $FULL=1
 if [ ! -z "$DIST" ]; then
     export FULL=1
