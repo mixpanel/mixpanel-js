@@ -5,7 +5,7 @@
 - Fixes for some batch/retry edge cases where localStorage write failures resulted in duplicate sends
 
 **2.43.0** (5 Jan 2022)
-- Support plain JSON tracking payloads (no base64-encoding) and use as default when sendinig to *.mixpanel.com API hosts
+- Support plain JSON tracking payloads (no base64-encoding) and use as default when sending to *.mixpanel.com API hosts
 
 **2.42.1** (20 Dec 2021)
 - Add new crawler user agents to blocked list (ahrefsbot, petalbot)
