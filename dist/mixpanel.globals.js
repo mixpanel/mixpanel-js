@@ -29,7 +29,8 @@
      * Saved references to long variable names, so that closure compiler can
      * minimize file size.
      */
-
+    console.log("here in mixpanel js codebase");
+    
     var ArrayProto = Array.prototype;
     var FuncProto = Function.prototype;
     var ObjProto = Object.prototype;
