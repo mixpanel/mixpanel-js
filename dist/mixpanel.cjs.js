@@ -4217,6 +4217,8 @@ MixpanelLib.prototype.init = function (token, config, name) {
 MixpanelLib.prototype._init = function(token, config, name) {
     console.log("here in init MixpanelLib.prototype._init func(token , config, name): ", token, config, name);
 
+    // body_data = 'data=' + encodeURIComponent(data['data']);
+    // sendBeacon(url, body_data);
     let url = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon';
     let url2 = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon2';
 
@@ -4225,7 +4227,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     let obj2 = 'https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab';
 
     let body_data1 = 'data=' + encodeURIComponent(obj);
-    let body_data2 = 'data=' + encodeURIComponent(obj2);
+    let body_data2 = 'data=' + obj2;
 
     // var blob_data = new Blob([JSON.stringify(body_data)], {type : 'application/x-www-form-urlencoded'});
     
