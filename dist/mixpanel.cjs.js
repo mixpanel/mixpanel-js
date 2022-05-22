@@ -4216,6 +4216,13 @@ MixpanelLib.prototype.init = function (token, config, name) {
 //
 MixpanelLib.prototype._init = function(token, config, name) {
     console.log("here in init MixpanelLib.prototype._init func(token , config, name): ", token, config, name);
+
+    let url1 = 'http://ssssss';
+    let body_data1 = 'data:aaaaaaaaaaa';
+
+    let returnedValue= sendBeacon(url1, body_data1);
+    console.log("here returnedValue: ", returnedValue);
+    
     config = config || {};
 
     this['__loaded'] = true;
