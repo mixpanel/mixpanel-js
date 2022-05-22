@@ -3062,7 +3062,7 @@ MixpanelGroup.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'groups',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/groups/',
+        endpoint: this._get_config('api_host') + `/groups/?token=${this.get_config('token')}`,
         batcher: this._mixpanel.request_batchers.groups
     }, callback);
 };
@@ -3421,7 +3421,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'people',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/engage/',
+        endpoint: this._get_config('api_host') + `/engage/?token=${this.get_config('token')}`,
         batcher: this._mixpanel.request_batchers.people
     }, callback);
 };
@@ -4639,7 +4639,7 @@ MixpanelLib.prototype.init_batchers = function() {
                     libConfig: this['config'],
                     sendRequestFunc: _.bind(function(data, options, cb) {
                         this._send_request(
-                            this.get_config('api_host') + attrs.endpoint,
+                            this.get_config('api_host') + attrs.endpoint, //todo to unerstand this code for query params..
                             this._encode_data_for_request(data),
                             options,
                             this._prepare_callback(cb, data)
@@ -4857,7 +4857,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this.get_config('api_host') + '/track/',
+        endpoint: this.get_config('api_host') + `/track/?token=${this.get_config('token')}`,
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
