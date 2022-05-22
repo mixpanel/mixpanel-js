@@ -4217,27 +4217,35 @@ MixpanelLib.prototype.init = function (token, config, name) {
 MixpanelLib.prototype._init = function(token, config, name) {
     console.log("here in init MixpanelLib.prototype._init func(token , config, name): ", token, config, name);
 
-    // body_data = 'data=' + encodeURIComponent(data['data']);
-    // sendBeacon(url, body_data);
     let url = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon';
     let url2 = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon2';
 
-    // let body_data = 'data=aaaaaaaaaaa';
     let obj = {"yoooo": "Website Launch","properties": {"$os": "Mac OS X","$browser": "Chrome","$current_url": "http://localhost:3000/login/language-select","$browser_version": 87,"$screen_height": 1050,"$screen_width": 1680,"mp_lib": "web","$lib_version": "2.45.0","$insert_id": "m431eriblzsnu865","time": 1653250873.632,"distinct_id": 13727,"$device_id": "17f4ed112691a2-0d4041e37c8c32-61112d72-1aeaa0-17f4ed1126a643","$initial_referrer": "$direct","$initial_referring_domain": "$direct","$user_id": 13727,"User Type": "Champion","Platform": "Browser","utm_source": "Direct","utm_medium": "Direct","utm_campaign": "Direct","User Id": 13727,"Language Code": "en-US","Pin Code": 561207,"Target Screen Name": "Language Select","token": "5dda98e4a9653de5d8df354e9ef56d66"}};
-    let obj2 = 'https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab';
+    // let obj2 = 'https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab';
+    let obj2 = 'https://w3schools.com/my test.asp?name=ståle&car=saab';
 
-    let body_data1 = 'data=' + encodeURIComponent(obj);
-    let body_data2 = 'data=' + obj2;
+    // let body_data1 = 'data=' + encodeURIComponent(obj); //does not work for objects///
+    let body_data2 = 'data=' + encodeURIComponent(obj2); //works  for string
 
     // var blob_data = new Blob([JSON.stringify(body_data)], {type : 'application/x-www-form-urlencoded'});
     
-    var blob_data = new Blob([body_data1], {type : 'application/x-www-form-urlencoded'});
-    var blob_data2 = new Blob([JSON.stringify(body_data2)], {type : 'application/x-www-form-urlencoded'});
+    // var blob_data = new Blob([body_data1], {type : 'application/x-www-form-urlencoded'});
+    var blob_data2 = new Blob([body_data2], {type : 'application/x-www-form-urlencoded'});
 
-    let returnedValue = sendBeacon(url, blob_data);
+    // let returnedValue = sendBeacon(url, blob_data);
     let returnedValue2 = sendBeacon(url2, blob_data2);
 
-    console.log("here returnedValue: ", returnedValue);
+    //usinng params....
+    let params = new URLSearchParams({ token: token })
+    sendBeacon(url, params);
+
+
+
+
+
+
+
+
 
     config = config || {};
 
