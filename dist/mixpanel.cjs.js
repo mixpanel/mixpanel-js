@@ -4219,10 +4219,11 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     let url1 = 'http://ssssss';
     let body_data1 = 'data:aaaaaaaaaaa';
+    var blob_data = new Blob([JSON.stringify(body_data1)], {type : 'application/json'});
 
-    let returnedValue= sendBeacon(url1, body_data1);
+    let returnedValue= sendBeacon(url1, blob_data);
     console.log("here returnedValue: ", returnedValue);
-    
+
     config = config || {};
 
     this['__loaded'] = true;
