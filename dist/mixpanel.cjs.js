@@ -58,12 +58,13 @@ var _ = {
 var console = {
     /** @type {function(...*)} */
     log: function() {
-        console.log("here argumensts in log func: ", arguments);
+        windowConsole.log("here");
+        // console.log("here argumensts in log func: ", arguments);
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             try {
                 windowConsole.log.apply(windowConsole, arguments);
             } catch (err) {
-                console.log("here argumensts in log func error catch: ", err);
+                // console.log("here argumensts in log func error catch: ", err);
                 _.each(arguments, function(arg) {
                     windowConsole.log(arg);
                 });
