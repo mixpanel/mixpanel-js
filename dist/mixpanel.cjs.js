@@ -28,7 +28,6 @@ if (typeof(window) === 'undefined') {
  * Saved references to long variable names, so that closure compiler can
  * minimize file size.
  */
-console.log("here in mixpanelcjs.js codebase");
 
 var ArrayProto = Array.prototype;
 var FuncProto = Function.prototype;
@@ -109,6 +108,7 @@ var console = {
         }
     }
 };
+console.log("here in mixpanelcjs.js codebase");
 
 var log_func_with_prefix = function(func, prefix) {
     return function() {
@@ -4212,7 +4212,7 @@ MixpanelLib.prototype.init = function (token, config, name) {
 // init(...) method sets up a new library and calls _init on it.
 //
 MixpanelLib.prototype._init = function(token, config, name) {
-    console.log("here in init MixpanelLib.prototype._init func(token, config, name): ", token, config, name);
+    console.log("here in init MixpanelLib.prototype._init func(token , config, name): ", token, config, name);
     config = config || {};
 
     this['__loaded'] = true;
@@ -4444,6 +4444,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         document$1.body.appendChild(img);
     } else if (use_sendBeacon) {
         try {
+            console.log("here in send beacon() url, body_data,: ", url, body_data);
             succeeded = sendBeacon(url, body_data);
         } catch (e) {
             lib.report_error(e);
