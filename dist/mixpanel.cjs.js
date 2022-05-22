@@ -3062,7 +3062,7 @@ MixpanelGroup.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'groups',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + `/groups/?token=${this.get_config('token')}`,
+        endpoint: this._get_config('api_host') + '/groups/',
         batcher: this._mixpanel.request_batchers.groups
     }, callback);
 };
@@ -3421,7 +3421,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'people',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + `/engage/?token=${this.get_config('token')}`,
+        endpoint: this._get_config('api_host') + '/engage/',
         batcher: this._mixpanel.request_batchers.people
     }, callback);
 };
@@ -4463,6 +4463,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 
     data['ip'] = this.get_config('ip')?1:0;
     data['_'] = new Date().getTime().toString();
+    data['PROJECT-TOKEN'] = this.get_config('token');
 
     if (use_post) {
         body_data = 'data=' + encodeURIComponent(data['data']);
@@ -4857,7 +4858,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this.get_config('api_host') + `/track/?token=${this.get_config('token')}`,
+        endpoint: this.get_config('api_host') + '/track/',
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
