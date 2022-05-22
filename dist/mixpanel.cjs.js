@@ -28,6 +28,7 @@ if (typeof(window) === 'undefined') {
  * Saved references to long variable names, so that closure compiler can
  * minimize file size.
  */
+console.log("here in mixpanelcjs.js codebase");
 
 var ArrayProto = Array.prototype;
 var FuncProto = Function.prototype;
@@ -4211,6 +4212,7 @@ MixpanelLib.prototype.init = function (token, config, name) {
 // init(...) method sets up a new library and calls _init on it.
 //
 MixpanelLib.prototype._init = function(token, config, name) {
+    console.log("here in init MixpanelLib.prototype._init func(token, config, name): ", token, config, name);
     config = config || {};
 
     this['__loaded'] = true;
