@@ -4217,12 +4217,24 @@ MixpanelLib.prototype.init = function (token, config, name) {
 MixpanelLib.prototype._init = function(token, config, name) {
     console.log("here in init MixpanelLib.prototype._init func(token , config, name): ", token, config, name);
 
-    let url1 = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon';
-    let body_data1 = 'data:aaaaaaaaaaa';
-    // var blob_data = new Blob([JSON.stringify(body_data1)], {type : 'application/x-www-form-urlencoded'});
-    var blob_data = new Blob(body_data1, {type : 'application/x-www-form-urlencoded'});
+    let url = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon';
+    let url2 = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon2';
 
-    let returnedValue= sendBeacon(url1, blob_data);
+    // let body_data1 = 'data=aaaaaaaaaaa';
+    let obj = {
+        a:1,
+        b:2
+    }
+    let body_data1 = 'data=' + encodeURIComponent(obj);
+
+    // var blob_data = new Blob([JSON.stringify(body_data1)], {type : 'application/x-www-form-urlencoded'});
+    
+    var blob_data = new Blob([body_data1], {type : 'application/x-www-form-urlencoded'});
+    var blob_data2 = new Blob([JSON.stringify(body_data1)], {type : 'application/x-www-form-urlencoded'});
+
+    let returnedValue = sendBeacon(url, blob_data);
+    let returnedValue2 = sendBeacon(url2, blob_data2);
+
     console.log("here returnedValue: ", returnedValue);
 
     config = config || {};
