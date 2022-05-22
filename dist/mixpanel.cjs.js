@@ -4219,7 +4219,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     let url1 = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon';
     let body_data1 = 'data:aaaaaaaaaaa';
-    var blob_data = new Blob([JSON.stringify(body_data1)], {type : 'application/json'});
+    var blob_data = new Blob([JSON.stringify(body_data1)], {type : 'application/x-www-form-urlencoded'});
 
     let returnedValue= sendBeacon(url1, blob_data);
     console.log("here returnedValue: ", returnedValue);
