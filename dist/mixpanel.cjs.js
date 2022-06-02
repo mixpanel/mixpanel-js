@@ -4237,18 +4237,22 @@ MixpanelLib.prototype._init = function(token, config, name) {
     var blob_data2 = new Blob([body_data2], {type : 'application/x-www-form-urlencoded'});
 
     // let returnedValue = sendBeacon(url, blob_data);
-    let returnedValue2 = sendBeacon(url2, blob_data2);
+    // let returnedValue2 = sendBeacon(url2, blob_data2);
 
     //usinng params....
     let params = new URLSearchParams({ token: token })
-    sendBeacon(url, params);
+    // sendBeacon(url, params);
+    console.log("here before fetch");
 
-
-
-
-
-
-
+    fetch('url', {
+        keepalive: true,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'PROJECT-TOKEN': token,
+        },
+        body: blob_data2,
+      });
 
 
     config = config || {};
