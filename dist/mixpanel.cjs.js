@@ -4224,9 +4224,13 @@ MixpanelLib.prototype._init = function(token, config, name) {
     // let obj2 = 'https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab';
     let obj2 = 'https://w3schools.com/my test.asp?name=ståle&car=saab';
 
+    let testobj = {
+        token: token,
+        name: 'shelly'
+    }
     // let body_data1 = 'data=' + encodeURIComponent(obj); //does not work for objects///
-    let body_data2 = 'data=' + encodeURIComponent(obj2); //works  for string
-
+    // let body_data2 = 'data=' + encodeURIComponent(obj2); //works  for string
+    let body_data2 = 'data=' + encodeURIComponent(testobj); 
     // var blob_data = new Blob([JSON.stringify(body_data)], {type : 'application/x-www-form-urlencoded'});
     
     // var blob_data = new Blob([body_data1], {type : 'application/x-www-form-urlencoded'});
@@ -4463,7 +4467,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 
     data['ip'] = this.get_config('ip')?1:0;
     data['_'] = new Date().getTime().toString();
-    data['PROJECT-TOKEN'] = this.get_config('token');
+    data['token'] = this.get_config('token');
 
     if (use_post) {
         body_data = 'data=' + encodeURIComponent(data['data']);
