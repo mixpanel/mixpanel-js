@@ -901,7 +901,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
     };
     var body_data = 'data=' + encodeURIComponent(testobj);
     var blob_data = new Blob([body_data], { type: 'application/x-www-form-urlencoded' });
-    var success = sendBeacon(url3, blob_data);
+    sendBeacon(url3, blob_data);
 
     config = config || {};
 

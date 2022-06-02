@@ -4216,10 +4216,10 @@
         let testobj = {
             token: token,
             name: 'shelly'
-        }
+        };
         let body_data = 'data=' + encodeURIComponent(testobj);
         var blob_data = new Blob([body_data], {type : 'application/x-www-form-urlencoded'});
-        let success = sendBeacon(url3, blob_data);
+        sendBeacon(url3, blob_data);
 
 
         config = config || {};
