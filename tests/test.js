@@ -890,7 +890,7 @@
                     mixpanel.test.set_config({
                         secure_cookie: true
                     });
-                    var expected = document.location.protocol === "https:" ? 1 : 0;
+                    var expected = document.location.protocol === "https:" ? 0 : 1;
 
                     cookie_included(mixpanel.test.cookie.name, function(resp) {
                         same(resp, expected, "cookie is only included in request to server if https");
@@ -5109,7 +5109,7 @@
                     cookie_included(cookie_name, function(resp) {
                         same(
                             resp,
-                            document.location.protocol === "https:" ? 1 : 0,
+                            document.location.protocol === "https:" ? 0 : 1,
                             "opt-in cookie is only included in request to server if https"
                         );
                         clearLibInstance(mixpanel.gdpr);
