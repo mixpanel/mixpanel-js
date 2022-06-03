@@ -5075,7 +5075,7 @@
                     cookie_included(cookie_name, function(resp) {
                         same(
                             resp,
-                            document.location.protocol === "https:" ? 1 : 0,
+                            document.location.protocol === "https:" ? 0 : 1,
                             "opt-out cookie is only included in request to server if https"
                         );
                         clearLibInstance(mixpanel.gdpr);
