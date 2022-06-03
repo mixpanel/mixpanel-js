@@ -465,12 +465,13 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         document.body.appendChild(img);
     } else if (use_sendBeacon) {
         try {
-            var api_host = this.get_config('api_host') || DEFAULT_CONFIG['api_host'];
-            if (api_host.match(/\.mixpanel\.com$/)) {
-                succeeded = sendBeacon(url, body_data);
-            }else{
-                succeeded = sendBeacon(url, blob_data);
-            }
+            // var api_host = this.get_config('api_host') || DEFAULT_CONFIG['api_host'];
+            // if (api_host.match(/\.mixpanel\.com$/)) {
+            //     succeeded = sendBeacon(url, body_data);
+            // }else{
+            //     succeeded = sendBeacon(url, blob_data);
+            // }
+            succeeded = sendBeacon(url, body_data);
         } catch (e) {
             lib.report_error(e);
             succeeded = false;
