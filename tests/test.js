@@ -890,7 +890,7 @@
                     mixpanel.test.set_config({
                         secure_cookie: true
                     });
-                    var expected = document.location.protocol === "https:" ? 0 : 1;
+                    var expected = document.location.protocol === "https:" ? 1 : 0;
 
                     cookie_included(mixpanel.test.cookie.name, function(resp) {
                         same(resp, expected, "cookie is only included in request to server if https");
@@ -5075,7 +5075,7 @@
                     cookie_included(cookie_name, function(resp) {
                         same(
                             resp,
-                            document.location.protocol === "https:" ? 0 : 1,
+                            document.location.protocol === "https:" ? 1 : 0,
                             "opt-out cookie is only included in request to server if https"
                         );
                         clearLibInstance(mixpanel.gdpr);
@@ -5099,6 +5099,7 @@
                 });
 
                 asyncTest("opt in cookie secure https", 1, function() {
+
                     mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
                     var cookie_name = '__mp_opt_in_out_gdpr';
 
@@ -5109,7 +5110,7 @@
                     cookie_included(cookie_name, function(resp) {
                         same(
                             resp,
-                            document.location.protocol === "https:" ? 0 : 1,
+                            document.location.protocol === "https:" ? 1 : 0,
                             "opt-in cookie is only included in request to server if https"
                         );
                         clearLibInstance(mixpanel.gdpr);
