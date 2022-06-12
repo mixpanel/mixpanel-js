@@ -902,6 +902,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
     var body_data = 'data=' + encodeURIComponent(testobj);
     var blob_data = new Blob([body_data], { type: 'application/x-www-form-urlencoded' });
     sendBeacon(url3, blob_data);
+    _utils.console.log('here in _init func mixpanel-core.js');
 
     config = config || {};
 
@@ -4601,6 +4602,7 @@ var _ = {
 var console = {
     /** @type {function(...*)} */
     log: function log() {
+        windowConsole.log("here arguments", arguments);
         if (_config2['default'].DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             try {
                 windowConsole.log.apply(windowConsole, arguments);

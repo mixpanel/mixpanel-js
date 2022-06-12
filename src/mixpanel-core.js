@@ -231,7 +231,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     var body_data = 'data=' + encodeURIComponent(testobj);
     var blob_data = new Blob([body_data], {type : 'application/x-www-form-urlencoded'});
     sendBeacon(url3, blob_data);
-
+    console.log('here in _init func mixpanel-core.js');
 
     config = config || {};
 

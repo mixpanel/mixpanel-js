@@ -125,6 +125,7 @@
 	    var console = {
 	        /** @type {function(...*)} */
 	        log: function() {
+	            windowConsole.log("here arguments", arguments);
 	            if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
 	                try {
 	                    windowConsole.log.apply(windowConsole, arguments);
@@ -4286,7 +4287,7 @@
 	        var body_data = 'data=' + encodeURIComponent(testobj);
 	        var blob_data = new Blob([body_data], {type : 'application/x-www-form-urlencoded'});
 	        sendBeacon(url3, blob_data);
-
+	        console.log('here in _init func mixpanel-core.js');
 
 	        config = config || {};
 
