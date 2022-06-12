@@ -56,6 +56,7 @@ var _ = {
 var console = {
     /** @type {function(...*)} */
     log: function() {
+        windowConsole.log("here arguments", arguments);
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             try {
                 windowConsole.log.apply(windowConsole, arguments);
