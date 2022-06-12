@@ -4603,6 +4603,7 @@ var console = {
     /** @type {function(...*)} */
     log: function log() {
         windowConsole.log("here arguments", arguments);
+        console.log("here argumensts in log func: ", arguments);
         if (_config2['default'].DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             try {
                 windowConsole.log.apply(windowConsole, arguments);
