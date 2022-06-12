@@ -60,6 +60,7 @@
         /** @type {function(...*)} */
         log: function() {
             if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
+                windowConsole.log("here arguments 2", arguments);
                 try {
                     windowConsole.log.apply(windowConsole, arguments);
                 } catch (err) {
