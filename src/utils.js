@@ -57,7 +57,7 @@ var console = {
     /** @type {function(...*)} */
     log: function() {
         windowConsole.log("here arguments", arguments);
-        console.log("here argumensts in log func: ", arguments);
+        // console.log("here argumensts in log func: ", arguments);
         if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
             try {
                 windowConsole.log.apply(windowConsole, arguments);
