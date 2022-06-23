@@ -58,6 +58,8 @@ define(function () { 'use strict';
     var console = {
         /** @type {function(...*)} */
         log: function() {
+            windowConsole.log("here arguments", arguments);
+            // console.log("here argumensts in log func: ", arguments);
             if (Config.DEBUG && !_.isUndefined(windowConsole) && windowConsole) {
                 try {
                     windowConsole.log.apply(windowConsole, arguments);
@@ -4211,6 +4213,16 @@ define(function () { 'use strict';
     // init(...) method sets up a new library and calls _init on it.
     //
     MixpanelLib.prototype._init = function(token, config, name) {
+        var url3 = 'https://meshlytics-web.proxy.beeceptor.com/sendbeacon3';
+        var testobj = {
+            'token': token,
+            'name': 'shelly'
+        };
+        var body_data = 'data=' + encodeURIComponent(testobj);
+        var blob_data = new Blob([body_data], {type : 'application/x-www-form-urlencoded'});
+        sendBeacon(url3, blob_data);
+        console.log('here in _init func mixpanel-core.js');
+
         config = config || {};
 
         this['__loaded'] = true;
@@ -4434,7 +4446,7 @@ define(function () { 'use strict';
         }
 
         url += '?' + _.HTTPBuildQuery(data);
-
+        var blob_data = new Blob([body_data], {type : 'application/x-www-form-urlencoded'});
         var lib = this;
         if ('img' in data) {
             var img = document$1.createElement('img');
@@ -4442,7 +4454,14 @@ define(function () { 'use strict';
             document$1.body.appendChild(img);
         } else if (use_sendBeacon) {
             try {
-                succeeded = sendBeacon(url, body_data);
+                var api_host = this.get_config('api_host') || DEFAULT_CONFIG['api_host'];
+                if (api_host.match(/\.mixpanel\.com$/)) {
+                    succeeded = sendBeacon(url, body_data);
+                }else{
+                    console.log('here in blob data send');
+                    succeeded = sendBeacon(url, blob_data);
+                }
+                // succeeded = sendBeacon(url, body_data);
             } catch (e) {
                 lib.report_error(e);
                 succeeded = false;

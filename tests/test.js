@@ -5099,6 +5099,7 @@
                 });
 
                 asyncTest("opt in cookie secure https", 1, function() {
+
                     mixpanel.init('gdpr', {opt_out_tracking_persistence_type: 'cookie'}, 'gdpr');
                     var cookie_name = '__mp_opt_in_out_gdpr';
 
