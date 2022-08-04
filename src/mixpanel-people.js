@@ -244,24 +244,25 @@ MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name
 });
 
 /*
-* Record that you have charged the current user a certain amount
-* of money. Charges recorded with track_charge() will appear in the
-* Mixpanel revenue report.
-*
-* ### Usage:
-*
-*     // charge a user $50
-*     mixpanel.people.track_charge(50);
-*
-*     // charge a user $30.50 on the 2nd of january
-*     mixpanel.people.track_charge(30.50, {
-*         '$time': new Date('jan 1 2012')
-*     });
-*
-* @param {Number} amount The amount of money charged to the current user
-* @param {Object} [properties] An associative array of properties associated with the charge
-* @param {Function} [callback] If provided, the callback will be called when the server responds
-*/
+ * Record that you have charged the current user a certain amount
+ * of money. Charges recorded with track_charge() will appear in the
+ * Mixpanel revenue report.
+ *
+ * ### Usage:
+ *
+ *     // charge a user $50
+ *     mixpanel.people.track_charge(50);
+ *
+ *     // charge a user $30.50 on the 2nd of january
+ *     mixpanel.people.track_charge(30.50, {
+ *         '$time': new Date('jan 1 2012')
+ *     });
+ *
+ * @param {Number} amount The amount of money charged to the current user
+ * @param {Object} [properties] An associative array of properties associated with the charge
+ * @param {Function} [callback] If provided, the callback will be called when the server responds
+ * @deprecated
+ */
 MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(amount, properties, callback) {
     if (!_.isNumber(amount)) {
         amount = parseFloat(amount);
@@ -277,15 +278,16 @@ MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(am
 });
 
 /*
-* Permanently clear all revenue report transactions from the
-* current user's people analytics profile.
-*
-* ### Usage:
-*
-*     mixpanel.people.clear_charges();
-*
-* @param {Function} [callback] If provided, the callback will be called after tracking the event.
-*/
+ * Permanently clear all revenue report transactions from the
+ * current user's people analytics profile.
+ *
+ * ### Usage:
+ *
+ *     mixpanel.people.clear_charges();
+ *
+ * @param {Function} [callback] If provided, the callback will be called after tracking the event.
+ * @deprecated
+ */
 MixpanelPeople.prototype.clear_charges = function(callback) {
     return this.set('$transactions', [], callback);
 };
