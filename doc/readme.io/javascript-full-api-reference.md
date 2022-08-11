@@ -1,5 +1,5 @@
 ---
-category: 5ae0c2c9fa0ec6000345c0ac
+category: 62ec0192a94ae90a45602b13
 title: JavaScript Full API Reference
 ---
 
@@ -450,8 +450,8 @@ The default config is:
   // batching or retry mechanisms.
   api_transport: 'XHR'
 
-  // turn on request-batching/queueing/retry
-  batch_requests: false,
+  // request-batching/queueing/retry
+  batch_requests: true,
 
   // maximum number of events/updates to send in a single
   // network request
@@ -537,14 +537,6 @@ The default config is:
   // extra HTTP request headers to set for each API request, in
   // the format {'Header-Name': value}
   xhr_headers: {}
-
-  // protocol for fetching in-app message resources, e.g.
-  // 'https://' or 'http://'; defaults to '//' (which defers to the
-  // current page's protocol)
-  inapp_protocol: '//'
-
-  // whether to open in-app message link in new tab/window
-  inapp_link_new_window: false
 
   // whether to ignore or respect the web browser's Do Not Track setting
   ignore_dnt: false
@@ -762,24 +754,6 @@ mixpanel.people.append({
 
 
 ___
-## mixpanel.people.clear_charges
-Permanently clear all revenue report transactions from the  current user's people analytics profile.
-
-
-### Usage:
-
-```javascript
-mixpanel.people.clear_charges();
-```
-
-
-
-| Argument | Type | Description |
-| ------------- | ------------- | ----- |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
-
-
-___
 ## mixpanel.people.delete_user
 Permanently deletes the current people analytics profile from  Mixpanel (using the current distinct_id).
 
@@ -902,32 +876,6 @@ mixpanel.people.set_once({
 | **prop** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | If a string, this is the name of the property. If an object, this is an associative array of names and values. |
 | **to** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | A value to set on the given property name |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
-
-
-___
-## mixpanel.people.track_charge
-Record that you have charged the current user a certain amount  of money. Charges recorded with track_charge() will appear in the  Mixpanel revenue report.
-
-
-### Usage:
-
-```javascript
-// charge a user $50
-mixpanel.people.track_charge(50);
-
-// charge a user $30.50 on the 2nd of january
-mixpanel.people.track_charge(30.50, {
-    '$time': new Date('jan 1 2012')
-});
-```
-
-
-
-| Argument | Type | Description |
-| ------------- | ------------- | ----- |
-| **amount** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-required">required</span> | The amount of money charged to the current user |
-| **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | An associative array of properties associated with the charge |
-| **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called when the server responds |
 
 
 ___

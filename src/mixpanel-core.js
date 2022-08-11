@@ -1396,8 +1396,8 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // batching or retry mechanisms.
  *       api_transport: 'XHR'
  *
- *       // turn on request-batching/queueing/retry
- *       batch_requests: false,
+ *       // request-batching/queueing/retry
+ *       batch_requests: true,
  *
  *       // maximum number of events/updates to send in a single
  *       // network request
