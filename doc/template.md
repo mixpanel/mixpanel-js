@@ -1,5 +1,5 @@
 ---
-category: 5ae0c2c9fa0ec6000345c0ac
+category: 62ec0192a94ae90a45602b13
 title: JavaScript Full API Reference
 ---
 
