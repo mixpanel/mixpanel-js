@@ -72,7 +72,7 @@ Mixpanel production releases are tested against a large matrix of browsers and o
 ## Generating and publishing documentation
 - Create bundled source build: `npm run build-dist`
 - Generate Markdown: `npm run dox` (result is at `doc/readme.io/javascript-full-api-reference.md`)
-- Publish to readme.io via the [rdme](https://www.npmjs.com/package/rdme) util: `RDME_API_KEY=<API_KEY> npm run dox-publish`
+- Publish to readme.io via the [rdme](https://www.npmjs.com/package/rdme) util: `RDME_API_KEY=<API_KEY> RDME_DOC_VERSION=<version> npm run dox-publish`
 
 ## Thanks
 For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx, @pkaminski, @austince, @danielbaker, @mkdai, @wolever, @dpraul, @chriszamierowski, @JoaoGomesTW
