@@ -758,7 +758,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  *
  * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
  * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
- * @param {Object} [options] Optional configuration for this track request.
+ * @param {Object} [options] Optional configuration for this track request; valid options are 'transport' and/or 'send_immediately'
  * @param {String} [options.transport] Transport method for network request ('xhr' or 'sendBeacon').
  * @param {Boolean} [options.send_immediately] Whether to bypass batching/queueing and send track request immediately.
  * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
