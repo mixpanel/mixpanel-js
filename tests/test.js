@@ -110,6 +110,14 @@
         }
     }
 
+    function stripDevicePrefix(id) {
+        var prefix = '$device:'; 
+        if (id.startsWith(prefix)) {
+            return id.slice(prefix.length)
+        }
+        return id;
+    };
+
     function notOk(state, message) {
         equal(state, false, message);
     };
@@ -1143,7 +1151,7 @@
             };
 
 
-            test("constructor", window.COOKIE_FAILURE_TEST ? 3 : 4, function() {
+            test("constructor", window.COOKIE_FAILURE_TEST ? 4 : 5, function() {
                 var token = 'ASDF',
                     sp = {
                         'test': 'all'
@@ -1155,7 +1163,10 @@
                 var props = mixpanel.mpl.persistence.properties();
                 var distinct_id = props['distinct_id'];
                 var device_id = props['$device_id'];
-                same(distinct_id, device_id);
+                ok(distinct_id.startsWith('$device:'));
+                same(distinct_id, '$device:' + device_id);
+                
+
 
                 // Recreate object - should pull super props from persistence
                 mixpanel.init(token, {persistence_name: 'mpl_t2'}, 'mpl2');
@@ -1316,7 +1327,23 @@
                 mixpanel.test.identify(this.id);
                 same(mixpanel.test.get_distinct_id(), this.id);
                 same(mixpanel.test.get_property('$user_id'), this.id);
-                same(mixpanel.test.get_property('$device_id'), distinct_id);
+                same(mixpanel.test.get_property('$device_id'), stripDevicePrefix(distinct_id));
+            });
+
+            test("identify shouldn't set user_id if its called with same distinct_id", 3, function() {
+                var distinct_id = mixpanel.test.get_distinct_id();
+                mixpanel.test.identify(distinct_id);
+                same(mixpanel.test.get_distinct_id(), distinct_id);
+                isUndefined(mixpanel.test.get_property('$user_id'));
+                same(mixpanel.test.get_property('$device_id'), stripDevicePrefix(distinct_id));
+            });
+
+            test("identify should return an error when new_distinct_id starts with device prefix", 3, function() {
+                var distinct_id = mixpanel.test.get_distinct_id();
+                ev = mixpanel.test.identify('$device:' + this.id);
+                same(ev, -1);
+                isUndefined(mixpanel.test.get_property('$user_id'));
+                same(mixpanel.test.get_property('$device_id'), stripDevicePrefix(distinct_id));
             });
 
             test("name_tag", 2, function() {
@@ -1837,7 +1864,7 @@
                 mixpanel.test.identify(new_id);
                 same(mixpanel.test.get_distinct_id(), old_id, "identify should not do anything");
                 same(mixpanel.test.get_property('$user_id'), new_id, "identify should always set user_id");
-                same(mixpanel.test.get_property('$device_id'), old_id);
+                same(mixpanel.test.get_property('$device_id'), stripDevicePrefix(old_id));
                 same(mixpanel.test.get_property(__alias), new_id, "identify should not delete the __alias key");
             });
 
@@ -2093,7 +2120,7 @@
                 mixpanel.test.identify(this.id);
                 s = mixpanel.test.people.set(_to_set2);
                 same(s['$distinct_id'], this.id);
-                same(s['$device_id'], old_distinct_id);
+                same(s['$device_id'], stripDevicePrefix(old_distinct_id));
                 same(s['$user_id'], this.id);
                 same(s['$token'], this.token);
                 ok(contains_obj(s['$set'], _to_set2));
@@ -2125,7 +2152,7 @@
                 });
                 same(s['$distinct_id'], this.id, '$distinct_id pulled out correctly');
                 same(s['$user_id'], this.id, '$user_id pulled out correctly');
-                same(s['$device_id'], old_distinct_id, '$device_id pulled out correctly');
+                same(s['$device_id'], stripDevicePrefix(old_distinct_id), '$device_id pulled out correctly');
                 same(s['$token'], this.token, '$token pulled out correctly');
                 ok(contains_obj(s['$set'], {
                     'a': 3
@@ -2399,7 +2426,7 @@
                 same(i, {
                     "$distinct_id": this.id,
                     "$user_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$token": this.token,
                     "$add": _to_inc2
                 }, "Basic inc works for additional libs");
@@ -2432,7 +2459,7 @@
                 same(s, {
                     "$distinct_id": this.id,
                     "$user_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$token": this.token,
                     "$add": {
                         "a": 3
@@ -2450,7 +2477,7 @@
                 same(i, {
                     "$distinct_id": this.id,
                     "$user_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$token": this.token,
                     "$add": {
                         "a": 1
@@ -2492,7 +2519,7 @@
                 i = mixpanel.test.people.append(_append1);
                 same(i, {
                     "$distinct_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$user_id": this.id,
                     "$token": this.token,
                     "$append": _append1
@@ -2525,7 +2552,7 @@
                 });
                 same(s, {
                     "$distinct_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$user_id": this.id,
                     "$token": this.token,
                     "$append": {
@@ -2547,7 +2574,7 @@
                 i = mixpanel.test.people.append('key', 'val');
                 same(i, {
                     "$distinct_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$user_id": this.id,
                     "$token": this.token,
                     "$append": expected
@@ -2580,7 +2607,7 @@
                 });
                 same(s, {
                     "$distinct_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$user_id": this.id,
                     "$token": this.token,
                     "$remove": {
@@ -2668,7 +2695,7 @@
                 i = mixpanel.test.people.union(_union2);
                 same(i, {
                     "$distinct_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$user_id": this.id,
                     "$token": this.token,
                     "$union": _union2
@@ -2763,7 +2790,7 @@
                 });
                 same(s, {
                     "$distinct_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$user_id": this.id,
                     "$token": this.token,
                     "$union": {
@@ -2929,7 +2956,7 @@
                     same(data, {
                         "$token": _this.token,
                         "$distinct_id": _this.id,
-                        "$device_id": old_distinct_id,
+                        "$device_id": stripDevicePrefix(old_distinct_id),
                         "$user_id": _this.id,
                         "$add": {
                             "a": 1,
@@ -3066,7 +3093,7 @@
                 same(d, {
                     "$token": this.token,
                     "$distinct_id": this.id,
-                    "$device_id": old_distinct_id,
+                    "$device_id": stripDevicePrefix(old_distinct_id),
                     "$user_id": this.id,
                     "$delete": this.id
                 }, "Cannot delete user without valid distinct id");
@@ -3431,14 +3458,17 @@
 
             mpmodule("mixpanel.reset");
 
-            test('reset generates new distinct_id', 2, function() {
+            test('reset generates new distinct_id', 3, function() {
                 var id = '1234';
 
                 mixpanel.test.identify(id);
                 mixpanel.test.reset();
 
                 notEqual(id, mixpanel.test.get_distinct_id());
-                same(mixpanel.test.get_distinct_id(), mixpanel.test.get_property('$device_id'));
+                var distinct_id = mixpanel.test.get_distinct_id();
+                var device_id = mixpanel.test.get_property('$device_id');
+                same(distinct_id, '$device:' + device_id);
+                ok(distinct_id.startsWith("$device:"));
             });
 
             test('reset clears super properties', 1, function() {
