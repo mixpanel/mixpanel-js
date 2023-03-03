@@ -51,14 +51,13 @@ var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
 
-
 var IDENTITY_FUNC = function(x) {return x;};
 var NOOP_FUNC = function() {};
 
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
 /** @const */ var PAYLOAD_TYPE_JSON     = 'json';
-/** @const */ var DEVICE_ID_PREFIX = '$device:';
+/** @const */ var DEVICE_ID_PREFIX      = '$device:';
 
 
 /*
@@ -306,7 +305,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         // or the device id if something was already stored
         // in the persitence
         this.register_once({
-            'distinct_id': `${DEVICE_ID_PREFIX}${uuid}`,
+            'distinct_id': DEVICE_ID_PREFIX + uuid,
             '$device_id': uuid
         }, '');
     }
@@ -1235,8 +1234,8 @@ MixpanelLib.prototype.identify = function(
     if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
         // we allow the following condition if previous distinct_id is same as new_distinct_id
         // so that you can force flush people updates for anonymous profiles.
-        if (new_distinct_id.startsWith(DEVICE_ID_PREFIX)) {
-            this.report_error('new_distinct_id i.e identified id cannot have $device: prefix');
+        if (new_distinct_id.indexOf(DEVICE_ID_PREFIX) === 0) {
+            this.report_error('distinct_id cannot have $device: prefix');
             return -1;
         }
         this.register({'$user_id': new_distinct_id});
@@ -1281,7 +1280,7 @@ MixpanelLib.prototype.reset = function() {
     this._flags.identify_called = false;
     var uuid = _.UUID();
     this.register_once({
-        'distinct_id': `${DEVICE_ID_PREFIX}${uuid}`,
+        'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
 };

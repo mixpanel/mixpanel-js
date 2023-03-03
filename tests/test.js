@@ -110,10 +110,10 @@
         }
     }
 
+    var DEVICE_ID_PREFIX = '$device:';
     function stripDevicePrefix(id) {
-        var prefix = '$device:'; 
-        if (id.startsWith(prefix)) {
-            return id.slice(prefix.length)
+        if (id.indexOf(DEVICE_ID_PREFIX) === 0) {
+            id = id.slice(DEVICE_ID_PREFIX.length);
         }
         return id;
     };
@@ -1151,7 +1151,7 @@
             };
 
 
-            test("constructor", window.COOKIE_FAILURE_TEST ? 4 : 5, function() {
+            test("constructor", window.COOKIE_FAILURE_TEST ? 3 : 4, function() {
                 var token = 'ASDF',
                     sp = {
                         'test': 'all'
@@ -1163,7 +1163,6 @@
                 var props = mixpanel.mpl.persistence.properties();
                 var distinct_id = props['distinct_id'];
                 var device_id = props['$device_id'];
-                ok(distinct_id.startsWith('$device:'));
                 same(distinct_id, '$device:' + device_id);
                 
 
@@ -1330,7 +1329,7 @@
                 same(mixpanel.test.get_property('$device_id'), stripDevicePrefix(distinct_id));
             });
 
-            test("identify shouldn't set user_id if its called with same distinct_id", 3, function() {
+            test("identify shouldn't set user_id if called with same distinct_id", 3, function() {
                 var distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(distinct_id);
                 same(mixpanel.test.get_distinct_id(), distinct_id);
@@ -1340,8 +1339,7 @@
 
             test("identify should return an error when new_distinct_id starts with device prefix", 3, function() {
                 var distinct_id = mixpanel.test.get_distinct_id();
-                ev = mixpanel.test.identify('$device:' + this.id);
-                same(ev, -1);
+                same(mixpanel.test.identify('$device:' + this.id), -1);
                 isUndefined(mixpanel.test.get_property('$user_id'));
                 same(mixpanel.test.get_property('$device_id'), stripDevicePrefix(distinct_id));
             });
@@ -3458,7 +3456,7 @@
 
             mpmodule("mixpanel.reset");
 
-            test('reset generates new distinct_id', 3, function() {
+            test('reset generates new distinct_id', 2, function() {
                 var id = '1234';
 
                 mixpanel.test.identify(id);
@@ -3468,7 +3466,6 @@
                 var distinct_id = mixpanel.test.get_distinct_id();
                 var device_id = mixpanel.test.get_property('$device_id');
                 same(distinct_id, '$device:' + device_id);
-                ok(distinct_id.startsWith("$device:"));
             });
 
             test('reset clears super properties', 1, function() {
