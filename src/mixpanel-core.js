@@ -1234,7 +1234,7 @@ MixpanelLib.prototype.identify = function(
     if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
         // we allow the following condition if previous distinct_id is same as new_distinct_id
         // so that you can force flush people updates for anonymous profiles.
-        if (new_distinct_id.indexOf(DEVICE_ID_PREFIX) === 0) {
+        if (typeof new_distinct_id === 'string' && new_distinct_id.indexOf(DEVICE_ID_PREFIX) === 0) {
             this.report_error('distinct_id cannot have $device: prefix');
             return -1;
         }

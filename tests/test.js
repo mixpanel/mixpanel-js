@@ -1329,6 +1329,14 @@
                 same(mixpanel.test.get_property('$device_id'), stripDevicePrefix(distinct_id));
             });
 
+            test("identify supports numeric values", 3, function() {
+                var distinct_id = mixpanel.test.get_distinct_id();
+                mixpanel.test.identify(42);
+                same(mixpanel.test.get_distinct_id(), 42);
+                same(mixpanel.test.get_property('$user_id'), 42);
+                same(mixpanel.test.get_property('$device_id'), stripDevicePrefix(distinct_id));
+            });
+
             test("identify shouldn't set user_id if called with same distinct_id", 3, function() {
                 var distinct_id = mixpanel.test.get_distinct_id();
                 mixpanel.test.identify(distinct_id);
