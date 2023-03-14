@@ -57,6 +57,7 @@ var NOOP_FUNC = function() {};
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
 /** @const */ var PAYLOAD_TYPE_JSON     = 'json';
+/** @const */ var DEVICE_ID_PREFIX      = '$device:';
 
 
 /*
@@ -304,7 +305,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         // or the device id if something was already stored
         // in the persitence
         this.register_once({
-            'distinct_id': uuid,
+            'distinct_id': DEVICE_ID_PREFIX + uuid,
             '$device_id': uuid
         }, '');
     }
@@ -1230,7 +1231,15 @@ MixpanelLib.prototype.identify = function(
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
 
     var previous_distinct_id = this.get_distinct_id();
-    this.register({'$user_id': new_distinct_id});
+    if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
+        // we allow the following condition if previous distinct_id is same as new_distinct_id
+        // so that you can force flush people updates for anonymous profiles.
+        if (typeof new_distinct_id === 'string' && new_distinct_id.indexOf(DEVICE_ID_PREFIX) === 0) {
+            this.report_error('distinct_id cannot have $device: prefix');
+            return -1;
+        }
+        this.register({'$user_id': new_distinct_id});
+    }
 
     if (!this.get_property('$device_id')) {
         // The persisted distinct id might not actually be a device id at all
@@ -1271,7 +1280,7 @@ MixpanelLib.prototype.reset = function() {
     this._flags.identify_called = false;
     var uuid = _.UUID();
     this.register_once({
-        'distinct_id': uuid,
+        'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
 };
