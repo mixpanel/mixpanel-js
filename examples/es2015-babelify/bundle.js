@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.45.0'
+    LIB_VERSION: '2.46.0-rc1'
 };
 
 exports['default'] = Config;
@@ -730,6 +730,7 @@ var NOOP_FUNC = function NOOP_FUNC() {};
 /** @const */var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */var PAYLOAD_TYPE_BASE64 = 'base64';
 /** @const */var PAYLOAD_TYPE_JSON = 'json';
+/** @const */var DEVICE_ID_PREFIX = '$device:';
 
 /*
  * Dynamic... constants? Is that an oxymoron?
@@ -975,7 +976,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
         // or the device id if something was already stored
         // in the persitence
         this.register_once({
-            'distinct_id': uuid,
+            'distinct_id': DEVICE_ID_PREFIX + uuid,
             '$device_id': uuid
         }, '');
     }
@@ -1888,7 +1889,15 @@ MixpanelLib.prototype.identify = function (new_distinct_id, _set_callback, _add_
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
 
     var previous_distinct_id = this.get_distinct_id();
-    this.register({ '$user_id': new_distinct_id });
+    if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
+        // we allow the following condition if previous distinct_id is same as new_distinct_id
+        // so that you can force flush people updates for anonymous profiles.
+        if (typeof new_distinct_id === 'string' && new_distinct_id.indexOf(DEVICE_ID_PREFIX) === 0) {
+            this.report_error('distinct_id cannot have $device: prefix');
+            return -1;
+        }
+        this.register({ '$user_id': new_distinct_id });
+    }
 
     if (!this.get_property('$device_id')) {
         // The persisted distinct id might not actually be a device id at all
@@ -1929,7 +1938,7 @@ MixpanelLib.prototype.reset = function () {
     this._flags.identify_called = false;
     var uuid = _utils._.UUID();
     this.register_once({
-        'distinct_id': uuid,
+        'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
 };
@@ -3818,6 +3827,12 @@ Object.defineProperty(exports, '__esModule', {
     value: true
 });
 
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _config = require('./config');
+
+var _config2 = _interopRequireDefault(_config);
+
 var _requestQueue = require('./request-queue');
 
 var _utils = require('./utils');
@@ -3853,6 +3868,9 @@ var RequestBatcher = function RequestBatcher(storageKey, options) {
 
     this.stopped = !this.libConfig['batch_autostart'];
     this.consecutiveRemovalFailures = 0;
+
+    // extra client-side dedupe
+    this.itemIdsSentSuccessfully = {};
 };
 
 /**
@@ -3946,7 +3964,30 @@ RequestBatcher.prototype.flush = function (options) {
                 payload = this.beforeSendHook(payload);
             }
             if (payload) {
-                dataForRequest.push(payload);
+                // mp_sent_by_lib_version prop captures which lib version actually
+                // sends each event (regardless of which version originally queued
+                // it for sending)
+                if (payload['event'] && payload['properties']) {
+                    payload['properties'] = _utils._.extend({}, payload['properties'], { 'mp_sent_by_lib_version': _config2['default'].LIB_VERSION });
+                }
+                var addPayload = true;
+                var itemId = item['id'];
+                if (itemId) {
+                    if ((this.itemIdsSentSuccessfully[itemId] || 0) > 5) {
+                        this.reportError('[dupe] item ID sent too many times, not sending', {
+                            item: item,
+                            batchSize: batch.length,
+                            timesSent: this.itemIdsSentSuccessfully[itemId]
+                        });
+                        addPayload = false;
+                    }
+                } else {
+                    this.reportError('[dupe] found item with no ID', { item: item });
+                }
+
+                if (addPayload) {
+                    dataForRequest.push(payload);
+                }
             }
             transformedItems[item['id']] = payload;
         }, this);
@@ -4020,6 +4061,24 @@ RequestBatcher.prototype.flush = function (options) {
                                 }
                             }
                     }, this));
+
+                    // client-side dedupe
+                    _utils._.each(batch, _utils._.bind(function (item) {
+                        var itemId = item['id'];
+                        if (itemId) {
+                            this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
+                            this.itemIdsSentSuccessfully[itemId]++;
+                            if (this.itemIdsSentSuccessfully[itemId] > 5) {
+                                this.reportError('[dupe] item ID sent too many times', {
+                                    item: item,
+                                    batchSize: batch.length,
+                                    timesSent: this.itemIdsSentSuccessfully[itemId]
+                                });
+                            }
+                        } else {
+                            this.reportError('[dupe] found item with no ID while removing', { item: item });
+                        }
+                    }, this));
                 }
             } catch (err) {
                 this.reportError('Error handling API response', err);
@@ -4062,7 +4121,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./request-queue":12,"./utils":14}],12:[function(require,module,exports){
+},{"./config":3,"./request-queue":12,"./utils":14}],12:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
