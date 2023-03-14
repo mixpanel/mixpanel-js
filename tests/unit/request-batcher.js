@@ -655,7 +655,10 @@ describe(`RequestBatcher`, function() {
       clock.tick(80000);
       expect(batcher.sendRequest).to.have.been.calledOnce;
       expect(batcher.sendRequest.args[0][0]).to.deep.equal([
-        {'event': `orphaned event 1`, 'properties': {'foo': 'bar'}},
+        {'event': `orphaned event 1`, 'properties': {
+          'foo': 'bar',
+          'mp_sent_by_lib_version': '2.46.0-rc1',
+        }},
       ]);
 
       expect(getLocalStorageItems()).to.have.lengthOf(2);
@@ -729,13 +732,13 @@ describe(`RequestBatcher`, function() {
     it(`drops malformed individual items in the localStorage queue`, function() {
       localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
         {id: `fakeID1`, flushAfter: Date.now() - 10000, payload: {
-            'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
+          'event': `orphaned event 1`, 'properties': {'foo': 'bar'},
         }},
 
         `HOW DID THIS RANDOM STRING GET IN MY QUEUE??`,
 
         {id: `fakeID2`, flushAfter: Date.now() - 10000, payload: {
-            'event': `orphaned event 2`,
+          'event': `orphaned event 2`,
         }}
       ]));
       expect(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY))).to.have.lengthOf(3);
@@ -743,7 +746,10 @@ describe(`RequestBatcher`, function() {
       batcher.start();
       expect(batcher.sendRequest).to.have.been.calledOnce;
       expect(batcher.sendRequest.args[0][0]).to.deep.equal([
-        {'event': `orphaned event 1`, 'properties': {'foo': 'bar'}},
+        {'event': `orphaned event 1`, 'properties': {
+          'foo': 'bar',
+          'mp_sent_by_lib_version': '2.46.0-rc1',
+        }},
         {'event': `orphaned event 2`},
       ]);
 

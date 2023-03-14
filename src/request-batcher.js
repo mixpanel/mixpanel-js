@@ -1,3 +1,4 @@
+import Config from './config';
 import { RequestQueue } from './request-queue';
 import { console_with_prefix, _ } from './utils'; // eslint-disable-line camelcase
 
@@ -30,6 +31,9 @@ var RequestBatcher = function(storageKey, options) {
 
     this.stopped = !this.libConfig['batch_autostart'];
     this.consecutiveRemovalFailures = 0;
+
+    // extra client-side dedupe
+    this.itemIdsSentSuccessfully = {};
 };
 
 /**
@@ -122,7 +126,34 @@ RequestBatcher.prototype.flush = function(options) {
                 payload = this.beforeSendHook(payload);
             }
             if (payload) {
-                dataForRequest.push(payload);
+                // mp_sent_by_lib_version prop captures which lib version actually
+                // sends each event (regardless of which version originally queued
+                // it for sending)
+                if (payload['event'] && payload['properties']) {
+                    payload['properties'] = _.extend(
+                        {},
+                        payload['properties'],
+                        {'mp_sent_by_lib_version': Config.LIB_VERSION}
+                    );
+                }
+                var addPayload = true;
+                var itemId = item['id'];
+                if (itemId) {
+                    if ((this.itemIdsSentSuccessfully[itemId] || 0) > 5) {
+                        this.reportError('[dupe] item ID sent too many times, not sending', {
+                            item: item,
+                            batchSize: batch.length,
+                            timesSent: this.itemIdsSentSuccessfully[itemId]
+                        });
+                        addPayload = false;
+                    }
+                } else {
+                    this.reportError('[dupe] found item with no ID', {item: item});
+                }
+
+                if (addPayload) {
+                    dataForRequest.push(payload);
+                }
             }
             transformedItems[item['id']] = payload;
         }, this);
@@ -205,6 +236,24 @@ RequestBatcher.prototype.flush = function(options) {
                             }
                         }, this)
                     );
+
+                    // client-side dedupe
+                    _.each(batch, _.bind(function(item) {
+                        var itemId = item['id'];
+                        if (itemId) {
+                            this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
+                            this.itemIdsSentSuccessfully[itemId]++;
+                            if (this.itemIdsSentSuccessfully[itemId] > 5) {
+                                this.reportError('[dupe] item ID sent too many times', {
+                                    item: item,
+                                    batchSize: batch.length,
+                                    timesSent: this.itemIdsSentSuccessfully[itemId]
+                                });
+                            }
+                        } else {
+                            this.reportError('[dupe] found item with no ID while removing', {item: item});
+                        }
+                    }, this));
                 }
 
             } catch(err) {
