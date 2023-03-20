@@ -1,3 +1,7 @@
+**2.46.0** (20 Mar 2023)
+- Updates for new identity management system
+- More aggressive deduplication within batch sender
+
 **2.45.0** (17 Feb 2022)
 - Remove all code related to in-app messaging feature
 - Add `error_reporter` config option for user-configurable handling of errors

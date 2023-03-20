@@ -657,7 +657,7 @@ describe(`RequestBatcher`, function() {
       expect(batcher.sendRequest.args[0][0]).to.deep.equal([
         {'event': `orphaned event 1`, 'properties': {
           'foo': 'bar',
-          'mp_sent_by_lib_version': '2.46.0-rc1',
+          'mp_sent_by_lib_version': '2.46.0',
         }},
       ]);
 
@@ -748,7 +748,7 @@ describe(`RequestBatcher`, function() {
       expect(batcher.sendRequest.args[0][0]).to.deep.equal([
         {'event': `orphaned event 1`, 'properties': {
           'foo': 'bar',
-          'mp_sent_by_lib_version': '2.46.0-rc1',
+          'mp_sent_by_lib_version': '2.46.0',
         }},
         {'event': `orphaned event 2`},
       ]);

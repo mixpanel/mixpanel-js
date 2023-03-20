@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.46.0-rc1'
+    LIB_VERSION: '2.46.0'
 };
 
 exports['default'] = Config;
