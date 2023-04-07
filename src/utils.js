@@ -830,20 +830,11 @@ _.utf8Encode = function(string) {
 
 _.UUID = (function() {
 
-    // Time/ticks information
-    // 1*new Date() is a cross browser version of Date.now()
-    var T = function() {
-        var d = 1 * new Date(),
-            i = 0;
-
-        // this while loop figures how many browser ticks go by
-        // before 1*new Date() returns a new number, ie the amount
-        // of ticks that go by per millisecond
-        while (d == 1 * new Date()) {
-            i++;
-        }
-
-        return d.toString(16) + i.toString(16);
+    // Time-based entropy
+    var T = () => {
+        var time = Date.now();
+        var performance = window.performance.now();
+        return `${time.toString(16)}-${Math.floor(performance).toString(16)}`;
     };
 
     // Math.Random entropy
