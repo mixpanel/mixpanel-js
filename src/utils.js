@@ -831,10 +831,10 @@ _.utf8Encode = function(string) {
 _.UUID = (function() {
 
     // Time-based entropy
-    var T = () => {
+    var T = function() => {
         var time = Date.now();
         var performance = window.performance.now();
-        return `${time.toString(16)}-${Math.floor(performance).toString(16)}`;
+        return time.toString(16) + Math.floor(performance).toString(16);
     };
 
     // Math.Random entropy
