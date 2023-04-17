@@ -327,7 +327,7 @@ MixpanelLib.prototype._loaded = function() {
 MixpanelLib.prototype._set_default_superprops = function() {
     this['persistence'].update_search_keyword(document.referrer);
     if (this.get_config('store_google')) {
-        this['persistence'].update_campaign_params();
+        this.register(_.info.campaignParams(), {persistent: false});
     }
     if (this.get_config('save_referrer')) {
         this['persistence'].update_referrer_info(document.referrer);
