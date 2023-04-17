@@ -99,6 +99,7 @@ var DEFAULT_CONFIG = {
     'cookie_domain':                     '',
     'cookie_name':                       '',
     'loaded':                            NOOP_FUNC,
+    'track_marketing':                   false,
     'store_google':                      true,
     'save_referrer':                     true,
     'test':                              false,
@@ -804,6 +805,10 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
 
     this._set_default_superprops();
 
+    var marketing_properties = this.get_config('track_marketing')
+        ? _.info.marketingParams()
+        : {};
+
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
     // properties object by passing in a new object
@@ -814,6 +819,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         _.info.properties(),
         this['persistence'].properties(),
         this.unpersisted_superprops,
+        marketing_properties,
         properties
     );
 

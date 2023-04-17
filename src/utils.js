@@ -1425,6 +1425,24 @@ _.info = {
         return params;
     },
 
+    clickParams: function() {
+        var click_ids = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'],
+            id = '',
+            params = {};
+        _.each(click_ids, function(idkey) {
+            id = _.getQueryParam(document.URL, idkey);
+            if (id.length) {
+                params[idkey] = id;
+            }
+        });
+
+        return params;
+    },
+
+    marketingParams: function() {
+        return _.extend(_.info.campaignParams(), _.info.clickParams());
+    },
+
     searchEngine: function(referrer) {
         if (referrer.search('https?://(.*)google.([^/?]*)') === 0) {
             return 'google';
