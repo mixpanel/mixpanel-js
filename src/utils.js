@@ -1411,7 +1411,7 @@ _.dom_query = (function() {
 })();
 
 _.info = {
-    campaignParams: function() {
+    campaignParams: function(default_value) {
         var campaign_keywords = 'utm_source utm_medium utm_campaign utm_content utm_term'.split(' '),
             kw = '',
             params = {};
@@ -1419,6 +1419,8 @@ _.info = {
             kw = _.getQueryParam(document.URL, kwkey);
             if (kw.length) {
                 params[kwkey] = kw;
+            } else if (default_value !== undefined) {
+                params[kwkey] = default_value;
             }
         });
 
