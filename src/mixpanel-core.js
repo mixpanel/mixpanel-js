@@ -1000,14 +1000,14 @@ MixpanelLib.prototype.track_mp_page_view = addOptOutCheckMixpanelLib(function(ev
     properties = properties || {};
 
     var default_page_properties = _.extend(
-        _.info.campaignParams(),
+        _.info.campaignParams()
         // TODO: also add _.info.clickParams(),
     );
 
     event_properties = _.extend(
         {},
         default_page_properties,
-        properties,
+        properties
     );
     this.track(event_name, event_properties);
 });
@@ -1879,6 +1879,7 @@ MixpanelLib.prototype['track']                              = MixpanelLib.protot
 MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
 MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
 MixpanelLib.prototype['track_pageview']                     = MixpanelLib.prototype.track_pageview;
+MixpanelLib.prototype['track_mp_page_view']                 = MixpanelLib.prototype.track_mp_page_view;
 MixpanelLib.prototype['register']                           = MixpanelLib.prototype.register;
 MixpanelLib.prototype['register_once']                      = MixpanelLib.prototype.register_once;
 MixpanelLib.prototype['unregister']                         = MixpanelLib.prototype.unregister;
