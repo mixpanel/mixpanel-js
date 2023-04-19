@@ -101,6 +101,7 @@ var DEFAULT_CONFIG = {
     'loaded':                            NOOP_FUNC,
     'store_google':                      true,
     'save_referrer':                     true,
+    'page_views':                        false,
     'test':                              false,
     'verbose':                           false,
     'img':                               false,
@@ -308,6 +309,10 @@ MixpanelLib.prototype._init = function(token, config, name) {
             'distinct_id': DEVICE_ID_PREFIX + uuid,
             '$device_id': uuid
         }, '');
+    }
+
+    if (this.get_config('page_views')) {
+        this.track_mp_page_view();
     }
 };
 
@@ -983,6 +988,29 @@ MixpanelLib.prototype.track_pageview = function(page) {
     }
     this.track('mp_page_view', _.info.pageviewInfo(page));
 };
+
+/**
+ * Track the new Mixpanel page view event.
+ *
+ * @param {String} [event_name] Optional event name for page view event.
+ * @param {String} [properties] Optional properties to add to the page view event.
+ */
+MixpanelLib.prototype.track_mp_page_view = addOptOutCheckMixpanelLib(function(event_name, properties) {
+    event_name = event_name || '$mp_web_page_view';
+    properties = properties || {};
+
+    var default_page_properties = _.extend(
+        _.info.campaignParams(),
+        // TODO: also add _.info.clickParams(),
+    );
+
+    event_properties = _.extend(
+        {},
+        default_page_properties,
+        properties,
+    );
+    this.track(event_name, event_properties);
+});
 
 /**
  * Track clicks on a set of document elements. Selector must be a
