@@ -1000,6 +1000,7 @@ MixpanelLib.prototype.track_mp_page_view = addOptOutCheckMixpanelLib(function(ev
     properties = properties || {};
 
     var default_page_properties = _.extend(
+        _.info.mpPageViewProperties(),
         _.info.campaignParams()
         // TODO: also add _.info.clickParams(),
     );

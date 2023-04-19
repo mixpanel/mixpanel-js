@@ -1628,6 +1628,16 @@ _.info = {
             'mp_browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
             'mp_platform': _.info.os()
         });
+    },
+
+    mpPageViewProperties: function() {
+        return _.strip_empty_properties({
+            'current_page_title': document.title,
+            'current_domain': win.location.hostname,
+            'current_url_path': win.location.pathname,
+            'current_url_protocol': win.location.protocol,
+            'current_url_search': win.location.search
+        });
     }
 };
 
