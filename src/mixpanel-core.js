@@ -1003,10 +1003,26 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
 };
 
 /**
- * Track $mp_web_page_view event.
+ * Track a default Mixpanel page view event, which includes extra default event properties to
+ * improve page view data. The `config.track_pageview` option for <a href="#mixpanelinit">mixpanel.init()</a>
+ * may be turned on for tracking page loads automatically.
  *
- * @param {String} [event_name] Optional event name for the page view event.
- * @param {String} [properties] Optional properties to add to the page view event.
+ * ### Usage
+ *
+ *     // track a default $mp_web_page_view event
+ *     mixpanel.track_pageview();
+ *
+ *     // track a page view event with a custom event name
+ *     mixpanel.track_pageview('Viewed Checkout');
+ *
+ *     // track a page view event with a custom event name and additional event properties
+ *     mixpanel.track_pageview('Viewed Pricing', {'ab_test_variant': 'card-layout-b'});
+ *
+ * @param {String} [event_name] The name of the page view event. Useful to differentiate page views
+ * by event type. Default: '$mp_web_page_view' for all page views.
+ * @param {String} [properties] A set of additional properties to send with the page view event.
+ * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
+ * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(event_name, properties) {
     event_name = event_name || '$mp_web_page_view';
@@ -1023,7 +1039,8 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(event_
         default_page_properties,
         properties
     );
-    this.track(event_name, event_properties);
+
+    return this.track(event_name, event_properties);
 });
 
 /**
