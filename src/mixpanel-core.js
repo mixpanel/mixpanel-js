@@ -183,7 +183,7 @@ var create_mplib = function(token, config, name) {
             }
         });
         if (has_utm) {
-            this['people'].set_once(initial_utm_params);
+            instance['people'].set_once(initial_utm_params);
         }
     }
 
