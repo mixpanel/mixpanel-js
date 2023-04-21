@@ -168,6 +168,25 @@ var create_mplib = function(token, config, name) {
     instance['people'] = new MixpanelPeople();
     instance['people']._init(instance);
 
+    if (!instance.get_config('skip_first_touch_marketing')) {
+        // We need null UTM params in the object because
+        // UTM parameters act as a tuple. If any UTM param
+        // is present, then we set all UTM params including
+        // empty ones together
+        var utm_params = _.info.campaignParams(null);
+        var initial_utm_params = {};
+        var has_utm = false;
+        _.each(utm_params, function(utm_value, utm_key) {
+            initial_utm_params['initial_' + utm_key] = utm_value;
+            if (utm_value) {
+                has_utm = true;
+            }
+        });
+        if (has_utm) {
+            this['people'].set_once(initial_utm_params);
+        }
+    }
+
     // if any instance on the page has debug = true, we set the
     // global debug to be true
     Config.DEBUG = Config.DEBUG || instance.get_config('debug');
@@ -315,25 +334,6 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     if (this.get_config('track_pageview')) {
         this.track_pageview();
-    }
-
-    if (!this.get_config('skip_first_touch_marketing')) {
-        // We need null UTM params in the object because
-        // UTM parameters act as a tuple. If any UTM param
-        // is present, then we set all UTM params including
-        // empty ones together
-        var utm_params = _.info.campaignParams(null);
-        var initial_utm_params = {};
-        var has_utm = false;
-        _.each(utm_params, function(utm_value, utm_key) {
-            initial_utm_params['initial_' + utm_key] = utm_value;
-            if (utm_value) {
-                has_utm = true;
-            }
-        });
-        if (has_utm) {
-            this['people'].set_once(initial_utm_params);
-        }
     }
 };
 
