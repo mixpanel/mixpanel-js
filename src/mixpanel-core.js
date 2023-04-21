@@ -1015,7 +1015,7 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(event_
     var default_page_properties = _.extend(
         _.info.mpPageViewProperties(),
         _.info.campaignParams(),
-        _.info.clickParams(),
+        _.info.clickParams()
     );
 
     var event_properties = _.extend(
