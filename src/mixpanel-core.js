@@ -842,9 +842,9 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     properties = _.extend(
         {},
         _.info.properties(),
+        marketing_properties,
         this['persistence'].properties(),
         this.unpersisted_superprops,
-        marketing_properties,
         properties
     );
 
