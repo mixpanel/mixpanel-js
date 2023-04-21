@@ -102,7 +102,7 @@ var DEFAULT_CONFIG = {
     'track_marketing':                   false,
     'store_google':                      true,
     'save_referrer':                     true,
-    'page_views':                        false,
+    'track_pageview':                    false,
     'skip_first_touch_marketing':        false,
     'test':                              false,
     'verbose':                           false,
@@ -313,8 +313,8 @@ MixpanelLib.prototype._init = function(token, config, name) {
         }, '');
     }
 
-    if (this.get_config('page_views')) {
-        this.track_mp_page_view();
+    if (this.get_config('track_pageview')) {
+        this.track_pageview();
     }
 
     if (!this.get_config('skip_first_touch_marketing')) {
@@ -1003,32 +1003,19 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
 };
 
 /**
- * Track mp_page_view event. This is now ignored by the server.
+ * Track $mp_web_page_view event.
  *
- * @param {String} [page] The url of the page to record. If you don't include this, it defaults to the current url.
- * @deprecated
- */
-MixpanelLib.prototype.track_pageview = function(page) {
-    if (_.isUndefined(page)) {
-        page = document.location.href;
-    }
-    this.track('mp_page_view', _.info.pageviewInfo(page));
-};
-
-/**
- * Track the new Mixpanel page view event.
- *
- * @param {String} [event_name] Optional event name for page view event.
+ * @param {String} [event_name] Optional event name for the page view event.
  * @param {String} [properties] Optional properties to add to the page view event.
  */
-MixpanelLib.prototype.track_mp_page_view = addOptOutCheckMixpanelLib(function(event_name, properties) {
+MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(event_name, properties) {
     event_name = event_name || '$mp_web_page_view';
     properties = properties || {};
 
     var default_page_properties = _.extend(
         _.info.mpPageViewProperties(),
-        _.info.campaignParams()
-        // TODO: also add _.info.clickParams(),
+        _.info.campaignParams(),
+        _.info.clickParams(),
     );
 
     var event_properties = _.extend(
@@ -1906,7 +1893,6 @@ MixpanelLib.prototype['track']                              = MixpanelLib.protot
 MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
 MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
 MixpanelLib.prototype['track_pageview']                     = MixpanelLib.prototype.track_pageview;
-MixpanelLib.prototype['track_mp_page_view']                 = MixpanelLib.prototype.track_mp_page_view;
 MixpanelLib.prototype['register']                           = MixpanelLib.prototype.register;
 MixpanelLib.prototype['register_once']                      = MixpanelLib.prototype.register_once;
 MixpanelLib.prototype['unregister']                         = MixpanelLib.prototype.unregister;

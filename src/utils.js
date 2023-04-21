@@ -1641,15 +1641,6 @@ _.info = {
         });
     },
 
-    pageviewInfo: function(page) {
-        return _.strip_empty_properties({
-            'mp_page': page,
-            'mp_referrer': document.referrer,
-            'mp_browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
-            'mp_platform': _.info.os()
-        });
-    },
-
     mpPageViewProperties: function() {
         return _.strip_empty_properties({
             'current_page_title': document.title,
