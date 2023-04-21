@@ -219,6 +219,9 @@ var create_mplib = function(token, config, name) {
  *
  * @param {String} token   Your Mixpanel API token
  * @param {Object} [config]  A dictionary of config options to override. <a href="https://github.com/mixpanel/mixpanel-js/blob/v2.46.0/src/mixpanel-core.js#L88-L127">See a list of default config options</a>.
+ * @param {Boolean} [config.skip_first_touch_marketing=false] Disables enriching user profiles with first touch UTM parameters.
+ * @param {Boolean} [config.track_marketing=true] Adds any UTM parameters and click IDs present on the page to any events fired.
+ * @param {Boolean} [config.track_pageviews=false] Enables automatic page view tracking using default page view events. <a href="#mixpaneltrack_pageview">See track_pageview()</a>.
  * @param {String} [name]    The name for the new mixpanel instance that you want created
  */
 MixpanelLib.prototype.init = function (token, config, name) {
