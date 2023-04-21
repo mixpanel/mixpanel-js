@@ -99,7 +99,7 @@ var DEFAULT_CONFIG = {
     'cookie_domain':                     '',
     'cookie_name':                       '',
     'loaded':                            NOOP_FUNC,
-    'track_marketing':                   false,
+    'track_marketing':                   true,
     'store_google':                      true,
     'save_referrer':                     true,
     'track_pageview':                    false,
