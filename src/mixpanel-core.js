@@ -1549,7 +1549,7 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *
  *       // enables automatic page view tracking using default page view events through
  *       // the track_pageview() method
- *       track_pageviews: false
+ *       track_pageview: false
  *
  *       // if you set upgrade to be true, the library will check for
  *       // a cookie from our old js library and import super
