@@ -1410,10 +1410,12 @@ _.dom_query = (function() {
     };
 })();
 
+var campaign_keywords = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+var click_ids = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'];
+
 _.info = {
     campaignParams: function(default_value) {
-        var campaign_keywords = 'utm_source utm_medium utm_campaign utm_content utm_term'.split(' '),
-            kw = '',
+        var kw = '',
             params = {};
         _.each(campaign_keywords, function(kwkey) {
             kw = _.getQueryParam(document.URL, kwkey);
@@ -1428,8 +1430,7 @@ _.info = {
     },
 
     clickParams: function() {
-        var click_ids = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'],
-            id = '',
+        var id = '',
             params = {};
         _.each(click_ids, function(idkey) {
             id = _.getQueryParam(document.URL, idkey);
