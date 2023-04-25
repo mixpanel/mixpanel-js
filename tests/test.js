@@ -1164,7 +1164,7 @@
                 var distinct_id = props['distinct_id'];
                 var device_id = props['$device_id'];
                 same(distinct_id, '$device:' + device_id);
-                
+
 
 
                 // Recreate object - should pull super props from persistence
@@ -3714,6 +3714,33 @@
                     same(this.requests.length, 1, "track should have fired off a request");
                     var data = JSON.parse(atob(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1])));
                     same(data.event, 'test');
+                    same(data.properties.foo, 'bar');
+                });
+
+                test("track_pageview fires request", 7, function() {
+                    mixpanel.test.track_pageview({foo: 'bar'});
+
+                    same(this.requests.length, 1, "track_pageview should have fired off a request");
+
+                    var req = this.requests[0];
+                    same(req.method, 'POST');
+                    ok(
+                        req.requestHeaders['Content-Type'].indexOf('application/x-www-form-urlencoded') >= 0,
+                        'POST request should have set Content-Type header correctly'
+                    );
+
+                    same(
+                        req.url.indexOf('data='), -1,
+                        'POST request should not have transmitted data on URL'
+                    );
+
+                    same(
+                        req.requestBody.indexOf('data='), 0,
+                        'POST request should have transmitted data in request body'
+                    );
+
+                    var data = JSON.parse(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1]));
+                    same(data.event, '$mp_web_page_view');
                     same(data.properties.foo, 'bar');
                 });
             }
