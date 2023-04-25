@@ -1012,21 +1012,27 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
  *     // track a default $mp_web_page_view event
  *     mixpanel.track_pageview();
  *
- *     // track a page view event with a custom event name
- *     mixpanel.track_pageview('Viewed Checkout');
+ *     // track a page view event with additional event properties
+ *     mixpanel.track_pageview({'ab_test_variant': 'card-layout-b'});
  *
- *     // track a page view event with a custom event name and additional event properties
- *     mixpanel.track_pageview('Viewed Pricing', {'ab_test_variant': 'card-layout-b'});
+ *     // example approach to track page views on different page types as event properties
+ *     mixpanel.track_pageview({'page': 'pricing'});
+ *     mixpanel.track_pageview({'page': 'homepage'});
  *
- * @param {String} [event_name] The name of the page view event. Useful to differentiate page views
- * by event type. Default: '$mp_web_page_view' for all page views.
- * @param {String} [properties] A set of additional properties to send with the page view event.
+ *     // UNCOMMON: Tracking a page view event with a custom event_name option. NOT expected to be used for
+ *     // individual pages on the same site or product. Use cases for custom event_name may be page
+ *     // views on different products or internal applications that are considered completely separate
+ *     mixpanel.track_pageview({'page': 'customer-search'}, {'event_name': '[internal] Admin Page View'});
+ *
+ * @param {Object} [properties] A set of additional properties to send with the page view event.
+ * @param {Object} [options] Optional page view tracking options.
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
-MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(event_name, properties) {
-    event_name = event_name || '$mp_web_page_view';
+MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(properties, options) {
     properties = properties || {};
+    options = options || {};
+    var event_name = options.event_name || '$mp_web_page_view';
 
     var default_page_properties = _.extend(
         _.info.mpPageViewProperties(),
