@@ -219,13 +219,6 @@ MixpanelPersistence.prototype.unregister = function(prop) {
     }
 };
 
-MixpanelPersistence.prototype.update_campaign_params = function() {
-    if (!this.campaign_params_saved) {
-        this.register_once(_.info.campaignParams());
-        this.campaign_params_saved = true;
-    }
-};
-
 MixpanelPersistence.prototype.update_search_keyword = function(referrer) {
     this.register(_.info.searchInfo(referrer));
 };

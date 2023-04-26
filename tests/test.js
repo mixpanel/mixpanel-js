@@ -1164,7 +1164,7 @@
                 var distinct_id = props['distinct_id'];
                 var device_id = props['$device_id'];
                 same(distinct_id, '$device:' + device_id);
-                
+
 
 
                 // Recreate object - should pull super props from persistence
@@ -3714,6 +3714,38 @@
                     same(this.requests.length, 1, "track should have fired off a request");
                     var data = JSON.parse(atob(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1])));
                     same(data.event, 'test');
+                    same(data.properties.foo, 'bar');
+                });
+
+                test("track_pageview() fires default page view event", 5, function() {
+                    mixpanel.test.track_pageview();
+
+                    same(this.requests.length, 1, "track_pageview should have fired off a request");
+
+                    var data = JSON.parse(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1]));
+                    same(data.event, '$mp_web_page_view');
+                    isDefined(data.properties, 'current_domain', "default $mp_web_page_view event has current_domain property");
+                    isDefined(data.properties, 'current_url_path', "default $mp_web_page_view event has current_url_path property");
+                    isDefined(data.properties, 'current_url_protocol', "default $mp_web_page_view event has current_url_protocol property");
+                });
+
+                test("track_pageview(props) fires default page view event with properties", 3, function() {
+                    mixpanel.test.track_pageview({foo: 'bar'});
+
+                    same(this.requests.length, 1, "track_pageview should have fired off a request");
+
+                    var data = JSON.parse(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1]));
+                    same(data.event, '$mp_web_page_view');
+                    same(data.properties.foo, 'bar');
+                });
+
+                test("track_pageview(props, {event_name}) fires default page view event with event properties", 3, function() {
+                    mixpanel.test.track_pageview({foo: 'bar'}, {event_name: '[internal] admin page view'});
+
+                    same(this.requests.length, 1, "track_pageview should have fired off a request");
+
+                    var data = JSON.parse(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1]));
+                    same(data.event, '[internal] admin page view');
                     same(data.properties.foo, 'bar');
                 });
             }
