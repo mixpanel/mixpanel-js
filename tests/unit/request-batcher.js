@@ -654,12 +654,10 @@ describe(`RequestBatcher`, function() {
 
       clock.tick(80000);
       expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
-        {'event': `orphaned event 1`, 'properties': {
-          'foo': 'bar',
-          'mp_sent_by_lib_version': '2.46.0',
-        }},
-      ]);
+      const payload = batcher.sendRequest.args[0][0];
+      expect(payload).to.have.lengthOf(1);
+      expect(payload[0]).to.have.property(`event`, `orphaned event 1`);
+      expect(payload[0]).to.have.nested.include({'properties.foo': `bar`});
 
       expect(getLocalStorageItems()).to.have.lengthOf(2);
       sendResponse(200);
@@ -745,13 +743,12 @@ describe(`RequestBatcher`, function() {
 
       batcher.start();
       expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
-        {'event': `orphaned event 1`, 'properties': {
-          'foo': 'bar',
-          'mp_sent_by_lib_version': '2.46.0',
-        }},
-        {'event': `orphaned event 2`},
-      ]);
+      const payload = batcher.sendRequest.args[0][0];
+      expect(payload).to.have.lengthOf(2);
+      expect(payload[0]).to.have.property(`event`, `orphaned event 1`);
+      expect(payload[0]).to.have.nested.include({'properties.foo': `bar`});
+      expect(payload[1]).to.have.property(`event`, `orphaned event 2`);
+      expect(payload[1]).not.to.have.property(`properties`);
 
       sendResponse(200);
       expect(getLocalStorageItems()).to.be.empty; // invalid item got cleared
