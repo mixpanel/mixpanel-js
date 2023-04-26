@@ -832,9 +832,22 @@ _.UUID = (function() {
 
     // Time-based entropy
     var T = function() {
-        var time = Date.now();
-        var performance = window.performance.now();
-        return time.toString(16) + Math.floor(performance).toString(16);
+        var time = 1 * new Date(); // cross-browser version of Date.now()
+        var ticks;
+        if (win.performance && win.performance.now) {
+            ticks = win.performance.now();
+        } else {
+            // fall back to busy loop
+            ticks = 0;
+
+            // this while loop figures how many browser ticks go by
+            // before 1*new Date() returns a new number, ie the amount
+            // of ticks that go by per millisecond
+            while (time == 1 * new Date()) {
+                ticks++;
+            }
+        }
+        return time.toString(16) + Math.floor(ticks).toString(16);
     };
 
     // Math.Random entropy
