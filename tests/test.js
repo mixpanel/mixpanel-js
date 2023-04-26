@@ -3717,30 +3717,35 @@
                     same(data.properties.foo, 'bar');
                 });
 
-                test("track_pageview fires request", 7, function() {
+                test("track_pageview() fires default page view event", 5, function() {
+                    mixpanel.test.track_pageview();
+
+                    same(this.requests.length, 1, "track_pageview should have fired off a request");
+
+                    var data = JSON.parse(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1]));
+                    same(data.event, '$mp_web_page_view');
+                    isDefined(data.properties, 'current_domain', "default $mp_web_page_view event has current_domain property");
+                    isDefined(data.properties, 'current_url_path', "default $mp_web_page_view event has current_url_path property");
+                    isDefined(data.properties, 'current_url_protocol', "default $mp_web_page_view event has current_url_protocol property");
+                });
+
+                test("track_pageview(props) fires default page view event with properties", 3, function() {
                     mixpanel.test.track_pageview({foo: 'bar'});
 
                     same(this.requests.length, 1, "track_pageview should have fired off a request");
 
-                    var req = this.requests[0];
-                    same(req.method, 'POST');
-                    ok(
-                        req.requestHeaders['Content-Type'].indexOf('application/x-www-form-urlencoded') >= 0,
-                        'POST request should have set Content-Type header correctly'
-                    );
-
-                    same(
-                        req.url.indexOf('data='), -1,
-                        'POST request should not have transmitted data on URL'
-                    );
-
-                    same(
-                        req.requestBody.indexOf('data='), 0,
-                        'POST request should have transmitted data in request body'
-                    );
-
                     var data = JSON.parse(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1]));
                     same(data.event, '$mp_web_page_view');
+                    same(data.properties.foo, 'bar');
+                });
+
+                test("track_pageview(props, {event_name}) fires default page view event with event properties", 3, function() {
+                    mixpanel.test.track_pageview({foo: 'bar'}, {event_name: '[internal] admin page view'});
+
+                    same(this.requests.length, 1, "track_pageview should have fired off a request");
+
+                    var data = JSON.parse(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1]));
+                    same(data.event, '[internal] admin page view');
                     same(data.properties.foo, 'bar');
                 });
             }
