@@ -1410,14 +1410,14 @@ _.dom_query = (function() {
     };
 })();
 
-var campaign_keywords = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
-var click_ids = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'];
+var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'];
 
 _.info = {
     campaignParams: function(default_value) {
         var kw = '',
             params = {};
-        _.each(campaign_keywords, function(kwkey) {
+        _.each(CAMPAIGN_KEYWORDS, function(kwkey) {
             kw = _.getQueryParam(document.URL, kwkey);
             if (kw.length) {
                 params[kwkey] = kw;
@@ -1432,7 +1432,7 @@ _.info = {
     clickParams: function() {
         var id = '',
             params = {};
-        _.each(click_ids, function(idkey) {
+        _.each(CLICK_IDS, function(idkey) {
             id = _.getQueryParam(document.URL, idkey);
             if (id.length) {
                 params[idkey] = id;

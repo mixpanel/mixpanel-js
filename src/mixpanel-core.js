@@ -100,10 +100,10 @@ var DEFAULT_CONFIG = {
     'cookie_name':                       '',
     'loaded':                            NOOP_FUNC,
     'track_marketing':                   true,
-    'store_google':                      true,
-    'save_referrer':                     true,
     'track_pageview':                    false,
     'skip_first_touch_marketing':        false,
+    'store_google':                      true,
+    'save_referrer':                     true,
     'test':                              false,
     'verbose':                           false,
     'img':                               false,
@@ -1024,8 +1024,9 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
  *     // views on different products or internal applications that are considered completely separate
  *     mixpanel.track_pageview({'page': 'customer-search'}, {'event_name': '[internal] Admin Page View'});
  *
- * @param {Object} [properties] A set of additional properties to send with the page view event.
- * @param {Object} [options] Optional page view tracking options.
+ * @param {Object} [properties] An optional set of additional properties to send with the page view event
+ * @param {Object} [options] Page view tracking options
+ * @param {boolean} [options.event_name] - Alternate name for the tracking event
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
@@ -1551,7 +1552,7 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       track_links_timeout: 300
  *
  *       // adds any UTM parameters and click IDs present on the page to any events fired
- *       track_marketing: false
+ *       track_marketing: true
  *
  *       // enables automatic page view tracking using default page view events through
  *       // the track_pageview() method
