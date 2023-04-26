@@ -256,7 +256,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     // default to JSON payload for standard mixpanel.com API hosts
     if (!('api_payload_format' in config)) {
         var api_host = config['api_host'] || DEFAULT_CONFIG['api_host'];
-        if (api_host.match(/\.mixpanel\.com$/)) {
+        if (api_host.match(/\.mixpanel\.com/)) {
             variable_features['api_payload_format'] = PAYLOAD_TYPE_JSON;
         }
     }
