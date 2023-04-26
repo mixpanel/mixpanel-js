@@ -42,8 +42,10 @@ describe(`extract_domain`, function() {
 });
 
 describe(`_.info helper methods`, function() {
-  afterEach(function() {
-    // reset util module window and document state after each test run
+  beforeEach(resetTestingState);
+  afterEach(resetTestingState);
+  function resetTestingState() {
+    // reset util module window and document state before and after each test run
     var location = {
       hostname: ``
     };
@@ -52,7 +54,7 @@ describe(`_.info helper methods`, function() {
     document.location = location;
     document.referrer = ``;
     document.title = ``;
-  });
+  }
 
   describe(`_.info.campaignParams`, function() {
     it(`matches UTM source if present`, function() {
