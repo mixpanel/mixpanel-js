@@ -1031,9 +1031,11 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(properties, options) {
-    properties = properties || {};
+    if (typeof properties !== 'object') {
+        properties = {};
+    }
     options = options || {};
-    var event_name = options.event_name || '$mp_web_page_view';
+    var event_name = options['event_name'] || '$mp_web_page_view';
 
     var default_page_properties = _.extend(
         _.info.mpPageViewProperties(),

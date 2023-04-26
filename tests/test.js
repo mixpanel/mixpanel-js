@@ -3748,6 +3748,18 @@
                     same(data.event, '[internal] admin page view');
                     same(data.properties.foo, 'bar');
                 });
+
+                test("track_pageview() ignores legacy string param", 5, function() {
+                    mixpanel.test.track_pageview('foobar');
+
+                    same(this.requests.length, 1, "track_pageview should have fired off a request");
+
+                    var data = JSON.parse(decodeURIComponent(this.requests[0].requestBody.match(/data=([^&]+)/)[1]));
+                    same(data.event, '$mp_web_page_view');
+                    isDefined(data.properties, 'current_domain', "default $mp_web_page_view event has current_domain property");
+                    isDefined(data.properties, 'current_url_path', "default $mp_web_page_view event has current_url_path property");
+                    isDefined(data.properties, 'current_url_protocol', "default $mp_web_page_view event has current_url_protocol property");
+                });
             }
 
             if (USE_XHR && window.localStorage) {
