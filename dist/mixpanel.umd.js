@@ -5087,7 +5087,7 @@
      *
      * @param {Object} [properties] An optional set of additional properties to send with the page view event
      * @param {Object} [options] Page view tracking options
-     * @param {boolean} [options.event_name] - Alternate name for the tracking event
+     * @param {String} [options.event_name] - Alternate name for the tracking event
      * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
      * with the tracking payload sent to the API server is returned; otherwise false.
      */
