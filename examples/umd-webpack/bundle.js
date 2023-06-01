@@ -1687,6 +1687,10 @@
 	            return '';
 	        },
 
+	        currentUrl: function() {
+	            return window$1.location.href;
+	        },
+
 	        properties: function(extra_props) {
 	            if (typeof extra_props !== 'object') {
 	                extra_props = {};
@@ -1698,7 +1702,7 @@
 	                '$referring_domain': _.info.referringDomain(document$1.referrer),
 	                '$device': _.info.device(userAgent)
 	            }), {
-	                '$current_url': window$1.location.href,
+	                '$current_url': _.info.currentUrl(),
 	                '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
 	                '$screen_height': screen.height,
 	                '$screen_width': screen.width,
@@ -4459,8 +4463,9 @@
 	            }, '');
 	        }
 
-	        if (this.get_config('track_pageview')) {
-	            this.track_pageview();
+	        var track_pageview_option = this.get_config('track_pageview');
+	        if (track_pageview_option) {
+	            this._init_url_change_tracking(track_pageview_option);
 	        }
 	    };
 
@@ -4511,6 +4516,55 @@
 
 	        var dt = new DomClass().init(this);
 	        return dt.track.apply(dt, args);
+	    };
+
+	    MixpanelLib.prototype._init_url_change_tracking = function(track_pageview_option) {
+	        var previous_tracked_url = '';
+	        var tracked = this.track_pageview();
+	        if (tracked) {
+	            previous_tracked_url = _.info.currentUrl();
+	        }
+
+	        if (_.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
+	            window$1.addEventListener('popstate', function() {
+	                window$1.dispatchEvent(new Event('mp_locationchange'));
+	            });
+	            window$1.addEventListener('hashchange', function() {
+	                window$1.dispatchEvent(new Event('mp_locationchange'));
+	            });
+	            var nativePushState = window$1.history.pushState;
+	            if (typeof nativePushState === 'function') {
+	                window$1.history.pushState = function(state, unused, url) {
+	                    nativePushState.call(window$1.history, state, unused, url);
+	                    window$1.dispatchEvent(new Event('mp_locationchange'));
+	                };
+	            }
+	            var nativeReplaceState = window$1.history.replaceState;
+	            if (typeof nativeReplaceState === 'function') {
+	                window$1.history.replaceState = function(state, unused, url) {
+	                    nativeReplaceState.call(window$1.history, state, unused, url);
+	                    window$1.dispatchEvent(new Event('mp_locationchange'));
+	                };
+	            }
+	            window$1.addEventListener('mp_locationchange', function() {
+	                var current_url = _.info.currentUrl();
+	                var should_track = false;
+	                if (track_pageview_option === 'full-url') {
+	                    should_track = current_url !== previous_tracked_url;
+	                } else if (track_pageview_option === 'url-with-path-and-query-string') {
+	                    should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
+	                } else if (track_pageview_option === 'url-with-path') {
+	                    should_track = current_url.split('?')[0] !== previous_tracked_url.split('?')[0];
+	                }
+
+	                if (should_track) {
+	                    var tracked = this.track_pageview();
+	                    if (tracked) {
+	                        previous_tracked_url = current_url;
+	                    }
+	                }
+	            }.bind(this));
+	        }
 	    };
 
 	    /**
@@ -5132,10 +5186,9 @@
 
 	    /**
 	     * Track a default Mixpanel page view event, which includes extra default event properties to
-	     * improve page view data. The `config.track_pageview` option for <a href="#mixpanelinit">mixpanel.init()</a>
-	     * may be turned on for tracking page loads automatically.
+	     * improve page view data.
 	     *
-	     * ### Usage
+	     * ### Usage:
 	     *
 	     *     // track a default $mp_web_page_view event
 	     *     mixpanel.track_pageview();
@@ -5151,6 +5204,23 @@
 	     *     // individual pages on the same site or product. Use cases for custom event_name may be page
 	     *     // views on different products or internal applications that are considered completely separate
 	     *     mixpanel.track_pageview({'page': 'customer-search'}, {'event_name': '[internal] Admin Page View'});
+	     *
+	     * ### Notes:
+	     *
+	     * The `config.track_pageview` option for <a href="#mixpanelinit">mixpanel.init()</a>
+	     * may be turned on for tracking page loads automatically.
+	     *
+	     *     // track only page loads
+	     *     mixpanel.init(PROJECT_TOKEN, {track_pageview: true});
+	     *
+	     *     // track when the URL changes in any manner
+	     *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'full-url'});
+	     *
+	     *     // track when the URL changes, ignoring any changes in the hash part
+	     *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path-and-query-string'});
+	     *
+	     *     // track when the path changes, ignoring any query parameter or hash changes
+	     *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path'});
 	     *
 	     * @param {Object} [properties] An optional set of additional properties to send with the page view event
 	     * @param {Object} [options] Page view tracking options
@@ -5888,7 +5958,7 @@
 	    /**
 	     * Opt the user in to data tracking and cookies/localstorage for this Mixpanel instance
 	     *
-	     * ### Usage
+	     * ### Usage:
 	     *
 	     *     // opt user in
 	     *     mixpanel.opt_in_tracking();
@@ -5928,7 +5998,7 @@
 	    /**
 	     * Opt the user out of data tracking and cookies/localstorage for this Mixpanel instance
 	     *
-	     * ### Usage
+	     * ### Usage:
 	     *
 	     *     // opt user out
 	     *     mixpanel.opt_out_tracking();
@@ -5969,7 +6039,7 @@
 	    /**
 	     * Check whether the user has opted in to data tracking and cookies/localstorage for this Mixpanel instance
 	     *
-	     * ### Usage
+	     * ### Usage:
 	     *
 	     *     var has_opted_in = mixpanel.has_opted_in_tracking();
 	     *     // use has_opted_in value
@@ -5986,7 +6056,7 @@
 	    /**
 	     * Check whether the user has opted out of data tracking and cookies/localstorage for this Mixpanel instance
 	     *
-	     * ### Usage
+	     * ### Usage:
 	     *
 	     *     var has_opted_out = mixpanel.has_opted_out_tracking();
 	     *     // use has_opted_out value
@@ -6003,7 +6073,7 @@
 	    /**
 	     * Clear the user's opt in/out status of data tracking and cookies/localstorage for this Mixpanel instance
 	     *
-	     * ### Usage
+	     * ### Usage:
 	     *
 	     *     // clear user's opt-in/out status
 	     *     mixpanel.clear_opt_in_out_tracking();

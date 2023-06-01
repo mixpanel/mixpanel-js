@@ -1618,6 +1618,10 @@ _.info = {
         return '';
     },
 
+    currentUrl: function() {
+        return win.location.href;
+    },
+
     properties: function(extra_props) {
         if (typeof extra_props !== 'object') {
             extra_props = {};
@@ -1629,7 +1633,7 @@ _.info = {
             '$referring_domain': _.info.referringDomain(document.referrer),
             '$device': _.info.device(userAgent)
         }), {
-            '$current_url': win.location.href,
+            '$current_url': _.info.currentUrl(),
             '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
             '$screen_height': screen.height,
             '$screen_width': screen.width,
