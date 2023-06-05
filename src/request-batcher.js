@@ -242,8 +242,8 @@ RequestBatcher.prototype.flush = function(options) {
                         var itemId = item['id'];
                         if (itemId) {
                             this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
-                            this.itemIdsSentSuccessfully[itemId]++;
-                            if (this.itemIdsSentSuccessfully[itemId] > 5) {
+
+                            if (++this.itemIdsSentSuccessfully[itemId] > 5) {
                                 this.reportError('[dupe] item ID sent too many times', {
                                     item: item,
                                     batchSize: batch.length,
