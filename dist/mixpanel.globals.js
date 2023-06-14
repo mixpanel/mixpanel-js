@@ -4379,7 +4379,7 @@
         this.unpersisted_superprops = {};
         this._gdpr_init();
 
-        var uuid = _.UUID();
+        var uuid = config['device_id'] || _.UUID();
         if (!this.get_distinct_id()) {
             // There is no need to set the distinct id
             // or the device id if something was already stored

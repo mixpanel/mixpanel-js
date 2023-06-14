@@ -992,7 +992,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
     this.unpersisted_superprops = {};
     this._gdpr_init();
 
-    var uuid = _utils._.UUID();
+    var uuid = config['device_id'] || _utils._.UUID();
     if (!this.get_distinct_id()) {
         // There is no need to set the distinct id
         // or the device id if something was already stored
