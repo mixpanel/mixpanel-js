@@ -162,7 +162,7 @@ Object.defineProperty(exports, '__esModule', {
     value: true
 });
 var Config = {
-    DEBUG: true,
+    DEBUG: false,
     LIB_VERSION: '2.47.0'
 };
 
@@ -994,9 +994,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
     this._gdpr_init();
 
     var uuid = config['device_id'] || _utils._.UUID();
-    _utils.console.log('mp init uuid', uuid);
     if (!this.get_distinct_id()) {
-        _utils.console.log('mp init persist pls');
         // There is no need to set the distinct id
         // or the device id if something was already stored
         // in the persitence
@@ -1941,20 +1939,15 @@ MixpanelLib.prototype.register = function (props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function (props, default_value, days_or_options) {
-    _utils.console.log('mp init persist register_once 1', props);
     if (this.config['device_id']) {
         // Do not persist explicit device id
         delete props['$device_id'];
     }
-    _utils.console.log('mp init persist register_once 2', props);
 
     var options = options_for_register(days_or_options);
-    _utils.console.log('mp init persist register_once 3', options);
     if (options['persistent']) {
-        _utils.console.log('mp init persist register_once 4');
         this['persistence'].register_once(props, default_value, options['days']);
     } else {
-        _utils.console.log('mp init persist register_once 5');
         if (typeof default_value === 'undefined') {
             default_value = 'None';
         }
@@ -1964,7 +1957,6 @@ MixpanelLib.prototype.register_once = function (props, default_value, days_or_op
             }
         }, this);
     }
-    _utils.console.log('mp init persist register_once 6');
 };
 
 /**
@@ -3638,13 +3630,10 @@ MixpanelPersistence.prototype.upgrade = function (config) {
 };
 
 MixpanelPersistence.prototype.save = function () {
-    _utils.console.log('MixpanelPersistence.prototype.save 1');
     if (this.disabled) {
         return;
     }
-    _utils.console.log('MixpanelPersistence.prototype.save 2');
     this.storage.set(this.name, _utils._.JSONEncode(this['props']), this.expire_days, this.cross_subdomain, this.secure, this.cross_site, this.cookie_domain);
-    _utils.console.log('MixpanelPersistence.prototype.save 3');
 };
 
 MixpanelPersistence.prototype.remove = function () {
@@ -3666,9 +3655,7 @@ MixpanelPersistence.prototype.clear = function () {
 * @param {number=} days
 */
 MixpanelPersistence.prototype.register_once = function (props, default_value, days) {
-    _utils.console.log('MixpanelPersistence.prototype.register_once 1');
     if (_utils._.isObject(props)) {
-        _utils.console.log('MixpanelPersistence.prototype.register_once 2');
         if (typeof default_value === 'undefined') {
             default_value = 'None';
         }
@@ -3680,13 +3667,10 @@ MixpanelPersistence.prototype.register_once = function (props, default_value, da
             }
         }, this);
 
-        _utils.console.log('MixpanelPersistence.prototype.register_once 3');
         this.save();
-        _utils.console.log('MixpanelPersistence.prototype.register_once 4');
 
         return true;
     }
-    _utils.console.log('MixpanelPersistence.prototype.register_once 5');
     return false;
 };
 
@@ -5751,7 +5735,6 @@ _.cookie = {
     },
 
     set: function set(name, value, days, is_cross_subdomain, is_secure, is_cross_site, domain_override) {
-        console.log('_.cookie.set 1');
         var cdomain = '',
             expires = '',
             secure = '';
@@ -5778,9 +5761,7 @@ _.cookie = {
         }
 
         var new_cookie_val = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
-        console.log('_.cookie.set 2', value, new_cookie_val);
         document.cookie = new_cookie_val;
-        console.log('_.cookie.set 3');
         return new_cookie_val;
     },
 

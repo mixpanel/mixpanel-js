@@ -147,9 +147,7 @@ MixpanelPersistence.prototype.upgrade = function(config) {
 };
 
 MixpanelPersistence.prototype.save = function() {
-    console.log('MixpanelPersistence.prototype.save 1');
     if (this.disabled) { return; }
-    console.log('MixpanelPersistence.prototype.save 2');
     this.storage.set(
         this.name,
         _.JSONEncode(this['props']),
@@ -159,7 +157,6 @@ MixpanelPersistence.prototype.save = function() {
         this.cross_site,
         this.cookie_domain
     );
-    console.log('MixpanelPersistence.prototype.save 3');
 };
 
 MixpanelPersistence.prototype.remove = function() {
@@ -181,9 +178,7 @@ MixpanelPersistence.prototype.clear = function() {
 * @param {number=} days
 */
 MixpanelPersistence.prototype.register_once = function(props, default_value, days) {
-    console.log('MixpanelPersistence.prototype.register_once 1');
     if (_.isObject(props)) {
-        console.log('MixpanelPersistence.prototype.register_once 2');
         if (typeof(default_value) === 'undefined') { default_value = 'None'; }
         this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
 
@@ -193,13 +188,10 @@ MixpanelPersistence.prototype.register_once = function(props, default_value, day
             }
         }, this);
 
-        console.log('MixpanelPersistence.prototype.register_once 3');
         this.save();
-        console.log('MixpanelPersistence.prototype.register_once 4');
 
         return true;
     }
-    console.log('MixpanelPersistence.prototype.register_once 5');
     return false;
 };
 
