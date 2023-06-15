@@ -5349,6 +5349,11 @@ define(function () { 'use strict';
      * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
      */
     MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+        if (this.config['device_id']) {
+            // Do not persist explicit device id
+            delete props['$device_id'];
+        }
+
         var options = options_for_register(days_or_options);
         if (options['persistent']) {
             this['persistence'].register_once(props, default_value, options['days']);
@@ -5767,6 +5772,10 @@ define(function () { 'use strict';
      * @param {String} property_name The name of the super property you want to retrieve
      */
     MixpanelLib.prototype.get_property = function(property_name) {
+        if (property_name === '$device_id' && this.get_config('device_id')) {
+            // Ignore persistence completely, but keep the persisted data anyway
+            return this.get_config('device_id');
+        }
         return this['persistence']['props'][property_name];
     };
 
