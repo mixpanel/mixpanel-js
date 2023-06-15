@@ -994,7 +994,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
     this._gdpr_init();
 
     var uuid = config['device_id'] || _utils._.UUID();
-    _utils.console.log('mp init uid', uid);
+    _utils.console.log('mp init uuid', uuid);
     if (!this.get_distinct_id()) {
         _utils.console.log('mp init persist pls');
         // There is no need to set the distinct id

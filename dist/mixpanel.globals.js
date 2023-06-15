@@ -4388,7 +4388,7 @@
         this._gdpr_init();
 
         var uuid = config['device_id'] || _.UUID();
-        console.log('mp init uid', uid);
+        console.log('mp init uuid', uuid);
         if (!this.get_distinct_id()) {
             console.log('mp init persist pls');
             // There is no need to set the distinct id
