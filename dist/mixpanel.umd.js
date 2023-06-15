@@ -5,7 +5,7 @@
 }(this, function () { 'use strict';
 
     var Config = {
-        DEBUG: false,
+        DEBUG: true,
         LIB_VERSION: '2.47.0'
     };
 
