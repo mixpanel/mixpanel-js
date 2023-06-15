@@ -3761,7 +3761,9 @@ MixpanelPersistence.prototype.upgrade = function(config) {
 };
 
 MixpanelPersistence.prototype.save = function() {
+    console.log('MixpanelPersistence.prototype.save 1');
     if (this.disabled) { return; }
+    console.log('MixpanelPersistence.prototype.save 2');
     this.storage.set(
         this.name,
         _.JSONEncode(this['props']),
@@ -3792,7 +3794,9 @@ MixpanelPersistence.prototype.clear = function() {
 * @param {number=} days
 */
 MixpanelPersistence.prototype.register_once = function(props, default_value, days) {
+    console.log('MixpanelPersistence.prototype.register_once 1');
     if (_.isObject(props)) {
+        console.log('MixpanelPersistence.prototype.register_once 2');
         if (typeof(default_value) === 'undefined') { default_value = 'None'; }
         this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
 
@@ -3802,10 +3806,13 @@ MixpanelPersistence.prototype.register_once = function(props, default_value, day
             }
         }, this);
 
+        console.log('MixpanelPersistence.prototype.register_once 3');
         this.save();
+        console.log('MixpanelPersistence.prototype.register_once 4');
 
         return true;
     }
+    console.log('MixpanelPersistence.prototype.register_once 5');
     return false;
 };
 
@@ -4381,7 +4388,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this._gdpr_init();
 
     var uuid = config['device_id'] || _.UUID();
+    console.log('mp init uid', uid);
     if (!this.get_distinct_id()) {
+        console.log('mp init persist pls');
         // There is no need to set the distinct id
         // or the device id if something was already stored
         // in the persitence
@@ -5350,15 +5359,20 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+    console.log('mp init persist register_once 1', props);
     if (this.config['device_id']) {
         // Do not persist explicit device id
         delete props['$device_id'];
     }
+    console.log('mp init persist register_once 2', props);
 
     var options = options_for_register(days_or_options);
+    console.log('mp init persist register_once 3', options);
     if (options['persistent']) {
+        console.log('mp init persist register_once 4');
         this['persistence'].register_once(props, default_value, options['days']);
     } else {
+        console.log('mp init persist register_once 5');
         if (typeof(default_value) === 'undefined') {
             default_value = 'None';
         }
@@ -5368,6 +5382,7 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
             }
         }, this);
     }
+    console.log('mp init persist register_once 6');
 };
 
 /**
