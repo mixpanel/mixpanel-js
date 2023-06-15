@@ -159,6 +159,7 @@ MixpanelPersistence.prototype.save = function() {
         this.cross_site,
         this.cookie_domain
     );
+    console.log('MixpanelPersistence.prototype.save 3');
 };
 
 MixpanelPersistence.prototype.remove = function() {

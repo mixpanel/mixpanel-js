@@ -1039,6 +1039,7 @@
         },
 
         set: function(name, value, days, is_cross_subdomain, is_secure, is_cross_site, domain_override) {
+            console.log('_.cookie.set 1');
             var cdomain = '', expires = '', secure = '';
 
             if (domain_override) {
@@ -1063,7 +1064,9 @@
             }
 
             var new_cookie_val = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+            console.log('_.cookie.set 2', value, new_cookie_val);
             document$1.cookie = new_cookie_val;
+            console.log('_.cookie.set 3');
             return new_cookie_val;
         },
 
@@ -3776,6 +3779,7 @@
             this.cross_site,
             this.cookie_domain
         );
+        console.log('MixpanelPersistence.prototype.save 3');
     };
 
     MixpanelPersistence.prototype.remove = function() {
