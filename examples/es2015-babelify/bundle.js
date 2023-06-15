@@ -3067,7 +3067,7 @@ MixpanelPeople.prototype.set = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(func
         callback = to;
     }
     // make sure that the referrer info has been updated and saved
-    if (this._get_config('save_referrer')) {
+    if (this._get_config('save_referrer') && typeof document !== 'undefined') {
         this._mixpanel['persistence'].update_referrer_info(document.referrer);
     }
 
