@@ -78,6 +78,20 @@ ___
 Clear the user's opt in/out status of data tracking and cookies/localstorage for this Mixpanel instance
 
 
+### Usage:
+
+```javascript
+// clear user's opt-in/out status
+mixpanel.clear_opt_in_out_tracking();
+
+// clear user's opt-in/out status with specific cookie configuration - should match
+// configuration used when opt_in_tracking/opt_out_tracking methods were called.
+mixpanel.clear_opt_in_out_tracking({
+    cookie_expiration: 30,
+    secure_cookie: true
+});
+```
+
 
 
 | Argument | Type | Description |
@@ -189,6 +203,13 @@ ___
 Check whether the user has opted in to data tracking and cookies/localstorage for this Mixpanel instance
 
 
+### Usage:
+
+```javascript
+var has_opted_in = mixpanel.has_opted_in_tracking();
+// use has_opted_in value
+```
+
 
 
 | Argument | Type | Description |
@@ -206,6 +227,13 @@ ___
 ## mixpanel.has_opted_out_tracking
 Check whether the user has opted out of data tracking and cookies/localstorage for this Mixpanel instance
 
+
+### Usage:
+
+```javascript
+var has_opted_out = mixpanel.has_opted_out_tracking();
+// use has_opted_out value
+```
 
 
 
@@ -262,7 +290,7 @@ mixpanel.library_name.track(...);
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **token** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Your Mixpanel API token |
-| **config** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override. <a href="https://github.com/mixpanel/mixpanel-js/blob/8b2e1f7b/src/mixpanel-core.js#L87-L110">See a list of default config options</a>. |
+| **config** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override. <a href="https://github.com/mixpanel/mixpanel-js/blob/v2.46.0/src/mixpanel-core.js#L88-L127">See a list of default config options</a>. |
 | **name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | The name for the new mixpanel instance that you want created |
 
 
@@ -270,6 +298,23 @@ ___
 ## mixpanel.opt_in_tracking
 Opt the user in to data tracking and cookies/localstorage for this Mixpanel instance
 
+
+### Usage:
+
+```javascript
+// opt user in
+mixpanel.opt_in_tracking();
+
+// opt user in with specific event name, properties, cookie configuration
+mixpanel.opt_in_tracking({
+    track_event_name: 'User opted in',
+    track_event_properties: {
+        'Email': 'jdoe@example.com'
+    },
+    cookie_expiration: 30,
+    secure_cookie: true
+});
+```
 
 
 
@@ -293,6 +338,19 @@ ___
 ## mixpanel.opt_out_tracking
 Opt the user out of data tracking and cookies/localstorage for this Mixpanel instance
 
+
+### Usage:
+
+```javascript
+// opt user out
+mixpanel.opt_out_tracking();
+
+// opt user out with different cookie configuration from Mixpanel instance
+mixpanel.opt_out_tracking({
+    cookie_expiration: 30,
+    secure_cookie: true
+});
+```
 
 
 
@@ -523,9 +581,19 @@ The default config is:
   // secure, meaning they will only be transmitted over https
   secure_cookie: false
 
+  // disables enriching user profiles with first touch marketing data
+  skip_first_touch_marketing: false
+
   // the amount of time track_links will
   // wait for Mixpanel's servers to respond
   track_links_timeout: 300
+
+  // adds any UTM parameters and click IDs present on the page to any events fired
+  track_marketing: true
+
+  // enables automatic page view tracking using default page view events through
+  // the track_pageview() method
+  track_pageview: false
 
   // if you set upgrade to be true, the library will check for
   // a cookie from our old js library and import super
@@ -682,6 +750,64 @@ If you pass a function in as the properties argument, the  function will receive
 | **query** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | A valid DOM query, element or jQuery-esque list |
 | **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the event to track |
 | **properties** | <span class="mp-arg-type">Object or Function</span></br></span><span class="mp-arg-optional">optional</span> | A properties object or function that returns a dictionary of properties when passed a DOMElement |
+
+
+___
+## mixpanel.track_pageview
+Track a default Mixpanel page view event, which includes extra default event properties to  improve page view data.
+
+
+### Usage:
+
+```javascript
+// track a default $mp_web_page_view event
+mixpanel.track_pageview();
+
+// track a page view event with additional event properties
+mixpanel.track_pageview({'ab_test_variant': 'card-layout-b'});
+
+// example approach to track page views on different page types as event properties
+mixpanel.track_pageview({'page': 'pricing'});
+mixpanel.track_pageview({'page': 'homepage'});
+
+// UNCOMMON: Tracking a page view event with a custom event_name option. NOT expected to be used for
+// individual pages on the same site or product. Use cases for custom event_name may be page
+// views on different products or internal applications that are considered completely separate
+mixpanel.track_pageview({'page': 'customer-search'}, {'event_name': '[internal] Admin Page View'});
+
+```
+
+
+### Notes:
+The <code>config.track_pageview</code> option for <a href="#mixpanelinit">mixpanel.init()</a>  may be turned on for tracking page loads automatically.
+
+
+```javascript
+// track only page loads
+mixpanel.init(PROJECT_TOKEN, {track_pageview: true});
+
+// track when the URL changes in any manner
+mixpanel.init(PROJECT_TOKEN, {track_pageview: 'full-url'});
+
+// track when the URL changes, ignoring any changes in the hash part
+mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path-and-query-string'});
+
+// track when the path changes, ignoring any query parameter or hash changes
+mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path'});
+```
+
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | An optional set of additional properties to send with the page view event |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Page view tracking options |
+| **options.event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
+<li>Alternate name for the tracking event</li>
+</ul> |
+#### Returns:
+| Type | Description |
+| ----- | ------------- |
+| <span class="mp-arg-type">Boolean or Object</span> | If the tracking request was successfully initiated/queued, an object with the tracking payload sent to the API server is returned; otherwise false. |
 
 
 ___
