@@ -1013,6 +1013,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
 MixpanelLib.prototype._loaded = function () {
     this.get_config('loaded')(this);
     this._set_default_superprops();
+    this['people'].set_once(this['persistence'].get_referrer_info());
 };
 
 // update persistence with info on referrer, UTM params, etc
@@ -2999,7 +3000,7 @@ MixpanelPeople.prototype.set = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(func
     }
 
     // update $set object with default people properties
-    data[_apiActions.SET_ACTION] = _utils._.extend({}, _utils._.info.people_properties(), this._mixpanel['persistence'].get_referrer_info(), data[_apiActions.SET_ACTION]);
+    data[_apiActions.SET_ACTION] = _utils._.extend({}, _utils._.info.people_properties(), data[_apiActions.SET_ACTION]);
     return this._send_request(data, callback);
 });
 

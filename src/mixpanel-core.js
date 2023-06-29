@@ -342,6 +342,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
 MixpanelLib.prototype._loaded = function() {
     this.get_config('loaded')(this);
     this._set_default_superprops();
+    this['people'].set_once(this['persistence'].get_referrer_info());
 };
 
 // update persistence with info on referrer, UTM params, etc

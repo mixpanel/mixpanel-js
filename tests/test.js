@@ -1509,9 +1509,9 @@
                     hooks: {
                         before_send_people: function uppercase_name(profile_data) {
                             return _.extend(profile_data, {
-                                $set: _.extend(profile_data.$set, {
+                                $set: profile_data.$set ? _.extend(profile_data.$set, {
                                     name: profile_data.$set.name.toUpperCase()
-                                })
+                                }) : {}
                             });
                         }
                     }
@@ -2165,8 +2165,8 @@
                 }));
             });
 
-            test("set (info props included)", 5, function() {
-                var info_props = "$os $browser $browser_version $initial_referrer $initial_referring_domain".split(' ');
+            test("set (info props included)", 3, function() {
+                var info_props = "$os $browser $browser_version".split(' ');
 
                 var data = mixpanel.people.set('key1', 'test');
 
@@ -4265,7 +4265,7 @@
                     same(this.requests.length, 0, "people.set should not have sent a request");
                 });
 
-                test('people updates send request after flush interval', 6, function() {
+                test('people updates send request after flush interval', 9, function() {
                     mixpanel.batchtest.identify('pat');
 
                     mixpanel.batchtest.people.set('foo', 'bar');
@@ -4278,11 +4278,14 @@
                     });
                     ok(engage_request, "should have made /engage request");
                     var people_updates = getRequestData(engage_request);
-                    same(people_updates.length, 2, "should have sent both updates in batch");
-                    ok(contains_obj(people_updates[0].$set, {foo: 'bar'}));
-                    ok(contains_obj(people_updates[1].$add, {llamas: 1}));
+                    same(people_updates.length, 3, "should have sent all updates in batch");
+                    isDefined(people_updates[0].$set_once, '$initial_referrer');
+                    isDefined(people_updates[0].$set_once, '$initial_referring_domain');
+                    ok(contains_obj(people_updates[1].$set, {foo: 'bar'}));
+                    ok(contains_obj(people_updates[2].$add, {llamas: 1}));
                     same(people_updates[0].$distinct_id, 'pat');
                     same(people_updates[1].$distinct_id, 'pat');
+                    same(people_updates[2].$distinct_id, 'pat');
                 });
 
                 test('group updates do not send a request immediately', 1, function() {
