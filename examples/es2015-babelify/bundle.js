@@ -771,6 +771,7 @@ var DEFAULT_CONFIG = {
     'cookie_domain': '',
     'cookie_name': '',
     'loaded': NOOP_FUNC,
+    'mp_loader': null,
     'track_marketing': true,
     'track_pageview': false,
     'skip_first_touch_marketing': false,
@@ -1504,7 +1505,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     // properties object by passing in a new object
 
     // update properties with pageview info and super-properties
-    properties = _utils._.extend({}, _utils._.info.properties(), marketing_properties, this['persistence'].properties(), this.unpersisted_superprops, properties);
+    properties = _utils._.extend({}, _utils._.info.properties({ 'mp_loader': this.get_config('mp_loader') }), marketing_properties, this['persistence'].properties(), this.unpersisted_superprops, properties);
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_utils._.isArray(property_blacklist)) {
@@ -6248,7 +6249,10 @@ _.info = {
         return '';
     },
 
-    properties: function properties() {
+    properties: function properties(extra_props) {
+        if (typeof extra_props !== 'object') {
+            extra_props = {};
+        }
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
             '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
@@ -6264,7 +6268,7 @@ _.info = {
             '$lib_version': _config2['default'].LIB_VERSION,
             '$insert_id': cheap_guid(),
             'time': _.timestamp() / 1000 // epoch time in seconds
-        });
+        }, _.strip_empty_properties(extra_props));
     },
 
     people_properties: function people_properties() {

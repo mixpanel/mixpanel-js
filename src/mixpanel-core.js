@@ -99,6 +99,7 @@ var DEFAULT_CONFIG = {
     'cookie_domain':                     '',
     'cookie_name':                       '',
     'loaded':                            NOOP_FUNC,
+    'mp_loader':                         null,
     'track_marketing':                   true,
     'track_pageview':                    false,
     'skip_first_touch_marketing':        false,
@@ -842,7 +843,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     // update properties with pageview info and super-properties
     properties = _.extend(
         {},
-        _.info.properties(),
+        _.info.properties({'mp_loader': this.get_config('mp_loader')}),
         marketing_properties,
         this['persistence'].properties(),
         this.unpersisted_superprops,

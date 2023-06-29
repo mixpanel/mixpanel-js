@@ -1620,7 +1620,10 @@ define(function () { 'use strict';
             return '';
         },
 
-        properties: function() {
+        properties: function(extra_props) {
+            if (typeof extra_props !== 'object') {
+                extra_props = {};
+            }
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
                 '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
@@ -1636,7 +1639,7 @@ define(function () { 'use strict';
                 '$lib_version': Config.LIB_VERSION,
                 '$insert_id': cheap_guid(),
                 'time': _.timestamp() / 1000 // epoch time in seconds
-            });
+            }, _.strip_empty_properties(extra_props));
         },
 
         people_properties: function() {
@@ -4155,6 +4158,7 @@ define(function () { 'use strict';
         'cookie_domain':                     '',
         'cookie_name':                       '',
         'loaded':                            NOOP_FUNC,
+        'mp_loader':                         null,
         'track_marketing':                   true,
         'track_pageview':                    false,
         'skip_first_touch_marketing':        false,
@@ -4898,7 +4902,7 @@ define(function () { 'use strict';
         // update properties with pageview info and super-properties
         properties = _.extend(
             {},
-            _.info.properties(),
+            _.info.properties({'mp_loader': this.get_config('mp_loader')}),
             marketing_properties,
             this['persistence'].properties(),
             this.unpersisted_superprops,
