@@ -345,14 +345,22 @@ MixpanelLib.prototype._loaded = function() {
     this.get_config('loaded')(this);
     this._set_default_superprops();
     this['people'].set_once(this['persistence'].get_referrer_info());
+
+    // The original 'store_google' functionality is deprecated and the config is
+    // now used to clear previously managed UTM parameters from persistence
+    if (this.get_config('store_google')) {
+        var utm_params = _.info.campaignParams(null);
+        _.each(utm_params, function(_utm_value, utm_key) {
+            // We need to unregister persisted UTM parameters so old values
+            // are not mixed with the new UTM parameters
+            this.unregister(utm_key);
+        }.bind(this));
+    }
 };
 
 // update persistence with info on referrer, UTM params, etc
 MixpanelLib.prototype._set_default_superprops = function() {
     this['persistence'].update_search_keyword(document.referrer);
-    if (this.get_config('store_google')) {
-        this.register(_.info.campaignParams(), {persistent: false});
-    }
     if (this.get_config('save_referrer')) {
         this['persistence'].update_referrer_info(document.referrer);
     }
