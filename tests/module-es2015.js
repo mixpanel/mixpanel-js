@@ -1,4 +1,4 @@
-import mixpanel from '../src/loader-module';
+import mixpanel from '../src/loaders/loader-module';
 
 $('#qunit-tests').addClass('hidepass');
 mixpanel.init("MIXPANEL_TOKEN", {

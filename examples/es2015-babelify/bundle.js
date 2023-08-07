@@ -3,21 +3,21 @@
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-var _srcLoaderModule = require('../../src/loader-module');
+var _srcLoadersLoaderModule = require('../../src/loaders/loader-module');
 
-var _srcLoaderModule2 = _interopRequireDefault(_srcLoaderModule);
+var _srcLoadersLoaderModule2 = _interopRequireDefault(_srcLoadersLoaderModule);
 
-_srcLoaderModule2['default'].init("FAKE_TOKEN", {
+_srcLoadersLoaderModule2['default'].init("FAKE_TOKEN", {
     debug: true,
     loaded: function loaded() {
-        _srcLoaderModule2['default'].track('loaded() callback works but is unnecessary');
+        _srcLoadersLoaderModule2['default'].track('loaded() callback works but is unnecessary');
         alert("Mixpanel loaded successfully via ES2015 Modules/Babelify");
     }
 });
 
-_srcLoaderModule2['default'].track('Tracking after mixpanel.init');
+_srcLoadersLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loader-module":6}],2:[function(require,module,exports){
+},{"../../src/loaders/loader-module":6}],2:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -653,14 +653,14 @@ Object.defineProperty(exports, '__esModule', {
   value: true
 });
 
-var _mixpanelCore = require('./mixpanel-core');
+var _mixpanelCore = require('../mixpanel-core');
 
 var mixpanel = (0, _mixpanelCore.init_as_module)();
 
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"./mixpanel-core":7}],7:[function(require,module,exports){
+},{"../mixpanel-core":7}],7:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
