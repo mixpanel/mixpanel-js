@@ -40,6 +40,18 @@
                     clearLibInstance(mixpanel.test);
                 }
 
+                if (mixpanel.mp_loader_test) {
+                    clearLibInstance(mixpanel.mp_loader_test);
+                }
+
+                if (mixpanel.pageviews) {
+                    clearLibInstance(mixpanel.pageviews);
+                }
+
+                if (mixpanel.pageviews_pathandquery) {
+                    clearLibInstance(mixpanel.pageviews_pathandquery);
+                }
+
                 // Necessary because the alias tests can't clean up after themselves, as there is no callback.
                 _.each(document.cookie.split(';'), function(c) {
                     var name = c.split('=')[0].replace(/^\s+|\s+$/g, '');
@@ -1179,6 +1191,17 @@
                 clearLibInstance(mixpanel.mpl);
                 clearLibInstance(mixpanel.mpl2);
                 clearLibInstance(mixpanel.mpl3);
+            });
+
+            test("init accepts mp_loader config", 1, function() {
+                mixpanel.init('mp-loader-test-token', {mp_loader: 'gtm-wrapper'}, 'mp_loader_test');
+
+                var event = mixpanel.mp_loader_test.track("check current url");
+                var props = event.properties;
+
+                equal(props["mp_loader"], "gtm-wrapper", "mp_loader is properly set");
+
+                clearLibInstance(mixpanel.mp_loader_test);
             });
 
             test("info properties included", 7, function() {
@@ -3759,6 +3782,38 @@
                     isDefined(data.properties, 'current_domain', "default $mp_web_page_view event has current_domain property");
                     isDefined(data.properties, 'current_url_path', "default $mp_web_page_view event has current_url_path property");
                     isDefined(data.properties, 'current_url_protocol', "default $mp_web_page_view event has current_url_protocol property");
+                });
+
+                test("init with track_pageview=true fires page view event", 2, function() {
+                    mixpanel.init("track_pageview_test_token", {
+                        track_pageview: true,
+                        batch_requests: false,
+                    }, 'pageviews');
+                    same(this.requests.length, 1, "init with track_pageview=true should fire request on load");
+                    var last_event = getRequestData(this.requests[0]);
+                    same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+                });
+
+                test("init with track_pageview='url-with-path-and-query-string' tracks page views correctly", 6, function() {
+                    mixpanel.init("track_pageview_test_token", {
+                        track_pageview: "url-with-path-and-query-string",
+                        batch_requests: false,
+                    }, 'pageviews_pathandquery');
+                    same(this.requests.length, 1, "init with track_pageview='url-with-path-and-query-string' should fire single request on load");
+                    var last_event = getRequestData(this.requests[0]);
+                    same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+
+                    window.dispatchEvent(new Event("mp_locationchange"));
+                    same(this.requests.length, 1, "mp_locationchange event should not fire page view event on no URL change");
+
+                    var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname + '?hello=world';
+                    window.history.pushState({ path: next_url }, '', next_url);
+                    same(this.requests.length, 2, "init with track_pageview='url-with-path-and-query-string' should fire request on query string change");
+                    var last_event = getRequestData(this.requests[1]);
+                    same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+
+                    window.location.href = window.location.href.split('#')[0] + '#anchor'
+                    same(this.requests.length, 2, "init with track_pageview='url-with-path-and-query-string' should not fire additional request on hash change");
                 });
             }
 
