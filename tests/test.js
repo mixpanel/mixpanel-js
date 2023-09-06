@@ -371,7 +371,7 @@
                 });
             });
 
-            asyncTest("check no property name aliasing occurs during minify", 1, function() {
+            test("check no property name aliasing occurs during minify", 1, function() {
                 var ob = {};
                 var letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
                 _.each(letters, function(l1) {
@@ -384,10 +384,8 @@
 
                 var expect_ob = _.extend({}, ob);
                 expect_ob.token = this.token;
-                mixpanel.test.track('test', ob, function(response) {
-                    deepEqual(ob, expect_ob, 'Nothing strange happened to properties');
-                    start();
-                });
+                data = mixpanel.test.track('test', ob);
+                ok(contains_obj(data.properties, expect_ob), 'Nothing strange happened to properties');
             });
 
             test("token property does not override configured token", 1, function() {
@@ -396,6 +394,15 @@
                 };
                 var data = mixpanel.test.track('test', props);
                 same(data.properties.token, mixpanel.test.get_config('token'), 'Property did not override token');
+            });
+
+            test("tracking does not mutate properties argument", 3, function() {
+                var props = {foo: 'bar', token: 'baz'};
+                var data = mixpanel.test.track('test', props);
+
+                same(props.token, 'baz', 'original properties object was not mutated');
+                same(data.properties.token, mixpanel.test.get_config('token'));
+                same(data.properties.foo, 'bar');
             });
 
             asyncTest("callback doesn't override", 1, function() {

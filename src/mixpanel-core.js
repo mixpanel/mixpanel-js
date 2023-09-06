@@ -818,7 +818,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     }
 
     // set defaults
-    properties = properties || {};
+    properties = _.extend({}, properties);
     properties['token'] = this.get_config('token');
 
     // set $duration if time_event was previously called for this event
