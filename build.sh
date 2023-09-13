@@ -8,7 +8,7 @@ if [ ! -z "$DIST" ]; then
 fi
 
 echo 'Building main bundle'
-./node_modules/.bin/rollup -i src/loaders/loader-globals.js -f iife -o build/mixpanel.globals.js -n mixpanel -c rollup.config.js
+npx rollup -i src/loaders/loader-globals.js -f iife -o build/mixpanel.globals.js -n mixpanel -c rollup.config.js
 ln -sf mixpanel.globals.js build/mixpanel.js
 
 if [ ! -z "$FULL" ]; then
@@ -20,17 +20,17 @@ if [ ! -z "$FULL" ]; then
     java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../build/mixpanel.min.js"'
 
     echo 'Building mixpanel-js-wrapper'
-    ./node_modules/.bin/rollup src/loaders/mixpanel-js-wrapper.js -o build/mixpanel-js-wrapper.js -c rollup.config.js
+    npx rollup src/loaders/mixpanel-js-wrapper.js -o build/mixpanel-js-wrapper.js -c rollup.config.js
     java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel-js-wrapper.js --js_output_file build/mixpanel-js-wrapper.min.js --compilation_level ADVANCED_OPTIMIZATIONS
 
     echo 'Building module bundles'
-    ./node_modules/.bin/rollup -i src/loaders/loader-module.js -f amd -o build/mixpanel.amd.js -c rollup.config.js
-    ./node_modules/.bin/rollup -i src/loaders/loader-module.js -f cjs -o build/mixpanel.cjs.js -c rollup.config.js
-    ./node_modules/.bin/rollup -i src/loaders/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel -c rollup.config.js
+    npx rollup -i src/loaders/loader-module.js -f amd -o build/mixpanel.amd.js -c rollup.config.js
+    npx rollup -i src/loaders/loader-module.js -f cjs -o build/mixpanel.cjs.js -c rollup.config.js
+    npx rollup -i src/loaders/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel -c rollup.config.js
 
     echo 'Bundling module-loader test runners'
-    ./node_modules/.bin/webpack tests/module-cjs.js tests/module-cjs.bundle.js
-    ./node_modules/.bin/browserify tests/module-es2015.js -t [ babelify --compact false ] --outfile tests/module-es2015.bundle.js
+    npx webpack tests/module-cjs.js tests/module-cjs.bundle.js
+    npx browserify tests/module-es2015.js -t [ babelify --compact false ] --outfile tests/module-es2015.bundle.js
 
     echo 'Bundling module-loader examples'
     pushd examples/commonjs-browserify; npm install && npm run build; popd
