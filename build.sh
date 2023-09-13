@@ -20,8 +20,8 @@ if [ ! -z "$FULL" ]; then
     java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../build/mixpanel.min.js"'
 
     echo 'Building mixpanel-js-wrapper'
-    java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --js src/loaders/mixpanel-js-wrapper.js --js_output_file build/mixpanel-js-wrapper.js --compilation_level WHITESPACE_ONLY
-    java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --js src/loaders/mixpanel-js-wrapper.js --js_output_file build/mixpanel-js-wrapper.min.js --compilation_level ADVANCED_OPTIMIZATIONS
+    ./node_modules/.bin/rollup src/loaders/mixpanel-js-wrapper.js -o build/mixpanel-js-wrapper.js -c rollup.config.js
+    java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel-js-wrapper.js --js_output_file build/mixpanel-js-wrapper.min.js --compilation_level ADVANCED_OPTIMIZATIONS
 
     echo 'Building module bundles'
     ./node_modules/.bin/rollup -i src/loaders/loader-module.js -f amd -o build/mixpanel.amd.js -c rollup.config.js

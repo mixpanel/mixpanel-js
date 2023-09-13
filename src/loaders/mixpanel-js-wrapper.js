@@ -1,3 +1,5 @@
+import './mixpanel-jslib-snippet';
+
 /*
  * @see src/loaders/mixpanel-js-wrapper.md
  */
