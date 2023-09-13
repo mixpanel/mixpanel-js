@@ -257,20 +257,6 @@ MixpanelPersistence.prototype.get_referrer_info = function() {
     });
 };
 
-// safely fills the passed in object with stored properties,
-// does not override any properties defined in both
-// returns the passed in object
-MixpanelPersistence.prototype.safe_merge = function(props) {
-    this.load();
-    _.each(this['props'], function(val, prop) {
-        if (!(prop in props)) {
-            props[prop] = val;
-        }
-    });
-
-    return props;
-};
-
 MixpanelPersistence.prototype.update_config = function(config) {
     this.default_expiry = this.expire_days = config['cookie_expiration'];
     this.set_disabled(config['disable_persistence']);
