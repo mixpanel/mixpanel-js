@@ -284,6 +284,10 @@ MixpanelLib.prototype._init = function(token, config, name) {
         if (!_.localStorage.is_supported(true) || !USE_XHR) {
             this._batch_requests = false;
             console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
+            _.each(this.get_batcher_configs(), function(batcher_config) {
+                console.log('Clearing batch queue ' + batcher_config.queue_key);
+                _.localStorage.remove(batcher_config.queue_key);
+            });
         } else {
             this.init_batchers();
             if (sendBeacon && window.addEventListener) {
@@ -631,12 +635,21 @@ MixpanelLib.prototype.are_batchers_initialized = function() {
     return !!this.request_batchers.events;
 };
 
+MixpanelLib.prototype.get_batcher_configs = function() {
+    var queue_prefix = '__mpq_' + this.get_config('token');
+    this._batcher_configs = this._batcher_configs || {
+        events: {type: 'events', endpoint: '/track/', queue_key: queue_prefix + '_ev'},
+        people: {type: 'people', endpoint: '/engage/', queue_key: queue_prefix + '_pp'},
+        groups: {type: 'groups', endpoint: '/groups/', queue_key: queue_prefix + '_gr'}
+    };
+    return this._batcher_configs;
+}
+
 MixpanelLib.prototype.init_batchers = function() {
-    var token = this.get_config('token');
     if (!this.are_batchers_initialized()) {
         var batcher_for = _.bind(function(attrs) {
             return new RequestBatcher(
-                '__mpq_' + token + attrs.queue_suffix,
+                attrs.queue_key,
                 {
                     libConfig: this['config'],
                     sendRequestFunc: _.bind(function(data, options, cb) {
@@ -655,10 +668,11 @@ MixpanelLib.prototype.init_batchers = function() {
                 }
             );
         }, this);
+        var batcher_configs = this.get_batcher_configs();
         this.request_batchers = {
-            events: batcher_for({type: 'events', endpoint: '/track/', queue_suffix: '_ev'}),
-            people: batcher_for({type: 'people', endpoint: '/engage/', queue_suffix: '_pp'}),
-            groups: batcher_for({type: 'groups', endpoint: '/groups/', queue_suffix: '_gr'})
+            events: batcher_for(batcher_configs.events),
+            people: batcher_for(batcher_configs.people),
+            groups: batcher_for(batcher_configs.groups)
         };
     }
     if (this.get_config('batch_autostart')) {
