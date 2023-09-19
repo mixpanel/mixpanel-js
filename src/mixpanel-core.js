@@ -667,6 +667,7 @@ MixpanelLib.prototype.init_batchers = function() {
 };
 
 MixpanelLib.prototype.start_batch_senders = function() {
+    this._batchers_were_started = true;
     if (this.are_batchers_initialized()) {
         this._batch_requests = true;
         _.each(this.request_batchers, function(batcher) {
@@ -1717,9 +1718,11 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
     }
 
     if (disabled) {
-        _.each(this.request_batchers, function(batcher) {
-            batcher.clear();
-        });
+        this.stop_batch_senders();
+    } else {
+        if (this._batchers_were_started) {
+            this.start_batch_senders();
+        }
     }
 };
 
