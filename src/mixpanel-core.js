@@ -81,11 +81,18 @@ if (navigator['sendBeacon']) {
     };
 }
 
+var DEFAULT_API_ROUTES = {
+    'track': 'track/',
+    'engage': 'engage/',
+    'groups': 'groups/',
+};
+
 /*
  * Module-level globals
  */
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
+    'api_routes':                        DEFAULT_API_ROUTES,
     'api_method':                        'POST',
     'api_transport':                     'XHR',
     'api_payload_format':                PAYLOAD_TYPE_BASE64,
@@ -637,10 +644,11 @@ MixpanelLib.prototype.are_batchers_initialized = function() {
 
 MixpanelLib.prototype.get_batcher_configs = function() {
     var queue_prefix = '__mpq_' + this.get_config('token');
+    var api_routes = this.get_config('api_routes');
     this._batcher_configs = this._batcher_configs || {
-        events: {type: 'events', endpoint: '/track/', queue_key: queue_prefix + '_ev'},
-        people: {type: 'people', endpoint: '/engage/', queue_key: queue_prefix + '_pp'},
-        groups: {type: 'groups', endpoint: '/groups/', queue_key: queue_prefix + '_gr'}
+        events: {type: 'events', endpoint: '/' + api_routes['track'], queue_key: queue_prefix + '_ev'},
+        people: {type: 'people', endpoint: '/' + api_routes['engage'], queue_key: queue_prefix + '_pp'},
+        groups: {type: 'groups', endpoint: '/' + api_routes['groups'], queue_key: queue_prefix + '_gr'}
     };
     return this._batcher_configs;
 }
@@ -879,7 +887,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this.get_config('api_host') + '/track/',
+        endpoint: this.get_config('api_host') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
