@@ -651,7 +651,7 @@ MixpanelLib.prototype.get_batcher_configs = function() {
         groups: {type: 'groups', endpoint: '/' + api_routes['groups'], queue_key: queue_prefix + '_gr'}
     };
     return this._batcher_configs;
-}
+};
 
 MixpanelLib.prototype.init_batchers = function() {
     if (!this.are_batchers_initialized()) {
