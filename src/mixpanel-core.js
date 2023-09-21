@@ -1484,6 +1484,16 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  * The default config is:
  *
  *     {
+ *       // host for requests (customizable for e.g. a local proxy)
+ *       api_host: 'https://api-js.mixpanel.com',
+ *
+ *       // endpoints for different types of requests
+ *       api_routes: {
+ *         track: 'track/',
+ *         engage: 'engage/',
+ *         groups: 'groups/',
+ *       }
+ *
  *       // HTTP method for tracking requests
  *       api_method: 'POST'
  *
