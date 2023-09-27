@@ -163,15 +163,9 @@ MixpanelPersistence.prototype.save = function() {
     );
 };
 
-MixpanelPersistence.prototype._load_prop = function(key) {
+MixpanelPersistence.prototype.load_prop = function(key) {
     this.load();
     return this['props'][key];
-};
-
-MixpanelPersistence.prototype._save_prop = function(key, val) {
-    this['props'][key] = val;
-    this.save();
-    return val;
 };
 
 MixpanelPersistence.prototype.remove = function() {
@@ -420,7 +414,7 @@ MixpanelPersistence.prototype._pop_from_people_queue = function(queue, data) {
 };
 
 MixpanelPersistence.prototype.load_queue = function(queue) {
-    return this._load_prop(this._get_queue_key(queue));
+    return this.load_prop(this._get_queue_key(queue));
 };
 
 MixpanelPersistence.prototype._get_queue_key = function(queue) {
@@ -450,13 +444,14 @@ MixpanelPersistence.prototype._get_or_create_queue = function(queue, default_val
 };
 
 MixpanelPersistence.prototype.set_event_timer = function(event_name, timestamp) {
-    var timers = this._load_prop(EVENT_TIMERS_KEY) || {};
+    var timers = this.load_prop(EVENT_TIMERS_KEY) || {};
     timers[event_name] = timestamp;
-    this._save_prop(EVENT_TIMERS_KEY, timers);
+    this['props'][EVENT_TIMERS_KEY] = timers;
+    this.save();
 };
 
 MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
-    var timers = this._load_prop(EVENT_TIMERS_KEY) || {};
+    var timers = this.load_prop(EVENT_TIMERS_KEY) || {};
     var timestamp = timers[event_name];
     if (!_.isUndefined(timestamp)) {
         delete this['props'][EVENT_TIMERS_KEY][event_name];
