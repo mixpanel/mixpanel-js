@@ -933,13 +933,14 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, 
  */
 MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
     var old_values = this.get_property(group_key);
+    var prop = {};
     if (old_values === undefined) {
-        var prop = {};
         prop[group_key] = [group_id];
         this.register(prop);
     } else {
         if (old_values.indexOf(group_id) === -1) {
             old_values.push(group_id);
+            prop[group_key] = old_values;
             this.register(prop);
         }
     }
