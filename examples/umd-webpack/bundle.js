@@ -69,7 +69,7 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.48.0-rc1'
+	        LIB_VERSION: '2.48.0-rc2'
 	    };
 
 	    // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -3645,13 +3645,13 @@
 	                }
 	            };
 	            for (var i = $append_queue.length - 1; i >= 0; i--) {
+	                $append_queue = this._mixpanel['persistence'].load_queue(APPEND_ACTION);
 	                $append_item = $append_queue.pop();
+	                _this._mixpanel['persistence'].save();
 	                if (!_.isEmptyObject($append_item)) {
 	                    _this.append($append_item, append_callback);
 	                }
 	            }
-	            // Save the shortened append queue
-	            _this._mixpanel['persistence'].save();
 	        }
 
 	        // same for $remove
@@ -3667,12 +3667,13 @@
 	                }
 	            };
 	            for (var j = $remove_queue.length - 1; j >= 0; j--) {
+	                $remove_queue = this._mixpanel['persistence'].load_queue(REMOVE_ACTION);
 	                $remove_item = $remove_queue.pop();
+	                _this._mixpanel['persistence'].save();
 	                if (!_.isEmptyObject($remove_item)) {
 	                    _this.remove($remove_item, remove_callback);
 	                }
 	            }
-	            _this._mixpanel['persistence'].save();
 	        }
 	    };
 
@@ -3845,15 +3846,9 @@
 	        );
 	    };
 
-	    MixpanelPersistence.prototype._load_prop = function(key) {
+	    MixpanelPersistence.prototype.load_prop = function(key) {
 	        this.load();
 	        return this['props'][key];
-	    };
-
-	    MixpanelPersistence.prototype._save_prop = function(key, val) {
-	        this['props'][key] = val;
-	        this.save();
-	        return val;
 	    };
 
 	    MixpanelPersistence.prototype.remove = function() {
@@ -4102,7 +4097,7 @@
 	    };
 
 	    MixpanelPersistence.prototype.load_queue = function(queue) {
-	        return this._load_prop(this._get_queue_key(queue));
+	        return this.load_prop(this._get_queue_key(queue));
 	    };
 
 	    MixpanelPersistence.prototype._get_queue_key = function(queue) {
@@ -4132,13 +4127,14 @@
 	    };
 
 	    MixpanelPersistence.prototype.set_event_timer = function(event_name, timestamp) {
-	        var timers = this._load_prop(EVENT_TIMERS_KEY) || {};
+	        var timers = this.load_prop(EVENT_TIMERS_KEY) || {};
 	        timers[event_name] = timestamp;
-	        this._save_prop(EVENT_TIMERS_KEY, timers);
+	        this['props'][EVENT_TIMERS_KEY] = timers;
+	        this.save();
 	    };
 
 	    MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
-	        var timers = this._load_prop(EVENT_TIMERS_KEY) || {};
+	        var timers = this.load_prop(EVENT_TIMERS_KEY) || {};
 	        var timestamp = timers[event_name];
 	        if (!_.isUndefined(timestamp)) {
 	            delete this['props'][EVENT_TIMERS_KEY][event_name];
@@ -5061,13 +5057,14 @@
 	     */
 	    MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
 	        var old_values = this.get_property(group_key);
+	        var prop = {};
 	        if (old_values === undefined) {
-	            var prop = {};
 	            prop[group_key] = [group_id];
 	            this.register(prop);
 	        } else {
 	            if (old_values.indexOf(group_id) === -1) {
 	                old_values.push(group_id);
+	                prop[group_key] = old_values;
 	                this.register(prop);
 	            }
 	        }
@@ -5805,7 +5802,7 @@
 	     * @param {String} property_name The name of the super property you want to retrieve
 	     */
 	    MixpanelLib.prototype.get_property = function(property_name) {
-	        return this['persistence']['props'][property_name];
+	        return this['persistence'].load_prop([property_name]);
 	    };
 
 	    MixpanelLib.prototype.toString = function() {
