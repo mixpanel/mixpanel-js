@@ -454,7 +454,7 @@ MixpanelPeople.prototype._flush = function(
             }
         };
         for (var j = $remove_queue.length - 1; j >= 0; j--) {
-            var $remove_queue = this._mixpanel['persistence'].load_queue(REMOVE_ACTION);
+            $remove_queue = this._mixpanel['persistence'].load_queue(REMOVE_ACTION);
             $remove_item = $remove_queue.pop();
             _this._mixpanel['persistence'].save();
             if (!_.isEmptyObject($remove_item)) {
