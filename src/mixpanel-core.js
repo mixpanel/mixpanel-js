@@ -1677,7 +1677,7 @@ MixpanelLib.prototype._run_hook = function(hook_name) {
  * @param {String} property_name The name of the super property you want to retrieve
  */
 MixpanelLib.prototype.get_property = function(property_name) {
-    return this['persistence']['props'][property_name];
+    return this['persistence'].load_prop([property_name]);
 };
 
 MixpanelLib.prototype.toString = function() {

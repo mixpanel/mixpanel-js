@@ -432,13 +432,13 @@ MixpanelPeople.prototype._flush = function(
             }
         };
         for (var i = $append_queue.length - 1; i >= 0; i--) {
+            $append_queue = this._mixpanel['persistence'].load_queue(APPEND_ACTION);
             $append_item = $append_queue.pop();
+            _this._mixpanel['persistence'].save();
             if (!_.isEmptyObject($append_item)) {
                 _this.append($append_item, append_callback);
             }
         }
-        // Save the shortened append queue
-        _this._mixpanel['persistence'].save();
     }
 
     // same for $remove
@@ -454,12 +454,13 @@ MixpanelPeople.prototype._flush = function(
             }
         };
         for (var j = $remove_queue.length - 1; j >= 0; j--) {
+            var $remove_queue = this._mixpanel['persistence'].load_queue(REMOVE_ACTION);
             $remove_item = $remove_queue.pop();
+            _this._mixpanel['persistence'].save();
             if (!_.isEmptyObject($remove_item)) {
                 _this.remove($remove_item, remove_callback);
             }
         }
-        _this._mixpanel['persistence'].save();
     }
 };
 
