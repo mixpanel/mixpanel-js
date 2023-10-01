@@ -1,3 +1,15 @@
+/.github/
+/doc/
+/src/
+/.babelrc
+/.eslintrc.json
+/bower.json
+/build.sh
+/CHANGELOG.md
+/mixpanel-jslib-snippet.js
+/rollup.config.js
+/testServer.js
+/tunnel.log
 build
 examples
 tests
