@@ -10,7 +10,7 @@
   "author": "dev@mixpanel.com",
   "license": "Apache-2.0",
   "dependencies": {
-    "babelify": "^6.1.2",
+    "babelify": "^10.0.0",
     "browserify": "^10.2.4"
   }
 }
