@@ -1472,6 +1472,24 @@
                 }), 'explicitly-set props take precedence over all superprops');
             });
 
+            test("props are loaded from persistence when tracking", function() {
+                var data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {'foo': 'bar'}));
+                ok(!('a' in data.properties));
+
+                // initialize a separate instance with the same token (same persistence key)
+                // and set a super property in it
+                mixpanel.init(mixpanel.test.get_config('token'), {}, 'props_load_test');
+                mixpanel.props_load_test.register({'a': 'b'});
+
+                // verify that the super property is now used in tracking from the original instance
+                data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {
+                    'foo': 'bar',
+                    'a': 'b',
+                }));
+            });
+
             test("unregister (non-persistent)", 4, function() {
                 mixpanel.test.register({'foo': 'persisted'}, {persistent: true});
                 mixpanel.test.unregister('foo', {persistent: false});
