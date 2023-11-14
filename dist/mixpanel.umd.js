@@ -6,7 +6,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.48.0'
+        LIB_VERSION: '2.48.1'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -4420,7 +4420,7 @@
     MixpanelLib.prototype._set_default_superprops = function() {
         this['persistence'].update_search_keyword(document$1.referrer);
         if (this.get_config('store_google')) {
-            this.register(_.info.campaignParams(), {persistent: false});
+            this.register(_.info.campaignParams());
         }
         if (this.get_config('save_referrer')) {
             this['persistence'].update_referrer_info(document$1.referrer);

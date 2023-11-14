@@ -1,3 +1,7 @@
+**2.48.1** (14 Nov 2023)
+- UTM campaign properties will always be persisted super properties (fixes discrepancy between
+minified and unminified package)
+
 **2.48.0** (7 Nov 2023)
 - API endpoint routes can now be configured individually (i.e. rename /track, /engage, /groups)
 - Event properties object passed to mixpanel.track() will no longer be mutated
