@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.48.0'
+    LIB_VERSION: '2.48.1'
 };
 
 exports['default'] = Config;
@@ -1030,7 +1030,7 @@ MixpanelLib.prototype._loaded = function () {
 MixpanelLib.prototype._set_default_superprops = function () {
     this['persistence'].update_search_keyword(_utils.document.referrer);
     if (this.get_config('store_google')) {
-        this.register(_utils._.info.campaignParams(), { persistent: false });
+        this.register(_utils._.info.campaignParams());
     }
     if (this.get_config('save_referrer')) {
         this['persistence'].update_referrer_info(_utils.document.referrer);
