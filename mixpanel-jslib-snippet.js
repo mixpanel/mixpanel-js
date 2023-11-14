@@ -92,7 +92,7 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
 
         if (typeof MIXPANEL_CUSTOM_LIB_URL !== 'undefined') {
             script.src = MIXPANEL_CUSTOM_LIB_URL;
-        } else if (document.location.protocol === 'file:' && MIXPANEL_LIB_URL.match(/^\/\//)) {
+        } else if (document.location.protocol === 'file:' && MIXPANEL_LIB_URL.match(/^\\/\\//)) {
             script.src = 'https:' + MIXPANEL_LIB_URL;
         } else {
             script.src = MIXPANEL_LIB_URL;
