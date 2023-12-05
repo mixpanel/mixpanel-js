@@ -72,6 +72,9 @@ var MixpanelPersistence = function(config) {
 
 MixpanelPersistence.prototype.properties = function() {
     var p = {};
+
+    this.load();
+
     // Filter out reserved properties
     _.each(this['props'], function(v, k) {
         if (!_.include(RESERVED_PROPERTIES, k)) {
@@ -148,6 +151,7 @@ MixpanelPersistence.prototype.upgrade = function(config) {
 
 MixpanelPersistence.prototype.save = function() {
     if (this.disabled) { return; }
+
     this.storage.set(
         this.name,
         _.JSONEncode(this['props']),
@@ -157,6 +161,11 @@ MixpanelPersistence.prototype.save = function() {
         this.cross_site,
         this.cookie_domain
     );
+};
+
+MixpanelPersistence.prototype.load_prop = function(key) {
+    this.load();
+    return this['props'][key];
 };
 
 MixpanelPersistence.prototype.remove = function() {
@@ -182,6 +191,8 @@ MixpanelPersistence.prototype.register_once = function(props, default_value, day
         if (typeof(default_value) === 'undefined') { default_value = 'None'; }
         this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
 
+        this.load();
+
         _.each(props, function(val, prop) {
             if (!this['props'].hasOwnProperty(prop) || this['props'][prop] === default_value) {
                 this['props'][prop] = val;
@@ -203,8 +214,8 @@ MixpanelPersistence.prototype.register = function(props, days) {
     if (_.isObject(props)) {
         this.expire_days = (typeof(days) === 'undefined') ? this.default_expiry : days;
 
+        this.load();
         _.extend(this['props'], props);
-
         this.save();
 
         return true;
@@ -213,6 +224,7 @@ MixpanelPersistence.prototype.register = function(props, days) {
 };
 
 MixpanelPersistence.prototype.unregister = function(prop) {
+    this.load();
     if (prop in this['props']) {
         delete this['props'][prop];
         this.save();
@@ -237,19 +249,6 @@ MixpanelPersistence.prototype.get_referrer_info = function() {
         '$initial_referrer': this['props']['$initial_referrer'],
         '$initial_referring_domain': this['props']['$initial_referring_domain']
     });
-};
-
-// safely fills the passed in object with stored properties,
-// does not override any properties defined in both
-// returns the passed in object
-MixpanelPersistence.prototype.safe_merge = function(props) {
-    _.each(this['props'], function(val, prop) {
-        if (!(prop in props)) {
-            props[prop] = val;
-        }
-    });
-
-    return props;
 };
 
 MixpanelPersistence.prototype.update_config = function(config) {
@@ -395,7 +394,7 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
 };
 
 MixpanelPersistence.prototype._pop_from_people_queue = function(queue, data) {
-    var q = this._get_queue(queue);
+    var q = this['props'][this._get_queue_key(queue)];
     if (!_.isUndefined(q)) {
         _.each(data, function(v, k) {
             if (queue === APPEND_ACTION || queue === REMOVE_ACTION) {
@@ -411,9 +410,11 @@ MixpanelPersistence.prototype._pop_from_people_queue = function(queue, data) {
                 delete q[k];
             }
         }, this);
-
-        this.save();
     }
+};
+
+MixpanelPersistence.prototype.load_queue = function(queue) {
+    return this.load_prop(this._get_queue_key(queue));
 };
 
 MixpanelPersistence.prototype._get_queue_key = function(queue) {
@@ -436,25 +437,21 @@ MixpanelPersistence.prototype._get_queue_key = function(queue) {
     }
 };
 
-MixpanelPersistence.prototype._get_queue = function(queue) {
-    return this['props'][this._get_queue_key(queue)];
-};
 MixpanelPersistence.prototype._get_or_create_queue = function(queue, default_val) {
     var key = this._get_queue_key(queue);
     default_val = _.isUndefined(default_val) ? {} : default_val;
-
     return this['props'][key] || (this['props'][key] = default_val);
 };
 
 MixpanelPersistence.prototype.set_event_timer = function(event_name, timestamp) {
-    var timers = this['props'][EVENT_TIMERS_KEY] || {};
+    var timers = this.load_prop(EVENT_TIMERS_KEY) || {};
     timers[event_name] = timestamp;
     this['props'][EVENT_TIMERS_KEY] = timers;
     this.save();
 };
 
 MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
-    var timers = this['props'][EVENT_TIMERS_KEY] || {};
+    var timers = this.load_prop(EVENT_TIMERS_KEY) || {};
     var timestamp = timers[event_name];
     if (!_.isUndefined(timestamp)) {
         delete this['props'][EVENT_TIMERS_KEY][event_name];

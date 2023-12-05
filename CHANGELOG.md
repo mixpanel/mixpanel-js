@@ -1,8 +1,20 @@
+**2.48.1** (14 Nov 2023)
+- UTM campaign properties will always be persisted super properties (fixes discrepancy between
+minified and unminified package)
+
+**2.48.0** (7 Nov 2023)
+- API endpoint routes can now be configured individually (i.e. rename /track, /engage, /groups)
+- Event properties object passed to mixpanel.track() will no longer be mutated
+- Super properties are now reloaded from persistence when making every tracking call (i.e., kept fresh when another tab/window in the same browser has updated them)
+- Extra failsafe behavior for trying to clear queued requests when localStorage doesn't work on startup, e.g., when localStorage is full so writes fail
+- Block Chrome-Lighthouse user agent
+- Fix for error in add_group() when adding a new group to an existing list
+
 **2.47.0** (27 Apr 2023)
 - Collect richer marketing attribution properties for multi-touch attribution
 - New implementation of previously-deprecated track_pageview() method and init option to send automatically
 - Use performance.now when available for time-based entropy component of UUID-generation (thanks @adrianherd)
-- looser API Host check for default JSON-payload sending to mipxanel.com hosts
+- Looser API Host check for default JSON-payload sending to mipxanel.com hosts
 
 **2.46.0** (20 Mar 2023)
 - Updates for new identity management system

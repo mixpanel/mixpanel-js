@@ -262,7 +262,7 @@ mixpanel.library_name.track(...);
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **token** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Your Mixpanel API token |
-| **config** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override. <a href="https://github.com/mixpanel/mixpanel-js/blob/8b2e1f7b/src/mixpanel-core.js#L87-L110">See a list of default config options</a>. |
+| **config** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | A dictionary of config options to override. <a href="https://github.com/mixpanel/mixpanel-js/blob/v2.46.0/src/mixpanel-core.js#L88-L127">See a list of default config options</a>. |
 | **name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | The name for the new mixpanel instance that you want created |
 
 
@@ -523,9 +523,19 @@ The default config is:
   // secure, meaning they will only be transmitted over https
   secure_cookie: false
 
+  // disables enriching user profiles with first touch marketing data
+  skip_first_touch_marketing: false
+
   // the amount of time track_links will
   // wait for Mixpanel's servers to respond
   track_links_timeout: 300
+
+  // adds any UTM parameters and click IDs present on the page to any events fired
+  track_marketing: true
+
+  // enables automatic page view tracking using default page view events through
+  // the track_pageview() method
+  track_pageview: false
 
   // if you set upgrade to be true, the library will check for
   // a cookie from our old js library and import super
@@ -682,6 +692,26 @@ If you pass a function in as the properties argument, the  function will receive
 | **query** | <span class="mp-arg-type">Object or String</span></br></span><span class="mp-arg-required">required</span> | A valid DOM query, element or jQuery-esque list |
 | **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the event to track |
 | **properties** | <span class="mp-arg-type">Object or Function</span></br></span><span class="mp-arg-optional">optional</span> | A properties object or function that returns a dictionary of properties when passed a DOMElement |
+
+
+___
+## mixpanel.track_pageview
+Track a default Mixpanel page view event, which includes extra default event properties to  improve page view data. The <code>config.track_pageview</code> option for <a href="#mixpanelinit">mixpanel.init()</a>  may be turned on for tracking page loads automatically.
+
+
+
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | An optional set of additional properties to send with the page view event |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Page view tracking options |
+| **options.event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
+<li>Alternate name for the tracking event</li>
+</ul> |
+#### Returns:
+| Type | Description |
+| ----- | ------------- |
+| <span class="mp-arg-type">Boolean or Object</span> | If the tracking request was successfully initiated/queued, an object with the tracking payload sent to the API server is returned; otherwise false. |
 
 
 ___
