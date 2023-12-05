@@ -639,14 +639,6 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
             lib.report_error(e);
             succeeded = false;
         }
-    } else {
-        var script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.async = true;
-        script.defer = true;
-        script.src = url;
-        var s = document.getElementsByTagName('script')[0];
-        s.parentNode.insertBefore(script, s);
     }
 
     return succeeded;

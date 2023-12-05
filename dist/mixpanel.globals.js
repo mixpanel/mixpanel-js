@@ -4697,14 +4697,6 @@
                 lib.report_error(e);
                 succeeded = false;
             }
-        } else {
-            var script = document$1.createElement('script');
-            script.type = 'text/javascript';
-            script.async = true;
-            script.defer = true;
-            script.src = url;
-            var s = document$1.getElementsByTagName('script')[0];
-            s.parentNode.insertBefore(script, s);
         }
 
         return succeeded;
