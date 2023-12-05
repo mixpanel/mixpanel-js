@@ -347,7 +347,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'people',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/engage/',
+        endpoint: this._get_config('api_host') + '/' +  this._get_config('api_routes')['engage'],
         batcher: this._mixpanel.request_batchers.people
     }, callback);
 };
@@ -383,11 +383,12 @@ MixpanelPeople.prototype._enqueue = function(data) {
 
 MixpanelPeople.prototype._flush_one_queue = function(action, action_method, callback, queue_to_params_fn) {
     var _this = this;
-    var queued_data = _.extend({}, this._mixpanel['persistence']._get_queue(action));
+    var queued_data = _.extend({}, this._mixpanel['persistence'].load_queue(action));
     var action_params = queued_data;
 
     if (!_.isUndefined(queued_data) && _.isObject(queued_data) && !_.isEmptyObject(queued_data)) {
         _this._mixpanel['persistence']._pop_from_people_queue(action, queued_data);
+        _this._mixpanel['persistence'].save();
         if (queue_to_params_fn) {
             action_params = queue_to_params_fn(queued_data);
         }
@@ -409,8 +410,6 @@ MixpanelPeople.prototype._flush = function(
     _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     var _this = this;
-    var $append_queue = this._mixpanel['persistence']._get_queue(APPEND_ACTION);
-    var $remove_queue = this._mixpanel['persistence']._get_queue(REMOVE_ACTION);
 
     this._flush_one_queue(SET_ACTION, this.set, _set_callback);
     this._flush_one_queue(SET_ONCE_ACTION, this.set_once, _set_once_callback);
@@ -420,6 +419,7 @@ MixpanelPeople.prototype._flush = function(
 
     // we have to fire off each $append individually since there is
     // no concat method server side
+    var $append_queue = this._mixpanel['persistence'].load_queue(APPEND_ACTION);
     if (!_.isUndefined($append_queue) && _.isArray($append_queue) && $append_queue.length) {
         var $append_item;
         var append_callback = function(response, data) {
@@ -431,16 +431,17 @@ MixpanelPeople.prototype._flush = function(
             }
         };
         for (var i = $append_queue.length - 1; i >= 0; i--) {
+            $append_queue = this._mixpanel['persistence'].load_queue(APPEND_ACTION);
             $append_item = $append_queue.pop();
+            _this._mixpanel['persistence'].save();
             if (!_.isEmptyObject($append_item)) {
                 _this.append($append_item, append_callback);
             }
         }
-        // Save the shortened append queue
-        _this._mixpanel['persistence'].save();
     }
 
     // same for $remove
+    var $remove_queue = this._mixpanel['persistence'].load_queue(REMOVE_ACTION);
     if (!_.isUndefined($remove_queue) && _.isArray($remove_queue) && $remove_queue.length) {
         var $remove_item;
         var remove_callback = function(response, data) {
@@ -452,12 +453,13 @@ MixpanelPeople.prototype._flush = function(
             }
         };
         for (var j = $remove_queue.length - 1; j >= 0; j--) {
+            $remove_queue = this._mixpanel['persistence'].load_queue(REMOVE_ACTION);
             $remove_item = $remove_queue.pop();
+            _this._mixpanel['persistence'].save();
             if (!_.isEmptyObject($remove_item)) {
                 _this.remove($remove_item, remove_callback);
             }
         }
-        _this._mixpanel['persistence'].save();
     }
 };
 

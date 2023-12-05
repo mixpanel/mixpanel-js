@@ -383,7 +383,7 @@
                 });
             });
 
-            asyncTest("check no property name aliasing occurs during minify", 1, function() {
+            test("check no property name aliasing occurs during minify", 1, function() {
                 var ob = {};
                 var letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
                 _.each(letters, function(l1) {
@@ -396,10 +396,8 @@
 
                 var expect_ob = _.extend({}, ob);
                 expect_ob.token = this.token;
-                mixpanel.test.track('test', ob, function(response) {
-                    deepEqual(ob, expect_ob, 'Nothing strange happened to properties');
-                    start();
-                });
+                data = mixpanel.test.track('test', ob);
+                ok(contains_obj(data.properties, expect_ob), 'Nothing strange happened to properties');
             });
 
             test("token property does not override configured token", 1, function() {
@@ -408,6 +406,15 @@
                 };
                 var data = mixpanel.test.track('test', props);
                 same(data.properties.token, mixpanel.test.get_config('token'), 'Property did not override token');
+            });
+
+            test("tracking does not mutate properties argument", 3, function() {
+                var props = {foo: 'bar', token: 'baz'};
+                var data = mixpanel.test.track('test', props);
+
+                same(props.token, 'baz', 'original properties object was not mutated');
+                same(data.properties.token, mixpanel.test.get_config('token'));
+                same(data.properties.foo, 'bar');
             });
 
             asyncTest("callback doesn't override", 1, function() {
@@ -1486,6 +1493,24 @@
                     'foo': 'bar',
                     'hi': 'you'
                 }), 'explicitly-set props take precedence over all superprops');
+            });
+
+            test("props are loaded from persistence when tracking", function() {
+                var data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {'foo': 'bar'}));
+                ok(!('a' in data.properties));
+
+                // initialize a separate instance with the same token (same persistence key)
+                // and set a super property in it
+                mixpanel.init(mixpanel.test.get_config('token'), {}, 'props_load_test');
+                mixpanel.props_load_test.register({'a': 'b'});
+
+                // verify that the super property is now used in tracking from the original instance
+                data = mixpanel.test.track('test', {'foo': 'bar'});
+                ok(contains_obj(data.properties, {
+                    'foo': 'bar',
+                    'a': 'b',
+                }));
             });
 
             test("unregister (non-persistent)", 4, function() {
@@ -3478,7 +3503,8 @@
                     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.75 Safari/537.36 Google Favicon",
                     "Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko; googleweblight) Chrome/38.0.1025.166 Mobile Safari/535.19",
                     "Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012; Storebot-Google/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Mobile Safari/537.36",
-                    "Screaming Frog SEO Spider/12.3"
+                    "Screaming Frog SEO Spider/12.3",
+                    "Mozilla/5.0 (Linux; Android 7.0; Moto G (4)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4695.0 Mobile Safari/537.36 Chrome-Lighthouse"
                 ];
                 _.each(bot_user_agents, function(ua) {
                     ok(mixpanel._.isBlockedUA(ua), ua);

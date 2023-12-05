@@ -902,6 +902,7 @@ var BLOCKED_UA_STRS = [
     'baiduspider',
     'bingbot',
     'bingpreview',
+    'chrome-lighthouse',
     'facebookexternal',
     'petalbot',
     'pinterest',
