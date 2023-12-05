@@ -4167,6 +4167,7 @@ var DEFAULT_CONFIG = {
     'track_pageview':                    false,
     'skip_first_touch_marketing':        false,
     'store_google':                      true,
+    'stop_utm_persistence':              false,
     'save_referrer':                     true,
     'test':                              false,
     'verbose':                           false,
@@ -4409,9 +4410,10 @@ MixpanelLib.prototype._loaded = function() {
     this._set_default_superprops();
     this['people'].set_once(this['persistence'].get_referrer_info());
 
-    // The original 'store_google' functionality is deprecated and the config is
-    // now used to clear previously managed UTM parameters from persistence
-    if (this.get_config('store_google')) {
+    // The original 'store_google' functionality will be deprecated and the config will be
+    // used to clear previously managed UTM parameters from persistence.
+    // stop_utm_persistence is `false` by default now but will be default `true` in the future.
+    if (this.get_config('store_google') && this.get_config('stop_utm_persistence')) {
         var utm_params = _.info.campaignParams(null);
         _.each(utm_params, function(_utm_value, utm_key) {
             // We need to unregister persisted UTM parameters so old values
@@ -4424,6 +4426,9 @@ MixpanelLib.prototype._loaded = function() {
 // update persistence with info on referrer, UTM params, etc
 MixpanelLib.prototype._set_default_superprops = function() {
     this['persistence'].update_search_keyword(document$1.referrer);
+    if (this.get_config('store_google') && !this.get_config('stop_utm_persistence')) {
+        this.register(_.info.campaignParams());
+    }
     if (this.get_config('save_referrer')) {
         this['persistence'].update_referrer_info(document$1.referrer);
     }
