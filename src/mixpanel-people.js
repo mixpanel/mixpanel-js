@@ -10,7 +10,7 @@ import {
     UNION_ACTION,
     apiActions
 } from './api-actions';
-import { _, console } from './utils';
+import { _, console, document } from './utils';
 
 /**
  * Mixpanel People Object
