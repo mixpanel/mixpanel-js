@@ -38,7 +38,7 @@
     var hasOwnProperty = ObjProto.hasOwnProperty;
     var windowConsole = window$1.console;
     var navigator = window$1.navigator;
-    var document$1 = window$1.document;
+    var document = window$1.document;
     var windowOpera = window$1.opera;
     var screen = window$1.screen;
     var userAgent = navigator.userAgent;
@@ -984,7 +984,7 @@
     _.cookie = {
         get: function(name) {
             var nameEQ = name + '=';
-            var ca = document$1.cookie.split(';');
+            var ca = document.cookie.split(';');
             for (var i = 0; i < ca.length; i++) {
                 var c = ca[i];
                 while (c.charAt(0) == ' ') {
@@ -1015,7 +1015,7 @@
             if (domain_override) {
                 cdomain = '; domain=' + domain_override;
             } else if (is_cross_subdomain) {
-                var domain = extract_domain(document$1.location.hostname);
+                var domain = extract_domain(document.location.hostname);
                 cdomain = domain ? '; domain=.' + domain : '';
             }
 
@@ -1033,7 +1033,7 @@
                 secure += '; secure';
             }
 
-            document$1.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+            document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
         },
 
         set: function(name, value, days, is_cross_subdomain, is_secure, is_cross_site, domain_override) {
@@ -1042,7 +1042,7 @@
             if (domain_override) {
                 cdomain = '; domain=' + domain_override;
             } else if (is_cross_subdomain) {
-                var domain = extract_domain(document$1.location.hostname);
+                var domain = extract_domain(document.location.hostname);
                 cdomain = domain ? '; domain=.' + domain : '';
             }
 
@@ -1061,7 +1061,7 @@
             }
 
             var new_cookie_val = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
-            document$1.cookie = new_cookie_val;
+            document.cookie = new_cookie_val;
             return new_cookie_val;
         },
 
@@ -1263,13 +1263,13 @@
 
         function getElementsBySelector(selector) {
             // Attempt to fail gracefully in lesser browsers
-            if (!document$1.getElementsByTagName) {
+            if (!document.getElementsByTagName) {
                 return [];
             }
             // Split selector in to tokens
             var tokens = selector.split(' ');
             var token, bits, tagName, found, foundCount, i, j, k, elements, currentContextIndex;
-            var currentContext = [document$1];
+            var currentContext = [document];
             for (i = 0; i < tokens.length; i++) {
                 token = tokens[i].replace(/^\s+/, '').replace(/\s+$/, '');
                 if (token.indexOf('#') > -1) {
@@ -1277,7 +1277,7 @@
                     bits = token.split('#');
                     tagName = bits[0];
                     var id = bits[1];
-                    var element = document$1.getElementById(id);
+                    var element = document.getElementById(id);
                     if (!element || (tagName && element.nodeName.toLowerCase() != tagName)) {
                         // element not found or tag with that ID not found, return false
                         return [];
@@ -1426,7 +1426,7 @@
             var kw = '',
                 params = {};
             _.each(CAMPAIGN_KEYWORDS, function(kwkey) {
-                kw = _.getQueryParam(document$1.URL, kwkey);
+                kw = _.getQueryParam(document.URL, kwkey);
                 if (kw.length) {
                     params[kwkey] = kw;
                 } else if (default_value !== undefined) {
@@ -1441,7 +1441,7 @@
             var id = '',
                 params = {};
             _.each(CLICK_IDS, function(idkey) {
-                id = _.getQueryParam(document$1.URL, idkey);
+                id = _.getQueryParam(document.URL, idkey);
                 if (id.length) {
                     params[idkey] = id;
                 }
@@ -1626,8 +1626,8 @@
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
                 '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
-                '$referrer': document$1.referrer,
-                '$referring_domain': _.info.referringDomain(document$1.referrer),
+                '$referrer': document.referrer,
+                '$referring_domain': _.info.referringDomain(document.referrer),
                 '$device': _.info.device(userAgent)
             }), {
                 '$current_url': window$1.location.href,
@@ -1652,7 +1652,7 @@
 
         mpPageViewProperties: function() {
             return _.strip_empty_properties({
-                'current_page_title': document$1.title,
+                'current_page_title': document.title,
                 'current_domain': window$1.location.hostname,
                 'current_url_path': window$1.location.pathname,
                 'current_url_protocol': window$1.location.protocol,
@@ -4379,7 +4379,7 @@
                         }
                     });
                     window$1.addEventListener('visibilitychange', function() {
-                        if (document$1['visibilityState'] === 'hidden') {
+                        if (document['visibilityState'] === 'hidden') {
                             flush_on_unload();
                         }
                     });
@@ -4416,12 +4416,12 @@
 
     // update persistence with info on referrer, UTM params, etc
     MixpanelLib.prototype._set_default_superprops = function() {
-        this['persistence'].update_search_keyword(document$1.referrer);
+        this['persistence'].update_search_keyword(document.referrer);
         if (this.get_config('store_google')) {
             this.register(_.info.campaignParams());
         }
         if (this.get_config('save_referrer')) {
-            this['persistence'].update_referrer_info(document$1.referrer);
+            this['persistence'].update_referrer_info(document.referrer);
         }
     };
 
@@ -4546,9 +4546,9 @@
 
         var lib = this;
         if ('img' in data) {
-            var img = document$1.createElement('img');
+            var img = document.createElement('img');
             img.src = url;
-            document$1.body.appendChild(img);
+            document.body.appendChild(img);
         } else if (use_sendBeacon) {
             try {
                 succeeded = sendBeacon(url, body_data);
@@ -4563,7 +4563,7 @@
             } catch (e) {
                 lib.report_error(e);
             }
-        } else if (USE_XHR) {
+        } else if (USE_XHR || USE_FETCH) {
             try {
                 var req = new XMLHttpRequest();
                 req.open(options.method, url, true);
@@ -4632,13 +4632,13 @@
                 lib.report_error(e);
                 succeeded = false;
             }
-        } else if (USE_FETCH) {
+        }else if (USE_FETCH) {
             try {
                 var headers = this.get_config('xhr_headers');
                 if (use_post) {
                     headers['Content-Type'] = 'application/x-www-form-urlencoded';
                 }
-    
+
                 var fetchOpts = {
                     method: options.method,
                     mode: 'cors',
@@ -4646,7 +4646,7 @@
                     headers: headers,
                     body: body_data
                 };
-    
+
                 fetch(url, fetchOpts)
                     .then(function (response) {
                         return response.text().then(function (body) {
@@ -4682,7 +4682,7 @@
                         } else {
                             var error = 'Bad HTTP status: ' + res.status + ' ' + res.statusText;
                             lib.report_error(error);
-    
+
                             if (callback) {
                                 if (verbose_mode) {
                                     var xhr_req = { status: res.status, responseHeaders: res.headers };
@@ -4697,13 +4697,13 @@
                 lib.report_error(e);
                 succeeded = false;
             }
-        } else {
-            var script = document$1.createElement('script');
+        }  else {
+            var script = document.createElement('script');
             script.type = 'text/javascript';
             script.async = true;
             script.defer = true;
             script.src = url;
-            var s = document$1.getElementsByTagName('script')[0];
+            var s = document.getElementsByTagName('script')[0];
             s.parentNode.insertBefore(script, s);
         }
 
@@ -6185,7 +6185,7 @@
 
         function do_scroll_check() {
             try {
-                document$1.documentElement.doScroll('left');
+                document.documentElement.doScroll('left');
             } catch(e) {
                 setTimeout(do_scroll_check, 1);
                 return;
@@ -6194,19 +6194,19 @@
             dom_loaded_handler();
         }
 
-        if (document$1.addEventListener) {
-            if (document$1.readyState === 'complete') {
+        if (document.addEventListener) {
+            if (document.readyState === 'complete') {
                 // safari 4 can fire the DOMContentLoaded event before loading all
                 // external JS (including this file). you will see some copypasta
                 // on the internet that checks for 'complete' and 'loaded', but
                 // 'loaded' is an IE thing
                 dom_loaded_handler();
             } else {
-                document$1.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
+                document.addEventListener('DOMContentLoaded', dom_loaded_handler, false);
             }
-        } else if (document$1.attachEvent) {
+        } else if (document.attachEvent) {
             // IE
-            document$1.attachEvent('onreadystatechange', dom_loaded_handler);
+            document.attachEvent('onreadystatechange', dom_loaded_handler);
 
             // check to make sure we arn't in a frame
             var toplevel = false;
@@ -6216,7 +6216,7 @@
                 // noop
             }
 
-            if (document$1.documentElement.doScroll && toplevel) {
+            if (document.documentElement.doScroll && toplevel) {
                 do_scroll_check();
             }
         }

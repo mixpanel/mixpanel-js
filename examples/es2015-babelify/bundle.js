@@ -738,11 +738,12 @@ var NOOP_FUNC = function NOOP_FUNC() {};
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
 var USE_XHR = _utils.window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
+var USE_FETCH = !_utils._.isUndefined(fetch) && typeof fetch === 'function';
 
 // IE<10 does not support cross-origin XHR's but script tags
 // with defer won't block window.onload; ENQUEUE_REQUESTS
 // should only be true for Opera<12
-var ENQUEUE_REQUESTS = !USE_XHR && _utils.userAgent.indexOf('MSIE') === -1 && _utils.userAgent.indexOf('Mozilla') === -1;
+var ENQUEUE_REQUESTS = !USE_XHR && !USE_FETCH && _utils.userAgent.indexOf('MSIE') === -1 && _utils.userAgent.indexOf('Mozilla') === -1;
 
 // save reference to navigator.sendBeacon so it can be minified
 var sendBeacon = null;
@@ -959,7 +960,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
     this.request_batchers = {};
     this._batch_requests = this.get_config('batch_requests');
     if (this._batch_requests) {
-        if (!_utils._.localStorage.is_supported(true) || !USE_XHR) {
+        if (!_utils._.localStorage.is_supported(true) || !USE_XHR && !USE_FETCH) {
             this._batch_requests = false;
             _utils.console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
             _utils._.each(this.get_batcher_configs(), function (batcher_config) {
@@ -1081,7 +1082,7 @@ MixpanelLib.prototype._prepare_callback = function (callback, data) {
         return null;
     }
 
-    if (USE_XHR) {
+    if (USE_XHR || USE_FETCH) {
         var callback_function = function callback_function(response) {
             callback(response, data);
         };
@@ -1121,7 +1122,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
         options = null;
     }
     options = _utils._.extend(DEFAULT_OPTIONS, options || {});
-    if (!USE_XHR) {
+    if (!USE_XHR && !USE_FETCH) {
         options.method = 'GET';
     }
     var use_post = options.method === 'POST';
@@ -1142,7 +1143,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
     if (this.get_config('img')) {
         data['img'] = 1;
     }
-    if (!USE_XHR) {
+    if (!USE_XHR && !USE_FETCH) {
         if (callback) {
             data['callback'] = callback;
         } else if (verbose_mode || this.get_config('test')) {
@@ -1183,7 +1184,7 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
         } catch (e) {
             lib.report_error(e);
         }
-    } else if (USE_XHR) {
+    } else if (USE_XHR || USE_FETCH) {
         try {
             var req = new XMLHttpRequest();
             req.open(options.method, url, true);
@@ -1245,6 +1246,69 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
                 }
             };
             req.send(body_data);
+        } catch (e) {
+            lib.report_error(e);
+            succeeded = false;
+        }
+    } else if (USE_FETCH) {
+        try {
+            var headers = this.get_config('xhr_headers');
+            if (use_post) {
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+
+            var fetchOpts = {
+                method: options.method,
+                mode: 'cors',
+                credentials: 'include',
+                headers: headers,
+                body: body_data
+            };
+
+            fetch(url, fetchOpts).then(function (response) {
+                return response.text().then(function (body) {
+                    return {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: response.headers,
+                        body: body
+                    };
+                });
+            }).then(function (res) {
+                if (res.status === 200) {
+                    if (callback) {
+                        var body = res.body;
+                        if (verbose_mode) {
+                            var response;
+                            try {
+                                response = _utils._.JSONDecode(body);
+                            } catch (e) {
+                                lib.report_error(e);
+                                if (options.ignore_json_errors) {
+                                    response = body;
+                                } else {
+                                    return;
+                                }
+                            }
+                            callback(response);
+                        } else {
+                            callback(Number(body));
+                        }
+                    }
+                } else {
+                    var error = 'Bad HTTP status: ' + res.status + ' ' + res.statusText;
+                    lib.report_error(error);
+
+                    if (callback) {
+                        if (verbose_mode) {
+                            var xhr_req = { status: res.status, responseHeaders: res.headers };
+                            callback({ status: 0, error: error, xhr_req: xhr_req });
+                        } else {
+                            callback(0);
+                        }
+                    }
+                }
+            });
         } catch (e) {
             lib.report_error(e);
             succeeded = false;
@@ -3034,7 +3098,7 @@ MixpanelPeople.prototype.set = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(func
     }
     // make sure that the referrer info has been updated and saved
     if (this._get_config('save_referrer')) {
-        this._mixpanel['persistence'].update_referrer_info(document.referrer);
+        this._mixpanel['persistence'].update_referrer_info(_utils.document.referrer);
     }
 
     // update $set object with default people properties
