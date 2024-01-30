@@ -3811,6 +3811,9 @@
                 });
 
                 test("init with track_pageview=true fires page view event", 2, function() {
+                    var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                    window.history.pushState({ path: next_url }, '', next_url);
+
                     mixpanel.init("track_pageview_test_token", {
                         track_pageview: true,
                         batch_requests: false,
@@ -3820,7 +3823,33 @@
                     same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
                 });
 
+                test("init with track_pageview='url-with-path' tracks page views correctly", 5, function() {
+                    var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                    window.history.pushState({ path: next_url }, '', next_url);
+
+                    mixpanel.init("track_pageview_test_token", {
+                        track_pageview: "url-with-path",
+                        batch_requests: false,
+                    }, 'pageviews_pathonly');
+                    same(this.requests.length, 1, "init with track_pageview='url-with-path' should fire single request on load");
+                    var last_event = getRequestData(this.requests[0]);
+                    same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+
+                    window.dispatchEvent(new Event("mp_locationchange"));
+                    same(this.requests.length, 1, "mp_locationchange event should not fire page view event on no URL change");
+
+                    window.location.href = window.location.href.split('#') + '#anchor'
+                    same(this.requests.length, 1, "init with track_pageview='url-with-path' should not fire additional request on hash change");
+
+                    var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname + '?hello=world';
+                    window.history.pushState({ path: next_url }, '', next_url);
+                    same(this.requests.length, 1, "init with track_pageview='url-with-path' should not fire request on query string change");
+                });
+
                 test("init with track_pageview='url-with-path-and-query-string' tracks page views correctly", 6, function() {
+                    var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                    window.history.pushState({ path: next_url }, '', next_url);
+
                     mixpanel.init("track_pageview_test_token", {
                         track_pageview: "url-with-path-and-query-string",
                         batch_requests: false,
@@ -3832,13 +3861,13 @@
                     window.dispatchEvent(new Event("mp_locationchange"));
                     same(this.requests.length, 1, "mp_locationchange event should not fire page view event on no URL change");
 
-                    var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname + '?hello=world';
+                    var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname + '?next=query';
                     window.history.pushState({ path: next_url }, '', next_url);
                     same(this.requests.length, 2, "init with track_pageview='url-with-path-and-query-string' should fire request on query string change");
                     var last_event = getRequestData(this.requests[1]);
                     same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
 
-                    window.location.href = window.location.href.split('#')[0] + '#anchor'
+                    window.location.href = window.location.href.split('#')[0] + '#anotheranchor'
                     same(this.requests.length, 2, "init with track_pageview='url-with-path-and-query-string' should not fire additional request on hash change");
                 });
             }

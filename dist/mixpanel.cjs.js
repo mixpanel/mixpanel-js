@@ -4511,7 +4511,7 @@ MixpanelLib.prototype._init_url_change_tracking = function(track_pageview_option
             } else if (track_pageview_option === 'url-with-path-and-query-string') {
                 should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
             } else if (track_pageview_option === 'url-with-path') {
-                should_track = current_url.split('?')[0] !== previous_tracked_url.split('?')[0];
+                should_track = current_url.split('#')[0].split('?')[0] !== previous_tracked_url.split('#')[0].split('?')[0];
             }
 
             if (should_track) {
