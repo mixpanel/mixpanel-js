@@ -22,6 +22,7 @@ if [ ! -z "$FULL" ]; then
     echo 'Building module bundles'
     ./node_modules/.bin/rollup -i src/loader-module.js -f amd -o build/mixpanel.amd.js -c rollup.config.js
     ./node_modules/.bin/rollup -i src/loader-module.js -f cjs -o build/mixpanel.cjs.js -c rollup.config.js
+    ./node_modules/.bin/rollup -i src/loader-module.js -f es6 -o build/mixpanel.es6.js -c rollup.config.js
     ./node_modules/.bin/rollup -i src/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel -c rollup.config.js
 
     echo 'Bundling module-loader test runners'
