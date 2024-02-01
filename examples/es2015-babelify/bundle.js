@@ -5665,7 +5665,7 @@ _.UUID = (function () {
 // _.isBlockedUA()
 // This is to block various web spiders from executing our JS and
 // sending false tracking data
-var BLOCKED_UA_STRS = ['ahrefsbot', 'baiduspider', 'bingbot', 'bingpreview', 'chrome-lighthouse', 'facebookexternal', 'petalbot', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandexbot',
+var BLOCKED_UA_STRS = ['ahrefsbot', 'ahrefssiteaudit', 'baiduspider', 'bingbot', 'bingpreview', 'chrome-lighthouse', 'facebookexternal', 'petalbot', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandexbot',
 
 // a whole bunch of goog-specific crawlers
 // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers

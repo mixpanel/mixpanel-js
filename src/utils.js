@@ -899,6 +899,7 @@ _.UUID = (function() {
 // sending false tracking data
 var BLOCKED_UA_STRS = [
     'ahrefsbot',
+    'ahrefssiteaudit',
     'baiduspider',
     'bingbot',
     'bingpreview',

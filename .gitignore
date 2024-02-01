@@ -8,3 +8,4 @@ tunnel.log
 *.swp
 *.ps1
 *.bundle.js
+.DS_Store
