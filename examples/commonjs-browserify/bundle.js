@@ -1,22 +1,9 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var mixpanel = require('./mixpanel.cjs.js');
-
-mixpanel.init("FAKE_TOKEN", {
-    debug: true,
-    loaded: function() {
-        mixpanel.track('loaded() callback works but is unnecessary');
-        alert("Mixpanel loaded successfully via Browserify/CommonJS");
-    }
-});
-
-mixpanel.track('Tracking after mixpanel.init');
-
-},{"./mixpanel.cjs.js":2}],2:[function(require,module,exports){
 'use strict';
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.48.1'
+    LIB_VERSION: '2.49.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -6274,4 +6261,17 @@ function init_as_module() {
 var mixpanel = init_as_module();
 
 module.exports = mixpanel;
-},{}]},{},[1]);
+},{}],2:[function(require,module,exports){
+var mixpanel = require('./mixpanel.cjs.js');
+
+mixpanel.init("FAKE_TOKEN", {
+    debug: true,
+    loaded: function() {
+        mixpanel.track('loaded() callback works but is unnecessary');
+        alert("Mixpanel loaded successfully via Browserify/CommonJS");
+    }
+});
+
+mixpanel.track('Tracking after mixpanel.init');
+
+},{"./mixpanel.cjs.js":1}]},{},[2]);
