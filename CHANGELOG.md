@@ -1,3 +1,9 @@
+**2.49.0** (5 Feb 2024)
+- SPA support in pageview-tracking
+- Support for configurable UTM parameter persistence
+- Initial-referrer profile properties are now stored with `set_once` instead of `set`
+- Ignore AhrefsSiteAudit crawler
+
 **2.48.1** (14 Nov 2023)
 - UTM campaign properties will always be persisted super properties (fixes discrepancy between
 minified and unminified package)
