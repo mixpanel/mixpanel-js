@@ -42,7 +42,7 @@
     "core-js": "3.6.5",
     "dox": "0.9.0",
     "eslint": "4.18.2",
-    "express": "4.12.2",
+    "express": "4.18.2",
     "jsdom": "16.5.0",
     "jsdom-global": "3.0.2",
     "localStorage": "1.0.4",
