@@ -47,7 +47,7 @@
     "jsdom-global": "3.0.2",
     "localStorage": "1.0.4",
     "lodash": "4.17.21",
-    "mocha": "7.1.1",
+    "mocha": "10.2.0",
     "morgan": "1.9.1",
     "rdme": "7.5.0",
     "request": "2.88.0",
