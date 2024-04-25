@@ -1,4 +1,17 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var mixpanel = require('./mixpanel.cjs.js');
+
+mixpanel.init("FAKE_TOKEN", {
+    debug: true,
+    loaded: function() {
+        mixpanel.track('loaded() callback works but is unnecessary');
+        alert("Mixpanel loaded successfully via Browserify/CommonJS");
+    }
+});
+
+mixpanel.track('Tracking after mixpanel.init');
+
+},{"./mixpanel.cjs.js":2}],2:[function(require,module,exports){
 'use strict';
 
 var Config = {
@@ -4202,7 +4215,7 @@ var DEFAULT_CONFIG = {
     'track_pageview':                    false,
     'skip_first_touch_marketing':        false,
     'store_google':                      true,
-    'stop_utm_persistence':              false,
+    'stop_utm_persistence':              true,
     'save_referrer':                     true,
     'test':                              false,
     'verbose':                           false,
@@ -4489,9 +4502,8 @@ MixpanelLib.prototype._loaded = function() {
     this._set_default_superprops();
     this['people'].set_once(this['persistence'].get_referrer_info());
 
-    // The original 'store_google' functionality will be deprecated and the config will be
-    // used to clear previously managed UTM parameters from persistence.
-    // stop_utm_persistence is `false` by default now but will be default `true` in the future.
+    // `store_google` is now deprecated and previously stored UTM parameters are cleared
+    // from persistence by default.
     if (this.get_config('store_google') && this.get_config('stop_utm_persistence')) {
         var utm_params = _.info.campaignParams(null);
         _.each(utm_params, function(_utm_value, utm_key) {
@@ -4505,6 +4517,7 @@ MixpanelLib.prototype._loaded = function() {
 // update persistence with info on referrer, UTM params, etc
 MixpanelLib.prototype._set_default_superprops = function() {
     this['persistence'].update_search_keyword(document$1.referrer);
+    // Registering super properties for UTM persistence by 'store_google' is deprecated.
     if (this.get_config('store_google') && !this.get_config('stop_utm_persistence')) {
         this.register(_.info.campaignParams());
     }
@@ -6339,17 +6352,4 @@ var mixpanel = init_as_module();
 
 module.exports = mixpanel;
 
-},{}],2:[function(require,module,exports){
-var mixpanel = require('./mixpanel.cjs.js');
-
-mixpanel.init("FAKE_TOKEN", {
-    debug: true,
-    loaded: function() {
-        mixpanel.track('loaded() callback works but is unnecessary');
-        alert("Mixpanel loaded successfully via Browserify/CommonJS");
-    }
-});
-
-mixpanel.track('Tracking after mixpanel.init');
-
-},{"./mixpanel.cjs.js":1}]},{},[2]);
+},{}]},{},[1]);
