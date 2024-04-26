@@ -9,7 +9,7 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
 (function(document, mixpanel) {
     // Only stub out if this is the first time running the snippet.
     if (!mixpanel['__SV']) {
-        var script, first_script, gen_fn, functions, i, lib_name = "mixpanel";
+        var script, first_script, functions, i, lib_name = "mixpanel";
         window[lib_name] = mixpanel;
 
         mixpanel['_i'] = [];

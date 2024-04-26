@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { _, console, userAgent, window, document, navigator, slice } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, window, document, navigator, slice } from './utils';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -84,7 +84,8 @@ if (navigator['sendBeacon']) {
 var DEFAULT_API_ROUTES = {
     'track': 'track/',
     'engage': 'engage/',
-    'groups': 'groups/'
+    'groups': 'groups/',
+    'record': 'record/'
 };
 
 /*
@@ -136,7 +137,12 @@ var DEFAULT_CONFIG = {
     'batch_flush_interval_ms':           5000,
     'batch_request_timeout_ms':          90000,
     'batch_autostart':                   true,
-    'hooks':                             {}
+    'hooks':                             {},
+    'record_sessions_percent':           0,
+    'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
+    'record_max_ms':                     MAX_RECORDING_MS,
+    'record_mask_text_selector':         '*',
+    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
 
 var DOM_LOADED = false;
@@ -348,6 +354,41 @@ MixpanelLib.prototype._init = function(token, config, name) {
     var track_pageview_option = this.get_config('track_pageview');
     if (track_pageview_option) {
         this._init_url_change_tracking(track_pageview_option);
+    }
+
+    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
+        this.start_session_recording();
+    }
+};
+
+MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function () {
+    if (!window['MutationObserver']) {
+        console.critical('Browser does not support MutationObserver; skipping session recording');
+        return;
+    }
+
+    var handleLoadedRecorder = _.bind(function() {
+        this._recorder = this._recorder || new window['__mp_recorder'](this);
+        this._recorder['startRecording']();
+    }, this);
+
+    if (_.isUndefined(window['__mp_recorder'])) {
+        var scriptEl = document.createElement('script');
+        scriptEl.type = 'text/javascript';
+        scriptEl.async = true;
+        scriptEl.onload = handleLoadedRecorder;
+        scriptEl.src = this.get_config('recorder_src');
+        document.head.appendChild(scriptEl);
+    } else {
+        handleLoadedRecorder();
+    }
+});
+
+MixpanelLib.prototype.stop_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['stopRecording']();
+    } else {
+        console.critical('Session recorder module not loaded');
     }
 };
 
@@ -921,6 +962,13 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var marketing_properties = this.get_config('track_marketing')
         ? _.info.marketingParams()
         : {};
+
+    if (this._recorder) {
+        var replay_id = this._recorder['replayId'];
+        if (replay_id) {
+            properties['$mp_replay_id'] = replay_id;
+        }
+    }
 
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
@@ -2071,6 +2119,8 @@ MixpanelLib.prototype['remove_group']              = MixpanelLib.prototype.remov
 MixpanelLib.prototype['track_with_groups']         = MixpanelLib.prototype.track_with_groups;
 MixpanelLib.prototype['start_batch_senders']       = MixpanelLib.prototype.start_batch_senders;
 MixpanelLib.prototype['stop_batch_senders']        = MixpanelLib.prototype.stop_batch_senders;
+MixpanelLib.prototype['start_session_recording']   = MixpanelLib.prototype.start_session_recording;
+MixpanelLib.prototype['stop_session_recording']    = MixpanelLib.prototype.stop_session_recording;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']        = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports

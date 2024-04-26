@@ -20,6 +20,9 @@ if (typeof(window) === 'undefined') {
     win = window;
 }
 
+// Maximum allowed session recording length
+var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 /*
  * Saved references to long variable names, so that closure compiler can
  * minimize file size.
@@ -1721,6 +1724,7 @@ _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
 export {
+    MAX_RECORDING_MS,
     _,
     userAgent,
     console,

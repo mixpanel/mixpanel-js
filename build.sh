@@ -7,8 +7,9 @@ if [ ! -z "$DIST" ]; then
     export FULL=1
 fi
 
-echo 'Building main bundle'
+echo 'Building main bundles'
 npx rollup -i src/loaders/loader-globals.js -f iife -o build/mixpanel.globals.js -n mixpanel -c rollup.config.js
+npx rollup -i src/recorder/index.js -f iife -n mixpanel -c src/recorder/rollup.config.js
 ln -sf mixpanel.globals.js build/mixpanel.js
 
 if [ ! -z "$FULL" ]; then

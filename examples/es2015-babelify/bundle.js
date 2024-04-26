@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.49.0'
+    LIB_VERSION: '2.50.0-alpha-5'
 };
 
 exports['default'] = Config;
@@ -756,7 +756,8 @@ if (_utils.navigator['sendBeacon']) {
 var DEFAULT_API_ROUTES = {
     'track': 'track/',
     'engage': 'engage/',
-    'groups': 'groups/'
+    'groups': 'groups/',
+    'record': 'record/'
 };
 
 /*
@@ -808,7 +809,12 @@ var DEFAULT_CONFIG = {
     'batch_flush_interval_ms': 5000,
     'batch_request_timeout_ms': 90000,
     'batch_autostart': true,
-    'hooks': {}
+    'hooks': {},
+    'record_sessions_percent': 0,
+    'record_idle_timeout_ms': 30 * 60 * 1000, // 30 minutes
+    'record_max_ms': _utils.MAX_RECORDING_MS,
+    'record_mask_text_selector': '*',
+    'recorder_src': 'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
 
 var DOM_LOADED = false;
@@ -1019,6 +1025,41 @@ MixpanelLib.prototype._init = function (token, config, name) {
     var track_pageview_option = this.get_config('track_pageview');
     if (track_pageview_option) {
         this._init_url_change_tracking(track_pageview_option);
+    }
+
+    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
+        this.start_session_recording();
+    }
+};
+
+MixpanelLib.prototype.start_session_recording = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function () {
+    if (!_utils.window['MutationObserver']) {
+        _utils.console.critical('Browser does not support MutationObserver; skipping session recording');
+        return;
+    }
+
+    var handleLoadedRecorder = _utils._.bind(function () {
+        this._recorder = this._recorder || new _utils.window['__mp_recorder'](this);
+        this._recorder['startRecording']();
+    }, this);
+
+    if (_utils._.isUndefined(_utils.window['__mp_recorder'])) {
+        var scriptEl = _utils.document.createElement('script');
+        scriptEl.type = 'text/javascript';
+        scriptEl.async = true;
+        scriptEl.onload = handleLoadedRecorder;
+        scriptEl.src = this.get_config('recorder_src');
+        _utils.document.head.appendChild(scriptEl);
+    } else {
+        handleLoadedRecorder();
+    }
+});
+
+MixpanelLib.prototype.stop_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['stopRecording']();
+    } else {
+        _utils.console.critical('Session recorder module not loaded');
     }
 };
 
@@ -1585,6 +1626,13 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     this._set_default_superprops();
 
     var marketing_properties = this.get_config('track_marketing') ? _utils._.info.marketingParams() : {};
+
+    if (this._recorder) {
+        var replay_id = this._recorder['replayId'];
+        if (replay_id) {
+            properties['$mp_replay_id'] = replay_id;
+        }
+    }
 
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
@@ -2714,6 +2762,8 @@ MixpanelLib.prototype['remove_group'] = MixpanelLib.prototype.remove_group;
 MixpanelLib.prototype['track_with_groups'] = MixpanelLib.prototype.track_with_groups;
 MixpanelLib.prototype['start_batch_senders'] = MixpanelLib.prototype.start_batch_senders;
 MixpanelLib.prototype['stop_batch_senders'] = MixpanelLib.prototype.stop_batch_senders;
+MixpanelLib.prototype['start_session_recording'] = MixpanelLib.prototype.start_session_recording;
+MixpanelLib.prototype['stop_session_recording'] = MixpanelLib.prototype.stop_session_recording;
 MixpanelLib.prototype['DEFAULT_API_ROUTES'] = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports
@@ -4789,6 +4839,9 @@ if (typeof window === 'undefined') {
     exports.window = win = window;
 }
 
+// Maximum allowed session recording length
+var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 /*
  * Saved references to long variable names, so that closure compiler can
  * minimize file size.
@@ -6467,6 +6520,7 @@ _['info']['browser'] = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties'] = _.info.properties;
 
+exports.MAX_RECORDING_MS = MAX_RECORDING_MS;
 exports._ = _;
 exports.userAgent = userAgent;
 exports.console = console;

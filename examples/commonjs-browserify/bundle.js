@@ -3,16 +3,18 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.49.0'
+    LIB_VERSION: '2.50.0-alpha-5'
 };
 
+/* eslint camelcase: "off", eqeqeq: "off" */
+
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
-var window$1;
+var win;
 if (typeof(window) === 'undefined') {
     var loc = {
         hostname: ''
     };
-    window$1 = {
+    win = {
         navigator: { userAgent: '' },
         document: {
             location: loc,
@@ -22,32 +24,37 @@ if (typeof(window) === 'undefined') {
         location: loc
     };
 } else {
-    window$1 = window;
+    win = window;
 }
+
+// Maximum allowed session recording length
+var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /*
  * Saved references to long variable names, so that closure compiler can
  * minimize file size.
  */
 
-var ArrayProto = Array.prototype;
-var FuncProto = Function.prototype;
-var ObjProto = Object.prototype;
-var slice = ArrayProto.slice;
-var toString = ObjProto.toString;
-var hasOwnProperty = ObjProto.hasOwnProperty;
-var windowConsole = window$1.console;
-var navigator = window$1.navigator;
-var document$1 = window$1.document;
-var windowOpera = window$1.opera;
-var screen = window$1.screen;
-var userAgent = navigator.userAgent;
-var nativeBind = FuncProto.bind;
-var nativeForEach = ArrayProto.forEach;
-var nativeIndexOf = ArrayProto.indexOf;
-var nativeMap = ArrayProto.map;
-var nativeIsArray = Array.isArray;
-var breaker = {};
+var ArrayProto = Array.prototype,
+    FuncProto = Function.prototype,
+    ObjProto = Object.prototype,
+    slice = ArrayProto.slice,
+    toString = ObjProto.toString,
+    hasOwnProperty = ObjProto.hasOwnProperty,
+    windowConsole = win.console,
+    navigator = win.navigator,
+    document$1 = win.document,
+    windowOpera = win.opera,
+    screen = win.screen,
+    userAgent = navigator.userAgent;
+
+var nativeBind = FuncProto.bind,
+    nativeForEach = ArrayProto.forEach,
+    nativeIndexOf = ArrayProto.indexOf,
+    nativeMap = ArrayProto.map,
+    nativeIsArray = Array.isArray,
+    breaker = {};
+
 var _ = {
     trim: function(str) {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
@@ -837,8 +844,8 @@ _.UUID = (function() {
     var T = function() {
         var time = 1 * new Date(); // cross-browser version of Date.now()
         var ticks;
-        if (window$1.performance && window$1.performance.now) {
-            ticks = window$1.performance.now();
+        if (win.performance && win.performance.now) {
+            ticks = win.performance.now();
         } else {
             // fall back to busy loop
             ticks = 0;
@@ -1624,7 +1631,7 @@ _.info = {
     },
 
     currentUrl: function() {
-        return window$1.location.href;
+        return win.location.href;
     },
 
     properties: function(extra_props) {
@@ -1661,10 +1668,10 @@ _.info = {
     mpPageViewProperties: function() {
         return _.strip_empty_properties({
             'current_page_title': document$1.title,
-            'current_domain': window$1.location.hostname,
-            'current_url_path': window$1.location.pathname,
-            'current_url_protocol': window$1.location.protocol,
-            'current_url_search': window$1.location.search
+            'current_domain': win.location.hostname,
+            'current_url_path': win.location.pathname,
+            'current_url_protocol': win.location.protocol,
+            'current_url_search': win.location.search
         });
     }
 };
@@ -1702,8 +1709,7 @@ var extract_domain = function(hostname) {
     return matches ? matches[0] : '';
 };
 
-var JSONStringify = null;
-var JSONParse = null;
+var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
     JSONParse = JSON.parse;
@@ -1723,6 +1729,8 @@ _['info']['device']         = _.info.device;
 _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
+
+/* eslint camelcase: "off" */
 
 /**
  * DomTracker Object
@@ -1873,8 +1881,6 @@ FormTracker.prototype.after_track_handler = function(props, options) {
     }, 0);
 };
 
-// eslint-disable-line camelcase
-
 var logger$2 = console_with_prefix('lock');
 
 /**
@@ -2020,8 +2026,6 @@ SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
         reportError(err);
     }
 };
-
-// eslint-disable-line camelcase
 
 var logger$1 = console_with_prefix('batch');
 
@@ -2299,8 +2303,6 @@ RequestQueue.prototype.clear = function() {
     this.memQueue = [];
     this.storage.removeItem(this.storageKey);
 };
-
-// eslint-disable-line camelcase
 
 // maximum interval between request retries after exponential backoff
 var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -2597,6 +2599,19 @@ RequestBatcher.prototype.reportError = function(msg, err) {
 };
 
 /**
+ * GDPR utils
+ *
+ * The General Data Protection Regulation (GDPR) is a regulation in EU law on data protection
+ * and privacy for all individuals within the European Union. It addresses the export of personal
+ * data outside the EU. The GDPR aims primarily to give control back to citizens and residents
+ * over their personal data and to simplify the regulatory environment for international business
+ * by unifying the regulation within the EU.
+ *
+ * This set of utilities is intended to enable opt in/out functionality in the Mixpanel JS SDK.
+ * These functions are used internally by the SDK and are not intended to be publicly exposed.
+ */
+
+/**
  * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
  * @callback trackFunction
  * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
@@ -2781,14 +2796,14 @@ function _hasDoNotTrackFlagOn(options) {
     if (options && options.ignoreDnt) {
         return false;
     }
-    var win = (options && options.window) || window$1;
-    var nav = win['navigator'] || {};
+    var win$1 = (options && options.window) || win;
+    var nav = win$1['navigator'] || {};
     var hasDntOn = false;
 
     _.each([
         nav['doNotTrack'], // standard
         nav['msDoNotTrack'],
-        win['doNotTrack']
+        win$1['doNotTrack']
     ], function(dntValue) {
         if (_.includes([true, 1, '1', 'yes'], dntValue)) {
             hasDntOn = true;
@@ -2881,6 +2896,8 @@ function _addOptOutCheck(method, getConfigValue) {
         return;
     };
 }
+
+/* eslint camelcase: "off" */
 
 /** @const */ var SET_ACTION      = '$set';
 /** @const */ var SET_ONCE_ACTION = '$set_once';
@@ -2998,6 +3015,8 @@ var apiActions = {
         return data;
     }
 };
+
+/* eslint camelcase: "off" */
 
 /**
  * Mixpanel Group Object
@@ -3166,6 +3185,8 @@ MixpanelGroup.prototype['set_once'] = MixpanelGroup.prototype.set_once;
 MixpanelGroup.prototype['union']    = MixpanelGroup.prototype.union;
 MixpanelGroup.prototype['unset']    = MixpanelGroup.prototype.unset;
 MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
+
+/* eslint camelcase: "off" */
 
 /**
  * Mixpanel People Object
@@ -3635,6 +3656,8 @@ MixpanelPeople.prototype['clear_charges'] = MixpanelPeople.prototype.clear_charg
 MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user;
 MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
+/* eslint camelcase: "off" */
+
 /*
  * Constants
  */
@@ -4084,6 +4107,8 @@ MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
     return timestamp;
 };
 
+/* eslint camelcase: "off" */
+
 /*
  * Mixpanel JS Library
  *
@@ -4130,7 +4155,7 @@ var NOOP_FUNC = function() {};
  */
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-var USE_XHR = (window$1.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
+var USE_XHR = (win.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 
 // IE<10 does not support cross-origin XHR's but script tags
 // with defer won't block window.onload; ENQUEUE_REQUESTS
@@ -4149,7 +4174,8 @@ if (navigator['sendBeacon']) {
 var DEFAULT_API_ROUTES = {
     'track': 'track/',
     'engage': 'engage/',
-    'groups': 'groups/'
+    'groups': 'groups/',
+    'record': 'record/'
 };
 
 /*
@@ -4201,7 +4227,12 @@ var DEFAULT_CONFIG = {
     'batch_flush_interval_ms':           5000,
     'batch_request_timeout_ms':          90000,
     'batch_autostart':                   true,
-    'hooks':                             {}
+    'hooks':                             {},
+    'record_sessions_percent':           0,
+    'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
+    'record_max_ms':                     MAX_RECORDING_MS,
+    'record_mask_text_selector':         '*',
+    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
 
 var DOM_LOADED = false;
@@ -4364,7 +4395,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
             });
         } else {
             this.init_batchers();
-            if (sendBeacon && window$1.addEventListener) {
+            if (sendBeacon && win.addEventListener) {
                 // Before page closes or hides (user tabs away etc), attempt to flush any events
                 // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
                 // events will not be removed from the persistent store; if the site is loaded again,
@@ -4381,12 +4412,12 @@ MixpanelLib.prototype._init = function(token, config, name) {
                         this.request_batchers.events.flush({unloading: true});
                     }
                 }, this);
-                window$1.addEventListener('pagehide', function(ev) {
+                win.addEventListener('pagehide', function(ev) {
                     if (ev['persisted']) {
                         flush_on_unload();
                     }
                 });
-                window$1.addEventListener('visibilitychange', function() {
+                win.addEventListener('visibilitychange', function() {
                     if (document$1['visibilityState'] === 'hidden') {
                         flush_on_unload();
                     }
@@ -4413,6 +4444,41 @@ MixpanelLib.prototype._init = function(token, config, name) {
     var track_pageview_option = this.get_config('track_pageview');
     if (track_pageview_option) {
         this._init_url_change_tracking(track_pageview_option);
+    }
+
+    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
+        this.start_session_recording();
+    }
+};
+
+MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function () {
+    if (!win['MutationObserver']) {
+        console.critical('Browser does not support MutationObserver; skipping session recording');
+        return;
+    }
+
+    var handleLoadedRecorder = _.bind(function() {
+        this._recorder = this._recorder || new win['__mp_recorder'](this);
+        this._recorder['startRecording']();
+    }, this);
+
+    if (_.isUndefined(win['__mp_recorder'])) {
+        var scriptEl = document$1.createElement('script');
+        scriptEl.type = 'text/javascript';
+        scriptEl.async = true;
+        scriptEl.onload = handleLoadedRecorder;
+        scriptEl.src = this.get_config('recorder_src');
+        document$1.head.appendChild(scriptEl);
+    } else {
+        handleLoadedRecorder();
+    }
+});
+
+MixpanelLib.prototype.stop_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['stopRecording']();
+    } else {
+        console.critical('Session recorder module not loaded');
     }
 };
 
@@ -4485,27 +4551,27 @@ MixpanelLib.prototype._init_url_change_tracking = function(track_pageview_option
     }
 
     if (_.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
-        window$1.addEventListener('popstate', function() {
-            window$1.dispatchEvent(new Event('mp_locationchange'));
+        win.addEventListener('popstate', function() {
+            win.dispatchEvent(new Event('mp_locationchange'));
         });
-        window$1.addEventListener('hashchange', function() {
-            window$1.dispatchEvent(new Event('mp_locationchange'));
+        win.addEventListener('hashchange', function() {
+            win.dispatchEvent(new Event('mp_locationchange'));
         });
-        var nativePushState = window$1.history.pushState;
+        var nativePushState = win.history.pushState;
         if (typeof nativePushState === 'function') {
-            window$1.history.pushState = function(state, unused, url) {
-                nativePushState.call(window$1.history, state, unused, url);
-                window$1.dispatchEvent(new Event('mp_locationchange'));
+            win.history.pushState = function(state, unused, url) {
+                nativePushState.call(win.history, state, unused, url);
+                win.dispatchEvent(new Event('mp_locationchange'));
             };
         }
-        var nativeReplaceState = window$1.history.replaceState;
+        var nativeReplaceState = win.history.replaceState;
         if (typeof nativeReplaceState === 'function') {
-            window$1.history.replaceState = function(state, unused, url) {
-                nativeReplaceState.call(window$1.history, state, unused, url);
-                window$1.dispatchEvent(new Event('mp_locationchange'));
+            win.history.replaceState = function(state, unused, url) {
+                nativeReplaceState.call(win.history, state, unused, url);
+                win.dispatchEvent(new Event('mp_locationchange'));
             };
         }
-        window$1.addEventListener('mp_locationchange', function() {
+        win.addEventListener('mp_locationchange', function() {
             var current_url = _.info.currentUrl();
             var should_track = false;
             if (track_pageview_option === 'full-url') {
@@ -4986,6 +5052,13 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var marketing_properties = this.get_config('track_marketing')
         ? _.info.marketingParams()
         : {};
+
+    if (this._recorder) {
+        var replay_id = this._recorder['replayId'];
+        if (replay_id) {
+            properties['$mp_replay_id'] = replay_id;
+        }
+    }
 
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
@@ -6136,6 +6209,8 @@ MixpanelLib.prototype['remove_group']              = MixpanelLib.prototype.remov
 MixpanelLib.prototype['track_with_groups']         = MixpanelLib.prototype.track_with_groups;
 MixpanelLib.prototype['start_batch_senders']       = MixpanelLib.prototype.start_batch_senders;
 MixpanelLib.prototype['stop_batch_senders']        = MixpanelLib.prototype.stop_batch_senders;
+MixpanelLib.prototype['start_session_recording']   = MixpanelLib.prototype.start_session_recording;
+MixpanelLib.prototype['stop_session_recording']    = MixpanelLib.prototype.stop_session_recording;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']        = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports
@@ -6183,7 +6258,7 @@ var override_mp_init_func = function() {
 
             mixpanel_master = instance;
             if (init_type === INIT_SNIPPET) {
-                window$1[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+                win[PRIMARY_INSTANCE_NAME] = mixpanel_master;
             }
             extend_mp();
         }
@@ -6233,7 +6308,7 @@ var add_dom_loaded_handler = function() {
         // check to make sure we arn't in a frame
         var toplevel = false;
         try {
-            toplevel = window$1.frameElement === null;
+            toplevel = win.frameElement === null;
         } catch(e) {
             // noop
         }
@@ -6244,7 +6319,7 @@ var add_dom_loaded_handler = function() {
     }
 
     // fallback handler, always will work
-    _.register_event(window$1, 'load', dom_loaded_handler, true);
+    _.register_event(win, 'load', dom_loaded_handler, true);
 };
 
 function init_as_module() {
@@ -6258,9 +6333,12 @@ function init_as_module() {
     return mixpanel_master;
 }
 
+/* eslint camelcase: "off" */
+
 var mixpanel = init_as_module();
 
 module.exports = mixpanel;
+
 },{}],2:[function(require,module,exports){
 var mixpanel = require('./mixpanel.cjs.js');
 
