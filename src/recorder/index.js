@@ -121,10 +121,6 @@ MixpanelRecorder.prototype.stopRecording = function () {
  * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
  * we stop recording and dump any queued events if the user has opted out.
  */
-MixpanelRecorder.prototype.flushEventsWithOptOut = function () {
-    this._flushEvents(_.bind(this._onOptOut, this));
-};
-
 MixpanelRecorder.prototype.sendRequestWithOptOut = function (data, options, cb) {
     this._sendRequest(data, options, cb, _.bind(this._onOptOut, this));
 };
@@ -209,6 +205,16 @@ MixpanelRecorder.prototype._sendRequest = function (data, options, callback) {
         'replay_length_ms': this.replayLengthMs,
         'replay_start_time': this.replayStartTime / 1000
     };
+
+    // send ID management props if they exist
+    var deviceId = this._mixpanel.get_property('$device_id');
+    if (deviceId) {
+        reqBody['$device_id'] = deviceId;
+    }
+    var userId = this._mixpanel.get_property('$user_id');
+    if (userId) {
+        reqBody['$user_id'] = userId;
+    }
 
     var reqOptions = _.extend({}, options, {
         method: 'POST',

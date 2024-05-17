@@ -18,9 +18,9 @@ var RequestBatcher = function(storageKey, options) {
 
     this.queue = new RequestQueue(storageKey, {
         errorReporter: _.bind(this.reportError, this),
-        storage: options.storage
+        storage: options.storage,
+        usePersistence: options.usePersistence,
     });
-
 
     // seed variable batch size + flush interval with configured values
     this.currentBatchSize = this.options.batchSize;

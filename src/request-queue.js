@@ -26,6 +26,7 @@ var RequestQueue = function(storageKey, options) {
     this.reportError = options.errorReporter || _.bind(logger.error, logger);
     this.lock = new SharedLock(storageKey, {storage: this.storage});
 
+    this.usePersistence = options.usePersistence;
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
     this.memQueue = [];
@@ -50,6 +51,17 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         'payload': item
     };
 
+    if (this.usePersistence) {
+        this._enqueuePersisted(queueEntry, cb);
+        return;
+    }
+
+    this.memQueue.push(queueEntry);
+    if (cb) {
+        cb(true);
+    }
+};
+RequestQueue.prototype._enqueuePersisted = function (queueEntry, cb) {
     this.lock.withLock(_.bind(function lockAcquired() {
         var succeeded;
         try {
@@ -75,6 +87,8 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
     }, this), this.pid);
 };
 
+
+
 /**
  * Read out the given number of queue entries. If this.memQueue
  * has fewer than batchSize items, then look for "orphaned" items
@@ -83,7 +97,7 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
  */
 RequestQueue.prototype.fillBatch = function(batchSize) {
     var batch = this.memQueue.slice(0, batchSize);
-    if (batch.length < batchSize) {
+    if (this.usePersistence && batch.length < batchSize) {
         // don't need lock just to read events; localStorage is thread-safe
         // and the worst that could happen is a duplicate send of some
         // orphaned events, which will be deduplicated on the server side
@@ -132,7 +146,13 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     _.each(ids, function(id) { idSet[id] = true; });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-
+    if (!this.usePersistence) {
+        if (cb) {
+            cb(true);
+        }
+        return;
+    }
+    
     var removeFromStorage = _.bind(function() {
         var succeeded;
         try {
@@ -214,6 +234,13 @@ var updatePayloads = function(existingItems, itemsToUpdate) {
  */
 RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
     this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
+    if (!this.usePersistence) {
+        if (cb) {
+            cb(true);
+        }
+        return;
+    }
+
     this.lock.withLock(_.bind(function lockAcquired() {
         var succeeded;
         try {
@@ -275,7 +302,10 @@ RequestQueue.prototype.saveToStorage = function(queue) {
  */
 RequestQueue.prototype.clear = function() {
     this.memQueue = [];
-    this.storage.removeItem(this.storageKey);
+
+    if (this.usePersistence) {
+        this.storage.removeItem(this.storageKey);
+    }
 };
 
 export { RequestQueue };
