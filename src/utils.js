@@ -1815,5 +1815,5 @@ export {
     JSONStringify,
     JSONParse,
     slice,
-    make_xhr_request,
+    make_xhr_request
 };
