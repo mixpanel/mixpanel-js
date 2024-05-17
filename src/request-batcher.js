@@ -14,22 +14,19 @@ var logger = console_with_prefix('batch');
  * @constructor
  */
 var RequestBatcher = function(storageKey, options) {
-    this.errorReporter = options.errorReporter;
+    this.options = options;
+
     this.queue = new RequestQueue(storageKey, {
         errorReporter: _.bind(this.reportError, this),
         storage: options.storage
     });
 
-    this.libConfig = options.libConfig;
-    this.sendRequest = options.sendRequestFunc;
-    this.beforeSendHook = options.beforeSendHook;
-    this.stopAllBatching = options.stopAllBatchingFunc;
 
     // seed variable batch size + flush interval with configured values
-    this.batchSize = this.libConfig['batch_size'];
-    this.flushInterval = this.libConfig['batch_flush_interval_ms'];
+    this.currentBatchSize = this.options.batchSize;
+    this.currentFlushInterval = this.options.flushIntervalMs;
 
-    this.stopped = !this.libConfig['batch_autostart'];
+    this.stopped = !this.options.autoStart;
     this.consecutiveRemovalFailures = 0;
 
     // extra client-side dedupe
@@ -40,7 +37,7 @@ var RequestBatcher = function(storageKey, options) {
  * Add one item to queue.
  */
 RequestBatcher.prototype.enqueue = function(item, cb) {
-    this.queue.enqueue(item, this.flushInterval, cb);
+    this.queue.enqueue(item, this.currentFlushInterval, cb);
 };
 
 /**
@@ -72,26 +69,26 @@ RequestBatcher.prototype.clear = function() {
 };
 
 /**
- * Restore batch size configuration to whatever is set in the main SDK.
+ * Restore batch size configuration to the originally initialized value
  */
 RequestBatcher.prototype.resetBatchSize = function() {
-    this.batchSize = this.libConfig['batch_size'];
+    this.currentBatchSize = this.options.batchSize;
 };
 
 /**
- * Restore flush interval time configuration to whatever is set in the main SDK.
+ * Restore flush interval time configuration to the originally initialized value
  */
 RequestBatcher.prototype.resetFlush = function() {
-    this.scheduleFlush(this.libConfig['batch_flush_interval_ms']);
+    this.scheduleFlush(this.options.flushIntervalMs);
 };
 
 /**
  * Schedule the next flush in the given number of milliseconds.
  */
 RequestBatcher.prototype.scheduleFlush = function(flushMS) {
-    this.flushInterval = flushMS;
+    this.currentFlushInterval = flushMS;
     if (!this.stopped) { // don't schedule anymore if batching has been stopped
-        this.timeoutID = setTimeout(_.bind(this.flush, this), this.flushInterval);
+        this.timeoutID = setTimeout(_.bind(this.flush, this), this.currentFlushInterval);
     }
 };
 
@@ -114,16 +111,16 @@ RequestBatcher.prototype.flush = function(options) {
         }
 
         options = options || {};
-        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+        var timeoutMS = this.options.requestTimeoutMs;
         var startTime = new Date().getTime();
-        var currentBatchSize = this.batchSize;
+        var currentBatchSize = this.currentBatchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
         var dataForRequest = [];
         var transformedItems = {};
         _.each(batch, function(item) {
             var payload = item['payload'];
-            if (this.beforeSendHook && !item.orphaned) {
-                payload = this.beforeSendHook(payload);
+            if (this.options.beforeSendHook && !item.orphaned) {
+                payload = this.options.beforeSendHook(payload);
             }
             if (payload) {
                 // mp_sent_by_lib_version prop captures which lib version actually
@@ -229,7 +226,7 @@ RequestBatcher.prototype.flush = function(options) {
                                 this.reportError('Failed to remove items from queue');
                                 if (++this.consecutiveRemovalFailures > 5) {
                                     this.reportError('Too many queue failures; disabling batching system.');
-                                    this.stopAllBatching();
+                                    this.options.stopAllBatchingFunc();
                                 } else {
                                     this.resetFlush();
                                 }
@@ -271,8 +268,7 @@ RequestBatcher.prototype.flush = function(options) {
             requestOptions.transport = 'sendBeacon';
         }
         logger.log('MIXPANEL REQUEST:', dataForRequest);
-        this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
-
+        this.options.sendRequestFunc(dataForRequest, requestOptions, batchSendCallback);
     } catch(err) {
         this.reportError('Error flushing request queue', err);
         this.resetFlush();
@@ -284,12 +280,12 @@ RequestBatcher.prototype.flush = function(options) {
  */
 RequestBatcher.prototype.reportError = function(msg, err) {
     logger.error.apply(logger.error, arguments);
-    if (this.errorReporter) {
+    if (this.options.errorReporter) {
         try {
             if (!(err instanceof Error)) {
                 err = new Error(msg);
             }
-            this.errorReporter(msg, err);
+            this.options.errorReporter(msg, err);
         } catch(err) {
             logger.error(err);
         }

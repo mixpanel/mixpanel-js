@@ -1,10 +1,15 @@
 import {default as record} from 'rrweb/es/rrweb/packages/rrweb/src/record/index.js';
 
-import { MAX_RECORDING_MS, console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, console_with_prefix, _, make_xhr_request } from '../utils'; // eslint-disable-line camelcase
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
+import { RequestBatcher } from '../request-batcher';
 
 var logger = console_with_prefix('recorder');
 var CompressionStream = window['CompressionStream'];
+
+var BATCH_SIZE = 1000;
+var BATCH_FLUSH_INTERVAL_MS = 10 * 1000;
+var BATCH_REQUEST_TIMEOUT_MS = 90 * 1000;
 
 var MixpanelRecorder = function(mixpanelInstance) {
     this._mixpanel = mixpanelInstance;
@@ -24,6 +29,20 @@ var MixpanelRecorder = function(mixpanelInstance) {
     this.maxTimeoutId = null;
 
     this.recordMaxMs = MAX_RECORDING_MS;
+    this._initBatcher();
+};
+
+
+MixpanelRecorder.prototype._initBatcher = function () {
+    this.batcher = new RequestBatcher('__mprec', {
+        batchSize: BATCH_SIZE,
+        flushIntervalMs: BATCH_FLUSH_INTERVAL_MS,
+        requestTimeoutMs: BATCH_REQUEST_TIMEOUT_MS,
+        autoStart: true,
+        sendRequestFunc: _.bind(function(data, options, callback) {
+            this.sendRequestWithOptOut(data, options, callback);
+        }, this),
+    });
 };
 
 // eslint-disable-next-line camelcase
@@ -52,6 +71,8 @@ MixpanelRecorder.prototype.startRecording = function () {
     this.replayId = _.UUID();
     this.replayLengthMs = 0;
 
+    this.batcher.start();
+
     var resetIdleTimeout = _.bind(function () {
         clearTimeout(this.idleTimeoutId);
         this.idleTimeoutId = setTimeout(_.bind(function () {
@@ -62,7 +83,7 @@ MixpanelRecorder.prototype.startRecording = function () {
 
     this._stopRecording = record({
         'emit': _.bind(function (ev) {
-            this.recEvents.push(ev);
+            this.batcher.enqueue(ev);
             this.replayLengthMs = new Date().getTime() - this.replayStartTime;
             resetIdleTimeout();
         }, this),
@@ -75,7 +96,6 @@ MixpanelRecorder.prototype.startRecording = function () {
 
     resetIdleTimeout();
 
-    this.sendBatchId = setInterval(_.bind(this.flushEventsWithOptOut, this), 10000);
     this.maxTimeoutId = setTimeout(_.bind(this.resetRecording, this), this.recordMaxMs);
 };
 
@@ -90,10 +110,9 @@ MixpanelRecorder.prototype.stopRecording = function () {
         this._stopRecording = null;
     }
 
-    this._flushEvents(); // flush any remaining events
+    this.batcher.flush(); // flush any remaining events
     this.replayId = null;
 
-    clearInterval(this.sendBatchId);
     clearTimeout(this.idleTimeoutId);
     clearTimeout(this.maxTimeoutId);
 };
@@ -104,6 +123,10 @@ MixpanelRecorder.prototype.stopRecording = function () {
  */
 MixpanelRecorder.prototype.flushEventsWithOptOut = function () {
     this._flushEvents(_.bind(this._onOptOut, this));
+};
+
+MixpanelRecorder.prototype.sendRequestWithOptOut = function (data, options, cb) {
+    this._sendRequest(data, options, cb, _.bind(this._onOptOut, this));
 };
 
 MixpanelRecorder.prototype._onOptOut = function (code) {
@@ -169,5 +192,33 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function() {
         }
     }
 });
+
+MixpanelRecorder.prototype._sendRequest = function (data, options, callback) {
+    var url = this.get_config('api_host') + '/' + this.get_config('api_routes')['record'];
+    var headers = {
+        'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
+        'Content-Type': 'application/json'
+    };
+
+    var reqBody = {
+        'distinct_id': String(this._mixpanel.get_distinct_id()),
+        'events': data,
+        'seq': this.seqNo++,
+        'batch_start_time': this.batchStartTime / 1000,
+        'replay_id': this.replayId,
+        'replay_length_ms': this.replayLengthMs,
+        'replay_start_time': this.replayStartTime / 1000
+    };
+
+    var reqOptions = _.extend({}, options, {
+        method: 'POST',
+        url: url,
+        'body_data': JSON.stringify(reqBody),
+        headers: headers,
+        callback: callback,
+    });
+
+    make_xhr_request(reqOptions);
+};
 
 window['__mp_recorder'] = MixpanelRecorder;

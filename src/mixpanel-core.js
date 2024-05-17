@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, window, document, navigator, slice } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, window, document, navigator, slice, make_xhr_request} from './utils';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -633,62 +633,18 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
             if (use_post) {
                 headers['Content-Type'] = 'application/x-www-form-urlencoded';
             }
-            _.each(headers, function(headerValue, headerName) {
-                req.setRequestHeader(headerName, headerValue);
+
+            make_xhr_request({
+                method: options.method,
+                url: url,
+                headers: headers,
+                timeout_ms: options.timeout_ms,
+                verbose_mode: verbose_mode,
+                ignore_json_errors: options.ignore_json_errors,
+                callback: callback,
+                report_error: lib.report_error,
+                body_data: body_data,
             });
-
-            if (options.timeout_ms && typeof req.timeout !== 'undefined') {
-                req.timeout = options.timeout_ms;
-                var start_time = new Date().getTime();
-            }
-
-            // send the mp_optout cookie
-            // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
-            req.withCredentials = true;
-            req.onreadystatechange = function () {
-                if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
-                    if (req.status === 200) {
-                        if (callback) {
-                            if (verbose_mode) {
-                                var response;
-                                try {
-                                    response = _.JSONDecode(req.responseText);
-                                } catch (e) {
-                                    lib.report_error(e);
-                                    if (options.ignore_json_errors) {
-                                        response = req.responseText;
-                                    } else {
-                                        return;
-                                    }
-                                }
-                                callback(response);
-                            } else {
-                                callback(Number(req.responseText));
-                            }
-                        }
-                    } else {
-                        var error;
-                        if (
-                            req.timeout &&
-                            !req.status &&
-                            new Date().getTime() - start_time >= req.timeout
-                        ) {
-                            error = 'timeout';
-                        } else {
-                            error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
-                        }
-                        lib.report_error(error);
-                        if (callback) {
-                            if (verbose_mode) {
-                                callback({status: 0, error: error, xhr_req: req});
-                            } else {
-                                callback(0);
-                            }
-                        }
-                    }
-                }
-            };
-            req.send(body_data);
         } catch (e) {
             lib.report_error(e);
             succeeded = false;
@@ -779,7 +735,10 @@ MixpanelLib.prototype.init_batchers = function() {
             return new RequestBatcher(
                 attrs.queue_key,
                 {
-                    libConfig: this['config'],
+                    batchSize: this.get_config('batch_size'),
+                    flushIntervalMs: this.get_config('batch_flush_interval_ms'),
+                    requestTimeoutMs: this.get_config('batch_request_timeout_ms'),
+                    autoStart: this.get_config('batch_autostart'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
                         this._send_request(
                             this.get_config('api_host') + attrs.endpoint,
