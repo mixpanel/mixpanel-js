@@ -42,7 +42,25 @@ MixpanelRecorder.prototype._initBatcher = function () {
         sendRequestFunc: _.bind(function(data, options, callback) {
             this.sendRequestWithOptOut(data, options, callback);
         }, this),
+        forceDelayFlush: true,
     });
+
+    // var flushOnUnload = _.bind(function() {
+    //     if (!this.batcher.stopped) {
+    //         this.batcher.flush({unloading: true});
+    //     }
+    // }, this);
+
+    // window.addEventListener('pagehide', function(ev) {
+    //     if (ev['persisted']) {
+    //         flushOnUnload();
+    //     }
+    // });
+    // window.addEventListener('visibilitychange', function() {
+    //     if (document['visibilityState'] === 'hidden') {
+    //         flushOnUnload();
+    //     }
+    // });
 };
 
 // eslint-disable-next-line camelcase
@@ -189,7 +207,7 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function() {
     }
 });
 
-MixpanelRecorder.prototype._sendRequest = function (data, options, callback) {
+MixpanelRecorder.prototype._sendRequest = addOptOutCheckMixpanelLib(function (data, options, callback) {
     var url = this.get_config('api_host') + '/' + this.get_config('api_routes')['record'];
     var headers = {
         'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
@@ -216,15 +234,44 @@ MixpanelRecorder.prototype._sendRequest = function (data, options, callback) {
         reqBody['$user_id'] = userId;
     }
 
+    var bodyData = _.JSONEncode(reqBody);
+
+    // if (options.transport === 'sendBeacon') {
+    //     // we have access to fetch in this environment due to MutationObserver requirement.
+    //     // use it as a replacement for sendBeacon so that we can set header authorization.
+    //     window['fetch'](url, {
+    //         method: 'POST',
+    //         headers: headers,
+    //         body: bodyData,
+    //         keepalive: true,
+    //     });
+    //     callback(true);
+    // }
+
     var reqOptions = _.extend({}, options, {
         method: 'POST',
         url: url,
-        'body_data': JSON.stringify(reqBody),
+        'body_data': bodyData,
         headers: headers,
         callback: callback,
+        reportError: _.bind(this.reportError, this)
     });
 
     make_xhr_request(reqOptions);
+});
+
+
+MixpanelRecorder.prototype.reportError = function(msg, err) {
+    logger.error.apply(logger.error, arguments);
+    try {
+        if (!err && !(msg instanceof Error)) {
+            msg = new Error(msg);
+        }
+        this.get_config('error_reporter')(msg, err);
+    } catch(err) {
+        logger.error(err);
+    }
 };
+
 
 window['__mp_recorder'] = MixpanelRecorder;

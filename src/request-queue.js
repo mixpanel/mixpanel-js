@@ -51,17 +51,14 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         'payload': item
     };
 
-    if (this.usePersistence) {
-        this._enqueuePersisted(queueEntry, cb);
+    if (!this.usePersistence) {
+        this.memQueue.push(queueEntry);
+        if (cb) {
+            cb(true);
+        }
         return;
     }
 
-    this.memQueue.push(queueEntry);
-    if (cb) {
-        cb(true);
-    }
-};
-RequestQueue.prototype._enqueuePersisted = function (queueEntry, cb) {
     this.lock.withLock(_.bind(function lockAcquired() {
         var succeeded;
         try {
@@ -86,7 +83,6 @@ RequestQueue.prototype._enqueuePersisted = function (queueEntry, cb) {
         }
     }, this), this.pid);
 };
-
 
 
 /**

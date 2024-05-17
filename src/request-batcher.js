@@ -19,12 +19,16 @@ var RequestBatcher = function(storageKey, options) {
     this.queue = new RequestQueue(storageKey, {
         errorReporter: _.bind(this.reportError, this),
         storage: options.storage,
-        usePersistence: options.usePersistence,
+        usePersistence: options.usePersistence
     });
 
     // seed variable batch size + flush interval with configured values
     this.currentBatchSize = this.options.batchSize;
     this.currentFlushInterval = this.options.flushIntervalMs;
+
+    // Forces flush to occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
+    // as long as the queue is not empty. This is useful for high-volume events like Session Replay.
+    this.forceDelayFlush = options.forceDelayFlush || false;
 
     this.stopped = !this.options.autoStart;
     this.consecutiveRemovalFailures = 0;
@@ -221,7 +225,11 @@ RequestBatcher.prototype.flush = function(options) {
                         _.bind(function(succeeded) {
                             if (succeeded) {
                                 this.consecutiveRemovalFailures = 0;
-                                this.flush(); // handle next batch if the queue isn't empty
+                                if (this.forceDelayFlush) {
+                                    this.resetFlush(); // schedule next batch with a delay
+                                } else {
+                                    this.flush(); // handle next batch if the queue isn't empty
+                                }
                             } else {
                                 this.reportError('Failed to remove items from queue');
                                 if (++this.consecutiveRemovalFailures > 5) {

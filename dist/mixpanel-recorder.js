@@ -4478,8 +4478,13 @@
     record.mirror = mirror;
 
     var Config = {
+<<<<<<< HEAD
         DEBUG: false,
         LIB_VERSION: '2.53.0'
+=======
+        DEBUG: true,
+        LIB_VERSION: '2.50.0'
+>>>>>>> 571d8b5 (cleanup, draft)
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -4542,12 +4547,41 @@
     var console$1 = {
         /** @type {function(...*)} */
         log: function() {
+            if (!_.isUndefined(windowConsole) && windowConsole) {
+                try {
+                    windowConsole.log.apply(windowConsole, arguments);
+                } catch (err) {
+                    _.each(arguments, function(arg) {
+                        windowConsole.log(arg);
+                    });
+                }
+            }
         },
         /** @type {function(...*)} */
         warn: function() {
+            if (!_.isUndefined(windowConsole) && windowConsole) {
+                var args = ['Mixpanel warning:'].concat(_.toArray(arguments));
+                try {
+                    windowConsole.warn.apply(windowConsole, args);
+                } catch (err) {
+                    _.each(args, function(arg) {
+                        windowConsole.warn(arg);
+                    });
+                }
+            }
         },
         /** @type {function(...*)} */
         error: function() {
+            if (!_.isUndefined(windowConsole) && windowConsole) {
+                var args = ['Mixpanel error:'].concat(_.toArray(arguments));
+                try {
+                    windowConsole.error.apply(windowConsole, args);
+                } catch (err) {
+                    _.each(args, function(arg) {
+                        windowConsole.error(arg);
+                    });
+                }
+            }
         },
         /** @type {function(...*)} */
         critical: function() {
@@ -6128,6 +6162,83 @@
         return maxlen ? guid.substring(0, maxlen) : guid;
     };
 
+
+    /**
+     * Makes an XMLHttpRequest with the given options.
+     *
+     * @param {Object} options - Configuration options for the request.
+     * @param {string} options.method - The HTTP method to use for the request (e.g., 'GET', 'POST').
+     * @param {string} options.url - The URL to which the request is sent.
+     * @param {Object} [options.headers] - Additional headers to include in the request.
+     * @param {number} [options.timeout_ms] - The timeout for the request in milliseconds.
+     * @param {boolean} [options.verbose] - Whether to operate in verbose mode, which provides detailed response data.
+     * @param {boolean} [options.ignore_json_errors] - Whether to ignore JSON parsing errors and return raw response text.
+     * @param {Function} [options.callback] - The callback function to execute when the request completes.
+     * @param {Function} [options.report_error] - The function to execute when an error occurs.
+     * @param {string|Object} [options.body_data] - The data to send with the request, if any.
+     */
+    var make_xhr_request = function (options) {
+        var req = new XMLHttpRequest();
+        req.open(options.method, options.url, true);
+
+        _.each(options.headers, function(headerValue, headerName) {
+            req.setRequestHeader(headerName, headerValue);
+        });
+
+        if (options.timeout_ms && typeof req.timeout !== 'undefined') {
+            req.timeout = options.timeout_ms;
+            var start_time = new Date().getTime();
+        }
+
+        // send the mp_optout cookie
+        // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
+        req.withCredentials = true;
+        req.onreadystatechange = function () {
+            if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
+                if (req.status === 200) {
+                    if (options.callback) {
+                        if (options.verbose) {
+                            var response;
+                            try {
+                                response = _.JSONDecode(req.responseText);
+                            } catch (e) {
+                                options.report_error(e);
+                                if (options.ignore_json_errors) {
+                                    response = req.responseText;
+                                } else {
+                                    return;
+                                }
+                            }
+                            options.callback(response);
+                        } else {
+                            options.callback(Number(req.responseText));
+                        }
+                    }
+                } else {
+                    var error;
+                    if (
+                        req.timeout &&
+                        !req.status &&
+                        new Date().getTime() - start_time >= req.timeout
+                    ) {
+                        error = 'timeout';
+                    } else {
+                        error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                    }
+                    options.report_error(error);
+                    if (options.callback) {
+                        if (options.verbose) {
+                            options.callback({status: 0, error: error, xhr_req: req});
+                        } else {
+                            options.callback(0);
+                        }
+                    }
+                }
+            }
+        };
+        req.send(options.body_data);
+    };
+
     // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
     var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
     // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
@@ -6344,8 +6455,759 @@
         };
     }
 
+    var logger$3 = console_with_prefix('lock');
+
+    /**
+     * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
+     * window/tab at a time will be able to access shared resources.
+     *
+     * Based on the Alur and Taubenfeld fast lock
+     * (http://www.cs.rochester.edu/research/synchronization/pseudocode/fastlock.html)
+     * with an added timeout to ensure there will be eventual progress in the event
+     * that a window is closed in the middle of the callback.
+     *
+     * Implementation based on the original version by David Wolever (https://github.com/wolever)
+     * at https://gist.github.com/wolever/5fd7573d1ef6166e8f8c4af286a69432.
+     *
+     * @example
+     * const myLock = new SharedLock('some-key');
+     * myLock.withLock(function() {
+     *   console.log('I hold the mutex!');
+     * });
+     *
+     * @constructor
+     */
+    var SharedLock = function(key, options) {
+        options = options || {};
+
+        this.storageKey = key;
+        this.storage = options.storage || window.localStorage;
+        this.pollIntervalMS = options.pollIntervalMS || 100;
+        this.timeoutMS = options.timeoutMS || 2000;
+    };
+
+    // pass in a specific pid to test contention scenarios; otherwise
+    // it is chosen randomly for each acquisition attempt
+    SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
+        if (!pid && typeof errorCB !== 'function') {
+            pid = errorCB;
+            errorCB = null;
+        }
+
+        var i = pid || (new Date().getTime() + '|' + Math.random());
+        var startTime = new Date().getTime();
+
+        var key = this.storageKey;
+        var pollIntervalMS = this.pollIntervalMS;
+        var timeoutMS = this.timeoutMS;
+        var storage = this.storage;
+
+        var keyX = key + ':X';
+        var keyY = key + ':Y';
+        var keyZ = key + ':Z';
+
+        var reportError = function(err) {
+            errorCB && errorCB(err);
+        };
+
+        var delay = function(cb) {
+            if (new Date().getTime() - startTime > timeoutMS) {
+                logger$3.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                storage.removeItem(keyZ);
+                storage.removeItem(keyY);
+                loop();
+                return;
+            }
+            setTimeout(function() {
+                try {
+                    cb();
+                } catch(err) {
+                    reportError(err);
+                }
+            }, pollIntervalMS * (Math.random() + 0.1));
+        };
+
+        var waitFor = function(predicate, cb) {
+            if (predicate()) {
+                cb();
+            } else {
+                delay(function() {
+                    waitFor(predicate, cb);
+                });
+            }
+        };
+
+        var getSetY = function() {
+            var valY = storage.getItem(keyY);
+            if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
+                return false;
+            } else {
+                storage.setItem(keyY, i);
+                if (storage.getItem(keyY) === i) {
+                    return true;
+                } else {
+                    if (!localStorageSupported(storage, true)) {
+                        throw new Error('localStorage support dropped while acquiring lock');
+                    }
+                    return false;
+                }
+            }
+        };
+
+        var loop = function() {
+            storage.setItem(keyX, i);
+
+            waitFor(getSetY, function() {
+                if (storage.getItem(keyX) === i) {
+                    criticalSection();
+                    return;
+                }
+
+                delay(function() {
+                    if (storage.getItem(keyY) !== i) {
+                        loop();
+                        return;
+                    }
+                    waitFor(function() {
+                        return !storage.getItem(keyZ);
+                    }, criticalSection);
+                });
+            });
+        };
+
+        var criticalSection = function() {
+            storage.setItem(keyZ, '1');
+            try {
+                lockedCB();
+            } finally {
+                storage.removeItem(keyZ);
+                if (storage.getItem(keyY) === i) {
+                    storage.removeItem(keyY);
+                }
+                if (storage.getItem(keyX) === i) {
+                    storage.removeItem(keyX);
+                }
+            }
+        };
+
+        try {
+            if (localStorageSupported(storage, true)) {
+                loop();
+            } else {
+                throw new Error('localStorage support check failed');
+            }
+        } catch(err) {
+            reportError(err);
+        }
+    };
+
+    var logger$2 = console_with_prefix('batch');
+
+    /**
+     * RequestQueue: queue for batching API requests with localStorage backup for retries.
+     * Maintains an in-memory queue which represents the source of truth for the current
+     * page, but also writes all items out to a copy in the browser's localStorage, which
+     * can be read on subsequent pageloads and retried. For batchability, all the request
+     * items in the queue should be of the same type (events, people updates, group updates)
+     * so they can be sent in a single request to the same API endpoint.
+     *
+     * LocalStorage keying and locking: In order for reloads and subsequent pageloads of
+     * the same site to access the same persisted data, they must share the same localStorage
+     * key (for instance based on project token and queue type). Therefore access to the
+     * localStorage entry is guarded by an asynchronous mutex (SharedLock) to prevent
+     * simultaneously open windows/tabs from overwriting each other's data (which would lead
+     * to data loss in some situations).
+     * @constructor
+     */
+    var RequestQueue = function(storageKey, options) {
+        options = options || {};
+        this.storageKey = storageKey;
+        this.storage = options.storage || window.localStorage;
+        this.reportError = options.errorReporter || _.bind(logger$2.error, logger$2);
+        this.lock = new SharedLock(storageKey, {storage: this.storage});
+
+        this.usePersistence = options.usePersistence;
+        this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
+
+        this.memQueue = [];
+    };
+
+    /**
+     * Add one item to queues (memory and localStorage). The queued entry includes
+     * the given item along with an auto-generated ID and a "flush-after" timestamp.
+     * It is expected that the item will be sent over the network and dequeued
+     * before the flush-after time; if this doesn't happen it is considered orphaned
+     * (e.g., the original tab where it was enqueued got closed before it could be
+     * sent) and the item can be sent by any tab that finds it in localStorage.
+     *
+     * The final callback param is called with a param indicating success or
+     * failure of the enqueue operation; it is asynchronous because the localStorage
+     * lock is asynchronous.
+     */
+    RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
+        var queueEntry = {
+            'id': cheap_guid(),
+            'flushAfter': new Date().getTime() + flushInterval * 2,
+            'payload': item
+        };
+
+        if (!this.usePersistence) {
+            this.memQueue.push(queueEntry);
+            if (cb) {
+                cb(true);
+            }
+            return;
+        }
+
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue.push(queueEntry);
+                succeeded = this.saveToStorage(storedQueue);
+                if (succeeded) {
+                    // only add to in-memory queue when storage succeeds
+                    this.memQueue.push(queueEntry);
+                }
+            } catch(err) {
+                this.reportError('Error enqueueing item', item);
+                succeeded = false;
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), _.bind(function lockFailure(err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this), this.pid);
+    };
+
+
+    /**
+     * Read out the given number of queue entries. If this.memQueue
+     * has fewer than batchSize items, then look for "orphaned" items
+     * in the persisted queue (items where the 'flushAfter' time has
+     * already passed).
+     */
+    RequestQueue.prototype.fillBatch = function(batchSize) {
+        var batch = this.memQueue.slice(0, batchSize);
+        if (this.usePersistence && batch.length < batchSize) {
+            // don't need lock just to read events; localStorage is thread-safe
+            // and the worst that could happen is a duplicate send of some
+            // orphaned events, which will be deduplicated on the server side
+            var storedQueue = this.readFromStorage();
+            if (storedQueue.length) {
+                // item IDs already in batch; don't duplicate out of storage
+                var idsInBatch = {}; // poor man's Set
+                _.each(batch, function(item) { idsInBatch[item['id']] = true; });
+
+                for (var i = 0; i < storedQueue.length; i++) {
+                    var item = storedQueue[i];
+                    if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                        item.orphaned = true;
+                        batch.push(item);
+                        if (batch.length >= batchSize) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return batch;
+    };
+
+    /**
+     * Remove items with matching 'id' from array (immutably)
+     * also remove any item without a valid id (e.g., malformed
+     * storage entries).
+     */
+    var filterOutIDsAndInvalid = function(items, idSet) {
+        var filteredItems = [];
+        _.each(items, function(item) {
+            if (item['id'] && !idSet[item['id']]) {
+                filteredItems.push(item);
+            }
+        });
+        return filteredItems;
+    };
+
+    /**
+     * Remove items with matching IDs from both in-memory queue
+     * and persisted queue
+     */
+    RequestQueue.prototype.removeItemsByID = function(ids, cb) {
+        var idSet = {}; // poor man's Set
+        _.each(ids, function(id) { idSet[id] = true; });
+
+        this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
+        if (!this.usePersistence) {
+            if (cb) {
+                cb(true);
+            }
+            return;
+        }
+        
+        var removeFromStorage = _.bind(function() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                succeeded = this.saveToStorage(storedQueue);
+
+                // an extra check: did storage report success but somehow
+                // the items are still there?
+                if (succeeded) {
+                    storedQueue = this.readFromStorage();
+                    for (var i = 0; i < storedQueue.length; i++) {
+                        var item = storedQueue[i];
+                        if (item['id'] && !!idSet[item['id']]) {
+                            this.reportError('Item not removed from storage');
+                            return false;
+                        }
+                    }
+                }
+            } catch(err) {
+                this.reportError('Error removing items', ids);
+                succeeded = false;
+            }
+            return succeeded;
+        }, this);
+
+        this.lock.withLock(function lockAcquired() {
+            var succeeded = removeFromStorage();
+            if (cb) {
+                cb(succeeded);
+            }
+        }, _.bind(function lockFailure(err) {
+            var succeeded = false;
+            this.reportError('Error acquiring storage lock', err);
+            if (!localStorageSupported(this.storage, true)) {
+                // Looks like localStorage writes have stopped working sometime after
+                // initialization (probably full), and so nobody can acquire locks
+                // anymore. Consider it temporarily safe to remove items without the
+                // lock, since nobody's writing successfully anyway.
+                succeeded = removeFromStorage();
+                if (!succeeded) {
+                    // OK, we couldn't even write out the smaller queue. Try clearing it
+                    // entirely.
+                    try {
+                        this.storage.removeItem(this.storageKey);
+                    } catch(err) {
+                        this.reportError('Error clearing queue', err);
+                    }
+                }
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), this.pid);
+    };
+
+    // internal helper for RequestQueue.updatePayloads
+    var updatePayloads = function(existingItems, itemsToUpdate) {
+        var newItems = [];
+        _.each(existingItems, function(item) {
+            var id = item['id'];
+            if (id in itemsToUpdate) {
+                var newPayload = itemsToUpdate[id];
+                if (newPayload !== null) {
+                    item['payload'] = newPayload;
+                    newItems.push(item);
+                }
+            } else {
+                // no update
+                newItems.push(item);
+            }
+        });
+        return newItems;
+    };
+
+    /**
+     * Update payloads of given items in both in-memory queue and
+     * persisted queue. Items set to null are removed from queues.
+     */
+    RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
+        this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
+        if (!this.usePersistence) {
+            if (cb) {
+                cb(true);
+            }
+            return;
+        }
+
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                succeeded = this.saveToStorage(storedQueue);
+            } catch(err) {
+                this.reportError('Error updating items', itemsToUpdate);
+                succeeded = false;
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), _.bind(function lockFailure(err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this), this.pid);
+    };
+
+    /**
+     * Read and parse items array from localStorage entry, handling
+     * malformed/missing data if necessary.
+     */
+    RequestQueue.prototype.readFromStorage = function() {
+        var storageEntry;
+        try {
+            storageEntry = this.storage.getItem(this.storageKey);
+            if (storageEntry) {
+                storageEntry = JSONParse(storageEntry);
+                if (!_.isArray(storageEntry)) {
+                    this.reportError('Invalid storage entry:', storageEntry);
+                    storageEntry = null;
+                }
+            }
+        } catch (err) {
+            this.reportError('Error retrieving queue', err);
+            storageEntry = null;
+        }
+        return storageEntry || [];
+    };
+
+    /**
+     * Serialize the given items array to localStorage.
+     */
+    RequestQueue.prototype.saveToStorage = function(queue) {
+        try {
+            this.storage.setItem(this.storageKey, JSONStringify(queue));
+            return true;
+        } catch (err) {
+            this.reportError('Error saving queue', err);
+            return false;
+        }
+    };
+
+    /**
+     * Clear out queues (memory and localStorage).
+     */
+    RequestQueue.prototype.clear = function() {
+        this.memQueue = [];
+
+        if (this.usePersistence) {
+            this.storage.removeItem(this.storageKey);
+        }
+    };
+
+    // maximum interval between request retries after exponential backoff
+    var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+    var logger$1 = console_with_prefix('batch');
+
+    /**
+     * RequestBatcher: manages the queueing, flushing, retry etc of requests of one
+     * type (events, people, groups).
+     * Uses RequestQueue to manage the backing store.
+     * @constructor
+     */
+    var RequestBatcher = function(storageKey, options) {
+        this.options = options;
+
+        this.queue = new RequestQueue(storageKey, {
+            errorReporter: _.bind(this.reportError, this),
+            storage: options.storage,
+            usePersistence: options.usePersistence
+        });
+
+        // seed variable batch size + flush interval with configured values
+        this.currentBatchSize = this.options.batchSize;
+        this.currentFlushInterval = this.options.flushIntervalMs;
+
+        // Forces flush to occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
+        // as long as the queue is not empty. This is useful for high-volume events like Session Replay.
+        this.forceDelayFlush = options.forceDelayFlush || false;
+
+        this.stopped = !this.options.autoStart;
+        this.consecutiveRemovalFailures = 0;
+
+        // extra client-side dedupe
+        this.itemIdsSentSuccessfully = {};
+    };
+
+    /**
+     * Add one item to queue.
+     */
+    RequestBatcher.prototype.enqueue = function(item, cb) {
+        this.queue.enqueue(item, this.currentFlushInterval, cb);
+    };
+
+    /**
+     * Start flushing batches at the configured time interval. Must call
+     * this method upon SDK init in order to send anything over the network.
+     */
+    RequestBatcher.prototype.start = function() {
+        this.stopped = false;
+        this.consecutiveRemovalFailures = 0;
+        this.flush();
+    };
+
+    /**
+     * Stop flushing batches. Can be restarted by calling start().
+     */
+    RequestBatcher.prototype.stop = function() {
+        this.stopped = true;
+        if (this.timeoutID) {
+            clearTimeout(this.timeoutID);
+            this.timeoutID = null;
+        }
+    };
+
+    /**
+     * Clear out queue.
+     */
+    RequestBatcher.prototype.clear = function() {
+        this.queue.clear();
+    };
+
+    /**
+     * Restore batch size configuration to the originally initialized value
+     */
+    RequestBatcher.prototype.resetBatchSize = function() {
+        this.currentBatchSize = this.options.batchSize;
+    };
+
+    /**
+     * Restore flush interval time configuration to the originally initialized value
+     */
+    RequestBatcher.prototype.resetFlush = function() {
+        this.scheduleFlush(this.options.flushIntervalMs);
+    };
+
+    /**
+     * Schedule the next flush in the given number of milliseconds.
+     */
+    RequestBatcher.prototype.scheduleFlush = function(flushMS) {
+        this.currentFlushInterval = flushMS;
+        if (!this.stopped) { // don't schedule anymore if batching has been stopped
+            this.timeoutID = setTimeout(_.bind(this.flush, this), this.currentFlushInterval);
+        }
+    };
+
+    /**
+     * Flush one batch to network. Depending on success/failure modes, it will either
+     * remove the batch from the queue or leave it in for retry, and schedule the next
+     * flush. In cases of most network or API failures, it will back off exponentially
+     * when retrying.
+     * @param {Object} [options]
+     * @param {boolean} [options.sendBeacon] - whether to send batch with
+     * navigator.sendBeacon (only useful for sending batches before page unloads, as
+     * sendBeacon offers no callbacks or status indications)
+     */
+    RequestBatcher.prototype.flush = function(options) {
+        try {
+
+            if (this.requestInProgress) {
+                logger$1.log('Flush: Request already in progress');
+                return;
+            }
+
+            options = options || {};
+            var timeoutMS = this.options.requestTimeoutMs;
+            var startTime = new Date().getTime();
+            var currentBatchSize = this.currentBatchSize;
+            var batch = this.queue.fillBatch(currentBatchSize);
+            var dataForRequest = [];
+            var transformedItems = {};
+            _.each(batch, function(item) {
+                var payload = item['payload'];
+                if (this.options.beforeSendHook && !item.orphaned) {
+                    payload = this.options.beforeSendHook(payload);
+                }
+                if (payload) {
+                    // mp_sent_by_lib_version prop captures which lib version actually
+                    // sends each event (regardless of which version originally queued
+                    // it for sending)
+                    if (payload['event'] && payload['properties']) {
+                        payload['properties'] = _.extend(
+                            {},
+                            payload['properties'],
+                            {'mp_sent_by_lib_version': Config.LIB_VERSION}
+                        );
+                    }
+                    var addPayload = true;
+                    var itemId = item['id'];
+                    if (itemId) {
+                        if ((this.itemIdsSentSuccessfully[itemId] || 0) > 5) {
+                            this.reportError('[dupe] item ID sent too many times, not sending', {
+                                item: item,
+                                batchSize: batch.length,
+                                timesSent: this.itemIdsSentSuccessfully[itemId]
+                            });
+                            addPayload = false;
+                        }
+                    } else {
+                        this.reportError('[dupe] found item with no ID', {item: item});
+                    }
+
+                    if (addPayload) {
+                        dataForRequest.push(payload);
+                    }
+                }
+                transformedItems[item['id']] = payload;
+            }, this);
+            if (dataForRequest.length < 1) {
+                this.resetFlush();
+                return; // nothing to do
+            }
+
+            this.requestInProgress = true;
+
+            var batchSendCallback = _.bind(function(res) {
+                this.requestInProgress = false;
+
+                try {
+
+                    // handle API response in a try-catch to make sure we can reset the
+                    // flush operation if something goes wrong
+
+                    var removeItemsFromQueue = false;
+                    if (options.unloading) {
+                        // update persisted data to include hook transformations
+                        this.queue.updatePayloads(transformedItems);
+                    } else if (
+                        _.isObject(res) &&
+                        res.error === 'timeout' &&
+                        new Date().getTime() - startTime >= timeoutMS
+                    ) {
+                        this.reportError('Network timeout; retrying');
+                        this.flush();
+                    } else if (
+                        _.isObject(res) &&
+                        res.xhr_req &&
+                        (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')
+                    ) {
+                        // network or API error, or 429 Too Many Requests, retry
+                        var retryMS = this.flushInterval * 2;
+                        var headers = res.xhr_req['responseHeaders'];
+                        if (headers) {
+                            var retryAfter = headers['Retry-After'];
+                            if (retryAfter) {
+                                retryMS = (parseInt(retryAfter, 10) * 1000) || retryMS;
+                            }
+                        }
+                        retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
+                        this.reportError('Error; retry in ' + retryMS + ' ms');
+                        this.scheduleFlush(retryMS);
+                    } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
+                        // 413 Payload Too Large
+                        if (batch.length > 1) {
+                            var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
+                            this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
+                            this.reportError('413 response; reducing batch size to ' + this.batchSize);
+                            this.resetFlush();
+                        } else {
+                            this.reportError('Single-event request too large; dropping', batch);
+                            this.resetBatchSize();
+                            removeItemsFromQueue = true;
+                        }
+                    } else {
+                        // successful network request+response; remove each item in batch from queue
+                        // (even if it was e.g. a 400, in which case retrying won't help)
+                        removeItemsFromQueue = true;
+                    }
+
+                    if (removeItemsFromQueue) {
+                        this.queue.removeItemsByID(
+                            _.map(batch, function(item) { return item['id']; }),
+                            _.bind(function(succeeded) {
+                                if (succeeded) {
+                                    this.consecutiveRemovalFailures = 0;
+                                    if (this.forceDelayFlush) {
+                                        this.resetFlush(); // schedule next batch with a delay
+                                    } else {
+                                        this.flush(); // handle next batch if the queue isn't empty
+                                    }
+                                } else {
+                                    this.reportError('Failed to remove items from queue');
+                                    if (++this.consecutiveRemovalFailures > 5) {
+                                        this.reportError('Too many queue failures; disabling batching system.');
+                                        this.options.stopAllBatchingFunc();
+                                    } else {
+                                        this.resetFlush();
+                                    }
+                                }
+                            }, this)
+                        );
+
+                        // client-side dedupe
+                        _.each(batch, _.bind(function(item) {
+                            var itemId = item['id'];
+                            if (itemId) {
+                                this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
+                                this.itemIdsSentSuccessfully[itemId]++;
+                                if (this.itemIdsSentSuccessfully[itemId] > 5) {
+                                    this.reportError('[dupe] item ID sent too many times', {
+                                        item: item,
+                                        batchSize: batch.length,
+                                        timesSent: this.itemIdsSentSuccessfully[itemId]
+                                    });
+                                }
+                            } else {
+                                this.reportError('[dupe] found item with no ID while removing', {item: item});
+                            }
+                        }, this));
+                    }
+
+                } catch(err) {
+                    this.reportError('Error handling API response', err);
+                    this.resetFlush();
+                }
+            }, this);
+            var requestOptions = {
+                method: 'POST',
+                verbose: true,
+                ignore_json_errors: true, // eslint-disable-line camelcase
+                timeout_ms: timeoutMS // eslint-disable-line camelcase
+            };
+            if (options.unloading) {
+                requestOptions.transport = 'sendBeacon';
+            }
+            logger$1.log('MIXPANEL REQUEST:', dataForRequest);
+            this.options.sendRequestFunc(dataForRequest, requestOptions, batchSendCallback);
+        } catch(err) {
+            this.reportError('Error flushing request queue', err);
+            this.resetFlush();
+        }
+    };
+
+    /**
+     * Log error to global logger and optional user-defined logger.
+     */
+    RequestBatcher.prototype.reportError = function(msg, err) {
+        logger$1.error.apply(logger$1.error, arguments);
+        if (this.options.errorReporter) {
+            try {
+                if (!(err instanceof Error)) {
+                    err = new Error(msg);
+                }
+                this.options.errorReporter(msg, err);
+            } catch(err) {
+                logger$1.error(err);
+            }
+        }
+    };
+
     var logger = console_with_prefix('recorder');
     var CompressionStream = window['CompressionStream'];
+
+    var BATCH_SIZE = 1000;
+    var BATCH_FLUSH_INTERVAL_MS = 10 * 1000;
+    var BATCH_REQUEST_TIMEOUT_MS = 90 * 1000;
 
     var MixpanelRecorder = function(mixpanelInstance) {
         this._mixpanel = mixpanelInstance;
@@ -6365,6 +7227,38 @@
         this.maxTimeoutId = null;
 
         this.recordMaxMs = MAX_RECORDING_MS;
+        this._initBatcher();
+    };
+
+
+    MixpanelRecorder.prototype._initBatcher = function () {
+        this.batcher = new RequestBatcher('__mprec', {
+            batchSize: BATCH_SIZE,
+            flushIntervalMs: BATCH_FLUSH_INTERVAL_MS,
+            requestTimeoutMs: BATCH_REQUEST_TIMEOUT_MS,
+            autoStart: true,
+            sendRequestFunc: _.bind(function(data, options, callback) {
+                this.sendRequestWithOptOut(data, options, callback);
+            }, this),
+            forceDelayFlush: true,
+        });
+
+        // var flushOnUnload = _.bind(function() {
+        //     if (!this.batcher.stopped) {
+        //         this.batcher.flush({unloading: true});
+        //     }
+        // }, this);
+
+        // window.addEventListener('pagehide', function(ev) {
+        //     if (ev['persisted']) {
+        //         flushOnUnload();
+        //     }
+        // });
+        // window.addEventListener('visibilitychange', function() {
+        //     if (document['visibilityState'] === 'hidden') {
+        //         flushOnUnload();
+        //     }
+        // });
     };
 
     // eslint-disable-next-line camelcase
@@ -6393,6 +7287,8 @@
         this.replayId = _.UUID();
         this.replayLengthMs = 0;
 
+        this.batcher.start();
+
         var resetIdleTimeout = _.bind(function () {
             clearTimeout(this.idleTimeoutId);
             this.idleTimeoutId = setTimeout(_.bind(function () {
@@ -6403,7 +7299,7 @@
 
         this._stopRecording = record({
             'emit': _.bind(function (ev) {
-                this.recEvents.push(ev);
+                this.batcher.enqueue(ev);
                 this.replayLengthMs = new Date().getTime() - this.replayStartTime;
                 resetIdleTimeout();
             }, this),
@@ -6416,7 +7312,6 @@
 
         resetIdleTimeout();
 
-        this.sendBatchId = setInterval(_.bind(this.flushEventsWithOptOut, this), 10000);
         this.maxTimeoutId = setTimeout(_.bind(this.resetRecording, this), this.recordMaxMs);
     };
 
@@ -6431,10 +7326,9 @@
             this._stopRecording = null;
         }
 
-        this._flushEvents(); // flush any remaining events
+        this.batcher.flush(); // flush any remaining events
         this.replayId = null;
 
-        clearInterval(this.sendBatchId);
         clearTimeout(this.idleTimeoutId);
         clearTimeout(this.maxTimeoutId);
     };
@@ -6443,8 +7337,8 @@
      * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
      * we stop recording and dump any queued events if the user has opted out.
      */
-    MixpanelRecorder.prototype.flushEventsWithOptOut = function () {
-        this._flushEvents(_.bind(this._onOptOut, this));
+    MixpanelRecorder.prototype.sendRequestWithOptOut = function (data, options, cb) {
+        this._sendRequest(data, options, cb, _.bind(this._onOptOut, this));
     };
 
     MixpanelRecorder.prototype._onOptOut = function (code) {
@@ -6455,6 +7349,7 @@
         }
     };
 
+<<<<<<< HEAD
     MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody) {
         window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
             'method': 'POST',
@@ -6508,8 +7403,74 @@
                 reqParams['format'] = 'body';
                 this._sendRequest(reqParams, eventsJson);
             }
+=======
+    MixpanelRecorder.prototype._sendRequest = addOptOutCheckMixpanelLib(function (data, options, callback) {
+        var url = this.get_config('api_host') + '/' + this.get_config('api_routes')['record'];
+        var headers = {
+            'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
+            'Content-Type': 'application/json'
+        };
+
+        var reqBody = {
+            'distinct_id': String(this._mixpanel.get_distinct_id()),
+            'events': data,
+            'seq': this.seqNo++,
+            'batch_start_time': this.batchStartTime / 1000,
+            'replay_id': this.replayId,
+            'replay_length_ms': this.replayLengthMs,
+            'replay_start_time': this.replayStartTime / 1000
+        };
+
+        // send ID management props if they exist
+        var deviceId = this._mixpanel.get_property('$device_id');
+        if (deviceId) {
+            reqBody['$device_id'] = deviceId;
+>>>>>>> 571d8b5 (cleanup, draft)
         }
+        var userId = this._mixpanel.get_property('$user_id');
+        if (userId) {
+            reqBody['$user_id'] = userId;
+        }
+
+        var bodyData = _.JSONEncode(reqBody);
+
+        // if (options.transport === 'sendBeacon') {
+        //     // we have access to fetch in this environment due to MutationObserver requirement.
+        //     // use it as a replacement for sendBeacon so that we can set header authorization.
+        //     window['fetch'](url, {
+        //         method: 'POST',
+        //         headers: headers,
+        //         body: bodyData,
+        //         keepalive: true,
+        //     });
+        //     callback(true);
+        // }
+
+        var reqOptions = _.extend({}, options, {
+            method: 'POST',
+            url: url,
+            'body_data': bodyData,
+            headers: headers,
+            callback: callback,
+            reportError: _.bind(this.reportError, this)
+        });
+
+        make_xhr_request(reqOptions);
     });
+
+
+    MixpanelRecorder.prototype.reportError = function(msg, err) {
+        logger.error.apply(logger.error, arguments);
+        try {
+            if (!err && !(msg instanceof Error)) {
+                msg = new Error(msg);
+            }
+            this.get_config('error_reporter')(msg, err);
+        } catch(err) {
+            logger.error(err);
+        }
+    };
+
 
     window['__mp_recorder'] = MixpanelRecorder;
 

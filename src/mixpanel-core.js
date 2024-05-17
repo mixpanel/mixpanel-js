@@ -626,9 +626,6 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         }
     } else if (USE_XHR) {
         try {
-            var req = new XMLHttpRequest();
-            req.open(options.method, url, true);
-
             var headers = this.get_config('xhr_headers');
             if (use_post) {
                 headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -643,7 +640,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                 ignore_json_errors: options.ignore_json_errors,
                 callback: callback,
                 report_error: lib.report_error,
-                body_data: body_data,
+                body_data: body_data
             });
         } catch (e) {
             lib.report_error(e);
