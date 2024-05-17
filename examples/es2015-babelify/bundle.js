@@ -1063,6 +1063,14 @@ MixpanelLib.prototype.stop_session_recording = function () {
     }
 };
 
+MixpanelLib.prototype.get_session_recording_properties = function () {
+    var props = {};
+    if (this._recorder && this._recorder['replayId']) {
+        props['$mp_replay_id'] = this._recorder['replayId'];
+    }
+    return props;
+};
+
 // Private methods
 
 MixpanelLib.prototype._loaded = function () {
@@ -1627,19 +1635,12 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
 
     var marketing_properties = this.get_config('track_marketing') ? _utils._.info.marketingParams() : {};
 
-    if (this._recorder) {
-        var replay_id = this._recorder['replayId'];
-        if (replay_id) {
-            properties['$mp_replay_id'] = replay_id;
-        }
-    }
-
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
     // properties object by passing in a new object
 
     // update properties with pageview info and super-properties
-    properties = _utils._.extend({}, _utils._.info.properties({ 'mp_loader': this.get_config('mp_loader') }), marketing_properties, this['persistence'].properties(), this.unpersisted_superprops, properties);
+    properties = _utils._.extend({}, _utils._.info.properties({ 'mp_loader': this.get_config('mp_loader') }), marketing_properties, this['persistence'].properties(), this.unpersisted_superprops, this.get_session_recording_properties(), properties);
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_utils._.isArray(property_blacklist)) {
@@ -2764,6 +2765,7 @@ MixpanelLib.prototype['start_batch_senders'] = MixpanelLib.prototype.start_batch
 MixpanelLib.prototype['stop_batch_senders'] = MixpanelLib.prototype.stop_batch_senders;
 MixpanelLib.prototype['start_session_recording'] = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording'] = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['get_session_recording_properties'] = MixpanelLib.prototype.get_session_recording_properties;
 MixpanelLib.prototype['DEFAULT_API_ROUTES'] = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports
