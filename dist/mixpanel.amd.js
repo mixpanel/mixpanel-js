@@ -4481,6 +4481,14 @@ define((function () { 'use strict';
         }
     };
 
+    MixpanelLib.prototype.get_session_recording_properties = function () {
+        var props = {};
+        if (this._recorder && this._recorder['replayId']) {
+            props['$mp_replay_id'] = this._recorder['replayId'];
+        }
+        return props;
+    };
+
     // Private methods
 
     MixpanelLib.prototype._loaded = function() {
@@ -5052,13 +5060,6 @@ define((function () { 'use strict';
             ? _.info.marketingParams()
             : {};
 
-        if (this._recorder) {
-            var replay_id = this._recorder['replayId'];
-            if (replay_id) {
-                properties['$mp_replay_id'] = replay_id;
-            }
-        }
-
         // note: extend writes to the first object, so lets make sure we
         // don't write to the persistence properties object and info
         // properties object by passing in a new object
@@ -5070,6 +5071,7 @@ define((function () { 'use strict';
             marketing_properties,
             this['persistence'].properties(),
             this.unpersisted_superprops,
+            this.get_session_recording_properties(),
             properties
         );
 
@@ -6177,40 +6179,41 @@ define((function () { 'use strict';
     // EXPORTS (for closure compiler)
 
     // MixpanelLib Exports
-    MixpanelLib.prototype['init']                      = MixpanelLib.prototype.init;
-    MixpanelLib.prototype['reset']                     = MixpanelLib.prototype.reset;
-    MixpanelLib.prototype['disable']                   = MixpanelLib.prototype.disable;
-    MixpanelLib.prototype['time_event']                = MixpanelLib.prototype.time_event;
-    MixpanelLib.prototype['track']                     = MixpanelLib.prototype.track;
-    MixpanelLib.prototype['track_links']               = MixpanelLib.prototype.track_links;
-    MixpanelLib.prototype['track_forms']               = MixpanelLib.prototype.track_forms;
-    MixpanelLib.prototype['track_pageview']            = MixpanelLib.prototype.track_pageview;
-    MixpanelLib.prototype['register']                  = MixpanelLib.prototype.register;
-    MixpanelLib.prototype['register_once']             = MixpanelLib.prototype.register_once;
-    MixpanelLib.prototype['unregister']                = MixpanelLib.prototype.unregister;
-    MixpanelLib.prototype['identify']                  = MixpanelLib.prototype.identify;
-    MixpanelLib.prototype['alias']                     = MixpanelLib.prototype.alias;
-    MixpanelLib.prototype['name_tag']                  = MixpanelLib.prototype.name_tag;
-    MixpanelLib.prototype['set_config']                = MixpanelLib.prototype.set_config;
-    MixpanelLib.prototype['get_config']                = MixpanelLib.prototype.get_config;
-    MixpanelLib.prototype['get_property']              = MixpanelLib.prototype.get_property;
-    MixpanelLib.prototype['get_distinct_id']           = MixpanelLib.prototype.get_distinct_id;
-    MixpanelLib.prototype['toString']                  = MixpanelLib.prototype.toString;
-    MixpanelLib.prototype['opt_out_tracking']          = MixpanelLib.prototype.opt_out_tracking;
-    MixpanelLib.prototype['opt_in_tracking']           = MixpanelLib.prototype.opt_in_tracking;
-    MixpanelLib.prototype['has_opted_out_tracking']    = MixpanelLib.prototype.has_opted_out_tracking;
-    MixpanelLib.prototype['has_opted_in_tracking']     = MixpanelLib.prototype.has_opted_in_tracking;
-    MixpanelLib.prototype['clear_opt_in_out_tracking'] = MixpanelLib.prototype.clear_opt_in_out_tracking;
-    MixpanelLib.prototype['get_group']                 = MixpanelLib.prototype.get_group;
-    MixpanelLib.prototype['set_group']                 = MixpanelLib.prototype.set_group;
-    MixpanelLib.prototype['add_group']                 = MixpanelLib.prototype.add_group;
-    MixpanelLib.prototype['remove_group']              = MixpanelLib.prototype.remove_group;
-    MixpanelLib.prototype['track_with_groups']         = MixpanelLib.prototype.track_with_groups;
-    MixpanelLib.prototype['start_batch_senders']       = MixpanelLib.prototype.start_batch_senders;
-    MixpanelLib.prototype['stop_batch_senders']        = MixpanelLib.prototype.stop_batch_senders;
-    MixpanelLib.prototype['start_session_recording']   = MixpanelLib.prototype.start_session_recording;
-    MixpanelLib.prototype['stop_session_recording']    = MixpanelLib.prototype.stop_session_recording;
-    MixpanelLib.prototype['DEFAULT_API_ROUTES']        = DEFAULT_API_ROUTES;
+    MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
+    MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
+    MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
+    MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
+    MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
+    MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
+    MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
+    MixpanelLib.prototype['track_pageview']                     = MixpanelLib.prototype.track_pageview;
+    MixpanelLib.prototype['register']                           = MixpanelLib.prototype.register;
+    MixpanelLib.prototype['register_once']                      = MixpanelLib.prototype.register_once;
+    MixpanelLib.prototype['unregister']                         = MixpanelLib.prototype.unregister;
+    MixpanelLib.prototype['identify']                           = MixpanelLib.prototype.identify;
+    MixpanelLib.prototype['alias']                              = MixpanelLib.prototype.alias;
+    MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
+    MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
+    MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
+    MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
+    MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
+    MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;
+    MixpanelLib.prototype['opt_out_tracking']                   = MixpanelLib.prototype.opt_out_tracking;
+    MixpanelLib.prototype['opt_in_tracking']                    = MixpanelLib.prototype.opt_in_tracking;
+    MixpanelLib.prototype['has_opted_out_tracking']             = MixpanelLib.prototype.has_opted_out_tracking;
+    MixpanelLib.prototype['has_opted_in_tracking']              = MixpanelLib.prototype.has_opted_in_tracking;
+    MixpanelLib.prototype['clear_opt_in_out_tracking']          = MixpanelLib.prototype.clear_opt_in_out_tracking;
+    MixpanelLib.prototype['get_group']                          = MixpanelLib.prototype.get_group;
+    MixpanelLib.prototype['set_group']                          = MixpanelLib.prototype.set_group;
+    MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
+    MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
+    MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
+    MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
+    MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
+    MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
+    MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
+    MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
+    MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
     // MixpanelPersistence Exports
     MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
