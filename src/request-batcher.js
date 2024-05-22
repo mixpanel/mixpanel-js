@@ -117,8 +117,8 @@ RequestBatcher.prototype.flush = function(options) {
         options = options || {};
         var timeoutMS = this.options.requestTimeoutMs;
         var startTime = new Date().getTime();
-        var currentBatchSize = this.currentBatchSize;
-        var batch = this.queue.fillBatch(currentBatchSize);
+        var flushBatchSize = this.currentBatchSize;
+        var batch = this.queue.fillBatch(flushBatchSize);
         var dataForRequest = [];
         var transformedItems = {};
         _.each(batch, function(item) {
@@ -190,7 +190,7 @@ RequestBatcher.prototype.flush = function(options) {
                     (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')
                 ) {
                     // network or API error, or 429 Too Many Requests, retry
-                    var retryMS = this.flushInterval * 2;
+                    var retryMS = this.currentFlushInterval * 2;
                     var headers = res.xhr_req['responseHeaders'];
                     if (headers) {
                         var retryAfter = headers['Retry-After'];
@@ -204,8 +204,8 @@ RequestBatcher.prototype.flush = function(options) {
                 } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
-                        var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
-                        this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
+                        var halvedBatchSize = Math.max(1, Math.floor(flushBatchSize / 2));
+                        this.currentBatchSize = Math.min(this.currentBatchSize, halvedBatchSize, batch.length - 1);
                         this.reportError('413 response; reducing batch size to ' + this.batchSize);
                         this.resetFlush();
                     } else {

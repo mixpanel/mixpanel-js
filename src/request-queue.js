@@ -148,7 +148,7 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
         }
         return;
     }
-    
+
     var removeFromStorage = _.bind(function() {
         var succeeded;
         try {

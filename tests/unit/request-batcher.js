@@ -6,7 +6,7 @@ import sinonChai from 'sinon-chai';
 chai.use(sinonChai);
 
 import { RequestBatcher } from '../../src/request-batcher';
-import {mapValues} from 'lodash';
+import {assign, mapValues} from 'lodash';
 
 const LOCALSTORAGE_KEY = `fake-rb-key`;
 const START_TIME = 100000;
@@ -19,7 +19,7 @@ describe(`RequestBatcher`, function() {
   let clock = null;
 
   function configureBatchSize(batchSize) {
-      libConfig.batch_size = batchSize;
+      batcher.options.batchSize = batchSize;
       batcher.resetBatchSize();
   }
 
@@ -29,14 +29,30 @@ describe(`RequestBatcher`, function() {
 
   function sendResponse(status, {error, responseHeaders} = {}) {
     // respond to last request sent
-    const requestIndex = batcher.sendRequest.args.length - 1;
-    batcher.sendRequest.args[requestIndex][2]({
+    const requestIndex = batcher.options.sendRequestFunc.args.length - 1;
+    batcher.options.sendRequestFunc.args[requestIndex][2]({
       'xhr_req': {
         status,
         responseHeaders,
       },
       error,
     });
+  }
+
+  function initBatcher(optionOverrides) {
+    optionOverrides = optionOverrides || {};
+    const defaultOptions = {
+      sendRequestFunc: sinon.spy(),
+      storage: localStorage,
+      usePersistence: true,
+      flushIntervalMs: DEFAULT_FLUSH_INTERVAL,
+      batchSize: 50,
+      autoStart: true,
+      requestTimeoutMs: REQUEST_TIMEOUT_MS,
+    };
+
+    const options = assign({}, defaultOptions, optionOverrides);
+    batcher = new RequestBatcher(LOCALSTORAGE_KEY, options);
   }
 
   beforeEach(function() {
@@ -46,17 +62,7 @@ describe(`RequestBatcher`, function() {
     clock = sinon.useFakeTimers(START_TIME);
     localStorage.clear();
 
-    libConfig = {
-      batch_flush_interval_ms: DEFAULT_FLUSH_INTERVAL,
-      batch_request_timeout_ms: REQUEST_TIMEOUT_MS,
-      batch_size: 50,
-      batch_autostart: true,
-    };
-    batcher = new RequestBatcher(LOCALSTORAGE_KEY, {
-      libConfig,
-      sendRequestFunc: sinon.spy(),
-      storage: localStorage,
-    });
+    initBatcher();
   });
 
   afterEach(function() {
@@ -71,6 +77,22 @@ describe(`RequestBatcher`, function() {
       batcher.enqueue({foo: `bar`}, function(succeeded) {
         expect(succeeded).to.be.ok;
         expect(batcher.queue.memQueue).to.have.lengthOf(1);
+        expect(getLocalStorageItems()).to.have.lengthOf(1);
+        const queuedEntry = batcher.queue.memQueue[0];
+        expect(queuedEntry).to.eql(getLocalStorageItems()[0]);
+        expect(queuedEntry.flushAfter).to.be.greaterThan(START_TIME + 5000);
+        expect(queuedEntry.flushAfter).to.be.lessThan(START_TIME + 15000);
+        expect(queuedEntry.payload).to.deep.equal({foo: `bar`});
+        done();
+      });
+    });
+
+    it(`only stores the item in memory when usePersistence=false`, function(done) {
+      initBatcher({usePersistence: false});
+      batcher.enqueue({foo: `bar`}, function(succeeded) {
+        expect(succeeded).to.be.ok;
+        expect(batcher.queue.memQueue).to.have.lengthOf(1);
+        expect(getLocalStorageItems()).to.not.be.ok;
         const queuedEntry = batcher.queue.memQueue[0];
         expect(queuedEntry.flushAfter).to.be.greaterThan(START_TIME + 5000);
         expect(queuedEntry.flushAfter).to.be.lessThan(START_TIME + 15000);
@@ -83,14 +105,14 @@ describe(`RequestBatcher`, function() {
   describe(`flush`, function() {
     it(`does not call sendRequest when queue is empty`, function() {
       batcher.flush();
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
     });
 
     it(`calls sendRequest with items to flush`, function() {
       batcher.enqueue({foo: `bar`});
       batcher.flush();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([{foo: `bar`}]);
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([{foo: `bar`}]);
     });
 
     it(`removes items from queue on successful response`, function() {
@@ -105,12 +127,12 @@ describe(`RequestBatcher`, function() {
     });
 
     it(`transforms items before sending if a hook function has been provided`, function() {
-      batcher.beforeSendHook = item => mapValues(item, v => v.toUpperCase());
+      batcher.options.beforeSendHook = item => mapValues(item, v => v.toUpperCase());
       batcher.enqueue({Hello: `World`});
       batcher.enqueue({foo: `bar`});
       batcher.flush();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([
         {Hello: `WORLD`},
         {foo: `BAR`},
       ]);
@@ -124,48 +146,48 @@ describe(`RequestBatcher`, function() {
 
       batcher.flush();
 
-      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
       sendResponse(200);
       // second request should follow immediately
-      expect(batcher.sendRequest).to.have.been.calledTwice;
+      expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
       sendResponse(200);
-      expect(batcher.sendRequest).to.have.been.calledThrice; // forsooth
+      expect(batcher.options.sendRequestFunc).to.have.been.calledThrice; // forsooth
 
       // check what was sent in those requests
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([
         {ev: `queued event 1`},
         {ev: `queued event 2`},
         {ev: `queued event 3`},
       ]);
-      expect(batcher.sendRequest.args[1][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal([
         {ev: `queued event 4`},
         {ev: `queued event 5`},
         {ev: `queued event 6`},
       ]);
-      expect(batcher.sendRequest.args[2][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc.args[2][0]).to.deep.equal([
         {ev: `queued event 7`},
         {ev: `queued event 8`},
       ]);
 
       // no new requests after that
       clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
-      expect(batcher.sendRequest).to.have.been.calledThrice;
+      expect(batcher.options.sendRequestFunc).to.have.been.calledThrice;
     });
 
     it(`prevents reentrant flushes`, function() {
       batcher.enqueue({foo: `bar`});
       batcher.flush();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
 
       batcher.enqueue({foo2: `bar2`});
       batcher.flush();
-      expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce; // no new request
 
       sendResponse(200);
-      expect(batcher.sendRequest).to.have.been.calledTwice;
+      expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
 
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([{foo: `bar`}]);
-      expect(batcher.sendRequest.args[1][0]).to.deep.equal([{foo2: `bar2`}]);
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([{foo: `bar`}]);
+      expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal([{foo2: `bar2`}]);
     });
 
     describe(`error handling`, function() {
@@ -173,50 +195,50 @@ describe(`RequestBatcher`, function() {
         batcher.enqueue({foo: `bar`});
         batcher.enqueue({foo2: `bar2`});
         batcher.flush();
-        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
         sendResponse(500);
 
         clock.tick(DEFAULT_FLUSH_INTERVAL);
         // no new requests, items are still in queue
-        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
         expect(batcher.queue.memQueue).to.have.lengthOf(2);
         expect(getLocalStorageItems()).to.have.lengthOf(2);
 
         clock.tick(DEFAULT_FLUSH_INTERVAL);
         // retry with same data
-        expect(batcher.sendRequest).to.have.been.calledTwice;
-        expect(batcher.sendRequest.args[1][0]).to.deep.equal(batcher.sendRequest.args[0][0]);
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
+        expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal(batcher.options.sendRequestFunc.args[0][0]);
 
         // oh no, another explosion!
         sendResponse(503);
         clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
         // no new requests, items are still in queue
-        expect(batcher.sendRequest).to.have.been.calledTwice;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
         expect(batcher.queue.memQueue).to.have.lengthOf(2);
         expect(getLocalStorageItems()).to.have.lengthOf(2);
 
         clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
         // retry with same data
-        expect(batcher.sendRequest).to.have.been.calledThrice;
-        expect(batcher.sendRequest.args[2][0]).to.deep.equal(batcher.sendRequest.args[0][0]);
+        expect(batcher.options.sendRequestFunc).to.have.been.calledThrice;
+        expect(batcher.options.sendRequestFunc.args[2][0]).to.deep.equal(batcher.options.sendRequestFunc.args[0][0]);
 
         // do it again, oh the humanity
         sendResponse(503);
         clock.tick(DEFAULT_FLUSH_INTERVAL * 4);
         // no new requests, items are still in queue
-        expect(batcher.sendRequest).to.have.been.calledThrice;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledThrice;
         expect(batcher.queue.memQueue).to.have.lengthOf(2);
         expect(getLocalStorageItems()).to.have.lengthOf(2);
 
         clock.tick(DEFAULT_FLUSH_INTERVAL * 4);
         // retry with same data
-        expect(batcher.sendRequest).to.have.callCount(4);
-        expect(batcher.sendRequest.args[3][0]).to.deep.equal(batcher.sendRequest.args[0][0]);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(4);
+        expect(batcher.options.sendRequestFunc.args[3][0]).to.deep.equal(batcher.options.sendRequestFunc.args[0][0]);
 
         // will the madness ever end? finally the API call succeeds
         sendResponse(200);
         clock.tick(DEFAULT_FLUSH_INTERVAL * 100); // a long time
-        expect(batcher.sendRequest).to.have.callCount(4); // no new requests
+        expect(batcher.options.sendRequestFunc).to.have.callCount(4); // no new requests
         expect(batcher.queue.memQueue).to.be.empty;
         expect(getLocalStorageItems()).to.be.empty;
       });
@@ -229,7 +251,7 @@ describe(`RequestBatcher`, function() {
         let tryAfter = DEFAULT_FLUSH_INTERVAL * 2;
         const TEN_MINUTES = 10 * 60 * 1000;
         while (tryAfter <= TEN_MINUTES) {
-          expect(batcher.sendRequest).to.have.callCount(expectedRequests);
+          expect(batcher.options.sendRequestFunc).to.have.callCount(expectedRequests);
           sendResponse(503);
 
           clock.tick(tryAfter);
@@ -237,20 +259,20 @@ describe(`RequestBatcher`, function() {
           expectedRequests++;
         }
 
-        expect(batcher.sendRequest).to.have.callCount(expectedRequests);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(expectedRequests);
         sendResponse(503);
         clock.tick(TEN_MINUTES - 1);
-        expect(batcher.sendRequest).to.have.callCount(expectedRequests); // no new request
+        expect(batcher.options.sendRequestFunc).to.have.callCount(expectedRequests); // no new request
         clock.tick(1);
-        expect(batcher.sendRequest).to.have.callCount(++expectedRequests);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(++expectedRequests);
 
         // do it again, exactly 10 minutes til next request
-        expect(batcher.sendRequest).to.have.callCount(expectedRequests);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(expectedRequests);
         sendResponse(503);
         clock.tick(TEN_MINUTES - 1);
-        expect(batcher.sendRequest).to.have.callCount(expectedRequests); // no new request
+        expect(batcher.options.sendRequestFunc).to.have.callCount(expectedRequests); // no new request
         clock.tick(1);
-        expect(batcher.sendRequest).to.have.callCount(++expectedRequests);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(++expectedRequests);
       });
 
       it(`resets flush interval when request succeeds after backoff`, function() {
@@ -260,31 +282,31 @@ describe(`RequestBatcher`, function() {
 
         // fail a couple times
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
         sendResponse(503);
         clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
-        expect(batcher.sendRequest).to.have.been.calledTwice;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
         sendResponse(503);
 
         // configuring default flush interval shouldn't affect anything during failure backoff
-        libConfig.batch_flush_interval_ms = 8000;
+        batcher.options.flushIntervalMs = 8000;
 
         clock.tick(DEFAULT_FLUSH_INTERVAL * 4);
-        expect(batcher.sendRequest).to.have.been.calledThrice;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledThrice;
         sendResponse(503);
 
         // succeed!
         clock.tick(DEFAULT_FLUSH_INTERVAL * 8);
-        expect(batcher.sendRequest).to.have.callCount(4);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(4);
         sendResponse(200);
 
         // at this point the success response should have reset the interval to the 8000
         // configured above
         batcher.enqueue({ev: `queued event 3`});
         clock.tick(7000);
-        expect(batcher.sendRequest).to.have.callCount(4); // no new request yet
+        expect(batcher.options.sendRequestFunc).to.have.callCount(4); // no new request yet
         clock.tick(1000);
-        expect(batcher.sendRequest).to.have.callCount(5);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(5);
       });
 
       it(`can queue up new events while failing requests are retrying`, function() {
@@ -294,19 +316,19 @@ describe(`RequestBatcher`, function() {
 
         // fail a couple times
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
         sendResponse(503);
         clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
-        expect(batcher.sendRequest).to.have.been.calledTwice;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
         sendResponse(503);
 
         batcher.enqueue({ev: `queued event 3`});
 
         clock.tick(DEFAULT_FLUSH_INTERVAL * 4);
-        expect(batcher.sendRequest).to.have.callCount(3);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(3);
 
         // should include all events in current retry
-        expect(batcher.sendRequest.args[2][0]).to.deep.equal([
+        expect(batcher.options.sendRequestFunc.args[2][0]).to.deep.equal([
           {ev: `queued event 1`},
           {ev: `queued event 2`},
           {ev: `queued event 3`},
@@ -323,7 +345,7 @@ describe(`RequestBatcher`, function() {
         sendResponse(400);
 
         clock.tick(100000);
-        expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce; // no new request
         expect(batcher.queue.memQueue).to.be.empty;
         expect(getLocalStorageItems()).to.be.empty;
       });
@@ -338,7 +360,7 @@ describe(`RequestBatcher`, function() {
         sendResponse(0);
 
         clock.tick(100000);
-        expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce; // no new request
         expect(batcher.queue.memQueue).to.be.empty;
         expect(getLocalStorageItems()).to.be.empty;
       });
@@ -347,19 +369,19 @@ describe(`RequestBatcher`, function() {
         batcher.enqueue({foo: `bar`});
         batcher.enqueue({foo2: `bar2`});
         batcher.flush();
-        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
         sendResponse(429);
 
         clock.tick(DEFAULT_FLUSH_INTERVAL);
         // no new requests, items are still in queue
-        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
         expect(batcher.queue.memQueue).to.have.lengthOf(2);
         expect(getLocalStorageItems()).to.have.lengthOf(2);
 
         clock.tick(DEFAULT_FLUSH_INTERVAL);
         // retry with same data
-        expect(batcher.sendRequest).to.have.been.calledTwice;
-        expect(batcher.sendRequest.args[1][0]).to.deep.equal(batcher.sendRequest.args[0][0]);
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
+        expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal(batcher.options.sendRequestFunc.args[0][0]);
       });
 
       it(`reduces batch size after 413 Payload Too Large`, function() {
@@ -371,13 +393,13 @@ describe(`RequestBatcher`, function() {
         batcher.flush();
 
         // should have tried to send all 7 items in one go
-        expect(batcher.sendRequest.args[0][0]).to.have.lengthOf(7);
+        expect(batcher.options.sendRequestFunc.args[0][0]).to.have.lengthOf(7);
 
         sendResponse(413);
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.been.calledTwice; // no backoff
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice; // no backoff
         // reduced batch size
-        expect(batcher.sendRequest.args[1][0]).to.deep.equal([
+        expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal([
           {ev: `queued event 1`},
           {ev: `queued event 2`},
           {ev: `queued event 3`},
@@ -386,9 +408,9 @@ describe(`RequestBatcher`, function() {
 
         sendResponse(200);
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.been.calledThrice;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledThrice;
         // remaining items from original batch
-        expect(batcher.sendRequest.args[2][0]).to.deep.equal([
+        expect(batcher.options.sendRequestFunc.args[2][0]).to.deep.equal([
           {ev: `queued event 5`},
           {ev: `queued event 6`},
           {ev: `queued event 7`},
@@ -398,17 +420,17 @@ describe(`RequestBatcher`, function() {
       it(`does not retry single item which produces 413 Payload Too Large`, function() {
         batcher.enqueue({ev: `bloated item`});
         batcher.flush();
-        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
         sendResponse(413);
         clock.tick(240000);
-        expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce; // no new request
 
         // first item should have been dropped, and we resume normal batching
         batcher.enqueue({ev: `normal item 1`});
         batcher.enqueue({ev: `normal item 2`});
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.been.calledTwice;
-        expect(batcher.sendRequest.args[1][0]).to.deep.equal([
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
+        expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal([
           {ev: `normal item 1`},
           {ev: `normal item 2`},
         ]);
@@ -421,22 +443,22 @@ describe(`RequestBatcher`, function() {
 
         sendResponse(503, {responseHeaders: {'Retry-After': `20`}});
         clock.tick(10000);
-        expect(batcher.sendRequest).to.have.been.calledOnce; // no retry yet
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce; // no retry yet
         clock.tick(10000);
-        expect(batcher.sendRequest).to.have.been.calledTwice; // 20s have passed
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice; // 20s have passed
 
         // after success, should reset to configured flush interval
         sendResponse(200);
         batcher.enqueue({ev: `queued event 3`});
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.been.calledThrice;
-        expect(batcher.sendRequest.args[2][0]).to.deep.equal([
+        expect(batcher.options.sendRequestFunc).to.have.been.calledThrice;
+        expect(batcher.options.sendRequestFunc.args[2][0]).to.deep.equal([
           {ev: `queued event 3`},
         ]);
       });
 
       it(`handles failures to remove items from queue and eventually stops batchers`, function() {
-        batcher.stopAllBatching = sinon.spy();
+        batcher.options.stopAllBatchingFunc = sinon.spy();
 
         batcher.enqueue({foo: `bar`});
         batcher.flush();
@@ -456,36 +478,36 @@ describe(`RequestBatcher`, function() {
         expect(batcher.consecutiveRemovalFailures).to.equal(1);
 
         // no immediate flush
-        expect(batcher.sendRequest).to.have.been.calledOnce;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
 
         // make the event orphaned so we try to send it again
         clock.tick(DEFAULT_FLUSH_INTERVAL * 3);
-        expect(batcher.sendRequest).to.have.been.calledTwice;
+        expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
         sendResponse(200);
         expect(batcher.consecutiveRemovalFailures).to.equal(2);
 
         // now it will try to send on every flush
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.callCount(3);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(3);
         sendResponse(200);
         expect(batcher.consecutiveRemovalFailures).to.equal(3);
 
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.callCount(4);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(4);
         sendResponse(200);
         expect(batcher.consecutiveRemovalFailures).to.equal(4);
 
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.callCount(5);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(5);
         sendResponse(200);
         expect(batcher.consecutiveRemovalFailures).to.equal(5);
 
-        expect(batcher.stopAllBatching).not.to.have.been.called;
+        expect(batcher.options.stopAllBatchingFunc).not.to.have.been.called;
         clock.tick(DEFAULT_FLUSH_INTERVAL);
-        expect(batcher.sendRequest).to.have.callCount(6);
+        expect(batcher.options.sendRequestFunc).to.have.callCount(6);
         sendResponse(200);
         expect(batcher.consecutiveRemovalFailures).to.equal(6);
-        expect(batcher.stopAllBatching).to.have.been.calledOnce;
+        expect(batcher.options.stopAllBatchingFunc).to.have.been.calledOnce;
       });
 
       context(`when request times out`, function() {
@@ -507,8 +529,8 @@ describe(`RequestBatcher`, function() {
           batcher.flush();
           clock.tick(REQUEST_TIMEOUT_MS);
           timeOutRequest();
-          expect(batcher.sendRequest).to.have.been.calledTwice;
-          expect(batcher.sendRequest.args[1][0]).to.deep.equal([{foo: `bar`}]);
+          expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
+          expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal([{foo: `bar`}]);
         });
 
         it(`checks clock before treating it as a real timeout`, function() {
@@ -517,17 +539,17 @@ describe(`RequestBatcher`, function() {
 
           batcher.enqueue({foo: `bar`});
           batcher.flush();
-          expect(batcher.sendRequest).to.have.been.calledOnce;
+          expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
           timeOutRequest();
 
           // no new request; there was no significant time between sending
           // the original request and getting the "timeout" response
-          expect(batcher.sendRequest).to.have.been.calledOnce;
+          expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
 
           // should have been treated like a normal error and backed off
           clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
-          expect(batcher.sendRequest).to.have.been.calledTwice;
-          expect(batcher.sendRequest.args[1][0]).to.deep.equal([{foo: `bar`}]);
+          expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
+          expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal([{foo: `bar`}]);
         });
       });
     });
@@ -537,15 +559,15 @@ describe(`RequestBatcher`, function() {
     it(`does not flush`, function() {
       batcher.enqueue({foo: `bar`});
       clock.tick(20000);
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
     });
 
     it(`flushes immediately on start`, function() {
       batcher.enqueue({foo: `bar`});
       clock.tick(20000);
       batcher.start();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([{foo: `bar`}]);
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([{foo: `bar`}]);
     });
   });
 
@@ -556,16 +578,16 @@ describe(`RequestBatcher`, function() {
 
     it(`does not send requests until flush interval`, function() {
       batcher.enqueue({first: `event`});
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
       clock.tick(1000);
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
       batcher.enqueue({second: `event`});
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
       clock.tick(1000);
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
       clock.tick(DEFAULT_FLUSH_INTERVAL);
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([
         {first: `event`}, {second: `event`},
       ]);
     });
@@ -581,10 +603,10 @@ describe(`RequestBatcher`, function() {
       // kill it
       localStorage.removeItem(LOCALSTORAGE_KEY);
 
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
       clock.tick(DEFAULT_FLUSH_INTERVAL);
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([
         {name: `storagetest 1`},
         {name: `storagetest 2`},
       ]);
@@ -603,8 +625,8 @@ describe(`RequestBatcher`, function() {
       ]));
 
       batcher.start();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      const batchEvents = batcher.sendRequest.args[0][0];
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      const batchEvents = batcher.options.sendRequestFunc.args[0][0];
       expect(batchEvents).to.have.lengthOf(2);
       expect(batchEvents[0].event).to.equal(`orphaned event 1`);
       expect(batchEvents[1].event).to.equal(`orphaned event 2`);
@@ -625,8 +647,8 @@ describe(`RequestBatcher`, function() {
       ]));
 
       batcher.start();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      const batchEvents = batcher.sendRequest.args[0][0];
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      const batchEvents = batcher.options.sendRequestFunc.args[0][0];
       expect(batchEvents).to.have.lengthOf(1);
       expect(batchEvents[0].event).to.equal(`orphaned event 1`);
 
@@ -648,13 +670,13 @@ describe(`RequestBatcher`, function() {
       batcher.start();
 
       clock.tick(20000);
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
 
       // first event becomes orphaned
 
       clock.tick(80000);
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      const payload = batcher.sendRequest.args[0][0];
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      const payload = batcher.options.sendRequestFunc.args[0][0];
       expect(payload).to.have.lengthOf(1);
       expect(payload[0]).to.have.property(`event`, `orphaned event 1`);
       expect(payload[0]).to.have.nested.include({'properties.foo': `bar`});
@@ -664,13 +686,13 @@ describe(`RequestBatcher`, function() {
       expect(getLocalStorageItems()).to.have.lengthOf(1);
 
       clock.tick(20000);
-      expect(batcher.sendRequest).to.have.been.calledOnce; // no new request
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce; // no new request
 
       // second event becomes orphaned
 
       clock.tick(200000);
-      expect(batcher.sendRequest).to.have.been.calledTwice;
-      expect(batcher.sendRequest.args[1][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc).to.have.been.calledTwice;
+      expect(batcher.options.sendRequestFunc.args[1][0]).to.deep.equal([
         {'event': `orphaned event 2`},
       ]);
 
@@ -680,7 +702,7 @@ describe(`RequestBatcher`, function() {
     });
 
     it(`does not apply before-send hooks to orphaned items`, function() {
-      batcher.beforeSendHook = item => mapValues(item, v => v.toUpperCase());
+      batcher.options.beforeSendHook = item => mapValues(item, v => v.toUpperCase());
 
       localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify([
         {id: `fakeID1`, flushAfter: Date.now() - 60000, payload: {
@@ -694,8 +716,8 @@ describe(`RequestBatcher`, function() {
       batcher.enqueue({foo: `bar`});
 
       batcher.start();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([
         {Hello: `WORLD`},
         {foo: `BAR`},
         {event: `orphaned event 1`}, // did not get uppercased
@@ -709,7 +731,7 @@ describe(`RequestBatcher`, function() {
     it(`ignores and overwrites malformed localStorage entries`, function() {
       localStorage.setItem(LOCALSTORAGE_KEY, `just some garbage {{{`);
       batcher.start();
-      expect(batcher.sendRequest).not.to.have.been.called;
+      expect(batcher.options.sendRequestFunc).not.to.have.been.called;
 
       // should clear and overwrite garbage localStorage when enqueueing
       batcher.enqueue({foo: `bar`});
@@ -720,8 +742,8 @@ describe(`RequestBatcher`, function() {
       ]);
 
       clock.tick(DEFAULT_FLUSH_INTERVAL);
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      expect(batcher.sendRequest.args[0][0]).to.deep.equal([
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      expect(batcher.options.sendRequestFunc.args[0][0]).to.deep.equal([
         {foo: `bar`},
         {baz: `quux`},
       ]);
@@ -742,8 +764,8 @@ describe(`RequestBatcher`, function() {
       expect(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY))).to.have.lengthOf(3);
 
       batcher.start();
-      expect(batcher.sendRequest).to.have.been.calledOnce;
-      const payload = batcher.sendRequest.args[0][0];
+      expect(batcher.options.sendRequestFunc).to.have.been.calledOnce;
+      const payload = batcher.options.sendRequestFunc.args[0][0];
       expect(payload).to.have.lengthOf(2);
       expect(payload[0]).to.have.property(`event`, `orphaned event 1`);
       expect(payload[0]).to.have.nested.include({'properties.foo': `bar`});

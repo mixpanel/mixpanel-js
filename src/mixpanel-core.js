@@ -748,7 +748,8 @@ MixpanelLib.prototype.init_batchers = function() {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
                     errorReporter: this.get_config('error_reporter'),
-                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this)
+                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
+                    usePersistence: true,
                 }
             );
         }, this);
