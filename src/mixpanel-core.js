@@ -394,8 +394,11 @@ MixpanelLib.prototype.stop_session_recording = function () {
 
 MixpanelLib.prototype.get_session_recording_properties = function () {
     var props = {};
-    if (this._recorder && this._recorder['replayId']) {
-        props['$mp_replay_id'] = this._recorder['replayId'];
+    if (this._recorder) {
+        var replay_id = this._recorder['replayId'];
+        if (replay_id) {
+            props['$mp_replay_id'] = replay_id;
+        }
     }
     return props;
 };
