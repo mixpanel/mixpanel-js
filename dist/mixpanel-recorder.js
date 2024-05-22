@@ -15,7 +15,7 @@
         return n.nodeType === n.ELEMENT_NODE;
     }
     function isShadowRoot(n) {
-        const host = n === null || n === void 0 ? void 0 : n.host;
+        var host = n === null || n === void 0 ? void 0 : n.host;
         return Boolean((host === null || host === void 0 ? void 0 : host.shadowRoot) === n);
     }
     function isNativeShadowDom(shadowRoot) {
@@ -28,125 +28,98 @@
         }
         return cssText;
     }
-    function escapeImportStatement(rule) {
-        const { cssText } = rule;
-        if (cssText.split('"').length < 3)
-            return cssText;
-        const statement = ['@import', `url(${JSON.stringify(rule.href)})`];
-        if (rule.layerName === '') {
-            statement.push(`layer`);
-        }
-        else if (rule.layerName) {
-            statement.push(`layer(${rule.layerName})`);
-        }
-        if (rule.supportsText) {
-            statement.push(`supports(${rule.supportsText})`);
-        }
-        if (rule.media.length) {
-            statement.push(rule.media.mediaText);
-        }
-        return statement.join(' ') + ';';
-    }
-    function stringifyStylesheet(s) {
+    function getCssRulesString(s) {
         try {
-            const rules = s.rules || s.cssRules;
+            var rules = s.rules || s.cssRules;
             return rules
-                ? fixBrowserCompatibilityIssuesInCSS(Array.from(rules, stringifyRule).join(''))
+                ? fixBrowserCompatibilityIssuesInCSS(Array.from(rules).map(getCssRuleString).join(''))
                 : null;
         }
         catch (error) {
             return null;
         }
     }
-    function stringifyRule(rule) {
-        let importStringified;
+    function getCssRuleString(rule) {
+        var cssStringified = rule.cssText;
         if (isCSSImportRule(rule)) {
             try {
-                importStringified =
-                    stringifyStylesheet(rule.styleSheet) ||
-                        escapeImportStatement(rule);
+                cssStringified = getCssRulesString(rule.styleSheet) || cssStringified;
             }
-            catch (error) {
+            catch (_a) {
             }
         }
-        else if (isCSSStyleRule(rule) && rule.selectorText.includes(':')) {
-            return fixSafariColons(rule.cssText);
-        }
-        return importStringified || rule.cssText;
-    }
-    function fixSafariColons(cssStringified) {
-        const regex = /(\[(?:[\w-]+)[^\\])(:(?:[\w-]+)\])/gm;
-        return cssStringified.replace(regex, '$1\\$2');
+        return cssStringified;
     }
     function isCSSImportRule(rule) {
         return 'styleSheet' in rule;
     }
-    function isCSSStyleRule(rule) {
-        return 'selectorText' in rule;
-    }
-    class Mirror {
-        constructor() {
+    var Mirror = (function () {
+        function Mirror() {
             this.idNodeMap = new Map();
             this.nodeMetaMap = new WeakMap();
         }
-        getId(n) {
+        Mirror.prototype.getId = function (n) {
             var _a;
             if (!n)
                 return -1;
-            const id = (_a = this.getMeta(n)) === null || _a === void 0 ? void 0 : _a.id;
+            var id = (_a = this.getMeta(n)) === null || _a === void 0 ? void 0 : _a.id;
             return id !== null && id !== void 0 ? id : -1;
-        }
-        getNode(id) {
+        };
+        Mirror.prototype.getNode = function (id) {
             return this.idNodeMap.get(id) || null;
-        }
-        getIds() {
+        };
+        Mirror.prototype.getIds = function () {
             return Array.from(this.idNodeMap.keys());
-        }
-        getMeta(n) {
+        };
+        Mirror.prototype.getMeta = function (n) {
             return this.nodeMetaMap.get(n) || null;
-        }
-        removeNodeFromMap(n) {
-            const id = this.getId(n);
-            this.idNodeMap.delete(id);
+        };
+        Mirror.prototype.removeNodeFromMap = function (n) {
+            var _this = this;
+            var id = this.getId(n);
+            this.idNodeMap["delete"](id);
             if (n.childNodes) {
-                n.childNodes.forEach((childNode) => this.removeNodeFromMap(childNode));
+                n.childNodes.forEach(function (childNode) {
+                    return _this.removeNodeFromMap(childNode);
+                });
             }
-        }
-        has(id) {
+        };
+        Mirror.prototype.has = function (id) {
             return this.idNodeMap.has(id);
-        }
-        hasNode(node) {
+        };
+        Mirror.prototype.hasNode = function (node) {
             return this.nodeMetaMap.has(node);
-        }
-        add(n, meta) {
-            const id = meta.id;
+        };
+        Mirror.prototype.add = function (n, meta) {
+            var id = meta.id;
             this.idNodeMap.set(id, n);
             this.nodeMetaMap.set(n, meta);
-        }
-        replace(id, n) {
-            const oldNode = this.getNode(id);
+        };
+        Mirror.prototype.replace = function (id, n) {
+            var oldNode = this.getNode(id);
             if (oldNode) {
-                const meta = this.nodeMetaMap.get(oldNode);
+                var meta = this.nodeMetaMap.get(oldNode);
                 if (meta)
                     this.nodeMetaMap.set(n, meta);
             }
             this.idNodeMap.set(id, n);
-        }
-        reset() {
+        };
+        Mirror.prototype.reset = function () {
             this.idNodeMap = new Map();
             this.nodeMetaMap = new WeakMap();
-        }
-    }
+        };
+        return Mirror;
+    }());
     function createMirror() {
         return new Mirror();
     }
-    function maskInputValue({ element, maskInputOptions, tagName, type, value, maskInputFn, }) {
-        let text = value || '';
-        const actualType = type && toLowerCase(type);
+    function maskInputValue(_a) {
+        var maskInputOptions = _a.maskInputOptions, tagName = _a.tagName, type = _a.type, value = _a.value, maskInputFn = _a.maskInputFn;
+        var text = value || '';
         if (maskInputOptions[tagName.toLowerCase()] ||
-            (actualType && maskInputOptions[actualType])) {
+            maskInputOptions[type]) {
             if (maskInputFn) {
-                text = maskInputFn(text, element);
+                text = maskInputFn(text);
             }
             else {
                 text = '*'.repeat(text.length);
@@ -154,54 +127,29 @@
         }
         return text;
     }
-    function toLowerCase(str) {
-        return str.toLowerCase();
-    }
-    const ORIGINAL_ATTRIBUTE_NAME = '__rrweb_original__';
+    var ORIGINAL_ATTRIBUTE_NAME = '__rrweb_original__';
     function is2DCanvasBlank(canvas) {
-        const ctx = canvas.getContext('2d');
+        var ctx = canvas.getContext('2d');
         if (!ctx)
             return true;
-        const chunkSize = 50;
-        for (let x = 0; x < canvas.width; x += chunkSize) {
-            for (let y = 0; y < canvas.height; y += chunkSize) {
-                const getImageData = ctx.getImageData;
-                const originalGetImageData = ORIGINAL_ATTRIBUTE_NAME in getImageData
+        var chunkSize = 50;
+        for (var x = 0; x < canvas.width; x += chunkSize) {
+            for (var y = 0; y < canvas.height; y += chunkSize) {
+                var getImageData = ctx.getImageData;
+                var originalGetImageData = ORIGINAL_ATTRIBUTE_NAME in getImageData
                     ? getImageData[ORIGINAL_ATTRIBUTE_NAME]
                     : getImageData;
-                const pixelBuffer = new Uint32Array(originalGetImageData.call(ctx, x, y, Math.min(chunkSize, canvas.width - x), Math.min(chunkSize, canvas.height - y)).data.buffer);
-                if (pixelBuffer.some((pixel) => pixel !== 0))
+                var pixelBuffer = new Uint32Array(originalGetImageData.call(ctx, x, y, Math.min(chunkSize, canvas.width - x), Math.min(chunkSize, canvas.height - y)).data.buffer);
+                if (pixelBuffer.some(function (pixel) { return pixel !== 0; }))
                     return false;
             }
         }
         return true;
     }
-    function getInputType(element) {
-        const type = element.type;
-        return element.hasAttribute('data-rr-is-password')
-            ? 'password'
-            : type
-                ?
-                    toLowerCase(type)
-                : null;
-    }
-    function extractFileExtension(path, baseURL) {
-        var _a;
-        let url;
-        try {
-            url = new URL(path, baseURL !== null && baseURL !== void 0 ? baseURL : window.location.href);
-        }
-        catch (err) {
-            return null;
-        }
-        const regex = /\.([0-9a-z]+)(?:$)/i;
-        const match = url.pathname.match(regex);
-        return (_a = match === null || match === void 0 ? void 0 : match[1]) !== null && _a !== void 0 ? _a : null;
-    }
 
-    let _id = 1;
-    const tagNameRegex = new RegExp('[^a-z0-9-_:]');
-    const IGNORED_NODE = -2;
+    var _id = 1;
+    var tagNameRegex = new RegExp('[^a-z0-9-_:]');
+    var IGNORED_NODE = -2;
     function genId() {
         return _id++;
     }
@@ -209,14 +157,21 @@
         if (element instanceof HTMLFormElement) {
             return 'form';
         }
-        const processedTagName = toLowerCase(element.tagName);
+        var processedTagName = element.tagName.toLowerCase().trim();
         if (tagNameRegex.test(processedTagName)) {
             return 'div';
         }
         return processedTagName;
     }
+    function stringifyStyleSheet(sheet) {
+        return sheet.cssRules
+            ? Array.from(sheet.cssRules)
+                .map(function (rule) { return rule.cssText || ''; })
+                .join('')
+            : '';
+    }
     function extractOrigin(url) {
-        let origin = '';
+        var origin = '';
         if (url.indexOf('//') > -1) {
             origin = url.split('/').slice(0, 3).join('/');
         }
@@ -226,32 +181,32 @@
         origin = origin.split('?')[0];
         return origin;
     }
-    let canvasService;
-    let canvasCtx;
-    const URL_IN_CSS_REF = /url\((?:(')([^']*)'|(")(.*?)"|([^)]*))\)/gm;
-    const URL_PROTOCOL_MATCH = /^(?:[a-z+]+:)?\/\//i;
-    const URL_WWW_MATCH = /^www\..*/i;
-    const DATA_URI = /^(data:)([^,]*),(.*)/i;
+    var canvasService;
+    var canvasCtx;
+    var URL_IN_CSS_REF = /url\((?:(')([^']*)'|(")(.*?)"|([^)]*))\)/gm;
+    var RELATIVE_PATH = /^(?!www\.|(?:http|ftp)s?:\/\/|[A-Za-z]:\\|\/\/|#).*/;
+    var DATA_URI = /^(data:)([^,]*),(.*)/i;
     function absoluteToStylesheet(cssText, href) {
-        return (cssText || '').replace(URL_IN_CSS_REF, (origin, quote1, path1, quote2, path2, path3) => {
-            const filePath = path1 || path2 || path3;
-            const maybeQuote = quote1 || quote2 || '';
+        return (cssText || '').replace(URL_IN_CSS_REF, function (origin, quote1, path1, quote2, path2, path3) {
+            var filePath = path1 || path2 || path3;
+            var maybeQuote = quote1 || quote2 || '';
             if (!filePath) {
                 return origin;
             }
-            if (URL_PROTOCOL_MATCH.test(filePath) || URL_WWW_MATCH.test(filePath)) {
-                return `url(${maybeQuote}${filePath}${maybeQuote})`;
+            if (!RELATIVE_PATH.test(filePath)) {
+                return "url(".concat(maybeQuote).concat(filePath).concat(maybeQuote, ")");
             }
             if (DATA_URI.test(filePath)) {
-                return `url(${maybeQuote}${filePath}${maybeQuote})`;
+                return "url(".concat(maybeQuote).concat(filePath).concat(maybeQuote, ")");
             }
             if (filePath[0] === '/') {
-                return `url(${maybeQuote}${extractOrigin(href) + filePath}${maybeQuote})`;
+                return "url(".concat(maybeQuote).concat(extractOrigin(href) + filePath).concat(maybeQuote, ")");
             }
-            const stack = href.split('/');
-            const parts = filePath.split('/');
+            var stack = href.split('/');
+            var parts = filePath.split('/');
             stack.pop();
-            for (const part of parts) {
+            for (var _i = 0, parts_1 = parts; _i < parts_1.length; _i++) {
+                var part = parts_1[_i];
                 if (part === '.') {
                     continue;
                 }
@@ -262,19 +217,19 @@
                     stack.push(part);
                 }
             }
-            return `url(${maybeQuote}${stack.join('/')}${maybeQuote})`;
+            return "url(".concat(maybeQuote).concat(stack.join('/')).concat(maybeQuote, ")");
         });
     }
-    const SRCSET_NOT_SPACES = /^[^ \t\n\r\u000c]+/;
-    const SRCSET_COMMAS_OR_SPACES = /^[, \t\n\r\u000c]+/;
+    var SRCSET_NOT_SPACES = /^[^ \t\n\r\u000c]+/;
+    var SRCSET_COMMAS_OR_SPACES = /^[, \t\n\r\u000c]+/;
     function getAbsoluteSrcsetString(doc, attributeValue) {
         if (attributeValue.trim() === '') {
             return attributeValue;
         }
-        let pos = 0;
+        var pos = 0;
         function collectCharacters(regEx) {
-            let chars;
-            const match = regEx.exec(attributeValue.substring(pos));
+            var chars;
+            var match = regEx.exec(attributeValue.substring(pos));
             if (match) {
                 chars = match[0];
                 pos += chars.length;
@@ -282,23 +237,23 @@
             }
             return '';
         }
-        const output = [];
+        var output = [];
         while (true) {
             collectCharacters(SRCSET_COMMAS_OR_SPACES);
             if (pos >= attributeValue.length) {
                 break;
             }
-            let url = collectCharacters(SRCSET_NOT_SPACES);
+            var url = collectCharacters(SRCSET_NOT_SPACES);
             if (url.slice(-1) === ',') {
                 url = absoluteToDoc(doc, url.substring(0, url.length - 1));
                 output.push(url);
             }
             else {
-                let descriptorsStr = '';
+                var descriptorsStr = '';
                 url = absoluteToDoc(doc, url);
-                let inParens = false;
+                var inParens = false;
                 while (true) {
-                    const c = attributeValue.charAt(pos);
+                    var c = attributeValue.charAt(pos);
                     if (c === '') {
                         output.push((url + descriptorsStr).trim());
                         break;
@@ -329,7 +284,7 @@
         if (!attributeValue || attributeValue.trim() === '') {
             return attributeValue;
         }
-        const a = doc.createElement('a');
+        var a = doc.createElement('a');
         a.href = attributeValue;
         return a.href;
     }
@@ -337,59 +292,52 @@
         return Boolean(el.tagName === 'svg' || el.ownerSVGElement);
     }
     function getHref() {
-        const a = document.createElement('a');
+        var a = document.createElement('a');
         a.href = '';
         return a.href;
     }
     function transformAttribute(doc, tagName, name, value) {
-        if (!value) {
-            return value;
-        }
         if (name === 'src' ||
-            (name === 'href' && !(tagName === 'use' && value[0] === '#'))) {
+            (name === 'href' && value && !(tagName === 'use' && value[0] === '#'))) {
             return absoluteToDoc(doc, value);
         }
-        else if (name === 'xlink:href' && value[0] !== '#') {
+        else if (name === 'xlink:href' && value && value[0] !== '#') {
             return absoluteToDoc(doc, value);
         }
         else if (name === 'background' &&
+            value &&
             (tagName === 'table' || tagName === 'td' || tagName === 'th')) {
             return absoluteToDoc(doc, value);
         }
-        else if (name === 'srcset') {
+        else if (name === 'srcset' && value) {
             return getAbsoluteSrcsetString(doc, value);
         }
-        else if (name === 'style') {
+        else if (name === 'style' && value) {
             return absoluteToStylesheet(value, getHref());
         }
-        else if (tagName === 'object' && name === 'data') {
+        else if (tagName === 'object' && name === 'data' && value) {
             return absoluteToDoc(doc, value);
         }
-        return value;
-    }
-    function ignoreAttribute(tagName, name, _value) {
-        return (tagName === 'video' || tagName === 'audio') && name === 'autoplay';
+        else {
+            return value;
+        }
     }
     function _isBlockedElement(element, blockClass, blockSelector) {
-        try {
-            if (typeof blockClass === 'string') {
-                if (element.classList.contains(blockClass)) {
+        if (typeof blockClass === 'string') {
+            if (element.classList.contains(blockClass)) {
+                return true;
+            }
+        }
+        else {
+            for (var eIndex = element.classList.length; eIndex--;) {
+                var className = element.classList[eIndex];
+                if (blockClass.test(className)) {
                     return true;
                 }
             }
-            else {
-                for (let eIndex = element.classList.length; eIndex--;) {
-                    const className = element.classList[eIndex];
-                    if (blockClass.test(className)) {
-                        return true;
-                    }
-                }
-            }
-            if (blockSelector) {
-                return element.matches(blockSelector);
-            }
         }
-        catch (e) {
+        if (blockSelector) {
+            return element.matches(blockSelector);
         }
         return false;
     }
@@ -401,8 +349,8 @@
                 return false;
             return classMatchesRegex(node.parentNode, regex, checkAncestors);
         }
-        for (let eIndex = node.classList.length; eIndex--;) {
-            const className = node.classList[eIndex];
+        for (var eIndex = node.classList.length; eIndex--;) {
+            var className = node.classList[eIndex];
             if (regex.test(className)) {
                 return true;
             }
@@ -411,49 +359,37 @@
             return false;
         return classMatchesRegex(node.parentNode, regex, checkAncestors);
     }
-    function needMaskingText(node, maskTextClass, maskTextSelector, checkAncestors) {
-        try {
-            const el = node.nodeType === node.ELEMENT_NODE
-                ? node
-                : node.parentElement;
-            if (el === null)
-                return false;
-            if (typeof maskTextClass === 'string') {
-                if (checkAncestors) {
-                    if (el.closest(`.${maskTextClass}`))
-                        return true;
-                }
-                else {
-                    if (el.classList.contains(maskTextClass))
-                        return true;
-                }
-            }
-            else {
-                if (classMatchesRegex(el, maskTextClass, checkAncestors))
-                    return true;
-            }
-            if (maskTextSelector) {
-                if (checkAncestors) {
-                    if (el.closest(maskTextSelector))
-                        return true;
-                }
-                else {
-                    if (el.matches(maskTextSelector))
-                        return true;
-                }
-            }
+    function needMaskingText(node, maskTextClass, maskTextSelector) {
+        var el = node.nodeType === node.ELEMENT_NODE
+            ? node
+            : node.parentElement;
+        if (el === null)
+            return false;
+        if (typeof maskTextClass === 'string') {
+            if (el.classList.contains(maskTextClass))
+                return true;
+            if (el.closest(".".concat(maskTextClass)))
+                return true;
         }
-        catch (e) {
+        else {
+            if (classMatchesRegex(el, maskTextClass, true))
+                return true;
+        }
+        if (maskTextSelector) {
+            if (el.matches(maskTextSelector))
+                return true;
+            if (el.closest(maskTextSelector))
+                return true;
         }
         return false;
     }
     function onceIframeLoaded(iframeEl, listener, iframeLoadTimeout) {
-        const win = iframeEl.contentWindow;
+        var win = iframeEl.contentWindow;
         if (!win) {
             return;
         }
-        let fired = false;
-        let readyState;
+        var fired = false;
+        var readyState;
         try {
             readyState = win.document.readyState;
         }
@@ -461,20 +397,20 @@
             return;
         }
         if (readyState !== 'complete') {
-            const timer = setTimeout(() => {
+            var timer_1 = setTimeout(function () {
                 if (!fired) {
                     listener();
                     fired = true;
                 }
             }, iframeLoadTimeout);
-            iframeEl.addEventListener('load', () => {
-                clearTimeout(timer);
+            iframeEl.addEventListener('load', function () {
+                clearTimeout(timer_1);
                 fired = true;
                 listener();
             });
             return;
         }
-        const blankUrl = 'about:blank';
+        var blankUrl = 'about:blank';
         if (win.location.href !== blankUrl ||
             iframeEl.src === blankUrl ||
             iframeEl.src === '') {
@@ -484,8 +420,8 @@
         iframeEl.addEventListener('load', listener);
     }
     function onceStylesheetLoaded(link, listener, styleSheetLoadTimeout) {
-        let fired = false;
-        let styleSheetLoaded;
+        var fired = false;
+        var styleSheetLoaded;
         try {
             styleSheetLoaded = link.sheet;
         }
@@ -494,34 +430,34 @@
         }
         if (styleSheetLoaded)
             return;
-        const timer = setTimeout(() => {
+        var timer = setTimeout(function () {
             if (!fired) {
                 listener();
                 fired = true;
             }
         }, styleSheetLoadTimeout);
-        link.addEventListener('load', () => {
+        link.addEventListener('load', function () {
             clearTimeout(timer);
             fired = true;
             listener();
         });
     }
     function serializeNode(n, options) {
-        const { doc, mirror, blockClass, blockSelector, needsMask, inlineStylesheet, maskInputOptions = {}, maskTextFn, maskInputFn, dataURLOptions = {}, inlineImages, recordCanvas, keepIframeSrcFn, newlyAddedElement = false, } = options;
-        const rootId = getRootId(doc, mirror);
+        var doc = options.doc, mirror = options.mirror, blockClass = options.blockClass, blockSelector = options.blockSelector, maskTextClass = options.maskTextClass, maskTextSelector = options.maskTextSelector, inlineStylesheet = options.inlineStylesheet, _a = options.maskInputOptions, maskInputOptions = _a === void 0 ? {} : _a, maskTextFn = options.maskTextFn, maskInputFn = options.maskInputFn, _b = options.dataURLOptions, dataURLOptions = _b === void 0 ? {} : _b, inlineImages = options.inlineImages, recordCanvas = options.recordCanvas, keepIframeSrcFn = options.keepIframeSrcFn, _c = options.newlyAddedElement, newlyAddedElement = _c === void 0 ? false : _c;
+        var rootId = getRootId(doc, mirror);
         switch (n.nodeType) {
             case n.DOCUMENT_NODE:
                 if (n.compatMode !== 'CSS1Compat') {
                     return {
                         type: NodeType.Document,
                         childNodes: [],
-                        compatMode: n.compatMode,
+                        compatMode: n.compatMode
                     };
                 }
                 else {
                     return {
                         type: NodeType.Document,
-                        childNodes: [],
+                        childNodes: []
                     };
                 }
             case n.DOCUMENT_TYPE_NODE:
@@ -530,40 +466,41 @@
                     name: n.name,
                     publicId: n.publicId,
                     systemId: n.systemId,
-                    rootId,
+                    rootId: rootId
                 };
             case n.ELEMENT_NODE:
                 return serializeElementNode(n, {
-                    doc,
-                    blockClass,
-                    blockSelector,
-                    inlineStylesheet,
-                    maskInputOptions,
-                    maskInputFn,
-                    dataURLOptions,
-                    inlineImages,
-                    recordCanvas,
-                    keepIframeSrcFn,
-                    newlyAddedElement,
-                    rootId,
+                    doc: doc,
+                    blockClass: blockClass,
+                    blockSelector: blockSelector,
+                    inlineStylesheet: inlineStylesheet,
+                    maskInputOptions: maskInputOptions,
+                    maskInputFn: maskInputFn,
+                    dataURLOptions: dataURLOptions,
+                    inlineImages: inlineImages,
+                    recordCanvas: recordCanvas,
+                    keepIframeSrcFn: keepIframeSrcFn,
+                    newlyAddedElement: newlyAddedElement,
+                    rootId: rootId
                 });
             case n.TEXT_NODE:
                 return serializeTextNode(n, {
-                    needsMask,
-                    maskTextFn,
-                    rootId,
+                    maskTextClass: maskTextClass,
+                    maskTextSelector: maskTextSelector,
+                    maskTextFn: maskTextFn,
+                    rootId: rootId
                 });
             case n.CDATA_SECTION_NODE:
                 return {
                     type: NodeType.CDATA,
                     textContent: '',
-                    rootId,
+                    rootId: rootId
                 };
             case n.COMMENT_NODE:
                 return {
                     type: NodeType.Comment,
                     textContent: n.textContent || '',
-                    rootId,
+                    rootId: rootId
                 };
             default:
                 return false;
@@ -572,63 +509,64 @@
     function getRootId(doc, mirror) {
         if (!mirror.hasNode(doc))
             return undefined;
-        const docId = mirror.getId(doc);
+        var docId = mirror.getId(doc);
         return docId === 1 ? undefined : docId;
     }
     function serializeTextNode(n, options) {
         var _a;
-        const { needsMask, maskTextFn, rootId } = options;
-        const parentTagName = n.parentNode && n.parentNode.tagName;
-        let textContent = n.textContent;
-        const isStyle = parentTagName === 'STYLE' ? true : undefined;
-        const isScript = parentTagName === 'SCRIPT' ? true : undefined;
+        var maskTextClass = options.maskTextClass, maskTextSelector = options.maskTextSelector, maskTextFn = options.maskTextFn, rootId = options.rootId;
+        var parentTagName = n.parentNode && n.parentNode.tagName;
+        var textContent = n.textContent;
+        var isStyle = parentTagName === 'STYLE' ? true : undefined;
+        var isScript = parentTagName === 'SCRIPT' ? true : undefined;
         if (isStyle && textContent) {
             try {
                 if (n.nextSibling || n.previousSibling) {
                 }
                 else if ((_a = n.parentNode.sheet) === null || _a === void 0 ? void 0 : _a.cssRules) {
-                    textContent = stringifyStylesheet(n.parentNode.sheet);
+                    textContent = stringifyStyleSheet(n.parentNode.sheet);
                 }
             }
             catch (err) {
-                console.warn(`Cannot get CSS styles from text's parentNode. Error: ${err}`, n);
+                console.warn("Cannot get CSS styles from text's parentNode. Error: ".concat(err), n);
             }
             textContent = absoluteToStylesheet(textContent, getHref());
         }
         if (isScript) {
             textContent = 'SCRIPT_PLACEHOLDER';
         }
-        if (!isStyle && !isScript && textContent && needsMask) {
+        if (!isStyle &&
+            !isScript &&
+            textContent &&
+            needMaskingText(n, maskTextClass, maskTextSelector)) {
             textContent = maskTextFn
-                ? maskTextFn(textContent, n.parentElement)
+                ? maskTextFn(textContent)
                 : textContent.replace(/[\S]/g, '*');
         }
         return {
             type: NodeType.Text,
             textContent: textContent || '',
-            isStyle,
-            rootId,
+            isStyle: isStyle,
+            rootId: rootId
         };
     }
     function serializeElementNode(n, options) {
-        const { doc, blockClass, blockSelector, inlineStylesheet, maskInputOptions = {}, maskInputFn, dataURLOptions = {}, inlineImages, recordCanvas, keepIframeSrcFn, newlyAddedElement = false, rootId, } = options;
-        const needBlock = _isBlockedElement(n, blockClass, blockSelector);
-        const tagName = getValidTagName(n);
-        let attributes = {};
-        const len = n.attributes.length;
-        for (let i = 0; i < len; i++) {
-            const attr = n.attributes[i];
-            if (!ignoreAttribute(tagName, attr.name, attr.value)) {
-                attributes[attr.name] = transformAttribute(doc, tagName, toLowerCase(attr.name), attr.value);
-            }
+        var doc = options.doc, blockClass = options.blockClass, blockSelector = options.blockSelector, inlineStylesheet = options.inlineStylesheet, _a = options.maskInputOptions, maskInputOptions = _a === void 0 ? {} : _a, maskInputFn = options.maskInputFn, _b = options.dataURLOptions, dataURLOptions = _b === void 0 ? {} : _b, inlineImages = options.inlineImages, recordCanvas = options.recordCanvas, keepIframeSrcFn = options.keepIframeSrcFn, _c = options.newlyAddedElement, newlyAddedElement = _c === void 0 ? false : _c, rootId = options.rootId;
+        var needBlock = _isBlockedElement(n, blockClass, blockSelector);
+        var tagName = getValidTagName(n);
+        var attributes = {};
+        var len = n.attributes.length;
+        for (var i = 0; i < len; i++) {
+            var attr = n.attributes[i];
+            attributes[attr.name] = transformAttribute(doc, tagName, attr.name, attr.value);
         }
         if (tagName === 'link' && inlineStylesheet) {
-            const stylesheet = Array.from(doc.styleSheets).find((s) => {
+            var stylesheet = Array.from(doc.styleSheets).find(function (s) {
                 return s.href === n.href;
             });
-            let cssText = null;
+            var cssText = null;
             if (stylesheet) {
-                cssText = stringifyStylesheet(stylesheet);
+                cssText = getCssRulesString(stylesheet);
             }
             if (cssText) {
                 delete attributes.rel;
@@ -639,26 +577,25 @@
         if (tagName === 'style' &&
             n.sheet &&
             !(n.innerText || n.textContent || '').trim().length) {
-            const cssText = stringifyStylesheet(n.sheet);
+            var cssText = getCssRulesString(n.sheet);
             if (cssText) {
                 attributes._cssText = absoluteToStylesheet(cssText, getHref());
             }
         }
         if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
-            const value = n.value;
-            const checked = n.checked;
+            var value = n.value;
+            var checked = n.checked;
             if (attributes.type !== 'radio' &&
                 attributes.type !== 'checkbox' &&
                 attributes.type !== 'submit' &&
                 attributes.type !== 'button' &&
                 value) {
                 attributes.value = maskInputValue({
-                    element: n,
-                    type: getInputType(n),
-                    tagName,
-                    value,
-                    maskInputOptions,
-                    maskInputFn,
+                    type: attributes.type,
+                    tagName: tagName,
+                    value: value,
+                    maskInputOptions: maskInputOptions,
+                    maskInputFn: maskInputFn
                 });
             }
             else if (checked) {
@@ -680,11 +617,11 @@
                 }
             }
             else if (!('__context' in n)) {
-                const canvasDataURL = n.toDataURL(dataURLOptions.type, dataURLOptions.quality);
-                const blankCanvas = document.createElement('canvas');
+                var canvasDataURL = n.toDataURL(dataURLOptions.type, dataURLOptions.quality);
+                var blankCanvas = document.createElement('canvas');
                 blankCanvas.width = n.width;
                 blankCanvas.height = n.height;
-                const blankCanvasDataURL = blankCanvas.toDataURL(dataURLOptions.type, dataURLOptions.quality);
+                var blankCanvasDataURL = blankCanvas.toDataURL(dataURLOptions.type, dataURLOptions.quality);
                 if (canvasDataURL !== blankCanvasDataURL) {
                     attributes.rr_dataURL = canvasDataURL;
                 }
@@ -695,39 +632,33 @@
                 canvasService = doc.createElement('canvas');
                 canvasCtx = canvasService.getContext('2d');
             }
-            const image = n;
-            const oldValue = image.crossOrigin;
-            image.crossOrigin = 'anonymous';
-            const recordInlineImage = () => {
-                image.removeEventListener('load', recordInlineImage);
+            var image_1 = n;
+            var oldValue_1 = image_1.crossOrigin;
+            image_1.crossOrigin = 'anonymous';
+            var recordInlineImage = function () {
                 try {
-                    canvasService.width = image.naturalWidth;
-                    canvasService.height = image.naturalHeight;
-                    canvasCtx.drawImage(image, 0, 0);
+                    canvasService.width = image_1.naturalWidth;
+                    canvasService.height = image_1.naturalHeight;
+                    canvasCtx.drawImage(image_1, 0, 0);
                     attributes.rr_dataURL = canvasService.toDataURL(dataURLOptions.type, dataURLOptions.quality);
                 }
                 catch (err) {
-                    console.warn(`Cannot inline img src=${image.currentSrc}! Error: ${err}`);
+                    console.warn("Cannot inline img src=".concat(image_1.currentSrc, "! Error: ").concat(err));
                 }
-                oldValue
-                    ? (attributes.crossOrigin = oldValue)
-                    : image.removeAttribute('crossorigin');
+                oldValue_1
+                    ? (attributes.crossOrigin = oldValue_1)
+                    : image_1.removeAttribute('crossorigin');
             };
-            if (image.complete && image.naturalWidth !== 0)
+            if (image_1.complete && image_1.naturalWidth !== 0)
                 recordInlineImage();
             else
-                image.addEventListener('load', recordInlineImage);
+                image_1.onload = recordInlineImage;
         }
         if (tagName === 'audio' || tagName === 'video') {
-            const mediaAttributes = attributes;
-            mediaAttributes.rr_mediaState = n.paused
+            attributes.rr_mediaState = n.paused
                 ? 'paused'
                 : 'played';
-            mediaAttributes.rr_mediaCurrentTime = n.currentTime;
-            mediaAttributes.rr_mediaPlaybackRate = n.playbackRate;
-            mediaAttributes.rr_mediaMuted = n.muted;
-            mediaAttributes.rr_mediaLoop = n.loop;
-            mediaAttributes.rr_mediaVolume = n.volume;
+            attributes.rr_mediaCurrentTime = n.currentTime;
         }
         if (!newlyAddedElement) {
             if (n.scrollLeft) {
@@ -738,11 +669,11 @@
             }
         }
         if (needBlock) {
-            const { width, height } = n.getBoundingClientRect();
+            var _d = n.getBoundingClientRect(), width = _d.width, height = _d.height;
             attributes = {
-                class: attributes.class,
-                rr_width: `${width}px`,
-                rr_height: `${height}px`,
+                "class": attributes["class"],
+                rr_width: "".concat(width, "px"),
+                rr_height: "".concat(height, "px")
             };
         }
         if (tagName === 'iframe' && !keepIframeSrcFn(attributes.src)) {
@@ -751,26 +682,18 @@
             }
             delete attributes.src;
         }
-        let isCustomElement;
-        try {
-            if (customElements.get(tagName))
-                isCustomElement = true;
-        }
-        catch (e) {
-        }
         return {
             type: NodeType.Element,
-            tagName,
-            attributes,
+            tagName: tagName,
+            attributes: attributes,
             childNodes: [],
             isSVG: isSVGElement(n) || undefined,
-            needBlock,
-            rootId,
-            isCustom: isCustomElement,
+            needBlock: needBlock,
+            rootId: rootId
         };
     }
     function lowerIfExists(maybeAttr) {
-        if (maybeAttr === undefined || maybeAttr === null) {
+        if (maybeAttr === undefined) {
             return '';
         }
         else {
@@ -785,13 +708,12 @@
             if (slimDOMOptions.script &&
                 (sn.tagName === 'script' ||
                     (sn.tagName === 'link' &&
-                        (sn.attributes.rel === 'preload' ||
-                            sn.attributes.rel === 'modulepreload') &&
+                        sn.attributes.rel === 'preload' &&
                         sn.attributes.as === 'script') ||
                     (sn.tagName === 'link' &&
                         sn.attributes.rel === 'prefetch' &&
                         typeof sn.attributes.href === 'string' &&
-                        extractFileExtension(sn.attributes.href) === 'js'))) {
+                        sn.attributes.href.endsWith('.js')))) {
                 return true;
             }
             else if (slimDOMOptions.headFavicon &&
@@ -850,35 +772,30 @@
         return false;
     }
     function serializeNodeWithId(n, options) {
-        const { doc, mirror, blockClass, blockSelector, maskTextClass, maskTextSelector, skipChild = false, inlineStylesheet = true, maskInputOptions = {}, maskTextFn, maskInputFn, slimDOMOptions, dataURLOptions = {}, inlineImages = false, recordCanvas = false, onSerialize, onIframeLoad, iframeLoadTimeout = 5000, onStylesheetLoad, stylesheetLoadTimeout = 5000, keepIframeSrcFn = () => false, newlyAddedElement = false, } = options;
-        let { needsMask } = options;
-        let { preserveWhiteSpace = true } = options;
-        if (!needsMask &&
-            n.childNodes) {
-            const checkAncestors = needsMask === undefined;
-            needsMask = needMaskingText(n, maskTextClass, maskTextSelector, checkAncestors);
-        }
-        const _serializedNode = serializeNode(n, {
-            doc,
-            mirror,
-            blockClass,
-            blockSelector,
-            needsMask,
-            inlineStylesheet,
-            maskInputOptions,
-            maskTextFn,
-            maskInputFn,
-            dataURLOptions,
-            inlineImages,
-            recordCanvas,
-            keepIframeSrcFn,
-            newlyAddedElement,
+        var doc = options.doc, mirror = options.mirror, blockClass = options.blockClass, blockSelector = options.blockSelector, maskTextClass = options.maskTextClass, maskTextSelector = options.maskTextSelector, _a = options.skipChild, skipChild = _a === void 0 ? false : _a, _b = options.inlineStylesheet, inlineStylesheet = _b === void 0 ? true : _b, _c = options.maskInputOptions, maskInputOptions = _c === void 0 ? {} : _c, maskTextFn = options.maskTextFn, maskInputFn = options.maskInputFn, slimDOMOptions = options.slimDOMOptions, _d = options.dataURLOptions, dataURLOptions = _d === void 0 ? {} : _d, _e = options.inlineImages, inlineImages = _e === void 0 ? false : _e, _f = options.recordCanvas, recordCanvas = _f === void 0 ? false : _f, onSerialize = options.onSerialize, onIframeLoad = options.onIframeLoad, _g = options.iframeLoadTimeout, iframeLoadTimeout = _g === void 0 ? 5000 : _g, onStylesheetLoad = options.onStylesheetLoad, _h = options.stylesheetLoadTimeout, stylesheetLoadTimeout = _h === void 0 ? 5000 : _h, _j = options.keepIframeSrcFn, keepIframeSrcFn = _j === void 0 ? function () { return false; } : _j, _k = options.newlyAddedElement, newlyAddedElement = _k === void 0 ? false : _k;
+        var _l = options.preserveWhiteSpace, preserveWhiteSpace = _l === void 0 ? true : _l;
+        var _serializedNode = serializeNode(n, {
+            doc: doc,
+            mirror: mirror,
+            blockClass: blockClass,
+            blockSelector: blockSelector,
+            maskTextClass: maskTextClass,
+            maskTextSelector: maskTextSelector,
+            inlineStylesheet: inlineStylesheet,
+            maskInputOptions: maskInputOptions,
+            maskTextFn: maskTextFn,
+            maskInputFn: maskInputFn,
+            dataURLOptions: dataURLOptions,
+            inlineImages: inlineImages,
+            recordCanvas: recordCanvas,
+            keepIframeSrcFn: keepIframeSrcFn,
+            newlyAddedElement: newlyAddedElement
         });
         if (!_serializedNode) {
             console.warn(n, 'not serialized');
             return null;
         }
-        let id;
+        var id;
         if (mirror.hasNode(n)) {
             id = mirror.getId(n);
         }
@@ -892,7 +809,7 @@
         else {
             id = genId();
         }
-        const serializedNode = Object.assign(_serializedNode, { id });
+        var serializedNode = Object.assign(_serializedNode, { id: id });
         mirror.add(n, serializedNode);
         if (id === IGNORED_NODE) {
             return null;
@@ -900,11 +817,11 @@
         if (onSerialize) {
             onSerialize(n);
         }
-        let recordChild = !skipChild;
+        var recordChild = !skipChild;
         if (serializedNode.type === NodeType.Element) {
             recordChild = recordChild && !serializedNode.needBlock;
             delete serializedNode.needBlock;
-            const shadowRoot = n.shadowRoot;
+            var shadowRoot = n.shadowRoot;
             if (shadowRoot && isNativeShadowDom(shadowRoot))
                 serializedNode.isShadowHost = true;
         }
@@ -916,45 +833,41 @@
                 serializedNode.tagName === 'head') {
                 preserveWhiteSpace = false;
             }
-            const bypassOptions = {
-                doc,
-                mirror,
-                blockClass,
-                blockSelector,
-                needsMask,
-                maskTextClass,
-                maskTextSelector,
-                skipChild,
-                inlineStylesheet,
-                maskInputOptions,
-                maskTextFn,
-                maskInputFn,
-                slimDOMOptions,
-                dataURLOptions,
-                inlineImages,
-                recordCanvas,
-                preserveWhiteSpace,
-                onSerialize,
-                onIframeLoad,
-                iframeLoadTimeout,
-                onStylesheetLoad,
-                stylesheetLoadTimeout,
-                keepIframeSrcFn,
+            var bypassOptions = {
+                doc: doc,
+                mirror: mirror,
+                blockClass: blockClass,
+                blockSelector: blockSelector,
+                maskTextClass: maskTextClass,
+                maskTextSelector: maskTextSelector,
+                skipChild: skipChild,
+                inlineStylesheet: inlineStylesheet,
+                maskInputOptions: maskInputOptions,
+                maskTextFn: maskTextFn,
+                maskInputFn: maskInputFn,
+                slimDOMOptions: slimDOMOptions,
+                dataURLOptions: dataURLOptions,
+                inlineImages: inlineImages,
+                recordCanvas: recordCanvas,
+                preserveWhiteSpace: preserveWhiteSpace,
+                onSerialize: onSerialize,
+                onIframeLoad: onIframeLoad,
+                iframeLoadTimeout: iframeLoadTimeout,
+                onStylesheetLoad: onStylesheetLoad,
+                stylesheetLoadTimeout: stylesheetLoadTimeout,
+                keepIframeSrcFn: keepIframeSrcFn
             };
-            if (serializedNode.type === NodeType.Element &&
-                serializedNode.tagName === 'textarea' &&
-                serializedNode.attributes.value !== undefined) ;
-            else {
-                for (const childN of Array.from(n.childNodes)) {
-                    const serializedChildNode = serializeNodeWithId(childN, bypassOptions);
-                    if (serializedChildNode) {
-                        serializedNode.childNodes.push(serializedChildNode);
-                    }
+            for (var _i = 0, _m = Array.from(n.childNodes); _i < _m.length; _i++) {
+                var childN = _m[_i];
+                var serializedChildNode = serializeNodeWithId(childN, bypassOptions);
+                if (serializedChildNode) {
+                    serializedNode.childNodes.push(serializedChildNode);
                 }
             }
             if (isElement(n) && n.shadowRoot) {
-                for (const childN of Array.from(n.shadowRoot.childNodes)) {
-                    const serializedChildNode = serializeNodeWithId(childN, bypassOptions);
+                for (var _o = 0, _p = Array.from(n.shadowRoot.childNodes); _o < _p.length; _o++) {
+                    var childN = _p[_o];
+                    var serializedChildNode = serializeNodeWithId(childN, bypassOptions);
                     if (serializedChildNode) {
                         isNativeShadowDom(n.shadowRoot) &&
                             (serializedChildNode.isShadow = true);
@@ -970,33 +883,32 @@
         }
         if (serializedNode.type === NodeType.Element &&
             serializedNode.tagName === 'iframe') {
-            onceIframeLoaded(n, () => {
-                const iframeDoc = n.contentDocument;
+            onceIframeLoaded(n, function () {
+                var iframeDoc = n.contentDocument;
                 if (iframeDoc && onIframeLoad) {
-                    const serializedIframeNode = serializeNodeWithId(iframeDoc, {
+                    var serializedIframeNode = serializeNodeWithId(iframeDoc, {
                         doc: iframeDoc,
-                        mirror,
-                        blockClass,
-                        blockSelector,
-                        needsMask,
-                        maskTextClass,
-                        maskTextSelector,
+                        mirror: mirror,
+                        blockClass: blockClass,
+                        blockSelector: blockSelector,
+                        maskTextClass: maskTextClass,
+                        maskTextSelector: maskTextSelector,
                         skipChild: false,
-                        inlineStylesheet,
-                        maskInputOptions,
-                        maskTextFn,
-                        maskInputFn,
-                        slimDOMOptions,
-                        dataURLOptions,
-                        inlineImages,
-                        recordCanvas,
-                        preserveWhiteSpace,
-                        onSerialize,
-                        onIframeLoad,
-                        iframeLoadTimeout,
-                        onStylesheetLoad,
-                        stylesheetLoadTimeout,
-                        keepIframeSrcFn,
+                        inlineStylesheet: inlineStylesheet,
+                        maskInputOptions: maskInputOptions,
+                        maskTextFn: maskTextFn,
+                        maskInputFn: maskInputFn,
+                        slimDOMOptions: slimDOMOptions,
+                        dataURLOptions: dataURLOptions,
+                        inlineImages: inlineImages,
+                        recordCanvas: recordCanvas,
+                        preserveWhiteSpace: preserveWhiteSpace,
+                        onSerialize: onSerialize,
+                        onIframeLoad: onIframeLoad,
+                        iframeLoadTimeout: iframeLoadTimeout,
+                        onStylesheetLoad: onStylesheetLoad,
+                        stylesheetLoadTimeout: stylesheetLoadTimeout,
+                        keepIframeSrcFn: keepIframeSrcFn
                     });
                     if (serializedIframeNode) {
                         onIframeLoad(n, serializedIframeNode);
@@ -1006,37 +918,32 @@
         }
         if (serializedNode.type === NodeType.Element &&
             serializedNode.tagName === 'link' &&
-            typeof serializedNode.attributes.rel === 'string' &&
-            (serializedNode.attributes.rel === 'stylesheet' ||
-                (serializedNode.attributes.rel === 'preload' &&
-                    typeof serializedNode.attributes.href === 'string' &&
-                    extractFileExtension(serializedNode.attributes.href) === 'css'))) {
-            onceStylesheetLoaded(n, () => {
+            serializedNode.attributes.rel === 'stylesheet') {
+            onceStylesheetLoaded(n, function () {
                 if (onStylesheetLoad) {
-                    const serializedLinkNode = serializeNodeWithId(n, {
-                        doc,
-                        mirror,
-                        blockClass,
-                        blockSelector,
-                        needsMask,
-                        maskTextClass,
-                        maskTextSelector,
+                    var serializedLinkNode = serializeNodeWithId(n, {
+                        doc: doc,
+                        mirror: mirror,
+                        blockClass: blockClass,
+                        blockSelector: blockSelector,
+                        maskTextClass: maskTextClass,
+                        maskTextSelector: maskTextSelector,
                         skipChild: false,
-                        inlineStylesheet,
-                        maskInputOptions,
-                        maskTextFn,
-                        maskInputFn,
-                        slimDOMOptions,
-                        dataURLOptions,
-                        inlineImages,
-                        recordCanvas,
-                        preserveWhiteSpace,
-                        onSerialize,
-                        onIframeLoad,
-                        iframeLoadTimeout,
-                        onStylesheetLoad,
-                        stylesheetLoadTimeout,
-                        keepIframeSrcFn,
+                        inlineStylesheet: inlineStylesheet,
+                        maskInputOptions: maskInputOptions,
+                        maskTextFn: maskTextFn,
+                        maskInputFn: maskInputFn,
+                        slimDOMOptions: slimDOMOptions,
+                        dataURLOptions: dataURLOptions,
+                        inlineImages: inlineImages,
+                        recordCanvas: recordCanvas,
+                        preserveWhiteSpace: preserveWhiteSpace,
+                        onSerialize: onSerialize,
+                        onIframeLoad: onIframeLoad,
+                        iframeLoadTimeout: iframeLoadTimeout,
+                        onStylesheetLoad: onStylesheetLoad,
+                        stylesheetLoadTimeout: stylesheetLoadTimeout,
+                        keepIframeSrcFn: keepIframeSrcFn
                     });
                     if (serializedLinkNode) {
                         onStylesheetLoad(n, serializedLinkNode);
@@ -1047,8 +954,8 @@
         return serializedNode;
     }
     function snapshot(n, options) {
-        const { mirror = new Mirror(), blockClass = 'rr-block', blockSelector = null, maskTextClass = 'rr-mask', maskTextSelector = null, inlineStylesheet = true, inlineImages = false, recordCanvas = false, maskAllInputs = false, maskTextFn, maskInputFn, slimDOM = false, dataURLOptions, preserveWhiteSpace, onSerialize, onIframeLoad, iframeLoadTimeout, onStylesheetLoad, stylesheetLoadTimeout, keepIframeSrcFn = () => false, } = options || {};
-        const maskInputOptions = maskAllInputs === true
+        var _a = options || {}, _b = _a.mirror, mirror = _b === void 0 ? new Mirror() : _b, _c = _a.blockClass, blockClass = _c === void 0 ? 'rr-block' : _c, _d = _a.blockSelector, blockSelector = _d === void 0 ? null : _d, _e = _a.maskTextClass, maskTextClass = _e === void 0 ? 'rr-mask' : _e, _f = _a.maskTextSelector, maskTextSelector = _f === void 0 ? null : _f, _g = _a.inlineStylesheet, inlineStylesheet = _g === void 0 ? true : _g, _h = _a.inlineImages, inlineImages = _h === void 0 ? false : _h, _j = _a.recordCanvas, recordCanvas = _j === void 0 ? false : _j, _k = _a.maskAllInputs, maskAllInputs = _k === void 0 ? false : _k, maskTextFn = _a.maskTextFn, maskInputFn = _a.maskInputFn, _l = _a.slimDOM, slimDOM = _l === void 0 ? false : _l, dataURLOptions = _a.dataURLOptions, preserveWhiteSpace = _a.preserveWhiteSpace, onSerialize = _a.onSerialize, onIframeLoad = _a.onIframeLoad, iframeLoadTimeout = _a.iframeLoadTimeout, onStylesheetLoad = _a.onStylesheetLoad, stylesheetLoadTimeout = _a.stylesheetLoadTimeout, _m = _a.keepIframeSrcFn, keepIframeSrcFn = _m === void 0 ? function () { return false; } : _m;
+        var maskInputOptions = maskAllInputs === true
             ? {
                 color: true,
                 date: true,
@@ -1065,14 +972,14 @@
                 week: true,
                 textarea: true,
                 select: true,
-                password: true,
+                password: true
             }
             : maskAllInputs === false
                 ? {
-                    password: true,
+                    password: true
                 }
                 : maskAllInputs;
-        const slimDOMOptions = slimDOM === true || slimDOM === 'all'
+        var slimDOMOptions = slimDOM === true || slimDOM === 'all'
             ?
                 {
                     script: true,
@@ -1084,35 +991,35 @@
                     headMetaRobots: true,
                     headMetaHttpEquiv: true,
                     headMetaAuthorship: true,
-                    headMetaVerification: true,
+                    headMetaVerification: true
                 }
             : slimDOM === false
                 ? {}
                 : slimDOM;
         return serializeNodeWithId(n, {
             doc: n,
-            mirror,
-            blockClass,
-            blockSelector,
-            maskTextClass,
-            maskTextSelector,
+            mirror: mirror,
+            blockClass: blockClass,
+            blockSelector: blockSelector,
+            maskTextClass: maskTextClass,
+            maskTextSelector: maskTextSelector,
             skipChild: false,
-            inlineStylesheet,
-            maskInputOptions,
-            maskTextFn,
-            maskInputFn,
-            slimDOMOptions,
-            dataURLOptions,
-            inlineImages,
-            recordCanvas,
-            preserveWhiteSpace,
-            onSerialize,
-            onIframeLoad,
-            iframeLoadTimeout,
-            onStylesheetLoad,
-            stylesheetLoadTimeout,
-            keepIframeSrcFn,
-            newlyAddedElement: false,
+            inlineStylesheet: inlineStylesheet,
+            maskInputOptions: maskInputOptions,
+            maskTextFn: maskTextFn,
+            maskInputFn: maskInputFn,
+            slimDOMOptions: slimDOMOptions,
+            dataURLOptions: dataURLOptions,
+            inlineImages: inlineImages,
+            recordCanvas: recordCanvas,
+            preserveWhiteSpace: preserveWhiteSpace,
+            onSerialize: onSerialize,
+            onIframeLoad: onIframeLoad,
+            iframeLoadTimeout: iframeLoadTimeout,
+            onStylesheetLoad: onStylesheetLoad,
+            stylesheetLoadTimeout: stylesheetLoadTimeout,
+            keepIframeSrcFn: keepIframeSrcFn,
+            newlyAddedElement: false
         });
     }
 
@@ -1227,32 +1134,6 @@
             };
         }
     }
-    let nowTimestamp = Date.now;
-    if (!(/[1-9][0-9]{12}/.test(Date.now().toString()))) {
-        nowTimestamp = () => new Date().getTime();
-    }
-    function getWindowScroll(win) {
-        var _a, _b, _c, _d, _e, _f;
-        const doc = win.document;
-        return {
-            left: doc.scrollingElement
-                ? doc.scrollingElement.scrollLeft
-                : win.pageXOffset !== undefined
-                    ? win.pageXOffset
-                    : (doc === null || doc === void 0 ? void 0 : doc.documentElement.scrollLeft) ||
-                        ((_b = (_a = doc === null || doc === void 0 ? void 0 : doc.body) === null || _a === void 0 ? void 0 : _a.parentElement) === null || _b === void 0 ? void 0 : _b.scrollLeft) ||
-                        ((_c = doc === null || doc === void 0 ? void 0 : doc.body) === null || _c === void 0 ? void 0 : _c.scrollLeft) ||
-                        0,
-            top: doc.scrollingElement
-                ? doc.scrollingElement.scrollTop
-                : win.pageYOffset !== undefined
-                    ? win.pageYOffset
-                    : (doc === null || doc === void 0 ? void 0 : doc.documentElement.scrollTop) ||
-                        ((_e = (_d = doc === null || doc === void 0 ? void 0 : doc.body) === null || _d === void 0 ? void 0 : _d.parentElement) === null || _e === void 0 ? void 0 : _e.scrollTop) ||
-                        ((_f = doc === null || doc === void 0 ? void 0 : doc.body) === null || _f === void 0 ? void 0 : _f.scrollTop) ||
-                        0,
-        };
-    }
     function getWindowHeight() {
         return (window.innerHeight ||
             (document.documentElement && document.documentElement.clientHeight) ||
@@ -1263,39 +1144,27 @@
             (document.documentElement && document.documentElement.clientWidth) ||
             (document.body && document.body.clientWidth));
     }
-    function closestElementOfNode(node) {
-        if (!node) {
-            return null;
-        }
-        const el = node.nodeType === node.ELEMENT_NODE
-            ? node
-            : node.parentElement;
-        return el;
-    }
     function isBlocked(node, blockClass, blockSelector, checkAncestors) {
         if (!node) {
             return false;
         }
-        const el = closestElementOfNode(node);
-        if (!el) {
+        const el = node.nodeType === node.ELEMENT_NODE
+            ? node
+            : node.parentElement;
+        if (!el)
             return false;
+        if (typeof blockClass === 'string') {
+            if (el.classList.contains(blockClass))
+                return true;
+            if (checkAncestors && el.closest('.' + blockClass) !== null)
+                return true;
         }
-        try {
-            if (typeof blockClass === 'string') {
-                if (el.classList.contains(blockClass))
-                    return true;
-                if (checkAncestors && el.closest('.' + blockClass) !== null)
-                    return true;
-            }
-            else {
-                if (classMatchesRegex(el, blockClass, checkAncestors))
-                    return true;
-            }
-        }
-        catch (e) {
+        else {
+            if (classMatchesRegex(el, blockClass, checkAncestors))
+                return true;
         }
         if (blockSelector) {
-            if (el.matches(blockSelector))
+            if (node.matches(blockSelector))
                 return true;
             if (checkAncestors && el.closest(blockSelector) !== null)
                 return true;
@@ -1325,7 +1194,7 @@
         }
         return isAncestorRemoved(target.parentNode, mirror);
     }
-    function legacy_isTouchEvent(event) {
+    function isTouchEvent(event) {
         return Boolean(event.changedTouches);
     }
     function polyfill(win = window) {
@@ -1403,34 +1272,6 @@
             return this.id++;
         }
     }
-    function getShadowHost(n) {
-        var _a, _b;
-        let shadowHost = null;
-        if (((_b = (_a = n.getRootNode) === null || _a === void 0 ? void 0 : _a.call(n)) === null || _b === void 0 ? void 0 : _b.nodeType) === Node.DOCUMENT_FRAGMENT_NODE &&
-            n.getRootNode().host)
-            shadowHost = n.getRootNode().host;
-        return shadowHost;
-    }
-    function getRootShadowHost(n) {
-        let rootShadowHost = n;
-        let shadowHost;
-        while ((shadowHost = getShadowHost(rootShadowHost)))
-            rootShadowHost = shadowHost;
-        return rootShadowHost;
-    }
-    function shadowHostInDom(n) {
-        const doc = n.ownerDocument;
-        if (!doc)
-            return false;
-        const shadowHost = getRootShadowHost(n);
-        return doc.contains(shadowHost);
-    }
-    function inDom(n) {
-        const doc = n.ownerDocument;
-        if (!doc)
-            return false;
-        return doc.contains(n) || shadowHostInDom(n);
-    }
 
     var EventType = /* @__PURE__ */ ((EventType2) => {
       EventType2[EventType2["DomContentLoaded"] = 0] = "DomContentLoaded";
@@ -1459,7 +1300,6 @@
       IncrementalSource2[IncrementalSource2["StyleDeclaration"] = 13] = "StyleDeclaration";
       IncrementalSource2[IncrementalSource2["Selection"] = 14] = "Selection";
       IncrementalSource2[IncrementalSource2["AdoptedStyleSheet"] = 15] = "AdoptedStyleSheet";
-      IncrementalSource2[IncrementalSource2["CustomElement"] = 16] = "CustomElement";
       return IncrementalSource2;
     })(IncrementalSource || {});
     var MouseInteractions = /* @__PURE__ */ ((MouseInteractions2) => {
@@ -1476,12 +1316,6 @@
       MouseInteractions2[MouseInteractions2["TouchCancel"] = 10] = "TouchCancel";
       return MouseInteractions2;
     })(MouseInteractions || {});
-    var PointerTypes = /* @__PURE__ */ ((PointerTypes2) => {
-      PointerTypes2[PointerTypes2["Mouse"] = 0] = "Mouse";
-      PointerTypes2[PointerTypes2["Pen"] = 1] = "Pen";
-      PointerTypes2[PointerTypes2["Touch"] = 2] = "Touch";
-      return PointerTypes2;
-    })(PointerTypes || {});
     var CanvasContext = /* @__PURE__ */ ((CanvasContext2) => {
       CanvasContext2[CanvasContext2["2D"] = 0] = "2D";
       CanvasContext2[CanvasContext2["WebGL"] = 1] = "WebGL";
@@ -1496,7 +1330,6 @@
         constructor() {
             this.length = 0;
             this.head = null;
-            this.tail = null;
         }
         get(position) {
             if (position >= this.length) {
@@ -1542,9 +1375,6 @@
                 node.next = this.head;
                 this.head = node;
             }
-            if (node.next === null) {
-                this.tail = node;
-            }
             this.length++;
         }
         removeNode(n) {
@@ -1557,17 +1387,11 @@
                 if (this.head) {
                     this.head.previous = null;
                 }
-                else {
-                    this.tail = null;
-                }
             }
             else {
                 current.previous.next = current.next;
                 if (current.next) {
                     current.next.previous = current.previous;
-                }
-                else {
-                    this.tail = current.previous;
                 }
             }
             if (n.__ln) {
@@ -1583,7 +1407,6 @@
             this.locked = false;
             this.texts = [];
             this.attributes = [];
-            this.attributeMap = new WeakMap();
             this.removes = [];
             this.mapRemoves = [];
             this.movedMap = {};
@@ -1599,7 +1422,6 @@
                     return;
                 }
                 const adds = [];
-                const addedIds = new Set();
                 const addList = new DoubleLinkedList();
                 const getNextId = (n) => {
                     let ns = n;
@@ -1611,13 +1433,23 @@
                     return nextId;
                 };
                 const pushAdd = (n) => {
-                    if (!n.parentNode ||
-                        !inDom(n) ||
-                        n.parentNode.tagName === 'TEXTAREA') {
+                    var _a, _b, _c, _d;
+                    let shadowHost = null;
+                    if (((_b = (_a = n.getRootNode) === null || _a === void 0 ? void 0 : _a.call(n)) === null || _b === void 0 ? void 0 : _b.nodeType) === Node.DOCUMENT_FRAGMENT_NODE &&
+                        n.getRootNode().host)
+                        shadowHost = n.getRootNode().host;
+                    let rootShadowHost = shadowHost;
+                    while (((_d = (_c = rootShadowHost === null || rootShadowHost === void 0 ? void 0 : rootShadowHost.getRootNode) === null || _c === void 0 ? void 0 : _c.call(rootShadowHost)) === null || _d === void 0 ? void 0 : _d.nodeType) ===
+                        Node.DOCUMENT_FRAGMENT_NODE &&
+                        rootShadowHost.getRootNode().host)
+                        rootShadowHost = rootShadowHost.getRootNode().host;
+                    const notInDoc = !this.doc.contains(n) &&
+                        (!rootShadowHost || !this.doc.contains(rootShadowHost));
+                    if (!n.parentNode || notInDoc) {
                         return;
                     }
                     const parentId = isShadowRoot(n.parentNode)
-                        ? this.mirror.getId(getShadowHost(n))
+                        ? this.mirror.getId(shadowHost)
                         : this.mirror.getId(n.parentNode);
                     const nextId = getNextId(n);
                     if (parentId === -1 || nextId === -1) {
@@ -1665,20 +1497,19 @@
                             nextId,
                             node: sn,
                         });
-                        addedIds.add(sn.id);
                     }
                 };
                 while (this.mapRemoves.length) {
                     this.mirror.removeNodeFromMap(this.mapRemoves.shift());
                 }
-                for (const n of this.movedSet) {
+                for (const n of Array.from(this.movedSet.values())) {
                     if (isParentRemoved(this.removes, n, this.mirror) &&
                         !this.movedSet.has(n.parentNode)) {
                         continue;
                     }
                     pushAdd(n);
                 }
-                for (const n of this.addedSet) {
+                for (const n of Array.from(this.addedSet.values())) {
                     if (!isAncestorInSet(this.droppedSet, n) &&
                         !isParentRemoved(this.removes, n, this.mirror)) {
                         pushAdd(n);
@@ -1701,10 +1532,8 @@
                         }
                     }
                     if (!node) {
-                        let tailNode = addList.tail;
-                        while (tailNode) {
-                            const _node = tailNode;
-                            tailNode = tailNode.previous;
+                        for (let index = addList.length - 1; index >= 0; index--) {
+                            const _node = addList.get(index);
                             if (_node) {
                                 const parentId = this.mirror.getId(_node.value.parentNode);
                                 const nextId = getNextId(_node.value);
@@ -1743,38 +1572,16 @@
                 }
                 const payload = {
                     texts: this.texts
-                        .map((text) => {
-                        const n = text.node;
-                        if (n.parentNode &&
-                            n.parentNode.tagName === 'TEXTAREA') {
-                            this.genTextAreaValueMutation(n.parentNode);
-                        }
-                        return {
-                            id: this.mirror.getId(n),
-                            value: text.value,
-                        };
-                    })
-                        .filter((text) => !addedIds.has(text.id))
+                        .map((text) => ({
+                        id: this.mirror.getId(text.node),
+                        value: text.value,
+                    }))
                         .filter((text) => this.mirror.has(text.id)),
                     attributes: this.attributes
-                        .map((attribute) => {
-                        const { attributes } = attribute;
-                        if (typeof attributes.style === 'string') {
-                            const diffAsStr = JSON.stringify(attribute.styleDiff);
-                            const unchangedAsStr = JSON.stringify(attribute._unchangedStyles);
-                            if (diffAsStr.length < attributes.style.length) {
-                                if ((diffAsStr + unchangedAsStr).split('var(').length ===
-                                    attributes.style.split('var(').length) {
-                                    attributes.style = attribute.styleDiff;
-                                }
-                            }
-                        }
-                        return {
-                            id: this.mirror.getId(attribute.node),
-                            attributes: attributes,
-                        };
-                    })
-                        .filter((attribute) => !addedIds.has(attribute.id))
+                        .map((attribute) => ({
+                        id: this.mirror.getId(attribute.node),
+                        attributes: attribute.attributes,
+                    }))
                         .filter((attribute) => this.mirror.has(attribute.id)),
                     removes: this.removes,
                     adds,
@@ -1787,27 +1594,12 @@
                 }
                 this.texts = [];
                 this.attributes = [];
-                this.attributeMap = new WeakMap();
                 this.removes = [];
                 this.addedSet = new Set();
                 this.movedSet = new Set();
                 this.droppedSet = new Set();
                 this.movedMap = {};
                 this.mutationCb(payload);
-            };
-            this.genTextAreaValueMutation = (textarea) => {
-                let item = this.attributeMap.get(textarea);
-                if (!item) {
-                    item = {
-                        node: textarea,
-                        attributes: {},
-                        styleDiff: {},
-                        _unchangedStyles: {},
-                    };
-                    this.attributes.push(item);
-                    this.attributeMap.set(textarea, item);
-                }
-                item.attributes.value = Array.from(textarea.childNodes, (cn) => cn.textContent || '').join('');
             };
             this.processMutation = (m) => {
                 if (isIgnored(m.target, this.mirror)) {
@@ -1819,9 +1611,9 @@
                         if (!isBlocked(m.target, this.blockClass, this.blockSelector, false) &&
                             value !== m.oldValue) {
                             this.texts.push({
-                                value: needMaskingText(m.target, this.maskTextClass, this.maskTextSelector, true) && value
+                                value: needMaskingText(m.target, this.maskTextClass, this.maskTextSelector) && value
                                     ? this.maskTextFn
-                                        ? this.maskTextFn(value, closestElementOfNode(m.target))
+                                        ? this.maskTextFn(value)
                                         : value.replace(/[\S]/g, '*')
                                     : value,
                                 node: m.target,
@@ -1831,15 +1623,12 @@
                     }
                     case 'attributes': {
                         const target = m.target;
-                        let attributeName = m.attributeName;
-                        let value = m.target.getAttribute(attributeName);
-                        if (attributeName === 'value') {
-                            const type = getInputType(target);
+                        let value = m.target.getAttribute(m.attributeName);
+                        if (m.attributeName === 'value') {
                             value = maskInputValue({
-                                element: target,
                                 maskInputOptions: this.maskInputOptions,
-                                tagName: target.tagName,
-                                type,
+                                tagName: m.target.tagName,
+                                type: m.target.getAttribute('type'),
                                 value,
                                 maskInputFn: this.maskInputFn,
                             });
@@ -1848,12 +1637,12 @@
                             value === m.oldValue) {
                             return;
                         }
-                        let item = this.attributeMap.get(m.target);
+                        let item = this.attributes.find((a) => a.node === m.target);
                         if (target.tagName === 'IFRAME' &&
-                            attributeName === 'src' &&
+                            m.attributeName === 'src' &&
                             !this.keepIframeSrcFn(value)) {
                             if (!target.contentDocument) {
-                                attributeName = 'rr_src';
+                                m.attributeName = 'rr_src';
                             }
                             else {
                                 return;
@@ -1863,65 +1652,46 @@
                             item = {
                                 node: m.target,
                                 attributes: {},
-                                styleDiff: {},
-                                _unchangedStyles: {},
                             };
                             this.attributes.push(item);
-                            this.attributeMap.set(m.target, item);
                         }
-                        if (attributeName === 'type' &&
-                            target.tagName === 'INPUT' &&
-                            (m.oldValue || '').toLowerCase() === 'password') {
-                            target.setAttribute('data-rr-is-password', 'true');
-                        }
-                        if (!ignoreAttribute(target.tagName, attributeName)) {
-                            item.attributes[attributeName] = transformAttribute(this.doc, toLowerCase(target.tagName), toLowerCase(attributeName), value);
-                            if (attributeName === 'style') {
-                                if (!this.unattachedDoc) {
-                                    try {
-                                        this.unattachedDoc =
-                                            document.implementation.createHTMLDocument();
-                                    }
-                                    catch (e) {
-                                        this.unattachedDoc = this.doc;
-                                    }
-                                }
-                                const old = this.unattachedDoc.createElement('span');
-                                if (m.oldValue) {
-                                    old.setAttribute('style', m.oldValue);
-                                }
-                                for (const pname of Array.from(target.style)) {
-                                    const newValue = target.style.getPropertyValue(pname);
-                                    const newPriority = target.style.getPropertyPriority(pname);
-                                    if (newValue !== old.style.getPropertyValue(pname) ||
-                                        newPriority !== old.style.getPropertyPriority(pname)) {
-                                        if (newPriority === '') {
-                                            item.styleDiff[pname] = newValue;
-                                        }
-                                        else {
-                                            item.styleDiff[pname] = [newValue, newPriority];
-                                        }
+                        if (m.attributeName === 'style') {
+                            const old = this.doc.createElement('span');
+                            if (m.oldValue) {
+                                old.setAttribute('style', m.oldValue);
+                            }
+                            if (item.attributes.style === undefined ||
+                                item.attributes.style === null) {
+                                item.attributes.style = {};
+                            }
+                            const styleObj = item.attributes.style;
+                            for (const pname of Array.from(target.style)) {
+                                const newValue = target.style.getPropertyValue(pname);
+                                const newPriority = target.style.getPropertyPriority(pname);
+                                if (newValue !== old.style.getPropertyValue(pname) ||
+                                    newPriority !== old.style.getPropertyPriority(pname)) {
+                                    if (newPriority === '') {
+                                        styleObj[pname] = newValue;
                                     }
                                     else {
-                                        item._unchangedStyles[pname] = [newValue, newPriority];
-                                    }
-                                }
-                                for (const pname of Array.from(old.style)) {
-                                    if (target.style.getPropertyValue(pname) === '') {
-                                        item.styleDiff[pname] = false;
+                                        styleObj[pname] = [newValue, newPriority];
                                     }
                                 }
                             }
+                            for (const pname of Array.from(old.style)) {
+                                if (target.style.getPropertyValue(pname) === '') {
+                                    styleObj[pname] = false;
+                                }
+                            }
+                        }
+                        else {
+                            item.attributes[m.attributeName] = transformAttribute(this.doc, target.tagName, m.attributeName, value);
                         }
                         break;
                     }
                     case 'childList': {
                         if (isBlocked(m.target, this.blockClass, this.blockSelector, true))
                             return;
-                        if (m.target.tagName === 'TEXTAREA') {
-                            this.genTextAreaValueMutation(m.target);
-                            return;
-                        }
                         m.addedNodes.forEach((n) => this.genAdds(n, m.target));
                         m.removedNodes.forEach((n) => {
                             const nodeId = this.mirror.getId(n);
@@ -1959,10 +1729,6 @@
                 }
             };
             this.genAdds = (n, target) => {
-                if (this.processedNodeManager.inOtherBuffer(n, this))
-                    return;
-                if (this.addedSet.has(n) || this.movedSet.has(n))
-                    return;
                 if (this.mirror.hasNode(n)) {
                     if (isIgnored(n, this.mirror)) {
                         return;
@@ -1980,15 +1746,8 @@
                     this.addedSet.add(n);
                     this.droppedSet.delete(n);
                 }
-                if (!isBlocked(n, this.blockClass, this.blockSelector, false)) {
+                if (!isBlocked(n, this.blockClass, this.blockSelector, false))
                     n.childNodes.forEach((childN) => this.genAdds(childN));
-                    if (hasShadowRoot(n)) {
-                        n.shadowRoot.childNodes.forEach((childN) => {
-                            this.processedNodeManager.add(childN, this);
-                            this.genAdds(childN, n);
-                        });
-                    }
-                }
             };
         }
         init(options) {
@@ -2013,7 +1772,6 @@
                 'stylesheetManager',
                 'shadowDomManager',
                 'canvasManager',
-                'processedNodeManager',
             ].forEach((key) => {
                 this[key] = options[key];
             });
@@ -2080,32 +1838,11 @@
         return _isAncestorInSet(set, parentNode);
     }
 
-    let errorHandler;
-    function registerErrorHandler(handler) {
-        errorHandler = handler;
-    }
-    function unregisterErrorHandler() {
-        errorHandler = undefined;
-    }
-    const callbackWrapper = (cb) => {
-        if (!errorHandler) {
-            return cb;
-        }
-        const rrwebWrapped = ((...rest) => {
-            try {
-                return cb(...rest);
-            }
-            catch (error) {
-                if (errorHandler && errorHandler(error) === true) {
-                    return;
-                }
-                throw error;
-            }
-        });
-        return rrwebWrapped;
-    };
-
     const mutationBuffers = [];
+    const isCSSGroupingRuleSupported = typeof CSSGroupingRule !== 'undefined';
+    const isCSSMediaRuleSupported = typeof CSSMediaRule !== 'undefined';
+    const isCSSSupportsRuleSupported = typeof CSSSupportsRule !== 'undefined';
+    const isCSSConditionRuleSupported = typeof CSSConditionRule !== 'undefined';
     function getEventTarget(event) {
         try {
             if ('composedPath' in event) {
@@ -2117,10 +1854,11 @@
             else if ('path' in event && event.path.length) {
                 return event.path[0];
             }
+            return event.target;
         }
         catch (_a) {
+            return event.target;
         }
-        return event && event.target;
     }
     function initMutationObserver(options, rootEl) {
         var _a, _b;
@@ -2134,7 +1872,7 @@
             window[angularZoneSymbol]) {
             mutationObserverCtor = window[angularZoneSymbol];
         }
-        const observer = new mutationObserverCtor(callbackWrapper(mutationBuffer.processMutations.bind(mutationBuffer)));
+        const observer = new mutationObserverCtor(mutationBuffer.processMutations.bind(mutationBuffer));
         observer.observe(rootEl, {
             attributes: true,
             attributeOldValue: true,
@@ -2156,7 +1894,7 @@
             : 500;
         let positions = [];
         let timeBaseline;
-        const wrappedCb = throttle(callbackWrapper((source) => {
+        const wrappedCb = throttle((source) => {
             const totalOffset = Date.now() - timeBaseline;
             mousemoveCb(positions.map((p) => {
                 p.timeOffset -= totalOffset;
@@ -2164,37 +1902,37 @@
             }), source);
             positions = [];
             timeBaseline = null;
-        }), callbackThreshold);
-        const updatePosition = callbackWrapper(throttle(callbackWrapper((evt) => {
+        }, callbackThreshold);
+        const updatePosition = throttle((evt) => {
             const target = getEventTarget(evt);
-            const { clientX, clientY } = legacy_isTouchEvent(evt)
+            const { clientX, clientY } = isTouchEvent(evt)
                 ? evt.changedTouches[0]
                 : evt;
             if (!timeBaseline) {
-                timeBaseline = nowTimestamp();
+                timeBaseline = Date.now();
             }
             positions.push({
                 x: clientX,
                 y: clientY,
                 id: mirror.getId(target),
-                timeOffset: nowTimestamp() - timeBaseline,
+                timeOffset: Date.now() - timeBaseline,
             });
             wrappedCb(typeof DragEvent !== 'undefined' && evt instanceof DragEvent
                 ? IncrementalSource.Drag
                 : evt instanceof MouseEvent
                     ? IncrementalSource.MouseMove
                     : IncrementalSource.TouchMove);
-        }), threshold, {
+        }, threshold, {
             trailing: false,
-        }));
+        });
         const handlers = [
             on('mousemove', updatePosition, doc),
             on('touchmove', updatePosition, doc),
             on('drag', updatePosition, doc),
         ];
-        return callbackWrapper(() => {
+        return () => {
             handlers.forEach((h) => h());
-        });
+        };
     }
     function initMouseInteractionObserver({ mouseInteractionCb, doc, mirror, blockClass, blockSelector, sampling, }) {
         if (sampling.mouseInteraction === false) {
@@ -2206,60 +1944,24 @@
             ? {}
             : sampling.mouseInteraction;
         const handlers = [];
-        let currentPointerType = null;
         const getHandler = (eventKey) => {
             return (event) => {
                 const target = getEventTarget(event);
                 if (isBlocked(target, blockClass, blockSelector, true)) {
                     return;
                 }
-                let pointerType = null;
-                let thisEventKey = eventKey;
-                if ('pointerType' in event) {
-                    switch (event.pointerType) {
-                        case 'mouse':
-                            pointerType = PointerTypes.Mouse;
-                            break;
-                        case 'touch':
-                            pointerType = PointerTypes.Touch;
-                            break;
-                        case 'pen':
-                            pointerType = PointerTypes.Pen;
-                            break;
-                    }
-                    if (pointerType === PointerTypes.Touch) {
-                        if (MouseInteractions[eventKey] === MouseInteractions.MouseDown) {
-                            thisEventKey = 'TouchStart';
-                        }
-                        else if (MouseInteractions[eventKey] === MouseInteractions.MouseUp) {
-                            thisEventKey = 'TouchEnd';
-                        }
-                    }
-                    else if (pointerType === PointerTypes.Pen) ;
-                }
-                else if (legacy_isTouchEvent(event)) {
-                    pointerType = PointerTypes.Touch;
-                }
-                if (pointerType !== null) {
-                    currentPointerType = pointerType;
-                    if ((thisEventKey.startsWith('Touch') &&
-                        pointerType === PointerTypes.Touch) ||
-                        (thisEventKey.startsWith('Mouse') &&
-                            pointerType === PointerTypes.Mouse)) {
-                        pointerType = null;
-                    }
-                }
-                else if (MouseInteractions[eventKey] === MouseInteractions.Click) {
-                    pointerType = currentPointerType;
-                    currentPointerType = null;
-                }
-                const e = legacy_isTouchEvent(event) ? event.changedTouches[0] : event;
+                const e = isTouchEvent(event) ? event.changedTouches[0] : event;
                 if (!e) {
                     return;
                 }
                 const id = mirror.getId(target);
                 const { clientX, clientY } = e;
-                callbackWrapper(mouseInteractionCb)(Object.assign({ type: MouseInteractions[thisEventKey], id, x: clientX, y: clientY }, (pointerType !== null && { pointerType })));
+                mouseInteractionCb({
+                    type: MouseInteractions[eventKey],
+                    id,
+                    x: clientX,
+                    y: clientY,
+                });
             };
         };
         Object.keys(MouseInteractions)
@@ -2267,39 +1969,27 @@
             !key.endsWith('_Departed') &&
             disableMap[key] !== false)
             .forEach((eventKey) => {
-            let eventName = toLowerCase(eventKey);
+            const eventName = eventKey.toLowerCase();
             const handler = getHandler(eventKey);
-            if (window.PointerEvent) {
-                switch (MouseInteractions[eventKey]) {
-                    case MouseInteractions.MouseDown:
-                    case MouseInteractions.MouseUp:
-                        eventName = eventName.replace('mouse', 'pointer');
-                        break;
-                    case MouseInteractions.TouchStart:
-                    case MouseInteractions.TouchEnd:
-                        return;
-                }
-            }
             handlers.push(on(eventName, handler, doc));
         });
-        return callbackWrapper(() => {
+        return () => {
             handlers.forEach((h) => h());
-        });
+        };
     }
     function initScrollObserver({ scrollCb, doc, mirror, blockClass, blockSelector, sampling, }) {
-        const updatePosition = callbackWrapper(throttle(callbackWrapper((evt) => {
+        const updatePosition = throttle((evt) => {
             const target = getEventTarget(evt);
-            if (!target ||
-                isBlocked(target, blockClass, blockSelector, true)) {
+            if (!target || isBlocked(target, blockClass, blockSelector, true)) {
                 return;
             }
             const id = mirror.getId(target);
-            if (target === doc && doc.defaultView) {
-                const scrollLeftTop = getWindowScroll(doc.defaultView);
+            if (target === doc) {
+                const scrollEl = (doc.scrollingElement || doc.documentElement);
                 scrollCb({
                     id,
-                    x: scrollLeftTop.left,
-                    y: scrollLeftTop.top,
+                    x: scrollEl.scrollLeft,
+                    y: scrollEl.scrollTop,
                 });
             }
             else {
@@ -2309,13 +1999,13 @@
                     y: target.scrollTop,
                 });
             }
-        }), sampling.scroll || 100));
+        }, sampling.scroll || 100);
         return on('scroll', updatePosition, doc);
     }
-    function initViewportResizeObserver({ viewportResizeCb }, { win }) {
+    function initViewportResizeObserver({ viewportResizeCb, }) {
         let lastH = -1;
         let lastW = -1;
-        const updateDimension = callbackWrapper(throttle(callbackWrapper(() => {
+        const updateDimension = throttle(() => {
             const height = getWindowHeight();
             const width = getWindowWidth();
             if (lastH !== height || lastW !== width) {
@@ -2326,59 +2016,60 @@
                 lastH = height;
                 lastW = width;
             }
-        }), 200));
-        return on('resize', updateDimension, win);
+        }, 200);
+        return on('resize', updateDimension, window);
+    }
+    function wrapEventWithUserTriggeredFlag(v, enable) {
+        const value = Object.assign({}, v);
+        if (!enable)
+            delete value.userTriggered;
+        return value;
     }
     const INPUT_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
     const lastInputValueMap = new WeakMap();
-    function initInputObserver({ inputCb, doc, mirror, blockClass, blockSelector, ignoreClass, ignoreSelector, maskInputOptions, maskInputFn, sampling, userTriggeredOnInput, }) {
+    function initInputObserver({ inputCb, doc, mirror, blockClass, blockSelector, ignoreClass, maskInputOptions, maskInputFn, sampling, userTriggeredOnInput, }) {
         function eventHandler(event) {
             let target = getEventTarget(event);
             const userTriggered = event.isTrusted;
-            const tagName = target && target.tagName;
-            if (target && tagName === 'OPTION') {
+            if (target && target.tagName === 'OPTION')
                 target = target.parentElement;
-            }
             if (!target ||
-                !tagName ||
-                INPUT_TAGS.indexOf(tagName) < 0 ||
+                !target.tagName ||
+                INPUT_TAGS.indexOf(target.tagName) < 0 ||
                 isBlocked(target, blockClass, blockSelector, true)) {
                 return;
             }
-            if (target.classList.contains(ignoreClass) ||
-                (ignoreSelector && target.matches(ignoreSelector))) {
+            const type = target.type;
+            if (target.classList.contains(ignoreClass)) {
                 return;
             }
             let text = target.value;
             let isChecked = false;
-            const type = getInputType(target) || '';
             if (type === 'radio' || type === 'checkbox') {
                 isChecked = target.checked;
             }
-            else if (maskInputOptions[tagName.toLowerCase()] ||
+            else if (maskInputOptions[target.tagName.toLowerCase()] ||
                 maskInputOptions[type]) {
                 text = maskInputValue({
-                    element: target,
                     maskInputOptions,
-                    tagName,
+                    tagName: target.tagName,
                     type,
                     value: text,
                     maskInputFn,
                 });
             }
-            cbWithDedup(target, userTriggeredOnInput
-                ? { text, isChecked, userTriggered }
-                : { text, isChecked });
+            cbWithDedup(target, wrapEventWithUserTriggeredFlag({ text, isChecked, userTriggered }, userTriggeredOnInput));
             const name = target.name;
             if (type === 'radio' && name && isChecked) {
                 doc
                     .querySelectorAll(`input[type="radio"][name="${name}"]`)
                     .forEach((el) => {
                     if (el !== target) {
-                        const text = el.value;
-                        cbWithDedup(el, userTriggeredOnInput
-                            ? { text, isChecked: !isChecked, userTriggered: false }
-                            : { text, isChecked: !isChecked });
+                        cbWithDedup(el, wrapEventWithUserTriggeredFlag({
+                            text: el.value,
+                            isChecked: !isChecked,
+                            userTriggered: false,
+                        }, userTriggeredOnInput));
                     }
                 });
             }
@@ -2390,11 +2081,11 @@
                 lastInputValue.isChecked !== v.isChecked) {
                 lastInputValueMap.set(target, v);
                 const id = mirror.getId(target);
-                callbackWrapper(inputCb)(Object.assign(Object.assign({}, v), { id }));
+                inputCb(Object.assign(Object.assign({}, v), { id }));
             }
         }
         const events = sampling.input === 'last' ? ['change'] : ['input', 'change'];
-        const handlers = events.map((eventName) => on(eventName, callbackWrapper(eventHandler), doc));
+        const handlers = events.map((eventName) => on(eventName, eventHandler, doc));
         const currentWindow = doc.defaultView;
         if (!currentWindow) {
             return () => {
@@ -2413,27 +2104,24 @@
         if (propertyDescriptor && propertyDescriptor.set) {
             handlers.push(...hookProperties.map((p) => hookSetter(p[0], p[1], {
                 set() {
-                    callbackWrapper(eventHandler)({
-                        target: this,
-                        isTrusted: false,
-                    });
+                    eventHandler({ target: this });
                 },
             }, false, currentWindow)));
         }
-        return callbackWrapper(() => {
+        return () => {
             handlers.forEach((h) => h());
-        });
+        };
     }
     function getNestedCSSRulePositions(rule) {
         const positions = [];
         function recurse(childRule, pos) {
-            if ((hasNestedCSSRule('CSSGroupingRule') &&
+            if ((isCSSGroupingRuleSupported &&
                 childRule.parentRule instanceof CSSGroupingRule) ||
-                (hasNestedCSSRule('CSSMediaRule') &&
+                (isCSSMediaRuleSupported &&
                     childRule.parentRule instanceof CSSMediaRule) ||
-                (hasNestedCSSRule('CSSSupportsRule') &&
+                (isCSSSupportsRuleSupported &&
                     childRule.parentRule instanceof CSSSupportsRule) ||
-                (hasNestedCSSRule('CSSConditionRule') &&
+                (isCSSConditionRuleSupported &&
                     childRule.parentRule instanceof CSSConditionRule)) {
                 const rules = Array.from(childRule.parentRule.cssRules);
                 const index = rules.indexOf(childRule);
@@ -2462,88 +2150,72 @@
         };
     }
     function initStyleSheetObserver({ styleSheetRuleCb, mirror, stylesheetManager }, { win }) {
-        if (!win.CSSStyleSheet || !win.CSSStyleSheet.prototype) {
-            return () => {
-            };
-        }
         const insertRule = win.CSSStyleSheet.prototype.insertRule;
-        win.CSSStyleSheet.prototype.insertRule = new Proxy(insertRule, {
-            apply: callbackWrapper((target, thisArg, argumentsList) => {
-                const [rule, index] = argumentsList;
-                const { id, styleId } = getIdAndStyleId(thisArg, mirror, stylesheetManager.styleMirror);
-                if ((id && id !== -1) || (styleId && styleId !== -1)) {
-                    styleSheetRuleCb({
-                        id,
-                        styleId,
-                        adds: [{ rule, index }],
-                    });
-                }
-                return target.apply(thisArg, argumentsList);
-            }),
-        });
+        win.CSSStyleSheet.prototype.insertRule = function (rule, index) {
+            const { id, styleId } = getIdAndStyleId(this, mirror, stylesheetManager.styleMirror);
+            if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                styleSheetRuleCb({
+                    id,
+                    styleId,
+                    adds: [{ rule, index }],
+                });
+            }
+            return insertRule.apply(this, [rule, index]);
+        };
         const deleteRule = win.CSSStyleSheet.prototype.deleteRule;
-        win.CSSStyleSheet.prototype.deleteRule = new Proxy(deleteRule, {
-            apply: callbackWrapper((target, thisArg, argumentsList) => {
-                const [index] = argumentsList;
-                const { id, styleId } = getIdAndStyleId(thisArg, mirror, stylesheetManager.styleMirror);
-                if ((id && id !== -1) || (styleId && styleId !== -1)) {
-                    styleSheetRuleCb({
-                        id,
-                        styleId,
-                        removes: [{ index }],
-                    });
-                }
-                return target.apply(thisArg, argumentsList);
-            }),
-        });
+        win.CSSStyleSheet.prototype.deleteRule = function (index) {
+            const { id, styleId } = getIdAndStyleId(this, mirror, stylesheetManager.styleMirror);
+            if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                styleSheetRuleCb({
+                    id,
+                    styleId,
+                    removes: [{ index }],
+                });
+            }
+            return deleteRule.apply(this, [index]);
+        };
         let replace;
         if (win.CSSStyleSheet.prototype.replace) {
             replace = win.CSSStyleSheet.prototype.replace;
-            win.CSSStyleSheet.prototype.replace = new Proxy(replace, {
-                apply: callbackWrapper((target, thisArg, argumentsList) => {
-                    const [text] = argumentsList;
-                    const { id, styleId } = getIdAndStyleId(thisArg, mirror, stylesheetManager.styleMirror);
-                    if ((id && id !== -1) || (styleId && styleId !== -1)) {
-                        styleSheetRuleCb({
-                            id,
-                            styleId,
-                            replace: text,
-                        });
-                    }
-                    return target.apply(thisArg, argumentsList);
-                }),
-            });
+            win.CSSStyleSheet.prototype.replace = function (text) {
+                const { id, styleId } = getIdAndStyleId(this, mirror, stylesheetManager.styleMirror);
+                if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                    styleSheetRuleCb({
+                        id,
+                        styleId,
+                        replace: text,
+                    });
+                }
+                return replace.apply(this, [text]);
+            };
         }
         let replaceSync;
         if (win.CSSStyleSheet.prototype.replaceSync) {
             replaceSync = win.CSSStyleSheet.prototype.replaceSync;
-            win.CSSStyleSheet.prototype.replaceSync = new Proxy(replaceSync, {
-                apply: callbackWrapper((target, thisArg, argumentsList) => {
-                    const [text] = argumentsList;
-                    const { id, styleId } = getIdAndStyleId(thisArg, mirror, stylesheetManager.styleMirror);
-                    if ((id && id !== -1) || (styleId && styleId !== -1)) {
-                        styleSheetRuleCb({
-                            id,
-                            styleId,
-                            replaceSync: text,
-                        });
-                    }
-                    return target.apply(thisArg, argumentsList);
-                }),
-            });
+            win.CSSStyleSheet.prototype.replaceSync = function (text) {
+                const { id, styleId } = getIdAndStyleId(this, mirror, stylesheetManager.styleMirror);
+                if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                    styleSheetRuleCb({
+                        id,
+                        styleId,
+                        replaceSync: text,
+                    });
+                }
+                return replaceSync.apply(this, [text]);
+            };
         }
         const supportedNestedCSSRuleTypes = {};
-        if (canMonkeyPatchNestedCSSRule('CSSGroupingRule')) {
+        if (isCSSGroupingRuleSupported) {
             supportedNestedCSSRuleTypes.CSSGroupingRule = win.CSSGroupingRule;
         }
         else {
-            if (canMonkeyPatchNestedCSSRule('CSSMediaRule')) {
+            if (isCSSMediaRuleSupported) {
                 supportedNestedCSSRuleTypes.CSSMediaRule = win.CSSMediaRule;
             }
-            if (canMonkeyPatchNestedCSSRule('CSSConditionRule')) {
+            if (isCSSConditionRuleSupported) {
                 supportedNestedCSSRuleTypes.CSSConditionRule = win.CSSConditionRule;
             }
-            if (canMonkeyPatchNestedCSSRule('CSSSupportsRule')) {
+            if (isCSSSupportsRuleSupported) {
                 supportedNestedCSSRuleTypes.CSSSupportsRule = win.CSSSupportsRule;
             }
         }
@@ -2553,46 +2225,40 @@
                 insertRule: type.prototype.insertRule,
                 deleteRule: type.prototype.deleteRule,
             };
-            type.prototype.insertRule = new Proxy(unmodifiedFunctions[typeKey].insertRule, {
-                apply: callbackWrapper((target, thisArg, argumentsList) => {
-                    const [rule, index] = argumentsList;
-                    const { id, styleId } = getIdAndStyleId(thisArg.parentStyleSheet, mirror, stylesheetManager.styleMirror);
-                    if ((id && id !== -1) || (styleId && styleId !== -1)) {
-                        styleSheetRuleCb({
-                            id,
-                            styleId,
-                            adds: [
-                                {
-                                    rule,
-                                    index: [
-                                        ...getNestedCSSRulePositions(thisArg),
-                                        index || 0,
-                                    ],
-                                },
-                            ],
-                        });
-                    }
-                    return target.apply(thisArg, argumentsList);
-                }),
-            });
-            type.prototype.deleteRule = new Proxy(unmodifiedFunctions[typeKey].deleteRule, {
-                apply: callbackWrapper((target, thisArg, argumentsList) => {
-                    const [index] = argumentsList;
-                    const { id, styleId } = getIdAndStyleId(thisArg.parentStyleSheet, mirror, stylesheetManager.styleMirror);
-                    if ((id && id !== -1) || (styleId && styleId !== -1)) {
-                        styleSheetRuleCb({
-                            id,
-                            styleId,
-                            removes: [
-                                { index: [...getNestedCSSRulePositions(thisArg), index] },
-                            ],
-                        });
-                    }
-                    return target.apply(thisArg, argumentsList);
-                }),
-            });
+            type.prototype.insertRule = function (rule, index) {
+                const { id, styleId } = getIdAndStyleId(this.parentStyleSheet, mirror, stylesheetManager.styleMirror);
+                if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                    styleSheetRuleCb({
+                        id,
+                        styleId,
+                        adds: [
+                            {
+                                rule,
+                                index: [
+                                    ...getNestedCSSRulePositions(this),
+                                    index || 0,
+                                ],
+                            },
+                        ],
+                    });
+                }
+                return unmodifiedFunctions[typeKey].insertRule.apply(this, [rule, index]);
+            };
+            type.prototype.deleteRule = function (index) {
+                const { id, styleId } = getIdAndStyleId(this.parentStyleSheet, mirror, stylesheetManager.styleMirror);
+                if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                    styleSheetRuleCb({
+                        id,
+                        styleId,
+                        removes: [
+                            { index: [...getNestedCSSRulePositions(this), index] },
+                        ],
+                    });
+                }
+                return unmodifiedFunctions[typeKey].deleteRule.apply(this, [index]);
+            };
         });
-        return callbackWrapper(() => {
+        return () => {
             win.CSSStyleSheet.prototype.insertRule = insertRule;
             win.CSSStyleSheet.prototype.deleteRule = deleteRule;
             replace && (win.CSSStyleSheet.prototype.replace = replace);
@@ -2601,7 +2267,7 @@
                 type.prototype.insertRule = unmodifiedFunctions[typeKey].insertRule;
                 type.prototype.deleteRule = unmodifiedFunctions[typeKey].deleteRule;
             });
-        });
+        };
     }
     function initAdoptedStyleSheetObserver({ mirror, stylesheetManager, }, host) {
         var _a, _b, _c;
@@ -2613,9 +2279,7 @@
         const patchTarget = host.nodeName === '#document'
             ? (_a = host.defaultView) === null || _a === void 0 ? void 0 : _a.Document
             : (_c = (_b = host.ownerDocument) === null || _b === void 0 ? void 0 : _b.defaultView) === null || _c === void 0 ? void 0 : _c.ShadowRoot;
-        const originalPropertyDescriptor = (patchTarget === null || patchTarget === void 0 ? void 0 : patchTarget.prototype)
-            ? Object.getOwnPropertyDescriptor(patchTarget === null || patchTarget === void 0 ? void 0 : patchTarget.prototype, 'adoptedStyleSheets')
-            : undefined;
+        const originalPropertyDescriptor = Object.getOwnPropertyDescriptor(patchTarget === null || patchTarget === void 0 ? void 0 : patchTarget.prototype, 'adoptedStyleSheets');
         if (hostId === null ||
             hostId === -1 ||
             !patchTarget ||
@@ -2642,75 +2306,69 @@
                 return result;
             },
         });
-        return callbackWrapper(() => {
+        return () => {
             Object.defineProperty(host, 'adoptedStyleSheets', {
                 configurable: originalPropertyDescriptor.configurable,
                 enumerable: originalPropertyDescriptor.enumerable,
                 get: originalPropertyDescriptor.get,
                 set: originalPropertyDescriptor.set,
             });
-        });
+        };
     }
     function initStyleDeclarationObserver({ styleDeclarationCb, mirror, ignoreCSSAttributes, stylesheetManager, }, { win }) {
         const setProperty = win.CSSStyleDeclaration.prototype.setProperty;
-        win.CSSStyleDeclaration.prototype.setProperty = new Proxy(setProperty, {
-            apply: callbackWrapper((target, thisArg, argumentsList) => {
-                var _a;
-                const [property, value, priority] = argumentsList;
-                if (ignoreCSSAttributes.has(property)) {
-                    return setProperty.apply(thisArg, [property, value, priority]);
-                }
-                const { id, styleId } = getIdAndStyleId((_a = thisArg.parentRule) === null || _a === void 0 ? void 0 : _a.parentStyleSheet, mirror, stylesheetManager.styleMirror);
-                if ((id && id !== -1) || (styleId && styleId !== -1)) {
-                    styleDeclarationCb({
-                        id,
-                        styleId,
-                        set: {
-                            property,
-                            value,
-                            priority,
-                        },
-                        index: getNestedCSSRulePositions(thisArg.parentRule),
-                    });
-                }
-                return target.apply(thisArg, argumentsList);
-            }),
-        });
+        win.CSSStyleDeclaration.prototype.setProperty = function (property, value, priority) {
+            var _a;
+            if (ignoreCSSAttributes.has(property)) {
+                return setProperty.apply(this, [property, value, priority]);
+            }
+            const { id, styleId } = getIdAndStyleId((_a = this.parentRule) === null || _a === void 0 ? void 0 : _a.parentStyleSheet, mirror, stylesheetManager.styleMirror);
+            if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                styleDeclarationCb({
+                    id,
+                    styleId,
+                    set: {
+                        property,
+                        value,
+                        priority,
+                    },
+                    index: getNestedCSSRulePositions(this.parentRule),
+                });
+            }
+            return setProperty.apply(this, [property, value, priority]);
+        };
         const removeProperty = win.CSSStyleDeclaration.prototype.removeProperty;
-        win.CSSStyleDeclaration.prototype.removeProperty = new Proxy(removeProperty, {
-            apply: callbackWrapper((target, thisArg, argumentsList) => {
-                var _a;
-                const [property] = argumentsList;
-                if (ignoreCSSAttributes.has(property)) {
-                    return removeProperty.apply(thisArg, [property]);
-                }
-                const { id, styleId } = getIdAndStyleId((_a = thisArg.parentRule) === null || _a === void 0 ? void 0 : _a.parentStyleSheet, mirror, stylesheetManager.styleMirror);
-                if ((id && id !== -1) || (styleId && styleId !== -1)) {
-                    styleDeclarationCb({
-                        id,
-                        styleId,
-                        remove: {
-                            property,
-                        },
-                        index: getNestedCSSRulePositions(thisArg.parentRule),
-                    });
-                }
-                return target.apply(thisArg, argumentsList);
-            }),
-        });
-        return callbackWrapper(() => {
+        win.CSSStyleDeclaration.prototype.removeProperty = function (property) {
+            var _a;
+            if (ignoreCSSAttributes.has(property)) {
+                return removeProperty.apply(this, [property]);
+            }
+            const { id, styleId } = getIdAndStyleId((_a = this.parentRule) === null || _a === void 0 ? void 0 : _a.parentStyleSheet, mirror, stylesheetManager.styleMirror);
+            if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                styleDeclarationCb({
+                    id,
+                    styleId,
+                    remove: {
+                        property,
+                    },
+                    index: getNestedCSSRulePositions(this.parentRule),
+                });
+            }
+            return removeProperty.apply(this, [property]);
+        };
+        return () => {
             win.CSSStyleDeclaration.prototype.setProperty = setProperty;
             win.CSSStyleDeclaration.prototype.removeProperty = removeProperty;
-        });
+        };
     }
-    function initMediaInteractionObserver({ mediaInteractionCb, blockClass, blockSelector, mirror, sampling, doc, }) {
-        const handler = callbackWrapper((type) => throttle(callbackWrapper((event) => {
+    function initMediaInteractionObserver({ mediaInteractionCb, blockClass, blockSelector, mirror, sampling, }) {
+        const handler = (type) => throttle((event) => {
             const target = getEventTarget(event);
             if (!target ||
                 isBlocked(target, blockClass, blockSelector, true)) {
                 return;
             }
-            const { currentTime, volume, muted, playbackRate, loop } = target;
+            const { currentTime, volume, muted, playbackRate, } = target;
             mediaInteractionCb({
                 type,
                 id: mirror.getId(target),
@@ -2718,19 +2376,18 @@
                 volume,
                 muted,
                 playbackRate,
-                loop,
             });
-        }), sampling.media || 500));
+        }, sampling.media || 500);
         const handlers = [
-            on('play', handler(0), doc),
-            on('pause', handler(1), doc),
-            on('seeked', handler(2), doc),
-            on('volumechange', handler(3), doc),
-            on('ratechange', handler(4), doc),
+            on('play', handler(0)),
+            on('pause', handler(1)),
+            on('seeked', handler(2)),
+            on('volumechange', handler(3)),
+            on('ratechange', handler(4)),
         ];
-        return callbackWrapper(() => {
+        return () => {
             handlers.forEach((h) => h());
-        });
+        };
     }
     function initFontObserver({ fontCb, doc }) {
         const win = doc.defaultView;
@@ -2755,13 +2412,13 @@
         };
         const restoreHandler = patch(doc.fonts, 'add', function (original) {
             return function (fontFace) {
-                setTimeout(callbackWrapper(() => {
+                setTimeout(() => {
                     const p = fontMap.get(fontFace);
                     if (p) {
                         fontCb(p);
                         fontMap.delete(fontFace);
                     }
-                }), 0);
+                }, 0);
                 return original.apply(this, [fontFace]);
             };
         });
@@ -2769,14 +2426,14 @@
             win.FontFace = originalFontFace;
         });
         handlers.push(restoreHandler);
-        return callbackWrapper(() => {
+        return () => {
             handlers.forEach((h) => h());
-        });
+        };
     }
     function initSelectionObserver(param) {
         const { doc, mirror, blockClass, blockSelector, selectionCb } = param;
         let collapsed = true;
-        const updateSelection = callbackWrapper(() => {
+        const updateSelection = () => {
             const selection = doc.getSelection();
             if (!selection || (collapsed && (selection === null || selection === void 0 ? void 0 : selection.isCollapsed)))
                 return;
@@ -2798,33 +2455,12 @@
                 });
             }
             selectionCb({ ranges });
-        });
+        };
         updateSelection();
         return on('selectionchange', updateSelection);
     }
-    function initCustomElementObserver({ doc, customElementCb, }) {
-        const win = doc.defaultView;
-        if (!win || !win.customElements)
-            return () => { };
-        const restoreHandler = patch(win.customElements, 'define', function (original) {
-            return function (name, constructor, options) {
-                try {
-                    customElementCb({
-                        define: {
-                            name,
-                        },
-                    });
-                }
-                catch (e) {
-                    console.warn(`Custom element callback failed for ${name}`);
-                }
-                return original.apply(this, [name, constructor, options]);
-            };
-        });
-        return restoreHandler;
-    }
     function mergeHooks(o, hooks) {
-        const { mutationCb, mousemoveCb, mouseInteractionCb, scrollCb, viewportResizeCb, inputCb, mediaInteractionCb, styleSheetRuleCb, styleDeclarationCb, canvasMutationCb, fontCb, selectionCb, customElementCb, } = o;
+        const { mutationCb, mousemoveCb, mouseInteractionCb, scrollCb, viewportResizeCb, inputCb, mediaInteractionCb, styleSheetRuleCb, styleDeclarationCb, canvasMutationCb, fontCb, selectionCb, } = o;
         o.mutationCb = (...p) => {
             if (hooks.mutation) {
                 hooks.mutation(...p);
@@ -2897,12 +2533,6 @@
             }
             selectionCb(...p);
         };
-        o.customElementCb = (...c) => {
-            if (hooks.customElement) {
-                hooks.customElement(...c);
-            }
-            customElementCb(...c);
-        };
     }
     function initObservers(o, hooks = {}) {
         const currentWindow = o.doc.defaultView;
@@ -2911,41 +2541,30 @@
             };
         }
         mergeHooks(o, hooks);
-        let mutationObserver;
-        if (o.recordDOM) {
-            mutationObserver = initMutationObserver(o, o.doc);
-        }
+        const mutationObserver = initMutationObserver(o, o.doc);
         const mousemoveHandler = initMoveObserver(o);
         const mouseInteractionHandler = initMouseInteractionObserver(o);
         const scrollHandler = initScrollObserver(o);
-        const viewportResizeHandler = initViewportResizeObserver(o, {
-            win: currentWindow,
-        });
+        const viewportResizeHandler = initViewportResizeObserver(o);
         const inputHandler = initInputObserver(o);
         const mediaInteractionHandler = initMediaInteractionObserver(o);
-        let styleSheetObserver = () => { };
-        let adoptedStyleSheetObserver = () => { };
-        let styleDeclarationObserver = () => { };
-        let fontObserver = () => { };
-        if (o.recordDOM) {
-            styleSheetObserver = initStyleSheetObserver(o, { win: currentWindow });
-            adoptedStyleSheetObserver = initAdoptedStyleSheetObserver(o, o.doc);
-            styleDeclarationObserver = initStyleDeclarationObserver(o, {
-                win: currentWindow,
-            });
-            if (o.collectFonts) {
-                fontObserver = initFontObserver(o);
-            }
-        }
+        const styleSheetObserver = initStyleSheetObserver(o, { win: currentWindow });
+        const adoptedStyleSheetObserver = initAdoptedStyleSheetObserver(o, o.doc);
+        const styleDeclarationObserver = initStyleDeclarationObserver(o, {
+            win: currentWindow,
+        });
+        const fontObserver = o.collectFonts
+            ? initFontObserver(o)
+            : () => {
+            };
         const selectionObserver = initSelectionObserver(o);
-        const customElementObserver = initCustomElementObserver(o);
         const pluginHandlers = [];
         for (const plugin of o.plugins) {
             pluginHandlers.push(plugin.observer(plugin.callback, currentWindow, plugin.options));
         }
-        return callbackWrapper(() => {
+        return () => {
             mutationBuffers.forEach((b) => b.reset());
-            mutationObserver === null || mutationObserver === void 0 ? void 0 : mutationObserver.disconnect();
+            mutationObserver.disconnect();
             mousemoveHandler();
             mouseInteractionHandler();
             scrollHandler();
@@ -2957,18 +2576,8 @@
             styleDeclarationObserver();
             fontObserver();
             selectionObserver();
-            customElementObserver();
             pluginHandlers.forEach((h) => h());
-        });
-    }
-    function hasNestedCSSRule(prop) {
-        return typeof window[prop] !== 'undefined';
-    }
-    function canMonkeyPatchNestedCSSRule(prop) {
-        return Boolean(typeof window[prop] !== 'undefined' &&
-            window[prop].prototype &&
-            'insertRule' in window[prop].prototype &&
-            'deleteRule' in window[prop].prototype);
+        };
     }
 
     class CrossOriginIframeMirror {
@@ -3038,7 +2647,6 @@
             this.iframes = new WeakMap();
             this.crossOriginIframeMap = new WeakMap();
             this.crossOriginIframeMirror = new CrossOriginIframeMirror(genId);
-            this.crossOriginIframeRootIdMap = new WeakMap();
             this.mutationCb = options.mutationCb;
             this.wrappedEmit = options.wrappedEmit;
             this.stylesheetManager = options.stylesheetManager;
@@ -3079,19 +2687,17 @@
                 this.stylesheetManager.adoptStyleSheets(iframeEl.contentDocument.adoptedStyleSheets, this.mirror.getId(iframeEl.contentDocument));
         }
         handleMessage(message) {
-            const crossOriginMessageEvent = message;
-            if (crossOriginMessageEvent.data.type !== 'rrweb' ||
-                crossOriginMessageEvent.origin !== crossOriginMessageEvent.data.origin)
-                return;
-            const iframeSourceWindow = message.source;
-            if (!iframeSourceWindow)
-                return;
-            const iframeEl = this.crossOriginIframeMap.get(message.source);
-            if (!iframeEl)
-                return;
-            const transformedEvent = this.transformCrossOriginEvent(iframeEl, crossOriginMessageEvent.data.event);
-            if (transformedEvent)
-                this.wrappedEmit(transformedEvent, crossOriginMessageEvent.data.isCheckout);
+            if (message.data.type === 'rrweb') {
+                const iframeSourceWindow = message.source;
+                if (!iframeSourceWindow)
+                    return;
+                const iframeEl = this.crossOriginIframeMap.get(message.source);
+                if (!iframeEl)
+                    return;
+                const transformedEvent = this.transformCrossOriginEvent(iframeEl, message.data.event);
+                if (transformedEvent)
+                    this.wrappedEmit(transformedEvent, message.data.isCheckout);
+            }
         }
         transformCrossOriginEvent(iframeEl, e) {
             var _a;
@@ -3100,9 +2706,6 @@
                     this.crossOriginIframeMirror.reset(iframeEl);
                     this.crossOriginIframeStyleMirror.reset(iframeEl);
                     this.replaceIdOnNode(e.data.node, iframeEl);
-                    const rootId = e.data.node.id;
-                    this.crossOriginIframeRootIdMap.set(iframeEl, rootId);
-                    this.patchRootIdOnNode(e.data.node, rootId);
                     return {
                         timestamp: e.timestamp,
                         type: EventType.IncrementalSnapshot,
@@ -3144,8 +2747,6 @@
                                     'previousId',
                                 ]);
                                 this.replaceIdOnNode(n.node, iframeEl);
-                                const rootId = this.crossOriginIframeRootIdMap.get(iframeEl);
-                                rootId && this.patchRootIdOnNode(n.node, rootId);
                             });
                             e.data.removes.forEach((n) => {
                                 this.replaceIds(n, iframeEl, ['parentId', 'id']);
@@ -3203,7 +2804,6 @@
                     }
                 }
             }
-            return false;
         }
         replace(iframeMirror, obj, iframeEl, keys) {
             for (const key of keys) {
@@ -3225,19 +2825,10 @@
             return this.replace(this.crossOriginIframeStyleMirror, obj, iframeEl, keys);
         }
         replaceIdOnNode(node, iframeEl) {
-            this.replaceIds(node, iframeEl, ['id', 'rootId']);
+            this.replaceIds(node, iframeEl, ['id']);
             if ('childNodes' in node) {
                 node.childNodes.forEach((child) => {
                     this.replaceIdOnNode(child, iframeEl);
-                });
-            }
-        }
-        patchRootIdOnNode(node, rootId) {
-            if (node.type !== NodeType.Document && !node.rootId)
-                node.rootId = rootId;
-            if ('childNodes' in node) {
-                node.childNodes.forEach((child) => {
-                    this.patchRootIdOnNode(child, rootId);
                 });
             }
         }
@@ -3246,16 +2837,20 @@
     class ShadowDomManager {
         constructor(options) {
             this.shadowDoms = new WeakSet();
-            this.restoreHandlers = [];
+            this.restorePatches = [];
             this.mutationCb = options.mutationCb;
             this.scrollCb = options.scrollCb;
             this.bypassOptions = options.bypassOptions;
             this.mirror = options.mirror;
-            this.init();
-        }
-        init() {
-            this.reset();
-            this.patchAttachShadow(Element, document);
+            const manager = this;
+            this.restorePatches.push(patch(Element.prototype, 'attachShadow', function (original) {
+                return function (option) {
+                    const shadowRoot = original.call(this, option);
+                    if (this.shadowRoot)
+                        manager.addShadowRoot(this.shadowRoot, this.ownerDocument);
+                    return shadowRoot;
+                };
+            }));
         }
         addShadowRoot(shadowRoot, doc) {
             if (!isNativeShadowDom(shadowRoot))
@@ -3263,44 +2858,33 @@
             if (this.shadowDoms.has(shadowRoot))
                 return;
             this.shadowDoms.add(shadowRoot);
-            const observer = initMutationObserver(Object.assign(Object.assign({}, this.bypassOptions), { doc, mutationCb: this.mutationCb, mirror: this.mirror, shadowDomManager: this }), shadowRoot);
-            this.restoreHandlers.push(() => observer.disconnect());
-            this.restoreHandlers.push(initScrollObserver(Object.assign(Object.assign({}, this.bypassOptions), { scrollCb: this.scrollCb, doc: shadowRoot, mirror: this.mirror })));
+            initMutationObserver(Object.assign(Object.assign({}, this.bypassOptions), { doc, mutationCb: this.mutationCb, mirror: this.mirror, shadowDomManager: this }), shadowRoot);
+            initScrollObserver(Object.assign(Object.assign({}, this.bypassOptions), { scrollCb: this.scrollCb, doc: shadowRoot, mirror: this.mirror }));
             setTimeout(() => {
                 if (shadowRoot.adoptedStyleSheets &&
                     shadowRoot.adoptedStyleSheets.length > 0)
                     this.bypassOptions.stylesheetManager.adoptStyleSheets(shadowRoot.adoptedStyleSheets, this.mirror.getId(shadowRoot.host));
-                this.restoreHandlers.push(initAdoptedStyleSheetObserver({
+                initAdoptedStyleSheetObserver({
                     mirror: this.mirror,
                     stylesheetManager: this.bypassOptions.stylesheetManager,
-                }, shadowRoot));
+                }, shadowRoot);
             }, 0);
         }
         observeAttachShadow(iframeElement) {
-            if (!iframeElement.contentWindow || !iframeElement.contentDocument)
-                return;
-            this.patchAttachShadow(iframeElement.contentWindow.Element, iframeElement.contentDocument);
-        }
-        patchAttachShadow(element, doc) {
-            const manager = this;
-            this.restoreHandlers.push(patch(element.prototype, 'attachShadow', function (original) {
-                return function (option) {
-                    const shadowRoot = original.call(this, option);
-                    if (this.shadowRoot && inDom(this))
-                        manager.addShadowRoot(this.shadowRoot, doc);
-                    return shadowRoot;
-                };
-            }));
+            if (iframeElement.contentWindow) {
+                const manager = this;
+                this.restorePatches.push(patch(iframeElement.contentWindow.HTMLElement.prototype, 'attachShadow', function (original) {
+                    return function (option) {
+                        const shadowRoot = original.call(this, option);
+                        if (this.shadowRoot)
+                            manager.addShadowRoot(this.shadowRoot, iframeElement.contentDocument);
+                        return shadowRoot;
+                    };
+                }));
+            }
         }
         reset() {
-            this.restoreHandlers.forEach((handler) => {
-                try {
-                    handler();
-                }
-                catch (e) {
-                }
-            });
-            this.restoreHandlers = [];
+            this.restorePatches.forEach((restorePatch) => restorePatch());
             this.shadowDoms = new WeakSet();
         }
     }
@@ -3470,7 +3054,7 @@
         return value;
     }
     const serializeArgs = (args, win, ctx) => {
-        return args.map((arg) => serializeArg(arg, win, ctx));
+        return [...args].map((arg) => serializeArg(arg, win, ctx));
     };
     const isInstanceOfWebGLObject = (value, win) => {
         const webGLConstructorNames = [
@@ -3502,7 +3086,7 @@
                     return function (...args) {
                         if (!isBlocked(this.canvas, blockClass, blockSelector, true)) {
                             setTimeout(() => {
-                                const recordArgs = serializeArgs(args, win, this);
+                                const recordArgs = serializeArgs([...args], win, this);
                                 cb(this.canvas, {
                                     type: CanvasContext['2D'],
                                     property: prop,
@@ -3534,32 +3118,14 @@
         };
     }
 
-    function getNormalizedContextName(contextType) {
-        return contextType === 'experimental-webgl' ? 'webgl' : contextType;
-    }
-    function initCanvasContextObserver(win, blockClass, blockSelector, setPreserveDrawingBufferToTrue) {
+    function initCanvasContextObserver(win, blockClass, blockSelector) {
         const handlers = [];
         try {
             const restoreHandler = patch(win.HTMLCanvasElement.prototype, 'getContext', function (original) {
                 return function (contextType, ...args) {
                     if (!isBlocked(this, blockClass, blockSelector, true)) {
-                        const ctxName = getNormalizedContextName(contextType);
                         if (!('__context' in this))
-                            this.__context = ctxName;
-                        if (setPreserveDrawingBufferToTrue &&
-                            ['webgl', 'webgl2'].includes(ctxName)) {
-                            if (args[0] && typeof args[0] === 'object') {
-                                const contextAttributes = args[0];
-                                if (!contextAttributes.preserveDrawingBuffer) {
-                                    contextAttributes.preserveDrawingBuffer = true;
-                                }
-                            }
-                            else {
-                                args.splice(0, 1, {
-                                    preserveDrawingBuffer: true,
-                                });
-                            }
-                        }
+                            this.__context = contextType;
                     }
                     return original.apply(this, [contextType, ...args]);
                 };
@@ -3594,9 +3160,8 @@
                     return function (...args) {
                         const result = original.apply(this, args);
                         saveWebGLVar(result, win, this);
-                        if ('tagName' in this.canvas &&
-                            !isBlocked(this.canvas, blockClass, blockSelector, true)) {
-                            const recordArgs = serializeArgs(args, win, this);
+                        if (!isBlocked(this.canvas, blockClass, blockSelector, true)) {
+                            const recordArgs = serializeArgs([...args], win, this);
                             const mutation = {
                                 type,
                                 property: prop,
@@ -3636,170 +3201,77 @@
         };
     }
 
-    function funcToSource(fn, sourcemapArg) {
-        var sourcemap = sourcemapArg === undefined ? null : sourcemapArg;
-        var source = fn.toString();
-        var lines = source.split('\n');
-        lines.pop();
-        lines.shift();
-        var blankPrefixLength = lines[0].search(/\S/);
-        var regex = /(['"])__worker_loader_strict__(['"])/g;
-        for (var i = 0, n = lines.length; i < n; ++i) {
-            lines[i] = lines[i].substring(blankPrefixLength).replace(regex, '$1use strict$2') + '\n';
-        }
-        if (sourcemap) {
-            lines.push('\/\/# sourceMappingURL=' + sourcemap + '\n');
-        }
-        return lines;
+    var WorkerClass = null;
+
+    try {
+        var WorkerThreads =
+            typeof module !== 'undefined' && typeof module.require === 'function' && module.require('worker_threads') ||
+            typeof __non_webpack_require__ === 'function' && __non_webpack_require__('worker_threads') ||
+            typeof require === 'function' && require('worker_threads');
+        WorkerClass = WorkerThreads.Worker;
+    } catch(e) {} // eslint-disable-line
+
+    function decodeBase64$1(base64, enableUnicode) {
+        return Buffer.from(base64, 'base64').toString(enableUnicode ? 'utf16' : 'utf8');
     }
 
-    function createURL(fn, sourcemapArg) {
-        var lines = funcToSource(fn, sourcemapArg);
-        var blob = new Blob(lines, { type: 'application/javascript' });
+    function createBase64WorkerFactory$2(base64, sourcemapArg, enableUnicodeArg) {
+        var sourcemap = sourcemapArg === undefined ? null : sourcemapArg;
+        var enableUnicode = enableUnicodeArg === undefined ? false : enableUnicodeArg;
+        var source = decodeBase64$1(base64, enableUnicode);
+        var start = source.indexOf('\n', 10) + 1;
+        var body = source.substring(start) + (sourcemap ? '\/\/# sourceMappingURL=' + sourcemap : '');
+        return function WorkerFactory(options) {
+            return new WorkerClass(body, Object.assign({}, options, { eval: true }));
+        };
+    }
+
+    function decodeBase64(base64, enableUnicode) {
+        var binaryString = atob(base64);
+        if (enableUnicode) {
+            var binaryView = new Uint8Array(binaryString.length);
+            for (var i = 0, n = binaryString.length; i < n; ++i) {
+                binaryView[i] = binaryString.charCodeAt(i);
+            }
+            return String.fromCharCode.apply(null, new Uint16Array(binaryView.buffer));
+        }
+        return binaryString;
+    }
+
+    function createURL(base64, sourcemapArg, enableUnicodeArg) {
+        var sourcemap = sourcemapArg === undefined ? null : sourcemapArg;
+        var enableUnicode = enableUnicodeArg === undefined ? false : enableUnicodeArg;
+        var source = decodeBase64(base64, enableUnicode);
+        var start = source.indexOf('\n', 10) + 1;
+        var body = source.substring(start) + (sourcemap ? '\/\/# sourceMappingURL=' + sourcemap : '');
+        var blob = new Blob([body], { type: 'application/javascript' });
         return URL.createObjectURL(blob);
     }
 
-    function createInlineWorkerFactory(fn, sourcemapArg) {
+    function createBase64WorkerFactory$1(base64, sourcemapArg, enableUnicodeArg) {
         var url;
         return function WorkerFactory(options) {
-            url = url || createURL(fn, sourcemapArg);
+            url = url || createURL(base64, sourcemapArg, enableUnicodeArg);
             return new Worker(url, options);
         };
     }
 
-    var WorkerFactory = createInlineWorkerFactory(/* rollup-plugin-web-worker-loader */function () {
-    (function () {
-        '__worker_loader_strict__';
+    var kIsNodeJS = Object.prototype.toString.call(typeof process !== 'undefined' ? process : 0) === '[object process]';
 
-        /*! *****************************************************************************
-        Copyright (c) Microsoft Corporation.
+    function isNodeJS() {
+        return kIsNodeJS;
+    }
 
-        Permission to use, copy, modify, and/or distribute this software for any
-        purpose with or without fee is hereby granted.
-
-        THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-        REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-        AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-        INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-        LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-        OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-        PERFORMANCE OF THIS SOFTWARE.
-        ***************************************************************************** */
-
-        function __awaiter(thisArg, _arguments, P, generator) {
-            function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-            return new (P || (P = Promise))(function (resolve, reject) {
-                function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-                function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-                function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-                step((generator = generator.apply(thisArg, _arguments || [])).next());
-            });
+    function createBase64WorkerFactory(base64, sourcemapArg, enableUnicodeArg) {
+        if (isNodeJS()) {
+            return createBase64WorkerFactory$2(base64, sourcemapArg, enableUnicodeArg);
         }
+        return createBase64WorkerFactory$1(base64, sourcemapArg, enableUnicodeArg);
+    }
 
-        /*
-         * base64-arraybuffer 1.0.1 <https://github.com/niklasvh/base64-arraybuffer>
-         * Copyright (c) 2021 Niklas von Hertzen <https://hertzen.com>
-         * Released under MIT License
-         */
-        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-        // Use a lookup table to find the index.
-        var lookup = typeof Uint8Array === 'undefined' ? [] : new Uint8Array(256);
-        for (var i = 0; i < chars.length; i++) {
-            lookup[chars.charCodeAt(i)] = i;
-        }
-        var encode = function (arraybuffer) {
-            var bytes = new Uint8Array(arraybuffer), i, len = bytes.length, base64 = '';
-            for (i = 0; i < len; i += 3) {
-                base64 += chars[bytes[i] >> 2];
-                base64 += chars[((bytes[i] & 3) << 4) | (bytes[i + 1] >> 4)];
-                base64 += chars[((bytes[i + 1] & 15) << 2) | (bytes[i + 2] >> 6)];
-                base64 += chars[bytes[i + 2] & 63];
-            }
-            if (len % 3 === 2) {
-                base64 = base64.substring(0, base64.length - 1) + '=';
-            }
-            else if (len % 3 === 1) {
-                base64 = base64.substring(0, base64.length - 2) + '==';
-            }
-            return base64;
-        };
-
-        const lastBlobMap = new Map();
-        const transparentBlobMap = new Map();
-        function getTransparentBlobFor(width, height, dataURLOptions) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const id = `${width}-${height}`;
-                if ('OffscreenCanvas' in globalThis) {
-                    if (transparentBlobMap.has(id))
-                        return transparentBlobMap.get(id);
-                    const offscreen = new OffscreenCanvas(width, height);
-                    offscreen.getContext('2d');
-                    const blob = yield offscreen.convertToBlob(dataURLOptions);
-                    const arrayBuffer = yield blob.arrayBuffer();
-                    const base64 = encode(arrayBuffer);
-                    transparentBlobMap.set(id, base64);
-                    return base64;
-                }
-                else {
-                    return '';
-                }
-            });
-        }
-        const worker = self;
-        worker.onmessage = function (e) {
-            return __awaiter(this, void 0, void 0, function* () {
-                if ('OffscreenCanvas' in globalThis) {
-                    const { id, bitmap, width, height, dataURLOptions } = e.data;
-                    const transparentBase64 = getTransparentBlobFor(width, height, dataURLOptions);
-                    const offscreen = new OffscreenCanvas(width, height);
-                    const ctx = offscreen.getContext('2d');
-                    ctx.drawImage(bitmap, 0, 0);
-                    bitmap.close();
-                    const blob = yield offscreen.convertToBlob(dataURLOptions);
-                    const type = blob.type;
-                    const arrayBuffer = yield blob.arrayBuffer();
-                    const base64 = encode(arrayBuffer);
-                    if (!lastBlobMap.has(id) && (yield transparentBase64) === base64) {
-                        lastBlobMap.set(id, base64);
-                        return worker.postMessage({ id });
-                    }
-                    if (lastBlobMap.get(id) === base64)
-                        return worker.postMessage({ id });
-                    worker.postMessage({
-                        id,
-                        type,
-                        base64,
-                        width,
-                        height,
-                    });
-                    lastBlobMap.set(id, base64);
-                }
-                else {
-                    return worker.postMessage({ id: e.data.id });
-                }
-            });
-        };
-
-    })();
-    }, null);
+    var WorkerFactory = createBase64WorkerFactory('Lyogcm9sbHVwLXBsdWdpbi13ZWItd29ya2VyLWxvYWRlciAqLwooZnVuY3Rpb24gKCkgewogICAgJ3VzZSBzdHJpY3QnOwoKICAgIC8qISAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg0KICAgIENvcHlyaWdodCAoYykgTWljcm9zb2Z0IENvcnBvcmF0aW9uLg0KDQogICAgUGVybWlzc2lvbiB0byB1c2UsIGNvcHksIG1vZGlmeSwgYW5kL29yIGRpc3RyaWJ1dGUgdGhpcyBzb2Z0d2FyZSBmb3IgYW55DQogICAgcHVycG9zZSB3aXRoIG9yIHdpdGhvdXQgZmVlIGlzIGhlcmVieSBncmFudGVkLg0KDQogICAgVEhFIFNPRlRXQVJFIElTIFBST1ZJREVEICJBUyBJUyIgQU5EIFRIRSBBVVRIT1IgRElTQ0xBSU1TIEFMTCBXQVJSQU5USUVTIFdJVEgNCiAgICBSRUdBUkQgVE8gVEhJUyBTT0ZUV0FSRSBJTkNMVURJTkcgQUxMIElNUExJRUQgV0FSUkFOVElFUyBPRiBNRVJDSEFOVEFCSUxJVFkNCiAgICBBTkQgRklUTkVTUy4gSU4gTk8gRVZFTlQgU0hBTEwgVEhFIEFVVEhPUiBCRSBMSUFCTEUgRk9SIEFOWSBTUEVDSUFMLCBESVJFQ1QsDQogICAgSU5ESVJFQ1QsIE9SIENPTlNFUVVFTlRJQUwgREFNQUdFUyBPUiBBTlkgREFNQUdFUyBXSEFUU09FVkVSIFJFU1VMVElORyBGUk9NDQogICAgTE9TUyBPRiBVU0UsIERBVEEgT1IgUFJPRklUUywgV0hFVEhFUiBJTiBBTiBBQ1RJT04gT0YgQ09OVFJBQ1QsIE5FR0xJR0VOQ0UgT1INCiAgICBPVEhFUiBUT1JUSU9VUyBBQ1RJT04sIEFSSVNJTkcgT1VUIE9GIE9SIElOIENPTk5FQ1RJT04gV0lUSCBUSEUgVVNFIE9SDQogICAgUEVSRk9STUFOQ0UgT0YgVEhJUyBTT0ZUV0FSRS4NCiAgICAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKiAqLw0KDQogICAgZnVuY3Rpb24gX19hd2FpdGVyKHRoaXNBcmcsIF9hcmd1bWVudHMsIFAsIGdlbmVyYXRvcikgew0KICAgICAgICBmdW5jdGlvbiBhZG9wdCh2YWx1ZSkgeyByZXR1cm4gdmFsdWUgaW5zdGFuY2VvZiBQID8gdmFsdWUgOiBuZXcgUChmdW5jdGlvbiAocmVzb2x2ZSkgeyByZXNvbHZlKHZhbHVlKTsgfSk7IH0NCiAgICAgICAgcmV0dXJuIG5ldyAoUCB8fCAoUCA9IFByb21pc2UpKShmdW5jdGlvbiAocmVzb2x2ZSwgcmVqZWN0KSB7DQogICAgICAgICAgICBmdW5jdGlvbiBmdWxmaWxsZWQodmFsdWUpIHsgdHJ5IHsgc3RlcChnZW5lcmF0b3IubmV4dCh2YWx1ZSkpOyB9IGNhdGNoIChlKSB7IHJlamVjdChlKTsgfSB9DQogICAgICAgICAgICBmdW5jdGlvbiByZWplY3RlZCh2YWx1ZSkgeyB0cnkgeyBzdGVwKGdlbmVyYXRvclsidGhyb3ciXSh2YWx1ZSkpOyB9IGNhdGNoIChlKSB7IHJlamVjdChlKTsgfSB9DQogICAgICAgICAgICBmdW5jdGlvbiBzdGVwKHJlc3VsdCkgeyByZXN1bHQuZG9uZSA/IHJlc29sdmUocmVzdWx0LnZhbHVlKSA6IGFkb3B0KHJlc3VsdC52YWx1ZSkudGhlbihmdWxmaWxsZWQsIHJlamVjdGVkKTsgfQ0KICAgICAgICAgICAgc3RlcCgoZ2VuZXJhdG9yID0gZ2VuZXJhdG9yLmFwcGx5KHRoaXNBcmcsIF9hcmd1bWVudHMgfHwgW10pKS5uZXh0KCkpOw0KICAgICAgICB9KTsNCiAgICB9CgogICAgLyoKICAgICAqIGJhc2U2NC1hcnJheWJ1ZmZlciAxLjAuMSA8aHR0cHM6Ly9naXRodWIuY29tL25pa2xhc3ZoL2Jhc2U2NC1hcnJheWJ1ZmZlcj4KICAgICAqIENvcHlyaWdodCAoYykgMjAyMSBOaWtsYXMgdm9uIEhlcnR6ZW4gPGh0dHBzOi8vaGVydHplbi5jb20+CiAgICAgKiBSZWxlYXNlZCB1bmRlciBNSVQgTGljZW5zZQogICAgICovCiAgICB2YXIgY2hhcnMgPSAnQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrLyc7CiAgICAvLyBVc2UgYSBsb29rdXAgdGFibGUgdG8gZmluZCB0aGUgaW5kZXguCiAgICB2YXIgbG9va3VwID0gdHlwZW9mIFVpbnQ4QXJyYXkgPT09ICd1bmRlZmluZWQnID8gW10gOiBuZXcgVWludDhBcnJheSgyNTYpOwogICAgZm9yICh2YXIgaSA9IDA7IGkgPCBjaGFycy5sZW5ndGg7IGkrKykgewogICAgICAgIGxvb2t1cFtjaGFycy5jaGFyQ29kZUF0KGkpXSA9IGk7CiAgICB9CiAgICB2YXIgZW5jb2RlID0gZnVuY3Rpb24gKGFycmF5YnVmZmVyKSB7CiAgICAgICAgdmFyIGJ5dGVzID0gbmV3IFVpbnQ4QXJyYXkoYXJyYXlidWZmZXIpLCBpLCBsZW4gPSBieXRlcy5sZW5ndGgsIGJhc2U2NCA9ICcnOwogICAgICAgIGZvciAoaSA9IDA7IGkgPCBsZW47IGkgKz0gMykgewogICAgICAgICAgICBiYXNlNjQgKz0gY2hhcnNbYnl0ZXNbaV0gPj4gMl07CiAgICAgICAgICAgIGJhc2U2NCArPSBjaGFyc1soKGJ5dGVzW2ldICYgMykgPDwgNCkgfCAoYnl0ZXNbaSArIDFdID4+IDQpXTsKICAgICAgICAgICAgYmFzZTY0ICs9IGNoYXJzWygoYnl0ZXNbaSArIDFdICYgMTUpIDw8IDIpIHwgKGJ5dGVzW2kgKyAyXSA+PiA2KV07CiAgICAgICAgICAgIGJhc2U2NCArPSBjaGFyc1tieXRlc1tpICsgMl0gJiA2M107CiAgICAgICAgfQogICAgICAgIGlmIChsZW4gJSAzID09PSAyKSB7CiAgICAgICAgICAgIGJhc2U2NCA9IGJhc2U2NC5zdWJzdHJpbmcoMCwgYmFzZTY0Lmxlbmd0aCAtIDEpICsgJz0nOwogICAgICAgIH0KICAgICAgICBlbHNlIGlmIChsZW4gJSAzID09PSAxKSB7CiAgICAgICAgICAgIGJhc2U2NCA9IGJhc2U2NC5zdWJzdHJpbmcoMCwgYmFzZTY0Lmxlbmd0aCAtIDIpICsgJz09JzsKICAgICAgICB9CiAgICAgICAgcmV0dXJuIGJhc2U2NDsKICAgIH07CgogICAgY29uc3QgbGFzdEJsb2JNYXAgPSBuZXcgTWFwKCk7DQogICAgY29uc3QgdHJhbnNwYXJlbnRCbG9iTWFwID0gbmV3IE1hcCgpOw0KICAgIGZ1bmN0aW9uIGdldFRyYW5zcGFyZW50QmxvYkZvcih3aWR0aCwgaGVpZ2h0LCBkYXRhVVJMT3B0aW9ucykgew0KICAgICAgICByZXR1cm4gX19hd2FpdGVyKHRoaXMsIHZvaWQgMCwgdm9pZCAwLCBmdW5jdGlvbiogKCkgew0KICAgICAgICAgICAgY29uc3QgaWQgPSBgJHt3aWR0aH0tJHtoZWlnaHR9YDsNCiAgICAgICAgICAgIGlmICgnT2Zmc2NyZWVuQ2FudmFzJyBpbiBnbG9iYWxUaGlzKSB7DQogICAgICAgICAgICAgICAgaWYgKHRyYW5zcGFyZW50QmxvYk1hcC5oYXMoaWQpKQ0KICAgICAgICAgICAgICAgICAgICByZXR1cm4gdHJhbnNwYXJlbnRCbG9iTWFwLmdldChpZCk7DQogICAgICAgICAgICAgICAgY29uc3Qgb2Zmc2NyZWVuID0gbmV3IE9mZnNjcmVlbkNhbnZhcyh3aWR0aCwgaGVpZ2h0KTsNCiAgICAgICAgICAgICAgICBvZmZzY3JlZW4uZ2V0Q29udGV4dCgnMmQnKTsNCiAgICAgICAgICAgICAgICBjb25zdCBibG9iID0geWllbGQgb2Zmc2NyZWVuLmNvbnZlcnRUb0Jsb2IoZGF0YVVSTE9wdGlvbnMpOw0KICAgICAgICAgICAgICAgIGNvbnN0IGFycmF5QnVmZmVyID0geWllbGQgYmxvYi5hcnJheUJ1ZmZlcigpOw0KICAgICAgICAgICAgICAgIGNvbnN0IGJhc2U2NCA9IGVuY29kZShhcnJheUJ1ZmZlcik7DQogICAgICAgICAgICAgICAgdHJhbnNwYXJlbnRCbG9iTWFwLnNldChpZCwgYmFzZTY0KTsNCiAgICAgICAgICAgICAgICByZXR1cm4gYmFzZTY0Ow0KICAgICAgICAgICAgfQ0KICAgICAgICAgICAgZWxzZSB7DQogICAgICAgICAgICAgICAgcmV0dXJuICcnOw0KICAgICAgICAgICAgfQ0KICAgICAgICB9KTsNCiAgICB9DQogICAgY29uc3Qgd29ya2VyID0gc2VsZjsNCiAgICB3b3JrZXIub25tZXNzYWdlID0gZnVuY3Rpb24gKGUpIHsNCiAgICAgICAgcmV0dXJuIF9fYXdhaXRlcih0aGlzLCB2b2lkIDAsIHZvaWQgMCwgZnVuY3Rpb24qICgpIHsNCiAgICAgICAgICAgIGlmICgnT2Zmc2NyZWVuQ2FudmFzJyBpbiBnbG9iYWxUaGlzKSB7DQogICAgICAgICAgICAgICAgY29uc3QgeyBpZCwgYml0bWFwLCB3aWR0aCwgaGVpZ2h0LCBkYXRhVVJMT3B0aW9ucyB9ID0gZS5kYXRhOw0KICAgICAgICAgICAgICAgIGNvbnN0IHRyYW5zcGFyZW50QmFzZTY0ID0gZ2V0VHJhbnNwYXJlbnRCbG9iRm9yKHdpZHRoLCBoZWlnaHQsIGRhdGFVUkxPcHRpb25zKTsNCiAgICAgICAgICAgICAgICBjb25zdCBvZmZzY3JlZW4gPSBuZXcgT2Zmc2NyZWVuQ2FudmFzKHdpZHRoLCBoZWlnaHQpOw0KICAgICAgICAgICAgICAgIGNvbnN0IGN0eCA9IG9mZnNjcmVlbi5nZXRDb250ZXh0KCcyZCcpOw0KICAgICAgICAgICAgICAgIGN0eC5kcmF3SW1hZ2UoYml0bWFwLCAwLCAwKTsNCiAgICAgICAgICAgICAgICBiaXRtYXAuY2xvc2UoKTsNCiAgICAgICAgICAgICAgICBjb25zdCBibG9iID0geWllbGQgb2Zmc2NyZWVuLmNvbnZlcnRUb0Jsb2IoZGF0YVVSTE9wdGlvbnMpOw0KICAgICAgICAgICAgICAgIGNvbnN0IHR5cGUgPSBibG9iLnR5cGU7DQogICAgICAgICAgICAgICAgY29uc3QgYXJyYXlCdWZmZXIgPSB5aWVsZCBibG9iLmFycmF5QnVmZmVyKCk7DQogICAgICAgICAgICAgICAgY29uc3QgYmFzZTY0ID0gZW5jb2RlKGFycmF5QnVmZmVyKTsNCiAgICAgICAgICAgICAgICBpZiAoIWxhc3RCbG9iTWFwLmhhcyhpZCkgJiYgKHlpZWxkIHRyYW5zcGFyZW50QmFzZTY0KSA9PT0gYmFzZTY0KSB7DQogICAgICAgICAgICAgICAgICAgIGxhc3RCbG9iTWFwLnNldChpZCwgYmFzZTY0KTsNCiAgICAgICAgICAgICAgICAgICAgcmV0dXJuIHdvcmtlci5wb3N0TWVzc2FnZSh7IGlkIH0pOw0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICBpZiAobGFzdEJsb2JNYXAuZ2V0KGlkKSA9PT0gYmFzZTY0KQ0KICAgICAgICAgICAgICAgICAgICByZXR1cm4gd29ya2VyLnBvc3RNZXNzYWdlKHsgaWQgfSk7DQogICAgICAgICAgICAgICAgd29ya2VyLnBvc3RNZXNzYWdlKHsNCiAgICAgICAgICAgICAgICAgICAgaWQsDQogICAgICAgICAgICAgICAgICAgIHR5cGUsDQogICAgICAgICAgICAgICAgICAgIGJhc2U2NCwNCiAgICAgICAgICAgICAgICAgICAgd2lkdGgsDQogICAgICAgICAgICAgICAgICAgIGhlaWdodCwNCiAgICAgICAgICAgICAgICB9KTsNCiAgICAgICAgICAgICAgICBsYXN0QmxvYk1hcC5zZXQoaWQsIGJhc2U2NCk7DQogICAgICAgICAgICB9DQogICAgICAgICAgICBlbHNlIHsNCiAgICAgICAgICAgICAgICByZXR1cm4gd29ya2VyLnBvc3RNZXNzYWdlKHsgaWQ6IGUuZGF0YS5pZCB9KTsNCiAgICAgICAgICAgIH0NCiAgICAgICAgfSk7DQogICAgfTsKCn0pKCk7Cgo=', null, false);
 
     class CanvasManager {
-        reset() {
-            this.pendingCanvasMutations.clear();
-            this.resetObservers && this.resetObservers();
-        }
-        freeze() {
-            this.frozen = true;
-        }
-        unfreeze() {
-            this.frozen = false;
-        }
-        lock() {
-            this.locked = true;
-        }
-        unlock() {
-            this.locked = false;
-        }
         constructor(options) {
             this.pendingCanvasMutations = new Map();
             this.rafStamps = { latestId: 0, invokeId: null };
@@ -3825,8 +3297,24 @@
                     dataURLOptions,
                 });
         }
+        reset() {
+            this.pendingCanvasMutations.clear();
+            this.resetObservers && this.resetObservers();
+        }
+        freeze() {
+            this.frozen = true;
+        }
+        unfreeze() {
+            this.frozen = false;
+        }
+        lock() {
+            this.locked = true;
+        }
+        unlock() {
+            this.locked = false;
+        }
         initCanvasFPSObserver(fps, win, blockClass, blockSelector, options) {
-            const canvasContextReset = initCanvasContextObserver(win, blockClass, blockSelector, true);
+            const canvasContextReset = initCanvasContextObserver(win, blockClass, blockSelector);
             const snapshotInProgressMap = new Map();
             const worker = new WorkerFactory();
             worker.onmessage = (e) => {
@@ -3888,13 +3376,11 @@
                     const id = this.mirror.getId(canvas);
                     if (snapshotInProgressMap.get(id))
                         return;
-                    if (canvas.width === 0 || canvas.height === 0)
-                        return;
                     snapshotInProgressMap.set(id, true);
                     if (['webgl', 'webgl2'].includes(canvas.__context)) {
                         const context = canvas.getContext(canvas.__context);
                         if (((_a = context === null || context === void 0 ? void 0 : context.getContextAttributes()) === null || _a === void 0 ? void 0 : _a.preserveDrawingBuffer) === false) {
-                            context.clear(context.COLOR_BUFFER_BIT);
+                            context === null || context === void 0 ? void 0 : context.clear(context.COLOR_BUFFER_BIT);
                         }
                     }
                     const bitmap = yield createImageBitmap(canvas);
@@ -3917,7 +3403,7 @@
         initCanvasMutationObserver(win, blockClass, blockSelector) {
             this.startRAFTimestamping();
             this.startPendingCanvasMutationFlusher();
-            const canvasContextReset = initCanvasContextObserver(win, blockClass, blockSelector, false);
+            const canvasContextReset = initCanvasContextObserver(win, blockClass, blockSelector);
             const canvas2DReset = initCanvas2DMutationObserver(this.processMutation.bind(this), win, blockClass, blockSelector);
             const canvasWebGL1and2Reset = initCanvasWebGLMutationObserver(this.processMutation.bind(this), win, blockClass, blockSelector, this.mirror);
             this.resetObservers = () => {
@@ -4001,12 +3487,15 @@
                 let styleId;
                 if (!this.styleMirror.has(sheet)) {
                     styleId = this.styleMirror.add(sheet);
+                    const rules = Array.from(sheet.rules || CSSRule);
                     styles.push({
                         styleId,
-                        rules: Array.from(sheet.rules || CSSRule, (r, index) => ({
-                            rule: stringifyRule(r),
-                            index,
-                        })),
+                        rules: rules.map((r, index) => {
+                            return {
+                                rule: getCssRuleString(r),
+                                index,
+                            };
+                        }),
                     });
                 }
                 else
@@ -4025,36 +3514,8 @@
         }
     }
 
-    class ProcessedNodeManager {
-        constructor() {
-            this.nodeMap = new WeakMap();
-            this.loop = true;
-            this.periodicallyClear();
-        }
-        periodicallyClear() {
-            requestAnimationFrame(() => {
-                this.clear();
-                if (this.loop)
-                    this.periodicallyClear();
-            });
-        }
-        inOtherBuffer(node, thisBuffer) {
-            const buffers = this.nodeMap.get(node);
-            return (buffers && Array.from(buffers).some((buffer) => buffer !== thisBuffer));
-        }
-        add(node, buffer) {
-            this.nodeMap.set(node, (this.nodeMap.get(node) || new Set()).add(buffer));
-        }
-        clear() {
-            this.nodeMap = new WeakMap();
-        }
-        destroy() {
-            this.loop = false;
-        }
-    }
-
     function wrapEvent(e) {
-        return Object.assign(Object.assign({}, e), { timestamp: nowTimestamp() });
+        return Object.assign(Object.assign({}, e), { timestamp: Date.now() });
     }
     let wrappedEmit;
     let takeFullSnapshot;
@@ -4062,19 +3523,15 @@
     let recording = false;
     const mirror = createMirror();
     function record(options = {}) {
-        const { emit, checkoutEveryNms, checkoutEveryNth, blockClass = 'rr-block', blockSelector = null, ignoreClass = 'rr-ignore', ignoreSelector = null, maskTextClass = 'rr-mask', maskTextSelector = null, inlineStylesheet = true, maskAllInputs, maskInputOptions: _maskInputOptions, slimDOMOptions: _slimDOMOptions, maskInputFn, maskTextFn, hooks, packFn, sampling = {}, dataURLOptions = {}, mousemoveWait, recordDOM = true, recordCanvas = false, recordCrossOriginIframes = false, recordAfter = options.recordAfter === 'DOMContentLoaded'
-            ? options.recordAfter
-            : 'load', userTriggeredOnInput = false, collectFonts = false, inlineImages = false, plugins, keepIframeSrcFn = () => false, ignoreCSSAttributes = new Set([]), errorHandler, } = options;
-        registerErrorHandler(errorHandler);
+        const { emit, checkoutEveryNms, checkoutEveryNth, blockClass = 'rr-block', blockSelector = null, ignoreClass = 'rr-ignore', maskTextClass = 'rr-mask', maskTextSelector = null, inlineStylesheet = true, maskAllInputs, maskInputOptions: _maskInputOptions, slimDOMOptions: _slimDOMOptions, maskInputFn, maskTextFn, hooks, packFn, sampling = {}, dataURLOptions = {}, mousemoveWait, recordCanvas = false, recordCrossOriginIframes = false, userTriggeredOnInput = false, collectFonts = false, inlineImages = false, plugins, keepIframeSrcFn = () => false, ignoreCSSAttributes = new Set([]), } = options;
         const inEmittingFrame = recordCrossOriginIframes
             ? window.parent === window
             : true;
         let passEmitsToParent = false;
         if (!inEmittingFrame) {
             try {
-                if (window.parent.document) {
-                    passEmitsToParent = false;
-                }
+                window.parent.document;
+                passEmitsToParent = false;
             }
             catch (e) {
                 passEmitsToParent = true;
@@ -4134,8 +3591,7 @@
                     e = plugin.eventProcessor(e);
                 }
             }
-            if (packFn &&
-                !passEmitsToParent) {
+            if (packFn) {
                 e = packFn(e);
             }
             return e;
@@ -4155,7 +3611,6 @@
                 const message = {
                     type: 'rrweb',
                     event: eventProcessor(e),
-                    origin: window.location.origin,
                     isCheckout,
                 };
                 window.parent.postMessage(message, '*');
@@ -4215,7 +3670,6 @@
                     crossOriginIframeStyleMirror: iframeManager.crossOriginIframeStyleMirror,
                 });
         }
-        const processedNodeManager = new ProcessedNodeManager();
         canvasManager = new CanvasManager({
             recordCanvas,
             mutationCb: wrappedCanvasMutationEmit,
@@ -4247,14 +3701,11 @@
                 stylesheetManager,
                 canvasManager,
                 keepIframeSrcFn,
-                processedNodeManager,
             },
             mirror,
         });
         takeFullSnapshot = (isCheckout = false) => {
-            if (!recordDOM) {
-                return;
-            }
+            var _a, _b, _c, _d, _e, _f;
             wrappedEmit(wrapEvent({
                 type: EventType.Meta,
                 data: {
@@ -4264,7 +3715,6 @@
                 },
             }), isCheckout);
             stylesheetManager.reset();
-            shadowDomManager.init();
             mutationBuffers.forEach((buf) => buf.lock());
             const node = snapshot(document, {
                 mirror,
@@ -4306,18 +3756,37 @@
                 type: EventType.FullSnapshot,
                 data: {
                     node,
-                    initialOffset: getWindowScroll(window),
+                    initialOffset: {
+                        left: window.pageXOffset !== undefined
+                            ? window.pageXOffset
+                            : (document === null || document === void 0 ? void 0 : document.documentElement.scrollLeft) ||
+                                ((_b = (_a = document === null || document === void 0 ? void 0 : document.body) === null || _a === void 0 ? void 0 : _a.parentElement) === null || _b === void 0 ? void 0 : _b.scrollLeft) ||
+                                ((_c = document === null || document === void 0 ? void 0 : document.body) === null || _c === void 0 ? void 0 : _c.scrollLeft) ||
+                                0,
+                        top: window.pageYOffset !== undefined
+                            ? window.pageYOffset
+                            : (document === null || document === void 0 ? void 0 : document.documentElement.scrollTop) ||
+                                ((_e = (_d = document === null || document === void 0 ? void 0 : document.body) === null || _d === void 0 ? void 0 : _d.parentElement) === null || _e === void 0 ? void 0 : _e.scrollTop) ||
+                                ((_f = document === null || document === void 0 ? void 0 : document.body) === null || _f === void 0 ? void 0 : _f.scrollTop) ||
+                                0,
+                    },
                 },
-            }), isCheckout);
+            }));
             mutationBuffers.forEach((buf) => buf.unlock());
             if (document.adoptedStyleSheets && document.adoptedStyleSheets.length > 0)
                 stylesheetManager.adoptStyleSheets(document.adoptedStyleSheets, mirror.getId(document));
         };
         try {
             const handlers = [];
+            handlers.push(on('DOMContentLoaded', () => {
+                wrappedEmit(wrapEvent({
+                    type: EventType.DomContentLoaded,
+                    data: {},
+                }));
+            }));
             const observe = (doc) => {
                 var _a;
-                return callbackWrapper(initObservers)({
+                return initObservers({
                     mutationCb: wrappedMutationEmit,
                     mousemoveCb: (positions, source) => wrappedEmit(wrapEvent({
                         type: EventType.IncrementalSnapshot,
@@ -4362,21 +3831,13 @@
                             data: Object.assign({ source: IncrementalSource.Selection }, p),
                         }));
                     },
-                    customElementCb: (c) => {
-                        wrappedEmit(wrapEvent({
-                            type: EventType.IncrementalSnapshot,
-                            data: Object.assign({ source: IncrementalSource.CustomElement }, c),
-                        }));
-                    },
                     blockClass,
                     ignoreClass,
-                    ignoreSelector,
                     maskTextClass,
                     maskTextSelector,
                     maskInputOptions,
                     inlineStylesheet,
                     sampling,
-                    recordDOM,
                     recordCanvas,
                     inlineImages,
                     userTriggeredOnInput,
@@ -4392,7 +3853,6 @@
                     iframeManager,
                     stylesheetManager,
                     shadowDomManager,
-                    processedNodeManager,
                     canvasManager,
                     ignoreCSSAttributes,
                     plugins: ((_a = plugins === null || plugins === void 0 ? void 0 : plugins.filter((p) => p.observer)) === null || _a === void 0 ? void 0 : _a.map((p) => ({
@@ -4409,12 +3869,7 @@
                 }, hooks);
             };
             iframeManager.addLoadListener((iframeEl) => {
-                try {
-                    handlers.push(observe(iframeEl.contentDocument));
-                }
-                catch (error) {
-                    console.warn(error);
-                }
+                handlers.push(observe(iframeEl.contentDocument));
             });
             const init = () => {
                 takeFullSnapshot();
@@ -4426,28 +3881,17 @@
                 init();
             }
             else {
-                handlers.push(on('DOMContentLoaded', () => {
-                    wrappedEmit(wrapEvent({
-                        type: EventType.DomContentLoaded,
-                        data: {},
-                    }));
-                    if (recordAfter === 'DOMContentLoaded')
-                        init();
-                }));
                 handlers.push(on('load', () => {
                     wrappedEmit(wrapEvent({
                         type: EventType.Load,
                         data: {},
                     }));
-                    if (recordAfter === 'load')
-                        init();
+                    init();
                 }, window));
             }
             return () => {
                 handlers.forEach((h) => h());
-                processedNodeManager.destroy();
                 recording = false;
-                unregisterErrorHandler();
             };
         }
         catch (error) {
@@ -4479,7 +3923,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.50.0'
+        LIB_VERSION: '2.51.0-rc'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
