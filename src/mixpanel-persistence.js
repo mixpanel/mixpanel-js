@@ -66,7 +66,7 @@ var MixpanelPersistence = function(config) {
 
     this.load();
     this.update_config(config);
-    this.upgrade(config);
+    this.upgrade();
     this.save();
 };
 
@@ -94,49 +94,9 @@ MixpanelPersistence.prototype.load = function() {
     }
 };
 
-MixpanelPersistence.prototype.upgrade = function(config) {
-    var upgrade_from_old_lib = config['upgrade'],
-        old_cookie_name,
-        old_cookie,
+MixpanelPersistence.prototype.upgrade = function() {
+    var old_cookie,
         old_localstorage;
-
-    if (upgrade_from_old_lib) {
-        old_cookie_name = 'mp_super_properties';
-        // Case where they had a custom cookie name before.
-        if (typeof(upgrade_from_old_lib) === 'string') {
-            old_cookie_name = upgrade_from_old_lib;
-        }
-
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        // remove the cookie
-        this.storage.remove(old_cookie_name);
-        this.storage.remove(old_cookie_name, true);
-
-        if (old_cookie) {
-            this['props'] = _.extend(
-                this['props'],
-                old_cookie['all'],
-                old_cookie['events']
-            );
-        }
-    }
-
-    if (!config['cookie_name'] && config['name'] !== 'mixpanel') {
-        // special case to handle people with cookies of the form
-        // mp_TOKEN_INSTANCENAME from the first release of this library
-        old_cookie_name = 'mp_' + config['token'] + '_' + config['name'];
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        if (old_cookie) {
-            this.storage.remove(old_cookie_name);
-            this.storage.remove(old_cookie_name, true);
-
-            // Save the prop values that were in the cookie from before -
-            // this should only happen once as we delete the old one.
-            this.register_once(old_cookie);
-        }
-    }
 
     // if transferring from cookie to localStorage or vice-versa, copy existing
     // super properties over to new storage mode
