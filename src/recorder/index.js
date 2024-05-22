@@ -44,23 +44,6 @@ MixpanelRecorder.prototype._initBatcher = function () {
         }, this),
         forceDelayFlush: true,
     });
-
-    // var flushOnUnload = _.bind(function() {
-    //     if (!this.batcher.stopped) {
-    //         this.batcher.flush({unloading: true});
-    //     }
-    // }, this);
-
-    // window.addEventListener('pagehide', function(ev) {
-    //     if (ev['persisted']) {
-    //         flushOnUnload();
-    //     }
-    // });
-    // window.addEventListener('visibilitychange', function() {
-    //     if (document['visibilityState'] === 'hidden') {
-    //         flushOnUnload();
-    //     }
-    // });
 };
 
 // eslint-disable-next-line camelcase
@@ -235,19 +218,6 @@ MixpanelRecorder.prototype._sendRequest = addOptOutCheckMixpanelLib(function (da
     }
 
     var bodyData = _.JSONEncode(reqBody);
-
-    // if (options.transport === 'sendBeacon') {
-    //     // we have access to fetch in this environment due to MutationObserver requirement.
-    //     // use it as a replacement for sendBeacon so that we can set header authorization.
-    //     window['fetch'](url, {
-    //         method: 'POST',
-    //         headers: headers,
-    //         body: bodyData,
-    //         keepalive: true,
-    //     });
-    //     callback(true);
-    // }
-
     var reqOptions = _.extend({}, options, {
         method: 'POST',
         url: url,
