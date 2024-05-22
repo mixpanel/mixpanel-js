@@ -254,7 +254,7 @@ MixpanelRecorder.prototype._sendRequest = addOptOutCheckMixpanelLib(function (da
         'body_data': bodyData,
         headers: headers,
         callback: callback,
-        reportError: _.bind(this.reportError, this)
+        'report_error': _.bind(this.reportError, this)
     });
 
     make_xhr_request(reqOptions);
