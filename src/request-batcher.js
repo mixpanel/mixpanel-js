@@ -23,14 +23,14 @@ var RequestBatcher = function(storageKey, options) {
     });
 
     // seed variable batch size + flush interval with configured values
-    this.currentBatchSize = this.options.batchSize;
-    this.currentFlushInterval = this.options.flushIntervalMs;
+    this.currentBatchSize = options.batchSize;
+    this.currentFlushInterval = options.flushIntervalMs;
 
     // Forces flush to occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
     // as long as the queue is not empty. This is useful for high-volume events like Session Replay.
     this.forceDelayFlush = options.forceDelayFlush || false;
 
-    this.stopped = !this.options.autoStart;
+    this.stopped = !options.autoStart;
     this.consecutiveRemovalFailures = 0;
 
     // extra client-side dedupe
