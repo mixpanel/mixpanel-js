@@ -97,7 +97,8 @@ MixpanelPersistence.prototype.load = function() {
 MixpanelPersistence.prototype.upgrade = function(config) {
     var upgrade_from_old_lib = config['upgrade'],
         old_cookie_name,
-        old_cookie;
+        old_cookie,
+        old_localstorage;
 
     if (upgrade_from_old_lib) {
         old_cookie_name = 'mp_super_properties';
@@ -137,6 +138,8 @@ MixpanelPersistence.prototype.upgrade = function(config) {
         }
     }
 
+    // if transferring from cookie to localStorage or vice-versa, copy existing
+    // super properties over to new storage mode
     if (this.storage === _.localStorage) {
         old_cookie = _.cookie.parse(this.name);
 
@@ -145,6 +148,14 @@ MixpanelPersistence.prototype.upgrade = function(config) {
 
         if (old_cookie) {
             this.register_once(old_cookie);
+        }
+    } else if (this.storage === _.cookie) {
+        old_localstorage = _.localStorage.parse(this.name);
+
+        _.localStorage.remove(this.name);
+
+        if (old_localstorage) {
+            this.register_once(old_localstorage);
         }
     }
 };

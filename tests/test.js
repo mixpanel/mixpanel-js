@@ -1164,6 +1164,57 @@
 
                     clearLibInstance(ut);
                 });
+
+                test("revert from localStorage to cookie", 10, function() {
+                    // populate localStorage
+                    var instance1 = mixpanel.init('LS2C_TOKEN', {
+                        persistence: 'localStorage'
+                    }, 'instance1'),
+                    persistence_name = 'mp_LS2C_TOKEN_mixpanel';
+                    instance1.register({
+                        'a': 'b'
+                    });
+                    ok(!!window.localStorage.getItem(persistence_name), "localStorage entry should exist");
+                    notOk(cookie.exists(persistence_name), "cookie should not exist yet");
+
+                    // init same project with cookie
+                    var instance2 = mixpanel.init('LS2C_TOKEN', {
+                        persistence: 'cookie'
+                    }, 'instance2');
+                    instance2.register({
+                        'c': 'd'
+                    });
+                    ok(cookie.exists(persistence_name) || mixpanel._.cookie.failure_mode, "cookie should exist");
+
+                    ok(contains_obj(instance2.persistence.props, {
+                        'a': 'b'
+                    }) || mixpanel._.cookie.failure_mode, "reverting from localStorage to cookie should import props");
+                    notOk(!!window.localStorage.getItem(persistence_name), "reverting from localStorage to cookie should remove localStorage entry");
+
+                    // send track request from reverted instance
+                    stop();
+                    var data = instance2.track('test', {
+                        'foo': 'bar'
+                    }, function(response) {
+                        same(response, 1, "tracking still works");
+                        start();
+                    });
+
+                    var dp = data.properties;
+                    ok('token' in dp, "token included in properties");
+                    ok(contains_obj(dp, {
+                        'a': 'b'
+                    }) || mixpanel._.cookie.failure_mode, "super properties transferred correctly");
+                    ok(contains_obj(dp, {
+                        'c': 'd'
+                    }), "new super properties registered correctly");
+                    ok(contains_obj(dp, {
+                        'foo': 'bar'
+                    }), "tracking properties sent correctly");
+
+                    clearLibInstance(instance1);
+                    clearLibInstance(instance2);
+                });
             }
 
             mpmodule("mixpanel");
