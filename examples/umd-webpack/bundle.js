@@ -4265,10 +4265,13 @@
 	        'batch_request_timeout_ms':          90000,
 	        'batch_autostart':                   true,
 	        'hooks':                             {},
-	        'record_sessions_percent':           0,
+	        'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
+	        'record_block_selector':             'img, video',
 	        'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
-	        'record_max_ms':                     MAX_RECORDING_MS,
+	        'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
 	        'record_mask_text_selector':         '*',
+	        'record_max_ms':                     MAX_RECORDING_MS,
+	        'record_sessions_percent':           0,
 	        'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 	    };
 
