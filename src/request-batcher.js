@@ -186,12 +186,11 @@ RequestBatcher.prototype.flush = function(options) {
                     this.flush();
                 } else if (
                     _.isObject(res) &&
-                    res.xhr_req &&
-                    (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')
+                    (res.status >= 500 || res.status === 429 || res.error === 'timeout')
                 ) {
                     // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.currentFlushInterval * 2;
-                    var headers = res.xhr_req['responseHeaders'];
+                    var headers = res.responseHeaders;
                     if (headers) {
                         var retryAfter = headers['Retry-After'];
                         if (retryAfter) {
@@ -201,7 +200,7 @@ RequestBatcher.prototype.flush = function(options) {
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
                     this.reportError('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
-                } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
+                } else if (_.isObject(res) && res.status === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(flushBatchSize / 2));

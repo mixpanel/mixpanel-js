@@ -31,10 +31,8 @@ describe(`RequestBatcher`, function() {
     // respond to last request sent
     const requestIndex = batcher.options.sendRequestFunc.args.length - 1;
     batcher.options.sendRequestFunc.args[requestIndex][2]({
-      'xhr_req': {
-        status,
-        responseHeaders,
-      },
+      status,
+      responseHeaders,
       error,
     });
   }

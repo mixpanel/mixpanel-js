@@ -1686,6 +1686,12 @@ var cheap_guid = function(maxlen) {
  * @param {boolean} [options.verbose] - Whether to operate in verbose mode, which provides detailed response data.
  * @param {boolean} [options.ignore_json_errors] - Whether to ignore JSON parsing errors and return raw response text.
  * @param {Function} [options.callback] - The callback function to execute when the request completes.
+ * callback: response {
+ *   status?: number,
+ *   error?: string,
+ *   responseBody?: Object|string
+ *   responseHeader?: Object
+ * } | null;
  * @param {Function} [options.report_error] - The function to execute when an error occurs.
  * @param {string|Object} [options.body_data] - The data to send with the request, if any.
  */
@@ -1710,13 +1716,13 @@ var make_xhr_request = function (options) {
             if (req.status === 200) {
                 if (options.callback) {
                     if (options.verbose) {
-                        var response;
+                        var response = {};
                         try {
-                            response = _.JSONDecode(req.responseText);
+                            response['responseBody'] = _.JSONDecode(req.responseText);
                         } catch (e) {
                             options.report_error(e);
                             if (options.ignore_json_errors) {
-                                response = req.responseText;
+                                response['responseBody'] = req.responseText;
                             } else {
                                 return;
                             }
@@ -1740,7 +1746,7 @@ var make_xhr_request = function (options) {
                 options.report_error(error);
                 if (options.callback) {
                     if (options.verbose) {
-                        options.callback({status: 0, error: error, xhr_req: req});
+                        options.callback({status: req.status, error: error, responseHeaders: req.responseHeaders});
                     } else {
                         options.callback(0);
                     }
