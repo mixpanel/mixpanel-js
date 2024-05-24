@@ -1674,89 +1674,6 @@ var cheap_guid = function(maxlen) {
     return maxlen ? guid.substring(0, maxlen) : guid;
 };
 
-
-/**
- * Makes an XMLHttpRequest with the given options.
- *
- * @param {Object} options - Configuration options for the request.
- * @param {string} options.method - The HTTP method to use for the request (e.g., 'GET', 'POST').
- * @param {string} options.url - The URL to which the request is sent.
- * @param {Object} [options.headers] - Additional headers to include in the request.
- * @param {number} [options.timeout_ms] - The timeout for the request in milliseconds.
- * @param {boolean} [options.verbose] - Whether to operate in verbose mode, which provides detailed response data.
- * @param {boolean} [options.ignore_json_errors] - Whether to ignore JSON parsing errors and return raw response text.
- * @param {Function} [options.callback] - The callback function to execute when the request completes.
- * callback: response {
- *   status?: number,
- *   error?: string,
- *   responseBody?: Object|string
- *   responseHeader?: Object
- * } | null;
- * @param {Function} [options.report_error] - The function to execute when an error occurs.
- * @param {string|Object} [options.body_data] - The data to send with the request, if any.
- */
-var make_xhr_request = function (options) {
-    var req = new XMLHttpRequest();
-    req.open(options.method, options.url, true);
-
-    _.each(options.headers, function(headerValue, headerName) {
-        req.setRequestHeader(headerName, headerValue);
-    });
-
-    if (options.timeout_ms && typeof req.timeout !== 'undefined') {
-        req.timeout = options.timeout_ms;
-        var start_time = new Date().getTime();
-    }
-
-    // send the mp_optout cookie
-    // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
-    req.withCredentials = true;
-    req.onreadystatechange = function () {
-        if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
-            if (req.status === 200) {
-                if (options.callback) {
-                    if (options.verbose) {
-                        var response = {};
-                        try {
-                            response['responseBody'] = _.JSONDecode(req.responseText);
-                        } catch (e) {
-                            options.report_error(e);
-                            if (options.ignore_json_errors) {
-                                response['responseBody'] = req.responseText;
-                            } else {
-                                return;
-                            }
-                        }
-                        options.callback(response);
-                    } else {
-                        options.callback(Number(req.responseText));
-                    }
-                }
-            } else {
-                var error;
-                if (
-                    req.timeout &&
-                    !req.status &&
-                    new Date().getTime() - start_time >= req.timeout
-                ) {
-                    error = 'timeout';
-                } else {
-                    error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
-                }
-                options.report_error(error);
-                if (options.callback) {
-                    if (options.verbose) {
-                        options.callback({status: req.status, error: error, responseHeaders: req.responseHeaders});
-                    } else {
-                        options.callback(0);
-                    }
-                }
-            }
-        }
-    };
-    req.send(options.body_data);
-};
-
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
 var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
@@ -1821,5 +1738,4 @@ export {
     JSONStringify,
     JSONParse,
     slice,
-    make_xhr_request
 };

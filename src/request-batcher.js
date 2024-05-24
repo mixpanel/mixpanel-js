@@ -12,6 +12,26 @@ var logger = console_with_prefix('batch');
  * type (events, people, groups).
  * Uses RequestQueue to manage the backing store.
  * @constructor
+ * @param {string} storageKey - Key to access the storage for request queue.
+ * @param {Object} options - Configuration options for the RequestBatcher.
+ * @param {number} options.batchSize - The size of the batch to be sent in each flush.
+ * @param {number} options.flushIntervalMs - Interval in milliseconds between each flush attempt.
+ * @param {boolean} options.usePersistence - Whether to use persistent storage.
+ * @param {boolean} options.forceDelayFlush - Force flush at the interval specified by flushIntervalMs.
+ * @param {boolean} options.autoStart - Automatically start the batcher upon initialization.
+ * @param {Object} options.storage - Storage implementation to use.
+ * @param {function} options.errorReporter - Function to report errors.
+ * @param {function} options.sendRequestFunc - Function to send the request. Takes three arguments:
+ *        - data: Array of payload objects to be sent.
+ *        - requestOptions: Object containing request options (method, timeout, transport type, etc.).
+ *        - callback: Function to be called with the response. Should be called with an object containing optional fields:
+ *          - {number} [status] - HTTP status code of the response.
+ *          - {string} [error] - Error message if the request failed.
+ *          - {string} [retryAfter] - Value of the 'Retry-After' header
+ *          - {Object|string} [responseBody] - Body of the response.
+ * @param {function} options.stopAllBatchingFunc - Function to stop all batching operations.
+ * @param {function} [options.beforeSendHook] - Hook to modify payload before sending.
+ * @param {number} [options.requestTimeoutMs] - Timeout for each request.
  */
 var RequestBatcher = function(storageKey, options) {
     this.options = options;
@@ -190,12 +210,8 @@ RequestBatcher.prototype.flush = function(options) {
                 ) {
                     // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.currentFlushInterval * 2;
-                    var headers = res.responseHeaders;
-                    if (headers) {
-                        var retryAfter = headers['Retry-After'];
-                        if (retryAfter) {
-                            retryMS = (parseInt(retryAfter, 10) * 1000) || retryMS;
-                        }
+                    if (res.retryAfter) {
+                        retryMS = (parseInt(res.retryAfter, 10) * 1000) || retryMS;
                     }
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
                     this.reportError('Error; retry in ' + retryMS + ' ms');

@@ -191,12 +191,6 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function() {
 });
 
 MixpanelRecorder.prototype._sendRequest = addOptOutCheckMixpanelLib(function (data, options, callback) {
-    var url = this.get_config('api_host') + '/' + this.get_config('api_routes')['record'];
-    var headers = {
-        'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
-        'Content-Type': 'application/json'
-    };
-
     var reqBody = {
         'distinct_id': String(this._mixpanel.get_distinct_id()),
         'events': data,
@@ -217,17 +211,22 @@ MixpanelRecorder.prototype._sendRequest = addOptOutCheckMixpanelLib(function (da
         reqBody['$user_id'] = userId;
     }
 
-    var bodyData = _.JSONEncode(reqBody);
-    var reqOptions = _.extend({}, options, {
-        method: 'POST',
-        url: url,
-        'body_data': bodyData,
-        headers: headers,
-        callback: callback,
-        'report_error': _.bind(this.reportError, this)
+    window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'], {
+        'method': 'POST',
+        'headers': {
+            'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
+            'Content-Type': 'application/json'
+        },
+        'body': _.JSONEncode(reqBody)
+    }).then(function (response) {
+        response.json().then(function (responseBody) {
+            callback({status: response.status, responseBody: responseBody, retryAfter: response.headers.get('Retry-After')});
+        }).catch(function (error) {
+            callback({error: error});
+        });
+    }).catch(function (error) {
+        callback({error: error});
     });
-
-    make_xhr_request(reqOptions);
 });
 
 

@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, window, document, navigator, slice, make_xhr_request} from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, window, document, navigator, slice } from './utils';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -626,22 +626,69 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         }
     } else if (USE_XHR) {
         try {
+            var req = new XMLHttpRequest();
+            req.open(options.method, url, true);
+
             var headers = this.get_config('xhr_headers');
             if (use_post) {
                 headers['Content-Type'] = 'application/x-www-form-urlencoded';
             }
-
-            make_xhr_request({
-                method: options.method,
-                url: url,
-                headers: headers,
-                timeout_ms: options.timeout_ms,
-                verbose_mode: verbose_mode,
-                ignore_json_errors: options.ignore_json_errors,
-                callback: callback,
-                report_error: lib.report_error,
-                body_data: body_data
+            _.each(headers, function(headerValue, headerName) {
+                req.setRequestHeader(headerName, headerValue);
             });
+
+            if (options.timeout_ms && typeof req.timeout !== 'undefined') {
+                req.timeout = options.timeout_ms;
+                var start_time = new Date().getTime();
+            }
+
+            // send the mp_optout cookie
+            // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
+            req.withCredentials = true;
+            req.onreadystatechange = function () {
+                if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
+                    if (req.status === 200) {
+                        if (callback) {
+                            if (verbose_mode) {
+                                var response = {};
+                                try {
+                                    response['responseBody'] = _.JSONDecode(req.responseText);
+                                } catch (e) {
+                                    lib.report_error(e);
+                                    if (options.ignore_json_errors) {
+                                        response['responseBody'] = req.responseText;
+                                    } else {
+                                        return;
+                                    }
+                                }
+                                callback(response);
+                            } else {
+                                callback(Number(req.responseText));
+                            }
+                        }
+                    } else {
+                        var error;
+                        if (
+                            req.timeout &&
+                            !req.status &&
+                            new Date().getTime() - start_time >= req.timeout
+                        ) {
+                            error = 'timeout';
+                        } else {
+                            error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                        }
+                        lib.report_error(error);
+                        if (callback) {
+                            if (verbose_mode) {
+                                callback({status: req.status, error: error, retryAfter: req.responseHeaders['Retry-After']});
+                            } else {
+                                callback(0);
+                            }
+                        }
+                    }
+                }
+            };
+            req.send(body_data);
         } catch (e) {
             lib.report_error(e);
             succeeded = false;
