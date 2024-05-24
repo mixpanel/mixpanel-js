@@ -27,12 +27,12 @@ describe(`RequestBatcher`, function() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
   }
 
-  function sendResponse(status, {error, responseHeaders} = {}) {
+  function sendResponse(status, {error, retryAfter} = {}) {
     // respond to last request sent
     const requestIndex = batcher.options.sendRequestFunc.args.length - 1;
     batcher.options.sendRequestFunc.args[requestIndex][2]({
       status,
-      responseHeaders,
+      retryAfter,
       error,
     });
   }
@@ -439,7 +439,7 @@ describe(`RequestBatcher`, function() {
         batcher.enqueue({ev: `queued event 2`});
         batcher.flush();
 
-        sendResponse(503, {responseHeaders: {'Retry-After': `20`}});
+        sendResponse(503, {retryAfter: `20`});
         clock.tick(10000);
         expect(batcher.options.sendRequestFunc).to.have.been.calledOnce; // no retry yet
         clock.tick(10000);
