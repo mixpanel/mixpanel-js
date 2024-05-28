@@ -112,7 +112,7 @@ var DEFAULT_CONFIG = {
     'track_pageview':                    false,
     'skip_first_touch_marketing':        false,
     'store_google':                      true,
-    'stop_utm_persistence':              false,
+    'stop_utm_persistence':              true,
     'save_referrer':                     true,
     'test':                              false,
     'verbose':                           false,
@@ -138,10 +138,13 @@ var DEFAULT_CONFIG = {
     'batch_request_timeout_ms':          90000,
     'batch_autostart':                   true,
     'hooks':                             {},
-    'record_sessions_percent':           0,
+    'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
+    'record_block_selector':             'img, video',
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
-    'record_max_ms':                     MAX_RECORDING_MS,
+    'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
+    'record_max_ms':                     MAX_RECORDING_MS,
+    'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
 
@@ -392,6 +395,17 @@ MixpanelLib.prototype.stop_session_recording = function () {
     }
 };
 
+MixpanelLib.prototype.get_session_recording_properties = function () {
+    var props = {};
+    if (this._recorder) {
+        var replay_id = this._recorder['replayId'];
+        if (replay_id) {
+            props['$mp_replay_id'] = replay_id;
+        }
+    }
+    return props;
+};
+
 // Private methods
 
 MixpanelLib.prototype._loaded = function() {
@@ -399,9 +413,8 @@ MixpanelLib.prototype._loaded = function() {
     this._set_default_superprops();
     this['people'].set_once(this['persistence'].get_referrer_info());
 
-    // The original 'store_google' functionality will be deprecated and the config will be
-    // used to clear previously managed UTM parameters from persistence.
-    // stop_utm_persistence is `false` by default now but will be default `true` in the future.
+    // `store_google` is now deprecated and previously stored UTM parameters are cleared
+    // from persistence by default.
     if (this.get_config('store_google') && this.get_config('stop_utm_persistence')) {
         var utm_params = _.info.campaignParams(null);
         _.each(utm_params, function(_utm_value, utm_key) {
@@ -415,6 +428,7 @@ MixpanelLib.prototype._loaded = function() {
 // update persistence with info on referrer, UTM params, etc
 MixpanelLib.prototype._set_default_superprops = function() {
     this['persistence'].update_search_keyword(document.referrer);
+    // Registering super properties for UTM persistence by 'store_google' is deprecated.
     if (this.get_config('store_google') && !this.get_config('stop_utm_persistence')) {
         this.register(_.info.campaignParams());
     }
@@ -963,13 +977,6 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         ? _.info.marketingParams()
         : {};
 
-    if (this._recorder) {
-        var replay_id = this._recorder['replayId'];
-        if (replay_id) {
-            properties['$mp_replay_id'] = replay_id;
-        }
-    }
-
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
     // properties object by passing in a new object
@@ -981,6 +988,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         marketing_properties,
         this['persistence'].properties(),
         this.unpersisted_superprops,
+        this.get_session_recording_properties(),
         properties
     );
 
@@ -2088,40 +2096,41 @@ MixpanelLib.prototype.report_error = function(msg, err) {
 // EXPORTS (for closure compiler)
 
 // MixpanelLib Exports
-MixpanelLib.prototype['init']                      = MixpanelLib.prototype.init;
-MixpanelLib.prototype['reset']                     = MixpanelLib.prototype.reset;
-MixpanelLib.prototype['disable']                   = MixpanelLib.prototype.disable;
-MixpanelLib.prototype['time_event']                = MixpanelLib.prototype.time_event;
-MixpanelLib.prototype['track']                     = MixpanelLib.prototype.track;
-MixpanelLib.prototype['track_links']               = MixpanelLib.prototype.track_links;
-MixpanelLib.prototype['track_forms']               = MixpanelLib.prototype.track_forms;
-MixpanelLib.prototype['track_pageview']            = MixpanelLib.prototype.track_pageview;
-MixpanelLib.prototype['register']                  = MixpanelLib.prototype.register;
-MixpanelLib.prototype['register_once']             = MixpanelLib.prototype.register_once;
-MixpanelLib.prototype['unregister']                = MixpanelLib.prototype.unregister;
-MixpanelLib.prototype['identify']                  = MixpanelLib.prototype.identify;
-MixpanelLib.prototype['alias']                     = MixpanelLib.prototype.alias;
-MixpanelLib.prototype['name_tag']                  = MixpanelLib.prototype.name_tag;
-MixpanelLib.prototype['set_config']                = MixpanelLib.prototype.set_config;
-MixpanelLib.prototype['get_config']                = MixpanelLib.prototype.get_config;
-MixpanelLib.prototype['get_property']              = MixpanelLib.prototype.get_property;
-MixpanelLib.prototype['get_distinct_id']           = MixpanelLib.prototype.get_distinct_id;
-MixpanelLib.prototype['toString']                  = MixpanelLib.prototype.toString;
-MixpanelLib.prototype['opt_out_tracking']          = MixpanelLib.prototype.opt_out_tracking;
-MixpanelLib.prototype['opt_in_tracking']           = MixpanelLib.prototype.opt_in_tracking;
-MixpanelLib.prototype['has_opted_out_tracking']    = MixpanelLib.prototype.has_opted_out_tracking;
-MixpanelLib.prototype['has_opted_in_tracking']     = MixpanelLib.prototype.has_opted_in_tracking;
-MixpanelLib.prototype['clear_opt_in_out_tracking'] = MixpanelLib.prototype.clear_opt_in_out_tracking;
-MixpanelLib.prototype['get_group']                 = MixpanelLib.prototype.get_group;
-MixpanelLib.prototype['set_group']                 = MixpanelLib.prototype.set_group;
-MixpanelLib.prototype['add_group']                 = MixpanelLib.prototype.add_group;
-MixpanelLib.prototype['remove_group']              = MixpanelLib.prototype.remove_group;
-MixpanelLib.prototype['track_with_groups']         = MixpanelLib.prototype.track_with_groups;
-MixpanelLib.prototype['start_batch_senders']       = MixpanelLib.prototype.start_batch_senders;
-MixpanelLib.prototype['stop_batch_senders']        = MixpanelLib.prototype.stop_batch_senders;
-MixpanelLib.prototype['start_session_recording']   = MixpanelLib.prototype.start_session_recording;
-MixpanelLib.prototype['stop_session_recording']    = MixpanelLib.prototype.stop_session_recording;
-MixpanelLib.prototype['DEFAULT_API_ROUTES']        = DEFAULT_API_ROUTES;
+MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
+MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
+MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
+MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
+MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
+MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
+MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
+MixpanelLib.prototype['track_pageview']                     = MixpanelLib.prototype.track_pageview;
+MixpanelLib.prototype['register']                           = MixpanelLib.prototype.register;
+MixpanelLib.prototype['register_once']                      = MixpanelLib.prototype.register_once;
+MixpanelLib.prototype['unregister']                         = MixpanelLib.prototype.unregister;
+MixpanelLib.prototype['identify']                           = MixpanelLib.prototype.identify;
+MixpanelLib.prototype['alias']                              = MixpanelLib.prototype.alias;
+MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
+MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
+MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
+MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
+MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
+MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;
+MixpanelLib.prototype['opt_out_tracking']                   = MixpanelLib.prototype.opt_out_tracking;
+MixpanelLib.prototype['opt_in_tracking']                    = MixpanelLib.prototype.opt_in_tracking;
+MixpanelLib.prototype['has_opted_out_tracking']             = MixpanelLib.prototype.has_opted_out_tracking;
+MixpanelLib.prototype['has_opted_in_tracking']              = MixpanelLib.prototype.has_opted_in_tracking;
+MixpanelLib.prototype['clear_opt_in_out_tracking']          = MixpanelLib.prototype.clear_opt_in_out_tracking;
+MixpanelLib.prototype['get_group']                          = MixpanelLib.prototype.get_group;
+MixpanelLib.prototype['set_group']                          = MixpanelLib.prototype.set_group;
+MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
+MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
+MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
+MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
+MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
+MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
+MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
+MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;

@@ -60,6 +60,6 @@
     "webpack": "1.12.2"
   },
   "dependencies": {
-    "rrweb": "2.0.0-alpha.4"
+    "rrweb": "2.0.0-alpha.13"
   }
 }

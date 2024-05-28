@@ -163,7 +163,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.50.0'
+    LIB_VERSION: '2.51.0-rc-1'
 };
 
 exports['default'] = Config;
@@ -784,7 +784,7 @@ var DEFAULT_CONFIG = {
     'track_pageview': false,
     'skip_first_touch_marketing': false,
     'store_google': true,
-    'stop_utm_persistence': false,
+    'stop_utm_persistence': true,
     'save_referrer': true,
     'test': false,
     'verbose': false,
@@ -810,10 +810,13 @@ var DEFAULT_CONFIG = {
     'batch_request_timeout_ms': 90000,
     'batch_autostart': true,
     'hooks': {},
-    'record_sessions_percent': 0,
+    'record_block_class': new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
+    'record_block_selector': 'img, video',
     'record_idle_timeout_ms': 30 * 60 * 1000, // 30 minutes
-    'record_max_ms': _utils.MAX_RECORDING_MS,
+    'record_mask_text_class': new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector': '*',
+    'record_max_ms': _utils.MAX_RECORDING_MS,
+    'record_sessions_percent': 0,
     'recorder_src': 'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
 
@@ -1063,6 +1066,17 @@ MixpanelLib.prototype.stop_session_recording = function () {
     }
 };
 
+MixpanelLib.prototype.get_session_recording_properties = function () {
+    var props = {};
+    if (this._recorder) {
+        var replay_id = this._recorder['replayId'];
+        if (replay_id) {
+            props['$mp_replay_id'] = replay_id;
+        }
+    }
+    return props;
+};
+
 // Private methods
 
 MixpanelLib.prototype._loaded = function () {
@@ -1070,9 +1084,8 @@ MixpanelLib.prototype._loaded = function () {
     this._set_default_superprops();
     this['people'].set_once(this['persistence'].get_referrer_info());
 
-    // The original 'store_google' functionality will be deprecated and the config will be
-    // used to clear previously managed UTM parameters from persistence.
-    // stop_utm_persistence is `false` by default now but will be default `true` in the future.
+    // `store_google` is now deprecated and previously stored UTM parameters are cleared
+    // from persistence by default.
     if (this.get_config('store_google') && this.get_config('stop_utm_persistence')) {
         var utm_params = _utils._.info.campaignParams(null);
         _utils._.each(utm_params, (function (_utm_value, utm_key) {
@@ -1086,6 +1099,7 @@ MixpanelLib.prototype._loaded = function () {
 // update persistence with info on referrer, UTM params, etc
 MixpanelLib.prototype._set_default_superprops = function () {
     this['persistence'].update_search_keyword(_utils.document.referrer);
+    // Registering super properties for UTM persistence by 'store_google' is deprecated.
     if (this.get_config('store_google') && !this.get_config('stop_utm_persistence')) {
         this.register(_utils._.info.campaignParams());
     }
@@ -1627,19 +1641,12 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
 
     var marketing_properties = this.get_config('track_marketing') ? _utils._.info.marketingParams() : {};
 
-    if (this._recorder) {
-        var replay_id = this._recorder['replayId'];
-        if (replay_id) {
-            properties['$mp_replay_id'] = replay_id;
-        }
-    }
-
     // note: extend writes to the first object, so lets make sure we
     // don't write to the persistence properties object and info
     // properties object by passing in a new object
 
     // update properties with pageview info and super-properties
-    properties = _utils._.extend({}, _utils._.info.properties({ 'mp_loader': this.get_config('mp_loader') }), marketing_properties, this['persistence'].properties(), this.unpersisted_superprops, properties);
+    properties = _utils._.extend({}, _utils._.info.properties({ 'mp_loader': this.get_config('mp_loader') }), marketing_properties, this['persistence'].properties(), this.unpersisted_superprops, this.get_session_recording_properties(), properties);
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_utils._.isArray(property_blacklist)) {
@@ -2764,6 +2771,7 @@ MixpanelLib.prototype['start_batch_senders'] = MixpanelLib.prototype.start_batch
 MixpanelLib.prototype['stop_batch_senders'] = MixpanelLib.prototype.stop_batch_senders;
 MixpanelLib.prototype['start_session_recording'] = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording'] = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['get_session_recording_properties'] = MixpanelLib.prototype.get_session_recording_properties;
 MixpanelLib.prototype['DEFAULT_API_ROUTES'] = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports
@@ -3650,7 +3658,7 @@ var MixpanelPersistence = function MixpanelPersistence(config) {
 
     this.load();
     this.update_config(config);
-    this.upgrade(config);
+    this.upgrade();
     this.save();
 };
 
@@ -3680,45 +3688,11 @@ MixpanelPersistence.prototype.load = function () {
     }
 };
 
-MixpanelPersistence.prototype.upgrade = function (config) {
-    var upgrade_from_old_lib = config['upgrade'],
-        old_cookie_name,
-        old_cookie;
+MixpanelPersistence.prototype.upgrade = function () {
+    var old_cookie, old_localstorage;
 
-    if (upgrade_from_old_lib) {
-        old_cookie_name = 'mp_super_properties';
-        // Case where they had a custom cookie name before.
-        if (typeof upgrade_from_old_lib === 'string') {
-            old_cookie_name = upgrade_from_old_lib;
-        }
-
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        // remove the cookie
-        this.storage.remove(old_cookie_name);
-        this.storage.remove(old_cookie_name, true);
-
-        if (old_cookie) {
-            this['props'] = _utils._.extend(this['props'], old_cookie['all'], old_cookie['events']);
-        }
-    }
-
-    if (!config['cookie_name'] && config['name'] !== 'mixpanel') {
-        // special case to handle people with cookies of the form
-        // mp_TOKEN_INSTANCENAME from the first release of this library
-        old_cookie_name = 'mp_' + config['token'] + '_' + config['name'];
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        if (old_cookie) {
-            this.storage.remove(old_cookie_name);
-            this.storage.remove(old_cookie_name, true);
-
-            // Save the prop values that were in the cookie from before -
-            // this should only happen once as we delete the old one.
-            this.register_once(old_cookie);
-        }
-    }
-
+    // if transferring from cookie to localStorage or vice-versa, copy existing
+    // super properties over to new storage mode
     if (this.storage === _utils._.localStorage) {
         old_cookie = _utils._.cookie.parse(this.name);
 
@@ -3727,6 +3701,14 @@ MixpanelPersistence.prototype.upgrade = function (config) {
 
         if (old_cookie) {
             this.register_once(old_cookie);
+        }
+    } else if (this.storage === _utils._.cookie) {
+        old_localstorage = _utils._.localStorage.parse(this.name);
+
+        _utils._.localStorage.remove(this.name);
+
+        if (old_localstorage) {
+            this.register_once(old_localstorage);
         }
     }
 };

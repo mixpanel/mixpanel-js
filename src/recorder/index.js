@@ -66,7 +66,10 @@ MixpanelRecorder.prototype.startRecording = function () {
             resetIdleTimeout();
         }, this),
         'maskAllInputs': true,
-        'maskTextSelector': this.get_config('record_mask_text_selector')
+        'maskTextSelector': this.get_config('record_mask_text_selector'),
+        'blockSelector': this.get_config('record_block_selector'),
+        'maskTextClass': this.get_config('record_mask_text_class'),
+        'blockClass': this.get_config('record_block_class'),
     });
 
     resetIdleTimeout();
