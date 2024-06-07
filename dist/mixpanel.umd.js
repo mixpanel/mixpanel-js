@@ -4176,7 +4176,7 @@
         'track_pageview':                    false,
         'skip_first_touch_marketing':        false,
         'store_google':                      true,
-        'stop_utm_persistence':              true,
+        'stop_utm_persistence':              false,
         'save_referrer':                     true,
         'test':                              false,
         'verbose':                           false,
