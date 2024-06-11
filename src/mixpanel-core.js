@@ -47,6 +47,9 @@ Globals should be all caps
 */
 
 var init_type;       // MODULE or SNIPPET loader
+var load_recorder = function(_onload) {
+    throw new Error('The recorder is not available in this version of the Mixpanel library.');
+};
 var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
@@ -376,12 +379,7 @@ MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(functi
     }, this);
 
     if (_.isUndefined(window['__mp_recorder'])) {
-        var scriptEl = document.createElement('script');
-        scriptEl.type = 'text/javascript';
-        scriptEl.async = true;
-        scriptEl.onload = handleLoadedRecorder;
-        scriptEl.src = this.get_config('recorder_src');
-        document.head.appendChild(scriptEl);
+        load_recorder(handleLoadedRecorder);
     } else {
         handleLoadedRecorder();
     }
@@ -2281,7 +2279,8 @@ export function init_from_snippet() {
     add_dom_loaded_handler();
 }
 
-export function init_as_module() {
+export function init_as_module(recorder_loader) {
+    load_recorder = recorder_loader;
     init_type = INIT_MODULE;
     mixpanel_master = new MixpanelLib();
 
