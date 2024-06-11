@@ -4,6 +4,7 @@ import { MAX_RECORDING_MS, console_with_prefix, _ } from '../utils'; // eslint-d
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 
 var logger = console_with_prefix('recorder');
+var CompressionStream = window['CompressionStream'];
 
 var MixpanelRecorder = function(mixpanelInstance) {
     this._mixpanel = mixpanelInstance;
@@ -113,6 +114,17 @@ MixpanelRecorder.prototype._onOptOut = function (code) {
     }
 };
 
+MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody) {
+    window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+        'method': 'POST',
+        'headers': {
+            'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
+            'Content-Type': 'application/octet-stream'
+        },
+        'body': reqBody
+    });
+};
+
 /**
  * @api private
  * Private method, flushes the current batch of events to the server.
@@ -120,36 +132,41 @@ MixpanelRecorder.prototype._onOptOut = function (code) {
 MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function() {
     var numEvents = this.recEvents.length;
     if (numEvents > 0) {
-        var reqBody = {
+        var reqParams = {
             'distinct_id': String(this._mixpanel.get_distinct_id()),
-            'events': this.recEvents,
             'seq': this.seqNo++,
             'batch_start_time': this.batchStartTime / 1000,
             'replay_id': this.replayId,
             'replay_length_ms': this.replayLengthMs,
             'replay_start_time': this.replayStartTime / 1000
         };
+        var eventsJson = _.JSONEncode(this.recEvents);
 
         // send ID management props if they exist
         var deviceId = this._mixpanel.get_property('$device_id');
         if (deviceId) {
-            reqBody['$device_id'] = deviceId;
+            reqParams['$device_id'] = deviceId;
         }
         var userId = this._mixpanel.get_property('$user_id');
         if (userId) {
-            reqBody['$user_id'] = userId;
+            reqParams['$user_id'] = userId;
         }
 
-        window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'], {
-            'method': 'POST',
-            'headers': {
-                'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
-                'Content-Type': 'application/json'
-            },
-            'body': _.JSONEncode(reqBody)
-        });
         this.recEvents = this.recEvents.slice(numEvents);
         this.batchStartTime = new Date().getTime();
+        if (CompressionStream) {
+            var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
+            var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
+            new Response(gzipStream)
+                .blob()
+                .then(_.bind(function(compressedBlob) {
+                    reqParams['format'] = 'gzip';
+                    this._sendRequest(reqParams, compressedBlob);
+                }, this));
+        } else {
+            reqParams['format'] = 'body';
+            this._sendRequest(reqParams, eventsJson);
+        }
     }
 });
 
