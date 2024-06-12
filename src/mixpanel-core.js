@@ -2241,7 +2241,8 @@ var add_dom_loaded_handler = function() {
     _.register_event(window, 'load', dom_loaded_handler, true);
 };
 
-export function init_from_snippet() {
+export function init_from_snippet(bundle_loader) {
+    load_recorder = bundle_loader;
     init_type = INIT_SNIPPET;
     mixpanel_master = window[PRIMARY_INSTANCE_NAME];
 
