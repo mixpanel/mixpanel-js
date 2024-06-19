@@ -5298,35 +5298,61 @@
                     ok(this.getRecorderScript() === null);
                 });
     
-                asyncTest('sends recording payload to server', 11, function () {
+                asyncTest('sends recording payload to server', 12, function () {
+                    stop();
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
-                    ok(this.getRecorderScript() !== null);
+                    ok(this.getRecorderScript() !== null, "recorder script loaded");
 
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000)
-                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds')
+                        untilDone(_.bind(function(done) {
+                            var fetchCall1 = this.fetchStub.getCall(0);
+                            if (fetchCall1) {
+                                same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds')
 
-                        var callArgs = this.fetchStub.getCall(0).args;
-                        var payload = JSON.parse(callArgs[1].body);
+                                var callArgs = fetchCall1.args;
+                                var body = callArgs[1].body;
+                                same(body.constructor, Blob, 'request body is a Blob');
 
-                        same(callArgs[0], "https://api-js.mixpanel.com/record/")
-                        same(payload.distinct_id, mixpanel.recordertest.get_distinct_id());
-                        same(payload.$device_id, mixpanel.recordertest.get_property('$device_id'));
-                        ok(payload.events.length > 0);
+                                var calledURL = callArgs[0];
+                                ok(calledURL.startsWith("https://api-js.mixpanel.com/record/"));
 
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
+                                var paramsStr = calledURL.split('?')[1];
+                                var params = new URLSearchParams(paramsStr);
+                                same(params.get('distinct_id'), mixpanel.recordertest.get_distinct_id());
+                                same(params.get('$device_id'), mixpanel.recordertest.get_property('$device_id'));
 
-                        callArgs = this.fetchStub.getCall(1).args;
-                        payload = JSON.parse(callArgs[1].body);
+                                simulateMouseClick(document.body);
+                                this.clock.tick(10 * 1000);
 
-                        ok(callArgs[0] === "https://api-js.mixpanel.com/record/")
-                        ok(payload.distinct_id === mixpanel.recordertest.get_distinct_id());
-                        ok(payload.events.length > 0);
-                        mixpanel.recordertest.stop_session_recording();
+                                stop();
+                                untilDone(_.bind(function(done) {
+                                    var fetchCall2 = this.fetchStub.getCall(1);
+                                    if (fetchCall2) {
+                                        same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
+
+                                        var callArgs = fetchCall1.args;
+                                        var body = callArgs[1].body;
+                                        same(body.constructor, Blob, 'request body is a Blob');
+
+                                        var calledURL = callArgs[0];
+                                        ok(calledURL.startsWith("https://api-js.mixpanel.com/record/"));
+
+                                        var paramsStr = calledURL.split('?')[1];
+                                        var params = new URLSearchParams(paramsStr);
+                                        same(params.get('distinct_id'), mixpanel.recordertest.get_distinct_id());
+                                        same(params.get('$device_id'), mixpanel.recordertest.get_property('$device_id'));
+
+                                        mixpanel.recordertest.stop_session_recording();
+                                        done();
+                                    }
+                                }, this));
+
+                                done();
+                            }
+                        }, this));
                     });
                 });
 
