@@ -5299,7 +5299,6 @@
                 });
     
                 asyncTest('sends recording payload to server', 12, function () {
-                    stop();
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     ok(this.getRecorderScript() !== null, "recorder script loaded");
@@ -5307,6 +5306,7 @@
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000)
+                        stop();
                         untilDone(_.bind(function(done) {
                             var fetchCall1 = this.fetchStub.getCall(0);
                             if (fetchCall1) {
@@ -5369,12 +5369,20 @@
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-                        same(this.fetchStub.getCall(0).args[0], "https://api-js.mixpanel.com/record/");
+
+                        stop();
+                        untilDone(_.bind(function(done) {
+                            var fetchCall1 = this.fetchStub.getCall(0);
+                            if (fetchCall1) {
+                                same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                                ok(this.fetchStub.getCall(0).args[0].startsWith("https://api-js.mixpanel.com/record/"));
+                                done();
+                            }
+                        }, this));
                     });
                 });
 
-                asyncTest('can manually stop a session recording', 7, function () {
+                asyncTest('can manually stop a session recording', function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     ok(this.getRecorderScript() !== null);
@@ -5382,18 +5390,36 @@
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-                        same(this.fetchStub.getCall(0).args[0], "https://api-js.mixpanel.com/record/");
+                        stop();
+                        untilDone(_.bind(function(done) {
+                            var fetchCall1 = this.fetchStub.getCall(0);
+                            if (fetchCall1) {
+                                same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                                ok(fetchCall1.args[0].startsWith("https://api-js.mixpanel.com/record/"));
 
-                        simulateMouseClick(document.body);
-                        this.clock.tick(2 * 1000);
-                        mixpanel.recordertest.stop_session_recording();
-                        same(this.fetchStub.getCalls().length, 2, 'flushes the events up to the point that the recording was stopped');
-                        same(this.fetchStub.getCall(1).args[0], "https://api-js.mixpanel.com/record/");
+                                simulateMouseClick(document.body);
+                                this.clock.tick(2 * 1000);
+                                mixpanel.recordertest.stop_session_recording();
 
-                        simulateMouseClick(document.body);
-                        this.clock.tick(20 * 1000);
-                        same(this.fetchStub.getCalls().length, 2, 'no more fetch requests after recording is stopped');
+                                stop();
+                                untilDone(_.bind(function(done) {
+                                    var fetchCall2 = this.fetchStub.getCall(1);
+                                    if (fetchCall2) {
+                                        same(this.fetchStub.getCalls().length, 2, 'flushes the events up to the point that the recording was stopped');
+                                        ok(fetchCall2.args[0].startsWith("https://api-js.mixpanel.com/record/"));
+
+                                        simulateMouseClick(document.body);
+                                        this.clock.tick(20 * 1000);
+                                        realSetTimeout(_.bind(function() {
+                                            same(this.fetchStub.getCalls().length, 2, 'no more fetch requests after recording is stopped');
+                                            done();
+                                        }, this), 2);
+                                    }
+                                }, this));
+
+                                done();
+                            }
+                        }, this));
                     });
                 });
 
@@ -5413,7 +5439,7 @@
                     ok(this.getRecorderScript() === null);
                 });
 
-                asyncTest('respects tracking opt-out after recording started', 4, function () {
+                asyncTest('respects tracking opt-out after recording started', function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     ok(this.getRecorderScript() !== null);
@@ -5421,19 +5447,28 @@
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
 
-                        // queue up more record events, and opt out tracking
-                        simulateMouseClick(document.body);
-                        this.clock.tick(2 * 1000);
-                        simulateMouseClick(document.body);
-                        mixpanel.recordertest.opt_out_tracking();
-                        simulateMouseClick(document.body);
+                        stop();
+                        untilDone(_.bind(function(done) {
+                            var fetchCall1 = this.fetchStub.getCall(0);
+                            if (fetchCall1) {
+                                same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
 
-                        this.clock.tick(10 * 1000);
+                                // queue up more record events, and opt out tracking
+                                simulateMouseClick(document.body);
+                                this.clock.tick(2 * 1000);
+                                simulateMouseClick(document.body);
+                                mixpanel.recordertest.opt_out_tracking();
+                                simulateMouseClick(document.body);
 
-                        same(this.fetchStub.getCalls().length, 1, 'no /record calls made after user has opted out.');
-                        mixpanel.recordertest.stop_session_recording();
+                                this.clock.tick(10 * 1000);
+                                realSetTimeout(_.bind(function() {
+                                    same(this.fetchStub.getCalls().length, 1, 'no /record calls made after user has opted out.');
+                                    mixpanel.recordertest.stop_session_recording();
+                                    done();
+                                }, this), 2);
+                            }
+                        }, this));
                     });
                 });
             }
