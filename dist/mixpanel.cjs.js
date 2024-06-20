@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.52.0'
+    LIB_VERSION: '2.53.0-rc'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
