@@ -141,6 +141,8 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
         'reset',
         'set_config',
         'set_group',
+        'start_session_recording',
+        'stop_session_recording',
         'time_event',
         'track',
         'track_forms',

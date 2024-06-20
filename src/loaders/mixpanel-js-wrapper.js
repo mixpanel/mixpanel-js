@@ -37,6 +37,8 @@ import './mixpanel-jslib-snippet';
         'reset',
         'set_config',
         'set_group',
+        'start_session_recording',
+        'stop_session_recording',
         'time_event',
         'track',
         'track_forms',
