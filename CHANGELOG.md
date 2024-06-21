@@ -1,3 +1,19 @@
+**2.53.0** (21 Jun 2024)
+- Switch to new session-recording network payload format, utilizing client-side compression when available
+- Session-recording methods are now available through Google Tag Manager wrapper
+
+**2.52.0** (7 Jun 2024)
+- Reverted UTM param persistence change from 2.51.0: UTM parameters are again persisted by default
+
+**2.51.0** (30 May 2024)
+- UTM parameter properties are no longer persisted by default
+- Existing superproperties persisted in localStorage are now copied back to cookie storage if the library is initialized with cookie persistence (support migrations from localStorage->cookie)
+- Added session-recording options `record_block_class`, `record_block_selector`, and `record_mask_text_class`
+- Added method `mixpanel.get_session_recording_properties()` for interop with other client-side SDKs
+
+**2.50.0** (26 Apr 2024)
+- Initial support for session recording
+
 **2.49.0** (5 Feb 2024)
 - SPA support in pageview-tracking
 - Support for configurable UTM parameter persistence
