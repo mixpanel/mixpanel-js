@@ -49,9 +49,10 @@ Globals should be all caps
 var init_type;       // MODULE or SNIPPET loader
 // allow bundlers to specify how extra code (recorder bundle) should be loaded
 // eslint-disable-next-line no-unused-vars
-var load_recorder = function(_src, _onload) {
-    throw new Error('The recorder is not available in this version of the Mixpanel library.');
+var load_extra_bundle = function(src, _onload) {
+    throw new Error(src + ' not available in this build.');
 };
+
 var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
@@ -381,7 +382,7 @@ MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(functi
     }, this);
 
     if (_.isUndefined(window['__mp_recorder'])) {
-        load_recorder(this.get_config('recorder_src'), handleLoadedRecorder);
+        load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
     } else {
         handleLoadedRecorder();
     }
@@ -2242,7 +2243,7 @@ var add_dom_loaded_handler = function() {
 };
 
 export function init_from_snippet(bundle_loader) {
-    load_recorder = bundle_loader;
+    load_extra_bundle = bundle_loader;
     init_type = INIT_SNIPPET;
     mixpanel_master = window[PRIMARY_INSTANCE_NAME];
 
@@ -2283,7 +2284,7 @@ export function init_from_snippet(bundle_loader) {
 }
 
 export function init_as_module(bundle_loader) {
-    load_recorder = bundle_loader;
+    load_extra_bundle = bundle_loader;
     init_type = INIT_MODULE;
     mixpanel_master = new MixpanelLib();
 
