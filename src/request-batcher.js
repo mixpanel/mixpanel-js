@@ -36,9 +36,10 @@ var RequestBatcher = function(storageKey, options) {
     // extra client-side dedupe
     this.itemIdsSentSuccessfully = {};
 
-    // Forces flush to occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
-    // as long as the queue is not empty. This is useful for high-volume events like Session Replay.
-    this.forceDelayFlush = options.forceDelayFlush || false;
+    // Make the flush occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
+    // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
+    // in a request loop and get ratelimited by the server.
+    this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
 };
 
 /**
@@ -123,6 +124,9 @@ RequestBatcher.prototype.flush = function(options) {
         var startTime = new Date().getTime();
         var currentBatchSize = this.batchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
+        // if there's more items in the queue than the batch size, attempt
+        // to flush again after the current batch is done.
+        var attemptSecondaryFlush = batch.length === currentBatchSize;
         var dataForRequest = [];
         var transformedItems = {};
         _.each(batch, function(item) {
@@ -224,7 +228,7 @@ RequestBatcher.prototype.flush = function(options) {
                         _.bind(function(succeeded) {
                             if (succeeded) {
                                 this.consecutiveRemovalFailures = 0;
-                                if (this.forceDelayFlush) {
+                                if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
                                     this.resetFlush(); // schedule next batch with a delay
                                 } else {
                                     this.flush(); // handle next batch if the queue isn't empty

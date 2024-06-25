@@ -39,7 +39,7 @@ MixpanelRecorder.prototype._initBatcher = function () {
         libConfig: RECORDER_BATCHER_LIB_CONFIG,
         sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
         errorReporter: _.bind(this.reportError, this),
-        forceDelayFlush: true,
+        flushOnlyOnInterval: true,
         usePersistence: false,
     });
 };
