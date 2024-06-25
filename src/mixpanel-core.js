@@ -779,10 +779,8 @@ MixpanelLib.prototype.init_batchers = function() {
             return new RequestBatcher(
                 attrs.queue_key,
                 {
-                    batchSize: this.get_config('batch_size'),
-                    flushIntervalMs: this.get_config('batch_flush_interval_ms'),
-                    requestTimeoutMs: this.get_config('batch_request_timeout_ms'),
-                    autoStart: this.get_config('batch_autostart'),
+                    libConfig: this['config'],
+                    errorReporter: this.get_config('error_reporter'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
                         this._send_request(
                             this.get_config('api_host') + attrs.endpoint,
@@ -794,7 +792,6 @@ MixpanelLib.prototype.init_batchers = function() {
                     beforeSendHook: _.bind(function(item) {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
-                    errorReporter: this.get_config('error_reporter'),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
                     usePersistence: true
                 }

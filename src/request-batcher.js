@@ -12,56 +12,40 @@ var logger = console_with_prefix('batch');
  * type (events, people, groups).
  * Uses RequestQueue to manage the backing store.
  * @constructor
- * @param {string} storageKey - Key to access the storage for request queue.
- * @param {Object} options - Configuration options for the RequestBatcher.
- * @param {number} options.batchSize - The size of the batch to be sent in each flush.
- * @param {number} options.flushIntervalMs - Interval in milliseconds between each flush attempt.
- * @param {boolean} options.usePersistence - Whether to use persistent storage.
- * @param {boolean} options.forceDelayFlush - Force flush at the interval specified by flushIntervalMs.
- * @param {boolean} options.autoStart - Automatically start the batcher upon initialization.
- * @param {Object} options.storage - Storage implementation to use.
- * @param {function} options.errorReporter - Function to report errors.
- * @param {function} options.sendRequestFunc - Function to send the request. Takes three arguments:
- *        - data: Array of payload objects to be sent.
- *        - requestOptions: Object containing request options (method, timeout, transport type, etc.).
- *        - callback: Function to be called with the response. Should be called with an object containing optional fields:
- *          - {number} [status] - HTTP status code of the response.
- *          - {string} [error] - Error message if the request failed.
- *          - {string} [retryAfter] - Value of the 'Retry-After' header
- *          - {Object|string} [responseBody] - Body of the response.
- * @param {function} options.stopAllBatchingFunc - Function to stop all batching operations.
- * @param {function} [options.beforeSendHook] - Hook to modify payload before sending.
- * @param {number} [options.requestTimeoutMs] - Timeout for each request.
  */
 var RequestBatcher = function(storageKey, options) {
-    this.options = options;
-
+    this.errorReporter = options.errorReporter;
     this.queue = new RequestQueue(storageKey, {
         errorReporter: _.bind(this.reportError, this),
         storage: options.storage,
-        usePersistence: options.usePersistence
+        usePersistence: options.usePersistence,
     });
 
+    this.libConfig = options.libConfig;
+    this.sendRequest = options.sendRequestFunc;
+    this.beforeSendHook = options.beforeSendHook;
+    this.stopAllBatching = options.stopAllBatchingFunc;
+
     // seed variable batch size + flush interval with configured values
-    this.currentBatchSize = options.batchSize;
-    this.currentFlushInterval = options.flushIntervalMs;
+    this.batchSize = this.libConfig['batch_size'];
+    this.flushInterval = this.libConfig['batch_flush_interval_ms'];
 
-    // Forces flush to occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
-    // as long as the queue is not empty. This is useful for high-volume events like Session Replay.
-    this.forceDelayFlush = options.forceDelayFlush || false;
-
-    this.stopped = !options.autoStart;
+    this.stopped = !this.libConfig['batch_autostart'];
     this.consecutiveRemovalFailures = 0;
 
     // extra client-side dedupe
     this.itemIdsSentSuccessfully = {};
+
+    // Forces flush to occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
+    // as long as the queue is not empty. This is useful for high-volume events like Session Replay.
+    this.forceDelayFlush = options.forceDelayFlush || false;
 };
 
 /**
  * Add one item to queue.
  */
 RequestBatcher.prototype.enqueue = function(item, cb) {
-    this.queue.enqueue(item, this.currentFlushInterval, cb);
+    this.queue.enqueue(item, this.flushInterval, cb);
 };
 
 /**
@@ -93,26 +77,26 @@ RequestBatcher.prototype.clear = function() {
 };
 
 /**
- * Restore batch size configuration to the originally initialized value
+ * Restore batch size configuration to whatever is set in the main SDK.
  */
 RequestBatcher.prototype.resetBatchSize = function() {
-    this.currentBatchSize = this.options.batchSize;
+    this.batchSize = this.libConfig['batch_size'];
 };
 
 /**
- * Restore flush interval time configuration to the originally initialized value
+ * Restore flush interval time configuration to whatever is set in the main SDK.
  */
 RequestBatcher.prototype.resetFlush = function() {
-    this.scheduleFlush(this.options.flushIntervalMs);
+    this.scheduleFlush(this.libConfig['batch_flush_interval_ms']);
 };
 
 /**
  * Schedule the next flush in the given number of milliseconds.
  */
 RequestBatcher.prototype.scheduleFlush = function(flushMS) {
-    this.currentFlushInterval = flushMS;
+    this.flushInterval = flushMS;
     if (!this.stopped) { // don't schedule anymore if batching has been stopped
-        this.timeoutID = setTimeout(_.bind(this.flush, this), this.currentFlushInterval);
+        this.timeoutID = setTimeout(_.bind(this.flush, this), this.flushInterval);
     }
 };
 
@@ -135,16 +119,16 @@ RequestBatcher.prototype.flush = function(options) {
         }
 
         options = options || {};
-        var timeoutMS = this.options.requestTimeoutMs;
+        var timeoutMS = this.requestTimeoutMs;
         var startTime = new Date().getTime();
-        var flushBatchSize = this.currentBatchSize;
-        var batch = this.queue.fillBatch(flushBatchSize);
+        var currentBatchSize = this.batchSize;
+        var batch = this.queue.fillBatch(currentBatchSize);
         var dataForRequest = [];
         var transformedItems = {};
         _.each(batch, function(item) {
             var payload = item['payload'];
-            if (this.options.beforeSendHook && !item.orphaned) {
-                payload = this.options.beforeSendHook(payload);
+            if (this.beforeSendHook && !item.orphaned) {
+                payload = this.beforeSendHook(payload);
             }
             if (payload) {
                 // mp_sent_by_lib_version prop captures which lib version actually
@@ -209,7 +193,7 @@ RequestBatcher.prototype.flush = function(options) {
                     (res.status >= 500 || res.status === 429 || res.error === 'timeout')
                 ) {
                     // network or API error, or 429 Too Many Requests, retry
-                    var retryMS = this.currentFlushInterval * 2;
+                    var retryMS = this.flushInterval * 2;
                     if (res.retryAfter) {
                         retryMS = (parseInt(res.retryAfter, 10) * 1000) || retryMS;
                     }
@@ -219,8 +203,8 @@ RequestBatcher.prototype.flush = function(options) {
                 } else if (_.isObject(res) && res.status === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
-                        var halvedBatchSize = Math.max(1, Math.floor(flushBatchSize / 2));
-                        this.currentBatchSize = Math.min(this.currentBatchSize, halvedBatchSize, batch.length - 1);
+                        var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
+                        this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
                         this.reportError('413 response; reducing batch size to ' + this.batchSize);
                         this.resetFlush();
                     } else {
@@ -249,7 +233,7 @@ RequestBatcher.prototype.flush = function(options) {
                                 this.reportError('Failed to remove items from queue');
                                 if (++this.consecutiveRemovalFailures > 5) {
                                     this.reportError('Too many queue failures; disabling batching system.');
-                                    this.options.stopAllBatchingFunc();
+                                    this.stopAllBatchingFunc();
                                 } else {
                                     this.resetFlush();
                                 }
@@ -291,7 +275,7 @@ RequestBatcher.prototype.flush = function(options) {
             requestOptions.transport = 'sendBeacon';
         }
         logger.log('MIXPANEL REQUEST:', dataForRequest);
-        this.options.sendRequestFunc(dataForRequest, requestOptions, batchSendCallback);
+        this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
     } catch(err) {
         this.reportError('Error flushing request queue', err);
         this.resetFlush();
@@ -303,12 +287,12 @@ RequestBatcher.prototype.flush = function(options) {
  */
 RequestBatcher.prototype.reportError = function(msg, err) {
     logger.error.apply(logger.error, arguments);
-    if (this.options.errorReporter) {
+    if (this.errorReporter) {
         try {
             if (!(err instanceof Error)) {
                 err = new Error(msg);
             }
-            this.options.errorReporter(msg, err);
+            this.errorReporter(msg, err);
         } catch(err) {
             logger.error(err);
         }

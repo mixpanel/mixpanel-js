@@ -21,7 +21,6 @@ var MixpanelRecorder = function(mixpanelInstance) {
     this.seqNo = 0;
     this.replayId = null;
     this.replayStartTime = null;
-    this.batchStartTime = null;
     this.replayLengthMs = 0;
     this.sendBatchId = null;
 
@@ -34,13 +33,19 @@ var MixpanelRecorder = function(mixpanelInstance) {
 
 
 MixpanelRecorder.prototype._initBatcher = function () {
+    var libConfig = {
+        'batch_size': BATCH_SIZE,
+        'batch_flush_interval_ms': BATCH_FLUSH_INTERVAL_MS,
+        'batch_request_timeout_ms': BATCH_REQUEST_TIMEOUT_MS,
+        'batch_autostart': true,
+    };
+
     this.batcher = new RequestBatcher('__mprec', {
-        batchSize: BATCH_SIZE,
-        flushIntervalMs: BATCH_FLUSH_INTERVAL_MS,
-        requestTimeoutMs: BATCH_REQUEST_TIMEOUT_MS,
-        autoStart: true,
+        libConfig: libConfig,
         sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
+        errorReporter: _.bind(this.reportError, this),
         forceDelayFlush: true,
+        usePersistence: false,
     });
 };
 
@@ -65,7 +70,6 @@ MixpanelRecorder.prototype.startRecording = function () {
     this.seqNo = 0;
     this.startDate = new Date();
     this.replayStartTime = this.startDate.getTime();
-    this.batchStartTime = this.replayStartTime;
 
     this.replayId = _.UUID();
     this.replayLengthMs = 0;
@@ -155,10 +159,13 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
     const numEvents = data.length;
 
     if (numEvents > 0) {
+        // TODO(jakub): make time props based on rrweb events for max accuracy
+        var batchStartTime = data[0].timestamp;
+
         var reqParams = {
             'distinct_id': String(this._mixpanel.get_distinct_id()),
             'seq': this.seqNo++,
-            'batch_start_time': this.batchStartTime / 1000,             // TODO: fix batch start time
+            'batch_start_time': batchStartTime / 1000,
             'replay_id': this.replayId,
             'replay_length_ms': this.replayLengthMs,
             'replay_start_time': this.replayStartTime / 1000
