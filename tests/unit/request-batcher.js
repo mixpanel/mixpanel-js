@@ -5,8 +5,8 @@ import sinonChai from 'sinon-chai';
 
 chai.use(sinonChai);
 
-import { RequestBatcher } from '../../src/request-batcher';
-import {assign, mapValues} from 'lodash';
+import {RequestBatcher} from '../../src/request-batcher';
+import {mapValues} from 'lodash';
 
 const LOCALSTORAGE_KEY = `fake-rb-key`;
 const START_TIME = 100000;
@@ -49,7 +49,7 @@ describe(`RequestBatcher`, function() {
       requestTimeoutMs: REQUEST_TIMEOUT_MS,
     };
 
-    const options = assign({}, defaultOptions, optionOverrides);
+    const options = Object.assign({}, defaultOptions, optionOverrides);
     batcher = new RequestBatcher(LOCALSTORAGE_KEY, options);
   }
 
@@ -90,7 +90,7 @@ describe(`RequestBatcher`, function() {
       batcher.enqueue({foo: `bar`}, function(succeeded) {
         expect(succeeded).to.be.ok;
         expect(batcher.queue.memQueue).to.have.lengthOf(1);
-        expect(getLocalStorageItems()).to.not.be.ok;
+        expect(getLocalStorageItems()).to.be.null;
         const queuedEntry = batcher.queue.memQueue[0];
         expect(queuedEntry.flushAfter).to.be.greaterThan(START_TIME + 5000);
         expect(queuedEntry.flushAfter).to.be.lessThan(START_TIME + 15000);

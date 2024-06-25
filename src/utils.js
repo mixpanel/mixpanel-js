@@ -1737,5 +1737,5 @@ export {
     localStorageSupported,
     JSONStringify,
     JSONParse,
-    slice,
+    slice
 };

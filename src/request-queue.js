@@ -56,34 +56,32 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         if (cb) {
             cb(true);
         }
-        return;
-    }
-
-    this.lock.withLock(_.bind(function lockAcquired() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue.push(queueEntry);
-            succeeded = this.saveToStorage(storedQueue);
-            if (succeeded) {
-                // only add to in-memory queue when storage succeeds
-                this.memQueue.push(queueEntry);
+    } else {
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue.push(queueEntry);
+                succeeded = this.saveToStorage(storedQueue);
+                if (succeeded) {
+                    // only add to in-memory queue when storage succeeds
+                    this.memQueue.push(queueEntry);
+                }
+            } catch(err) {
+                this.reportError('Error enqueueing item', item);
+                succeeded = false;
             }
-        } catch(err) {
-            this.reportError('Error enqueueing item', item);
-            succeeded = false;
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), _.bind(function lockFailure(err) {
-        this.reportError('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this), this.pid);
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), _.bind(function lockFailure(err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this), this.pid);
+    }
 };
-
 
 /**
  * Read out the given number of queue entries. If this.memQueue
@@ -146,63 +144,63 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
         if (cb) {
             cb(true);
         }
-        return;
-    }
+    } else {
+        var removeFromStorage = _.bind(function() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                succeeded = this.saveToStorage(storedQueue);
 
-    var removeFromStorage = _.bind(function() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-            succeeded = this.saveToStorage(storedQueue);
+                // an extra check: did storage report success but somehow
+                // the items are still there?
+                if (succeeded) {
+                    storedQueue = this.readFromStorage();
+                    for (var i = 0; i < storedQueue.length; i++) {
+                        var item = storedQueue[i];
+                        if (item['id'] && !!idSet[item['id']]) {
+                            this.reportError('Item not removed from storage');
+                            return false;
+                        }
+                    }
+                }
+            } catch(err) {
+                this.reportError('Error removing items', ids);
+                succeeded = false;
+            }
+            return succeeded;
+        }, this);
 
-            // an extra check: did storage report success but somehow
-            // the items are still there?
-            if (succeeded) {
-                storedQueue = this.readFromStorage();
-                for (var i = 0; i < storedQueue.length; i++) {
-                    var item = storedQueue[i];
-                    if (item['id'] && !!idSet[item['id']]) {
-                        this.reportError('Item not removed from storage');
-                        return false;
+        this.lock.withLock(function lockAcquired() {
+            var succeeded = removeFromStorage();
+            if (cb) {
+                cb(succeeded);
+            }
+        }, _.bind(function lockFailure(err) {
+            var succeeded = false;
+            this.reportError('Error acquiring storage lock', err);
+            if (!localStorageSupported(this.storage, true)) {
+                // Looks like localStorage writes have stopped working sometime after
+                // initialization (probably full), and so nobody can acquire locks
+                // anymore. Consider it temporarily safe to remove items without the
+                // lock, since nobody's writing successfully anyway.
+                succeeded = removeFromStorage();
+                if (!succeeded) {
+                    // OK, we couldn't even write out the smaller queue. Try clearing it
+                    // entirely.
+                    try {
+                        this.storage.removeItem(this.storageKey);
+                    } catch(err) {
+                        this.reportError('Error clearing queue', err);
                     }
                 }
             }
-        } catch(err) {
-            this.reportError('Error removing items', ids);
-            succeeded = false;
-        }
-        return succeeded;
-    }, this);
-
-    this.lock.withLock(function lockAcquired() {
-        var succeeded = removeFromStorage();
-        if (cb) {
-            cb(succeeded);
-        }
-    }, _.bind(function lockFailure(err) {
-        var succeeded = false;
-        this.reportError('Error acquiring storage lock', err);
-        if (!localStorageSupported(this.storage, true)) {
-            // Looks like localStorage writes have stopped working sometime after
-            // initialization (probably full), and so nobody can acquire locks
-            // anymore. Consider it temporarily safe to remove items without the
-            // lock, since nobody's writing successfully anyway.
-            succeeded = removeFromStorage();
-            if (!succeeded) {
-                // OK, we couldn't even write out the smaller queue. Try clearing it
-                // entirely.
-                try {
-                    this.storage.removeItem(this.storageKey);
-                } catch(err) {
-                    this.reportError('Error clearing queue', err);
-                }
+            if (cb) {
+                cb(succeeded);
             }
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), this.pid);
+        }, this), this.pid);
+    }
+
 };
 
 // internal helper for RequestQueue.updatePayloads
@@ -234,28 +232,28 @@ RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
         if (cb) {
             cb(true);
         }
-        return;
+    } else {
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                succeeded = this.saveToStorage(storedQueue);
+            } catch(err) {
+                this.reportError('Error updating items', itemsToUpdate);
+                succeeded = false;
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), _.bind(function lockFailure(err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this), this.pid);
     }
 
-    this.lock.withLock(_.bind(function lockAcquired() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue = updatePayloads(storedQueue, itemsToUpdate);
-            succeeded = this.saveToStorage(storedQueue);
-        } catch(err) {
-            this.reportError('Error updating items', itemsToUpdate);
-            succeeded = false;
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), _.bind(function lockFailure(err) {
-        this.reportError('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this), this.pid);
 };
 
 /**

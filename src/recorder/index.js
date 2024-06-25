@@ -39,9 +39,7 @@ MixpanelRecorder.prototype._initBatcher = function () {
         flushIntervalMs: BATCH_FLUSH_INTERVAL_MS,
         requestTimeoutMs: BATCH_REQUEST_TIMEOUT_MS,
         autoStart: true,
-        sendRequestFunc: _.bind(function(data, options, callback) {
-            this.sendRequestWithOptOut(data, options, callback);
-        }, this),
+        sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
         forceDelayFlush: true,
     });
 };
@@ -122,8 +120,8 @@ MixpanelRecorder.prototype.stopRecording = function () {
  * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
  * we stop recording and dump any queued events if the user has opted out.
  */
-MixpanelRecorder.prototype.sendRequestWithOptOut = function (data, options, cb) {
-    this._sendRequest(data, options, cb, _.bind(this._onOptOut, this));
+MixpanelRecorder.prototype.flushEventsWithOptOut = function (data, options, cb) {
+    this._flushEvents(data, options, cb, _.bind(this._onOptOut, this));
 };
 
 MixpanelRecorder.prototype._onOptOut = function (code) {
@@ -134,33 +132,38 @@ MixpanelRecorder.prototype._onOptOut = function (code) {
     }
 };
 
-MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody) {
+MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody, callback) {
     window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
             'Content-Type': 'application/octet-stream'
         },
-        'body': reqBody
+        'body': reqBody,
+    }).then(function (response) {
+        response.json().then(function (responseBody) {
+            callback({status: response.status, responseBody: responseBody, retryAfter: response.headers.get('Retry-After')});
+        }).catch(function (error) {
+            callback({error: error});
+        });
+    }).catch(function (error) {
+        callback({error: error});
     });
 };
 
-/**
- * @api private
- * Private method, flushes the current batch of events to the server.
- */
-MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function() {
-    var numEvents = this.recEvents.length;
+MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (data, options, callback) {
+    const numEvents = data.length;
+
     if (numEvents > 0) {
         var reqParams = {
             'distinct_id': String(this._mixpanel.get_distinct_id()),
             'seq': this.seqNo++,
-            'batch_start_time': this.batchStartTime / 1000,
+            'batch_start_time': this.batchStartTime / 1000,             // TODO: fix batch start time
             'replay_id': this.replayId,
             'replay_length_ms': this.replayLengthMs,
             'replay_start_time': this.replayStartTime / 1000
         };
-        var eventsJson = _.JSONEncode(this.recEvents);
+        var eventsJson = _.JSONEncode(data);
 
         // send ID management props if they exist
         var deviceId = this._mixpanel.get_property('$device_id');
@@ -172,61 +175,21 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function() {
             reqParams['$user_id'] = userId;
         }
 
-        this.recEvents = this.recEvents.slice(numEvents);
-        this.batchStartTime = new Date().getTime();
         if (CompressionStream) {
+            reqParams['format'] = 'gzip';
             var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
             new Response(gzipStream)
                 .blob()
                 .then(_.bind(function(compressedBlob) {
                     reqParams['format'] = 'gzip';
-                    this._sendRequest(reqParams, compressedBlob);
+                    this._sendRequest(reqParams, compressedBlob, callback);
                 }, this));
         } else {
             reqParams['format'] = 'body';
-            this._sendRequest(reqParams, eventsJson);
+            this._sendRequest(reqParams, eventsJson, callback);
         }
     }
-});
-
-MixpanelRecorder.prototype._sendRequest = addOptOutCheckMixpanelLib(function (data, options, callback) {
-    var reqBody = {
-        'distinct_id': String(this._mixpanel.get_distinct_id()),
-        'events': data,
-        'seq': this.seqNo++,
-        'batch_start_time': this.batchStartTime / 1000,
-        'replay_id': this.replayId,
-        'replay_length_ms': this.replayLengthMs,
-        'replay_start_time': this.replayStartTime / 1000
-    };
-
-    // send ID management props if they exist
-    var deviceId = this._mixpanel.get_property('$device_id');
-    if (deviceId) {
-        reqBody['$device_id'] = deviceId;
-    }
-    var userId = this._mixpanel.get_property('$user_id');
-    if (userId) {
-        reqBody['$user_id'] = userId;
-    }
-
-    window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'], {
-        'method': 'POST',
-        'headers': {
-            'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
-            'Content-Type': 'application/json'
-        },
-        'body': _.JSONEncode(reqBody)
-    }).then(function (response) {
-        response.json().then(function (responseBody) {
-            callback({status: response.status, responseBody: responseBody, retryAfter: response.headers.get('Retry-After')});
-        }).catch(function (error) {
-            callback({error: error});
-        });
-    }).catch(function (error) {
-        callback({error: error});
-    });
 });
 
 
