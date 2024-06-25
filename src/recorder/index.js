@@ -7,9 +7,12 @@ import { RequestBatcher } from '../request-batcher';
 var logger = console_with_prefix('recorder');
 var CompressionStream = window['CompressionStream'];
 
-var BATCH_SIZE = 1000;
-var BATCH_FLUSH_INTERVAL_MS = 10 * 1000;
-var BATCH_REQUEST_TIMEOUT_MS = 90 * 1000;
+var RECORDER_BATCHER_LIB_CONFIG = {
+    'batch_size': 1000,
+    'batch_flush_interval_ms': 10 * 1000,
+    'batch_request_timeout_ms': 90 * 1000,
+    'batch_autostart': true,
+};
 
 var MixpanelRecorder = function(mixpanelInstance) {
     this._mixpanel = mixpanelInstance;
@@ -21,7 +24,6 @@ var MixpanelRecorder = function(mixpanelInstance) {
     this.seqNo = 0;
     this.replayId = null;
     this.replayStartTime = null;
-    this.replayLengthMs = 0;
     this.sendBatchId = null;
 
     this.idleTimeoutId = null;
@@ -33,15 +35,8 @@ var MixpanelRecorder = function(mixpanelInstance) {
 
 
 MixpanelRecorder.prototype._initBatcher = function () {
-    var libConfig = {
-        'batch_size': BATCH_SIZE,
-        'batch_flush_interval_ms': BATCH_FLUSH_INTERVAL_MS,
-        'batch_request_timeout_ms': BATCH_REQUEST_TIMEOUT_MS,
-        'batch_autostart': true,
-    };
-
     this.batcher = new RequestBatcher('__mprec', {
-        libConfig: libConfig,
+        libConfig: RECORDER_BATCHER_LIB_CONFIG,
         sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
         errorReporter: _.bind(this.reportError, this),
         forceDelayFlush: true,
@@ -68,11 +63,9 @@ MixpanelRecorder.prototype.startRecording = function () {
 
     this.recEvents = [];
     this.seqNo = 0;
-    this.startDate = new Date();
-    this.replayStartTime = this.startDate.getTime();
+    this.replayStartTime = null;
 
     this.replayId = _.UUID();
-    this.replayLengthMs = 0;
 
     this.batcher.start();
 
@@ -87,7 +80,6 @@ MixpanelRecorder.prototype.startRecording = function () {
     this._stopRecording = record({
         'emit': _.bind(function (ev) {
             this.batcher.enqueue(ev);
-            this.replayLengthMs = new Date().getTime() - this.replayStartTime;
             resetIdleTimeout();
         }, this),
         'maskAllInputs': true,
@@ -159,15 +151,19 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
     const numEvents = data.length;
 
     if (numEvents > 0) {
-        // TODO(jakub): make time props based on rrweb events for max accuracy
+        // each rrweb event has a timestamp - leverage those to get time properties
         var batchStartTime = data[0].timestamp;
+        if (this.seqNo === 0) {
+            this.replayStartTime = batchStartTime;
+        }
+        var replayLengthMs = data[numEvents - 1].timestamp - this.replayStartTime;
 
         var reqParams = {
             'distinct_id': String(this._mixpanel.get_distinct_id()),
             'seq': this.seqNo++,
             'batch_start_time': batchStartTime / 1000,
             'replay_id': this.replayId,
-            'replay_length_ms': this.replayLengthMs,
+            'replay_length_ms': replayLengthMs,
             'replay_start_time': this.replayStartTime / 1000
         };
         var eventsJson = _.JSONEncode(data);
