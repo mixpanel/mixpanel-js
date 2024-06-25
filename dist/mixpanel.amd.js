@@ -1,13 +1,8 @@
 define((function () { 'use strict';
 
     var Config = {
-<<<<<<< HEAD
         DEBUG: false,
         LIB_VERSION: '2.53.0'
-=======
-        DEBUG: true,
-        LIB_VERSION: '2.50.0'
->>>>>>> 571d8b5 (cleanup, draft)
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -1685,83 +1680,6 @@ define((function () { 'use strict';
         return maxlen ? guid.substring(0, maxlen) : guid;
     };
 
-
-    /**
-     * Makes an XMLHttpRequest with the given options.
-     *
-     * @param {Object} options - Configuration options for the request.
-     * @param {string} options.method - The HTTP method to use for the request (e.g., 'GET', 'POST').
-     * @param {string} options.url - The URL to which the request is sent.
-     * @param {Object} [options.headers] - Additional headers to include in the request.
-     * @param {number} [options.timeout_ms] - The timeout for the request in milliseconds.
-     * @param {boolean} [options.verbose] - Whether to operate in verbose mode, which provides detailed response data.
-     * @param {boolean} [options.ignore_json_errors] - Whether to ignore JSON parsing errors and return raw response text.
-     * @param {Function} [options.callback] - The callback function to execute when the request completes.
-     * @param {Function} [options.report_error] - The function to execute when an error occurs.
-     * @param {string|Object} [options.body_data] - The data to send with the request, if any.
-     */
-    var make_xhr_request = function (options) {
-        var req = new XMLHttpRequest();
-        req.open(options.method, options.url, true);
-
-        _.each(options.headers, function(headerValue, headerName) {
-            req.setRequestHeader(headerName, headerValue);
-        });
-
-        if (options.timeout_ms && typeof req.timeout !== 'undefined') {
-            req.timeout = options.timeout_ms;
-            var start_time = new Date().getTime();
-        }
-
-        // send the mp_optout cookie
-        // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
-        req.withCredentials = true;
-        req.onreadystatechange = function () {
-            if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
-                if (req.status === 200) {
-                    if (options.callback) {
-                        if (options.verbose) {
-                            var response;
-                            try {
-                                response = _.JSONDecode(req.responseText);
-                            } catch (e) {
-                                options.report_error(e);
-                                if (options.ignore_json_errors) {
-                                    response = req.responseText;
-                                } else {
-                                    return;
-                                }
-                            }
-                            options.callback(response);
-                        } else {
-                            options.callback(Number(req.responseText));
-                        }
-                    }
-                } else {
-                    var error;
-                    if (
-                        req.timeout &&
-                        !req.status &&
-                        new Date().getTime() - start_time >= req.timeout
-                    ) {
-                        error = 'timeout';
-                    } else {
-                        error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
-                    }
-                    options.report_error(error);
-                    if (options.callback) {
-                        if (options.verbose) {
-                            options.callback({status: 0, error: error, xhr_req: req});
-                        } else {
-                            options.callback(0);
-                        }
-                    }
-                }
-            }
-        };
-        req.send(options.body_data);
-    };
-
     // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
     var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
     // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
@@ -2133,7 +2051,6 @@ define((function () { 'use strict';
         this.reportError = options.errorReporter || _.bind(logger$1.error, logger$1);
         this.lock = new SharedLock(storageKey, {storage: this.storage});
 
-        this.usePersistence = options.usePersistence;
         this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
         this.memQueue = [];
@@ -2157,14 +2074,6 @@ define((function () { 'use strict';
             'flushAfter': new Date().getTime() + flushInterval * 2,
             'payload': item
         };
-
-        if (!this.usePersistence) {
-            this.memQueue.push(queueEntry);
-            if (cb) {
-                cb(true);
-            }
-            return;
-        }
 
         this.lock.withLock(_.bind(function lockAcquired() {
             var succeeded;
@@ -2191,7 +2100,6 @@ define((function () { 'use strict';
         }, this), this.pid);
     };
 
-
     /**
      * Read out the given number of queue entries. If this.memQueue
      * has fewer than batchSize items, then look for "orphaned" items
@@ -2200,7 +2108,7 @@ define((function () { 'use strict';
      */
     RequestQueue.prototype.fillBatch = function(batchSize) {
         var batch = this.memQueue.slice(0, batchSize);
-        if (this.usePersistence && batch.length < batchSize) {
+        if (batch.length < batchSize) {
             // don't need lock just to read events; localStorage is thread-safe
             // and the worst that could happen is a duplicate send of some
             // orphaned events, which will be deduplicated on the server side
@@ -2249,13 +2157,7 @@ define((function () { 'use strict';
         _.each(ids, function(id) { idSet[id] = true; });
 
         this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-        if (!this.usePersistence) {
-            if (cb) {
-                cb(true);
-            }
-            return;
-        }
-        
+
         var removeFromStorage = _.bind(function() {
             var succeeded;
             try {
@@ -2337,13 +2239,6 @@ define((function () { 'use strict';
      */
     RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
         this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
-        if (!this.usePersistence) {
-            if (cb) {
-                cb(true);
-            }
-            return;
-        }
-
         this.lock.withLock(_.bind(function lockAcquired() {
             var succeeded;
             try {
@@ -2405,10 +2300,7 @@ define((function () { 'use strict';
      */
     RequestQueue.prototype.clear = function() {
         this.memQueue = [];
-
-        if (this.usePersistence) {
-            this.storage.removeItem(this.storageKey);
-        }
+        this.storage.removeItem(this.storageKey);
     };
 
     // maximum interval between request retries after exponential backoff
@@ -2423,23 +2315,22 @@ define((function () { 'use strict';
      * @constructor
      */
     var RequestBatcher = function(storageKey, options) {
-        this.options = options;
-
+        this.errorReporter = options.errorReporter;
         this.queue = new RequestQueue(storageKey, {
             errorReporter: _.bind(this.reportError, this),
-            storage: options.storage,
-            usePersistence: options.usePersistence
+            storage: options.storage
         });
 
+        this.libConfig = options.libConfig;
+        this.sendRequest = options.sendRequestFunc;
+        this.beforeSendHook = options.beforeSendHook;
+        this.stopAllBatching = options.stopAllBatchingFunc;
+
         // seed variable batch size + flush interval with configured values
-        this.currentBatchSize = this.options.batchSize;
-        this.currentFlushInterval = this.options.flushIntervalMs;
+        this.batchSize = this.libConfig['batch_size'];
+        this.flushInterval = this.libConfig['batch_flush_interval_ms'];
 
-        // Forces flush to occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
-        // as long as the queue is not empty. This is useful for high-volume events like Session Replay.
-        this.forceDelayFlush = options.forceDelayFlush || false;
-
-        this.stopped = !this.options.autoStart;
+        this.stopped = !this.libConfig['batch_autostart'];
         this.consecutiveRemovalFailures = 0;
 
         // extra client-side dedupe
@@ -2450,7 +2341,7 @@ define((function () { 'use strict';
      * Add one item to queue.
      */
     RequestBatcher.prototype.enqueue = function(item, cb) {
-        this.queue.enqueue(item, this.currentFlushInterval, cb);
+        this.queue.enqueue(item, this.flushInterval, cb);
     };
 
     /**
@@ -2482,26 +2373,26 @@ define((function () { 'use strict';
     };
 
     /**
-     * Restore batch size configuration to the originally initialized value
+     * Restore batch size configuration to whatever is set in the main SDK.
      */
     RequestBatcher.prototype.resetBatchSize = function() {
-        this.currentBatchSize = this.options.batchSize;
+        this.batchSize = this.libConfig['batch_size'];
     };
 
     /**
-     * Restore flush interval time configuration to the originally initialized value
+     * Restore flush interval time configuration to whatever is set in the main SDK.
      */
     RequestBatcher.prototype.resetFlush = function() {
-        this.scheduleFlush(this.options.flushIntervalMs);
+        this.scheduleFlush(this.libConfig['batch_flush_interval_ms']);
     };
 
     /**
      * Schedule the next flush in the given number of milliseconds.
      */
     RequestBatcher.prototype.scheduleFlush = function(flushMS) {
-        this.currentFlushInterval = flushMS;
+        this.flushInterval = flushMS;
         if (!this.stopped) { // don't schedule anymore if batching has been stopped
-            this.timeoutID = setTimeout(_.bind(this.flush, this), this.currentFlushInterval);
+            this.timeoutID = setTimeout(_.bind(this.flush, this), this.flushInterval);
         }
     };
 
@@ -2524,16 +2415,16 @@ define((function () { 'use strict';
             }
 
             options = options || {};
-            var timeoutMS = this.options.requestTimeoutMs;
+            var timeoutMS = this.libConfig['batch_request_timeout_ms'];
             var startTime = new Date().getTime();
-            var currentBatchSize = this.currentBatchSize;
+            var currentBatchSize = this.batchSize;
             var batch = this.queue.fillBatch(currentBatchSize);
             var dataForRequest = [];
             var transformedItems = {};
             _.each(batch, function(item) {
                 var payload = item['payload'];
-                if (this.options.beforeSendHook && !item.orphaned) {
-                    payload = this.options.beforeSendHook(payload);
+                if (this.beforeSendHook && !item.orphaned) {
+                    payload = this.beforeSendHook(payload);
                 }
                 if (payload) {
                     // mp_sent_by_lib_version prop captures which lib version actually
@@ -2634,16 +2525,12 @@ define((function () { 'use strict';
                             _.bind(function(succeeded) {
                                 if (succeeded) {
                                     this.consecutiveRemovalFailures = 0;
-                                    if (this.forceDelayFlush) {
-                                        this.resetFlush(); // schedule next batch with a delay
-                                    } else {
-                                        this.flush(); // handle next batch if the queue isn't empty
-                                    }
+                                    this.flush(); // handle next batch if the queue isn't empty
                                 } else {
                                     this.reportError('Failed to remove items from queue');
                                     if (++this.consecutiveRemovalFailures > 5) {
                                         this.reportError('Too many queue failures; disabling batching system.');
-                                        this.options.stopAllBatchingFunc();
+                                        this.stopAllBatching();
                                     } else {
                                         this.resetFlush();
                                     }
@@ -2685,7 +2572,8 @@ define((function () { 'use strict';
                 requestOptions.transport = 'sendBeacon';
             }
             logger.log('MIXPANEL REQUEST:', dataForRequest);
-            this.options.sendRequestFunc(dataForRequest, requestOptions, batchSendCallback);
+            this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
+
         } catch(err) {
             this.reportError('Error flushing request queue', err);
             this.resetFlush();
@@ -2697,12 +2585,12 @@ define((function () { 'use strict';
      */
     RequestBatcher.prototype.reportError = function(msg, err) {
         logger.error.apply(logger.error, arguments);
-        if (this.options.errorReporter) {
+        if (this.errorReporter) {
             try {
                 if (!(err instanceof Error)) {
                     err = new Error(msg);
                 }
-                this.options.errorReporter(msg, err);
+                this.errorReporter(msg, err);
             } catch(err) {
                 logger.error(err);
             }
@@ -4798,22 +4686,69 @@ define((function () { 'use strict';
             }
         } else if (USE_XHR) {
             try {
+                var req = new XMLHttpRequest();
+                req.open(options.method, url, true);
+
                 var headers = this.get_config('xhr_headers');
                 if (use_post) {
                     headers['Content-Type'] = 'application/x-www-form-urlencoded';
                 }
-
-                make_xhr_request({
-                    method: options.method,
-                    url: url,
-                    headers: headers,
-                    timeout_ms: options.timeout_ms,
-                    verbose_mode: verbose_mode,
-                    ignore_json_errors: options.ignore_json_errors,
-                    callback: callback,
-                    report_error: lib.report_error,
-                    body_data: body_data
+                _.each(headers, function(headerValue, headerName) {
+                    req.setRequestHeader(headerName, headerValue);
                 });
+
+                if (options.timeout_ms && typeof req.timeout !== 'undefined') {
+                    req.timeout = options.timeout_ms;
+                    var start_time = new Date().getTime();
+                }
+
+                // send the mp_optout cookie
+                // withCredentials cannot be modified until after calling .open on Android and Mobile Safari
+                req.withCredentials = true;
+                req.onreadystatechange = function () {
+                    if (req.readyState === 4) { // XMLHttpRequest.DONE == 4, except in safari 4
+                        if (req.status === 200) {
+                            if (callback) {
+                                if (verbose_mode) {
+                                    var response;
+                                    try {
+                                        response = _.JSONDecode(req.responseText);
+                                    } catch (e) {
+                                        lib.report_error(e);
+                                        if (options.ignore_json_errors) {
+                                            response = req.responseText;
+                                        } else {
+                                            return;
+                                        }
+                                    }
+                                    callback(response);
+                                } else {
+                                    callback(Number(req.responseText));
+                                }
+                            }
+                        } else {
+                            var error;
+                            if (
+                                req.timeout &&
+                                !req.status &&
+                                new Date().getTime() - start_time >= req.timeout
+                            ) {
+                                error = 'timeout';
+                            } else {
+                                error = 'Bad HTTP status: ' + req.status + ' ' + req.statusText;
+                            }
+                            lib.report_error(error);
+                            if (callback) {
+                                if (verbose_mode) {
+                                    callback({status: 0, error: error, xhr_req: req});
+                                } else {
+                                    callback(0);
+                                }
+                            }
+                        }
+                    }
+                };
+                req.send(body_data);
             } catch (e) {
                 lib.report_error(e);
                 succeeded = false;
@@ -4904,10 +4839,7 @@ define((function () { 'use strict';
                 return new RequestBatcher(
                     attrs.queue_key,
                     {
-                        batchSize: this.get_config('batch_size'),
-                        flushIntervalMs: this.get_config('batch_flush_interval_ms'),
-                        requestTimeoutMs: this.get_config('batch_request_timeout_ms'),
-                        autoStart: this.get_config('batch_autostart'),
+                        libConfig: this['config'],
                         sendRequestFunc: _.bind(function(data, options, cb) {
                             this._send_request(
                                 this.get_config('api_host') + attrs.endpoint,
