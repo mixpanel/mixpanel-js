@@ -5268,7 +5268,14 @@
                         this.clock = sinon.useFakeTimers();
                         this.randomStub = sinon.stub(Math, 'random');
                         this.fetchStub = sinon.stub(window, 'fetch');
-                        this.fetchStub.returns(makeFakeFetchResponse(200));
+
+                        // realistic successful responsse
+                        this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({code: 200, status: 'OK'}), {
+                            status: 200,
+                            headers: {
+                              'Content-type': 'application/json'
+                            }
+                        })));
 
                         var recorderSrc = window.MIXPANEL_CUSTOM_LIB_URL === '../build/mixpanel.js' ?
                             '../build/mixpanel-recorder.js' :
@@ -5306,6 +5313,9 @@
                         this.clock.restore();
                         this.randomStub.restore();
                         this.fetchStub.restore();
+                        if (this.responseBlobStub) {
+                            this.responseBlobStub.restore();
+                        }
 
                         var scriptEl = this.getRecorderScript();
                         if (scriptEl) {
@@ -5313,7 +5323,19 @@
                         }
                         delete window['__mp_recorder'];
                     }
-                })
+                });
+
+                function validateAndGetUrlParams(fetchStubCall) {
+                    var calledURL = fetchStubCall.args[0];
+                    ok(calledURL.startsWith("https://api-js.mixpanel.com/record/"));
+
+                    var paramsStr = calledURL.split('?')[1];
+                    var params = new URLSearchParams(paramsStr);
+                    same(params.get('distinct_id'), mixpanel.recordertest.get_distinct_id());
+                    same(params.get('$device_id'), mixpanel.recordertest.get_property('$device_id'));
+
+                    return params;
+                }
 
                 asyncTest('adds script tag when sampled', 2, function () {
                     this.randomStub.returns(0.02);
@@ -5501,15 +5523,17 @@
                                 }, this), 2);
                             }
                         }, this));
-                        same(this.getRecordRequests().length, 1, 'no /record calls made after user has opted out.');
-                        mixpanel.recordertest.stop_session_recording();
                     });
                 });
 
-                asyncTest('retries record request after a 500', 12, function () {
+                asyncTest('retries record request after a 500', 14, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     ok(this.getRecorderScript() !== null);
+                    
+                    // fake the fetch / response promises since we're testing callback logic
+                    this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
+                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
                     this.fetchStub.onFirstCall()
                         .returns(makeFakeFetchResponse(200))
                         .onSecondCall()
@@ -5520,32 +5544,31 @@
                         this.clock.tick(10 * 1000)
                         same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
 
-                        var callArgs = this.fetchStub.getCall(0).args;
-                        same(callArgs[0], "https://api-js.mixpanel.com/record/");
-                        var payload = JSON.parse(callArgs[1].body);
-                        same(payload.distinct_id, mixpanel.recordertest.get_distinct_id());
-                        same(payload.$device_id, mixpanel.recordertest.get_property('$device_id'));
-                        ok(payload.events.length > 0);
-
+                        validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000);
                         same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
-                        
+                        validateAndGetUrlParams(this.fetchStub.getCall(1));
+
                         this.clock.tick(20 * 2000);
                         same(this.fetchStub.getCalls().length, 3, 'record request is retried after a 500');
-                        callArgs = this.fetchStub.getCalls()[2].args;
-                        payload = JSON.parse(callArgs[1].body);
-                        ok(callArgs[0] === "https://api-js.mixpanel.com/record/")
-                        ok(payload.distinct_id === mixpanel.recordertest.get_distinct_id());
-                        ok(payload.events.length > 0);
+                        validateAndGetUrlParams(this.fetchStub.getCall(2))
+
                         mixpanel.recordertest.stop_session_recording();
                     });
                 });
 
-                asyncTest('halves batch size and retries record request after a 413', 17, function () {
+                asyncTest('halves batch size and retries record request after a 413', 21, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     ok(this.getRecorderScript() !== null);
+                    
+                    this.randomStub.restore(); // restore the random stub after script is loaded for batcher uuid dedupe
+                    this.blobConstructorSpy = sinon.spy(window, 'Blob')
+                    this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
+                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
+
                     this.fetchStub.onCall(0)
                         .returns(makeFakeFetchResponse(200))
                         .onCall(1)
@@ -5559,40 +5582,33 @@
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000);
                         same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                        
+                        validateAndGetUrlParams(this.fetchStub.getCall(0));
 
-                        var callArgs = this.fetchStub.getCall(0).args;
-                        same(callArgs[0], "https://api-js.mixpanel.com/record/");
-                        var payload = JSON.parse(callArgs[1].body);
-                        same(payload.distinct_id, mixpanel.recordertest.get_distinct_id());
-                        same(payload.$device_id, mixpanel.recordertest.get_property('$device_id'));
-                        ok(payload.events.length > 0);
-
-                        this.randomStub.restore();
                         for  (var _i = 0; _i < 1000; _i++) {
                             simulateMouseClick(document.body);
                         }
+
                         this.clock.tick(10 * 1000);
                         same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
-                        callArgs = this.fetchStub.getCall(1).args;
-                        payload = JSON.parse(callArgs[1].body);
-                        same(payload.events.length, 1000);
+                        validateAndGetUrlParams(this.fetchStub.getCall(1));
+
+                        var events = JSON.parse(this.blobConstructorSpy.lastCall.args[0][0])
+                        same(events.length, 1000);
 
                         this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 3, 'record request is retried after a 413');
-                        callArgs = this.fetchStub.getCall(2).args;
-                        payload = JSON.parse(callArgs[1].body);
-                        ok(callArgs[0] === "https://api-js.mixpanel.com/record/")
-                        ok(payload.distinct_id === mixpanel.recordertest.get_distinct_id());
-                        same(payload.events.length, 500, 'batch request was halved');
+                        same(this.fetchStub.getCalls().length, 4, 'record request is retried after a 413 and subsequently flushes the rest of events');
+                        validateAndGetUrlParams(this.fetchStub.getCall(2));
+                        validateAndGetUrlParams(this.fetchStub.getCall(3));
 
-                        this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 4, 'remaining requests in the queue are flushed');
-                        callArgs = this.fetchStub.getCall(3).args;
-                        payload = JSON.parse(callArgs[1].body);
-                        ok(callArgs[0] === "https://api-js.mixpanel.com/record/")
-                        ok(payload.distinct_id === mixpanel.recordertest.get_distinct_id());
-                        same(payload.events.length, 500, 'batch request was halved');
+                        var numBlobCalls = this.blobConstructorSpy.getCalls().length
 
+                        // need to look at last 2 calls because rrweb also uses Blob while tracking
+                        same(JSON.parse(this.blobConstructorSpy.getCall(numBlobCalls - 2).args[0][0]).length, 500, 'first batch request was halved');
+                        same(JSON.parse(this.blobConstructorSpy.getCall(numBlobCalls - 1).args[0][0]).length, 500, 'second batch request was halved');
+
+                        this.clock.tick(20 * 1000);
+                        same(this.fetchStub.getCalls().length, 4, 'all events are flushed, no more requests are made');
                         mixpanel.recordertest.stop_session_recording();
                     });
                 });
