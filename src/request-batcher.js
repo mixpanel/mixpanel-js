@@ -120,7 +120,7 @@ RequestBatcher.prototype.flush = function(options) {
         }
 
         options = options || {};
-        var timeoutMS = this.requestTimeoutMs;
+        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
         var startTime = new Date().getTime();
         var currentBatchSize = this.batchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
@@ -237,7 +237,7 @@ RequestBatcher.prototype.flush = function(options) {
                                 this.reportError('Failed to remove items from queue');
                                 if (++this.consecutiveRemovalFailures > 5) {
                                     this.reportError('Too many queue failures; disabling batching system.');
-                                    this.stopAllBatchingFunc();
+                                    this.stopAllBatching();
                                 } else {
                                     this.resetFlush();
                                 }
