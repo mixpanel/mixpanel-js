@@ -652,11 +652,11 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                             if (verbose_mode) {
                                 var response = {};
                                 try {
-                                    response['responseBody'] = _.JSONDecode(req.responseText);
+                                    response = _.JSONDecode(req.responseText);
                                 } catch (e) {
                                     lib.report_error(e);
                                     if (options.ignore_json_errors) {
-                                        response['responseBody'] = req.responseText;
+                                        response = req.responseText;
                                     } else {
                                         return;
                                     }
@@ -680,7 +680,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         lib.report_error(error);
                         if (callback) {
                             if (verbose_mode) {
-                                callback({status: req.status, error: error, retryAfter: req.responseHeaders['Retry-After']});
+                                callback({status: 0, httpStatusCode: req['status'], error: error, retryAfter: req['responseHeaders']['Retry-After']});
                             } else {
                                 callback(0);
                             }

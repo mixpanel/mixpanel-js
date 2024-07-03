@@ -18,7 +18,7 @@ var RequestBatcher = function(storageKey, options) {
     this.queue = new RequestQueue(storageKey, {
         errorReporter: _.bind(this.reportError, this),
         storage: options.storage,
-        usePersistence: options.usePersistence,
+        usePersistence: options.usePersistence
     });
 
     this.libConfig = options.libConfig;
@@ -194,7 +194,7 @@ RequestBatcher.prototype.flush = function(options) {
                     this.flush();
                 } else if (
                     _.isObject(res) &&
-                    (res.status >= 500 || res.status === 429 || res.error === 'timeout')
+                    (res.httpStatusCode >= 500 || res.httpStatusCode === 429 || res.error === 'timeout')
                 ) {
                     // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.flushInterval * 2;
@@ -204,7 +204,7 @@ RequestBatcher.prototype.flush = function(options) {
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
                     this.reportError('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
-                } else if (_.isObject(res) && res.status === 413) {
+                } else if (_.isObject(res) && res.httpStatusCode === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
