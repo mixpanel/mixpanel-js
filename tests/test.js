@@ -5228,7 +5228,8 @@
                 });
             }
 
-
+            // module tests have the recorder bundled in already, so don't need to test certain things
+            const IS_RECORDER_BUNDLED = Boolean(window['__mp_recorder']);
             if (window.MutationObserver) {
                 module('recorder', {
                     setup: function () {
@@ -5255,15 +5256,33 @@
                             return document.querySelector('script[src="' + recorderSrc + '"]');
                         }
     
-                        same(this.getRecorderScript(), null);
+                        this.assertRecorderScript = function (exists) {
+                            if (IS_RECORDER_BUNDLED) {
+                                ok(true, 'recorder is bundled, so we dont need to check the script')
+                            } else if (exists) {
+                                ok(this.getRecorderScript() !== null, 'recorder script should exist');
+                            } else {
+                                same(this.getRecorderScript(), null, 'recorder script should not exist')
+                            }
+                        }
 
-                        this.afterRecorderLoaded = function (testFn) {
-                            testFn = testFn.bind(this);
-                            this.getRecorderScript().addEventListener('load', function() {
+                        this.assertRecorderScript(false);
+
+                        if (IS_RECORDER_BUNDLED) {
+                            this.afterRecorderLoaded = function (testFn) {
+                                testFn = testFn.bind(this)
                                 testFn();
                                 start();
-                            });
-                        };
+                            }
+                        } else {
+                            this.afterRecorderLoaded = function (testFn) {
+                                testFn = testFn.bind(this);
+                                this.getRecorderScript().addEventListener('load', function() {
+                                    testFn();
+                                    start();
+                                });
+                            };
+                        }
                     },
                     teardown: function () {
                         if (mixpanel.recordertest) {
@@ -5279,29 +5298,34 @@
                         if (scriptEl) {
                             scriptEl.parentNode.removeChild(scriptEl);
                         }
-                        delete window['__mp_recorder'];
+
+                        if (!IS_RECORDER_BUNDLED) {
+                            delete window['__mp_recorder'];
+                        }
                     }
                 })
 
-                asyncTest('adds script tag when sampled', 2, function () {
-                    this.randomStub.returns(0.02);
-                    this.initMixpanelRecorder({record_sessions_percent: 2});
-                    ok(this.getRecorderScript() !== null);
-                    this.afterRecorderLoaded(function() {
-                        mixpanel.recordertest.stop_session_recording();
-                    })
-                });
-    
-                test('does not add script tag when not sampled', 2, function () {
-                    this.randomStub.returns(0.02);
-                    this.initMixpanelRecorder({record_sessions_percent: 1});
-                    ok(this.getRecorderScript() === null);
-                });
+                if (!IS_RECORDER_BUNDLED) {
+                    asyncTest('adds script tag when sampled', 2, function () {
+                        this.randomStub.returns(0.02);
+                        this.initMixpanelRecorder({record_sessions_percent: 2});
+                        this.assertRecorderScript(true);
+                        this.afterRecorderLoaded(function() {
+                            mixpanel.recordertest.stop_session_recording();
+                        })
+                    });
+        
+                    test('does not add script tag when not sampled', 2, function () {
+                        this.randomStub.returns(0.02);
+                        this.initMixpanelRecorder({record_sessions_percent: 1});
+                        this.assertRecorderScript(false);
+                    });
+                }
     
                 asyncTest('sends recording payload to server', 12, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
-                    ok(this.getRecorderScript() !== null, "recorder script loaded");
+                    this.assertRecorderScript(true);
 
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
@@ -5359,7 +5383,7 @@
                 asyncTest('can manually start a session recording', 5, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 1});
-                    ok(this.getRecorderScript() === null);
+                    this.assertRecorderScript(false);
 
                     this.clock.tick(10 * 1000);
                     same(this.fetchStub.getCalls().length, 0, 'no /record call has been made since the user did not fall into the sample.');
@@ -5385,7 +5409,7 @@
                 asyncTest('can manually stop a session recording', function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
-                    ok(this.getRecorderScript() !== null);
+                    this.assertRecorderScript(true);
 
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
@@ -5423,26 +5447,28 @@
                     });
                 });
 
-                test('respects tracking opt-out when sampled', 2, function () {
+                test('respects tracking opt-out when sampled', 3, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10, window: {navigator: {doNotTrack: '1'}}});
 
-                    ok(this.getRecorderScript() === null);
+                    this.assertRecorderScript(false);
+                    same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
                 });
 
-                test('respects tracking opt-out when manually triggered', 3, function () {
+                test('respects tracking opt-out when manually triggered', 4, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10, window: {navigator: {doNotTrack: '1'}}});
 
-                    ok(this.getRecorderScript() === null);
+                    this.assertRecorderScript(false);
                     mixpanel.recordertest.start_session_recording();
-                    ok(this.getRecorderScript() === null);
+                    this.assertRecorderScript(false);
+                    same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
                 });
 
-                asyncTest('respects tracking opt-out after recording started', function () {
+                asyncTest('respects tracking opt-out after recording started', 5, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
-                    ok(this.getRecorderScript() !== null);
+                    this.assertRecorderScript(true);
 
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
@@ -5464,6 +5490,7 @@
                                 this.clock.tick(10 * 1000);
                                 realSetTimeout(_.bind(function() {
                                     same(this.fetchStub.getCalls().length, 1, 'no /record calls made after user has opted out.');
+                                    same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
                                     mixpanel.recordertest.stop_session_recording();
                                     done();
                                 }, this), 2);

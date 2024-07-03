@@ -23,10 +23,16 @@ mixpanel.init("YOUR_TOKEN");
 mixpanel.track("An event");
 ```
 
-NOTE: the default `mixpanel-browser` bundle includes a bundled `mixpanel-recorder` SDK. If you would like to reduce bundle size by loading the `mixpanel-recorder` async or if you do not us Session Replay, you may load just the main build:
+NOTE: the default `mixpanel-browser` bundle includes a bundled `mixpanel-recorder` SDK. We provide the following options to exclude `mixpanel-recorder` if you do not intend to use session replay or want to reduce bundle size:
 
+To load the main SDK with no option of session recording:
 ```javascript
 var mixpanel = require('mixpanel-browser/dist/mixpanel-main.cjs')
+```
+
+To load the main SDK and optionally load session recording bundle asynchronously (via script tag):
+```javascript
+var mixpanel = require('mixpanel-browser/dist/mixpanel-bundle-async.cjs')
 ```
 
 ## Alternative installation via Bower

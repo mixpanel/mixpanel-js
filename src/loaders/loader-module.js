@@ -1,4 +1,6 @@
 /* eslint camelcase: "off" */
+import '../../build/mixpanel-recorder';
+
 import { init_as_module } from '../mixpanel-core';
 import { loadNoop } from './bundle-loaders';
 

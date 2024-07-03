@@ -1,7 +1,7 @@
 /* eslint camelcase: "off" */
 import {init_as_module} from '../mixpanel-core.js';
-import {loadThrowError} from './bundle-loaders.js';
+import {loadAsync} from './bundle-loaders.js';
 
-var mixpanel = init_as_module(loadThrowError);
+var mixpanel = init_as_module(loadAsync);
 
 export default mixpanel;
