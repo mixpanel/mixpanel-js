@@ -179,7 +179,6 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
         }
 
         if (CompressionStream) {
-            reqParams['format'] = 'gzip';
             var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
             new Response(gzipStream)
