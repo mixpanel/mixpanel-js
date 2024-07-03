@@ -27,11 +27,11 @@ describe(`RequestBatcher`, function() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
   }
 
-  function sendResponse(status, {error, retryAfter} = {}) {
+  function sendResponse(httpStatusCode, {error, retryAfter} = {}) {
     // respond to last request sent
     const requestIndex = batcher.sendRequest.args.length - 1;
     batcher.sendRequest.args[requestIndex][2]({
-      status,
+      httpStatusCode,
       retryAfter,
       error,
     });
