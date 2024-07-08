@@ -650,7 +650,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                     if (req.status === 200) {
                         if (callback) {
                             if (verbose_mode) {
-                                var response = {};
+                                var response;
                                 try {
                                     response = _.JSONDecode(req.responseText);
                                 } catch (e) {
