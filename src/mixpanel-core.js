@@ -680,7 +680,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         lib.report_error(error);
                         if (callback) {
                             if (verbose_mode) {
-                                callback({status: 0, httpStatusCode: req['status'], error: error, retryAfter: req['responseHeaders']['Retry-After']});
+                                var response_headers = req['responseHeaders'] || {};
+                                callback({status: 0, httpStatusCode: req['status'], error: error, retryAfter: response_headers['Retry-After']});
                             } else {
                                 callback(0);
                             }
