@@ -138,7 +138,12 @@ MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody, callback)
         'body': reqBody,
     }).then(function (response) {
         response.json().then(function (responseBody) {
-            callback({status: 0, httpStatusCode: response.status, responseBody: responseBody, retryAfter: response.headers.get('Retry-After')});
+            callback({
+                status: 0,
+                httpStatusCode: response.status,
+                responseBody: responseBody,
+                retryAfter: response.headers.get('Retry-After')
+            });
         }).catch(function (error) {
             callback({error: error});
         });
