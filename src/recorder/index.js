@@ -40,7 +40,7 @@ MixpanelRecorder.prototype._initBatcher = function () {
         sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
         errorReporter: _.bind(this.reportError, this),
         flushOnlyOnInterval: true,
-        usePersistence: false,
+        usePersistence: false
     });
 };
 
