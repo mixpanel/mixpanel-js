@@ -11,7 +11,7 @@ var RECORDER_BATCHER_LIB_CONFIG = {
     'batch_size': 1000,
     'batch_flush_interval_ms': 10 * 1000,
     'batch_request_timeout_ms': 90 * 1000,
-    'batch_autostart': true,
+    'batch_autostart': true
 };
 
 var MixpanelRecorder = function(mixpanelInstance) {
