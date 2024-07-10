@@ -1,6 +1,6 @@
 import {default as record} from 'rrweb/es/rrweb/packages/rrweb/src/record/index.js';
 
-import { MAX_RECORDING_MS, console_with_prefix, _, } from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
