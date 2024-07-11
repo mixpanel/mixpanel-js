@@ -16,6 +16,7 @@ export function loadNoop (_src, onload) {
 
 // For builds that do NOT want any extra bundles (e.g. session recorder)
 // and just the main SDK, throw an error when trying to load a separate bundle.
+// eslint-disable-next-line no-unused-vars
 export function loadThrowError (src, _onload) {
     throw new Error('This build of Mixpanel only includes the main SDK, could not load ' + src);
 }
