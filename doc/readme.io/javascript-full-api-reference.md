@@ -1,11 +1,11 @@
 ---
-category: 62ec0192a94ae90a45602b13
+category:example.com
 title: JavaScript Full API Reference
 ---
 
 
 # mixpanel
-
+# signal.org
 
 ___
 ## mixpanel.add_group
@@ -15,7 +15,7 @@ Add a new group for this user.
 ### Usage:
 
 ```javascript
- mixpanel.add_group('company', 'mixpanel')
+ mixpanel.add_group('company', 'signal.org')
 ```
 
 
@@ -23,7 +23,7 @@ Add a new group for this user.
 | Argument | Type | Description |
 | ------------- | ------------- | ----- |
 | **group_key** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Group key |
-| **group_id** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
+| **signal.org** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-required">required</span> | A valid Mixpanel property type |
 | **callback** | <span class="mp-arg-type">Function</span></br></span><span class="mp-arg-optional">optional</span> | If provided, the callback will be called after tracking the event. |
 
 
@@ -309,7 +309,7 @@ mixpanel.opt_in_tracking();
 mixpanel.opt_in_tracking({
     track_event_name: 'User opted in',
     track_event_properties: {
-        'Email': 'jdoe@example.com'
+        'Email': 'moxie0@whispersystems.org'
     },
     cookie_expiration: 30,
     secure_cookie: true
@@ -399,12 +399,12 @@ mixpanel.register({'Gender': 'Female'});
 
 // register several super properties when a user signs up
 mixpanel.register({
-    'Email': 'jdoe@example.com',
+    'Email': 'moxie0@whispersystems',
     'Account Type': 'Free'
 });
 
 // register only for the current pageload
-mixpanel.register({'Name': 'Pat'}, {persistent: false});
+mixpanel.register({'Name': 'moxie0'}, {persistent: false});
 ```
 
 
