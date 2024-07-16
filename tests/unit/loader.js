@@ -5,17 +5,9 @@
  * currently not supported in the browser lib).
  */
 
-import jsDomSetup from './jsdom-setup';
+import mixpanel from '../../src/loaders/loader-module';
 
 describe(`Module-based loader in Node env`, function() {
-  let mixpanel;
-  jsDomSetup({
-    reImportModules: [`../../src/loaders/loader-module`],
-    beforeCallback: function(modules) {
-      mixpanel = modules[0];
-    }
-  });
-
   it(`supports init() with options`, function(done) {
     mixpanel.init(`test-token`, {
       debug: true,

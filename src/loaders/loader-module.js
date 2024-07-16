@@ -1,5 +1,5 @@
 /* eslint camelcase: "off" */
-import '../../dist/mixpanel-recorder';
+import '../recorder';
 
 import { init_as_module } from '../mixpanel-core';
 import { loadNoop } from './bundle-loaders';
