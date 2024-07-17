@@ -130,6 +130,8 @@ MixpanelRecorder.prototype._onOptOut = function (code) {
 
 MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody, callback) {
     var onSuccess = _.bind(function (response, responseBody) {
+        // Increment sequence counter only if the request was successful to guarantee ordering.
+        // RequestBatcher will always flush the next batch after the previous one succeeds.
         if (response.status === 200) {
             this.seqNo++;
         }
