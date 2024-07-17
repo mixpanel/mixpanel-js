@@ -85,11 +85,13 @@ MixpanelRecorder.prototype.startRecording = function () {
                 resetIdleTimeout();
             }
         }, this),
-        'maskAllInputs': true,
-        'maskTextSelector': this.get_config('record_mask_text_selector'),
-        'blockSelector': this.get_config('record_block_selector'),
-        'maskTextClass': this.get_config('record_mask_text_class'),
         'blockClass': this.get_config('record_block_class'),
+        'blockSelector': this.get_config('record_block_selector'),
+        'collectFonts': this.get_config('record_collect_fonts'),
+        'inlineImages': this.get_config('record_inline_images'),
+        'maskAllInputs': true,
+        'maskTextClass': this.get_config('record_mask_text_class'),
+        'maskTextSelector': this.get_config('record_mask_text_selector')
     });
 
     resetIdleTimeout();
