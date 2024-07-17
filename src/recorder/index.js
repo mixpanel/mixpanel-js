@@ -129,6 +129,19 @@ MixpanelRecorder.prototype._onOptOut = function (code) {
 };
 
 MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody, callback) {
+    var onSuccess = _.bind(function (response, responseBody) {
+        if (response.status === 200) {
+            this.seqNo++;
+        }
+
+        callback({
+            status: 0,
+            httpStatusCode: response.status,
+            responseBody: responseBody,
+            retryAfter: response.headers.get('Retry-After')
+        });
+    }, this);
+
     window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
         'headers': {
@@ -138,12 +151,7 @@ MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody, callback)
         'body': reqBody,
     }).then(function (response) {
         response.json().then(function (responseBody) {
-            callback({
-                status: 0,
-                httpStatusCode: response.status,
-                responseBody: responseBody,
-                retryAfter: response.headers.get('Retry-After')
-            });
+            onSuccess(response, responseBody);
         }).catch(function (error) {
             callback({error: error});
         });
@@ -165,7 +173,7 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
 
         var reqParams = {
             'distinct_id': String(this._mixpanel.get_distinct_id()),
-            'seq': this.seqNo++,
+            'seq': this.seqNo,
             'batch_start_time': batchStartTime / 1000,
             'replay_id': this.replayId,
             'replay_length_ms': replayLengthMs,

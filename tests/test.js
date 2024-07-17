@@ -5352,7 +5352,7 @@
                     ok(this.getRecorderScript() === null);
                 });
     
-                asyncTest('sends recording payload to server', 12, function () {
+                asyncTest('sends recording payload to server', 14, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     ok(this.getRecorderScript() !== null, "recorder script loaded");
@@ -5370,13 +5370,9 @@
                                 var body = callArgs[1].body;
                                 same(body.constructor, Blob, 'request body is a Blob');
 
-                                var calledURL = callArgs[0];
-                                ok(calledURL.startsWith("https://api-js.mixpanel.com/record/"));
 
-                                var paramsStr = calledURL.split('?')[1];
-                                var params = new URLSearchParams(paramsStr);
-                                same(params.get('distinct_id'), mixpanel.recordertest.get_distinct_id());
-                                same(params.get('$device_id'), mixpanel.recordertest.get_property('$device_id'));
+                                var urlParams1 = validateAndGetUrlParams(fetchCall1)
+                                same(urlParams1.get("seq"), "0")
 
                                 simulateMouseClick(document.body);
                                 this.clock.tick(10 * 1000);
@@ -5390,14 +5386,9 @@
                                         var callArgs = fetchCall1.args;
                                         var body = callArgs[1].body;
                                         same(body.constructor, Blob, 'request body is a Blob');
-
-                                        var calledURL = callArgs[0];
-                                        ok(calledURL.startsWith("https://api-js.mixpanel.com/record/"));
-
-                                        var paramsStr = calledURL.split('?')[1];
-                                        var params = new URLSearchParams(paramsStr);
-                                        same(params.get('distinct_id'), mixpanel.recordertest.get_distinct_id());
-                                        same(params.get('$device_id'), mixpanel.recordertest.get_property('$device_id'));
+                                        
+                                        var urlParams2 = validateAndGetUrlParams(fetchCall2)
+                                        same(urlParams2.get("seq"), "1")
 
                                         mixpanel.recordertest.stop_session_recording();
                                         done();
@@ -5526,7 +5517,7 @@
                     });
                 });
 
-                asyncTest('retries record request after a 500', 14, function () {
+                asyncTest('retries record request after a 500', 17, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     ok(this.getRecorderScript() !== null);
@@ -5544,22 +5535,25 @@
                         this.clock.tick(10 * 1000)
                         same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
 
-                        validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        same(urlParams.get("seq"), "0");
                         
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000);
                         same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
-                        validateAndGetUrlParams(this.fetchStub.getCall(1));
+                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                        same(urlParams.get("seq"), "1");
 
                         this.clock.tick(20 * 2000);
                         same(this.fetchStub.getCalls().length, 3, 'record request is retried after a 500');
-                        validateAndGetUrlParams(this.fetchStub.getCall(2))
+                        validateAndGetUrlParams(this.fetchStub.getCall(2));
+                        same(urlParams.get("seq"), "1");
 
                         mixpanel.recordertest.stop_session_recording();
                     });
                 });
 
-                asyncTest('halves batch size and retries record request after a 413', 21, function () {
+                asyncTest('halves batch size and retries record request after a 413', 25, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     ok(this.getRecorderScript() !== null);
@@ -5583,7 +5577,8 @@
                         this.clock.tick(10 * 1000);
                         same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
                         
-                        validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        same(urlParams.get("seq"), "0");
 
                         for  (var _i = 0; _i < 1000; _i++) {
                             simulateMouseClick(document.body);
@@ -5591,15 +5586,20 @@
 
                         this.clock.tick(10 * 1000);
                         same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
-                        validateAndGetUrlParams(this.fetchStub.getCall(1));
+                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                        same(urlParams.get("seq"), "1");
 
                         var events = JSON.parse(this.blobConstructorSpy.lastCall.args[0][0])
                         same(events.length, 1000);
 
                         this.clock.tick(10 * 1000);
                         same(this.fetchStub.getCalls().length, 4, 'record request is retried after a 413 and subsequently flushes the rest of events');
-                        validateAndGetUrlParams(this.fetchStub.getCall(2));
-                        validateAndGetUrlParams(this.fetchStub.getCall(3));
+                        
+                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(2));
+                        same(urlParams.get("seq"), "1");
+
+                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(3));
+                        same(urlParams.get("seq"), "2");
 
                         var numBlobCalls = this.blobConstructorSpy.getCalls().length
 
