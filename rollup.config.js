@@ -8,4 +8,4 @@ export default {
             jsnext: true,
         })
     ]
-}
+};

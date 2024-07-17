@@ -27,12 +27,12 @@ NOTE: the default `mixpanel-browser` bundle includes a bundled `mixpanel-recorde
 
 To load the main SDK with no option of session recording:
 ```javascript
-var mixpanel = require('mixpanel-browser/dist/mixpanel-main.cjs')
+import mixpanel from 'mixpanel-browser/src/loaders/loader-module-core';
 ```
 
 To load the main SDK and optionally load session recording bundle asynchronously (via script tag):
 ```javascript
-var mixpanel = require('mixpanel-browser/dist/mixpanel-bundle-async.cjs')
+import mixpanel from 'mixpanel-browser/src/loaders/loader-module-with-async-recorder';
 ```
 
 ## Alternative installation via Bower
