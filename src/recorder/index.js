@@ -1,10 +1,27 @@
 import {default as record} from 'rrweb/es/rrweb/packages/rrweb/src/record/index.js';
+import {IncrementalSource, EventType} from '@rrweb/types';
 
 import { MAX_RECORDING_MS, console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 
 var logger = console_with_prefix('recorder');
 var CompressionStream = window['CompressionStream'];
+
+var ACTIVE_SOURCES = new Set([
+    IncrementalSource.MouseMove,
+    IncrementalSource.MouseInteraction,
+    IncrementalSource.Scroll,
+    IncrementalSource.ViewportResize,
+    IncrementalSource.Input,
+    IncrementalSource.TouchMove,
+    IncrementalSource.MediaInteraction,
+    IncrementalSource.Drag,
+    IncrementalSource.Selection,
+]);
+
+function isUserEvent(ev) {
+    return ev.type === EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.source);
+}
 
 var MixpanelRecorder = function(mixpanelInstance) {
     this._mixpanel = mixpanelInstance;
@@ -64,7 +81,9 @@ MixpanelRecorder.prototype.startRecording = function () {
         'emit': _.bind(function (ev) {
             this.recEvents.push(ev);
             this.replayLengthMs = new Date().getTime() - this.replayStartTime;
-            resetIdleTimeout();
+            if (isUserEvent(ev)) {
+                resetIdleTimeout();
+            }
         }, this),
         'maskAllInputs': true,
         'maskTextSelector': this.get_config('record_mask_text_selector'),
