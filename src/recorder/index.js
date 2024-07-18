@@ -1,4 +1,5 @@
 import {default as record} from 'rrweb/es/rrweb/packages/rrweb/src/record/index.js';
+import {IncrementalSource, EventType} from '@rrweb/types';
 
 import { MAX_RECORDING_MS, console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
@@ -13,6 +14,22 @@ var RECORDER_BATCHER_LIB_CONFIG = {
     'batch_request_timeout_ms': 90 * 1000,
     'batch_autostart': true
 };
+
+var ACTIVE_SOURCES = new Set([
+    IncrementalSource.MouseMove,
+    IncrementalSource.MouseInteraction,
+    IncrementalSource.Scroll,
+    IncrementalSource.ViewportResize,
+    IncrementalSource.Input,
+    IncrementalSource.TouchMove,
+    IncrementalSource.MediaInteraction,
+    IncrementalSource.Drag,
+    IncrementalSource.Selection,
+]);
+
+function isUserEvent(ev) {
+    return ev.type === EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.source);
+}
 
 var MixpanelRecorder = function(mixpanelInstance) {
     this._mixpanel = mixpanelInstance;
@@ -80,13 +97,17 @@ MixpanelRecorder.prototype.startRecording = function () {
     this._stopRecording = record({
         'emit': _.bind(function (ev) {
             this.batcher.enqueue(ev);
-            resetIdleTimeout();
+            if (isUserEvent(ev)) {
+                resetIdleTimeout();
+            }
         }, this),
-        'maskAllInputs': true,
-        'maskTextSelector': this.get_config('record_mask_text_selector'),
-        'blockSelector': this.get_config('record_block_selector'),
-        'maskTextClass': this.get_config('record_mask_text_class'),
         'blockClass': this.get_config('record_block_class'),
+        'blockSelector': this.get_config('record_block_selector'),
+        'collectFonts': this.get_config('record_collect_fonts'),
+        'inlineImages': this.get_config('record_inline_images'),
+        'maskAllInputs': true,
+        'maskTextClass': this.get_config('record_mask_text_class'),
+        'maskTextSelector': this.get_config('record_mask_text_selector')
     });
 
     resetIdleTimeout();
