@@ -26,6 +26,7 @@ var RequestQueue = function(storageKey, options) {
     this.reportError = options.errorReporter || _.bind(logger.error, logger);
     this.lock = new SharedLock(storageKey, {storage: this.storage});
 
+    this.usePersistence = options.usePersistence;
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
     this.memQueue = [];
@@ -50,29 +51,36 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         'payload': item
     };
 
-    this.lock.withLock(_.bind(function lockAcquired() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue.push(queueEntry);
-            succeeded = this.saveToStorage(storedQueue);
-            if (succeeded) {
-                // only add to in-memory queue when storage succeeds
-                this.memQueue.push(queueEntry);
+    if (!this.usePersistence) {
+        this.memQueue.push(queueEntry);
+        if (cb) {
+            cb(true);
+        }
+    } else {
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue.push(queueEntry);
+                succeeded = this.saveToStorage(storedQueue);
+                if (succeeded) {
+                    // only add to in-memory queue when storage succeeds
+                    this.memQueue.push(queueEntry);
+                }
+            } catch(err) {
+                this.reportError('Error enqueueing item', item);
+                succeeded = false;
             }
-        } catch(err) {
-            this.reportError('Error enqueueing item', item);
-            succeeded = false;
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), _.bind(function lockFailure(err) {
-        this.reportError('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this), this.pid);
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), _.bind(function lockFailure(err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this), this.pid);
+    }
 };
 
 /**
@@ -83,7 +91,7 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
  */
 RequestQueue.prototype.fillBatch = function(batchSize) {
     var batch = this.memQueue.slice(0, batchSize);
-    if (batch.length < batchSize) {
+    if (this.usePersistence && batch.length < batchSize) {
         // don't need lock just to read events; localStorage is thread-safe
         // and the worst that could happen is a duplicate send of some
         // orphaned events, which will be deduplicated on the server side
@@ -132,61 +140,67 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     _.each(ids, function(id) { idSet[id] = true; });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
+    if (!this.usePersistence) {
+        if (cb) {
+            cb(true);
+        }
+    } else {
+        var removeFromStorage = _.bind(function() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                succeeded = this.saveToStorage(storedQueue);
 
-    var removeFromStorage = _.bind(function() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-            succeeded = this.saveToStorage(storedQueue);
+                // an extra check: did storage report success but somehow
+                // the items are still there?
+                if (succeeded) {
+                    storedQueue = this.readFromStorage();
+                    for (var i = 0; i < storedQueue.length; i++) {
+                        var item = storedQueue[i];
+                        if (item['id'] && !!idSet[item['id']]) {
+                            this.reportError('Item not removed from storage');
+                            return false;
+                        }
+                    }
+                }
+            } catch(err) {
+                this.reportError('Error removing items', ids);
+                succeeded = false;
+            }
+            return succeeded;
+        }, this);
 
-            // an extra check: did storage report success but somehow
-            // the items are still there?
-            if (succeeded) {
-                storedQueue = this.readFromStorage();
-                for (var i = 0; i < storedQueue.length; i++) {
-                    var item = storedQueue[i];
-                    if (item['id'] && !!idSet[item['id']]) {
-                        this.reportError('Item not removed from storage');
-                        return false;
+        this.lock.withLock(function lockAcquired() {
+            var succeeded = removeFromStorage();
+            if (cb) {
+                cb(succeeded);
+            }
+        }, _.bind(function lockFailure(err) {
+            var succeeded = false;
+            this.reportError('Error acquiring storage lock', err);
+            if (!localStorageSupported(this.storage, true)) {
+                // Looks like localStorage writes have stopped working sometime after
+                // initialization (probably full), and so nobody can acquire locks
+                // anymore. Consider it temporarily safe to remove items without the
+                // lock, since nobody's writing successfully anyway.
+                succeeded = removeFromStorage();
+                if (!succeeded) {
+                    // OK, we couldn't even write out the smaller queue. Try clearing it
+                    // entirely.
+                    try {
+                        this.storage.removeItem(this.storageKey);
+                    } catch(err) {
+                        this.reportError('Error clearing queue', err);
                     }
                 }
             }
-        } catch(err) {
-            this.reportError('Error removing items', ids);
-            succeeded = false;
-        }
-        return succeeded;
-    }, this);
-
-    this.lock.withLock(function lockAcquired() {
-        var succeeded = removeFromStorage();
-        if (cb) {
-            cb(succeeded);
-        }
-    }, _.bind(function lockFailure(err) {
-        var succeeded = false;
-        this.reportError('Error acquiring storage lock', err);
-        if (!localStorageSupported(this.storage, true)) {
-            // Looks like localStorage writes have stopped working sometime after
-            // initialization (probably full), and so nobody can acquire locks
-            // anymore. Consider it temporarily safe to remove items without the
-            // lock, since nobody's writing successfully anyway.
-            succeeded = removeFromStorage();
-            if (!succeeded) {
-                // OK, we couldn't even write out the smaller queue. Try clearing it
-                // entirely.
-                try {
-                    this.storage.removeItem(this.storageKey);
-                } catch(err) {
-                    this.reportError('Error clearing queue', err);
-                }
+            if (cb) {
+                cb(succeeded);
             }
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), this.pid);
+        }, this), this.pid);
+    }
+
 };
 
 // internal helper for RequestQueue.updatePayloads
@@ -214,25 +228,32 @@ var updatePayloads = function(existingItems, itemsToUpdate) {
  */
 RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
     this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
-    this.lock.withLock(_.bind(function lockAcquired() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue = updatePayloads(storedQueue, itemsToUpdate);
-            succeeded = this.saveToStorage(storedQueue);
-        } catch(err) {
-            this.reportError('Error updating items', itemsToUpdate);
-            succeeded = false;
-        }
+    if (!this.usePersistence) {
         if (cb) {
-            cb(succeeded);
+            cb(true);
         }
-    }, this), _.bind(function lockFailure(err) {
-        this.reportError('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this), this.pid);
+    } else {
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                succeeded = this.saveToStorage(storedQueue);
+            } catch(err) {
+                this.reportError('Error updating items', itemsToUpdate);
+                succeeded = false;
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), _.bind(function lockFailure(err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this), this.pid);
+    }
+
 };
 
 /**
@@ -275,7 +296,10 @@ RequestQueue.prototype.saveToStorage = function(queue) {
  */
 RequestQueue.prototype.clear = function() {
     this.memQueue = [];
-    this.storage.removeItem(this.storageKey);
+
+    if (this.usePersistence) {
+        this.storage.removeItem(this.storageKey);
+    }
 };
 
 export { RequestQueue };
