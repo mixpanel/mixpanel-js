@@ -27,16 +27,31 @@ describe(`RequestBatcher`, function() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
   }
 
-  function sendResponse(status, {error, responseHeaders} = {}) {
+  function sendResponse(httpStatusCode, {error, retryAfter} = {}) {
     // respond to last request sent
     const requestIndex = batcher.sendRequest.args.length - 1;
     batcher.sendRequest.args[requestIndex][2]({
-      'xhr_req': {
-        status,
-        responseHeaders,
-      },
+      httpStatusCode,
+      retryAfter,
       error,
     });
+  }
+
+  function initBatcher(optionOverrides) {
+    optionOverrides = optionOverrides || {};
+    libConfig = {
+      batch_flush_interval_ms: DEFAULT_FLUSH_INTERVAL,
+      batch_request_timeout_ms: REQUEST_TIMEOUT_MS,
+      batch_size: 50,
+      batch_autostart: true,
+    };
+
+    batcher = new RequestBatcher(LOCALSTORAGE_KEY, Object.assign({
+      libConfig,
+      sendRequestFunc: sinon.spy(),
+      storage: localStorage,
+      usePersistence: true,
+    }, optionOverrides));
   }
 
   beforeEach(function() {
@@ -46,17 +61,7 @@ describe(`RequestBatcher`, function() {
     clock = sinon.useFakeTimers(START_TIME);
     localStorage.clear();
 
-    libConfig = {
-      batch_flush_interval_ms: DEFAULT_FLUSH_INTERVAL,
-      batch_request_timeout_ms: REQUEST_TIMEOUT_MS,
-      batch_size: 50,
-      batch_autostart: true,
-    };
-    batcher = new RequestBatcher(LOCALSTORAGE_KEY, {
-      libConfig,
-      sendRequestFunc: sinon.spy(),
-      storage: localStorage,
-    });
+    initBatcher();
   });
 
   afterEach(function() {
@@ -71,6 +76,20 @@ describe(`RequestBatcher`, function() {
       batcher.enqueue({foo: `bar`}, function(succeeded) {
         expect(succeeded).to.be.ok;
         expect(batcher.queue.memQueue).to.have.lengthOf(1);
+        const queuedEntry = batcher.queue.memQueue[0];
+        expect(queuedEntry.flushAfter).to.be.greaterThan(START_TIME + 5000);
+        expect(queuedEntry.flushAfter).to.be.lessThan(START_TIME + 15000);
+        expect(queuedEntry.payload).to.deep.equal({foo: `bar`});
+        done();
+      });
+    });
+
+    it(`only stores the item in memory when usePersistence=false`, function(done) {
+      initBatcher({usePersistence: false});
+      batcher.enqueue({foo: `bar`}, function(succeeded) {
+        expect(succeeded).to.be.ok;
+        expect(batcher.queue.memQueue).to.have.lengthOf(1);
+        expect(getLocalStorageItems()).to.be.null;
         const queuedEntry = batcher.queue.memQueue[0];
         expect(queuedEntry.flushAfter).to.be.greaterThan(START_TIME + 5000);
         expect(queuedEntry.flushAfter).to.be.lessThan(START_TIME + 15000);
@@ -419,7 +438,7 @@ describe(`RequestBatcher`, function() {
         batcher.enqueue({ev: `queued event 2`});
         batcher.flush();
 
-        sendResponse(503, {responseHeaders: {'Retry-After': `20`}});
+        sendResponse(503, {retryAfter: `20`});
         clock.tick(10000);
         expect(batcher.sendRequest).to.have.been.calledOnce; // no retry yet
         clock.tick(10000);

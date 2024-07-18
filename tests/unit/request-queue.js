@@ -21,7 +21,7 @@ describe(`RequestQueue`, function() {
     }
     clock = sinon.useFakeTimers(START_TIME);
     localStorage.clear();
-    queue = new RequestQueue(`fake-rq-key`, {storage: localStorage});
+    queue = new RequestQueue(`fake-rq-key`, {storage: localStorage, usePersistence: true});
   });
 
   afterEach(function() {
@@ -76,7 +76,7 @@ describe(`RequestQueue`, function() {
     });
 
     it(`waits for current lock holder to release`, function(done) {
-      const firstHolder = new RequestQueue(`fake-rq-key`, {storage: localStorage, pid: `first-holder`});
+      const firstHolder = new RequestQueue(`fake-rq-key`, {storage: localStorage, pid: `first-holder`, usePersistence: true});
       const firstItem = {event: `first`};
       acquireLockForPid(queue.lock, `first-holder`);
 
@@ -136,7 +136,7 @@ describe(`RequestQueue`, function() {
       context(`mid-acquisition`, function() {
         beforeEach(function() {
           localStorage.clear();
-          queue = new RequestQueue(`fake-rq-key`, {storage: localStorage, pid: `mypid`});
+          queue = new RequestQueue(`fake-rq-key`, {storage: localStorage, pid: `mypid`, usePersistence: true});
           sinon.stub(localStorage, `setItem`)
             .withArgs(`fake-rq-key:Y`, `mypid`)
             .onCall(0).returns(null)

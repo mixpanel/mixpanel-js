@@ -682,7 +682,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         lib.report_error(error);
                         if (callback) {
                             if (verbose_mode) {
-                                callback({status: 0, error: error, xhr_req: req});
+                                var response_headers = req['responseHeaders'] || {};
+                                callback({status: 0, httpStatusCode: req['status'], error: error, retryAfter: response_headers['Retry-After']});
                             } else {
                                 callback(0);
                             }
@@ -782,6 +783,7 @@ MixpanelLib.prototype.init_batchers = function() {
                 attrs.queue_key,
                 {
                     libConfig: this['config'],
+                    errorReporter: this.get_config('error_reporter'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
                         this._send_request(
                             this.get_config('api_host') + attrs.endpoint,
@@ -793,8 +795,8 @@ MixpanelLib.prototype.init_batchers = function() {
                     beforeSendHook: _.bind(function(item) {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
-                    errorReporter: this.get_config('error_reporter'),
-                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this)
+                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
+                    usePersistence: true
                 }
             );
         }, this);
