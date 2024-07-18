@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.53.0'
+    LIB_VERSION: '2.54.0-rc1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -2051,6 +2051,7 @@ var RequestQueue = function(storageKey, options) {
     this.reportError = options.errorReporter || _.bind(logger$1.error, logger$1);
     this.lock = new SharedLock(storageKey, {storage: this.storage});
 
+    this.usePersistence = options.usePersistence;
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
     this.memQueue = [];
@@ -2075,29 +2076,36 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
         'payload': item
     };
 
-    this.lock.withLock(_.bind(function lockAcquired() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue.push(queueEntry);
-            succeeded = this.saveToStorage(storedQueue);
-            if (succeeded) {
-                // only add to in-memory queue when storage succeeds
-                this.memQueue.push(queueEntry);
+    if (!this.usePersistence) {
+        this.memQueue.push(queueEntry);
+        if (cb) {
+            cb(true);
+        }
+    } else {
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue.push(queueEntry);
+                succeeded = this.saveToStorage(storedQueue);
+                if (succeeded) {
+                    // only add to in-memory queue when storage succeeds
+                    this.memQueue.push(queueEntry);
+                }
+            } catch(err) {
+                this.reportError('Error enqueueing item', item);
+                succeeded = false;
             }
-        } catch(err) {
-            this.reportError('Error enqueueing item', item);
-            succeeded = false;
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), _.bind(function lockFailure(err) {
-        this.reportError('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this), this.pid);
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), _.bind(function lockFailure(err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this), this.pid);
+    }
 };
 
 /**
@@ -2108,7 +2116,7 @@ RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
  */
 RequestQueue.prototype.fillBatch = function(batchSize) {
     var batch = this.memQueue.slice(0, batchSize);
-    if (batch.length < batchSize) {
+    if (this.usePersistence && batch.length < batchSize) {
         // don't need lock just to read events; localStorage is thread-safe
         // and the worst that could happen is a duplicate send of some
         // orphaned events, which will be deduplicated on the server side
@@ -2157,61 +2165,67 @@ RequestQueue.prototype.removeItemsByID = function(ids, cb) {
     _.each(ids, function(id) { idSet[id] = true; });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
+    if (!this.usePersistence) {
+        if (cb) {
+            cb(true);
+        }
+    } else {
+        var removeFromStorage = _.bind(function() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                succeeded = this.saveToStorage(storedQueue);
 
-    var removeFromStorage = _.bind(function() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-            succeeded = this.saveToStorage(storedQueue);
+                // an extra check: did storage report success but somehow
+                // the items are still there?
+                if (succeeded) {
+                    storedQueue = this.readFromStorage();
+                    for (var i = 0; i < storedQueue.length; i++) {
+                        var item = storedQueue[i];
+                        if (item['id'] && !!idSet[item['id']]) {
+                            this.reportError('Item not removed from storage');
+                            return false;
+                        }
+                    }
+                }
+            } catch(err) {
+                this.reportError('Error removing items', ids);
+                succeeded = false;
+            }
+            return succeeded;
+        }, this);
 
-            // an extra check: did storage report success but somehow
-            // the items are still there?
-            if (succeeded) {
-                storedQueue = this.readFromStorage();
-                for (var i = 0; i < storedQueue.length; i++) {
-                    var item = storedQueue[i];
-                    if (item['id'] && !!idSet[item['id']]) {
-                        this.reportError('Item not removed from storage');
-                        return false;
+        this.lock.withLock(function lockAcquired() {
+            var succeeded = removeFromStorage();
+            if (cb) {
+                cb(succeeded);
+            }
+        }, _.bind(function lockFailure(err) {
+            var succeeded = false;
+            this.reportError('Error acquiring storage lock', err);
+            if (!localStorageSupported(this.storage, true)) {
+                // Looks like localStorage writes have stopped working sometime after
+                // initialization (probably full), and so nobody can acquire locks
+                // anymore. Consider it temporarily safe to remove items without the
+                // lock, since nobody's writing successfully anyway.
+                succeeded = removeFromStorage();
+                if (!succeeded) {
+                    // OK, we couldn't even write out the smaller queue. Try clearing it
+                    // entirely.
+                    try {
+                        this.storage.removeItem(this.storageKey);
+                    } catch(err) {
+                        this.reportError('Error clearing queue', err);
                     }
                 }
             }
-        } catch(err) {
-            this.reportError('Error removing items', ids);
-            succeeded = false;
-        }
-        return succeeded;
-    }, this);
-
-    this.lock.withLock(function lockAcquired() {
-        var succeeded = removeFromStorage();
-        if (cb) {
-            cb(succeeded);
-        }
-    }, _.bind(function lockFailure(err) {
-        var succeeded = false;
-        this.reportError('Error acquiring storage lock', err);
-        if (!localStorageSupported(this.storage, true)) {
-            // Looks like localStorage writes have stopped working sometime after
-            // initialization (probably full), and so nobody can acquire locks
-            // anymore. Consider it temporarily safe to remove items without the
-            // lock, since nobody's writing successfully anyway.
-            succeeded = removeFromStorage();
-            if (!succeeded) {
-                // OK, we couldn't even write out the smaller queue. Try clearing it
-                // entirely.
-                try {
-                    this.storage.removeItem(this.storageKey);
-                } catch(err) {
-                    this.reportError('Error clearing queue', err);
-                }
+            if (cb) {
+                cb(succeeded);
             }
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), this.pid);
+        }, this), this.pid);
+    }
+
 };
 
 // internal helper for RequestQueue.updatePayloads
@@ -2239,25 +2253,32 @@ var updatePayloads = function(existingItems, itemsToUpdate) {
  */
 RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
     this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
-    this.lock.withLock(_.bind(function lockAcquired() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue = updatePayloads(storedQueue, itemsToUpdate);
-            succeeded = this.saveToStorage(storedQueue);
-        } catch(err) {
-            this.reportError('Error updating items', itemsToUpdate);
-            succeeded = false;
-        }
+    if (!this.usePersistence) {
         if (cb) {
-            cb(succeeded);
+            cb(true);
         }
-    }, this), _.bind(function lockFailure(err) {
-        this.reportError('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this), this.pid);
+    } else {
+        this.lock.withLock(_.bind(function lockAcquired() {
+            var succeeded;
+            try {
+                var storedQueue = this.readFromStorage();
+                storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                succeeded = this.saveToStorage(storedQueue);
+            } catch(err) {
+                this.reportError('Error updating items', itemsToUpdate);
+                succeeded = false;
+            }
+            if (cb) {
+                cb(succeeded);
+            }
+        }, this), _.bind(function lockFailure(err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (cb) {
+                cb(false);
+            }
+        }, this), this.pid);
+    }
+
 };
 
 /**
@@ -2300,7 +2321,10 @@ RequestQueue.prototype.saveToStorage = function(queue) {
  */
 RequestQueue.prototype.clear = function() {
     this.memQueue = [];
-    this.storage.removeItem(this.storageKey);
+
+    if (this.usePersistence) {
+        this.storage.removeItem(this.storageKey);
+    }
 };
 
 // maximum interval between request retries after exponential backoff
@@ -2318,7 +2342,8 @@ var RequestBatcher = function(storageKey, options) {
     this.errorReporter = options.errorReporter;
     this.queue = new RequestQueue(storageKey, {
         errorReporter: _.bind(this.reportError, this),
-        storage: options.storage
+        storage: options.storage,
+        usePersistence: options.usePersistence
     });
 
     this.libConfig = options.libConfig;
@@ -2335,6 +2360,11 @@ var RequestBatcher = function(storageKey, options) {
 
     // extra client-side dedupe
     this.itemIdsSentSuccessfully = {};
+
+    // Make the flush occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
+    // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
+    // in a request loop and get ratelimited by the server.
+    this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
 };
 
 /**
@@ -2419,6 +2449,9 @@ RequestBatcher.prototype.flush = function(options) {
         var startTime = new Date().getTime();
         var currentBatchSize = this.batchSize;
         var batch = this.queue.fillBatch(currentBatchSize);
+        // if there's more items in the queue than the batch size, attempt
+        // to flush again after the current batch is done.
+        var attemptSecondaryFlush = batch.length === currentBatchSize;
         var dataForRequest = [];
         var transformedItems = {};
         _.each(batch, function(item) {
@@ -2486,22 +2519,17 @@ RequestBatcher.prototype.flush = function(options) {
                     this.flush();
                 } else if (
                     _.isObject(res) &&
-                    res.xhr_req &&
-                    (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')
+                    (res.httpStatusCode >= 500 || res.httpStatusCode === 429 || res.error === 'timeout')
                 ) {
                     // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.flushInterval * 2;
-                    var headers = res.xhr_req['responseHeaders'];
-                    if (headers) {
-                        var retryAfter = headers['Retry-After'];
-                        if (retryAfter) {
-                            retryMS = (parseInt(retryAfter, 10) * 1000) || retryMS;
-                        }
+                    if (res.retryAfter) {
+                        retryMS = (parseInt(res.retryAfter, 10) * 1000) || retryMS;
                     }
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
                     this.reportError('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
-                } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
+                } else if (_.isObject(res) && res.httpStatusCode === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
@@ -2525,7 +2553,11 @@ RequestBatcher.prototype.flush = function(options) {
                         _.bind(function(succeeded) {
                             if (succeeded) {
                                 this.consecutiveRemovalFailures = 0;
-                                this.flush(); // handle next batch if the queue isn't empty
+                                if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
+                                    this.resetFlush(); // schedule next batch with a delay
+                                } else {
+                                    this.flush(); // handle next batch if the queue isn't empty
+                                }
                             } else {
                                 this.reportError('Failed to remove items from queue');
                                 if (++this.consecutiveRemovalFailures > 5) {
@@ -2573,7 +2605,6 @@ RequestBatcher.prototype.flush = function(options) {
         }
         logger.log('MIXPANEL REQUEST:', dataForRequest);
         this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
-
     } catch(err) {
         this.reportError('Error flushing request queue', err);
         this.resetFlush();
@@ -4206,7 +4237,9 @@ var DEFAULT_CONFIG = {
     'hooks':                             {},
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
     'record_block_selector':             'img, video',
+    'record_collect_fonts':              false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
+    'record_inline_images':              false,
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
     'record_max_ms':                     MAX_RECORDING_MS,
@@ -4741,7 +4774,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         lib.report_error(error);
                         if (callback) {
                             if (verbose_mode) {
-                                callback({status: 0, error: error, xhr_req: req});
+                                var response_headers = req['responseHeaders'] || {};
+                                callback({status: 0, httpStatusCode: req['status'], error: error, retryAfter: response_headers['Retry-After']});
                             } else {
                                 callback(0);
                             }
@@ -4841,6 +4875,7 @@ MixpanelLib.prototype.init_batchers = function() {
                 attrs.queue_key,
                 {
                     libConfig: this['config'],
+                    errorReporter: this.get_config('error_reporter'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
                         this._send_request(
                             this.get_config('api_host') + attrs.endpoint,
@@ -4852,8 +4887,8 @@ MixpanelLib.prototype.init_batchers = function() {
                     beforeSendHook: _.bind(function(item) {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
-                    errorReporter: this.get_config('error_reporter'),
-                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this)
+                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
+                    usePersistence: true
                 }
             );
         }, this);

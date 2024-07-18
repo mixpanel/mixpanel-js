@@ -5547,7 +5547,7 @@
                 asyncTest('retries record request after a 500', 17, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
-                    ok(this.getRecorderScript() !== null);
+                    this.assertRecorderScript(true)
                     
                     // fake the fetch / response promises since we're testing callback logic
                     this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
@@ -5563,18 +5563,18 @@
                         same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
 
                         var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
-                        same(urlParams.get("seq"), "0");
+                        same(urlParams.get("seq"), "0", "sends first sequence");
                         
                         simulateMouseClick(document.body);
                         this.clock.tick(10 * 1000);
                         same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
                         urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
-                        same(urlParams.get("seq"), "1");
+                        same(urlParams.get("seq"), "1", "2nd sequence fails");
 
                         this.clock.tick(20 * 2000);
                         same(this.fetchStub.getCalls().length, 3, 'record request is retried after a 500');
                         validateAndGetUrlParams(this.fetchStub.getCall(2));
-                        same(urlParams.get("seq"), "1");
+                        same(urlParams.get("seq"), "1", "2nd sequence is retried");
 
                         mixpanel.recordertest.stop_session_recording();
                     });
@@ -5583,7 +5583,7 @@
                 asyncTest('halves batch size and retries record request after a 413', 25, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
-                    ok(this.getRecorderScript() !== null);
+                    this.assertRecorderScript(true)
                     
                     this.randomStub.restore(); // restore the random stub after script is loaded for batcher uuid dedupe
                     this.blobConstructorSpy = sinon.spy(window, 'Blob')
