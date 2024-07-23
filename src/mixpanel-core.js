@@ -47,6 +47,12 @@ Globals should be all caps
 */
 
 var init_type;       // MODULE or SNIPPET loader
+// allow bundlers to specify how extra code (recorder bundle) should be loaded
+// eslint-disable-next-line no-unused-vars
+var load_extra_bundle = function(src, _onload) {
+    throw new Error(src + ' not available in this build.');
+};
+
 var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
@@ -140,7 +146,9 @@ var DEFAULT_CONFIG = {
     'hooks':                             {},
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
     'record_block_selector':             'img, video',
+    'record_collect_fonts':              false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
+    'record_inline_images':              false,
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
     'record_max_ms':                     MAX_RECORDING_MS,
@@ -376,12 +384,7 @@ MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(functi
     }, this);
 
     if (_.isUndefined(window['__mp_recorder'])) {
-        var scriptEl = document.createElement('script');
-        scriptEl.type = 'text/javascript';
-        scriptEl.async = true;
-        scriptEl.onload = handleLoadedRecorder;
-        scriptEl.src = this.get_config('recorder_src');
-        document.head.appendChild(scriptEl);
+        load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
     } else {
         handleLoadedRecorder();
     }
@@ -680,7 +683,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
                         lib.report_error(error);
                         if (callback) {
                             if (verbose_mode) {
-                                callback({status: 0, error: error, xhr_req: req});
+                                var response_headers = req['responseHeaders'] || {};
+                                callback({status: 0, httpStatusCode: req['status'], error: error, retryAfter: response_headers['Retry-After']});
                             } else {
                                 callback(0);
                             }
@@ -780,6 +784,7 @@ MixpanelLib.prototype.init_batchers = function() {
                 attrs.queue_key,
                 {
                     libConfig: this['config'],
+                    errorReporter: this.get_config('error_reporter'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
                         this._send_request(
                             this.get_config('api_host') + attrs.endpoint,
@@ -791,8 +796,8 @@ MixpanelLib.prototype.init_batchers = function() {
                     beforeSendHook: _.bind(function(item) {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
-                    errorReporter: this.get_config('error_reporter'),
-                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this)
+                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
+                    usePersistence: true
                 }
             );
         }, this);
@@ -2241,7 +2246,8 @@ var add_dom_loaded_handler = function() {
     _.register_event(window, 'load', dom_loaded_handler, true);
 };
 
-export function init_from_snippet() {
+export function init_from_snippet(bundle_loader) {
+    load_extra_bundle = bundle_loader;
     init_type = INIT_SNIPPET;
     mixpanel_master = window[PRIMARY_INSTANCE_NAME];
 
@@ -2281,7 +2287,8 @@ export function init_from_snippet() {
     add_dom_loaded_handler();
 }
 
-export function init_as_module() {
+export function init_as_module(bundle_loader) {
+    load_extra_bundle = bundle_loader;
     init_type = INIT_MODULE;
     mixpanel_master = new MixpanelLib();
 

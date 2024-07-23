@@ -1,3 +1,9 @@
+**2.54.0** (23 Jul 2024)
+- Provides optional builds without session recording module and without asynchronous script loading.
+- Integrates request batcher with session recording module for increased reliability.
+- Improved user inactivity heuristic for session recording timeout.
+- Adds config options to inline images and collect fonts during session recording.
+
 **2.53.0** (21 Jun 2024)
 - Switch to new session-recording network payload format, utilizing client-side compression when available
 - Session-recording methods are now available through Google Tag Manager wrapper

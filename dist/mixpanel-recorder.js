@@ -1432,7 +1432,7 @@
         return doc.contains(n) || shadowHostInDom(n);
     }
 
-    var EventType = /* @__PURE__ */ ((EventType2) => {
+    var EventType$1 = /* @__PURE__ */ ((EventType2) => {
       EventType2[EventType2["DomContentLoaded"] = 0] = "DomContentLoaded";
       EventType2[EventType2["Load"] = 1] = "Load";
       EventType2[EventType2["FullSnapshot"] = 2] = "FullSnapshot";
@@ -1441,8 +1441,8 @@
       EventType2[EventType2["Custom"] = 5] = "Custom";
       EventType2[EventType2["Plugin"] = 6] = "Plugin";
       return EventType2;
-    })(EventType || {});
-    var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
+    })(EventType$1 || {});
+    var IncrementalSource$1 = /* @__PURE__ */ ((IncrementalSource2) => {
       IncrementalSource2[IncrementalSource2["Mutation"] = 0] = "Mutation";
       IncrementalSource2[IncrementalSource2["MouseMove"] = 1] = "MouseMove";
       IncrementalSource2[IncrementalSource2["MouseInteraction"] = 2] = "MouseInteraction";
@@ -1461,7 +1461,7 @@
       IncrementalSource2[IncrementalSource2["AdoptedStyleSheet"] = 15] = "AdoptedStyleSheet";
       IncrementalSource2[IncrementalSource2["CustomElement"] = 16] = "CustomElement";
       return IncrementalSource2;
-    })(IncrementalSource || {});
+    })(IncrementalSource$1 || {});
     var MouseInteractions = /* @__PURE__ */ ((MouseInteractions2) => {
       MouseInteractions2[MouseInteractions2["MouseUp"] = 0] = "MouseUp";
       MouseInteractions2[MouseInteractions2["MouseDown"] = 1] = "MouseDown";
@@ -2180,10 +2180,10 @@
                 timeOffset: nowTimestamp() - timeBaseline,
             });
             wrappedCb(typeof DragEvent !== 'undefined' && evt instanceof DragEvent
-                ? IncrementalSource.Drag
+                ? IncrementalSource$1.Drag
                 : evt instanceof MouseEvent
-                    ? IncrementalSource.MouseMove
-                    : IncrementalSource.TouchMove);
+                    ? IncrementalSource$1.MouseMove
+                    : IncrementalSource$1.TouchMove);
         }), threshold, {
             trailing: false,
         }));
@@ -3096,7 +3096,7 @@
         transformCrossOriginEvent(iframeEl, e) {
             var _a;
             switch (e.type) {
-                case EventType.FullSnapshot: {
+                case EventType$1.FullSnapshot: {
                     this.crossOriginIframeMirror.reset(iframeEl);
                     this.crossOriginIframeStyleMirror.reset(iframeEl);
                     this.replaceIdOnNode(e.data.node, iframeEl);
@@ -3105,9 +3105,9 @@
                     this.patchRootIdOnNode(e.data.node, rootId);
                     return {
                         timestamp: e.timestamp,
-                        type: EventType.IncrementalSnapshot,
+                        type: EventType$1.IncrementalSnapshot,
                         data: {
-                            source: IncrementalSource.Mutation,
+                            source: IncrementalSource$1.Mutation,
                             adds: [
                                 {
                                     parentId: this.mirror.getId(iframeEl),
@@ -3122,21 +3122,21 @@
                         },
                     };
                 }
-                case EventType.Meta:
-                case EventType.Load:
-                case EventType.DomContentLoaded: {
+                case EventType$1.Meta:
+                case EventType$1.Load:
+                case EventType$1.DomContentLoaded: {
                     return false;
                 }
-                case EventType.Plugin: {
+                case EventType$1.Plugin: {
                     return e;
                 }
-                case EventType.Custom: {
+                case EventType$1.Custom: {
                     this.replaceIds(e.data.payload, iframeEl, ['id', 'parentId', 'previousId', 'nextId']);
                     return e;
                 }
-                case EventType.IncrementalSnapshot: {
+                case EventType$1.IncrementalSnapshot: {
                     switch (e.data.source) {
-                        case IncrementalSource.Mutation: {
+                        case IncrementalSource$1.Mutation: {
                             e.data.adds.forEach((n) => {
                                 this.replaceIds(n, iframeEl, [
                                     'parentId',
@@ -3158,41 +3158,41 @@
                             });
                             return e;
                         }
-                        case IncrementalSource.Drag:
-                        case IncrementalSource.TouchMove:
-                        case IncrementalSource.MouseMove: {
+                        case IncrementalSource$1.Drag:
+                        case IncrementalSource$1.TouchMove:
+                        case IncrementalSource$1.MouseMove: {
                             e.data.positions.forEach((p) => {
                                 this.replaceIds(p, iframeEl, ['id']);
                             });
                             return e;
                         }
-                        case IncrementalSource.ViewportResize: {
+                        case IncrementalSource$1.ViewportResize: {
                             return false;
                         }
-                        case IncrementalSource.MediaInteraction:
-                        case IncrementalSource.MouseInteraction:
-                        case IncrementalSource.Scroll:
-                        case IncrementalSource.CanvasMutation:
-                        case IncrementalSource.Input: {
+                        case IncrementalSource$1.MediaInteraction:
+                        case IncrementalSource$1.MouseInteraction:
+                        case IncrementalSource$1.Scroll:
+                        case IncrementalSource$1.CanvasMutation:
+                        case IncrementalSource$1.Input: {
                             this.replaceIds(e.data, iframeEl, ['id']);
                             return e;
                         }
-                        case IncrementalSource.StyleSheetRule:
-                        case IncrementalSource.StyleDeclaration: {
+                        case IncrementalSource$1.StyleSheetRule:
+                        case IncrementalSource$1.StyleDeclaration: {
                             this.replaceIds(e.data, iframeEl, ['id']);
                             this.replaceStyleIds(e.data, iframeEl, ['styleId']);
                             return e;
                         }
-                        case IncrementalSource.Font: {
+                        case IncrementalSource$1.Font: {
                             return e;
                         }
-                        case IncrementalSource.Selection: {
+                        case IncrementalSource$1.Selection: {
                             e.data.ranges.forEach((range) => {
                                 this.replaceIds(range, iframeEl, ['start', 'end']);
                             });
                             return e;
                         }
-                        case IncrementalSource.AdoptedStyleSheet: {
+                        case IncrementalSource$1.AdoptedStyleSheet: {
                             this.replaceIds(e.data, iframeEl, ['id']);
                             this.replaceStyleIds(e.data, iframeEl, ['styleIds']);
                             (_a = e.data.styles) === null || _a === void 0 ? void 0 : _a.forEach((style) => {
@@ -4143,9 +4143,9 @@
         wrappedEmit = (e, isCheckout) => {
             var _a;
             if (((_a = mutationBuffers[0]) === null || _a === void 0 ? void 0 : _a.isFrozen()) &&
-                e.type !== EventType.FullSnapshot &&
-                !(e.type === EventType.IncrementalSnapshot &&
-                    e.data.source === IncrementalSource.Mutation)) {
+                e.type !== EventType$1.FullSnapshot &&
+                !(e.type === EventType$1.IncrementalSnapshot &&
+                    e.data.source === IncrementalSource$1.Mutation)) {
                 mutationBuffers.forEach((buf) => buf.unfreeze());
             }
             if (inEmittingFrame) {
@@ -4160,12 +4160,12 @@
                 };
                 window.parent.postMessage(message, '*');
             }
-            if (e.type === EventType.FullSnapshot) {
+            if (e.type === EventType$1.FullSnapshot) {
                 lastFullSnapshotEvent = e;
                 incrementalSnapshotCount = 0;
             }
-            else if (e.type === EventType.IncrementalSnapshot) {
-                if (e.data.source === IncrementalSource.Mutation &&
+            else if (e.type === EventType$1.IncrementalSnapshot) {
+                if (e.data.source === IncrementalSource$1.Mutation &&
                     e.data.isAttachIframe) {
                     return;
                 }
@@ -4180,21 +4180,21 @@
         };
         const wrappedMutationEmit = (m) => {
             wrappedEmit(wrapEvent({
-                type: EventType.IncrementalSnapshot,
-                data: Object.assign({ source: IncrementalSource.Mutation }, m),
+                type: EventType$1.IncrementalSnapshot,
+                data: Object.assign({ source: IncrementalSource$1.Mutation }, m),
             }));
         };
         const wrappedScrollEmit = (p) => wrappedEmit(wrapEvent({
-            type: EventType.IncrementalSnapshot,
-            data: Object.assign({ source: IncrementalSource.Scroll }, p),
+            type: EventType$1.IncrementalSnapshot,
+            data: Object.assign({ source: IncrementalSource$1.Scroll }, p),
         }));
         const wrappedCanvasMutationEmit = (p) => wrappedEmit(wrapEvent({
-            type: EventType.IncrementalSnapshot,
-            data: Object.assign({ source: IncrementalSource.CanvasMutation }, p),
+            type: EventType$1.IncrementalSnapshot,
+            data: Object.assign({ source: IncrementalSource$1.CanvasMutation }, p),
         }));
         const wrappedAdoptedStyleSheetEmit = (a) => wrappedEmit(wrapEvent({
-            type: EventType.IncrementalSnapshot,
-            data: Object.assign({ source: IncrementalSource.AdoptedStyleSheet }, a),
+            type: EventType$1.IncrementalSnapshot,
+            data: Object.assign({ source: IncrementalSource$1.AdoptedStyleSheet }, a),
         }));
         const stylesheetManager = new StylesheetManager({
             mutationCb: wrappedMutationEmit,
@@ -4256,7 +4256,7 @@
                 return;
             }
             wrappedEmit(wrapEvent({
-                type: EventType.Meta,
+                type: EventType$1.Meta,
                 data: {
                     href: window.location.href,
                     width: getWindowWidth(),
@@ -4303,7 +4303,7 @@
                 return console.warn('Failed to snapshot the document');
             }
             wrappedEmit(wrapEvent({
-                type: EventType.FullSnapshot,
+                type: EventType$1.FullSnapshot,
                 data: {
                     node,
                     initialOffset: getWindowScroll(window),
@@ -4320,52 +4320,52 @@
                 return callbackWrapper(initObservers)({
                     mutationCb: wrappedMutationEmit,
                     mousemoveCb: (positions, source) => wrappedEmit(wrapEvent({
-                        type: EventType.IncrementalSnapshot,
+                        type: EventType$1.IncrementalSnapshot,
                         data: {
                             source,
                             positions,
                         },
                     })),
                     mouseInteractionCb: (d) => wrappedEmit(wrapEvent({
-                        type: EventType.IncrementalSnapshot,
-                        data: Object.assign({ source: IncrementalSource.MouseInteraction }, d),
+                        type: EventType$1.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource$1.MouseInteraction }, d),
                     })),
                     scrollCb: wrappedScrollEmit,
                     viewportResizeCb: (d) => wrappedEmit(wrapEvent({
-                        type: EventType.IncrementalSnapshot,
-                        data: Object.assign({ source: IncrementalSource.ViewportResize }, d),
+                        type: EventType$1.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource$1.ViewportResize }, d),
                     })),
                     inputCb: (v) => wrappedEmit(wrapEvent({
-                        type: EventType.IncrementalSnapshot,
-                        data: Object.assign({ source: IncrementalSource.Input }, v),
+                        type: EventType$1.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource$1.Input }, v),
                     })),
                     mediaInteractionCb: (p) => wrappedEmit(wrapEvent({
-                        type: EventType.IncrementalSnapshot,
-                        data: Object.assign({ source: IncrementalSource.MediaInteraction }, p),
+                        type: EventType$1.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource$1.MediaInteraction }, p),
                     })),
                     styleSheetRuleCb: (r) => wrappedEmit(wrapEvent({
-                        type: EventType.IncrementalSnapshot,
-                        data: Object.assign({ source: IncrementalSource.StyleSheetRule }, r),
+                        type: EventType$1.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource$1.StyleSheetRule }, r),
                     })),
                     styleDeclarationCb: (r) => wrappedEmit(wrapEvent({
-                        type: EventType.IncrementalSnapshot,
-                        data: Object.assign({ source: IncrementalSource.StyleDeclaration }, r),
+                        type: EventType$1.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource$1.StyleDeclaration }, r),
                     })),
                     canvasMutationCb: wrappedCanvasMutationEmit,
                     fontCb: (p) => wrappedEmit(wrapEvent({
-                        type: EventType.IncrementalSnapshot,
-                        data: Object.assign({ source: IncrementalSource.Font }, p),
+                        type: EventType$1.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource$1.Font }, p),
                     })),
                     selectionCb: (p) => {
                         wrappedEmit(wrapEvent({
-                            type: EventType.IncrementalSnapshot,
-                            data: Object.assign({ source: IncrementalSource.Selection }, p),
+                            type: EventType$1.IncrementalSnapshot,
+                            data: Object.assign({ source: IncrementalSource$1.Selection }, p),
                         }));
                     },
                     customElementCb: (c) => {
                         wrappedEmit(wrapEvent({
-                            type: EventType.IncrementalSnapshot,
-                            data: Object.assign({ source: IncrementalSource.CustomElement }, c),
+                            type: EventType$1.IncrementalSnapshot,
+                            data: Object.assign({ source: IncrementalSource$1.CustomElement }, c),
                         }));
                     },
                     blockClass,
@@ -4399,7 +4399,7 @@
                         observer: p.observer,
                         options: p.options,
                         callback: (payload) => wrappedEmit(wrapEvent({
-                            type: EventType.Plugin,
+                            type: EventType$1.Plugin,
                             data: {
                                 plugin: p.name,
                                 payload,
@@ -4428,7 +4428,7 @@
             else {
                 handlers.push(on('DOMContentLoaded', () => {
                     wrappedEmit(wrapEvent({
-                        type: EventType.DomContentLoaded,
+                        type: EventType$1.DomContentLoaded,
                         data: {},
                     }));
                     if (recordAfter === 'DOMContentLoaded')
@@ -4436,7 +4436,7 @@
                 }));
                 handlers.push(on('load', () => {
                     wrappedEmit(wrapEvent({
-                        type: EventType.Load,
+                        type: EventType$1.Load,
                         data: {},
                     }));
                     if (recordAfter === 'load')
@@ -4459,7 +4459,7 @@
             throw new Error('please add custom event after start recording');
         }
         wrappedEmit(wrapEvent({
-            type: EventType.Custom,
+            type: EventType$1.Custom,
             data: {
                 tag,
                 payload,
@@ -4477,9 +4477,40 @@
     };
     record.mirror = mirror;
 
+    var EventType = /* @__PURE__ */ ((EventType2) => {
+      EventType2[EventType2["DomContentLoaded"] = 0] = "DomContentLoaded";
+      EventType2[EventType2["Load"] = 1] = "Load";
+      EventType2[EventType2["FullSnapshot"] = 2] = "FullSnapshot";
+      EventType2[EventType2["IncrementalSnapshot"] = 3] = "IncrementalSnapshot";
+      EventType2[EventType2["Meta"] = 4] = "Meta";
+      EventType2[EventType2["Custom"] = 5] = "Custom";
+      EventType2[EventType2["Plugin"] = 6] = "Plugin";
+      return EventType2;
+    })(EventType || {});
+    var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
+      IncrementalSource2[IncrementalSource2["Mutation"] = 0] = "Mutation";
+      IncrementalSource2[IncrementalSource2["MouseMove"] = 1] = "MouseMove";
+      IncrementalSource2[IncrementalSource2["MouseInteraction"] = 2] = "MouseInteraction";
+      IncrementalSource2[IncrementalSource2["Scroll"] = 3] = "Scroll";
+      IncrementalSource2[IncrementalSource2["ViewportResize"] = 4] = "ViewportResize";
+      IncrementalSource2[IncrementalSource2["Input"] = 5] = "Input";
+      IncrementalSource2[IncrementalSource2["TouchMove"] = 6] = "TouchMove";
+      IncrementalSource2[IncrementalSource2["MediaInteraction"] = 7] = "MediaInteraction";
+      IncrementalSource2[IncrementalSource2["StyleSheetRule"] = 8] = "StyleSheetRule";
+      IncrementalSource2[IncrementalSource2["CanvasMutation"] = 9] = "CanvasMutation";
+      IncrementalSource2[IncrementalSource2["Font"] = 10] = "Font";
+      IncrementalSource2[IncrementalSource2["Log"] = 11] = "Log";
+      IncrementalSource2[IncrementalSource2["Drag"] = 12] = "Drag";
+      IncrementalSource2[IncrementalSource2["StyleDeclaration"] = 13] = "StyleDeclaration";
+      IncrementalSource2[IncrementalSource2["Selection"] = 14] = "Selection";
+      IncrementalSource2[IncrementalSource2["AdoptedStyleSheet"] = 15] = "AdoptedStyleSheet";
+      IncrementalSource2[IncrementalSource2["CustomElement"] = 16] = "CustomElement";
+      return IncrementalSource2;
+    })(IncrementalSource || {});
+
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.53.0'
+        LIB_VERSION: '2.54.0'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -6344,8 +6375,779 @@
         };
     }
 
+    var logger$3 = console_with_prefix('lock');
+
+    /**
+     * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
+     * window/tab at a time will be able to access shared resources.
+     *
+     * Based on the Alur and Taubenfeld fast lock
+     * (http://www.cs.rochester.edu/research/synchronization/pseudocode/fastlock.html)
+     * with an added timeout to ensure there will be eventual progress in the event
+     * that a window is closed in the middle of the callback.
+     *
+     * Implementation based on the original version by David Wolever (https://github.com/wolever)
+     * at https://gist.github.com/wolever/5fd7573d1ef6166e8f8c4af286a69432.
+     *
+     * @example
+     * const myLock = new SharedLock('some-key');
+     * myLock.withLock(function() {
+     *   console.log('I hold the mutex!');
+     * });
+     *
+     * @constructor
+     */
+    var SharedLock = function(key, options) {
+        options = options || {};
+
+        this.storageKey = key;
+        this.storage = options.storage || window.localStorage;
+        this.pollIntervalMS = options.pollIntervalMS || 100;
+        this.timeoutMS = options.timeoutMS || 2000;
+    };
+
+    // pass in a specific pid to test contention scenarios; otherwise
+    // it is chosen randomly for each acquisition attempt
+    SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
+        if (!pid && typeof errorCB !== 'function') {
+            pid = errorCB;
+            errorCB = null;
+        }
+
+        var i = pid || (new Date().getTime() + '|' + Math.random());
+        var startTime = new Date().getTime();
+
+        var key = this.storageKey;
+        var pollIntervalMS = this.pollIntervalMS;
+        var timeoutMS = this.timeoutMS;
+        var storage = this.storage;
+
+        var keyX = key + ':X';
+        var keyY = key + ':Y';
+        var keyZ = key + ':Z';
+
+        var reportError = function(err) {
+            errorCB && errorCB(err);
+        };
+
+        var delay = function(cb) {
+            if (new Date().getTime() - startTime > timeoutMS) {
+                logger$3.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                storage.removeItem(keyZ);
+                storage.removeItem(keyY);
+                loop();
+                return;
+            }
+            setTimeout(function() {
+                try {
+                    cb();
+                } catch(err) {
+                    reportError(err);
+                }
+            }, pollIntervalMS * (Math.random() + 0.1));
+        };
+
+        var waitFor = function(predicate, cb) {
+            if (predicate()) {
+                cb();
+            } else {
+                delay(function() {
+                    waitFor(predicate, cb);
+                });
+            }
+        };
+
+        var getSetY = function() {
+            var valY = storage.getItem(keyY);
+            if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
+                return false;
+            } else {
+                storage.setItem(keyY, i);
+                if (storage.getItem(keyY) === i) {
+                    return true;
+                } else {
+                    if (!localStorageSupported(storage, true)) {
+                        throw new Error('localStorage support dropped while acquiring lock');
+                    }
+                    return false;
+                }
+            }
+        };
+
+        var loop = function() {
+            storage.setItem(keyX, i);
+
+            waitFor(getSetY, function() {
+                if (storage.getItem(keyX) === i) {
+                    criticalSection();
+                    return;
+                }
+
+                delay(function() {
+                    if (storage.getItem(keyY) !== i) {
+                        loop();
+                        return;
+                    }
+                    waitFor(function() {
+                        return !storage.getItem(keyZ);
+                    }, criticalSection);
+                });
+            });
+        };
+
+        var criticalSection = function() {
+            storage.setItem(keyZ, '1');
+            try {
+                lockedCB();
+            } finally {
+                storage.removeItem(keyZ);
+                if (storage.getItem(keyY) === i) {
+                    storage.removeItem(keyY);
+                }
+                if (storage.getItem(keyX) === i) {
+                    storage.removeItem(keyX);
+                }
+            }
+        };
+
+        try {
+            if (localStorageSupported(storage, true)) {
+                loop();
+            } else {
+                throw new Error('localStorage support check failed');
+            }
+        } catch(err) {
+            reportError(err);
+        }
+    };
+
+    var logger$2 = console_with_prefix('batch');
+
+    /**
+     * RequestQueue: queue for batching API requests with localStorage backup for retries.
+     * Maintains an in-memory queue which represents the source of truth for the current
+     * page, but also writes all items out to a copy in the browser's localStorage, which
+     * can be read on subsequent pageloads and retried. For batchability, all the request
+     * items in the queue should be of the same type (events, people updates, group updates)
+     * so they can be sent in a single request to the same API endpoint.
+     *
+     * LocalStorage keying and locking: In order for reloads and subsequent pageloads of
+     * the same site to access the same persisted data, they must share the same localStorage
+     * key (for instance based on project token and queue type). Therefore access to the
+     * localStorage entry is guarded by an asynchronous mutex (SharedLock) to prevent
+     * simultaneously open windows/tabs from overwriting each other's data (which would lead
+     * to data loss in some situations).
+     * @constructor
+     */
+    var RequestQueue = function(storageKey, options) {
+        options = options || {};
+        this.storageKey = storageKey;
+        this.storage = options.storage || window.localStorage;
+        this.reportError = options.errorReporter || _.bind(logger$2.error, logger$2);
+        this.lock = new SharedLock(storageKey, {storage: this.storage});
+
+        this.usePersistence = options.usePersistence;
+        this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
+
+        this.memQueue = [];
+    };
+
+    /**
+     * Add one item to queues (memory and localStorage). The queued entry includes
+     * the given item along with an auto-generated ID and a "flush-after" timestamp.
+     * It is expected that the item will be sent over the network and dequeued
+     * before the flush-after time; if this doesn't happen it is considered orphaned
+     * (e.g., the original tab where it was enqueued got closed before it could be
+     * sent) and the item can be sent by any tab that finds it in localStorage.
+     *
+     * The final callback param is called with a param indicating success or
+     * failure of the enqueue operation; it is asynchronous because the localStorage
+     * lock is asynchronous.
+     */
+    RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
+        var queueEntry = {
+            'id': cheap_guid(),
+            'flushAfter': new Date().getTime() + flushInterval * 2,
+            'payload': item
+        };
+
+        if (!this.usePersistence) {
+            this.memQueue.push(queueEntry);
+            if (cb) {
+                cb(true);
+            }
+        } else {
+            this.lock.withLock(_.bind(function lockAcquired() {
+                var succeeded;
+                try {
+                    var storedQueue = this.readFromStorage();
+                    storedQueue.push(queueEntry);
+                    succeeded = this.saveToStorage(storedQueue);
+                    if (succeeded) {
+                        // only add to in-memory queue when storage succeeds
+                        this.memQueue.push(queueEntry);
+                    }
+                } catch(err) {
+                    this.reportError('Error enqueueing item', item);
+                    succeeded = false;
+                }
+                if (cb) {
+                    cb(succeeded);
+                }
+            }, this), _.bind(function lockFailure(err) {
+                this.reportError('Error acquiring storage lock', err);
+                if (cb) {
+                    cb(false);
+                }
+            }, this), this.pid);
+        }
+    };
+
+    /**
+     * Read out the given number of queue entries. If this.memQueue
+     * has fewer than batchSize items, then look for "orphaned" items
+     * in the persisted queue (items where the 'flushAfter' time has
+     * already passed).
+     */
+    RequestQueue.prototype.fillBatch = function(batchSize) {
+        var batch = this.memQueue.slice(0, batchSize);
+        if (this.usePersistence && batch.length < batchSize) {
+            // don't need lock just to read events; localStorage is thread-safe
+            // and the worst that could happen is a duplicate send of some
+            // orphaned events, which will be deduplicated on the server side
+            var storedQueue = this.readFromStorage();
+            if (storedQueue.length) {
+                // item IDs already in batch; don't duplicate out of storage
+                var idsInBatch = {}; // poor man's Set
+                _.each(batch, function(item) { idsInBatch[item['id']] = true; });
+
+                for (var i = 0; i < storedQueue.length; i++) {
+                    var item = storedQueue[i];
+                    if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                        item.orphaned = true;
+                        batch.push(item);
+                        if (batch.length >= batchSize) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return batch;
+    };
+
+    /**
+     * Remove items with matching 'id' from array (immutably)
+     * also remove any item without a valid id (e.g., malformed
+     * storage entries).
+     */
+    var filterOutIDsAndInvalid = function(items, idSet) {
+        var filteredItems = [];
+        _.each(items, function(item) {
+            if (item['id'] && !idSet[item['id']]) {
+                filteredItems.push(item);
+            }
+        });
+        return filteredItems;
+    };
+
+    /**
+     * Remove items with matching IDs from both in-memory queue
+     * and persisted queue
+     */
+    RequestQueue.prototype.removeItemsByID = function(ids, cb) {
+        var idSet = {}; // poor man's Set
+        _.each(ids, function(id) { idSet[id] = true; });
+
+        this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
+        if (!this.usePersistence) {
+            if (cb) {
+                cb(true);
+            }
+        } else {
+            var removeFromStorage = _.bind(function() {
+                var succeeded;
+                try {
+                    var storedQueue = this.readFromStorage();
+                    storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                    succeeded = this.saveToStorage(storedQueue);
+
+                    // an extra check: did storage report success but somehow
+                    // the items are still there?
+                    if (succeeded) {
+                        storedQueue = this.readFromStorage();
+                        for (var i = 0; i < storedQueue.length; i++) {
+                            var item = storedQueue[i];
+                            if (item['id'] && !!idSet[item['id']]) {
+                                this.reportError('Item not removed from storage');
+                                return false;
+                            }
+                        }
+                    }
+                } catch(err) {
+                    this.reportError('Error removing items', ids);
+                    succeeded = false;
+                }
+                return succeeded;
+            }, this);
+
+            this.lock.withLock(function lockAcquired() {
+                var succeeded = removeFromStorage();
+                if (cb) {
+                    cb(succeeded);
+                }
+            }, _.bind(function lockFailure(err) {
+                var succeeded = false;
+                this.reportError('Error acquiring storage lock', err);
+                if (!localStorageSupported(this.storage, true)) {
+                    // Looks like localStorage writes have stopped working sometime after
+                    // initialization (probably full), and so nobody can acquire locks
+                    // anymore. Consider it temporarily safe to remove items without the
+                    // lock, since nobody's writing successfully anyway.
+                    succeeded = removeFromStorage();
+                    if (!succeeded) {
+                        // OK, we couldn't even write out the smaller queue. Try clearing it
+                        // entirely.
+                        try {
+                            this.storage.removeItem(this.storageKey);
+                        } catch(err) {
+                            this.reportError('Error clearing queue', err);
+                        }
+                    }
+                }
+                if (cb) {
+                    cb(succeeded);
+                }
+            }, this), this.pid);
+        }
+
+    };
+
+    // internal helper for RequestQueue.updatePayloads
+    var updatePayloads = function(existingItems, itemsToUpdate) {
+        var newItems = [];
+        _.each(existingItems, function(item) {
+            var id = item['id'];
+            if (id in itemsToUpdate) {
+                var newPayload = itemsToUpdate[id];
+                if (newPayload !== null) {
+                    item['payload'] = newPayload;
+                    newItems.push(item);
+                }
+            } else {
+                // no update
+                newItems.push(item);
+            }
+        });
+        return newItems;
+    };
+
+    /**
+     * Update payloads of given items in both in-memory queue and
+     * persisted queue. Items set to null are removed from queues.
+     */
+    RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
+        this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
+        if (!this.usePersistence) {
+            if (cb) {
+                cb(true);
+            }
+        } else {
+            this.lock.withLock(_.bind(function lockAcquired() {
+                var succeeded;
+                try {
+                    var storedQueue = this.readFromStorage();
+                    storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                    succeeded = this.saveToStorage(storedQueue);
+                } catch(err) {
+                    this.reportError('Error updating items', itemsToUpdate);
+                    succeeded = false;
+                }
+                if (cb) {
+                    cb(succeeded);
+                }
+            }, this), _.bind(function lockFailure(err) {
+                this.reportError('Error acquiring storage lock', err);
+                if (cb) {
+                    cb(false);
+                }
+            }, this), this.pid);
+        }
+
+    };
+
+    /**
+     * Read and parse items array from localStorage entry, handling
+     * malformed/missing data if necessary.
+     */
+    RequestQueue.prototype.readFromStorage = function() {
+        var storageEntry;
+        try {
+            storageEntry = this.storage.getItem(this.storageKey);
+            if (storageEntry) {
+                storageEntry = JSONParse(storageEntry);
+                if (!_.isArray(storageEntry)) {
+                    this.reportError('Invalid storage entry:', storageEntry);
+                    storageEntry = null;
+                }
+            }
+        } catch (err) {
+            this.reportError('Error retrieving queue', err);
+            storageEntry = null;
+        }
+        return storageEntry || [];
+    };
+
+    /**
+     * Serialize the given items array to localStorage.
+     */
+    RequestQueue.prototype.saveToStorage = function(queue) {
+        try {
+            this.storage.setItem(this.storageKey, JSONStringify(queue));
+            return true;
+        } catch (err) {
+            this.reportError('Error saving queue', err);
+            return false;
+        }
+    };
+
+    /**
+     * Clear out queues (memory and localStorage).
+     */
+    RequestQueue.prototype.clear = function() {
+        this.memQueue = [];
+
+        if (this.usePersistence) {
+            this.storage.removeItem(this.storageKey);
+        }
+    };
+
+    // maximum interval between request retries after exponential backoff
+    var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+    var logger$1 = console_with_prefix('batch');
+
+    /**
+     * RequestBatcher: manages the queueing, flushing, retry etc of requests of one
+     * type (events, people, groups).
+     * Uses RequestQueue to manage the backing store.
+     * @constructor
+     */
+    var RequestBatcher = function(storageKey, options) {
+        this.errorReporter = options.errorReporter;
+        this.queue = new RequestQueue(storageKey, {
+            errorReporter: _.bind(this.reportError, this),
+            storage: options.storage,
+            usePersistence: options.usePersistence
+        });
+
+        this.libConfig = options.libConfig;
+        this.sendRequest = options.sendRequestFunc;
+        this.beforeSendHook = options.beforeSendHook;
+        this.stopAllBatching = options.stopAllBatchingFunc;
+
+        // seed variable batch size + flush interval with configured values
+        this.batchSize = this.libConfig['batch_size'];
+        this.flushInterval = this.libConfig['batch_flush_interval_ms'];
+
+        this.stopped = !this.libConfig['batch_autostart'];
+        this.consecutiveRemovalFailures = 0;
+
+        // extra client-side dedupe
+        this.itemIdsSentSuccessfully = {};
+
+        // Make the flush occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
+        // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
+        // in a request loop and get ratelimited by the server.
+        this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
+    };
+
+    /**
+     * Add one item to queue.
+     */
+    RequestBatcher.prototype.enqueue = function(item, cb) {
+        this.queue.enqueue(item, this.flushInterval, cb);
+    };
+
+    /**
+     * Start flushing batches at the configured time interval. Must call
+     * this method upon SDK init in order to send anything over the network.
+     */
+    RequestBatcher.prototype.start = function() {
+        this.stopped = false;
+        this.consecutiveRemovalFailures = 0;
+        this.flush();
+    };
+
+    /**
+     * Stop flushing batches. Can be restarted by calling start().
+     */
+    RequestBatcher.prototype.stop = function() {
+        this.stopped = true;
+        if (this.timeoutID) {
+            clearTimeout(this.timeoutID);
+            this.timeoutID = null;
+        }
+    };
+
+    /**
+     * Clear out queue.
+     */
+    RequestBatcher.prototype.clear = function() {
+        this.queue.clear();
+    };
+
+    /**
+     * Restore batch size configuration to whatever is set in the main SDK.
+     */
+    RequestBatcher.prototype.resetBatchSize = function() {
+        this.batchSize = this.libConfig['batch_size'];
+    };
+
+    /**
+     * Restore flush interval time configuration to whatever is set in the main SDK.
+     */
+    RequestBatcher.prototype.resetFlush = function() {
+        this.scheduleFlush(this.libConfig['batch_flush_interval_ms']);
+    };
+
+    /**
+     * Schedule the next flush in the given number of milliseconds.
+     */
+    RequestBatcher.prototype.scheduleFlush = function(flushMS) {
+        this.flushInterval = flushMS;
+        if (!this.stopped) { // don't schedule anymore if batching has been stopped
+            this.timeoutID = setTimeout(_.bind(this.flush, this), this.flushInterval);
+        }
+    };
+
+    /**
+     * Flush one batch to network. Depending on success/failure modes, it will either
+     * remove the batch from the queue or leave it in for retry, and schedule the next
+     * flush. In cases of most network or API failures, it will back off exponentially
+     * when retrying.
+     * @param {Object} [options]
+     * @param {boolean} [options.sendBeacon] - whether to send batch with
+     * navigator.sendBeacon (only useful for sending batches before page unloads, as
+     * sendBeacon offers no callbacks or status indications)
+     */
+    RequestBatcher.prototype.flush = function(options) {
+        try {
+
+            if (this.requestInProgress) {
+                logger$1.log('Flush: Request already in progress');
+                return;
+            }
+
+            options = options || {};
+            var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+            var startTime = new Date().getTime();
+            var currentBatchSize = this.batchSize;
+            var batch = this.queue.fillBatch(currentBatchSize);
+            // if there's more items in the queue than the batch size, attempt
+            // to flush again after the current batch is done.
+            var attemptSecondaryFlush = batch.length === currentBatchSize;
+            var dataForRequest = [];
+            var transformedItems = {};
+            _.each(batch, function(item) {
+                var payload = item['payload'];
+                if (this.beforeSendHook && !item.orphaned) {
+                    payload = this.beforeSendHook(payload);
+                }
+                if (payload) {
+                    // mp_sent_by_lib_version prop captures which lib version actually
+                    // sends each event (regardless of which version originally queued
+                    // it for sending)
+                    if (payload['event'] && payload['properties']) {
+                        payload['properties'] = _.extend(
+                            {},
+                            payload['properties'],
+                            {'mp_sent_by_lib_version': Config.LIB_VERSION}
+                        );
+                    }
+                    var addPayload = true;
+                    var itemId = item['id'];
+                    if (itemId) {
+                        if ((this.itemIdsSentSuccessfully[itemId] || 0) > 5) {
+                            this.reportError('[dupe] item ID sent too many times, not sending', {
+                                item: item,
+                                batchSize: batch.length,
+                                timesSent: this.itemIdsSentSuccessfully[itemId]
+                            });
+                            addPayload = false;
+                        }
+                    } else {
+                        this.reportError('[dupe] found item with no ID', {item: item});
+                    }
+
+                    if (addPayload) {
+                        dataForRequest.push(payload);
+                    }
+                }
+                transformedItems[item['id']] = payload;
+            }, this);
+            if (dataForRequest.length < 1) {
+                this.resetFlush();
+                return; // nothing to do
+            }
+
+            this.requestInProgress = true;
+
+            var batchSendCallback = _.bind(function(res) {
+                this.requestInProgress = false;
+
+                try {
+
+                    // handle API response in a try-catch to make sure we can reset the
+                    // flush operation if something goes wrong
+
+                    var removeItemsFromQueue = false;
+                    if (options.unloading) {
+                        // update persisted data to include hook transformations
+                        this.queue.updatePayloads(transformedItems);
+                    } else if (
+                        _.isObject(res) &&
+                        res.error === 'timeout' &&
+                        new Date().getTime() - startTime >= timeoutMS
+                    ) {
+                        this.reportError('Network timeout; retrying');
+                        this.flush();
+                    } else if (
+                        _.isObject(res) &&
+                        (res.httpStatusCode >= 500 || res.httpStatusCode === 429 || res.error === 'timeout')
+                    ) {
+                        // network or API error, or 429 Too Many Requests, retry
+                        var retryMS = this.flushInterval * 2;
+                        if (res.retryAfter) {
+                            retryMS = (parseInt(res.retryAfter, 10) * 1000) || retryMS;
+                        }
+                        retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
+                        this.reportError('Error; retry in ' + retryMS + ' ms');
+                        this.scheduleFlush(retryMS);
+                    } else if (_.isObject(res) && res.httpStatusCode === 413) {
+                        // 413 Payload Too Large
+                        if (batch.length > 1) {
+                            var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
+                            this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
+                            this.reportError('413 response; reducing batch size to ' + this.batchSize);
+                            this.resetFlush();
+                        } else {
+                            this.reportError('Single-event request too large; dropping', batch);
+                            this.resetBatchSize();
+                            removeItemsFromQueue = true;
+                        }
+                    } else {
+                        // successful network request+response; remove each item in batch from queue
+                        // (even if it was e.g. a 400, in which case retrying won't help)
+                        removeItemsFromQueue = true;
+                    }
+
+                    if (removeItemsFromQueue) {
+                        this.queue.removeItemsByID(
+                            _.map(batch, function(item) { return item['id']; }),
+                            _.bind(function(succeeded) {
+                                if (succeeded) {
+                                    this.consecutiveRemovalFailures = 0;
+                                    if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
+                                        this.resetFlush(); // schedule next batch with a delay
+                                    } else {
+                                        this.flush(); // handle next batch if the queue isn't empty
+                                    }
+                                } else {
+                                    this.reportError('Failed to remove items from queue');
+                                    if (++this.consecutiveRemovalFailures > 5) {
+                                        this.reportError('Too many queue failures; disabling batching system.');
+                                        this.stopAllBatching();
+                                    } else {
+                                        this.resetFlush();
+                                    }
+                                }
+                            }, this)
+                        );
+
+                        // client-side dedupe
+                        _.each(batch, _.bind(function(item) {
+                            var itemId = item['id'];
+                            if (itemId) {
+                                this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
+                                this.itemIdsSentSuccessfully[itemId]++;
+                                if (this.itemIdsSentSuccessfully[itemId] > 5) {
+                                    this.reportError('[dupe] item ID sent too many times', {
+                                        item: item,
+                                        batchSize: batch.length,
+                                        timesSent: this.itemIdsSentSuccessfully[itemId]
+                                    });
+                                }
+                            } else {
+                                this.reportError('[dupe] found item with no ID while removing', {item: item});
+                            }
+                        }, this));
+                    }
+
+                } catch(err) {
+                    this.reportError('Error handling API response', err);
+                    this.resetFlush();
+                }
+            }, this);
+            var requestOptions = {
+                method: 'POST',
+                verbose: true,
+                ignore_json_errors: true, // eslint-disable-line camelcase
+                timeout_ms: timeoutMS // eslint-disable-line camelcase
+            };
+            if (options.unloading) {
+                requestOptions.transport = 'sendBeacon';
+            }
+            logger$1.log('MIXPANEL REQUEST:', dataForRequest);
+            this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
+        } catch(err) {
+            this.reportError('Error flushing request queue', err);
+            this.resetFlush();
+        }
+    };
+
+    /**
+     * Log error to global logger and optional user-defined logger.
+     */
+    RequestBatcher.prototype.reportError = function(msg, err) {
+        logger$1.error.apply(logger$1.error, arguments);
+        if (this.errorReporter) {
+            try {
+                if (!(err instanceof Error)) {
+                    err = new Error(msg);
+                }
+                this.errorReporter(msg, err);
+            } catch(err) {
+                logger$1.error(err);
+            }
+        }
+    };
+
     var logger = console_with_prefix('recorder');
-    var CompressionStream = window['CompressionStream'];
+    var CompressionStream = win['CompressionStream'];
+
+    var RECORDER_BATCHER_LIB_CONFIG = {
+        'batch_size': 1000,
+        'batch_flush_interval_ms': 10 * 1000,
+        'batch_request_timeout_ms': 90 * 1000,
+        'batch_autostart': true
+    };
+
+    var ACTIVE_SOURCES = new Set([
+        IncrementalSource.MouseMove,
+        IncrementalSource.MouseInteraction,
+        IncrementalSource.Scroll,
+        IncrementalSource.ViewportResize,
+        IncrementalSource.Input,
+        IncrementalSource.TouchMove,
+        IncrementalSource.MediaInteraction,
+        IncrementalSource.Drag,
+        IncrementalSource.Selection,
+    ]);
+
+    function isUserEvent(ev) {
+        return ev.type === EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.source);
+    }
 
     var MixpanelRecorder = function(mixpanelInstance) {
         this._mixpanel = mixpanelInstance;
@@ -6357,14 +7159,24 @@
         this.seqNo = 0;
         this.replayId = null;
         this.replayStartTime = null;
-        this.batchStartTime = null;
-        this.replayLengthMs = 0;
         this.sendBatchId = null;
 
         this.idleTimeoutId = null;
         this.maxTimeoutId = null;
 
         this.recordMaxMs = MAX_RECORDING_MS;
+        this._initBatcher();
+    };
+
+
+    MixpanelRecorder.prototype._initBatcher = function () {
+        this.batcher = new RequestBatcher('__mprec', {
+            libConfig: RECORDER_BATCHER_LIB_CONFIG,
+            sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
+            errorReporter: _.bind(this.reportError, this),
+            flushOnlyOnInterval: true,
+            usePersistence: false
+        });
     };
 
     // eslint-disable-next-line camelcase
@@ -6386,12 +7198,11 @@
 
         this.recEvents = [];
         this.seqNo = 0;
-        this.startDate = new Date();
-        this.replayStartTime = this.startDate.getTime();
-        this.batchStartTime = this.replayStartTime;
+        this.replayStartTime = null;
 
         this.replayId = _.UUID();
-        this.replayLengthMs = 0;
+
+        this.batcher.start();
 
         var resetIdleTimeout = _.bind(function () {
             clearTimeout(this.idleTimeoutId);
@@ -6403,20 +7214,22 @@
 
         this._stopRecording = record({
             'emit': _.bind(function (ev) {
-                this.recEvents.push(ev);
-                this.replayLengthMs = new Date().getTime() - this.replayStartTime;
-                resetIdleTimeout();
+                this.batcher.enqueue(ev);
+                if (isUserEvent(ev)) {
+                    resetIdleTimeout();
+                }
             }, this),
-            'maskAllInputs': true,
-            'maskTextSelector': this.get_config('record_mask_text_selector'),
-            'blockSelector': this.get_config('record_block_selector'),
-            'maskTextClass': this.get_config('record_mask_text_class'),
             'blockClass': this.get_config('record_block_class'),
+            'blockSelector': this.get_config('record_block_selector'),
+            'collectFonts': this.get_config('record_collect_fonts'),
+            'inlineImages': this.get_config('record_inline_images'),
+            'maskAllInputs': true,
+            'maskTextClass': this.get_config('record_mask_text_class'),
+            'maskTextSelector': this.get_config('record_mask_text_selector')
         });
 
         resetIdleTimeout();
 
-        this.sendBatchId = setInterval(_.bind(this.flushEventsWithOptOut, this), 10000);
         this.maxTimeoutId = setTimeout(_.bind(this.resetRecording, this), this.recordMaxMs);
     };
 
@@ -6431,10 +7244,9 @@
             this._stopRecording = null;
         }
 
-        this._flushEvents(); // flush any remaining events
+        this.batcher.flush(); // flush any remaining events
         this.replayId = null;
 
-        clearInterval(this.sendBatchId);
         clearTimeout(this.idleTimeoutId);
         clearTimeout(this.maxTimeoutId);
     };
@@ -6443,8 +7255,8 @@
      * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
      * we stop recording and dump any queued events if the user has opted out.
      */
-    MixpanelRecorder.prototype.flushEventsWithOptOut = function () {
-        this._flushEvents(_.bind(this._onOptOut, this));
+    MixpanelRecorder.prototype.flushEventsWithOptOut = function (data, options, cb) {
+        this._flushEvents(data, options, cb, _.bind(this._onOptOut, this));
     };
 
     MixpanelRecorder.prototype._onOptOut = function (code) {
@@ -6455,33 +7267,60 @@
         }
     };
 
-    MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody) {
-        window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+    MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody, callback) {
+        var onSuccess = _.bind(function (response, responseBody) {
+            // Increment sequence counter only if the request was successful to guarantee ordering.
+            // RequestBatcher will always flush the next batch after the previous one succeeds.
+            if (response.status === 200) {
+                this.seqNo++;
+            }
+
+            callback({
+                status: 0,
+                httpStatusCode: response.status,
+                responseBody: responseBody,
+                retryAfter: response.headers.get('Retry-After')
+            });
+        }, this);
+
+        win['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
             'method': 'POST',
             'headers': {
                 'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
                 'Content-Type': 'application/octet-stream'
             },
-            'body': reqBody
+            'body': reqBody,
+        }).then(function (response) {
+            response.json().then(function (responseBody) {
+                onSuccess(response, responseBody);
+            }).catch(function (error) {
+                callback({error: error});
+            });
+        }).catch(function (error) {
+            callback({error: error});
         });
     };
 
-    /**
-     * @api private
-     * Private method, flushes the current batch of events to the server.
-     */
-    MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function() {
-        var numEvents = this.recEvents.length;
+    MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (data, options, callback) {
+        const numEvents = data.length;
+
         if (numEvents > 0) {
+            // each rrweb event has a timestamp - leverage those to get time properties
+            var batchStartTime = data[0].timestamp;
+            if (this.seqNo === 0) {
+                this.replayStartTime = batchStartTime;
+            }
+            var replayLengthMs = data[numEvents - 1].timestamp - this.replayStartTime;
+
             var reqParams = {
                 'distinct_id': String(this._mixpanel.get_distinct_id()),
-                'seq': this.seqNo++,
-                'batch_start_time': this.batchStartTime / 1000,
+                'seq': this.seqNo,
+                'batch_start_time': batchStartTime / 1000,
                 'replay_id': this.replayId,
-                'replay_length_ms': this.replayLengthMs,
+                'replay_length_ms': replayLengthMs,
                 'replay_start_time': this.replayStartTime / 1000
             };
-            var eventsJson = _.JSONEncode(this.recEvents);
+            var eventsJson = _.JSONEncode(data);
 
             // send ID management props if they exist
             var deviceId = this._mixpanel.get_property('$device_id');
@@ -6493,8 +7332,6 @@
                 reqParams['$user_id'] = userId;
             }
 
-            this.recEvents = this.recEvents.slice(numEvents);
-            this.batchStartTime = new Date().getTime();
             if (CompressionStream) {
                 var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
                 var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
@@ -6502,15 +7339,29 @@
                     .blob()
                     .then(_.bind(function(compressedBlob) {
                         reqParams['format'] = 'gzip';
-                        this._sendRequest(reqParams, compressedBlob);
+                        this._sendRequest(reqParams, compressedBlob, callback);
                     }, this));
             } else {
                 reqParams['format'] = 'body';
-                this._sendRequest(reqParams, eventsJson);
+                this._sendRequest(reqParams, eventsJson, callback);
             }
         }
     });
 
-    window['__mp_recorder'] = MixpanelRecorder;
+
+    MixpanelRecorder.prototype.reportError = function(msg, err) {
+        logger.error.apply(logger.error, arguments);
+        try {
+            if (!err && !(msg instanceof Error)) {
+                msg = new Error(msg);
+            }
+            this.get_config('error_reporter')(msg, err);
+        } catch(err) {
+            logger.error(err);
+        }
+    };
+
+
+    win['__mp_recorder'] = MixpanelRecorder;
 
 })();
