@@ -28,7 +28,7 @@ var ACTIVE_SOURCES = new Set([
 ]);
 
 function isUserEvent(ev) {
-    return ev.type === EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.source);
+    return ev.type === EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.data.source);
 }
 
 var MixpanelRecorder = function(mixpanelInstance) {
