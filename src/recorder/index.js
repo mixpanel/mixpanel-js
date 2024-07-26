@@ -66,7 +66,7 @@ MixpanelRecorder.prototype.get_config = function(configVar) {
     return this._mixpanel.get_config(configVar);
 };
 
-MixpanelRecorder.prototype.startRecording = function () {
+MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
     if (this._stopRecording !== null) {
         logger.log('Recording already in progress, skipping startRecording.');
         return;
@@ -84,7 +84,14 @@ MixpanelRecorder.prototype.startRecording = function () {
 
     this.replayId = _.UUID();
 
-    this.batcher.start();
+    if (shouldStopBatcher) {
+        // this is the case when we're starting recording after a reset
+        // and don't want to send anything over the network until there's
+        // actual user activity
+        this.batcher.stop();
+    } else {
+        this.batcher.start();
+    }
 
     var resetIdleTimeout = _.bind(function () {
         clearTimeout(this.idleTimeoutId);
@@ -98,6 +105,10 @@ MixpanelRecorder.prototype.startRecording = function () {
         'emit': _.bind(function (ev) {
             this.batcher.enqueue(ev);
             if (isUserEvent(ev)) {
+                if (this.batcher.stopped) {
+                    // start flushing again after user activity
+                    this.batcher.start();
+                }
                 resetIdleTimeout();
             }
         }, this),
@@ -117,7 +128,7 @@ MixpanelRecorder.prototype.startRecording = function () {
 
 MixpanelRecorder.prototype.resetRecording = function () {
     this.stopRecording();
-    this.startRecording();
+    this.startRecording(true);
 };
 
 MixpanelRecorder.prototype.stopRecording = function () {
@@ -126,7 +137,14 @@ MixpanelRecorder.prototype.stopRecording = function () {
         this._stopRecording = null;
     }
 
-    this.batcher.flush(); // flush any remaining events
+    if (this.batcher.stopped) {
+        // never got user activity to flush after reset, so just clear the batcher
+        this.batcher.clear();
+    } else {
+        // flush any remaining events from running batcher
+        this.batcher.flush();
+        this.batcher.stop();
+    }
     this.replayId = null;
 
     clearTimeout(this.idleTimeoutId);
