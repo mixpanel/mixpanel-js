@@ -1,7 +1,7 @@
 import { record } from 'rrweb';
 import { IncrementalSource, EventType } from '@rrweb/types';
 
-import { MAX_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, MIN_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
@@ -47,6 +47,7 @@ var MixpanelRecorder = function(mixpanelInstance) {
     this.maxTimeoutId = null;
 
     this.recordMaxMs = MAX_RECORDING_MS;
+    this.recordMinMs = MIN_RECORDING_MS;
     this._initBatcher();
 };
 
@@ -78,6 +79,12 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
         logger.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
     }
 
+    this.recordMinMs = this.get_config('record_min_ms');
+    if (this.recordMinMs > MIN_RECORDING_MS) {
+        this.recordMinMs = MIN_RECORDING_MS;
+        logger.critical('record_min_ms cannot be greater than ' + MIN_RECORDING_MS + 'ms. Capping value.');
+    }
+
     this.recEvents = [];
     this.seqNo = 0;
     this.replayStartTime = null;
@@ -101,6 +108,11 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
         }, this), this.get_config('record_idle_timeout_ms'));
     }, this);
 
+    var blockSelector = this.get_config('record_block_selector');
+    if (blockSelector === '' || blockSelector === null) {
+        blockSelector = undefined;
+    }
+
     this._stopRecording = record({
         'emit': _.bind(function (ev) {
             this.batcher.enqueue(ev);
@@ -113,7 +125,7 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
             }
         }, this),
         'blockClass': this.get_config('record_block_class'),
-        'blockSelector': this.get_config('record_block_selector'),
+        'blockSelector': blockSelector,
         'collectFonts': this.get_config('record_collect_fonts'),
         'inlineImages': this.get_config('record_inline_images'),
         'maskAllInputs': true,
@@ -141,8 +153,13 @@ MixpanelRecorder.prototype.stopRecording = function () {
         // never got user activity to flush after reset, so just clear the batcher
         this.batcher.clear();
     } else {
-        // flush any remaining events from running batcher
-        this.batcher.flush();
+        if (new Date().getTime() - this.replayStartTime > this.recordMinMs) {
+            // flush any remaining events from running batcher
+            this.batcher.flush();
+        } else {
+            this.batcher.clear();
+            logger.log('Recording duration did not meet minimum duration requirement, skipping flush.');
+        }
         this.batcher.stop();
     }
     this.replayId = null;

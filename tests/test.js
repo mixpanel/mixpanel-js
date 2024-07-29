@@ -5640,6 +5640,36 @@
                     });
                 });
 
+                asyncTest('respects minimum session length setting', function () {
+                    this.randomStub.returns(0.02);
+                    this.initMixpanelRecorder({record_sessions_percent: 1, record_min_ms: 5000});
+                    ok(this.getRecorderScript() === null);
+
+                    this.clock.tick(10 * 1000);
+                    same(this.fetchStub.getCalls().length, 0, 'no /record call has been made since the user did not fall into the sample.');
+
+                    mixpanel.recordertest.start_session_recording();
+
+                    this.afterRecorderLoaded.call(this, function () {
+                        simulateMouseClick(document.body);
+                        this.clock.tick(5 * 1000);
+
+                        mixpanel.recordertest.stop_session_recording();
+
+                        stop();
+                        untilDone(_.bind(function(done) {
+                            same(this.fetchStub.getCalls().length, 0, 'does not flush events if session is too short');
+
+                            simulateMouseClick(document.body);
+                            this.clock.tick(20 * 1000);
+                            realSetTimeout(_.bind(function() {
+                                same(this.fetchStub.getCalls().length, 0, 'no fetch requests after recording is stopped');
+                                done();
+                            }, this), 2);
+                        }, this));
+                    });
+                });
+
                 asyncTest('resets after idle timeout', 14, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
