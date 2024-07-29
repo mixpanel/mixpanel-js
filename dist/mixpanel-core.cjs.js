@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.54.0'
+    LIB_VERSION: '2.54.1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -2422,7 +2422,11 @@ RequestBatcher.prototype.resetFlush = function() {
 RequestBatcher.prototype.scheduleFlush = function(flushMS) {
     this.flushInterval = flushMS;
     if (!this.stopped) { // don't schedule anymore if batching has been stopped
-        this.timeoutID = setTimeout(_.bind(this.flush, this), this.flushInterval);
+        this.timeoutID = setTimeout(_.bind(function() {
+            if (!this.stopped) {
+                this.flush();
+            }
+        }, this), this.flushInterval);
     }
 };
 
