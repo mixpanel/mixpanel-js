@@ -1,3 +1,6 @@
+**2.54.1** (30 Jul 2024)
+- Fixes and improvements for user-idleness detection in session recording
+
 **2.54.0** (23 Jul 2024)
 - Provides optional builds without session recording module and without asynchronous script loading.
 - Integrates request batcher with session recording module for increased reliability.
