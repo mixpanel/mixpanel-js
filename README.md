@@ -35,6 +35,30 @@ To load the core SDK and optionally load session recording bundle asynchronously
 import mixpanel from 'mixpanel-browser/src/loaders/loader-module-with-async-recorder';
 ```
 
+## Use as a browser JavaScript module
+
+If you are leveraging [browser JavaScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules), you can use [`importmap`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap) to pull in this library.
+
+```html
+<script type="importmap">
+{
+  "imports: {
+    "mixpanel-browser": "https://cdn.mxpnl.com/libs/mixpanel-js/dist/mixpanel.module.js"
+  }
+}
+</script>
+<script type="module" src="main.js"></script>
+```
+
+Then you are free to import `mixpanel-browser` in your javascript modules.
+
+```js
+// main.js
+import mixpanel from 'mixpanel-browser';
+
+mixpanel.init('YOUR_TOKEN', {debug: true, track_pageview: true, persistence: 'localStorage'});
+```
+
 ## Building bundles for release
 - Install development dependencies: `npm install`
 - Build: `npm run build-dist`
