@@ -1,3 +1,6 @@
+**2.55.0** (2 Aug 2024)
+- Added new build to support native JavaScript modules
+
 **2.54.1** (30 Jul 2024)
 - Fixes and improvements for user-idleness detection in session recording
 
