@@ -4510,7 +4510,7 @@ var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.54.1'
+    LIB_VERSION: '2.55.0'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
