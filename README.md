@@ -8,16 +8,16 @@ intended to be used by websites wishing to send data to Mixpanel projects. A ful
 is available [here](https://developer.mixpanel.com/docs/javascript-full-api-reference).
 
 ## Alternative installation via NPM
-This library is available as a [package on NPM](https://www.npmjs.com/package/mixpanel-browser) (named `mixpanel-browser` to distinguish it from Mixpanel's server-side Node.js library, available on NPM as `mixpanel`). To install into a project using NPM with a front-end packager such as [Browserify](http://browserify.org/) or [Webpack](https://webpack.github.io/):
+This library is available as a [package on NPM](https://www.npmjs.com/package/mixpanel-browser) (named `mixpanel-browser` to distinguish it from Mixpanel's server-side Node.js library, available on NPM as `mixpanel`). To install into a project using NPM with a front-end packager such as [Vite](https://vitejs.dev/) or [Webpack](https://webpack.github.io/):
 
 ```sh
 npm install --save mixpanel-browser
 ```
 
-You can then require the lib like a standard Node.js module:
+You can then import the lib:
 
 ```javascript
-var mixpanel = require('mixpanel-browser');
+import mixpanel from 'mixpanel-browser';
 
 mixpanel.init("YOUR_TOKEN");
 mixpanel.track("An event");
