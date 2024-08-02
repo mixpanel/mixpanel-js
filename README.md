@@ -42,7 +42,7 @@ If you are leveraging [browser JavaScript modules](https://developer.mozilla.org
 ```html
 <script type="importmap">
 {
-  "imports: {
+  "imports": {
     "mixpanel-browser": "https://cdn.mxpnl.com/libs/mixpanel-js/dist/mixpanel.module.js"
   }
 }
