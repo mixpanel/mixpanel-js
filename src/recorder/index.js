@@ -91,7 +91,7 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
 
     this.replayId = _.UUID();
 
-    if (shouldStopBatcher) {
+    if (shouldStopBatcher || this.recordMinMs > 0) {
         // this is the case when we're starting recording after a reset
         // and don't want to send anything over the network until there's
         // actual user activity
@@ -117,7 +117,7 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
         'emit': _.bind(function (ev) {
             this.batcher.enqueue(ev);
             if (isUserEvent(ev)) {
-                if (this.batcher.stopped) {
+                if (this.batcher.stopped && new Date().getTime() - this.replayStartTime > this.recordMinMs) {
                     // start flushing again after user activity
                     this.batcher.start();
                 }
@@ -153,13 +153,8 @@ MixpanelRecorder.prototype.stopRecording = function () {
         // never got user activity to flush after reset, so just clear the batcher
         this.batcher.clear();
     } else {
-        if (new Date().getTime() - this.replayStartTime > this.recordMinMs) {
-            // flush any remaining events from running batcher
-            this.batcher.flush();
-        } else {
-            this.batcher.clear();
-            logger.log('Recording duration did not meet minimum duration requirement, skipping flush.');
-        }
+        // flush any remaining events from running batcher
+        this.batcher.flush();
         this.batcher.stop();
     }
     this.replayId = null;
