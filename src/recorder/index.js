@@ -1,7 +1,7 @@
 import { record } from 'rrweb';
 import { IncrementalSource, EventType } from '@rrweb/types';
 
-import { MAX_RECORDING_MS, MIN_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, MAX_MIN_RECORDING_MS, MIN_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
@@ -80,9 +80,9 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     this.recordMinMs = this.get_config('record_min_ms');
-    if (this.recordMinMs > MIN_RECORDING_MS) {
-        this.recordMinMs = MIN_RECORDING_MS;
-        logger.critical('record_min_ms cannot be greater than ' + MIN_RECORDING_MS + 'ms. Capping value.');
+    if (this.recordMinMs > MAX_MIN_RECORDING_MS) {
+        this.recordMinMs = MAX_MIN_RECORDING_MS;
+        logger.critical('record_min_ms cannot be greater than ' + MAX_MIN_RECORDING_MS + 'ms. Capping value.');
     }
 
     this.recEvents = [];
