@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, MIN_RECORDING_MS, _, console, userAgent, window, document, navigator, slice } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, window, document, navigator, slice } from './utils';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -152,7 +152,7 @@ var DEFAULT_CONFIG = {
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
     'record_max_ms':                     MAX_RECORDING_MS,
-    'record_min_ms':                     MIN_RECORDING_MS,
+    'record_min_ms':                     0,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };

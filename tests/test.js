@@ -5642,13 +5642,8 @@
 
                 asyncTest('respects minimum session length setting', function () {
                     this.randomStub.returns(0.02);
-                    this.initMixpanelRecorder({record_sessions_percent: 1, record_min_ms: 5000});
-                    ok(this.getRecorderScript() === null);
-
-                    this.clock.tick(10 * 1000);
-                    same(this.fetchStub.getCalls().length, 0, 'no /record call has been made since the user did not fall into the sample.');
-
-                    mixpanel.recordertest.start_session_recording();
+                    this.initMixpanelRecorder({record_sessions_percent: 10, record_min_ms: 5000});
+                    this.assertRecorderScript(true)
 
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);

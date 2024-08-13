@@ -1,7 +1,7 @@
 import { record } from 'rrweb';
 import { IncrementalSource, EventType } from '@rrweb/types';
 
-import { MAX_RECORDING_MS, MAX_MIN_RECORDING_MS, MIN_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
@@ -47,7 +47,7 @@ var MixpanelRecorder = function(mixpanelInstance) {
     this.maxTimeoutId = null;
 
     this.recordMaxMs = MAX_RECORDING_MS;
-    this.recordMinMs = MIN_RECORDING_MS;
+    this.recordMinMs = 0;
     this._initBatcher();
 };
 
@@ -80,9 +80,9 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     this.recordMinMs = this.get_config('record_min_ms');
-    if (this.recordMinMs > MAX_MIN_RECORDING_MS) {
-        this.recordMinMs = MAX_MIN_RECORDING_MS;
-        logger.critical('record_min_ms cannot be greater than ' + MAX_MIN_RECORDING_MS + 'ms. Capping value.');
+    if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
+        this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
+        logger.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
     }
 
     this.recEvents = [];
@@ -92,9 +92,11 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
     this.replayId = _.UUID();
 
     if (shouldStopBatcher || this.recordMinMs > 0) {
-        // this is the case when we're starting recording after a reset
+        // the primary case for shouldStopBatcher is when we're starting recording after a reset
         // and don't want to send anything over the network until there's
         // actual user activity
+        // this also applies if the minimum recording length has not been hit yet
+        // so that we don't send data until we know the recording will be long enough
         this.batcher.stop();
     } else {
         this.batcher.start();
@@ -117,7 +119,7 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
         'emit': _.bind(function (ev) {
             this.batcher.enqueue(ev);
             if (isUserEvent(ev)) {
-                if (this.batcher.stopped && new Date().getTime() - this.replayStartTime > this.recordMinMs) {
+                if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
                     // start flushing again after user activity
                     this.batcher.start();
                 }

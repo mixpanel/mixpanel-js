@@ -22,10 +22,8 @@ if (typeof(window) === 'undefined') {
 
 // Maximum allowed session recording length
 var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
-// Default minimum session recording length
-var MIN_RECORDING_MS = 0; // 0 seconds
 // Maximum allowed value for minimum session recording length
-var MAX_MIN_RECORDING_MS = 8 * 1000; // 8 seconds
+var MAX_VALUE_FOR_MIN_RECORDING_MS = 8 * 1000; // 8 seconds
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -1729,8 +1727,7 @@ _['info']['properties']     = _.info.properties;
 
 export {
     MAX_RECORDING_MS,
-    MAX_MIN_RECORDING_MS,
-    MIN_RECORDING_MS,
+    MAX_VALUE_FOR_MIN_RECORDING_MS,
     _,
     userAgent,
     console,
