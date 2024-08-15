@@ -167,14 +167,14 @@ MixpanelRecorder.prototype._onOptOut = function (code) {
     }
 };
 
-MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody, callback) {
+MixpanelRecorder.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
     var onSuccess = _.bind(function (response, responseBody) {
         // Increment sequence counter only if the request was successful to guarantee ordering.
         // RequestBatcher will always flush the next batch after the previous one succeeds.
-        if (response.status === 200) {
+        // extra check to see if the replay ID has changed so that we don't increment the seqNo on the wrong replay
+        if (response.status === 200 && this.replayId === currentReplayId) {
             this.seqNo++;
         }
-
         callback({
             status: 0,
             httpStatusCode: response.status,
@@ -205,6 +205,7 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
     const numEvents = data.length;
 
     if (numEvents > 0) {
+        var replayId = this.replayId;
         // each rrweb event has a timestamp - leverage those to get time properties
         var batchStartTime = data[0].timestamp;
         if (this.seqNo === 0) {
@@ -216,7 +217,7 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             'distinct_id': String(this._mixpanel.get_distinct_id()),
             'seq': this.seqNo,
             'batch_start_time': batchStartTime / 1000,
-            'replay_id': this.replayId,
+            'replay_id': replayId,
             'replay_length_ms': replayLengthMs,
             'replay_start_time': this.replayStartTime / 1000
         };
@@ -239,11 +240,11 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
                 .blob()
                 .then(_.bind(function(compressedBlob) {
                     reqParams['format'] = 'gzip';
-                    this._sendRequest(reqParams, compressedBlob, callback);
+                    this._sendRequest(replayId, reqParams, compressedBlob, callback);
                 }, this));
         } else {
             reqParams['format'] = 'body';
-            this._sendRequest(reqParams, eventsJson, callback);
+            this._sendRequest(replayId, reqParams, eventsJson, callback);
         }
     }
 });
