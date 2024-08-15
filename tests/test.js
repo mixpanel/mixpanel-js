@@ -5266,7 +5266,7 @@
                     return new Promise(function(resolve) {
                         setTimeout(function() {
                             resolve(makeFakeFetchResponse(status, body));
-                        }, delay || 0);
+                        }, delay);
                     });
                 }
 
@@ -5670,7 +5670,7 @@
                         var replayId1 = urlParams.get('replay_id');
 
                         this.clock.tick(16 * 60 * 1000);
-                        // simulate a mutation event to make sure it doesn't make a request
+                        // simulate a mutation event to ensure we don't try sending it until there's a user event
                         document.body.appendChild(document.createElement('div'));
                         this.clock.tick(16 * 60 * 1000);
 
