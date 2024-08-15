@@ -2,6 +2,7 @@ import chai, { expect } from 'chai';
 import localStorage from 'localStorage';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
+import { window } from '../../src/utils';
 
 chai.use(sinonChai);
 
@@ -330,6 +331,34 @@ describe(`RequestBatcher`, function() {
           {ev: `queued event 2`},
           {ev: `queued event 3`},
         ]);
+      });
+
+      it(`retries ERR_INTERNET_DISCONNECTED and continues queueing`, function() {
+        var isOnlineStub = sinon.stub(window.navigator, `onLine`).value(false);
+        batcher.flush();
+        batcher.enqueue({ev: `queued event 1`});
+        batcher.enqueue({ev: `queued event 2`});
+
+        // fail a couple times
+        clock.tick(DEFAULT_FLUSH_INTERVAL);
+        expect(batcher.sendRequest).to.have.been.calledOnce;
+        sendResponse(0);
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 2);
+        expect(batcher.sendRequest).to.have.been.calledTwice;
+        sendResponse(0);
+
+        batcher.enqueue({ev: `queued event 3`});
+
+        clock.tick(DEFAULT_FLUSH_INTERVAL * 4);
+        expect(batcher.sendRequest).to.have.callCount(3);
+
+        // should include all events in current retry
+        expect(batcher.sendRequest.args[2][0]).to.deep.equal([
+          {ev: `queued event 1`},
+          {ev: `queued event 2`},
+          {ev: `queued event 3`},
+        ]);
+        isOnlineStub.restore();
       });
 
       it(`does not retry 400s / successful API rejections`, function() {

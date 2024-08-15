@@ -197,7 +197,7 @@ MixpanelRecorder.prototype._sendRequest = function(reqParams, reqBody, callback)
             callback({error: error});
         });
     }).catch(function (error) {
-        callback({error: error});
+        callback({error: error, httpStatusCode: 0});
     });
 };
 

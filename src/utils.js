@@ -8,7 +8,7 @@ if (typeof(window) === 'undefined') {
         hostname: ''
     };
     win = {
-        navigator: { userAgent: '' },
+        navigator: { userAgent: '', onLine: true },
         document: {
             location: loc,
             referrer: ''
@@ -1702,6 +1702,14 @@ var extract_domain = function(hostname) {
     return matches ? matches[0] : '';
 };
 
+/**
+ * Check whether we have network connection. default to true for browsers that don't support navigator.onLine (IE)
+ * @returns {boolean}
+ */
+var isOnline = function() {
+    return win.navigator.onLine === undefined || win.navigator.onLine;
+};
+
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -1724,18 +1732,19 @@ _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
 export {
-    MAX_RECORDING_MS,
     _,
-    userAgent,
-    console,
-    win as window,
-    document,
-    navigator,
     cheap_guid,
     console_with_prefix,
+    console,
+    document,
     extract_domain,
-    localStorageSupported,
-    JSONStringify,
     JSONParse,
-    slice
+    JSONStringify,
+    isOnline,
+    localStorageSupported,
+    MAX_RECORDING_MS,
+    navigator,
+    slice,
+    userAgent,
+    win as window
 };
