@@ -201,7 +201,7 @@ RequestBatcher.prototype.flush = function(options) {
                     (
                         res.httpStatusCode >= 500
                         || res.httpStatusCode === 429
-                        || res.httpStatusCode <= 0 && !isOnline()
+                        || (res.httpStatusCode <= 0 && !isOnline())
                         || res.error === 'timeout'
                     )
                 ) {
