@@ -5561,7 +5561,6 @@
                         }, this));
                     });
                 });
-                
                 asyncTest('retries record request after a 500', 17, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
