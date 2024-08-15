@@ -5273,8 +5273,8 @@
                 module('recorder', {
                     setup: function () {
                         this.token = rand_name();
-
-                        this.clock = sinon.useFakeTimers(new Date().getTime());
+                        this.startTime = 1723733423402;
+                        this.clock = sinon.useFakeTimers(this.startTime);
                         this.randomStub = sinon.stub(Math, 'random');
                         this.fetchStub = sinon.stub(window, 'fetch');
 
@@ -5689,7 +5689,7 @@
                 });
 
 
-                asyncTest('handles race condition where the recording resets while a request is in flight', 12, function () {
+                asyncTest('handles race condition where the recording resets while a request is in flight', 14, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     this.assertRecorderScript(true);
@@ -5709,6 +5709,7 @@
                         same(this.fetchStub.getCalls().length, 1, 'flushed events after stopping recording');
                         var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
                         same(urlParams.get('seq'), '0', 'sends first sequence');
+                        same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
                         var replayId1 = urlParams.get('replay_id');
 
                         // start recording again while the first replay's request is in flight
@@ -5722,6 +5723,7 @@
                             if (fetchCall1) {
                                 urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
                                 same(urlParams.get('seq'), '0', 'new replay uses the first sequence');
+                                same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
                                 var replayId2 = urlParams.get('replay_id');
                                 ok(replayId1 !== replayId2, 'replay id is different after reset');
                                 mixpanel.recordertest.stop_session_recording();

@@ -208,7 +208,12 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
         var replayId = this.replayId;
         // each rrweb event has a timestamp - leverage those to get time properties
         var batchStartTime = data[0].timestamp;
-        if (this.seqNo === 0) {
+        if (this.seqNo === 0 || !this.replayStartTime) {
+            // extra safety net so that we don't send a null replay start time
+            if (this.seqNo !== 0) {
+                this.reportError('Replay start time not set but seqNo is not 0. Using current batch start time as a fallback.');
+            }
+
             this.replayStartTime = batchStartTime;
         }
         var replayLengthMs = data[numEvents - 1].timestamp - this.replayStartTime;
