@@ -1707,7 +1707,8 @@ var extract_domain = function(hostname) {
  * @returns {boolean}
  */
 var isOnline = function() {
-    return win.navigator.onLine === undefined || win.navigator.onLine;
+    var onLine = win.navigator['onLine'];
+    return _.isUndefined(onLine) || onLine;
 };
 
 var JSONStringify = null, JSONParse = null;
