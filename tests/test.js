@@ -5627,7 +5627,7 @@
 
                         this.clock.tick(20 * 1000);
 
-                        stop()
+                        stop();
                         untilDone(_.bind(function (done) {
                             var fetchCall1 = this.fetchStub.getCall(1);
                             if (fetchCall1) {
