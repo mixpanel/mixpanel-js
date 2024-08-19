@@ -5243,7 +5243,7 @@
                     }
                 }
 
-                function makeFakeFetchResponse(status, body, cb) {
+                function makeFakeFetchResponse(status, body) {
                     body = body || {}
                     var response = new Response({}, {
                         status: status,
@@ -5262,11 +5262,19 @@
                     );
                 }
 
+                function makeDelayedFetchResponse(status, body, delay) {
+                    return new Promise(function(resolve) {
+                        setTimeout(function() {
+                            resolve(makeFakeFetchResponse(status, body));
+                        }, delay);
+                    });
+                }
+
                 module('recorder', {
                     setup: function () {
                         this.token = rand_name();
-
-                        this.clock = sinon.useFakeTimers();
+                        this.startTime = 1723733423402;
+                        this.clock = sinon.useFakeTimers(this.startTime);
                         this.randomStub = sinon.stub(Math, 'random');
                         this.fetchStub = sinon.stub(window, 'fetch');
 
@@ -5661,7 +5669,11 @@
                         same(urlParams.get('seq'), '0', 'sends first sequence');
                         var replayId1 = urlParams.get('replay_id');
 
-                        this.clock.tick(33 * 60 * 1000);
+                        this.clock.tick(16 * 60 * 1000);
+                        // simulate a mutation event to ensure we don't try sending it until there's a user event
+                        document.body.appendChild(document.createElement('div'));
+                        this.clock.tick(16 * 60 * 1000);
+
                         same(this.fetchStub.getCalls().length, 1, 'no new record requests after idle timeout');
 
                         simulateMouseClick(document.body);
@@ -5673,6 +5685,51 @@
                         ok(replayId1 !== replayId2, 'replay id is different after reset');
 
                         mixpanel.recordertest.stop_session_recording();
+                    });
+                });
+
+
+                asyncTest('handles race condition where the recording resets while a request is in flight', 14, function () {
+                    this.randomStub.returns(0.02);
+                    this.initMixpanelRecorder({record_sessions_percent: 10});
+                    this.assertRecorderScript(true);
+                    this.randomStub.restore(); // restore the random stub after script is loaded for batcher uuid dedupe
+
+                    this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
+                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
+                    this.fetchStub.onFirstCall()
+                        .returns(makeDelayedFetchResponse(200, {}, 5 * 1000))
+
+                    this.fetchStub.callThrough();
+
+                    this.afterRecorderLoaded.call(this, function () {
+                        // current replay stops, a new one starts a bit after
+                        mixpanel.recordertest.stop_session_recording();
+
+                        same(this.fetchStub.getCalls().length, 1, 'flushed events after stopping recording');
+                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        same(urlParams.get('seq'), '0', 'sends first sequence');
+                        same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+                        var replayId1 = urlParams.get('replay_id');
+
+                        // start recording again while the first replay's request is in flight
+                        mixpanel.recordertest.start_session_recording();
+                        simulateMouseClick(document.body);
+                        stop();
+
+                        untilDone(_.bind(function (done) {
+                            this.clock.tick(10 * 1000);
+                            var fetchCall1 = this.fetchStub.getCall(1);
+                            if (fetchCall1) {
+                                urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                                same(urlParams.get('seq'), '0', 'new replay uses the first sequence');
+                                same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+                                var replayId2 = urlParams.get('replay_id');
+                                ok(replayId1 !== replayId2, 'replay id is different after reset');
+                                mixpanel.recordertest.stop_session_recording();
+                                done();
+                            }
+                        }, this));
                     });
                 });
             }
