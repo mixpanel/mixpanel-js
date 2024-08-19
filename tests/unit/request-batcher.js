@@ -2,6 +2,7 @@ import chai, { expect } from 'chai';
 import localStorage from 'localStorage';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
+
 import { window } from '../../src/utils';
 
 chai.use(sinonChai);
