@@ -3941,6 +3941,24 @@
                     this.clock.tick(10000);
                     same(stored_requests.length, 2, "both events should still be in localStorage");
                 });
+                
+                test('requests are not cleared from localStorage when offline', 3, function() {
+                    var onlineStub = sinon.stub(window.navigator, 'onLine').value(false);
+
+                    mixpanel.batchtest.track('storagetest 1');
+                    mixpanel.batchtest.track('storagetest 2');
+                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                    same(stored_requests.length, 2, "both events should be in localStorage");
+
+                    this.clock.tick(5000);
+                    this.requests[0].respond(0, {}, '');
+
+                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                    same(stored_requests.length, 2, "both events should still be in localStorage");
+                    this.clock.tick(10000);
+                    same(stored_requests.length, 2, "both events should still be in localStorage");
+                    onlineStub.restore();
+                });
 
                 test('orphaned data in localStorage gets sent on init', 6, function() {
                     clearLibInstance(mixpanel.batchtest);
@@ -5551,7 +5569,6 @@
                         }, this));
                     });
                 });
-
                 asyncTest('retries record request after a 500', 17, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
@@ -5585,6 +5602,53 @@
                         same(urlParams.get("seq"), "1", "2nd sequence is retried");
 
                         mixpanel.recordertest.stop_session_recording();
+                    });
+                });
+
+                asyncTest('retries record requests when offline', 7, function () {
+                    var onlineStub = sinon.stub(window.navigator, 'onLine').value(false);
+                    // pretend we can't compress so we can compare the events in the fetch request
+                    var compressionStreamStub = sinon.stub(window, 'CompressionStream').value(undefined);
+                    
+                    this.randomStub.returns(0.02);
+                    this.initMixpanelRecorder({record_sessions_percent: 10});
+                    this.assertRecorderScript(true);
+                    
+                    this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
+                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
+                    this.fetchStub.onCall(0)
+                        .returns(new Promise(function (_resolve, reject) {
+                            // simulate offline
+                            reject(new TypeError('Failed to fetch'));
+                        })) 
+                        .onCall(1)
+                        .returns(makeFakeFetchResponse(200))
+
+                    this.afterRecorderLoaded.call(this, function () {
+                        simulateMouseClick(document.body);
+                        this.clock.tick(10 * 1000)
+                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+
+                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        same(urlParams.get("seq"), "0", "first sequence fails because we're offline");
+                        var fetchBody = this.fetchStub.getCall(0).args[1].body;
+
+                        this.clock.tick(20 * 1000);
+
+                        stop();
+                        untilDone(_.bind(function (done) {
+                            var fetchCall1 = this.fetchStub.getCall(1);
+                            if (fetchCall1) {
+                                urlParams = validateAndGetUrlParams(fetchCall1);
+                                same(urlParams.get("seq"), "0", "first sequence is retried with exponential backoff");
+                                same(fetchBody, fetchCall1.args[1].body, 'fetch body should be the same as the first request');
+                            }
+                            onlineStub.restore();
+                            compressionStreamStub.restore();
+                            mixpanel.recordertest.stop_session_recording();
+
+                            done();
+                        }, this))
                     });
                 });
 

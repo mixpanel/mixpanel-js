@@ -1,6 +1,6 @@
 import Config from './config';
 import { RequestQueue } from './request-queue';
-import { console_with_prefix, _ } from './utils'; // eslint-disable-line camelcase
+import { console_with_prefix, isOnline, _ } from './utils'; // eslint-disable-line camelcase
 
 // maximum interval between request retries after exponential backoff
 var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -198,7 +198,12 @@ RequestBatcher.prototype.flush = function(options) {
                     this.flush();
                 } else if (
                     _.isObject(res) &&
-                    (res.httpStatusCode >= 500 || res.httpStatusCode === 429 || res.error === 'timeout')
+                    (
+                        res.httpStatusCode >= 500
+                        || res.httpStatusCode === 429
+                        || (res.httpStatusCode <= 0 && !isOnline())
+                        || res.error === 'timeout'
+                    )
                 ) {
                     // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.flushInterval * 2;
