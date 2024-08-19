@@ -3947,7 +3947,7 @@
 
                     mixpanel.batchtest.track('storagetest 1');
                     mixpanel.batchtest.track('storagetest 2');
-                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
                     same(stored_requests.length, 2, "both events should be in localStorage");
 
                     this.clock.tick(5000);
