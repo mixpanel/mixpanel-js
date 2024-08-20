@@ -22,6 +22,8 @@ if (typeof(window) === 'undefined') {
 
 // Maximum allowed session recording length
 var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Maximum allowed value for minimum session recording length
+var MAX_VALUE_FOR_MIN_RECORDING_MS = 8 * 1000; // 8 seconds
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -1744,6 +1746,7 @@ export {
     isOnline,
     localStorageSupported,
     MAX_RECORDING_MS,
+    MAX_VALUE_FOR_MIN_RECORDING_MS,
     navigator,
     slice,
     userAgent,
