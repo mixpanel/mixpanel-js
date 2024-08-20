@@ -962,7 +962,7 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+    param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);
