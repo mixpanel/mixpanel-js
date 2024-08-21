@@ -5714,7 +5714,7 @@
 
                 asyncTest('respects minimum session length setting', function () {
                     this.randomStub.returns(0.02);
-                    this.initMixpanelRecorder({record_sessions_percent: 10, record_min_ms: 5000});
+                    this.initMixpanelRecorder({record_sessions_percent: 10, record_min_ms: 8000});
                     this.assertRecorderScript(true)
 
                     this.afterRecorderLoaded.call(this, function () {
