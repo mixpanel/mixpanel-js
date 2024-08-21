@@ -87,7 +87,7 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
 
     this.recEvents = [];
     this.seqNo = 0;
-    this.replayStartTime = null;
+    this.replayStartTime = new Date().getTime();
 
     this.replayId = _.UUID();
 
