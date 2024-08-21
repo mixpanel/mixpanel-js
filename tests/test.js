@@ -5780,6 +5780,7 @@
 
                 asyncTest('handles race condition where the recording resets while a request is in flight', 14, function () {
                     this.randomStub.returns(0.02);
+
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     this.assertRecorderScript(true);
                     this.randomStub.restore(); // restore the random stub after script is loaded for batcher uuid dedupe
@@ -5798,7 +5799,13 @@
                         same(this.fetchStub.getCalls().length, 1, 'flushed events after stopping recording');
                         var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
                         same(urlParams.get('seq'), '0', 'sends first sequence');
-                        same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+                        
+                        if (!IS_RECORDER_BUNDLED) {
+                            same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+                        } else {
+                            ok(true, 'cannot test replay_start_time when recorder is bundled, rrweb stores a reference to Date.now at the global level so stubs / fake timers will not work.');
+                        }
+
                         var replayId1 = urlParams.get('replay_id');
 
                         // start recording again while the first replay's request is in flight
@@ -5812,7 +5819,13 @@
                             if (fetchCall1) {
                                 urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
                                 same(urlParams.get('seq'), '0', 'new replay uses the first sequence');
-                                same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+
+                                if (!IS_RECORDER_BUNDLED) {
+                                    same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+                                } else {
+                                    ok(true, 'cannot test replay_start_time when recorder is bundled, rrweb stores a reference to Date.now at the global level so stubs / fake timers will not work.');
+                                }
+
                                 var replayId2 = urlParams.get('replay_id');
                                 ok(replayId1 !== replayId2, 'replay id is different after reset');
                                 mixpanel.recordertest.stop_session_recording();
