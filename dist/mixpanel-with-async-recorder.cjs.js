@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.55.0'
+    LIB_VERSION: '2.55.1-rc1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -14,7 +14,7 @@ if (typeof(window) === 'undefined') {
         hostname: ''
     };
     win = {
-        navigator: { userAgent: '' },
+        navigator: { userAgent: '', onLine: true },
         document: {
             location: loc,
             referrer: ''
@@ -968,7 +968,7 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+    param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);
@@ -1425,8 +1425,8 @@ _.dom_query = (function() {
     };
 })();
 
-var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
-var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'];
+var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'utm_source_platform','utm_campaign_id', 'utm_creative_format', 'utm_marketing_tactic'];
+var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'sccid', 'ttclid', 'twclid', 'wbraid'];
 
 _.info = {
     campaignParams: function(default_value) {
@@ -1706,6 +1706,15 @@ var extract_domain = function(hostname) {
     }
     var matches = hostname.match(domain_regex);
     return matches ? matches[0] : '';
+};
+
+/**
+ * Check whether we have network connection. default to true for browsers that don't support navigator.onLine (IE)
+ * @returns {boolean}
+ */
+var isOnline = function() {
+    var onLine = win.navigator['onLine'];
+    return _.isUndefined(onLine) || onLine;
 };
 
 var JSONStringify = null, JSONParse = null;
@@ -2523,7 +2532,12 @@ RequestBatcher.prototype.flush = function(options) {
                     this.flush();
                 } else if (
                     _.isObject(res) &&
-                    (res.httpStatusCode >= 500 || res.httpStatusCode === 429 || res.error === 'timeout')
+                    (
+                        res.httpStatusCode >= 500
+                        || res.httpStatusCode === 429
+                        || (res.httpStatusCode <= 0 && !isOnline())
+                        || res.error === 'timeout'
+                    )
                 ) {
                     // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.flushInterval * 2;
@@ -4247,6 +4261,7 @@ var DEFAULT_CONFIG = {
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
     'record_max_ms':                     MAX_RECORDING_MS,
+    'record_min_ms':                     0,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
