@@ -8,7 +8,7 @@ if (typeof(window) === 'undefined') {
         hostname: ''
     };
     win = {
-        navigator: { userAgent: '' },
+        navigator: { userAgent: '', onLine: true },
         document: {
             location: loc,
             referrer: ''
@@ -22,6 +22,8 @@ if (typeof(window) === 'undefined') {
 
 // Maximum allowed session recording length
 var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Maximum allowed value for minimum session recording length
+var MAX_VALUE_FOR_MIN_RECORDING_MS = 8 * 1000; // 8 seconds
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -962,7 +964,7 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+    param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);
@@ -1419,8 +1421,8 @@ _.dom_query = (function() {
     };
 })();
 
-var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
-var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'];
+var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'utm_source_platform','utm_campaign_id', 'utm_creative_format', 'utm_marketing_tactic'];
+var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'sccid', 'ttclid', 'twclid', 'wbraid'];
 
 _.info = {
     campaignParams: function(default_value) {
@@ -1702,6 +1704,15 @@ var extract_domain = function(hostname) {
     return matches ? matches[0] : '';
 };
 
+/**
+ * Check whether we have network connection. default to true for browsers that don't support navigator.onLine (IE)
+ * @returns {boolean}
+ */
+var isOnline = function() {
+    var onLine = win.navigator['onLine'];
+    return _.isUndefined(onLine) || onLine;
+};
+
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -1724,18 +1735,20 @@ _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
 
 export {
-    MAX_RECORDING_MS,
     _,
-    userAgent,
-    console,
-    win as window,
-    document,
-    navigator,
     cheap_guid,
     console_with_prefix,
+    console,
+    document,
     extract_domain,
-    localStorageSupported,
-    JSONStringify,
     JSONParse,
-    slice
+    JSONStringify,
+    isOnline,
+    localStorageSupported,
+    MAX_RECORDING_MS,
+    MAX_VALUE_FOR_MIN_RECORDING_MS,
+    navigator,
+    slice,
+    userAgent,
+    win as window
 };
