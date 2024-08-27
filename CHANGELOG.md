@@ -1,6 +1,8 @@
 **2.55.1** (27 Aug 2024)
 - Adds a minimum recording length option for session recording
 - Fixes and improvements for session recording batcher to support offline queueing and retry
+- Fix for query param parsing/escaping
+- Support for more UTM tags / click IDs (thanks @aliyalcinkaya)
 
 **2.55.0** (2 Aug 2024)
 - Added new build to support native JavaScript modules
