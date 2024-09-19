@@ -1,3 +1,4 @@
+import { MpPromise } from './promise';
 import { console_with_prefix, localStorageSupported } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
@@ -31,14 +32,7 @@ var SharedLock = function(key, options) {
     this.timeoutMS = options.timeoutMS || 2000;
 };
 
-// pass in a specific pid to test contention scenarios; otherwise
-// it is chosen randomly for each acquisition attempt
-SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
-    if (!pid && typeof errorCB !== 'function') {
-        pid = errorCB;
-        errorCB = null;
-    }
-
+SharedLock.prototype.withLock = function(lockedCB, pid) {
     var i = pid || (new Date().getTime() + '|' + Math.random());
     var startTime = new Date().getTime();
 
@@ -51,33 +45,25 @@ SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
     var keyY = key + ':Y';
     var keyZ = key + ':Z';
 
-    var reportError = function(err) {
-        errorCB && errorCB(err);
-    };
-
-    var delay = function(cb) {
+    var delay = function() {
         if (new Date().getTime() - startTime > timeoutMS) {
             logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
             storage.removeItem(keyZ);
             storage.removeItem(keyY);
-            loop();
-            return;
+            return loop();
         }
-        setTimeout(function() {
-            try {
-                cb();
-            } catch(err) {
-                reportError(err);
-            }
-        }, pollIntervalMS * (Math.random() + 0.1));
+
+        return new MpPromise(function(resolve) {
+            setTimeout(resolve, pollIntervalMS * (Math.random() + 0.1));
+        });
     };
 
-    var waitFor = function(predicate, cb) {
+    var waitFor = function(predicate) {
         if (predicate()) {
-            cb();
+            return MpPromise.resolve();
         } else {
-            delay(function() {
-                waitFor(predicate, cb);
+            return delay().then(function () {
+                return waitFor(predicate);
             });
         }
     };
@@ -101,48 +87,45 @@ SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
 
     var loop = function() {
         storage.setItem(keyX, i);
-
-        waitFor(getSetY, function() {
-            if (storage.getItem(keyX) === i) {
-                criticalSection();
-                return;
-            }
-
-            delay(function() {
-                if (storage.getItem(keyY) !== i) {
-                    loop();
+        return waitFor(getSetY)
+            .then(function () {
+                if (storage.getItem(keyX) === i) {
                     return;
                 }
-                waitFor(function() {
+
+                return delay();
+            })
+            .then(function () {
+                if (storage.getItem(keyY) !== i) {
+                    return loop();
+                }
+
+                return waitFor(function () {
                     return !storage.getItem(keyZ);
-                }, criticalSection);
+                });
             });
-        });
     };
 
-    var criticalSection = function() {
-        storage.setItem(keyZ, '1');
-        try {
-            lockedCB();
-        } finally {
-            storage.removeItem(keyZ);
-            if (storage.getItem(keyY) === i) {
-                storage.removeItem(keyY);
-            }
-            if (storage.getItem(keyX) === i) {
-                storage.removeItem(keyX);
-            }
-        }
-    };
-
-    try {
-        if (localStorageSupported(storage, true)) {
-            loop();
-        } else {
-            throw new Error('localStorage support check failed');
-        }
-    } catch(err) {
-        reportError(err);
+    if (localStorageSupported(storage, true)) {
+        return loop()
+            .then(function () {
+                return lockedCB();
+            })
+            .catch(function (err) {
+                logger.error('Error in withLock: ' + err);
+                return err;
+            })
+            .then(function () {
+                storage.removeItem(keyZ);
+                if (storage.getItem(keyY) === i) {
+                    storage.removeItem(keyY);
+                }
+                if (storage.getItem(keyX) === i) {
+                    storage.removeItem(keyX);
+                }
+            });
+    } else {
+        return MpPromise.reject(new Error('localStorage support check failed'));
     }
 };
 

@@ -34,48 +34,67 @@ describe(`SharedLock`, function() {
   });
 
   describe(`withLock()`, function() {
-    it(`runs the given code`, function(done) {
+    it(`runs the given code`, async function() {
       const sharedArray = [];
       sharedLock.withLock(function() {
         sharedArray.push(`A`);
+        return Promise.resolve();
       });
-      sharedLock.withLock(function() {
+
+      const secondLockPromise = sharedLock.withLock(function() {
         sharedArray.push(`B`);
         expect(sharedArray).to.eql([`A`, `B`]);
-        done();
+        return Promise.resolve();
       });
+
+      await clock.tickAsync(200);
+      await secondLockPromise;
     });
 
-    it(`waits for previous acquirer to release lock`, function(done) {
+    it(`waits for previous acquirer to release lock`, async function() {
       const sharedArray = [];
 
       acquireLockForPid(sharedLock, `foobar`);
 
       // this should block until 'foobar' process releases below
-      sharedLock.withLock(function() {
+      const firstLockPromise = sharedLock.withLock(function() {
         sharedArray.push(`B`);
         expect(sharedArray).to.eql([`A`, `B`]);
-        done();
+        return Promise.resolve();
       });
 
       // 'foobar' process
       sharedLock.withLock(function() {
         sharedArray.push(`A`);
+        return Promise.resolve();
       }, `foobar`);
 
-      clock.tick(1000);
+      await clock.tickAsync(1000);
+      await firstLockPromise;
     });
 
-    it(`clears the lock when one caller does not release it`, function(done) {
+    it(`clears the lock when one caller does not release it`, async function() {
       acquireLockForPid(sharedLock, `foobar`);
 
       const startTime = Date.now();
-      sharedLock.withLock(function() {
+      const lockPromise = sharedLock.withLock(function() {
         expect(Date.now() - startTime).to.be.above(TIMEOUT_MS);
-        done();
       });
 
-      clock.tick(TIMEOUT_MS * 2);
+      await clock.tickAsync(TIMEOUT_MS * 2);
+      await lockPromise;
+    });
+
+    it(`throws an error in the outer promise chain when the lockedCB errors`, async function() {
+      const error = new Error(`test error`);
+      const lockPromise = sharedLock.withLock(function() {
+        throw error
+      });
+
+      await clock.tickAsync(1000);
+      await lockPromise.catch(err => {
+        expect(err).to.equal(error);
+      });
     });
 
     context(`when localStorage.setItem breaks`, function() {
@@ -83,26 +102,24 @@ describe(`SharedLock`, function() {
         localStorage.setItem.restore();
       });
 
-      it(`runs error callback immediately if setItem throws`, function(done) {
+      it(`runs error callback immediately if setItem throws`, async function() {
         sinon.stub(localStorage, `setItem`).throws(`localStorage disabled`);
-        sharedLock.withLock(function() {}, function(err) {
+        await sharedLock.withLock(() => Promise.resolve()).catch(err => {
           expect(String(err)).to.equal(`Error: localStorage support check failed`);
-          done();
         });
       });
 
-      it(`runs error callback immediately if setItem silently fails`, function(done) {
+      it(`runs error callback immediately if setItem silently fails`, async function() {
         sinon.stub(localStorage, `setItem`).callsFake(function() {
           // Does nothing, but doesn't throw either. (Yes, this behavior has been
           // observed in the wild thanks to monkeypatching...)
         });
-        sharedLock.withLock(function() {}, function(err) {
+        await sharedLock.withLock(() => Promise.resolve()).catch(err => {
           expect(String(err)).to.equal(`Error: localStorage support check failed`);
-          done();
         });
       });
 
-      it(`runs error callback quickly if setItem starts failing mid-acquisition`, function(done) {
+      it(`runs error callback quickly if setItem starts failing mid-acquisition`, async function() {
         sinon.stub(localStorage, `setItem`)
           .withArgs(`some-key:Y`, `mypid`)
           .onCall(0).returns(null)
@@ -113,12 +130,12 @@ describe(`SharedLock`, function() {
           });
         localStorage.setItem.callThrough();
 
-        sharedLock.withLock(function() {}, function(err) {
+        const lockPromise = sharedLock.withLock(() => Promise.resolve() `mypid`).catch(err => {
           expect(String(err)).to.equal(`Error: localStorage support dropped while acquiring lock`);
-          done();
-        }, `mypid`);
+        });
 
-        clock.tick(1000);
+        await clock.tickAsync(1000);
+        await lockPromise;
       });
     });
   });
