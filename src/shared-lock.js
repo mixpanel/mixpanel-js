@@ -32,6 +32,12 @@ var SharedLock = function(key, options) {
     this.timeoutMS = options.timeoutMS || 2000;
 };
 
+function SharedLockFailedError() {
+    this.name = 'SharedLockFailedError';
+    this.message = 'Failed to acquire shared lock';
+}
+SharedLockFailedError.prototype = Object.create(Error.prototype);
+
 SharedLock.prototype.withLock = function(lockedCB, pid) {
     var i = pid || (new Date().getTime() + '|' + Math.random());
     var startTime = new Date().getTime();
@@ -106,23 +112,30 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
             });
     };
 
+    var clearLock = function () {
+        storage.removeItem(keyZ);
+        if (storage.getItem(keyY) === i) {
+            storage.removeItem(keyY);
+        }
+        if (storage.getItem(keyX) === i) {
+            storage.removeItem(keyX);
+        }
+    };
+
     if (localStorageSupported(storage, true)) {
         return loop()
             .then(function () {
                 return lockedCB();
             })
-            .catch(function (err) {
-                logger.error('Error in withLock: ' + err);
-                return err;
+            .then(function (returnValue) {
+                clearLock();
+                // propogate the return value from the lockedCB
+                return returnValue;
             })
-            .then(function () {
-                storage.removeItem(keyZ);
-                if (storage.getItem(keyY) === i) {
-                    storage.removeItem(keyY);
-                }
-                if (storage.getItem(keyX) === i) {
-                    storage.removeItem(keyX);
-                }
+            .catch(function (err) {
+                clearLock();
+                // something went wrong acquiring lock, let caller handle the rejected promise
+                return MpPromise.reject(err);
             });
     } else {
         return MpPromise.reject(new Error('localStorage support check failed'));

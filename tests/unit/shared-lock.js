@@ -1,4 +1,5 @@
-import { expect } from 'chai';
+import { expect, use as chaiUse } from 'chai';
+
 import localStorage from 'localStorage';
 import sinon from 'sinon';
 
@@ -85,16 +86,20 @@ describe(`SharedLock`, function() {
       await lockPromise;
     });
 
-    it(`throws an error in the outer promise chain when the lockedCB errors`, async function() {
+    it(`throws an error in the outer promise chain when not handled by lockedCB`, async function() {
       const error = new Error(`test error`);
+      
+      let caughtError = null;
       const lockPromise = sharedLock.withLock(function() {
         throw error
+      }).catch(function (err) {
+        caughtError = err;
       });
-
+      
       await clock.tickAsync(1000);
-      await lockPromise.catch(err => {
-        expect(err).to.equal(error);
-      });
+      await lockPromise;
+      
+      expect(caughtError).to.equal(error);
     });
 
     context(`when localStorage.setItem breaks`, function() {
@@ -104,9 +109,13 @@ describe(`SharedLock`, function() {
 
       it(`runs error callback immediately if setItem throws`, async function() {
         sinon.stub(localStorage, `setItem`).throws(`localStorage disabled`);
-        await sharedLock.withLock(() => Promise.resolve()).catch(err => {
-          expect(String(err)).to.equal(`Error: localStorage support check failed`);
+        
+        let caughtError = null;
+        await sharedLock.withLock(() => Promise.resolve()).catch(function (err) {
+          caughtError = err;
         });
+        
+        expect(String(caughtError)).to.equal(`Error: localStorage support check failed`);
       });
 
       it(`runs error callback immediately if setItem silently fails`, async function() {
@@ -114,9 +123,13 @@ describe(`SharedLock`, function() {
           // Does nothing, but doesn't throw either. (Yes, this behavior has been
           // observed in the wild thanks to monkeypatching...)
         });
+
+        let caughtError = null;
         await sharedLock.withLock(() => Promise.resolve()).catch(err => {
-          expect(String(err)).to.equal(`Error: localStorage support check failed`);
+          caughtError = err;
         });
+        
+        expect(String(caughtError)).to.equal(`Error: localStorage support check failed`);
       });
 
       it(`runs error callback quickly if setItem starts failing mid-acquisition`, async function() {
@@ -130,12 +143,15 @@ describe(`SharedLock`, function() {
           });
         localStorage.setItem.callThrough();
 
-        const lockPromise = sharedLock.withLock(() => Promise.resolve() `mypid`).catch(err => {
-          expect(String(err)).to.equal(`Error: localStorage support dropped while acquiring lock`);
+        let caughtError = null;
+        const lockPromise = sharedLock.withLock(() => Promise.resolve(), `mypid`).catch(err => {
+          caughtError = err;
         });
-
+        
         await clock.tickAsync(1000);
         await lockPromise;
+
+        expect(String(caughtError)).to.equal(`Error: localStorage support dropped while acquiring lock`);
       });
     });
   });
