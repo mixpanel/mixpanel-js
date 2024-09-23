@@ -104,6 +104,17 @@ describe(`RequestQueue`, function() {
       await enqueuePromise;
     });
 
+    it(`switches to in-memory queue if storage initialization fails`, async function() {
+      sinon.stub(queue.queueStorage, `init`).returns(Promise.reject('something went wrong'));
+      expect(await queue.readFromStorage()).to.be.empty;
+
+      await queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+
+      expect(queue.memQueue).to.have.lengthOf(1);
+      expect(queue.memQueue[0].payload).to.deep.equal(item);
+      expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
+    });
+
     context(`when persistence fails`, function() {
       function persistenceFailureTests() {
         it(`reports failure in resolved promise`, async function() {
@@ -224,7 +235,7 @@ describe(`RequestQueue`, function() {
     context(`with orphaned items in the persisted queue (localStorage)`, function() {
       let persistedItems;
 
-      beforeEach(function() {
+      beforeEach(async function() {
         persistedItems = [
           // orphaned, flush anytime
           {id: `abc`, flushAfter: +(new Date()) - 60000, payload: {event: `foo6`, properties: {bar6: `baz6`}}},
@@ -235,7 +246,7 @@ describe(`RequestQueue`, function() {
           // orphaned, flush anytime
           {id: `ghi`, flushAfter: +(new Date()) - 60000, payload: {event: `foo8`, properties: {bar8: `baz8`}}},
         ];
-        queue.saveToStorage(persistedItems);
+        await queue.saveToStorage(persistedItems);
       });
 
       it(`does not look in the persisted queue if the in-mem queue has enough items`, async function() {
@@ -265,7 +276,7 @@ describe(`RequestQueue`, function() {
       it(`does not duplicate in-mem items which are already in the batch`, async function() {
         // duplicate the ID of an in-mem item into persistence with a past flushAfter time
         persistedItems[0].id = queue.memQueue[0].id;
-        queue.saveToStorage(persistedItems);
+        await queue.saveToStorage(persistedItems);
 
         const batch = await queue.fillBatch(7);
         expect(batch).to.have.lengthOf(6);

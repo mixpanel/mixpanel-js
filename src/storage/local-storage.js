@@ -12,8 +12,8 @@ var LocalStorageWrapper = function (storageOverride) {
     this.storage = storageOverride || localStorage;
 };
 
-LocalStorageWrapper.prototype.init = function (callback) {
-    callback(true);
+LocalStorageWrapper.prototype.init = function () {
+    return MpPromise.resolve();
 };
 
 LocalStorageWrapper.prototype.setItem = function (key, value) {

@@ -34,12 +34,31 @@ var RequestQueue = function (storageKey, options) {
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
     this.memQueue = [];
+    this.initialized = false;
+
+    this.queueStorage.init();
 };
 
-RequestQueue.prototype.init = function () {
-    return this.queueStorage.init();
-};
+RequestQueue.prototype.ensureInit = function () {
+    if (this.initialized) {
+        return MpPromise.resolve();
+    }
 
+    return this.queueStorage
+        .init()
+        .then(
+            _.bind(function () {
+                this.initialized = true;
+            }, this)
+        )
+        .catch(
+            _.bind(function (err) {
+                this.reportError('Error initializing queue. Disabling persistence', err);
+                this.initialized = true;
+                this.usePersistence = false;
+            }, this)
+        );
+};
 
 /**
  * Add one item to queues (memory and localStorage). The queued entry includes
@@ -66,7 +85,12 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
     } else {
 
         var enqueueItem = _.bind(function () {
-            return this.readFromStorage()
+            return this.ensureInit()
+                .then(
+                    _.bind(function () {
+                        return this.readFromStorage();
+                    }, this)
+                )
                 .then(
                     _.bind(function (storedQueue) {
                         storedQueue.push(queueEntry);
@@ -113,30 +137,36 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
     // don't need lock just to read events; localStorage is thread-safe
     // and the worst that could happen is a duplicate send of some
     // orphaned events, which will be deduplicated on the server side
-        return this.readFromStorage().then(
-            _.bind(function (storedQueue) {
-                if (storedQueue.length) {
+        return this.ensureInit()
+            .then(
+                _.bind(function () {
+                    return this.readFromStorage();
+                }, this)
+            )
+            .then(
+                _.bind(function (storedQueue) {
+                    if (storedQueue.length) {
                     // item IDs already in batch; don't duplicate out of storage
-                    var idsInBatch = {}; // poor man's Set
-                    _.each(batch, function (item) {
-                        idsInBatch[item['id']] = true;
-                    });
+                        var idsInBatch = {}; // poor man's Set
+                        _.each(batch, function (item) {
+                            idsInBatch[item['id']] = true;
+                        });
 
-                    for (var i = 0; i < storedQueue.length; i++) {
-                        var item = storedQueue[i];
-                        if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
-                            item.orphaned = true;
-                            batch.push(item);
-                            if (batch.length >= batchSize) {
-                                break;
+                        for (var i = 0; i < storedQueue.length; i++) {
+                            var item = storedQueue[i];
+                            if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                                item.orphaned = true;
+                                batch.push(item);
+                                if (batch.length >= batchSize) {
+                                    break;
+                                }
                             }
                         }
                     }
-                }
 
-                return batch;
-            }, this)
-        );
+                    return batch;
+                }, this)
+            );
     } else {
         return MpPromise.resolve(batch);
     }
@@ -172,7 +202,12 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
         return MpPromise.resolve(true);
     } else {
         var removeFromStorage = _.bind(function () {
-            return this.readFromStorage()
+            return this.ensureInit()
+                .then(
+                    _.bind(function () {
+                        return this.readFromStorage();
+                    }, this)
+                )
                 .then(
                     _.bind(function (storedQueue) {
                         storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
@@ -273,7 +308,12 @@ RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
         return this.lock
             .withLock(
                 _.bind(function lockAcquired() {
-                    return this.readFromStorage()
+                    return this.ensureInit()
+                        .then(
+                            _.bind(function () {
+                                return this.readFromStorage();
+                            }, this)
+                        )
                         .then(
                             _.bind(function (storedQueue) {
                                 storedQueue = updatePayloads(storedQueue, itemsToUpdate);
@@ -303,8 +343,12 @@ RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
  * malformed/missing data if necessary.
  */
 RequestQueue.prototype.readFromStorage = function () {
-    return this.queueStorage
-        .getItem(this.storageKey)
+    return this.ensureInit()
+        .then(
+            _.bind(function () {
+                return this.queueStorage.getItem(this.storageKey);
+            }, this)
+        )
         .then(
             _.bind(function (storageEntry) {
                 if (storageEntry) {
@@ -336,8 +380,12 @@ RequestQueue.prototype.saveToStorage = function (queue) {
         return MpPromise.resolve(false);
     }
 
-    return this.queueStorage
-        .setItem(this.storageKey, serialized)
+    return this.ensureInit()
+        .then(
+            _.bind(function () {
+                return this.queueStorage.setItem(this.storageKey, serialized);
+            }, this)
+        )
         .then(function () {
             return true;
         })
@@ -356,7 +404,12 @@ RequestQueue.prototype.clear = function () {
     this.memQueue = [];
 
     if (this.usePersistence) {
-        return this.queueStorage.removeItem(this.storageKey);
+        return this.ensureInit()
+            .then(
+                _.bind(function () {
+                    return this.queueStorage.removeItem(this.storageKey);
+                }, this)
+            );
     } else {
         return MpPromise.resolve();
     }
