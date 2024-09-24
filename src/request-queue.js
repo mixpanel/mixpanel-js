@@ -81,7 +81,7 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
 
     if (!this.usePersistence) {
         this.memQueue.push(queueEntry);
-        return MpPromise.resolve();
+        return MpPromise.resolve(true);
     } else {
 
         var enqueueItem = _.bind(function () {

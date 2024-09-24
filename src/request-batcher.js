@@ -1,4 +1,5 @@
 import Config from './config';
+import { MpPromise } from './promise';
 import { RequestQueue } from './request-queue';
 import { console_with_prefix, isOnline, _ } from './utils'; // eslint-disable-line camelcase
 
@@ -17,7 +18,8 @@ var RequestBatcher = function(storageKey, options) {
     this.errorReporter = options.errorReporter;
     this.queue = new RequestQueue(storageKey, {
         errorReporter: _.bind(this.reportError, this),
-        storage: options.storage,
+        queueStorage: options.queueStorage,
+        sharedLockStorage: options.sharedLockStorage,
         usePersistence: options.usePersistence
     });
 
@@ -45,8 +47,8 @@ var RequestBatcher = function(storageKey, options) {
 /**
  * Add one item to queue.
  */
-RequestBatcher.prototype.enqueue = function(item, cb) {
-    this.queue.enqueue(item, this.flushInterval, cb);
+RequestBatcher.prototype.enqueue = function(item) {
+    return this.queue.enqueue(item, this.flushInterval);
 };
 
 /**
@@ -56,7 +58,7 @@ RequestBatcher.prototype.enqueue = function(item, cb) {
 RequestBatcher.prototype.start = function() {
     this.stopped = false;
     this.consecutiveRemovalFailures = 0;
-    this.flush();
+    return this.flush();
 };
 
 /**
@@ -74,7 +76,7 @@ RequestBatcher.prototype.stop = function() {
  * Clear out queue.
  */
 RequestBatcher.prototype.clear = function() {
-    this.queue.clear();
+    return this.queue.clear();
 };
 
 /**
@@ -106,6 +108,17 @@ RequestBatcher.prototype.scheduleFlush = function(flushMS) {
 };
 
 /**
+ * Send a request using the sendRequest, but promisified.
+ * TODO: sendRequest should be promisified in the first place.
+ */
+RequestBatcher.prototype.sendRequestPromise = function(data, options) {
+    return new MpPromise(_.bind(function(resolve) {
+        this.sendRequest(data, options, resolve);
+    }, this));
+};
+
+
+/**
  * Flush one batch to network. Depending on success/failure modes, it will either
  * remove the batch from the queue or leave it in for retry, and schedule the next
  * flush. In cases of most network or API failures, it will back off exponentially
@@ -116,183 +129,188 @@ RequestBatcher.prototype.scheduleFlush = function(flushMS) {
  * sendBeacon offers no callbacks or status indications)
  */
 RequestBatcher.prototype.flush = function(options) {
-    try {
+    if (this.requestInProgress) {
+        logger.log('Flush: Request already in progress');
+        return MpPromise.resolve();
+    }
 
-        if (this.requestInProgress) {
-            logger.log('Flush: Request already in progress');
-            return;
-        }
+    options = options || {};
+    var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+    var startTime = new Date().getTime();
+    var currentBatchSize = this.batchSize;
+    return this.queue.fillBatch(currentBatchSize)
+        .then(_.bind(function(batch) {
 
-        options = options || {};
-        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
-        var startTime = new Date().getTime();
-        var currentBatchSize = this.batchSize;
-        var batch = this.queue.fillBatch(currentBatchSize);
-        // if there's more items in the queue than the batch size, attempt
-        // to flush again after the current batch is done.
-        var attemptSecondaryFlush = batch.length === currentBatchSize;
-        var dataForRequest = [];
-        var transformedItems = {};
-        _.each(batch, function(item) {
-            var payload = item['payload'];
-            if (this.beforeSendHook && !item.orphaned) {
-                payload = this.beforeSendHook(payload);
-            }
-            if (payload) {
-                // mp_sent_by_lib_version prop captures which lib version actually
-                // sends each event (regardless of which version originally queued
-                // it for sending)
-                if (payload['event'] && payload['properties']) {
-                    payload['properties'] = _.extend(
-                        {},
-                        payload['properties'],
-                        {'mp_sent_by_lib_version': Config.LIB_VERSION}
-                    );
+            // if there's more items in the queue than the batch size, attempt
+            // to flush again after the current batch is done.
+            var attemptSecondaryFlush = batch.length === currentBatchSize;
+            var dataForRequest = [];
+            var transformedItems = {};
+            _.each(batch, function(item) {
+                var payload = item['payload'];
+                if (this.beforeSendHook && !item.orphaned) {
+                    payload = this.beforeSendHook(payload);
                 }
-                var addPayload = true;
-                var itemId = item['id'];
-                if (itemId) {
-                    if ((this.itemIdsSentSuccessfully[itemId] || 0) > 5) {
-                        this.reportError('[dupe] item ID sent too many times, not sending', {
-                            item: item,
-                            batchSize: batch.length,
-                            timesSent: this.itemIdsSentSuccessfully[itemId]
-                        });
-                        addPayload = false;
+                if (payload) {
+                    // mp_sent_by_lib_version prop captures which lib version actually
+                    // sends each event (regardless of which version originally queued
+                    // it for sending)
+                    if (payload['event'] && payload['properties']) {
+                        payload['properties'] = _.extend(
+                            {},
+                            payload['properties'],
+                            {'mp_sent_by_lib_version': Config.LIB_VERSION}
+                        );
                     }
-                } else {
-                    this.reportError('[dupe] found item with no ID', {item: item});
-                }
-
-                if (addPayload) {
-                    dataForRequest.push(payload);
-                }
-            }
-            transformedItems[item['id']] = payload;
-        }, this);
-        if (dataForRequest.length < 1) {
-            this.resetFlush();
-            return; // nothing to do
-        }
-
-        this.requestInProgress = true;
-
-        var batchSendCallback = _.bind(function(res) {
-            this.requestInProgress = false;
-
-            try {
-
-                // handle API response in a try-catch to make sure we can reset the
-                // flush operation if something goes wrong
-
-                var removeItemsFromQueue = false;
-                if (options.unloading) {
-                    // update persisted data to include hook transformations
-                    this.queue.updatePayloads(transformedItems);
-                } else if (
-                    _.isObject(res) &&
-                    res.error === 'timeout' &&
-                    new Date().getTime() - startTime >= timeoutMS
-                ) {
-                    this.reportError('Network timeout; retrying');
-                    this.flush();
-                } else if (
-                    _.isObject(res) &&
-                    (
-                        res.httpStatusCode >= 500
-                        || res.httpStatusCode === 429
-                        || (res.httpStatusCode <= 0 && !isOnline())
-                        || res.error === 'timeout'
-                    )
-                ) {
-                    // network or API error, or 429 Too Many Requests, retry
-                    var retryMS = this.flushInterval * 2;
-                    if (res.retryAfter) {
-                        retryMS = (parseInt(res.retryAfter, 10) * 1000) || retryMS;
-                    }
-                    retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
-                    this.reportError('Error; retry in ' + retryMS + ' ms');
-                    this.scheduleFlush(retryMS);
-                } else if (_.isObject(res) && res.httpStatusCode === 413) {
-                    // 413 Payload Too Large
-                    if (batch.length > 1) {
-                        var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
-                        this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
-                        this.reportError('413 response; reducing batch size to ' + this.batchSize);
-                        this.resetFlush();
+                    var addPayload = true;
+                    var itemId = item['id'];
+                    if (itemId) {
+                        if ((this.itemIdsSentSuccessfully[itemId] || 0) > 5) {
+                            this.reportError('[dupe] item ID sent too many times, not sending', {
+                                item: item,
+                                batchSize: batch.length,
+                                timesSent: this.itemIdsSentSuccessfully[itemId]
+                            });
+                            addPayload = false;
+                        }
                     } else {
-                        this.reportError('Single-event request too large; dropping', batch);
-                        this.resetBatchSize();
-                        removeItemsFromQueue = true;
+                        this.reportError('[dupe] found item with no ID', {item: item});
                     }
-                } else {
-                    // successful network request+response; remove each item in batch from queue
-                    // (even if it was e.g. a 400, in which case retrying won't help)
-                    removeItemsFromQueue = true;
-                }
 
-                if (removeItemsFromQueue) {
-                    this.queue.removeItemsByID(
-                        _.map(batch, function(item) { return item['id']; }),
-                        _.bind(function(succeeded) {
-                            if (succeeded) {
-                                this.consecutiveRemovalFailures = 0;
-                                if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
-                                    this.resetFlush(); // schedule next batch with a delay
-                                } else {
-                                    this.flush(); // handle next batch if the queue isn't empty
+                    if (addPayload) {
+                        dataForRequest.push(payload);
+                    }
+                }
+                transformedItems[item['id']] = payload;
+            }, this);
+            if (dataForRequest.length < 1) {
+                this.resetFlush();
+                return MpPromise.resolve(); // nothing to do
+            }
+
+            this.requestInProgress = true;
+
+            var removeItemsFromQueue = _.bind(function () {
+                return this.queue
+                    .removeItemsByID(
+                        _.map(batch, function (item) {
+                            return item['id'];
+                        })
+                    )
+                    .then(_.bind(function (succeeded) {
+                        // client-side dedupe
+                        _.each(batch, _.bind(function(item) {
+                            var itemId = item['id'];
+                            if (itemId) {
+                                this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
+                                this.itemIdsSentSuccessfully[itemId]++;
+                                if (this.itemIdsSentSuccessfully[itemId] > 5) {
+                                    this.reportError('[dupe] item ID sent too many times', {
+                                        item: item,
+                                        batchSize: batch.length,
+                                        timesSent: this.itemIdsSentSuccessfully[itemId]
+                                    });
                                 }
                             } else {
-                                this.reportError('Failed to remove items from queue');
-                                if (++this.consecutiveRemovalFailures > 5) {
-                                    this.reportError('Too many queue failures; disabling batching system.');
-                                    this.stopAllBatching();
-                                } else {
-                                    this.resetFlush();
-                                }
+                                this.reportError('[dupe] found item with no ID while removing', {item: item});
                             }
-                        }, this)
-                    );
+                        }, this));
 
-                    // client-side dedupe
-                    _.each(batch, _.bind(function(item) {
-                        var itemId = item['id'];
-                        if (itemId) {
-                            this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
-                            this.itemIdsSentSuccessfully[itemId]++;
-                            if (this.itemIdsSentSuccessfully[itemId] > 5) {
-                                this.reportError('[dupe] item ID sent too many times', {
-                                    item: item,
-                                    batchSize: batch.length,
-                                    timesSent: this.itemIdsSentSuccessfully[itemId]
-                                });
+                        if (succeeded) {
+                            this.consecutiveRemovalFailures = 0;
+                            if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
+                                this.resetFlush(); // schedule next batch with a delay
+                                return MpPromise.resolve();
+                            } else {
+                                return this.flush(); // handle next batch if the queue isn't empty
                             }
                         } else {
-                            this.reportError('[dupe] found item with no ID while removing', {item: item});
+                            if (++this.consecutiveRemovalFailures > 5) {
+                                this.reportError('Too many queue failures; disabling batching system.');
+                                this.stopAllBatching();
+                            } else {
+                                this.resetFlush();
+                            }
+                            return MpPromise.resolve();
                         }
                     }, this));
-                }
+            }, this);
 
-            } catch(err) {
-                this.reportError('Error handling API response', err);
-                this.resetFlush();
+            var batchSendCallback = _.bind(function(res) {
+                this.requestInProgress = false;
+
+                try {
+
+                    // handle API response in a try-catch to make sure we can reset the
+                    // flush operation if something goes wrong
+
+                    if (options.unloading) {
+                        // update persisted data to include hook transformations
+                        return this.queue.updatePayloads(transformedItems);
+                    } else if (
+                        _.isObject(res) &&
+                            res.error === 'timeout' &&
+                            new Date().getTime() - startTime >= timeoutMS
+                    ) {
+                        this.reportError('Network timeout; retrying');
+                        return this.flush();
+                    } else if (
+                        _.isObject(res) &&
+                            (
+                                res.httpStatusCode >= 500
+                                || res.httpStatusCode === 429
+                                || (res.httpStatusCode <= 0 && !isOnline())
+                                || res.error === 'timeout'
+                            )
+                    ) {
+                        // network or API error, or 429 Too Many Requests, retry
+                        var retryMS = this.flushInterval * 2;
+                        if (res.retryAfter) {
+                            retryMS = (parseInt(res.retryAfter, 10) * 1000) || retryMS;
+                        }
+                        retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
+                        this.reportError('Error; retry in ' + retryMS + ' ms');
+                        this.scheduleFlush(retryMS);
+                        return MpPromise.resolve();
+                    } else if (_.isObject(res) && res.httpStatusCode === 413) {
+                        // 413 Payload Too Large
+                        if (batch.length > 1) {
+                            var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
+                            this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
+                            this.reportError('413 response; reducing batch size to ' + this.batchSize);
+                            this.resetFlush();
+                            return MpPromise.resolve();
+                        } else {
+                            this.reportError('Single-event request too large; dropping', batch);
+                            this.resetBatchSize();
+                            return removeItemsFromQueue();
+                        }
+                    } else {
+                        // successful network request+response; remove each item in batch from queue
+                        // (even if it was e.g. a 400, in which case retrying won't help)
+                        return removeItemsFromQueue();
+                    }
+                } catch(err) {
+                    this.reportError('Error handling API response', err);
+                    this.resetFlush();
+                }
+            }, this);
+            var requestOptions = {
+                method: 'POST',
+                verbose: true,
+                ignore_json_errors: true, // eslint-disable-line camelcase
+                timeout_ms: timeoutMS // eslint-disable-line camelcase
+            };
+            if (options.unloading) {
+                requestOptions.transport = 'sendBeacon';
             }
-        }, this);
-        var requestOptions = {
-            method: 'POST',
-            verbose: true,
-            ignore_json_errors: true, // eslint-disable-line camelcase
-            timeout_ms: timeoutMS // eslint-disable-line camelcase
-        };
-        if (options.unloading) {
-            requestOptions.transport = 'sendBeacon';
-        }
-        logger.log('MIXPANEL REQUEST:', dataForRequest);
-        this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
-    } catch(err) {
-        this.reportError('Error flushing request queue', err);
-        this.resetFlush();
-    }
+            logger.log('MIXPANEL REQUEST:', dataForRequest);
+            return this.sendRequestPromise(dataForRequest, requestOptions).then(batchSendCallback);
+        }, this))
+        .catch(_.bind(function(err) {
+            this.reportError('Error flushing request queue', err);
+            this.resetFlush();
+        }, this));
 };
 
 /**
