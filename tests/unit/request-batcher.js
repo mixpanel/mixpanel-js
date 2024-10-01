@@ -176,7 +176,6 @@ describe(`RequestBatcher`, function() {
       await batcher.enqueue({foo: `bar`});
 
       batcher.flush();
-      // await Promise.resolve();
       await clock.tickAsync(25); // allows flush promise chain to execute, but no response yet.
       expect(batcher.sendRequest).to.have.been.calledOnce;
 

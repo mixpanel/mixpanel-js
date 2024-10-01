@@ -130,7 +130,7 @@ describe(`RequestQueue`, function() {
         });
 
         it(`does not add item to in-mem queue`, async function() {
-          expect(queue.readFromStorage()).to.be.empty;
+          expect(await queue.readFromStorage()).to.be.empty;
 
           const enqueuePromise = queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
 
