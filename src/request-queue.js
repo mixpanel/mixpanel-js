@@ -1,7 +1,7 @@
 import { SharedLock } from './shared-lock';
 import { cheap_guid, console_with_prefix, localStorageSupported, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
 import { LocalStorageWrapper } from './storage/local-storage';
-import { MpPromise } from './promise';
+import { PromisePolyfill } from './promise';
 
 var logger = console_with_prefix('batch');
 
@@ -41,7 +41,7 @@ var RequestQueue = function (storageKey, options) {
 
 RequestQueue.prototype.ensureInit = function () {
     if (this.initialized) {
-        return MpPromise.resolve();
+        return PromisePolyfill.resolve();
     }
 
     return this.queueStorage
@@ -81,7 +81,7 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
 
     if (!this.usePersistence) {
         this.memQueue.push(queueEntry);
-        return MpPromise.resolve(true);
+        return PromisePolyfill.resolve(true);
     } else {
 
         var enqueueItem = _.bind(function () {
@@ -168,7 +168,7 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
                 }, this)
             );
     } else {
-        return MpPromise.resolve(batch);
+        return PromisePolyfill.resolve(batch);
     }
 };
 
@@ -199,7 +199,7 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
     if (!this.usePersistence) {
-        return MpPromise.resolve(true);
+        return PromisePolyfill.resolve(true);
     } else {
         var removeFromStorage = _.bind(function () {
             return this.ensureInit()
@@ -303,7 +303,7 @@ var updatePayloads = function (existingItems, itemsToUpdate) {
 RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
     this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
     if (!this.usePersistence) {
-        return MpPromise.resolve(true);
+        return PromisePolyfill.resolve(true);
     } else {
         return this.lock
             .withLock(
@@ -377,7 +377,7 @@ RequestQueue.prototype.saveToStorage = function (queue) {
         var serialized = JSONStringify(queue);
     } catch (err) {
         this.reportError('Error serializing queue', err);
-        return MpPromise.resolve(false);
+        return PromisePolyfill.resolve(false);
     }
 
     return this.ensureInit()
@@ -411,7 +411,7 @@ RequestQueue.prototype.clear = function () {
                 }, this)
             );
     } else {
-        return MpPromise.resolve();
+        return PromisePolyfill.resolve();
     }
 };
 

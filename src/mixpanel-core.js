@@ -923,7 +923,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     }, this);
 
     if (this._batch_requests && !should_send_immediately) {
-        batcher.enqueue(truncated_data, function(succeeded) {
+        batcher.enqueue(truncated_data).then(function(succeeded) {
             if (succeeded) {
                 callback(1, truncated_data);
             } else {

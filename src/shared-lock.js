@@ -1,4 +1,4 @@
-import { MpPromise } from './promise';
+import { PromisePolyfill } from './promise';
 import { console_with_prefix, localStorageSupported } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
@@ -52,21 +52,21 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     var keyZ = key + ':Z';
 
     var delay = function() {
-        if (new Date().getTime() - startTime > timeoutMS) {
-            logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
-            storage.removeItem(keyZ);
-            storage.removeItem(keyY);
-            return loop();
-        }
-
-        return new MpPromise(function(resolve) {
-            setTimeout(resolve, pollIntervalMS * (Math.random() + 0.1));
+        return new PromisePolyfill(function (resolve) {
+            if (new Date().getTime() - startTime > timeoutMS) {
+                logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                storage.removeItem(keyZ);
+                storage.removeItem(keyY);
+                resolve(loop());
+            } else {
+                setTimeout(resolve, pollIntervalMS * (Math.random() + 0.1));
+            }
         });
     };
 
     var waitFor = function(predicate) {
         if (predicate()) {
-            return MpPromise.resolve();
+            return PromisePolyfill.resolve();
         } else {
             return delay().then(function () {
                 return waitFor(predicate);
@@ -135,10 +135,10 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
             .catch(function (err) {
                 clearLock();
                 // something went wrong acquiring lock, let caller handle the rejected promise
-                return MpPromise.reject(err);
+                return PromisePolyfill.reject(err);
             });
     } else {
-        return MpPromise.reject(new Error('localStorage support check failed'));
+        return PromisePolyfill.reject(new Error('localStorage support check failed'));
     }
 };
 

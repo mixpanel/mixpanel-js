@@ -14,11 +14,11 @@ ln -sf mixpanel.globals.js build/mixpanel.js
 
 if [ ! -z "$FULL" ]; then
     echo 'Minifying main build and snippets'
-    java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel.js --js_output_file build/mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
+    java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel.js --language_in ECMASCRIPT5 --externs src/externs.js --js_output_file build/mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
 %output%
 })();"
-    java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
-    java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../build/mixpanel.min.js"'
+    java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --language_in ECMASCRIPT5 --js_output_file build/mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
+    java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --language_in ECMASCRIPT5 --js_output_file build/mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../build/mixpanel.min.js"'
 
     echo 'Building mixpanel-js-wrapper'
     npx rollup src/loaders/mixpanel-js-wrapper.js -o build/mixpanel-js-wrapper.js -c rollup.config.js

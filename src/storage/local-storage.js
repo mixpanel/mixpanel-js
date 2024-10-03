@@ -1,4 +1,4 @@
-import { MpPromise } from '../promise';
+import { PromisePolyfill } from '../promise';
 import { _ } from '../utils'; // eslint-disable-line camelcase
 
 /**
@@ -13,11 +13,11 @@ var LocalStorageWrapper = function (storageOverride) {
 };
 
 LocalStorageWrapper.prototype.init = function () {
-    return MpPromise.resolve();
+    return PromisePolyfill.resolve();
 };
 
 LocalStorageWrapper.prototype.setItem = function (key, value) {
-    return new MpPromise(_.bind(function (resolve, reject) {
+    return new PromisePolyfill(_.bind(function (resolve, reject) {
         try {
             this.storage.setItem(key, value);
         } catch (e) {
@@ -28,7 +28,7 @@ LocalStorageWrapper.prototype.setItem = function (key, value) {
 };
 
 LocalStorageWrapper.prototype.getItem = function (key) {
-    return new MpPromise(_.bind(function (resolve, reject) {
+    return new PromisePolyfill(_.bind(function (resolve, reject) {
         var item;
         try {
             item = this.storage.getItem(key);
@@ -40,7 +40,7 @@ LocalStorageWrapper.prototype.getItem = function (key) {
 };
 
 LocalStorageWrapper.prototype.removeItem = function (key) {
-    return new MpPromise(_.bind(function (resolve, reject) {
+    return new PromisePolyfill(_.bind(function (resolve, reject) {
         try {
             this.storage.removeItem(key);
         } catch (e) {

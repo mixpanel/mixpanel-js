@@ -213,7 +213,7 @@ function MakeDef(self) {
     this.msg = void 0;
 }
 
-function PromisePolyfill(executor) {
+function NpoPromise(executor) {
     if (typeof executor !== 'function') {
         throw TypeError('Not a function');
     }
@@ -272,19 +272,19 @@ function PromisePolyfill(executor) {
     }
 }
 
-var PromisePrototype = builtInProp({},'constructor',PromisePolyfill,
+var PromisePrototype = builtInProp({},'constructor',NpoPromise,
     /*configurable=*/false
 );
 
     // Note: Android 4 cannot use `Object.defineProperty(..)` here
-PromisePolyfill.prototype = PromisePrototype;
+NpoPromise.prototype = PromisePrototype;
 
 // built-in "brand" to signal an "uninitialized" promise
 builtInProp(PromisePrototype,'__NPO__',0,
     /*configurable=*/false
 );
 
-builtInProp(PromisePolyfill,'resolve',function Promise$resolve(msg) {
+builtInProp(NpoPromise,'resolve',function Promise$resolve(msg) {
     var Constructor = this;
 
     // spec mandated checks
@@ -302,7 +302,7 @@ builtInProp(PromisePolyfill,'resolve',function Promise$resolve(msg) {
     });
 });
 
-builtInProp(PromisePolyfill,'reject',function Promise$reject(msg) {
+builtInProp(NpoPromise,'reject',function Promise$reject(msg) {
     return new this(function executor(resolve,reject){
         if (typeof resolve !== 'function' || typeof reject !== 'function') {
             throw TypeError('Not a function');
@@ -312,7 +312,7 @@ builtInProp(PromisePolyfill,'reject',function Promise$reject(msg) {
     });
 });
 
-builtInProp(PromisePolyfill,'all',function Promise$all(arr) {
+builtInProp(NpoPromise,'all',function Promise$all(arr) {
     var Constructor = this;
 
     // spec mandated checks
@@ -339,7 +339,7 @@ builtInProp(PromisePolyfill,'all',function Promise$all(arr) {
     });
 });
 
-builtInProp(PromisePolyfill,'race',function Promise$race(arr) {
+builtInProp(NpoPromise,'race',function Promise$race(arr) {
     var Constructor = this;
 
     // spec mandated checks
@@ -359,12 +359,11 @@ builtInProp(PromisePolyfill,'race',function Promise$race(arr) {
 });
 
 
-// name? lol
-var MpPromise;
+var PromisePolyfill;
 if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
-    MpPromise = Promise;
+    PromisePolyfill = Promise;
 } else {
-    MpPromise = PromisePolyfill;
+    PromisePolyfill = NpoPromise;
 }
 
-export { MpPromise };
+export { PromisePolyfill };
