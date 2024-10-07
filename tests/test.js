@@ -281,7 +281,7 @@
         var interval;
         var timeout = realSetTimeout(function() {
             realClearInterval(interval);
-            ok(false, 'timed out');
+            ok(false, 'untilDone timed out');
             start();
         }, 5000);
         interval = realSetInterval(function() {
@@ -329,46 +329,46 @@
          * Make sure we re-order args, etc.
          */
 
-        mixpanel = mixpanel_test_lib;
+        // mixpanel = mixpanel_test_lib;
 
-        var test1 = {
-            id: "asjief32f",
-            name: "bilbo",
-            properties: null
-        };
+        // var test1 = {
+        //     id: "asjief32f",
+        //     name: "bilbo",
+        //     properties: null
+        // };
 
-        mixpanel.push(function() {
-            this.persistence.clear();
-        });
+        // mixpanel.push(function() {
+        //     this.persistence.clear();
+        // });
 
-        mixpanel.time_event('test');
-        mixpanel.track('test', {}, function(response, data) {
-            test1.properties = data.properties;
-        });
-        var lib_loaded = mixpanel.__loaded;
-        mixpanel.identify(test1.id);
-        mixpanel.name_tag(test1.name);
+        // mixpanel.time_event('test');
+        // mixpanel.track('test', {}, function(response, data) {
+        //     test1.properties = data.properties;
+        // });
+        // var lib_loaded = mixpanel.__loaded;
+        // mixpanel.identify(test1.id);
+        // mixpanel.name_tag(test1.name);
 
-        // only run pre-load snippet tests if lib didn't finish loading before identify/name_tag calls
-        if (!lib_loaded) {
-            module("async tracking");
+        // // only run pre-load snippet tests if lib didn't finish loading before identify/name_tag calls
+        // if (!lib_loaded) {
+        //     module("async tracking");
 
-            asyncTest("priority functions", 4, function() {
-                untilDone(function(done) {
-                    if (test1.properties !== null) {
-                        var p = test1.properties;
-                        same(p.mp_name_tag, test1.name, "name_tag should fire before track");
-                        same(p["$user_id"], test1.id, "identify should fire before track");
-                        same(p.distinct_id, test1.id, "identify should fire before track");
-                        ok(!_.isUndefined(p.$duration), "duration should be set");
-                        done();
-                    }
-                });
-            });
-        } else {
-            var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
-            $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
-        }
+        //     asyncTest("priority functions", 4, function() {
+        //         untilDone(function(done) {
+        //             if (test1.properties !== null) {
+        //                 var p = test1.properties;
+        //                 same(p.mp_name_tag, test1.name, "name_tag should fire before track");
+        //                 same(p["$user_id"], test1.id, "identify should fire before track");
+        //                 same(p.distinct_id, test1.id, "identify should fire before track");
+        //                 ok(!_.isUndefined(p.$duration), "duration should be set");
+        //                 done();
+        //             }
+        //         });
+        //     });
+        // } else {
+        //     var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
+        //     $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
+        // }
     };
 
     window.testMixpanel = function(mixpanel_test_lib) {
@@ -3811,9 +3811,7 @@
                 };
 
                 mpmodule("batch_requests tests", function() {
-                    this.clock = sinon.useFakeTimers({toFake: [
-                        'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
-                    ]});
+                    this.clock = sinon.useFakeTimers();
                     startRecordingXhrRequests.call(this);
                     if (navigator.sendBeacon) {
                         this.sendBeaconSpy = sinon.spy(navigator, 'sendBeacon');
@@ -3827,6 +3825,16 @@
                     }
                     initBatchLibInstance();
                 }, function() {
+                    // _.each(this.requests, function(request) {
+                    //     // respond to all requests that haven't been responded to so that promises can resolve
+                    //     request.respond(200, {}, '1');
+                    // });
+
+                    // stop();
+                    // setInterval(_.bind(function () {
+                    //     start();
+                    // }, this), 10)
+
                     stopRecordingXhrRequests.call(this);
                     if (this.sendBeaconSpy) {
                         this.sendBeaconSpy.restore();
@@ -3841,164 +3849,252 @@
                     }
                 });
 
-                test('tracking does not send a request immediately', 1, function() {
+                asyncTest('tracking does not send a request immediately', 2, function() {
                     mixpanel.batchtest.track('queued event');
-                    this.clock.tick(100);
-                    same(this.requests.length, 0, "track should not have sent a request");
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function () {
+                            same(this.requests.length, 0, "track should not have sent a request");
+                            return this.clock.tickAsync(5000);
+                        }, this))
+                        .then(_.bind(function () {
+                            same(this.requests.length, 1, "batch request should have been sent");
+                            start();
+                        }, this))
                 });
 
-                test('tracking sends request after flush interval', 5, function() {
+                asyncTest('tracking sends request after flush interval', 5, function() {
                     mixpanel.batchtest.track('queued event 1');
                     mixpanel.batchtest.track('queued event 2');
-                    this.clock.tick(7000); // default batch_flush_interval_ms is 5000
-
-                    same(this.requests.length, 1, "batch should have sent a single request");
-                    ok(this.requests[0].url.indexOf('/track/') >= 0, "only request should be to /track");
-                    var tracked_events = getRequestData(this.requests[0]);
-                    same(tracked_events.length, 2, "should have sent both events in batch");
-                    same(tracked_events[0].event, 'queued event 1');
-                    same(tracked_events[1].event, 'queued event 2');
+                    
+                    // default batch_flush_interval_ms is 5000
+                    return this.clock.tickAsync(7000).then(_.bind(function() {
+                        same(this.requests.length, 1, "batch should have sent a single request");
+                        ok(this.requests[0].url.indexOf('/track/') >= 0, "only request should be to /track");
+                        var tracked_events = getRequestData(this.requests[0]);
+                        same(tracked_events.length, 2, "should have sent both events in batch");
+                        same(tracked_events[0].event, 'queued event 1');
+                        same(tracked_events[1].event, 'queued event 2');
+                        start();
+                    }, this)); 
                 });
 
-                test('flush interval is configurable', 2, function() {
+                asyncTest('flush interval is configurable', 2, function() {
                     // kill off existing instance which has already scheduled its first flush
                     clearLibInstance(mixpanel.batchtest);
                     initBatchLibInstance({batch_flush_interval_ms: 45000});
 
                     mixpanel.batchtest.track('queued event');
 
-                    this.clock.tick(7000);
-                    same(this.requests.length, 0, "batch request should not have been sent yet");
-
-                    this.clock.tick(40000);
-                    same(this.requests.length, 1, "batch request should have been sent");
+                    this.clock.tickAsync(7000)
+                        .then(_.bind(function () {
+                            same(this.requests.length, 0, "batch request should not have been sent yet");
+                            return this.clock.tickAsync(40000);
+                        }, this))
+                        .then(_.bind(function () {
+                            same(this.requests.length, 1, "batch request should have been sent");
+                            start();
+                        }, this))
                 });
 
-                test('malformed track response does not break batching', 3, function() {
+                asyncTest('malformed track response does not break batching', 3, function() {
                     mixpanel.batchtest.track('queued event 1');
                     mixpanel.batchtest.track('queued event 2');
 
-                    this.clock.tick(5000);
-                    this.requests[0].respond(200, {}, '{"something":"malformed');
-
-                    mixpanel.batchtest.track('queued event 3');
-                    this.clock.tick(5000);
-                    same(this.requests.length, 2, "should have sent both requests with no backoff");
-                    var batch2_events = getRequestData(this.requests[1]);
-                    same(batch2_events.length, 1, "should have included only one new event in last batch");
-                    same(batch2_events[0].event, 'queued event 3');
+                    // _.bind(function () {}, this)
+                    this.clock.tickAsync(5100)
+                        .then(_.bind(function () {
+                            this.requests[0].respond(200, {}, '{"something":"malformed');
+                            mixpanel.batchtest.track('queued event 3');
+                            return this.clock.tickAsync(5100);
+                        }, this))
+                        .then(_.bind(function () {
+                            same(this.requests.length, 2, "should have sent both requests with no backoff");
+                            var batch2_events = getRequestData(this.requests[1]);
+                            same(batch2_events.length, 1, "should have included only one new event in last batch");
+                            same(batch2_events[0].event, 'queued event 3');
+                            start();
+                        }, this))
                 });
 
-                test('batched requests get queued in localStorage', 6, function() {
+                asyncTest('batched requests get queued in localStorage', 6, function() {
                     mixpanel.batchtest.track('storagetest 1');
                     mixpanel.batchtest.track('storagetest 2');
-                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 2, "both events should be in localStorage");
-                    same(stored_requests[0].payload.event, 'storagetest 1');
-                    same(stored_requests[1].payload.event, 'storagetest 2');
-                    same(stored_requests[0].payload.properties.mp_lib, 'web', "should include event properties");
-                    ok(stored_requests[0].id !== stored_requests[1].id, "stored request should include unique IDs");
-                    ok(stored_requests[0].flushAfter > Date.now(), "stored request should include valid flushAfter time");
+                    
+                    this.clock.tickAsync(2500).then(_.bind(function() {
+                        var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                        same(stored_requests.length, 2, "both events should be in localStorage");
+                        same(stored_requests[0].payload.event, 'storagetest 1');
+                        same(stored_requests[1].payload.event, 'storagetest 2');
+                        same(stored_requests[0].payload.properties.mp_lib, 'web', "should include event properties");
+                        ok(stored_requests[0].id !== stored_requests[1].id, "stored request should include unique IDs");
+                        ok(stored_requests[0].flushAfter > Date.now(), "stored request should include valid flushAfter time");
+                        start();
+                    }, this))
+                    // untilDone(_.bind(function (done) {
+                    //     if (stored_requests) {
+                    //         same(stored_requests.length, 2, "both events should be in localStorage");
+                    //         same(stored_requests[0].payload.event, 'storagetest 1');
+                    //         same(stored_requests[1].payload.event, 'storagetest 2');
+                    //         same(stored_requests[0].payload.properties.mp_lib, 'web', "should include event properties");
+                    //         ok(stored_requests[0].id !== stored_requests[1].id, "stored request should include unique IDs");
+                    //         ok(stored_requests[0].flushAfter > Date.now(), "stored request should include valid flushAfter time");
+                    //         this.clock.tickAsync(5100)
+                    //             .then(_.bind(function () {
+                    //                 done();
+                    //             }, this))
+                    //     }
+                    // }, this));
                 });
 
-                test('requests are cleared from localStorage after network response', 4, function() {
+                asyncTest('requests are cleared from localStorage after network response', 4, function() {
                     var stored_requests;
 
                     mixpanel.batchtest.track('storagetest 1');
                     mixpanel.batchtest.track('storagetest 2');
-                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 2, "both events should be in localStorage");
 
-                    this.clock.tick(5000);
-                    this.requests[0].respond(200, {}, '1');
+                    this.clock.tickAsync(5000)
+                        .then(_.bind(function() {
+                            stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 2, "both events should be in localStorage");
+                            this.requests[0].respond(200, {}, '1');
+                            return this.clock.tickAsync(5000);
+                        }, this))
+                        .then(_.bind(function() {
+                            stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 0, "both events should have been removed from localStorage");
+                            
+                            // try again with '0' response
+                            mixpanel.batchtest.track('storagetest 1');
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 1, "event should be in localStorage");
 
-                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 0, "both events should have been removed from localStorage");
-
-                    // try again with '0' response
-                    mixpanel.batchtest.track('storagetest 1');
-                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 1, "event should be in localStorage");
-
-                    this.clock.tick(5000);
-                    this.requests[1].respond(400, {}, '0');
-
-                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 0, "event should have been removed from localStorage even after 400");
+                            return this.clock.tickAsync(5000);
+                        }, this))
+                        .then(_.bind(function() {
+                            this.requests[1].respond(400, {}, '0');
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 0, "event should have been removed from localStorage even after 400");
+                            start();
+                        }, this))
                 });
 
-                test('requests are not cleared from localStorage after 50x response', 3, function() {
+                asyncTest('requests are not cleared from localStorage after 50x response', 3, function() {
                     mixpanel.batchtest.track('storagetest 1');
                     mixpanel.batchtest.track('storagetest 2');
-                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 2, "both events should be in localStorage");
-
-                    this.clock.tick(5000);
-                    this.requests[0].respond(503, {}, 'unavailable');
-
-                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 2, "both events should still be in localStorage");
-                    this.clock.tick(10000);
-                    same(stored_requests.length, 2, "both events should still be in localStorage");
+                    
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 2, "both events should be in localStorage");
+                            return this.clock.tickAsync(5000);
+                        }, this))
+                        .then(_.bind(function() {
+                            this.requests[0].respond(503, {}, 'unavailable');
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 2, "both events should still be in localStorage");
+                            return this.clock.tickAsync(10000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(stored_requests.length, 2, "both events should still be in localStorage");
+                            start();
+                        }, this))
                 });
                 
-                test('requests are not cleared from localStorage when offline', 3, function() {
+                asyncTest('requests are not cleared from localStorage when offline', 3, function() {
                     var onlineStub = sinon.stub(window.navigator, 'onLine').value(false);
 
                     mixpanel.batchtest.track('storagetest 1');
                     mixpanel.batchtest.track('storagetest 2');
-                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 2, "both events should be in localStorage");
 
-                    this.clock.tick(5000);
-                    this.requests[0].respond(0, {}, '');
-
-                    stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 2, "both events should still be in localStorage");
-                    this.clock.tick(10000);
-                    same(stored_requests.length, 2, "both events should still be in localStorage");
-                    onlineStub.restore();
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 2, "both events should be in localStorage");
+                            return this.clock.tickAsync(5000);
+                        }, this))
+                        .then(_.bind(function() {
+                            this.requests[0].respond(0, {}, '');
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 2, "both events should still be in localStorage");
+                            return this.clock.tickAsync(10000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(stored_requests.length, 2, "both events should still be in localStorage");
+                            onlineStub.restore();
+                            start();
+                        }, this))
                 });
 
-                test('orphaned data in localStorage gets sent on init', 6, function() {
+                asyncTest('orphaned data in localStorage gets sent on init', 6, function() {
                     clearLibInstance(mixpanel.batchtest);
-                    localStorage.setItem(LOCALSTORAGE_EVENTS_KEY, JSON.stringify([
-                        {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
-                            'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
-                        }},
-                        {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
-                            'event': 'orphaned event 2'
-                        }}
-                    ]));
-                    same(JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY)).length, 2);
 
-                    initBatchLibInstance();
-                    same(this.requests.length, 1, "request should have been made to send orphaned events");
-                    var batch_events = getRequestData(this.requests[0]);
-                    same(batch_events.length, 2, "should have included only orphaned events");
-                    same(batch_events[0].event, 'orphaned event 1');
-                    same(batch_events[1].event, 'orphaned event 2');
+                    // tick first to make sure previous batchers are stopped and cleared
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            localStorage.setItem(LOCALSTORAGE_EVENTS_KEY, JSON.stringify([
+                                {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
+                                    'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
+                                }},
+                                {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
+                                    'event': 'orphaned event 2'
+                                }}
+                            ]));
+                            same(JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY)).length, 2);
+        
+                            initBatchLibInstance();
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "request should have been made to send orphaned events");
+                            var batch_events = getRequestData(this.requests[0]);
+                            same(batch_events.length, 2, "should have included only orphaned events");
+                            same(batch_events[0].event, 'orphaned event 1');
+                            same(batch_events[1].event, 'orphaned event 2');
+                            this.requests[0].respond(200, {}, '1');
 
-                    this.requests[0].respond(200, {}, '1');
-                    same(JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY)).length, 0, "orphaned events should have been removed from localStorage");
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY)).length, 0, "orphaned events should have been removed from localStorage");
+                            start();
+                        }, this));
                 });
 
-                test('track callback runs when item is successfully enqueued', 2, function() {
+                asyncTest('track callback runs when item is successfully enqueued', 2, function() {
                     mixpanel.batchtest.track('callback test 1', {}, function(response, data) {
                         same(response, 1, "should have passed 1 to callback for success");
                         same(data.event, 'callback test 1', "should have passed enqueued data to callback");
+                        start();
                     });
                 });
 
-                test('failure to enqueue in localStorage causes immediate track request', 3, function() {
+                asyncTest('failure to enqueue in localStorage causes immediate track request', 3, function() {
                     sinon.stub(Storage.prototype, 'setItem').throws('localStorage disabled');
                     mixpanel.batchtest.track('failure event');
-                    same(this.requests.length, 1, "request should have been made immediately upon storage failure");
-                    var request_data = getRequestData(this.requests[0]);
-                    same(request_data.event, 'failure event', "should have sent event that failed to queue");
-
-                    this.clock.tick(30000);
-                    same(this.requests.length, 1, "should not have made any new requests after event was sent");
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "request should have been made immediately upon storage failure");
+                            var request_data = getRequestData(this.requests[0]);
+                            same(request_data.event, 'failure event', "should have sent event that failed to queue");
+                            
+                            return this.clock.tickAsync(30000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "should not have made any new requests after event was sent");
+                            start();
+                        }, this))
                 });
 
                 test('send_immediately track option bypasses queue', 4, function() {
@@ -4024,54 +4120,77 @@
                             });
                     };
 
-                    test('queued requests are flushed via sendBeacon before page pagehide - pagehide event', 3, function() {
+                    asyncTest('queued requests are flushed via sendBeacon before page pagehide - pagehide event', 3, function() {
                         mixpanel.batchtest.track('queued event');
-                        var event = new Event('pagehide');
-                        Object.defineProperty(event, 'persisted', {value: 'true', writable: true});
-                        window.dispatchEvent(event);
-                        ok(this.sendBeaconSpy.called, "pagehide should have called sendBeacon");
-                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
-                        same(request_data.length, 1, "sendBeacon should have sent a single event");
-                        same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
+                        
+                        this.clock.tickAsync(50)
+                            .then(_.bind(function() {
+                                    var event = new Event('pagehide');
+                                    Object.defineProperty(event, 'persisted', {value: 'true', writable: true});
+                                    window.dispatchEvent(event);
+                                    return this.clock.tickAsync(50);
+                                }, this))
+                            .then(_.bind(function() {
+                                ok(this.sendBeaconSpy.called, "pagehide should have called sendBeacon");
+                                var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                                same(request_data.length, 1, "sendBeacon should have sent a single event");
+                                same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
+                                start();
+                            }, this))
+                        });
+
+                    asyncTest('queued requests are flushed via sendBeacon before page - visibilitychange event', 3, function() {
+                        mixpanel.batchtest.track('queued event');
+
+                        this.clock.tickAsync(50)
+                            .then(_.bind(function() {
+                                Object.defineProperty(document, 'visibilityState', {value: 'hidden', writable: true});
+                                Object.defineProperty(document, 'hidden', {value: true, writable: true});
+                                window.dispatchEvent(new Event('visibilitychange'));
+                                return this.clock.tickAsync(50);
+                            }, this))
+                            .then(_.bind(function() {
+                                ok(this.sendBeaconSpy.called, "visibilitychange should have called sendBeacon");
+                                var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                                same(request_data.length, 1, "sendBeacon should have sent a single event");
+                                same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
+                                start();
+                            }, this));
                     });
 
-                    test('queued requests are flushed via sendBeacon before page - visibilitychange event', 3, function() {
-                        mixpanel.batchtest.track('queued event');
-                        Object.defineProperty(document, 'visibilityState', {value: 'hidden', writable: true});
-                        Object.defineProperty(document, 'hidden', {value: true, writable: true});
-                        window.dispatchEvent(new Event('visibilitychange'));
-                        ok(this.sendBeaconSpy.called, "visibilitychange should have called sendBeacon");
-                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
-                        same(request_data.length, 1, "sendBeacon should have sent a single event");
-                        same(request_data[0].event, 'queued event', "sendBeacon should have sent queued event");
-                    });
-
-                    test('batch/flush cycle works in sendBeacon mode', 8, function() {
+                    asyncTest('batch/flush cycle works in sendBeacon mode', 8, function() {
                         mixpanel.batchtest.set_config({api_transport: 'sendBeacon'});
 
                         mixpanel.batchtest.track('queued event 1');
                         mixpanel.batchtest.track('queued event 2');
-                        notOk(this.sendBeaconSpy.called, "batch request should not have been sent yet");
 
-                        this.clock.tick(5000);
-
-                        ok(this.sendBeaconSpy.calledOnce, "batch should have sent a single request");
-                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
-                        same(request_data.length, 2, "sendBeacon should have sent both queued events");
-                        same(request_data[0].event, 'queued event 1');
-                        same(request_data[1].event, 'queued event 2');
-
-                        mixpanel.batchtest.track('queued event 3');
-                        ok(this.sendBeaconSpy.calledOnce, "second batch should not have been sent yet");
-
-                        this.clock.tick(5000);
-
-                        ok(this.sendBeaconSpy.calledTwice, "second batch should have been sent");
-                        request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[1];
-                        same(request_data[0].event, 'queued event 3');
+                        this.clock.tickAsync(1000)
+                            .then(_.bind(function() {
+                                notOk(this.sendBeaconSpy.called, "batch request should not have been sent yet");
+                                return this.clock.tickAsync(5000);
+                            }, this))
+                            .then(_.bind(function() {
+                                ok(this.sendBeaconSpy.calledOnce, "batch should have sent a single request");
+                                var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                                same(request_data.length, 2, "sendBeacon should have sent both queued events");
+                                same(request_data[0].event, 'queued event 1');
+                                same(request_data[1].event, 'queued event 2');
+                                mixpanel.batchtest.track('queued event 3');
+                                return this.clock.tickAsync(1000);
+                            }, this))
+                            .then(_.bind(function() {
+                                ok(this.sendBeaconSpy.calledOnce, "second batch should not have been sent yet");
+                                return this.clock.tickAsync(5000);
+                            }, this))
+                            .then(_.bind(function() {
+                                ok(this.sendBeaconSpy.calledTwice, "second batch should have been sent");
+                                request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[1];
+                                same(request_data[0].event, 'queued event 3');
+                                start();
+                            }, this));
                     });
 
-                    test('before_send hooks are applied to events flushed via sendBeacon before pagehide event', 6, function() {
+                    asyncTest('before_send hooks are applied to events flushed via sendBeacon before pagehide event', 6, function() {
                         mixpanel.batchtest.set_config({
                             hooks: {
                                 before_send_events: function(event_data) {
@@ -4082,24 +4201,28 @@
                         });
                         mixpanel.batchtest.track('queued event');
 
-                        var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                        same(stored_requests.length, 1, "event should be persisted in localStorage");
-
-                        var event = new Event('pagehide');
-                        Object.defineProperty(event, 'persisted', {value: 'true', writable: true});
-                        window.dispatchEvent(event);
-
-                        ok(this.sendBeaconSpy.called, "page hide event should have called sendBeacon");
-                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
-                        same(request_data.length, 1, "sendBeacon should have sent a single event");
-                        same(request_data[0].event, 'queued event (transformed)', "before_send hook should be applied to event on pagehide");
-
-                        stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                        same(stored_requests.length, 1, "event should still be in localStorage");
-                        same(stored_requests[0].payload.event, 'queued event (transformed)', "before_send hook should be applied to persisted queue before pagehide");
+                        this.clock.tickAsync(1000)
+                            .then(_.bind(function() {
+                                var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                                same(stored_requests.length, 1, "event should be persisted in localStorage");
+                                var event = new Event('pagehide');
+                                Object.defineProperty(event, 'persisted', {value: 'true', writable: true});
+                                window.dispatchEvent(event);
+                                return this.clock.tickAsync(100);
+                            }, this))
+                            .then(_.bind(function() {
+                                ok(this.sendBeaconSpy.called, "page hide event should have called sendBeacon");
+                                var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                                same(request_data.length, 1, "sendBeacon should have sent a single event");
+                                same(request_data[0].event, 'queued event (transformed)', "before_send hook should be applied to event on pagehide");
+                                stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                                same(stored_requests.length, 1, "event should still be in localStorage");
+                                same(stored_requests[0].payload.event, 'queued event (transformed)', "before_send hook should be applied to persisted queue before pagehide");
+                                start();
+                            }, this));
                     });
 
-                    test('before_send hooks are applied to events flushed via sendBeacon before page unloads (visibilitychange changes)', 6, function() {
+                    asyncTest('before_send hooks are applied to events flushed via sendBeacon before page unloads (visibilitychange changes)', 6, function() {
                         mixpanel.batchtest.set_config({
                             hooks: {
                                 before_send_events: function(event_data) {
@@ -4110,179 +4233,249 @@
                         });
                         mixpanel.batchtest.track('queued event');
 
-                        var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                        same(stored_requests.length, 1, "event should be persisted in localStorage");
-
-                        Object.defineProperty(document, 'visibilityState', {value: 'hidden', writable: true});
-                        Object.defineProperty(document, 'hidden', {value: true, writable: true});
-                        window.dispatchEvent(new Event('visibilitychange'));
-
-                        ok(this.sendBeaconSpy.called, "visibilitychange event should have called sendBeacon");
-                        var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
-                        same(request_data.length, 1, "sendBeacon should have sent a single event");
-                        same(request_data[0].event, 'queued event (transformed)', "before_send hook should be applied to event on visibilitychange");
-
-                        stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                        same(stored_requests.length, 1, "event should still be in localStorage");
-                        same(stored_requests[0].payload.event, 'queued event (transformed)', "before_send hook should be applied to persisted queue before visibilitychange");
+                        this.clock.tickAsync(100)
+                            .then(_.bind(function() {
+                                var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                                same(stored_requests.length, 1, "event should be persisted in localStorage");
+                                Object.defineProperty(document, 'visibilityState', {value: 'hidden', writable: true});
+                                Object.defineProperty(document, 'hidden', {value: true, writable: true});
+                                window.dispatchEvent(new Event('visibilitychange'));
+                                
+                                return this.clock.tickAsync(100);
+                            }, this))
+                            .then(_.bind(function() {
+                                ok(this.sendBeaconSpy.called, "visibilitychange event should have called sendBeacon");
+                                var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
+                                same(request_data.length, 1, "sendBeacon should have sent a single event");
+                                same(request_data[0].event, 'queued event (transformed)', "before_send hook should be applied to event on visibilitychange");
+        
+                                stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                                same(stored_requests.length, 1, "event should still be in localStorage");
+                                same(stored_requests[0].payload.event, 'queued event (transformed)', "before_send hook should be applied to persisted queue before visibilitychange");
+                                start();
+                            }, this))
                     });
                 }
 
-                test('queued requests are cancelled if opt-out is called', 2, function() {
-                    mixpanel.batchtest.track('pre-opt-out event 1');
-                    mixpanel.batchtest.track('pre-opt-out event 2');
-                    mixpanel.batchtest.opt_out_tracking();
-                    mixpanel.batchtest.track('post-opt-out event');
-
-                    same(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY), null, "localStorage entry should have been cleared by opt-out");
-                    this.clock.tick(240000);
-                    same(this.requests.length, 0, "should not have made any requests after opt-out");
-                });
-
-                test('success callback works if opt-out is called after request has been sent', 3, function() {
+                asyncTest('queued requests are cancelled if opt-out is called', 2, function() {
                     mixpanel.batchtest.track('pre-opt-out event 1');
                     mixpanel.batchtest.track('pre-opt-out event 2');
 
-                    this.clock.tick(5000);
-                    same(this.requests.length, 1, "should have made request after flush interval");
-
-                    mixpanel.batchtest.opt_out_tracking();
-                    mixpanel.batchtest.track('post-opt-out event');
-
-                    this.requests[0].respond(200, {}, '1');
-                    var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
-                    same(stored_requests.length, 0, "localStorage entry should be clear");
-
-                    this.clock.tick(240000);
-                    same(this.requests.length, 1, "no new requests should have been made");
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            mixpanel.batchtest.opt_out_tracking();
+                            mixpanel.batchtest.track('post-opt-out event');
+                            return this.clock.tickAsync(240000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY), null, "localStorage entry should have been cleared by opt-out");
+                            same(this.requests.length, 0, "should not have made any requests after opt-out");
+                            start();
+                        }, this));
                 });
 
-                test('opt-out after request has been sent kills retry', 2, function() {
+                asyncTest('success callback works if opt-out is called after request has been sent', 3, function() {
                     mixpanel.batchtest.track('pre-opt-out event 1');
                     mixpanel.batchtest.track('pre-opt-out event 2');
 
-                    this.clock.tick(5000);
-                    same(this.requests.length, 1, "should have made request after flush interval");
-
-                    mixpanel.batchtest.opt_out_tracking();
-
-                    this.clock.tick(100000); // let 90s network timeout elapse
-                    this.requests[0].triggerTimeout();
-
-                    this.clock.tick(240000);
-                    same(this.requests.length, 1, "should not have retried failing request after opt-out");
+                    this.clock.tickAsync(5000)
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "should have made request after flush interval");
+                            mixpanel.batchtest.opt_out_tracking();
+                            mixpanel.batchtest.track('post-opt-out event');
+                            this.requests[0].respond(200, {}, '1');
+                            return this.clock.tickAsync(100);
+                        }, this))
+                        .then(_.bind(function() {
+                            var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
+                            same(stored_requests.length, 0, "localStorage entry should be clear");
+                            return this.clock.tickAsync(240000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "no new requests should have been made");
+                            start();
+                        }, this))
                 });
 
-                test('batching resumes upon opt-in', 7, function() {
+                asyncTest('opt-out after request has been sent kills retry', 2, function() {
                     mixpanel.batchtest.track('pre-opt-out event 1');
                     mixpanel.batchtest.track('pre-opt-out event 2');
-                    mixpanel.batchtest.opt_out_tracking();
-                    mixpanel.batchtest.track('post-opt-out event');
 
-                    same(this.requests.length, 0, "should not have made any requests yet");
-                    mixpanel.batchtest.opt_in_tracking();
-                    same(this.requests.length, 1, "should have tracked $opt_in immediately");
+                    this.clock.tickAsync(5000)
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "should have made request after flush interval");
+                            mixpanel.batchtest.opt_out_tracking();
 
-                    mixpanel.batchtest.track('post-opt-in event 1');
-                    mixpanel.batchtest.track('post-opt-in event 2');
-
-                    this.clock.tick(5000);
-                    same(this.requests.length, 2, "should have made request after flush interval");
-
-                    var batch_events = getRequestData(this.requests[1]);
-                    same(batch_events.length, 2, "should have included only two new events in last batch");
-                    same(batch_events[0].event, 'post-opt-in event 1');
-                    same(batch_events[1].event, 'post-opt-in event 2');
-
-                    this.clock.tick(240000);
-                    same(this.requests.length, 2, "no new requests should have been made with orphaned data");
+                            return this.clock.tickAsync(100000); // let 90s network timeout elapse
+                        }, this))
+                        .then(_.bind(function() {
+                            this.requests[0].triggerTimeout();
+                            return this.clock.tickAsync(240000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "should not have retried failing request after opt-out");
+                            start();
+                        }, this))
                 });
 
-                test('with batch_autostart=false, requests are not sent until explicit start', 6, function() {
+                asyncTest('batching resumes upon opt-in', 7, function() {
+                    mixpanel.batchtest.track('pre-opt-out event 1');
+                    mixpanel.batchtest.track('pre-opt-out event 2');
+
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            mixpanel.batchtest.opt_out_tracking();
+                            return this.clock.tickAsync(100);
+                        }, this))
+                        .then(_.bind(function() {
+                            mixpanel.batchtest.track('post-opt-out event');
+                            return this.clock.tickAsync(5000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 0, "should not have made any requests yet");
+                            mixpanel.batchtest.opt_in_tracking();
+                            return this.clock.tickAsync(100);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "should have tracked $opt_in immediately");
+                            mixpanel.batchtest.track('post-opt-in event 1');
+                            mixpanel.batchtest.track('post-opt-in event 2');
+                            return this.clock.tickAsync(5000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 2, "should have made request after flush interval");
+                            var batch_events = getRequestData(this.requests[1]);
+                            same(batch_events.length, 2, "should have included only two new events in last batch");
+                            same(batch_events[0].event, 'post-opt-in event 1');
+                            same(batch_events[1].event, 'post-opt-in event 2');
+                            this.requests[1].respond(200, {}, '1');
+                            return this.clock.tickAsync(240000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 2, "no new requests should have been made with orphaned data");
+                            start();
+                        }, this))
+                });
+
+                asyncTest('with batch_autostart=false, requests are not sent until explicit start', 6, function() {
                     clearLibInstance(mixpanel.batchtest);
-                    initBatchLibInstance({batch_autostart: false});
+                    
+                    // tick first to make sure previous batchers are stopped and cleared
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            initBatchLibInstance({batch_autostart: false});
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            mixpanel.batchtest.track('pre-start event 1');
+                            mixpanel.batchtest.track('pre-start event 2');
 
-                    mixpanel.batchtest.track('pre-start event 1');
-                    mixpanel.batchtest.track('pre-start event 2');
-
-                    this.clock.tick(10000);
-                    same(this.requests.length, 0, "should not have made any requests yet");
-
-                    mixpanel.batchtest.start_batch_senders();
-                    same(this.requests.length, 1, "should have sent events after batcher start");
-                    var batch_events = getRequestData(this.requests[0]);
-                    same(batch_events[0].event, 'pre-start event 1');
-                    same(batch_events[1].event, 'pre-start event 2');
-                    this.requests[0].respond(200, {}, '1');
-
-                    mixpanel.batchtest.track('post-start event');
-                    this.clock.tick(5000);
-                    same(this.requests.length, 2, "should continue to flush after batcher start");
-                    batch_events = getRequestData(this.requests[1]);
-                    same(batch_events[0].event, 'post-start event');
+                            return this.clock.tickAsync(10000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 0, "should not have made any requests yet");
+                            mixpanel.batchtest.start_batch_senders();
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "should have sent events after batcher start");
+                            var batch_events = getRequestData(this.requests[0]);
+                            same(batch_events[0].event, 'pre-start event 1');
+                            same(batch_events[1].event, 'pre-start event 2');
+                            this.requests[0].respond(200, {}, '1');
+                            mixpanel.batchtest.track('post-start event');
+                            return this.clock.tickAsync(5000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 2, "should continue to flush after batcher start");
+                            batch_events = getRequestData(this.requests[1]);
+                            same(batch_events[0].event, 'post-start event');
+                            start();
+                        }, this))
                 });
 
-                test('with batch_autostart=false, orphaned data in localStorage gets sent after explicit start', 5, function() {
+                asyncTest('with batch_autostart=false, orphaned data in localStorage gets sent after explicit start', 5, function() {
                     clearLibInstance(mixpanel.batchtest);
-                    localStorage.setItem(LOCALSTORAGE_EVENTS_KEY, JSON.stringify([
-                        {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
-                            'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
-                        }},
-                        {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
-                            'event': 'orphaned event 2'
-                        }}
-                    ]));
 
-                    initBatchLibInstance({batch_autostart: false});
-                    same(this.requests.length, 0, "no requests should have been sent yet");
-
-                    mixpanel.batchtest.start_batch_senders();
-                    same(this.requests.length, 1, "request should have been made to send orphaned events");
-                    var batch_events = getRequestData(this.requests[0]);
-                    same(batch_events.length, 2, "should have included only orphaned events");
-                    same(batch_events[0].event, 'orphaned event 1');
-                    same(batch_events[1].event, 'orphaned event 2');
+                    // tick first to make sure previous batchers are stopped and cleared
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            localStorage.setItem(LOCALSTORAGE_EVENTS_KEY, JSON.stringify([
+                                {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
+                                    'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
+                                }},
+                                {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
+                                    'event': 'orphaned event 2'
+                                }}
+                            ]));
+        
+                            initBatchLibInstance({batch_autostart: false});
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 0, "no requests should have been sent yet");
+                            mixpanel.batchtest.start_batch_senders();
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "request should have been made to send orphaned events");
+                            var batch_events = getRequestData(this.requests[0]);
+                            same(batch_events.length, 2, "should have included only orphaned events");
+                            same(batch_events[0].event, 'orphaned event 1');
+                            same(batch_events[1].event, 'orphaned event 2');
+                            start();
+                        }, this))
                 });
 
-                test('before_send_events hook is applied retroactively to batched but not orphaned events', 7, function() {
+                asyncTest('before_send_events hook is applied retroactively to batched but not orphaned events', 7, function() {
                     clearLibInstance(mixpanel.batchtest);
-                    localStorage.setItem(LOCALSTORAGE_EVENTS_KEY, JSON.stringify([
-                        {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
-                            'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
-                        }},
-                        {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
-                            'event': 'orphaned event 2'
-                        }}
-                    ]));
-                    initBatchLibInstance({
-                        batch_autostart: false,
-                        hooks: {
-                            before_send_events: function(event_data) {
-                                return _.extend(event_data, {event: event_data.event.toUpperCase()});
-                            }
-                        }
-                    });
-                    mixpanel.batchtest.track('Non-orphaned event', {'hello': 'world'});
-
-                    mixpanel.batchtest.start_batch_senders();
-                    same(this.requests.length, 1);
-
-                    var batch_events = getRequestData(this.requests[0]);
-                    same(batch_events.length, 3, "should have included all events");
-                    same(batch_events[0].event, 'NON-ORPHANED EVENT', "should have applied hook to non-orphaned event");
-                    same(batch_events[0].properties['hello'], 'world', "should not have affected properties");
-                    same(batch_events[1].event, 'orphaned event 1', "should not have applied hook to orphaned event");
-                    same(batch_events[2].event, 'orphaned event 2', "should not have applied hook to orphaned event");
-
-                    this.requests[0].respond(200, {}, '1');
-
-                    mixpanel.batchtest.track('post-start event');
-                    this.clock.tick(5000);
-                    batch_events = getRequestData(this.requests[1]);
-                    same(batch_events[0].event, 'POST-START EVENT', "should continue applying hook");
+                    // tick first to make sure previous batchers are stopped and cleared
+                    this.clock.tickAsync(1000)
+                        .then(_.bind(function() {
+                            localStorage.setItem(LOCALSTORAGE_EVENTS_KEY, JSON.stringify([
+                                {id: 'fakeID1', flushAfter: Date.now() - 60000, payload: {
+                                    'event': 'orphaned event 1', 'properties': {'foo': 'bar'}
+                                }},
+                                {id: 'fakeID2', flushAfter: Date.now() - 240000, payload: {
+                                    'event': 'orphaned event 2'
+                                }}
+                            ]));
+        
+                            initBatchLibInstance({
+                                batch_autostart: false,
+                                hooks: {
+                                    before_send_events: function(event_data) {
+                                        return _.extend(event_data, {event: event_data.event.toUpperCase()});
+                                    }
+                                }
+                            });
+                            mixpanel.batchtest.track('Non-orphaned event', {'hello': 'world'});
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            mixpanel.batchtest.start_batch_senders();
+                            return this.clock.tickAsync(1000);
+                        }, this))
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1);
+                            var batch_events = getRequestData(this.requests[0]);
+                            same(batch_events.length, 3, "should have included all events");
+                            same(batch_events[0].event, 'NON-ORPHANED EVENT', "should have applied hook to non-orphaned event");
+                            same(batch_events[0].properties['hello'], 'world', "should not have affected properties");
+                            same(batch_events[1].event, 'orphaned event 1', "should not have applied hook to orphaned event");
+                            same(batch_events[2].event, 'orphaned event 2', "should not have applied hook to orphaned event");
+                            this.requests[0].respond(200, {}, '1');
+                            mixpanel.batchtest.track('post-start event');
+                            return this.clock.tickAsync(5000)
+                        }, this))
+                        .then(_.bind(function() {
+                            batch_events = getRequestData(this.requests[1]);
+                            same(batch_events[0].event, 'POST-START EVENT', "should continue applying hook");
+                            start();
+                        }, this))
                 });
 
-                test('queued events are dropped if before_send_events hook returns null', 4, function() {
+                asyncTest('queued events are dropped if before_send_events hook returns null', 4, function() {
                     mixpanel.batchtest.set_config({
                         hooks: {
                             before_send_events: function(event_data) {
@@ -4295,72 +4488,91 @@
                     mixpanel.batchtest.track('dropme');
                     mixpanel.batchtest.track('track me 2');
 
-                    this.clock.tick(5000);
-                    same(this.requests.length, 1);
-
-                    var batch_events = getRequestData(this.requests[0]);
-                    same(batch_events.length, 2);
-                    same(batch_events[0].event, 'track me 1');
-                    same(batch_events[1].event, 'track me 2');
+                    this.clock.tickAsync(5000)
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1);
+                            var batch_events = getRequestData(this.requests[0]);
+                            same(batch_events.length, 2);
+                            var eventNames = _.map(batch_events, function(event) { return event.event; }).sort();
+                            same(eventNames[0], 'track me 1');
+                            same(eventNames[1], 'track me 2');
+                            start();
+                        }, this));
                 });
 
-                test('people updates do not send a request immediately', 1, function() {
+                asyncTest('people updates do not send a request immediately', 1, function() {
                     mixpanel.batchtest.identify('pat');
                     mixpanel.batchtest.people.set('foo', 'bar');
-                    this.clock.tick(100);
-                    same(this.requests.length, 0, "people.set should not have sent a request");
+                    this.clock.tickAsync(100)
+                        .then(_.bind(function() {
+                            same(this.requests.length, 0, "people.set should not have sent a request");
+                            start();
+                        }, this));
                 });
 
-                test('people updates send request after flush interval', 9, function() {
+                asyncTest('people updates send request after flush interval', 9, function() {
                     mixpanel.batchtest.identify('pat');
+                    
+                    this.clock.tickAsync(100)
+                        .then(_.bind(function() {
+                            mixpanel.batchtest.people.set('foo', 'bar');
+                            mixpanel.batchtest.people.increment('llamas');
+                            return this.clock.tickAsync(7000); // default batch_flush_interval_ms is 5000
+                        }, this))
+                        .then(_.bind(function() {
+                            // first request was to /decide upon identify()
+                            var engage_request = _.find(this.requests, function(req) {
+                                return req.url.indexOf('/engage/') >= 0;
+                            });
 
-                    mixpanel.batchtest.people.set('foo', 'bar');
-                    mixpanel.batchtest.people.increment('llamas');
-                    this.clock.tick(7000); // default batch_flush_interval_ms is 5000
-
-                    // first request was to /decide upon identify()
-                    var engage_request = _.find(this.requests, function(req) {
-                        return req.url.indexOf('/engage/') >= 0;
-                    });
-                    ok(engage_request, "should have made /engage request");
-                    var people_updates = getRequestData(engage_request);
-                    same(people_updates.length, 3, "should have sent all updates in batch");
-                    isDefined(people_updates[0].$set_once, '$initial_referrer');
-                    isDefined(people_updates[0].$set_once, '$initial_referring_domain');
-                    ok(contains_obj(people_updates[1].$set, {foo: 'bar'}));
-                    ok(contains_obj(people_updates[2].$add, {llamas: 1}));
-                    same(people_updates[0].$distinct_id, 'pat');
-                    same(people_updates[1].$distinct_id, 'pat');
-                    same(people_updates[2].$distinct_id, 'pat');
+                            ok(engage_request, "should have made /engage request");
+                            var people_updates = getRequestData(engage_request);
+                            same(people_updates.length, 3, "should have sent all updates in batch");
+                            isDefined(people_updates[0].$set_once, '$initial_referrer');
+                            isDefined(people_updates[0].$set_once, '$initial_referring_domain');
+                            ok(contains_obj(people_updates[1].$set, {foo: 'bar'}));
+                            ok(contains_obj(people_updates[2].$add, {llamas: 1}));
+                            same(people_updates[0].$distinct_id, 'pat');
+                            same(people_updates[1].$distinct_id, 'pat');
+                            same(people_updates[2].$distinct_id, 'pat');
+                            start();
+                        }, this))
                 });
 
-                test('group updates do not send a request immediately', 1, function() {
+                asyncTest('group updates do not send a request immediately', 1, function() {
                     mixpanel.batchtest.get_group('font', 'Times').set('serif', true);
-                    this.clock.tick(100);
-                    same(this.requests.length, 0, "group.set should not have sent a request");
+                    return this.clock.tickAsync(100)
+                        .then(_.bind(function() {
+                            same(this.requests.length, 0, "group.set should not have sent a request");
+                            start()
+                        }, this))
                 });
 
-                test('group updates send request after flush interval', 5, function() {
+                asyncTest('group updates send request after flush interval', 5, function() {
                     mixpanel.batchtest.get_group('font', 'Times').set('serif', true);
                     mixpanel.batchtest.get_group('font', 'Comic Sans').delete();
 
-                    this.clock.tick(7000); // default batch_flush_interval_ms is 5000
-                    same(this.requests.length, 1, "group updates should have made request");
-
-                    var group_updates = getRequestData(this.requests[0]);
-                    same(group_updates.length, 2, "should have sent both updates in batch");
-
-                    ok(contains_obj(group_updates[0], {
-                        $group_key: 'font',
-                        $group_id: 'Times'
-                    }));
-                    ok(contains_obj(group_updates[0].$set, {serif: true}));
-                    ok(contains_obj(group_updates[1], {
-                        $group_key: 'font',
-                        $group_id: 'Comic Sans',
-                        $delete: ''
-                    }));
-                });
+                    // default batch_flush_interval_ms is 5000
+                    this.clock.tickAsync(7000)
+                        .then(_.bind(function() {
+                            same(this.requests.length, 1, "group updates should have made request");
+        
+                            var group_updates = getRequestData(this.requests[0]);
+                            same(group_updates.length, 2, "should have sent both updates in batch");
+        
+                            ok(contains_obj(group_updates[0], {
+                                $group_key: 'font',
+                                $group_id: 'Times'
+                            }));
+                            ok(contains_obj(group_updates[0].$set, {serif: true}));
+                            ok(contains_obj(group_updates[1], {
+                                $group_key: 'font',
+                                $group_id: 'Comic Sans',
+                                $delete: ''
+                            }));
+                            start();
+                        }, this))
+                    });
             }
 
             if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies

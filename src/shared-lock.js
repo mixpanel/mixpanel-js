@@ -41,7 +41,6 @@ SharedLockFailedError.prototype = Object.create(Error.prototype);
 SharedLock.prototype.withLock = function(lockedCB, pid) {
     var i = pid || (new Date().getTime() + '|' + Math.random());
     var startTime = new Date().getTime();
-
     var key = this.storageKey;
     var pollIntervalMS = this.pollIntervalMS;
     var timeoutMS = this.timeoutMS;

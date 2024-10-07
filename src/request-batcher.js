@@ -134,10 +134,13 @@ RequestBatcher.prototype.flush = function(options) {
         return PromisePolyfill.resolve();
     }
 
+    this.requestInProgress = true;
+
     options = options || {};
     var timeoutMS = this.libConfig['batch_request_timeout_ms'];
     var startTime = new Date().getTime();
     var currentBatchSize = this.batchSize;
+
     return this.queue.fillBatch(currentBatchSize)
         .then(_.bind(function(batch) {
 
@@ -183,12 +186,12 @@ RequestBatcher.prototype.flush = function(options) {
                 }
                 transformedItems[item['id']] = payload;
             }, this);
+
             if (dataForRequest.length < 1) {
+                this.requestInProgress = false;
                 this.resetFlush();
                 return PromisePolyfill.resolve(); // nothing to do
             }
-
-            this.requestInProgress = true;
 
             var removeItemsFromQueue = _.bind(function () {
                 return this.queue
