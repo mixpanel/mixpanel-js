@@ -74,9 +74,9 @@ RequestQueue.prototype.ensureInit = function () {
  */
 RequestQueue.prototype.enqueue = function (item, flushInterval) {
     var queueEntry = {
-        id: cheap_guid(),
-        flushAfter: new Date().getTime() + flushInterval * 2,
-        payload: item,
+        'id': cheap_guid(),
+        'flushAfter': new Date().getTime() + flushInterval * 2,
+        'payload': item,
     };
 
     if (!this.usePersistence) {

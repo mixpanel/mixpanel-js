@@ -32,12 +32,6 @@ var SharedLock = function(key, options) {
     this.timeoutMS = options.timeoutMS || 2000;
 };
 
-function SharedLockFailedError() {
-    this.name = 'SharedLockFailedError';
-    this.message = 'Failed to acquire shared lock';
-}
-SharedLockFailedError.prototype = Object.create(Error.prototype);
-
 SharedLock.prototype.withLock = function(lockedCB, pid) {
     var i = pid || (new Date().getTime() + '|' + Math.random());
     var startTime = new Date().getTime();
