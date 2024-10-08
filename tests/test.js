@@ -783,6 +783,7 @@
                         'c': 'd'
                     }, function(response) {
                         same(response, 1, "tracking still works");
+                        clearLibInstance(dc1);
                         start();
                     });
 
@@ -1006,6 +1007,8 @@
                         'foo': 'bar'
                     }, function(response) {
                         same(response, 1, "tracking still works");
+                        clearLibInstance(ut1);
+                        clearLibInstance(ut2);
                         start();
                     });
 
@@ -1020,9 +1023,6 @@
                     ok(contains_obj(dp, {
                         'foo': 'bar'
                     }), "tracking properties sent correctly");
-
-                    clearLibInstance(ut1);
-                    clearLibInstance(ut2);
                 });
 
                 test("upgrade from non-existent cookie", 5, function() {
@@ -1043,6 +1043,7 @@
                         'foo': 'bar'
                     }, function(response) {
                         same(response, 1, "tracking still works");
+                        clearLibInstance(ut);
                         start();
                     });
 
@@ -1051,8 +1052,6 @@
                     ok(contains_obj(dp, {
                         'foo': 'bar'
                     }), "tracking properties sent correctly");
-
-                    clearLibInstance(ut);
                 });
 
                 test("revert from localStorage to cookie", 10, function() {
@@ -1087,6 +1086,8 @@
                         'foo': 'bar'
                     }, function(response) {
                         same(response, 1, "tracking still works");
+                        clearLibInstance(instance1);
+                        clearLibInstance(instance2);
                         start();
                     });
 
@@ -1101,9 +1102,6 @@
                     ok(contains_obj(dp, {
                         'foo': 'bar'
                     }), "tracking properties sent correctly");
-
-                    clearLibInstance(instance1);
-                    clearLibInstance(instance2);
                 });
             }
 
@@ -1153,12 +1151,14 @@
             test("init accepts mp_loader config", 1, function() {
                 mixpanel.init('mp-loader-test-token', {mp_loader: 'gtm-wrapper'}, 'mp_loader_test');
 
-                var event = mixpanel.mp_loader_test.track("check current url");
+                stop();
+                var event = mixpanel.mp_loader_test.track("check current url (loader)", {}, function () {
+                    clearLibInstance(mixpanel.mp_loader_test);
+                    start();
+                });
+
                 var props = event.properties;
-
                 equal(props["mp_loader"], "gtm-wrapper", "mp_loader is properly set");
-
-                clearLibInstance(mixpanel.mp_loader_test);
             });
 
             test("info properties included", 7, function() {
@@ -1580,12 +1580,12 @@
                 same(data, null);
             });
 
-            module("mixpanel.track_links");
+            mpmodule("mixpanel.track_links");
 
             asyncTest("callback test", 1, function() {
                 var e1 = ele_with_class();
 
-                mixpanel.track_links(e1.class_name, "link_clicked", {
+                mixpanel.test.track_links(e1.class_name, "link_clicked", {
                     "property": "dodeo"
                 }, function() {
                     start();
@@ -1606,7 +1606,7 @@
                     return false;
                 };
 
-                mixpanel.track_links(e1.class_name, "link_clicked", {
+                mixpanel.test.track_links(e1.class_name, "link_clicked", {
                     "property": "it works"
                 }, function() {
                     start();
@@ -1652,7 +1652,7 @@
                 var e1 = ele_with_class();
 
                 e1.e.href = "#test";
-                mixpanel.track_links(e1.class_name, "testing url property", {}, function(timeout_occured, properties) {
+                mixpanel.test.track_links(e1.class_name, "testing url property", {}, function(timeout_occured, properties) {
                     ok(properties.url !== undefined && properties.url !== null, "Url property was successfully added");
                     start();
                     return false;
@@ -1666,12 +1666,12 @@
                 var e1 = link_with_id(),
                     e2 = link_with_id();
 
-                mixpanel.track_links("a" + e1.id, "this should work");
+                mixpanel.test.track_links("a" + e1.id, "this should work");
 
                 if (window.console) {
                     stop();
                     callsError(function(restore_console) {
-                        mixpanel.track_links("a#badbadbadid", "this shouldn't work");
+                        mixpanel.test.track_links("a#badbadbadid", "this shouldn't work");
                         restore_console();
                         start();
                     }, "terrible query should not throw exception");
@@ -1684,7 +1684,7 @@
                 append_fixture(svg);
 
                 try {
-                    mixpanel.track_links('.test', "this should not fire an error");
+                    mixpanel.test.track_links('.test', "this should not fire an error");
                     ok(true);
                 } catch (err) {
                     if (/TypeError/.exec(err)) {
@@ -1701,7 +1701,7 @@
                 var link = ele_with_class().e;
                 link.href = "#test";
 
-                mixpanel.track_links(link, "testing url property", {}, function() {
+                mixpanel.test.track_links(link, "testing url property", {}, function() {
                     start();
                     ok(1===1, "track_links callback was fired");
                     return false;
@@ -1716,7 +1716,7 @@
 
                 var $links = $(link_one).add(link_two);
                 equal($links.length, 2);
-                mixpanel.track_links($links, "testing jquery links", {}, function() {
+                mixpanel.test.track_links($links, "testing jquery links", {}, function() {
                     start();
                     ok(1===1, "track_links callback was fired");
                     return false;
@@ -1731,7 +1731,7 @@
 
                 var links = document.querySelectorAll(first_link.id + ',' + second_link.id);
                 equal(links.length, 2);
-                mixpanel.track_links(links, "testing url property", {}, function() {
+                mixpanel.test.track_links(links, "testing url property", {}, function() {
                     start();
                     ok(1===1, "track_links callback was fired");
                     return false;
@@ -1740,12 +1740,12 @@
                 simulateMouseClick(first_link.e);
             });
 
-            module("mixpanel.track_forms");
+            mpmodule("mixpanel.track_forms");
 
             asyncTest("callback test", 1, function() {
                 var e1 = form_with_class();
 
-                mixpanel.track_forms(e1.class_name, "form_submitted", {
+                mixpanel.test.track_forms(e1.class_name, "form_submitted", {
                     "property": "dodeo"
                 }, function() {
                     start();
@@ -1779,7 +1779,7 @@
             asyncTest("accepts a DOM element as the query", 1, function() {
                 var form = form_with_class();
 
-                mixpanel.track_forms(form.e, "form_submitted", {}, function() {
+                mixpanel.test.track_forms(form.e, "form_submitted", {}, function() {
                     start();
                     ok(1===1, "track_forms callback was fired");
                     return false; // this stops the browser from going to the link location
@@ -1794,7 +1794,7 @@
 
                 var $forms = $form_one.add($form_two);
                 equal($forms.length, 2);
-                mixpanel.track_forms($forms, "form_submitted", {}, function() {
+                mixpanel.test.track_forms($forms, "form_submitted", {}, function() {
                     start();
                     ok(1===1, "track_forms callback was fired");
                     return false; // this stops the browser from going to the link location
@@ -1809,7 +1809,7 @@
 
                 var forms = document.querySelectorAll(form_one.class_name + ',' + form_two.class_name);
                 equal(forms.length, 2);
-                mixpanel.track_forms(forms, "form_submitted", {}, function() {
+                mixpanel.test.track_forms(forms, "form_submitted", {}, function() {
                     start();
                     ok(1===1, "track_forms callback was fired");
                     return false; // this stops the browser from going to the link location
@@ -3824,6 +3824,11 @@
                         clearLibInstance(mixpanel.batchtest);
                     }
                     initBatchLibInstance();
+                    this.printRequests = () => {
+                        for (const request of this.requests) {
+                            console.log('JG_REQUEST: ', getRequestData(request))
+                        }
+                    }
                 }, function() {
                     // _.each(this.requests, function(request) {
                     //     // respond to all requests that haven't been responded to so that promises can resolve
@@ -4093,6 +4098,7 @@
                         }, this))
                         .then(_.bind(function() {
                             same(this.requests.length, 1, "should not have made any new requests after event was sent");
+                            this.printRequests();
                             start();
                         }, this))
                 });
@@ -4292,12 +4298,13 @@
                             return this.clock.tickAsync(240000);
                         }, this))
                         .then(_.bind(function() {
+                            this.printRequests();
                             same(this.requests.length, 1, "no new requests should have been made");
                             start();
                         }, this))
                 });
 
-                asyncTest('opt-out after request has been sent kills retry', 2, function() {
+                asyncTest('opt-out after request has been sent', 2, function() {
                     mixpanel.batchtest.track('pre-opt-out event 1');
                     mixpanel.batchtest.track('pre-opt-out event 2');
 
@@ -4313,6 +4320,7 @@
                             return this.clock.tickAsync(240000);
                         }, this))
                         .then(_.bind(function() {
+                            this.printRequests();
                             same(this.requests.length, 1, "should not have retried failing request after opt-out");
                             start();
                         }, this))
