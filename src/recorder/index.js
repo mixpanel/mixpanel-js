@@ -4,6 +4,7 @@ import { IncrementalSource, EventType } from '@rrweb/types';
 import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
+import Config from '../config';
 
 var logger = console_with_prefix('recorder');
 var CompressionStream = window['CompressionStream'];
@@ -41,7 +42,7 @@ var MixpanelRecorder = function(mixpanelInstance) {
     this.seqNo = 0;
     this.replayId = null;
     this.replayStartTime = null;
-    this.sendBatchId = null;
+    this.batchStartUrl = null;
 
     this.idleTimeoutId = null;
     this.maxTimeoutId = null;
@@ -87,6 +88,7 @@ MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
 
     this.recEvents = [];
     this.seqNo = 0;
+    this.batchStartUrl = _.info.currentUrl();
     this.replayStartTime = new Date().getTime();
 
     this.replayId = _.UUID();
@@ -183,11 +185,12 @@ MixpanelRecorder.prototype._onOptOut = function (code) {
 
 MixpanelRecorder.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
     var onSuccess = _.bind(function (response, responseBody) {
-        // Increment sequence counter only if the request was successful to guarantee ordering.
+        // Update batch specific props only if the request was successful to guarantee ordering.
         // RequestBatcher will always flush the next batch after the previous one succeeds.
         // extra check to see if the replay ID has changed so that we don't increment the seqNo on the wrong replay
         if (response.status === 200 && this.replayId === currentReplayId) {
             this.seqNo++;
+            this.batchStartUrl = _.info.currentUrl();
         }
         callback({
             status: 0,
@@ -233,12 +236,15 @@ MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
         var replayLengthMs = data[numEvents - 1].timestamp - this.replayStartTime;
 
         var reqParams = {
-            'distinct_id': String(this._mixpanel.get_distinct_id()),
-            'seq': this.seqNo,
+            '$current_url': this.batchStartUrl,
+            '$lib_version': Config.LIB_VERSION,
             'batch_start_time': batchStartTime / 1000,
+            'distinct_id': String(this._mixpanel.get_distinct_id()),
+            'mp_lib': 'web',
             'replay_id': replayId,
             'replay_length_ms': replayLengthMs,
-            'replay_start_time': this.replayStartTime / 1000
+            'replay_start_time': this.replayStartTime / 1000,
+            'seq': this.seqNo
         };
         var eventsJson = _.JSONEncode(data);
 
