@@ -401,13 +401,34 @@ MixpanelLib.prototype.stop_session_recording = function () {
 
 MixpanelLib.prototype.get_session_recording_properties = function () {
     var props = {};
+    var replay_id = this._get_session_replay_id();
+    if (replay_id) {
+        props['$mp_replay_id'] = replay_id;
+    }
+    return props;
+};
+
+MixpanelLib.prototype.get_session_replay_url = function () {
+    var replay_id = this._get_session_replay_id();
+    if (replay_id) {
+        var query_params = _.HTTPBuildQuery({
+            'replay_id': replay_id,
+            'distinct_id': this.get_distinct_id(),
+            'token': this.get_config('token'),
+        });
+        return this.get_config('app_host') + '/projects/replay-redirect?' + query_params;
+    }
+    return null;
+};
+
+MixpanelLib.prototype._get_session_replay_id = function () {
     if (this._recorder) {
         var replay_id = this._recorder['replayId'];
         if (replay_id) {
-            props['$mp_replay_id'] = replay_id;
+            return replay_id;
         }
     }
-    return props;
+    return null;
 };
 
 // Private methods

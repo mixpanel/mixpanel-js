@@ -5290,7 +5290,7 @@
 
                 module('recorder', {
                     setup: function () {
-                        this.token = rand_name();
+                        this.token = `RECORDER_TEST_TOKEN`;
                         this.startTime = 1723733423402;
                         this.clock = sinon.useFakeTimers(this.startTime);
                         this.randomStub = sinon.stub(Math, 'random');
@@ -5448,6 +5448,33 @@
                                 done();
                             }
                         }, this));
+                    });
+                });
+
+                asyncTest('can get replay properties when recording is active', 3, function () {
+                    this.randomStub.restore();
+                    this.initMixpanelRecorder();
+                    same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
+
+                    mixpanel.recordertest.start_session_recording();
+                    this.afterRecorderLoaded.call(this, function () {
+                        ok(Boolean(mixpanel.recordertest.get_session_recording_properties()["$mp_replay_id"]), 'replay id is populated in recording properties')
+                    });
+                });
+
+                asyncTest('can get replay link when recording is active', 7, function () {
+                    this.randomStub.restore();
+                    this.initMixpanelRecorder();
+                    same(mixpanel.recordertest.get_session_replay_url(), null, 'no recording is taking place')
+
+                    mixpanel.recordertest.start_session_recording();
+                    this.afterRecorderLoaded.call(this, function () {
+                        var replay_url = new URL(mixpanel.recordertest.get_session_replay_url());
+                        same(replay_url.hostname, 'mixpanel.com');
+                        same(replay_url.pathname, '/projects/replay-redirect');
+                        same(replay_url.searchParams.get('token'), 'RECORDER_TEST_TOKEN')
+                        ok(replay_url.searchParams.get('replay_id'))
+                        ok(replay_url.searchParams.get('distinct_id'))
                     });
                 });
 
