@@ -346,46 +346,46 @@
          * Make sure we re-order args, etc.
          */
 
-        // mixpanel = mixpanel_test_lib;
+        mixpanel = mixpanel_test_lib;
 
-        // var test1 = {
-        //     id: "asjief32f",
-        //     name: "bilbo",
-        //     properties: null
-        // };
+        var test1 = {
+            id: "asjief32f",
+            name: "bilbo",
+            properties: null
+        };
 
-        // mixpanel.push(function() {
-        //     this.persistence.clear();
-        // });
+        mixpanel.push(function() {
+            this.persistence.clear();
+        });
 
-        // mixpanel.time_event('test');
-        // mixpanel.track('test', {}, function(response, data) {
-        //     test1.properties = data.properties;
-        // });
-        // var lib_loaded = mixpanel.__loaded;
-        // mixpanel.identify(test1.id);
-        // mixpanel.name_tag(test1.name);
+        mixpanel.time_event('test');
+        mixpanel.track('test', {}, function(response, data) {
+            test1.properties = data.properties;
+        });
+        var lib_loaded = mixpanel.__loaded;
+        mixpanel.identify(test1.id);
+        mixpanel.name_tag(test1.name);
 
-        // // only run pre-load snippet tests if lib didn't finish loading before identify/name_tag calls
-        // if (!lib_loaded) {
-        //     module("async tracking");
+        // only run pre-load snippet tests if lib didn't finish loading before identify/name_tag calls
+        if (!lib_loaded) {
+            module("async tracking");
 
-        //     asyncTest("priority functions", 4, function() {
-        //         untilDone(function(done) {
-        //             if (test1.properties !== null) {
-        //                 var p = test1.properties;
-        //                 same(p.mp_name_tag, test1.name, "name_tag should fire before track");
-        //                 same(p["$user_id"], test1.id, "identify should fire before track");
-        //                 same(p.distinct_id, test1.id, "identify should fire before track");
-        //                 ok(!_.isUndefined(p.$duration), "duration should be set");
-        //                 done();
-        //             }
-        //         });
-        //     });
-        // } else {
-        //     var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
-        //     $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
-        // }
+            asyncTest("priority functions", 4, function() {
+                untilDone(function(done) {
+                    if (test1.properties !== null) {
+                        var p = test1.properties;
+                        same(p.mp_name_tag, test1.name, "name_tag should fire before track");
+                        same(p["$user_id"], test1.id, "identify should fire before track");
+                        same(p.distinct_id, test1.id, "identify should fire before track");
+                        ok(!_.isUndefined(p.$duration), "duration should be set");
+                        done();
+                    }
+                });
+            });
+        } else {
+            var warning = 'mixpanel-js library loaded before test setup; skipping async tracking tests';
+            $('#qunit-userAgent').after($('<div class="qunit-warning" style="color:red;padding:10px;">Warning: ' + warning + '</div>'));
+        }
     };
 
     window.testMixpanel = function(mixpanel_test_lib) {
@@ -3952,20 +3952,6 @@
                         ok(stored_requests[0].flushAfter > Date.now(), "stored request should include valid flushAfter time");
                         start();
                     }, this))
-                    // untilDone(_.bind(function (done) {
-                    //     if (stored_requests) {
-                    //         same(stored_requests.length, 2, "both events should be in localStorage");
-                    //         same(stored_requests[0].payload.event, 'storagetest 1');
-                    //         same(stored_requests[1].payload.event, 'storagetest 2');
-                    //         same(stored_requests[0].payload.properties.mp_lib, 'web', "should include event properties");
-                    //         ok(stored_requests[0].id !== stored_requests[1].id, "stored request should include unique IDs");
-                    //         ok(stored_requests[0].flushAfter > Date.now(), "stored request should include valid flushAfter time");
-                    //         this.clock.tickAsync(5100)
-                    //             .then(_.bind(function () {
-                    //                 done();
-                    //             }, this))
-                    //     }
-                    // }, this));
                 });
 
                 asyncTest('requests are cleared from localStorage after network response', 4, function() {
