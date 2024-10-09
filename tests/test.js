@@ -293,6 +293,23 @@
         }, 20);
     };
 
+    var untilDonePromise = function(func) {
+        return new Promise(function(resolve, reject) {
+            var interval;
+            var timeout = realSetTimeout(function() {
+                realClearInterval(interval);
+                reject('untilDonePromise timed out');
+            }, 5000);
+            interval = realSetInterval(function() {
+                if (func()) {
+                    realClearTimeout(timeout);
+                    realClearInterval(interval);
+                    resolve();
+                }
+            }, 20);
+        });
+    };
+
     function simulateEvent(element, type) {
         if (document.createEvent) {
             // Trigger for the good browsers
@@ -5469,35 +5486,18 @@
             // module tests have the recorder bundled in already, so don't need to test certain things
             const IS_RECORDER_BUNDLED = Boolean(window['__mp_recorder']);
             if (window.MutationObserver) {
-                // fake synchronous promise, used to avoid nesting in tests
-                // while testing callback logic
-                function fakePromiseWrap(val) {
-                    return {
-                        then: function(cb) {
-                            cb(val);
-                            return fakePromiseWrap(val);
-                        },
-                        catch: function() {},
-                    }
-                }
-
                 function makeFakeFetchResponse(status, body) {
                     body = body || {}
-                    var response = new Response({}, {
+                    var response = new Response(JSON.stringify(body), {
                         status: status,
                         headers: {
                             'Content-type': 'application/json'
                         }
                     });
 
-                    return fakePromiseWrap({
-                            json: function() {
-                                return fakePromiseWrap(JSON.stringify(body))
-                            },
-                            status: response.status,
-                            headers: response.headers,
-                        }
-                    );
+                    return new Promise(function(resolve) {
+                        resolve(response);
+                    });
                 }
 
                 function makeDelayedFetchResponse(status, body, delay) {
@@ -5551,21 +5551,29 @@
                             }
                         }
 
+                        this.waitForFetchCalls = function (numCalls) {
+                            return _.bind(function () {
+                                return untilDonePromise(_.bind(function () {
+                                    return this.fetchStub.getCalls().length === numCalls;
+                                }, this));
+                            }, this)
+                        };
+
                         this.assertRecorderScript(false);
 
                         if (IS_RECORDER_BUNDLED) {
-                            this.afterRecorderLoaded = function (testFn) {
-                                testFn = testFn.bind(this)
-                                testFn();
-                                start();
+                            this.waitForRecorderLoad = function () {
+                                return new Promise(function(resolve) {
+                                    resolve();
+                                });
                             }
                         } else {
-                            this.afterRecorderLoaded = function (testFn) {
-                                testFn = testFn.bind(this);
-                                this.getRecorderScript().addEventListener('load', function() {
-                                    testFn();
-                                    start();
-                                });
+                            this.waitForRecorderLoad = function () {
+                                return new Promise(_.bind(function (resolve) {
+                                    this.getRecorderScript().addEventListener('load', function() {
+                                        resolve();
+                                    });
+                                }, this));
                             };
                         }
                     },
@@ -5610,8 +5618,12 @@
                         this.randomStub.returns(0.02);
                         this.initMixpanelRecorder({record_sessions_percent: 2});
                         this.assertRecorderScript(true);
-                        this.afterRecorderLoaded(function() {
+                        this.waitForRecorderLoad().then(function() {
                             mixpanel.recordertest.stop_session_recording();
+                            // let last flush through so it doesn't leak into next test
+                            realSetTimeout(function () {
+                                start();
+                            }, 2);
                         })
                     });
         
@@ -5629,51 +5641,43 @@
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     this.assertRecorderScript(true);
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        simulateMouseClick(document.body);
-                        window.location.hash = 'my-url-2';
-                        this.clock.tick(10 * 1000)
-                        stop();
-                        untilDone(_.bind(function(done) {
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            simulateMouseClick(document.body);
+                            window.location.hash = 'my-url-2';
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds')
                             var fetchCall1 = this.fetchStub.getCall(0);
-                            if (fetchCall1) {
-                                same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds')
+                            var callArgs = fetchCall1.args;
+                            var body = callArgs[1].body;
+                            same(body.constructor, Blob, 'request body is a Blob');
 
-                                var callArgs = fetchCall1.args;
-                                var body = callArgs[1].body;
-                                same(body.constructor, Blob, 'request body is a Blob');
+                            var urlParams1 = validateAndGetUrlParams(fetchCall1)
+                            same(urlParams1.get("seq"), "0")
+                            ok(urlParams1.get("$current_url").endsWith('#my-url-1'), 'includes the current url from when we started recording');
+                            same(urlParams1.get("mp_lib"), "web");
 
-                                var urlParams1 = validateAndGetUrlParams(fetchCall1);
-                                same(urlParams1.get("seq"), "0");
-                                ok(urlParams1.get("$current_url").endsWith('#my-url-1'), 'includes the current url from when we started recording');
-                                same(urlParams1.get("mp_lib"), "web");
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(2))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
+                            var fetchCall2 = this.fetchStub.getCall(1);
+                            var callArgs = fetchCall2.args;
+                            var body = callArgs[1].body;
+                            same(body.constructor, Blob, 'request body is a Blob');
+                            
+                            var urlParams2 = validateAndGetUrlParams(fetchCall2)
+                            same(urlParams2.get("seq"), "1")
+                            ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
 
-                                simulateMouseClick(document.body);
-                                this.clock.tick(10 * 1000);
-
-                                stop();
-                                untilDone(_.bind(function(done) {
-                                    var fetchCall2 = this.fetchStub.getCall(1);
-                                    if (fetchCall2) {
-                                        same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
-
-                                        var callArgs = fetchCall1.args;
-                                        var body = callArgs[1].body;
-                                        same(body.constructor, Blob, 'request body is a Blob');
-                                        
-                                        var urlParams2 = validateAndGetUrlParams(fetchCall2);
-                                        same(urlParams2.get("seq"), "1");
-                                        ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
-
-                                        mixpanel.recordertest.stop_session_recording();
-                                        done();
-                                    }
-                                }, this));
-
-                                done();
-                            }
+                            mixpanel.recordertest.stop_session_recording();
+                            start();
                         }, this));
-                    });
                 });
 
                 asyncTest('can get replay properties when recording is active', 3, function () {
@@ -5709,26 +5713,23 @@
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 1});
                     this.assertRecorderScript(false);
-
-                    this.clock.tick(10 * 1000);
-                    same(this.fetchStub.getCalls().length, 0, 'no /record call has been made since the user did not fall into the sample.');
-
-                    mixpanel.recordertest.start_session_recording();
-
-                    this.afterRecorderLoaded.call(this, function () {
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000);
-
-                        stop();
-                        untilDone(_.bind(function(done) {
-                            var fetchCall1 = this.fetchStub.getCall(0);
-                            if (fetchCall1) {
-                                same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-                                ok(this.fetchStub.getCall(0).args[0].startsWith("https://api-js.mixpanel.com/record/"));
-                                done();
-                            }
+                    
+                    this.clock.tickAsync(20 * 1000)
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 0, 'no /record call has been made since the user did not fall into the sample.');
+                            mixpanel.recordertest.start_session_recording();
+                            return this.waitForRecorderLoad();
+                        }, this))
+                        .then(_.bind(function () {
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                            ok(this.fetchStub.getCall(0).args[0].startsWith("https://api-js.mixpanel.com/record/"));
+                            start();
                         }, this));
-                    });
                 });
 
                 asyncTest('can manually stop a session recording', function () {
@@ -5736,40 +5737,40 @@
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     this.assertRecorderScript(true);
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000);
-                        stop();
-                        untilDone(_.bind(function(done) {
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
                             var fetchCall1 = this.fetchStub.getCall(0);
-                            if (fetchCall1) {
-                                same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-                                ok(fetchCall1.args[0].startsWith("https://api-js.mixpanel.com/record/"));
+                            same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                            ok(fetchCall1.args[0].startsWith("https://api-js.mixpanel.com/record/"));
+
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(2 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
+                            mixpanel.recordertest.stop_session_recording();
+                        }, this))
+                        .then(this.waitForFetchCalls(2))
+                        .then(_.bind(function () {
+                            var fetchCall2 = this.fetchStub.getCall(1);
+                            if (fetchCall2) {
+                                same(this.fetchStub.getCalls().length, 2, 'flushes the events up to the point that the recording was stopped');
+                                ok(fetchCall2.args[0].startsWith("https://api-js.mixpanel.com/record/"));
 
                                 simulateMouseClick(document.body);
-                                this.clock.tick(2 * 1000);
-                                mixpanel.recordertest.stop_session_recording();
-
-                                stop();
-                                untilDone(_.bind(function(done) {
-                                    var fetchCall2 = this.fetchStub.getCall(1);
-                                    if (fetchCall2) {
-                                        same(this.fetchStub.getCalls().length, 2, 'flushes the events up to the point that the recording was stopped');
-                                        ok(fetchCall2.args[0].startsWith("https://api-js.mixpanel.com/record/"));
-
-                                        simulateMouseClick(document.body);
-                                        this.clock.tick(20 * 1000);
-                                        realSetTimeout(_.bind(function() {
-                                            same(this.fetchStub.getCalls().length, 2, 'no more fetch requests after recording is stopped');
-                                            done();
-                                        }, this), 2);
-                                    }
-                                }, this));
-
-                                done();
+                                return this.clock.tickAsync(20 * 1000);
                             }
-                        }, this));
-                    });
+                        }, this))
+                        .then(_.bind(function () {
+                            realSetTimeout(_.bind(function() {
+                                same(this.fetchStub.getCalls().length, 2, 'no more fetch requests after recording is stopped');
+                                start();
+                            }, this), 2);
+                        }, this))
                 });
 
                 test('respects tracking opt-out when sampled', 3, function () {
@@ -5795,33 +5796,30 @@
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     this.assertRecorderScript(true);
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000);
-
-                        stop();
-                        untilDone(_.bind(function(done) {
-                            var fetchCall1 = this.fetchStub.getCall(0);
-                            if (fetchCall1) {
-                                same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-
-                                // queue up more record events, and opt out tracking
-                                simulateMouseClick(document.body);
-                                this.clock.tick(2 * 1000);
-                                simulateMouseClick(document.body);
-                                mixpanel.recordertest.opt_out_tracking();
-                                simulateMouseClick(document.body);
-
-                                this.clock.tick(10 * 1000);
-                                realSetTimeout(_.bind(function() {
-                                    same(this.fetchStub.getCalls().length, 1, 'no /record calls made after user has opted out.');
-                                    same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
-                                    mixpanel.recordertest.stop_session_recording();
-                                    done();
-                                }, this), 2);
-                            }
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000)
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                            // queue up more record events, and opt out tracking
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(2 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
+                            simulateMouseClick(document.body);
+                            mixpanel.recordertest.opt_out_tracking();
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'no /record calls made after user has opted out.');
+                            same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
+                            mixpanel.recordertest.stop_session_recording();
+                            start();
                         }, this));
-                    });
                 });
                 asyncTest('retries record request after a 500', 17, function () {
                     this.randomStub.returns(0.02);
@@ -5830,36 +5828,44 @@
                     
                     // fake the fetch / response promises since we're testing callback logic
                     this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
-                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
+                    this.responseBlobStub.returns(Promise.resolve(new Blob()));
                     this.fetchStub.onFirstCall()
                         .returns(makeFakeFetchResponse(200))
                         .onSecondCall()
                         .returns(makeFakeFetchResponse(500));
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000)
-                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-
-                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
-                        same(urlParams.get("seq"), "0", "sends first sequence");
-                        
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
-                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
-                        same(urlParams.get("seq"), "1", "2nd sequence fails");
-
-                        this.clock.tick(20 * 2000);
-                        same(this.fetchStub.getCalls().length, 3, 'record request is retried after a 500');
-                        validateAndGetUrlParams(this.fetchStub.getCall(2));
-                        same(urlParams.get("seq"), "1", "2nd sequence is retried");
-
-                        mixpanel.recordertest.stop_session_recording();
-                    });
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000)
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                            var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                            same(urlParams.get("seq"), "0", "sends first sequence");
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(2))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
+                            urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                            same(urlParams.get("seq"), "1", "2nd sequence fails");
+                            return this.clock.tickAsync(20 * 2000);
+                        }, this))
+                        .then(this.waitForFetchCalls(3))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 3, 'record request is retried after a 500');
+                            validateAndGetUrlParams(this.fetchStub.getCall(2));
+                            same(urlParams.get("seq"), "1", "2nd sequence is retried");
+    
+                            mixpanel.recordertest.stop_session_recording();
+                            start();
+                        }, this));
                 });
 
-                asyncTest('retries record requests when offline', 7, function () {
+                asyncTest('retries record requests when offline', 12, function () {
                     var onlineStub = sinon.stub(window.navigator, 'onLine').value(false);
                     // pretend we can't compress so we can compare the events in the fetch request
                     var compressionStreamStub = sinon.stub(window, 'CompressionStream').value(undefined);
@@ -5869,7 +5875,7 @@
                     this.assertRecorderScript(true);
                     
                     this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
-                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
+                    this.responseBlobStub.returns(Promise.resolve(new Blob()));
                     this.fetchStub.onCall(0)
                         .returns(new Promise(function (_resolve, reject) {
                             // simulate offline
@@ -5878,32 +5884,35 @@
                         .onCall(1)
                         .returns(makeFakeFetchResponse(200))
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000)
-                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
 
-                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
-                        same(urlParams.get("seq"), "0", "first sequence fails because we're offline");
-                        var fetchBody = this.fetchStub.getCall(0).args[1].body;
+                    var fetchBody = null;
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
 
-                        this.clock.tick(20 * 1000);
+                            var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                            same(urlParams.get("seq"), "0", "first sequence fails because we're offline");
+                            fetchBody = this.fetchStub.getCall(0).args[1].body;
 
-                        stop();
-                        untilDone(_.bind(function (done) {
+                            return this.clock.tickAsync(20 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(2))
+                        .then(_.bind(function () {
                             var fetchCall1 = this.fetchStub.getCall(1);
-                            if (fetchCall1) {
-                                urlParams = validateAndGetUrlParams(fetchCall1);
-                                same(urlParams.get("seq"), "0", "first sequence is retried with exponential backoff");
-                                same(fetchBody, fetchCall1.args[1].body, 'fetch body should be the same as the first request');
-                            }
+                            urlParams = validateAndGetUrlParams(fetchCall1);
+                            same(urlParams.get("seq"), "0", "first sequence is retried with exponential backoff");
+                            same(fetchBody, fetchCall1.args[1].body, 'fetch body should be the same as the first request');
                             onlineStub.restore();
                             compressionStreamStub.restore();
                             mixpanel.recordertest.stop_session_recording();
 
-                            done();
-                        }, this))
-                    });
+                            start();
+                        }, this));
                 });
 
                 asyncTest('halves batch size and retries record request after a 413', 25, function () {
@@ -5914,7 +5923,7 @@
                     this.randomStub.restore(); // restore the random stub after script is loaded for batcher uuid dedupe
                     this.blobConstructorSpy = sinon.spy(window, 'Blob')
                     this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
-                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
+                    this.responseBlobStub.returns(Promise.resolve(new Blob()));
 
                     this.fetchStub.onCall(0)
                         .returns(makeFakeFetchResponse(200))
@@ -5925,45 +5934,55 @@
                         .onCall(3)
                         .returns(makeFakeFetchResponse(200))
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-                        
-                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
-                        same(urlParams.get("seq"), "0");
-
-                        for  (var _i = 0; _i < 1000; _i++) {
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
                             simulateMouseClick(document.body);
-                        }
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                            var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                            same(urlParams.get("seq"), "0");
 
-                        this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
-                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
-                        same(urlParams.get("seq"), "1");
+                            for  (var _i = 0; _i < 1000; _i++) {
+                                simulateMouseClick(document.body);
+                            }
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(2))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds');
+                            urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                            same(urlParams.get("seq"), "1");
 
-                        var events = JSON.parse(this.blobConstructorSpy.lastCall.args[0][0])
-                        same(events.length, 1000);
+                            var events = JSON.parse(this.blobConstructorSpy.lastCall.args[0][0])
+                            same(events.length, 1000);
 
-                        this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 4, 'record request is retried after a 413 and subsequently flushes the rest of events');
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(4))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 4, 'record request is retried after a 413 and subsequently flushes the rest of events');
                         
-                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(2));
-                        same(urlParams.get("seq"), "1");
+                            urlParams = validateAndGetUrlParams(this.fetchStub.getCall(2));
+                            same(urlParams.get("seq"), "1");
 
-                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(3));
-                        same(urlParams.get("seq"), "2");
+                            urlParams = validateAndGetUrlParams(this.fetchStub.getCall(3));
+                            same(urlParams.get("seq"), "2");
 
-                        var numBlobCalls = this.blobConstructorSpy.getCalls().length
+                            var numBlobCalls = this.blobConstructorSpy.getCalls().length
+                            // need to look at last 2 calls because rrweb also uses Blob while tracking
+                            same(JSON.parse(this.blobConstructorSpy.getCall(numBlobCalls - 2).args[0][0]).length, 500, 'first batch request was halved');
+                            same(JSON.parse(this.blobConstructorSpy.getCall(numBlobCalls - 1).args[0][0]).length, 500, 'second batch request was halved');
 
-                        // need to look at last 2 calls because rrweb also uses Blob while tracking
-                        same(JSON.parse(this.blobConstructorSpy.getCall(numBlobCalls - 2).args[0][0]).length, 500, 'first batch request was halved');
-                        same(JSON.parse(this.blobConstructorSpy.getCall(numBlobCalls - 1).args[0][0]).length, 500, 'second batch request was halved');
-
-                        this.clock.tick(20 * 1000);
-                        same(this.fetchStub.getCalls().length, 4, 'all events are flushed, no more requests are made');
-                        mixpanel.recordertest.stop_session_recording();
-                    });
+                            return this.clock.tickAsync(20 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 4, 'all events are flushed, no more requests are made');
+                            mixpanel.recordertest.stop_session_recording();
+                            start();
+                        }, this));
                 });
 
                 asyncTest('respects minimum session length setting', function () {
@@ -5971,24 +5990,25 @@
                     this.initMixpanelRecorder({record_sessions_percent: 10, record_min_ms: 8000});
                     this.assertRecorderScript(true)
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        simulateMouseClick(document.body);
-                        this.clock.tick(5 * 1000);
-
-                        mixpanel.recordertest.stop_session_recording();
-
-                        stop();
-                        untilDone(_.bind(function(done) {
-                            same(this.fetchStub.getCalls().length, 0, 'does not flush events if session is too short');
-
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
                             simulateMouseClick(document.body);
-                            this.clock.tick(20 * 1000);
+                            return this.clock.tickAsync(5 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
+                            mixpanel.recordertest.stop_session_recording();
+                            return this.clock.tickAsync(5 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 0, 'does not flush events if session is too short');
+                            return this.clock.tickAsync(20 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
                             realSetTimeout(_.bind(function() {
                                 same(this.fetchStub.getCalls().length, 0, 'no fetch requests after recording is stopped');
-                                done();
+                                start();
                             }, this), 2);
                         }, this));
-                    });
                 });
 
                 asyncTest('resets after idle timeout', 14, function () {
@@ -5998,41 +6018,52 @@
 
                     // fake the fetch / response promises since we're testing callback logic
                     this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
-                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
+                    this.responseBlobStub.returns(Promise.resolve(new Blob()));
                     this.fetchStub.onFirstCall()
                         .returns(makeFakeFetchResponse(200))
                         .onSecondCall()
                         .returns(makeFakeFetchResponse(200));
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                    var replayId1 = null;
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
 
-                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
-                        same(urlParams.get('seq'), '0', 'sends first sequence');
-                        var replayId1 = urlParams.get('replay_id');
+                            var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                            same(urlParams.get('seq'), '0', 'sends first sequence');
+                            replayId1 = urlParams.get('replay_id');
 
-                        this.clock.tick(16 * 60 * 1000);
-                        // simulate a mutation event to ensure we don't try sending it until there's a user event
-                        document.body.appendChild(document.createElement('div'));
-                        this.clock.tick(16 * 60 * 1000);
+                            return this.clock.tickAsync(31 * 60 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
+                            // simulate a mutation event to ensure we don't try sending it until there's a user event
+                            document.body.appendChild(document.createElement('div'));
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'still just the one fetch request, mutation is ignored');
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(2))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 2, 'starts sending record requests again after user activity');
+                            urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                            same(urlParams.get('seq'), '0', 'resets to first sequence');
+                            var replayId2 = urlParams.get('replay_id');
+                            ok(replayId1 !== replayId2, 'replay id is different after reset');
 
-                        same(this.fetchStub.getCalls().length, 1, 'no new record requests after idle timeout');
-
-                        simulateMouseClick(document.body);
-                        this.clock.tick(10 * 1000);
-                        same(this.fetchStub.getCalls().length, 2, 'starts sending record requests again after user activity');
-                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
-                        same(urlParams.get('seq'), '0', 'resets to first sequence');
-                        var replayId2 = urlParams.get('replay_id');
-                        ok(replayId1 !== replayId2, 'replay id is different after reset');
-
-                        mixpanel.recordertest.stop_session_recording();
-                    });
+                            mixpanel.recordertest.stop_session_recording();
+                            start();
+                        }, this));
                 });
 
 
-                asyncTest('handles race condition where the recording resets while a request is in flight', 14, function () {
+                asyncTest('handles race condition where the recording resets while a request is in flight', 16, function () {
                     this.randomStub.returns(0.02);
 
                     this.initMixpanelRecorder({record_sessions_percent: 10});
@@ -6040,55 +6071,57 @@
                     this.randomStub.restore(); // restore the random stub after script is loaded for batcher uuid dedupe
 
                     this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
-                    this.responseBlobStub.returns(fakePromiseWrap(new Blob()));
+                    this.responseBlobStub.returns(Promise.resolve(new Blob()));
                     this.fetchStub.onFirstCall()
                         .returns(makeDelayedFetchResponse(200, {}, 5 * 1000))
 
                     this.fetchStub.callThrough();
 
-                    this.afterRecorderLoaded.call(this, function () {
-                        // current replay stops, a new one starts a bit after
-                        mixpanel.recordertest.stop_session_recording();
-
-                        same(this.fetchStub.getCalls().length, 1, 'flushed events after stopping recording');
-                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
-                        same(urlParams.get('seq'), '0', 'sends first sequence');
-                        
-                        if (!IS_RECORDER_BUNDLED) {
-                            same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
-                        } else {
-                            ok(true, 'cannot test replay_start_time when recorder is bundled, rrweb stores a reference to Date.now at the global level so stubs / fake timers will not work.');
-                        }
-
-                        var replayId1 = urlParams.get('replay_id');
-
-                        // start recording again while the first replay's request is in flight
-                        mixpanel.recordertest.start_session_recording();
-                        simulateMouseClick(document.body);
-                        stop();
-
-                        untilDone(_.bind(function (done) {
-                            this.clock.tick(10 * 1000);
-                            var fetchCall1 = this.fetchStub.getCall(1);
-                            if (fetchCall1) {
-                                urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
-                                same(urlParams.get('seq'), '0', 'new replay uses the first sequence');
-
-                                if (!IS_RECORDER_BUNDLED) {
-                                    same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
-                                } else {
-                                    ok(true, 'cannot test replay_start_time when recorder is bundled, rrweb stores a reference to Date.now at the global level so stubs / fake timers will not work.');
-                                }
-
-                                var replayId2 = urlParams.get('replay_id');
-                                ok(replayId1 !== replayId2, 'replay id is different after reset');
-                                mixpanel.recordertest.stop_session_recording();
-                                done();
+                    var replayId1;
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            mixpanel.recordertest.stop_session_recording();
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(_.bind(function () {
+                            same(this.fetchStub.getCalls().length, 1, 'flushed events after stopping recording');
+                            var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                            same(urlParams.get('seq'), '0', 'sends first sequence');
+                            
+                            if (!IS_RECORDER_BUNDLED) {
+                                same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+                            } else {
+                                ok(true, 'cannot test replay_start_time when recorder is bundled, rrweb stores a reference to Date.now at the global level so stubs / fake timers will not work.');
                             }
-                        }, this));
-                    });
+
+                            replayId1 = urlParams.get('replay_id');
+                            ok(replayId1 !== String(null), "replay id is not null");
+
+                            // start recording again while the first replay's request is in flight
+                            mixpanel.recordertest.start_session_recording();
+                            simulateMouseClick(document.body);
+                            return this.clock.tickAsync(15 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(2))
+                        .then(_.bind(function () {
+                            urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                            same(urlParams.get('seq'), '0', 'new replay uses the first sequence');
+
+                            if (!IS_RECORDER_BUNDLED) {
+                                same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+                            } else {
+                                ok(true, 'cannot test replay_start_time when recorder is bundled, rrweb stores a reference to Date.now at the global level so stubs / fake timers will not work.');
+                            }
+
+                            var replayId2 = urlParams.get('replay_id');
+                            ok(replayId2 !== String(null), "replay id is not null");
+                            ok(replayId1 !== replayId2, 'replay id is different after reset');
+                            mixpanel.recordertest.stop_session_recording();
+                            start();
+                        }, this))
                 });
             }
         }, 10);
     };
 })();
+ 
