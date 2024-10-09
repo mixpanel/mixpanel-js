@@ -5472,7 +5472,7 @@
                         var replay_url = new URL(mixpanel.recordertest.get_session_replay_url());
                         same(replay_url.hostname, 'mixpanel.com');
                         same(replay_url.pathname, '/projects/replay-redirect');
-                        same(replay_url.searchParams.get('token'), 'RECORDER_TEST_TOKEN')
+                        same(replay_url.searchParams.get('token'), this.token)
                         ok(replay_url.searchParams.get('replay_id'))
                         ok(replay_url.searchParams.get('distinct_id'))
                     });
