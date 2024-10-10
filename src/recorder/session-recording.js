@@ -1,4 +1,3 @@
-import { record } from 'rrweb';
 import { IncrementalSource, EventType } from '@rrweb/types';
 
 import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
@@ -38,6 +37,7 @@ function isUserEvent(ev) {
  * @param {String} [options.replayId] - unique uuid for a single replay
  * @param {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
  * @param {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
+ * @param {Function} [options.rrwebRecord] - rrweb's `record` function
  * @param {Object} [options.storage] - storage override for tests
  */
 var SessionRecording = function(options) {
@@ -45,6 +45,7 @@ var SessionRecording = function(options) {
     this._onIdleTimeout = options.onIdleTimeout;
     this._onMaxLengthReached = options.onMaxLengthReached;
     this._storage = options.storage;
+    this._rrwebRecord = options.rrwebRecord;
 
     this.replayId = options.replayId;
 
@@ -122,7 +123,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         blockSelector = undefined;
     }
 
-    this._stopRecording = record({
+    this._stopRecording = this._rrwebRecord({
         'emit': _.bind(function (ev) {
             this.batcher.enqueue(ev);
             if (isUserEvent(ev)) {

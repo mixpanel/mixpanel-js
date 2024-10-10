@@ -6,7 +6,6 @@
  */
 
 import { expect } from 'chai';
-import rrweb from 'rrweb';
 import {SessionRecording} from '../../src/recorder/session-recording';
 import sinon from 'sinon';
 import localStorage from 'localStorage';
@@ -25,16 +24,20 @@ describe(`SessionRecording`, function() {
         };
         this.replayId = `test-replay-id`;
 
-        this.stopSpy = sinon.spy();
         this.onIdleTimeoutSpy = sinon.spy();
         this.onMaxLengthReachedSpy = sinon.spy();
-        this.rrwebRecordStub = sinon.stub(rrweb, `record`).returns(this.stopSpy);
+        
+        this.rrwebStopSy = sinon.spy();
+        this.rrwebRecordStub = sinon.stub();
+        this.rrwebRecordStub.returns(this.rrwebStopSy);
+
         this.sessionRecording = new SessionRecording({
             mixpanelInstance: mockMixpanelInstance,
             replayId: this.replayId,
             onIdleTimeout: this.onIdleTimeoutSpy,
             onMaxLengthReached: this.onMaxLengthReachedSpy,
             storage: localStorage,
+            rrwebRecord: this.rrwebRecordStub,
         });
         this.flushSpy = sinon.spy(this.sessionRecording.batcher, `flush`);
     });
@@ -49,7 +52,7 @@ describe(`SessionRecording`, function() {
         expect(this.sessionRecording.isRrwebStopped()).to.be.false;
 
         this.sessionRecording.stopRecording();
-        expect(this.stopSpy.calledOnce).to.be.true;
+        expect(this.rrwebStopSy.calledOnce).to.be.true;
         expect(this.sessionRecording.isRrwebStopped()).to.be.true;
     });
 
@@ -62,8 +65,7 @@ describe(`SessionRecording`, function() {
     });
 
     it(`still flushes the batcher when stopRecording throws an error`, function() {
-        this.rrwebRecordStub.restore();
-        this.rrwebRecordStub = sinon.stub(rrweb, `record`).returns(function () {
+        this.rrwebRecordStub.returns(function () {
             throw new Error(`test error`);
         });
 

@@ -1,3 +1,5 @@
+import {record} from 'rrweb';
+
 import { SessionRecording } from './session-recording';
 import { console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
 
@@ -30,9 +32,10 @@ MixpanelRecorder.prototype.startRecording = function(shouldStopBatcher) {
 
     this.activeRecording = new SessionRecording({
         mixpanelInstance: this._mixpanel,
-        replayId: _.UUID(),
         onIdleTimeout: onIdleTimeout,
         onMaxLengthReached: onMaxLengthReached,
+        replayId: _.UUID(),
+        rrwebRecord: record
     });
 
     this.activeRecording.startRecording(shouldStopBatcher);
