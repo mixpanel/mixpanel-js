@@ -136,7 +136,6 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         'blockClass': this.get_config('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.get_config('record_collect_fonts'),
-        'inlineImages': this.get_config('record_inline_images'),
         'maskAllInputs': true,
         'maskTextClass': this.get_config('record_mask_text_class'),
         'maskTextSelector': this.get_config('record_mask_text_selector')
@@ -149,7 +148,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
 SessionRecording.prototype.stopRecording = function () {
     if (!this.isRrwebStopped()) {
-        this._stopRecording();
+        try {
+            this._stopRecording();
+        } catch (err) {
+            this.reportError('Error with rrweb stopRecording: ' + err);
+        }
         this._stopRecording = null;
     }
 

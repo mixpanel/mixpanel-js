@@ -148,7 +148,6 @@ var DEFAULT_CONFIG = {
     'record_block_selector':             'img, video',
     'record_collect_fonts':              false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
-    'record_inline_images':              false,
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
     'record_max_ms':                     MAX_RECORDING_MS,

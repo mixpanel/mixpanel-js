@@ -36,10 +36,11 @@ describe(`SessionRecording`, function() {
             onMaxLengthReached: this.onMaxLengthReachedSpy,
             storage: localStorage,
         });
+        this.flushSpy = sinon.spy(this.sessionRecording.batcher, `flush`);
     });
 
     afterEach(function () {
-        this.rrwebRecordStub.restore();
+        sinon.restore();
     });
 
     it(`can start and stop recording`, function() {
@@ -50,5 +51,26 @@ describe(`SessionRecording`, function() {
         this.sessionRecording.stopRecording();
         expect(this.stopSpy.calledOnce).to.be.true;
         expect(this.sessionRecording.isRrwebStopped()).to.be.true;
+    });
+
+    it(`flushes the batcher when stopRecording is called`, function() {
+        this.sessionRecording.startRecording();
+        expect(this.flushSpy.calledOnce).to.be.true;
+
+        this.sessionRecording.stopRecording();
+        expect(this.flushSpy.calledTwice).to.be.true;
+    });
+
+    it(`still flushes the batcher when stopRecording throws an error`, function() {
+        this.rrwebRecordStub.restore();
+        this.rrwebRecordStub = sinon.stub(rrweb, `record`).returns(function () {
+            throw new Error(`test error`);
+        });
+
+        this.sessionRecording.startRecording();
+        expect(this.flushSpy.calledOnce).to.be.true;
+
+        this.sessionRecording.stopRecording();
+        expect(this.flushSpy.calledTwice).to.be.true;
     });
 });
