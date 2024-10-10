@@ -38,11 +38,13 @@ function isUserEvent(ev) {
  * @param {String} [options.replayId] - unique uuid for a single replay
  * @param {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
  * @param {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
+ * @param {Object} [options.storage] - storage override for tests
  */
 var SessionRecording = function(options) {
     this._mixpanel = options.mixpanelInstance;
     this._onIdleTimeout = options.onIdleTimeout;
     this._onMaxLengthReached = options.onMaxLengthReached;
+    this._storage = options.storage;
 
     this.replayId = options.replayId;
 
@@ -64,10 +66,11 @@ var SessionRecording = function(options) {
 
 SessionRecording.prototype._initBatcher = function () {
     this.batcher = new RequestBatcher('__mprec_' + this.get_config('token'), {
-        libConfig: RECORDER_BATCHER_LIB_CONFIG,
-        sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
         errorReporter: _.bind(this.reportError, this),
         flushOnlyOnInterval: true,
+        libConfig: RECORDER_BATCHER_LIB_CONFIG,
+        sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
+        storage: this._storage,
         usePersistence: false
     });
 };
