@@ -26,9 +26,7 @@ describe(`Module-based loader in Node env`, function() {
           debug: true,
           persistence: `localStorage`,
           api_host: `https://test.com`,
-          loaded: function() {
-            resolve();
-          },
+          loaded: resolve,
           error_reporter: reject
         });
       });
