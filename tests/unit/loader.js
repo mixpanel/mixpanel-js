@@ -19,6 +19,17 @@ describe(`Module-based loader in Node env`, function() {
     });
   });
 
+  it(`supports init() with options twice`, function(done) {
+    mixpanel.init(`test-token`, {
+      debug: true,
+      persistence: `localStorage`,
+      api_host: `https://test.com`,
+      loaded: function() {
+        done();
+      },
+    });
+  });
+
   it(`supports identify()`, function() {
     mixpanel.identify(`Pat`);
   });
