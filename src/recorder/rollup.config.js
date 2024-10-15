@@ -12,7 +12,8 @@ export default {
             file: 'build/mixpanel-recorder.min.js',
             format: 'esm',
             name: 'version',
-            plugins: [esbuild({minify: true})]
+            plugins: [esbuild({minify: true, sourceMap: true})],
+            sourcemap: true,
         }
     ],
     plugins: [nodeResolve({browser: true})],
