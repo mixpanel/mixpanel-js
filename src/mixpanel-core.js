@@ -154,7 +154,8 @@ var DEFAULT_CONFIG = {
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
-    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
+    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+    'max_property_length': 255 //Default is 255, -1: For no truncate
 };
 
 var DOM_LOADED = false;
@@ -877,7 +878,7 @@ MixpanelLib.prototype._encode_data_for_request = function(data) {
 
 // internal method for handling track vs batch-enqueue logic
 MixpanelLib.prototype._track_or_batch = function(options, callback) {
-    var truncated_data = _.truncate(options.data, 255);
+    var truncated_data = _.truncate(options.data, this.get_config('max_property_length') || 255);
     var endpoint = options.endpoint;
     var batcher = options.batcher;
     var should_send_immediately = options.should_send_immediately;
