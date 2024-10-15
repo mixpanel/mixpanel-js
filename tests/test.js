@@ -5402,13 +5402,16 @@
                     });
                 }
     
-                asyncTest('sends recording payload to server', 14, function () {
+                asyncTest('sends recording payload to server', 17, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     this.assertRecorderScript(true);
+                    // set hash to test $current_url logic without reloading test page
+                    window.location.hash = 'my-url-1';
 
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
+                        window.location.hash = 'my-url-2';
                         this.clock.tick(10 * 1000)
                         stop();
                         untilDone(_.bind(function(done) {
@@ -5420,9 +5423,10 @@
                                 var body = callArgs[1].body;
                                 same(body.constructor, Blob, 'request body is a Blob');
 
-
-                                var urlParams1 = validateAndGetUrlParams(fetchCall1)
-                                same(urlParams1.get("seq"), "0")
+                                var urlParams1 = validateAndGetUrlParams(fetchCall1);
+                                same(urlParams1.get("seq"), "0");
+                                ok(urlParams1.get("$current_url").endsWith('#my-url-1'), 'includes the current url from when we started recording');
+                                same(urlParams1.get("mp_lib"), "web");
 
                                 simulateMouseClick(document.body);
                                 this.clock.tick(10 * 1000);
@@ -5437,8 +5441,9 @@
                                         var body = callArgs[1].body;
                                         same(body.constructor, Blob, 'request body is a Blob');
                                         
-                                        var urlParams2 = validateAndGetUrlParams(fetchCall2)
-                                        same(urlParams2.get("seq"), "1")
+                                        var urlParams2 = validateAndGetUrlParams(fetchCall2);
+                                        same(urlParams2.get("seq"), "1");
+                                        ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
 
                                         mixpanel.recordertest.stop_session_recording();
                                         done();
