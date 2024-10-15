@@ -5464,6 +5464,7 @@
                     mixpanel.recordertest.start_session_recording();
                     this.afterRecorderLoaded.call(this, function () {
                         ok(Boolean(mixpanel.recordertest.get_session_recording_properties()["$mp_replay_id"]), 'replay id is populated in recording properties')
+                        mixpanel.recordertest.stop_session_recording();
                     });
                 });
 
@@ -5480,6 +5481,7 @@
                         same(replay_url.searchParams.get('token'), this.token)
                         ok(replay_url.searchParams.get('replay_id'))
                         ok(replay_url.searchParams.get('distinct_id'))
+                        mixpanel.recordertest.stop_session_recording();
                     });
                 });
 
