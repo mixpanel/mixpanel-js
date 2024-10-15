@@ -1,26 +1,18 @@
 /* eslint camelcase: "off" */
-import { addOptOutCheckMixpanelPeople } from './gdpr-utils';
-import {
-    SET_ACTION,
-    SET_ONCE_ACTION,
-    UNSET_ACTION,
-    ADD_ACTION,
-    APPEND_ACTION,
-    REMOVE_ACTION,
-    UNION_ACTION,
-    apiActions
-} from './api-actions';
-import { _, console } from './utils';
+import {addOptOutCheckMixpanelPeople} from './gdpr-utils';
+import {ADD_ACTION, apiActions, APPEND_ACTION, REMOVE_ACTION, SET_ACTION, SET_ONCE_ACTION, UNION_ACTION, UNSET_ACTION} from './api-actions';
+import {_, console} from './utils';
 
 /**
  * Mixpanel People Object
  * @constructor
  */
-var MixpanelPeople = function() {};
+var MixpanelPeople = function () {
+};
 
 _.extend(MixpanelPeople.prototype, apiActions);
 
-MixpanelPeople.prototype._init = function(mixpanel_instance) {
+MixpanelPeople.prototype._init = function (mixpanel_instance) {
     this._mixpanel = mixpanel_instance;
 };
 
@@ -43,7 +35,7 @@ MixpanelPeople.prototype._init = function(mixpanel_instance) {
 * @param {*} [to] A value to set on the given property name
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
+MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function (prop, to, callback) {
     var data = this.set_action(prop, to);
     if (_.isObject(prop)) {
         callback = to;
@@ -83,7 +75,7 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
 * @param {*} [to] A value to set on the given property name
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
+MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function (prop, to, callback) {
     var data = this.set_once_action(prop, to);
     if (_.isObject(prop)) {
         callback = to;
@@ -104,7 +96,7 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, 
 * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(function(prop, callback) {
+MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(function (prop, callback) {
     var data = this.unset_action(prop);
     return this._send_request(data, callback);
 });
@@ -134,11 +126,11 @@ MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(function(prop, cal
 * @param {Number} [by] An amount to increment the given property
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop, by, callback) {
+MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function (prop, by, callback) {
     var data = {};
     var $add = {};
     if (_.isObject(prop)) {
-        _.each(prop, function(v, k) {
+        _.each(prop, function (v, k) {
             if (!this._is_reserved_property(k)) {
                 if (isNaN(parseFloat(v))) {
                     console.error('Invalid increment value passed to mixpanel.people.increment - must be a number');
@@ -181,7 +173,7 @@ MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop,
 * @param {*} [value] value An item to append to the list
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
+MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function (list_name, value, callback) {
     if (_.isObject(list_name)) {
         callback = value;
     }
@@ -200,7 +192,7 @@ MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_nam
 * @param {*} [value] value Item to remove from the list
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
+MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function (list_name, value, callback) {
     if (_.isObject(list_name)) {
         callback = value;
     }
@@ -234,7 +226,7 @@ MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(list_nam
 * @param {*} [value] Value / values to merge with the given property
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name, values, callback) {
+MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function (list_name, values, callback) {
     if (_.isObject(list_name)) {
         callback = values;
     }
@@ -262,7 +254,7 @@ MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name
  * @param {Function} [callback] If provided, the callback will be called when the server responds
  * @deprecated
  */
-MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(amount, properties, callback) {
+MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function (amount, properties, callback) {
     if (!_.isNumber(amount)) {
         amount = parseFloat(amount);
         if (isNaN(amount)) {
@@ -287,7 +279,7 @@ MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(am
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  * @deprecated
  */
-MixpanelPeople.prototype.clear_charges = function(callback) {
+MixpanelPeople.prototype.clear_charges = function (callback) {
     return this.set('$transactions', [], callback);
 };
 
@@ -301,7 +293,7 @@ MixpanelPeople.prototype.clear_charges = function(callback) {
 *     mixpanel.people.delete_user();
 *
 */
-MixpanelPeople.prototype.delete_user = function() {
+MixpanelPeople.prototype.delete_user = function () {
     if (!this._identify_called()) {
         console.error('mixpanel.people.delete_user() requires you to call identify() first');
         return;
@@ -310,11 +302,11 @@ MixpanelPeople.prototype.delete_user = function() {
     return this._send_request(data);
 };
 
-MixpanelPeople.prototype.toString = function() {
+MixpanelPeople.prototype.toString = function () {
     return this._mixpanel.toString() + '.people';
 };
 
-MixpanelPeople.prototype._send_request = function(data, callback) {
+MixpanelPeople.prototype._send_request = function (data, callback) {
     data['$token'] = this._get_config('token');
     data['$distinct_id'] = this._mixpanel.get_distinct_id();
     var device_id = this._mixpanel.get_property('$device_id');
@@ -341,27 +333,27 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
                 callback(-1);
             }
         }
-        return _.truncate(date_encoded_data, 255);
+        return _.truncate(date_encoded_data, this.get_config('max_property_length') || 255);
     }
 
     return this._mixpanel._track_or_batch({
         type: 'people',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/' +  this._get_config('api_routes')['engage'],
+        endpoint: this._get_config('api_host') + '/' + this._get_config('api_routes')['engage'],
         batcher: this._mixpanel.request_batchers.people
     }, callback);
 };
 
-MixpanelPeople.prototype._get_config = function(conf_var) {
+MixpanelPeople.prototype._get_config = function (conf_var) {
     return this._mixpanel.get_config(conf_var);
 };
 
-MixpanelPeople.prototype._identify_called = function() {
+MixpanelPeople.prototype._identify_called = function () {
     return this._mixpanel._flags.identify_called === true;
 };
 
 // Queue up engage operations if identify hasn't been called yet.
-MixpanelPeople.prototype._enqueue = function(data) {
+MixpanelPeople.prototype._enqueue = function (data) {
     if (SET_ACTION in data) {
         this._mixpanel['persistence']._add_to_people_queue(SET_ACTION, data);
     } else if (SET_ONCE_ACTION in data) {
@@ -381,7 +373,7 @@ MixpanelPeople.prototype._enqueue = function(data) {
     }
 };
 
-MixpanelPeople.prototype._flush_one_queue = function(action, action_method, callback, queue_to_params_fn) {
+MixpanelPeople.prototype._flush_one_queue = function (action, action_method, callback, queue_to_params_fn) {
     var _this = this;
     var queued_data = _.extend({}, this._mixpanel['persistence'].load_queue(action));
     var action_params = queued_data;
@@ -392,7 +384,7 @@ MixpanelPeople.prototype._flush_one_queue = function(action, action_method, call
         if (queue_to_params_fn) {
             action_params = queue_to_params_fn(queued_data);
         }
-        action_method.call(_this, action_params, function(response, data) {
+        action_method.call(_this, action_params, function (response, data) {
             // on bad response, we want to add it back to the queue
             if (response === 0) {
                 _this._mixpanel['persistence']._add_to_people_queue(action, queued_data);
@@ -406,14 +398,16 @@ MixpanelPeople.prototype._flush_one_queue = function(action, action_method, call
 
 // Flush queued engage operations - order does not matter,
 // and there are network level race conditions anyway
-MixpanelPeople.prototype._flush = function(
+MixpanelPeople.prototype._flush = function (
     _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     var _this = this;
 
     this._flush_one_queue(SET_ACTION, this.set, _set_callback);
     this._flush_one_queue(SET_ONCE_ACTION, this.set_once, _set_once_callback);
-    this._flush_one_queue(UNSET_ACTION, this.unset, _unset_callback, function(queue) { return _.keys(queue); });
+    this._flush_one_queue(UNSET_ACTION, this.unset, _unset_callback, function (queue) {
+        return _.keys(queue);
+    });
     this._flush_one_queue(ADD_ACTION, this.increment, _add_callback);
     this._flush_one_queue(UNION_ACTION, this.union, _union_callback);
 
@@ -422,7 +416,7 @@ MixpanelPeople.prototype._flush = function(
     var $append_queue = this._mixpanel['persistence'].load_queue(APPEND_ACTION);
     if (!_.isUndefined($append_queue) && _.isArray($append_queue) && $append_queue.length) {
         var $append_item;
-        var append_callback = function(response, data) {
+        var append_callback = function (response, data) {
             if (response === 0) {
                 _this._mixpanel['persistence']._add_to_people_queue(APPEND_ACTION, $append_item);
             }
@@ -444,7 +438,7 @@ MixpanelPeople.prototype._flush = function(
     var $remove_queue = this._mixpanel['persistence'].load_queue(REMOVE_ACTION);
     if (!_.isUndefined($remove_queue) && _.isArray($remove_queue) && $remove_queue.length) {
         var $remove_item;
-        var remove_callback = function(response, data) {
+        var remove_callback = function (response, data) {
             if (response === 0) {
                 _this._mixpanel['persistence']._add_to_people_queue(REMOVE_ACTION, $remove_item);
             }
@@ -463,21 +457,21 @@ MixpanelPeople.prototype._flush = function(
     }
 };
 
-MixpanelPeople.prototype._is_reserved_property = function(prop) {
+MixpanelPeople.prototype._is_reserved_property = function (prop) {
     return prop === '$distinct_id' || prop === '$token' || prop === '$device_id' || prop === '$user_id' || prop === '$had_persisted_distinct_id';
 };
 
 // MixpanelPeople Exports
-MixpanelPeople.prototype['set']           = MixpanelPeople.prototype.set;
-MixpanelPeople.prototype['set_once']      = MixpanelPeople.prototype.set_once;
-MixpanelPeople.prototype['unset']         = MixpanelPeople.prototype.unset;
-MixpanelPeople.prototype['increment']     = MixpanelPeople.prototype.increment;
-MixpanelPeople.prototype['append']        = MixpanelPeople.prototype.append;
-MixpanelPeople.prototype['remove']        = MixpanelPeople.prototype.remove;
-MixpanelPeople.prototype['union']         = MixpanelPeople.prototype.union;
-MixpanelPeople.prototype['track_charge']  = MixpanelPeople.prototype.track_charge;
+MixpanelPeople.prototype['set'] = MixpanelPeople.prototype.set;
+MixpanelPeople.prototype['set_once'] = MixpanelPeople.prototype.set_once;
+MixpanelPeople.prototype['unset'] = MixpanelPeople.prototype.unset;
+MixpanelPeople.prototype['increment'] = MixpanelPeople.prototype.increment;
+MixpanelPeople.prototype['append'] = MixpanelPeople.prototype.append;
+MixpanelPeople.prototype['remove'] = MixpanelPeople.prototype.remove;
+MixpanelPeople.prototype['union'] = MixpanelPeople.prototype.union;
+MixpanelPeople.prototype['track_charge'] = MixpanelPeople.prototype.track_charge;
 MixpanelPeople.prototype['clear_charges'] = MixpanelPeople.prototype.clear_charges;
-MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user;
-MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
+MixpanelPeople.prototype['delete_user'] = MixpanelPeople.prototype.delete_user;
+MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
-export { MixpanelPeople };
+export {MixpanelPeople};
