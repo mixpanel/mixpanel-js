@@ -14,9 +14,17 @@ ln -sf mixpanel.globals.js build/mixpanel.js
 
 if [ ! -z "$FULL" ]; then
     echo 'Minifying main build and snippets'
-    java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel.js --js_output_file build/mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
+    pushd build
+    java -jar ../vendor/closure-compiler/compiler.jar --js mixpanel.js \
+        --create_source_map mixpanel.min.js.map \
+        --source_map_format V3 \
+        --js_output_file mixpanel.min.js \
+        --compilation_level ADVANCED_OPTIMIZATIONS \
+        --output_wrapper "(function() {
 %output%
-})();"
+})();
+//# sourceMappingURL=mixpanel.min.js.map"
+    popd
     java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
     java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --js_output_file build/mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../build/mixpanel.min.js"'
 
