@@ -59,12 +59,11 @@ var SessionRecording = function(options) {
 
     this.recordMaxMs = MAX_RECORDING_MS;
     this.recordMinMs = 0;
-    this._initBatcher();
-};
 
-
-SessionRecording.prototype._initBatcher = function () {
-    this.batcher = new RequestBatcher('__mprec_' + this.get_config('token'), {
+    // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
+    // this will be important when persistence is introduced
+    var batcherKey = '__mprec_' + this.get_config('token') + '_' + this.replayId;
+    this.batcher = new RequestBatcher(batcherKey, {
         errorReporter: _.bind(this.reportError, this),
         flushOnlyOnInterval: true,
         libConfig: RECORDER_BATCHER_LIB_CONFIG,
