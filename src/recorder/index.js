@@ -44,6 +44,7 @@ MixpanelRecorder.prototype.startRecording = function(shouldStopBatcher) {
 MixpanelRecorder.prototype.stopRecording = function() {
     if (this.activeRecording) {
         this.activeRecording.stopRecording();
+        this.activeRecording = null;
     }
 };
 
