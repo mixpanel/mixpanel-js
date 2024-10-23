@@ -38,13 +38,11 @@ function isUserEvent(ev) {
  * @param {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
  * @param {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
  * @param {Function} [options.rrwebRecord] - rrweb's `record` function
- * @param {Object} [options.storage] - storage override for tests
  */
 var SessionRecording = function(options) {
     this._mixpanel = options.mixpanelInstance;
     this._onIdleTimeout = options.onIdleTimeout;
     this._onMaxLengthReached = options.onMaxLengthReached;
-    this._storage = options.storage;
     this._rrwebRecord = options.rrwebRecord;
 
     this.replayId = options.replayId;
@@ -71,7 +69,6 @@ SessionRecording.prototype._initBatcher = function () {
         flushOnlyOnInterval: true,
         libConfig: RECORDER_BATCHER_LIB_CONFIG,
         sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
-        storage: this._storage,
         usePersistence: false
     });
 };

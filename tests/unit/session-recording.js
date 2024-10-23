@@ -36,7 +36,6 @@ describe(`SessionRecording`, function() {
       replayId: this.replayId,
       onIdleTimeout: this.onIdleTimeoutSpy,
       onMaxLengthReached: this.onMaxLengthReachedSpy,
-      storage: localStorage,
       rrwebRecord: this.rrwebRecordStub,
     });
     this.flushSpy = sinon.spy(this.sessionRecording.batcher, `flush`);
