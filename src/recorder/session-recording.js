@@ -62,7 +62,7 @@ var SessionRecording = function(options) {
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     // this will be important when persistence is introduced
-    var batcherKey = '__mprec_' + this.get_config('token') + '_' + this.replayId;
+    var batcherKey = '__mprec_' + this.getConfig('token') + '_' + this.replayId;
     this.batcher = new RequestBatcher(batcherKey, {
         errorReporter: _.bind(this.reportError, this),
         flushOnlyOnInterval: true,
@@ -72,9 +72,15 @@ var SessionRecording = function(options) {
     });
 };
 
+SessionRecording.prototype.getConfig = function(configVar) {
+    return this._mixpanel.get_config(configVar);
+};
+
+// Alias for getConfig, used by the common addOptOutCheckMixpanelLib function which
+// reaches into this class instance and expects the snake case version of the function.
 // eslint-disable-next-line camelcase
 SessionRecording.prototype.get_config = function(configVar) {
-    return this._mixpanel.get_config(configVar);
+    return this.getConfig(configVar);
 };
 
 SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
@@ -83,13 +89,13 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         return;
     }
 
-    this.recordMaxMs = this.get_config('record_max_ms');
+    this.recordMaxMs = this.getConfig('record_max_ms');
     if (this.recordMaxMs > MAX_RECORDING_MS) {
         this.recordMaxMs = MAX_RECORDING_MS;
         logger.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
     }
 
-    this.recordMinMs = this.get_config('record_min_ms');
+    this.recordMinMs = this.getConfig('record_min_ms');
     if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
         this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
         logger.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
@@ -111,10 +117,10 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
     var resetIdleTimeout = _.bind(function () {
         clearTimeout(this.idleTimeoutId);
-        this.idleTimeoutId = setTimeout(this._onIdleTimeout, this.get_config('record_idle_timeout_ms'));
+        this.idleTimeoutId = setTimeout(this._onIdleTimeout, this.getConfig('record_idle_timeout_ms'));
     }, this);
 
-    var blockSelector = this.get_config('record_block_selector');
+    var blockSelector = this.getConfig('record_block_selector');
     if (blockSelector === '' || blockSelector === null) {
         blockSelector = undefined;
     }
@@ -130,12 +136,12 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                 resetIdleTimeout();
             }
         }, this),
-        'blockClass': this.get_config('record_block_class'),
+        'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
-        'collectFonts': this.get_config('record_collect_fonts'),
+        'collectFonts': this.getConfig('record_collect_fonts'),
         'maskAllInputs': true,
-        'maskTextClass': this.get_config('record_mask_text_class'),
-        'maskTextSelector': this.get_config('record_mask_text_selector')
+        'maskTextClass': this.getConfig('record_mask_text_class'),
+        'maskTextSelector': this.getConfig('record_mask_text_selector')
     });
 
     resetIdleTimeout();
@@ -202,10 +208,10 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
         });
     }, this);
 
-    window['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+    window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
         'headers': {
-            'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
+            'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
             'Content-Type': 'application/octet-stream'
         },
         'body': reqBody,
@@ -283,7 +289,7 @@ SessionRecording.prototype.reportError = function(msg, err) {
         if (!err && !(msg instanceof Error)) {
             msg = new Error(msg);
         }
-        this.get_config('error_reporter')(msg, err);
+        this.getConfig('error_reporter')(msg, err);
     } catch(err) {
         logger.error(err);
     }
