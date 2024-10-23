@@ -32,7 +32,7 @@ function isUserEvent(ev) {
 }
 
 /**
- * This class encapsulates a single session replay and its lifecycle.
+ * This class encapsulates a single session recording and its lifecycle.
  * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
  * @param {String} [options.replayId] - unique uuid for a single replay
  * @param {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
