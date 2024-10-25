@@ -27,5 +27,35 @@
             "error",
             "always"
         ]
-    }
+    },
+    "overrides": [{
+        "files": ["tests/unit/**/*.js"],
+        "parserOptions": {
+            "ecmaVersion": 8,
+            "sourceType": "module"
+        },
+        "env": {
+            "mocha": true
+        },
+        "rules": {
+            "camelcase": "error",
+            "eol-last": "error",
+            "eqeqeq": "error",
+            "indent": ["error", 2],
+            "linebreak-style": [
+                "error",
+                "unix"
+            ],
+            "no-console": "off",
+            "no-trailing-spaces": "error",
+            "quotes": [
+                "error",
+                "backtick"
+            ],
+            "semi": [
+                "error",
+                "always"
+            ]
+        }
+    }]
 }

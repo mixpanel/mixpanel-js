@@ -22,11 +22,13 @@ var logger = console_with_prefix('batch');
 var RequestQueue = function(storageKey, options) {
     options = options || {};
     this.storageKey = storageKey;
-    this.storage = options.storage || window.localStorage;
-    this.reportError = options.errorReporter || _.bind(logger.error, logger);
-    this.lock = new SharedLock(storageKey, {storage: this.storage});
-
     this.usePersistence = options.usePersistence;
+    if (this.usePersistence) {
+        this.storage = options.storage || window.localStorage;
+        this.lock = new SharedLock(storageKey, {storage: this.storage});
+    }
+    this.reportError = options.errorReporter || _.bind(logger.error, logger);
+
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
     this.memQueue = [];
