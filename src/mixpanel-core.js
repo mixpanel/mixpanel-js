@@ -2155,6 +2155,7 @@ MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.protot
 MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
 MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
+MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports
