@@ -5403,11 +5403,11 @@
                 }
     
                 asyncTest('sends recording payload to server', 17, function () {
+                    // set hash to test $current_url logic without reloading test page
+                    window.location.hash = 'my-url-1';
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 10});
                     this.assertRecorderScript(true);
-                    // set hash to test $current_url logic without reloading test page
-                    window.location.hash = 'my-url-1';
 
                     this.afterRecorderLoaded.call(this, function () {
                         simulateMouseClick(document.body);
