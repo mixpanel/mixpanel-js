@@ -414,7 +414,7 @@ MixpanelLib.prototype.get_session_replay_url = function () {
         var query_params = _.HTTPBuildQuery({
             'replay_id': replay_id,
             'distinct_id': this.get_distinct_id(),
-            'token': this.get_config('token'),
+            'token': this.get_config('token')
         });
         replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
     }
