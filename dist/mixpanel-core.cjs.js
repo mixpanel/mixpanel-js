@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.55.1'
+    LIB_VERSION: '2.55.2-rc1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -2056,11 +2056,13 @@ var logger$1 = console_with_prefix('batch');
 var RequestQueue = function(storageKey, options) {
     options = options || {};
     this.storageKey = storageKey;
-    this.storage = options.storage || window.localStorage;
-    this.reportError = options.errorReporter || _.bind(logger$1.error, logger$1);
-    this.lock = new SharedLock(storageKey, {storage: this.storage});
-
     this.usePersistence = options.usePersistence;
+    if (this.usePersistence) {
+        this.storage = options.storage || window.localStorage;
+        this.lock = new SharedLock(storageKey, {storage: this.storage});
+    }
+    this.reportError = options.errorReporter || _.bind(logger$1.error, logger$1);
+
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
     this.memQueue = [];
@@ -4257,7 +4259,6 @@ var DEFAULT_CONFIG = {
     'record_block_selector':             'img, video',
     'record_collect_fonts':              false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
-    'record_inline_images':              false,
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
     'record_max_ms':                     MAX_RECORDING_MS,
@@ -4510,13 +4511,33 @@ MixpanelLib.prototype.stop_session_recording = function () {
 
 MixpanelLib.prototype.get_session_recording_properties = function () {
     var props = {};
-    if (this._recorder) {
-        var replay_id = this._recorder['replayId'];
-        if (replay_id) {
-            props['$mp_replay_id'] = replay_id;
-        }
+    var replay_id = this._get_session_replay_id();
+    if (replay_id) {
+        props['$mp_replay_id'] = replay_id;
     }
     return props;
+};
+
+MixpanelLib.prototype.get_session_replay_url = function () {
+    var replay_url = null;
+    var replay_id = this._get_session_replay_id();
+    if (replay_id) {
+        var query_params = _.HTTPBuildQuery({
+            'replay_id': replay_id,
+            'distinct_id': this.get_distinct_id(),
+            'token': this.get_config('token')
+        });
+        replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
+    }
+    return replay_url;
+};
+
+MixpanelLib.prototype._get_session_replay_id = function () {
+    var replay_id = null;
+    if (this._recorder) {
+        replay_id = this._recorder['replayId'];
+    }
+    return replay_id || null;
 };
 
 // Private methods
@@ -6245,6 +6266,7 @@ MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.protot
 MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
 MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
+MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports

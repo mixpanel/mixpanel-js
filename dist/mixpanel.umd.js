@@ -4513,7 +4513,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.55.1'
+        LIB_VERSION: '2.55.2-rc1'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -6550,7 +6550,7 @@
         };
     }
 
-    var logger$3 = console_with_prefix('lock');
+    var logger$4 = console_with_prefix('lock');
 
     /**
      * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
@@ -6607,7 +6607,7 @@
 
         var delay = function(cb) {
             if (new Date().getTime() - startTime > timeoutMS) {
-                logger$3.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                logger$4.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                 storage.removeItem(keyZ);
                 storage.removeItem(keyY);
                 loop();
@@ -6696,7 +6696,7 @@
         }
     };
 
-    var logger$2 = console_with_prefix('batch');
+    var logger$3 = console_with_prefix('batch');
 
     /**
      * RequestQueue: queue for batching API requests with localStorage backup for retries.
@@ -6717,11 +6717,13 @@
     var RequestQueue = function(storageKey, options) {
         options = options || {};
         this.storageKey = storageKey;
-        this.storage = options.storage || window.localStorage;
-        this.reportError = options.errorReporter || _.bind(logger$2.error, logger$2);
-        this.lock = new SharedLock(storageKey, {storage: this.storage});
-
         this.usePersistence = options.usePersistence;
+        if (this.usePersistence) {
+            this.storage = options.storage || window.localStorage;
+            this.lock = new SharedLock(storageKey, {storage: this.storage});
+        }
+        this.reportError = options.errorReporter || _.bind(logger$3.error, logger$3);
+
         this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
         this.memQueue = [];
@@ -7000,7 +7002,7 @@
     // maximum interval between request retries after exponential backoff
     var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-    var logger$1 = console_with_prefix('batch');
+    var logger$2 = console_with_prefix('batch');
 
     /**
      * RequestBatcher: manages the queueing, flushing, retry etc of requests of one
@@ -7114,7 +7116,7 @@
         try {
 
             if (this.requestInProgress) {
-                logger$1.log('Flush: Request already in progress');
+                logger$2.log('Flush: Request already in progress');
                 return;
             }
 
@@ -7282,7 +7284,7 @@
             if (options.unloading) {
                 requestOptions.transport = 'sendBeacon';
             }
-            logger$1.log('MIXPANEL REQUEST:', dataForRequest);
+            logger$2.log('MIXPANEL REQUEST:', dataForRequest);
             this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
         } catch(err) {
             this.reportError('Error flushing request queue', err);
@@ -7294,7 +7296,7 @@
      * Log error to global logger and optional user-defined logger.
      */
     RequestBatcher.prototype.reportError = function(msg, err) {
-        logger$1.error.apply(logger$1.error, arguments);
+        logger$2.error.apply(logger$2.error, arguments);
         if (this.errorReporter) {
             try {
                 if (!(err instanceof Error)) {
@@ -7302,12 +7304,12 @@
                 }
                 this.errorReporter(msg, err);
             } catch(err) {
-                logger$1.error(err);
+                logger$2.error(err);
             }
         }
     };
 
-    var logger = console_with_prefix('recorder');
+    var logger$1 = console_with_prefix('recorder');
     var CompressionStream = win['CompressionStream'];
 
     var RECORDER_BATCHER_LIB_CONFIG = {
@@ -7333,65 +7335,78 @@
         return ev.type === EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.data.source);
     }
 
-    var MixpanelRecorder = function(mixpanelInstance) {
-        this._mixpanel = mixpanelInstance;
+    /**
+     * This class encapsulates a single session recording and its lifecycle.
+     * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
+     * @param {String} [options.replayId] - unique uuid for a single replay
+     * @param {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
+     * @param {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
+     * @param {Function} [options.rrwebRecord] - rrweb's `record` function
+     */
+    var SessionRecording = function(options) {
+        this._mixpanel = options.mixpanelInstance;
+        this._onIdleTimeout = options.onIdleTimeout;
+        this._onMaxLengthReached = options.onMaxLengthReached;
+        this._rrwebRecord = options.rrwebRecord;
+
+        this.replayId = options.replayId;
 
         // internal rrweb stopRecording function
         this._stopRecording = null;
 
-        this.recEvents = [];
         this.seqNo = 0;
-        this.replayId = null;
         this.replayStartTime = null;
-        this.sendBatchId = null;
+        this.batchStartUrl = null;
 
         this.idleTimeoutId = null;
         this.maxTimeoutId = null;
 
         this.recordMaxMs = MAX_RECORDING_MS;
         this.recordMinMs = 0;
-        this._initBatcher();
-    };
 
-
-    MixpanelRecorder.prototype._initBatcher = function () {
-        this.batcher = new RequestBatcher('__mprec', {
-            libConfig: RECORDER_BATCHER_LIB_CONFIG,
-            sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
+        // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
+        // this will be important when persistence is introduced
+        var batcherKey = '__mprec_' + this.getConfig('token') + '_' + this.replayId;
+        this.batcher = new RequestBatcher(batcherKey, {
             errorReporter: _.bind(this.reportError, this),
             flushOnlyOnInterval: true,
+            libConfig: RECORDER_BATCHER_LIB_CONFIG,
+            sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
             usePersistence: false
         });
     };
 
-    // eslint-disable-next-line camelcase
-    MixpanelRecorder.prototype.get_config = function(configVar) {
+    SessionRecording.prototype.getConfig = function(configVar) {
         return this._mixpanel.get_config(configVar);
     };
 
-    MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
+    // Alias for getConfig, used by the common addOptOutCheckMixpanelLib function which
+    // reaches into this class instance and expects the snake case version of the function.
+    // eslint-disable-next-line camelcase
+    SessionRecording.prototype.get_config = function(configVar) {
+        return this.getConfig(configVar);
+    };
+
+    SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         if (this._stopRecording !== null) {
-            logger.log('Recording already in progress, skipping startRecording.');
+            logger$1.log('Recording already in progress, skipping startRecording.');
             return;
         }
 
-        this.recordMaxMs = this.get_config('record_max_ms');
+        this.recordMaxMs = this.getConfig('record_max_ms');
         if (this.recordMaxMs > MAX_RECORDING_MS) {
             this.recordMaxMs = MAX_RECORDING_MS;
-            logger.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
+            logger$1.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
         }
 
-        this.recordMinMs = this.get_config('record_min_ms');
+        this.recordMinMs = this.getConfig('record_min_ms');
         if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
             this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
-            logger.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+            logger$1.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
         }
 
-        this.recEvents = [];
-        this.seqNo = 0;
         this.replayStartTime = new Date().getTime();
-
-        this.replayId = _.UUID();
+        this.batchStartUrl = _.info.currentUrl();
 
         if (shouldStopBatcher || this.recordMinMs > 0) {
             // the primary case for shouldStopBatcher is when we're starting recording after a reset
@@ -7406,18 +7421,15 @@
 
         var resetIdleTimeout = _.bind(function () {
             clearTimeout(this.idleTimeoutId);
-            this.idleTimeoutId = setTimeout(_.bind(function () {
-                logger.log('Idle timeout reached, restarting recording.');
-                this.resetRecording();
-            }, this), this.get_config('record_idle_timeout_ms'));
+            this.idleTimeoutId = setTimeout(this._onIdleTimeout, this.getConfig('record_idle_timeout_ms'));
         }, this);
 
-        var blockSelector = this.get_config('record_block_selector');
+        var blockSelector = this.getConfig('record_block_selector');
         if (blockSelector === '' || blockSelector === null) {
             blockSelector = undefined;
         }
 
-        this._stopRecording = record({
+        this._stopRecording = this._rrwebRecord({
             'emit': _.bind(function (ev) {
                 this.batcher.enqueue(ev);
                 if (isUserEvent(ev)) {
@@ -7428,28 +7440,26 @@
                     resetIdleTimeout();
                 }
             }, this),
-            'blockClass': this.get_config('record_block_class'),
+            'blockClass': this.getConfig('record_block_class'),
             'blockSelector': blockSelector,
-            'collectFonts': this.get_config('record_collect_fonts'),
-            'inlineImages': this.get_config('record_inline_images'),
+            'collectFonts': this.getConfig('record_collect_fonts'),
             'maskAllInputs': true,
-            'maskTextClass': this.get_config('record_mask_text_class'),
-            'maskTextSelector': this.get_config('record_mask_text_selector')
+            'maskTextClass': this.getConfig('record_mask_text_class'),
+            'maskTextSelector': this.getConfig('record_mask_text_selector')
         });
 
         resetIdleTimeout();
 
-        this.maxTimeoutId = setTimeout(_.bind(this.resetRecording, this), this.recordMaxMs);
+        this.maxTimeoutId = setTimeout(_.bind(this._onMaxLengthReached, this), this.recordMaxMs);
     };
 
-    MixpanelRecorder.prototype.resetRecording = function () {
-        this.stopRecording();
-        this.startRecording(true);
-    };
-
-    MixpanelRecorder.prototype.stopRecording = function () {
-        if (this._stopRecording !== null) {
-            this._stopRecording();
+    SessionRecording.prototype.stopRecording = function () {
+        if (!this.isRrwebStopped()) {
+            try {
+                this._stopRecording();
+            } catch (err) {
+                this.reportError('Error with rrweb stopRecording: ' + err);
+            }
             this._stopRecording = null;
         }
 
@@ -7461,35 +7471,38 @@
             this.batcher.flush();
             this.batcher.stop();
         }
-        this.replayId = null;
 
         clearTimeout(this.idleTimeoutId);
         clearTimeout(this.maxTimeoutId);
+    };
+
+    SessionRecording.prototype.isRrwebStopped = function () {
+        return this._stopRecording === null;
     };
 
     /**
      * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
      * we stop recording and dump any queued events if the user has opted out.
      */
-    MixpanelRecorder.prototype.flushEventsWithOptOut = function (data, options, cb) {
+    SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
         this._flushEvents(data, options, cb, _.bind(this._onOptOut, this));
     };
 
-    MixpanelRecorder.prototype._onOptOut = function (code) {
+    SessionRecording.prototype._onOptOut = function (code) {
         // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
         if (code === 0) {
-            this.recEvents = [];
             this.stopRecording();
         }
     };
 
-    MixpanelRecorder.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
+    SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
         var onSuccess = _.bind(function (response, responseBody) {
-            // Increment sequence counter only if the request was successful to guarantee ordering.
+            // Update batch specific props only if the request was successful to guarantee ordering.
             // RequestBatcher will always flush the next batch after the previous one succeeds.
             // extra check to see if the replay ID has changed so that we don't increment the seqNo on the wrong replay
             if (response.status === 200 && this.replayId === currentReplayId) {
                 this.seqNo++;
+                this.batchStartUrl = _.info.currentUrl();
             }
             callback({
                 status: 0,
@@ -7499,10 +7512,10 @@
             });
         }, this);
 
-        win['fetch'](this.get_config('api_host') + '/' + this.get_config('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+        win['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
             'method': 'POST',
             'headers': {
-                'Authorization': 'Basic ' + btoa(this.get_config('token') + ':'),
+                'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
                 'Content-Type': 'application/octet-stream'
             },
             'body': reqBody,
@@ -7517,7 +7530,7 @@
         });
     };
 
-    MixpanelRecorder.prototype._flushEvents = addOptOutCheckMixpanelLib(function (data, options, callback) {
+    SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (data, options, callback) {
         const numEvents = data.length;
 
         if (numEvents > 0) {
@@ -7535,12 +7548,15 @@
             var replayLengthMs = data[numEvents - 1].timestamp - this.replayStartTime;
 
             var reqParams = {
-                'distinct_id': String(this._mixpanel.get_distinct_id()),
-                'seq': this.seqNo,
+                '$current_url': this.batchStartUrl,
+                '$lib_version': Config.LIB_VERSION,
                 'batch_start_time': batchStartTime / 1000,
+                'distinct_id': String(this._mixpanel.get_distinct_id()),
+                'mp_lib': 'web',
                 'replay_id': replayId,
                 'replay_length_ms': replayLengthMs,
-                'replay_start_time': this.replayStartTime / 1000
+                'replay_start_time': this.replayStartTime / 1000,
+                'seq': this.seqNo
             };
             var eventsJson = _.JSONEncode(data);
 
@@ -7571,18 +7587,83 @@
     });
 
 
-    MixpanelRecorder.prototype.reportError = function(msg, err) {
-        logger.error.apply(logger.error, arguments);
+    SessionRecording.prototype.reportError = function(msg, err) {
+        logger$1.error.apply(logger$1.error, arguments);
         try {
             if (!err && !(msg instanceof Error)) {
                 msg = new Error(msg);
             }
-            this.get_config('error_reporter')(msg, err);
+            this.getConfig('error_reporter')(msg, err);
         } catch(err) {
-            logger.error(err);
+            logger$1.error(err);
         }
     };
 
+    var logger = console_with_prefix('recorder');
+
+    /**
+     * Recorder API: manages recordings and exposes methods public to the core Mixpanel library.
+     * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
+     */
+    var MixpanelRecorder = function(mixpanelInstance) {
+        this._mixpanel = mixpanelInstance;
+        this.activeRecording = null;
+    };
+
+    MixpanelRecorder.prototype.startRecording = function(shouldStopBatcher) {
+        if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
+            logger.log('Recording already in progress, skipping startRecording.');
+            return;
+        }
+
+        var onIdleTimeout = _.bind(function () {
+            logger.log('Idle timeout reached, restarting recording.');
+            this.resetRecording();
+        }, this);
+
+        var onMaxLengthReached = _.bind(function () {
+            logger.log('Max recording length reached, stopping recording.');
+            this.resetRecording();
+        }, this);
+
+        this.activeRecording = new SessionRecording({
+            mixpanelInstance: this._mixpanel,
+            onIdleTimeout: onIdleTimeout,
+            onMaxLengthReached: onMaxLengthReached,
+            replayId: _.UUID(),
+            rrwebRecord: record
+        });
+
+        this.activeRecording.startRecording(shouldStopBatcher);
+    };
+
+    MixpanelRecorder.prototype.stopRecording = function() {
+        if (this.activeRecording) {
+            this.activeRecording.stopRecording();
+            this.activeRecording = null;
+        }
+    };
+
+    MixpanelRecorder.prototype.resetRecording = function () {
+        this.stopRecording();
+        this.startRecording(true);
+    };
+
+    MixpanelRecorder.prototype.getActiveReplayId = function () {
+        if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
+            return this.activeRecording.replayId;
+        } else {
+            return null;
+        }
+    };
+
+    // getter so that older mixpanel-core versions can still retrieve the replay ID
+    // when pulling the latest recorder bundle from the CDN
+    Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
+        get: function () {
+            return this.getActiveReplayId();
+        }
+    });
 
     win['__mp_recorder'] = MixpanelRecorder;
 
@@ -9049,7 +9130,6 @@
         'record_block_selector':             'img, video',
         'record_collect_fonts':              false,
         'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
-        'record_inline_images':              false,
         'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
         'record_mask_text_selector':         '*',
         'record_max_ms':                     MAX_RECORDING_MS,
@@ -9302,13 +9382,33 @@
 
     MixpanelLib.prototype.get_session_recording_properties = function () {
         var props = {};
-        if (this._recorder) {
-            var replay_id = this._recorder['replayId'];
-            if (replay_id) {
-                props['$mp_replay_id'] = replay_id;
-            }
+        var replay_id = this._get_session_replay_id();
+        if (replay_id) {
+            props['$mp_replay_id'] = replay_id;
         }
         return props;
+    };
+
+    MixpanelLib.prototype.get_session_replay_url = function () {
+        var replay_url = null;
+        var replay_id = this._get_session_replay_id();
+        if (replay_id) {
+            var query_params = _.HTTPBuildQuery({
+                'replay_id': replay_id,
+                'distinct_id': this.get_distinct_id(),
+                'token': this.get_config('token')
+            });
+            replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
+        }
+        return replay_url;
+    };
+
+    MixpanelLib.prototype._get_session_replay_id = function () {
+        var replay_id = null;
+        if (this._recorder) {
+            replay_id = this._recorder['replayId'];
+        }
+        return replay_id || null;
     };
 
     // Private methods
@@ -11037,6 +11137,7 @@
     MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
     MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
     MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
+    MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
     MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
     // MixpanelPersistence Exports
