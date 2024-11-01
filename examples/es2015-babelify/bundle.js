@@ -15129,6 +15129,14 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         blockSelector = undefined;
     }
 
+    // temp monkey patch console warn to see what rrweb is saying when recording fails
+    var realWarn = _utils.window.console.warn;
+    var warns = [];
+    _utils.window.console.warn = function () {
+        realWarn.apply(_utils.window.console, arguments);
+        warns.push(Array.from(arguments));
+    };
+
     this._stopRecording = this._rrwebRecord({
         'emit': _utils._.bind(function (ev) {
             this.batcher.enqueue(ev);
@@ -15148,6 +15156,12 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         'maskTextSelector': this.getConfig('record_mask_text_selector')
     });
 
+    _utils.window.console.warn = realWarn;
+
+    if (typeof this._stopRecording !== 'function') {
+        this.reportError('rrweb failed to start recording, warn logs: ' + warns);
+    }
+
     resetIdleTimeout();
 
     this.maxTimeoutId = setTimeout(_utils._.bind(this._onMaxLengthReached, this), this.recordMaxMs);
@@ -15158,7 +15172,7 @@ SessionRecording.prototype.stopRecording = function () {
         try {
             this._stopRecording();
         } catch (err) {
-            this.reportError('Error with rrweb stopRecording: ' + err);
+            this.reportError('Error with rrweb stopRecording ' + this._stopRecording, err);
         }
         this._stopRecording = null;
     }
