@@ -70,4 +70,14 @@ describe(`SessionRecording`, function() {
     this.sessionRecording.stopRecording();
     expect(this.flushSpy.calledTwice).to.be.true;
   });
+
+  it(`does not start batcher and timeouts when rrweb silently fails (returns undefined)`, function() {
+    this.rrwebRecordStub.returns(undefined);
+    this.sessionRecording.startRecording();
+
+    expect(this.flushSpy.calledOnce).to.be.false;
+    expect(this.sessionRecording.batcher.stopped).to.be.true;
+    expect(this.sessionRecording.idleTimeoutId).to.be.null;
+    expect(this.sessionRecording.maxTimeoutId).to.be.null;
+  });
 });

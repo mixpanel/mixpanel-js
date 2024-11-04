@@ -7426,14 +7426,6 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         blockSelector = undefined;
     }
 
-    // temp monkey patch console warn to see what rrweb is saying when recording fails
-    var realWarn = win.console.warn;
-    var warns = [];
-    win.console.warn = function() {
-        realWarn.apply(win.console, arguments);
-        warns.push(Array.from(arguments));
-    };
-
     this._stopRecording = this._rrwebRecord({
         'emit': _.bind(function (ev) {
             this.batcher.enqueue(ev);
@@ -7453,10 +7445,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         'maskTextSelector': this.getConfig('record_mask_text_selector')
     });
 
-    win.console.warn = realWarn;
-
     if (typeof this._stopRecording !== 'function') {
-        this.reportError('rrweb failed to start recording, warn logs: ' + warns);
+        this.reportError('rrweb failed to start, skipping this recording.');
+        this._stopRecording = null;
+        this.stopRecording(); // stop batcher looping and any timeouts
+        return;
     }
 
     resetIdleTimeout();
@@ -7469,7 +7462,7 @@ SessionRecording.prototype.stopRecording = function () {
         try {
             this._stopRecording();
         } catch (err) {
-            this.reportError('Error with rrweb stopRecording ' + this._stopRecording, err);
+            this.reportError('Error with rrweb stopRecording', err);
         }
         this._stopRecording = null;
     }
