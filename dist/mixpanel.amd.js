@@ -4509,7 +4509,7 @@ define((function () { 'use strict';
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.55.2-rc1'
+        LIB_VERSION: '2.55.2-rc2'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
