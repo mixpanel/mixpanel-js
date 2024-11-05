@@ -4513,7 +4513,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.55.2-rc2'
+        LIB_VERSION: '2.56.0'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
