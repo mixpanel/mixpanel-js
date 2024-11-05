@@ -1,3 +1,11 @@
+**2.56.0** (4 Nov 2024)
+- Recording payloads now include additional metadata: the current URL, library type, and library version.
+- Sourcemaps are now generated for the recorder module.
+- Added debugging method `mixpanel.get_session_replay_url()` which will return a Mixpanel UI link to the session replay if there is an active recording taking place.
+- Refactored session recording module to encapsulate each active recording and its metadata. Added a unit test suite for the new `session-recording.js`.
+- Added some additional error handling for when `stopRecording` fails or rrweb silently fails to start recording.
+- Removed `record_inline_images` option due to buggy behavior in rrweb.
+
 **2.55.1** (27 Aug 2024)
 - Adds a minimum recording length option for session recording
 - Fixes and improvements for session recording batcher to support offline queueing and retry
