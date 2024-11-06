@@ -1,3 +1,8 @@
+/**
+ * Promise polyfill sourced from https://github.com/getify/native-promise-only.
+ * Modified to remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
+ */
+
 /*! Native Promise Only
     v0.8.1 (c) Kyle Simpson
     MIT License: http://getify.mit-license.org
