@@ -28,6 +28,7 @@ var RequestQueue = function (storageKey, options) {
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
         this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
+        this.queueStorage.init();
     }
     this.reportError = options.errorReporter || _.bind(logger.error, logger);
 
@@ -35,8 +36,6 @@ var RequestQueue = function (storageKey, options) {
 
     this.memQueue = [];
     this.initialized = false;
-
-    this.queueStorage.init();
 };
 
 RequestQueue.prototype.ensureInit = function () {

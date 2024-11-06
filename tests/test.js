@@ -64,6 +64,10 @@
                     }
                 });
 
+                if (window.localStorage) {
+                    window.localStorage.clear();
+                }
+
                 if (extra_teardown) {
                     extra_teardown.call(this);
                 }
@@ -800,6 +804,7 @@
                         'c': 'd'
                     }, function(response) {
                         same(response, 1, "tracking still works");
+                        ok(contains_obj(dc1.cookie.props, props), "Super properties saved");
                         clearLibInstance(dc1);
                         start();
                     });
@@ -812,7 +817,6 @@
                         'a': 'b',
                         'c': 'd'
                     }), 'super properties included correctly');
-                    ok(contains_obj(dc1.cookie.props, props), "Super properties saved");
 
                     notOk(cookie.exists(c_name), "cookie 2 should not exist even after tracking/registering");
                 });
@@ -3828,7 +3832,9 @@
                 };
 
                 mpmodule("batch_requests tests", function() {
-                    this.clock = sinon.useFakeTimers();
+                    this.clock = sinon.useFakeTimers({toFake: [
+                        'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
+                    ]});
                     startRecordingXhrRequests.call(this);
                     if (navigator.sendBeacon) {
                         this.sendBeaconSpy = sinon.spy(navigator, 'sendBeacon');
@@ -3841,22 +3847,7 @@
                         clearLibInstance(mixpanel.batchtest);
                     }
                     initBatchLibInstance();
-                    this.printRequests = () => {
-                        for (const request of this.requests) {
-                            console.log('JG_REQUEST: ', getRequestData(request))
-                        }
-                    }
                 }, function() {
-                    // _.each(this.requests, function(request) {
-                    //     // respond to all requests that haven't been responded to so that promises can resolve
-                    //     request.respond(200, {}, '1');
-                    // });
-
-                    // stop();
-                    // setInterval(_.bind(function () {
-                    //     start();
-                    // }, this), 10)
-
                     stopRecordingXhrRequests.call(this);
                     if (this.sendBeaconSpy) {
                         this.sendBeaconSpy.restore();
@@ -4101,7 +4092,6 @@
                         }, this))
                         .then(_.bind(function() {
                             same(this.requests.length, 1, "should not have made any new requests after event was sent");
-                            this.printRequests();
                             start();
                         }, this))
                 });
@@ -4301,7 +4291,6 @@
                             return this.clock.tickAsync(240000);
                         }, this))
                         .then(_.bind(function() {
-                            this.printRequests();
                             same(this.requests.length, 1, "no new requests should have been made");
                             start();
                         }, this))
@@ -4323,7 +4312,6 @@
                             return this.clock.tickAsync(240000);
                         }, this))
                         .then(_.bind(function() {
-                            this.printRequests();
                             same(this.requests.length, 1, "should not have retried failing request after opt-out");
                             start();
                         }, this))
@@ -5498,7 +5486,9 @@
                     setup: function () {
                         this.token = `RECORDER_TEST_TOKEN`;
                         this.startTime = 1723733423402;
-                        this.clock = sinon.useFakeTimers(this.startTime);
+                        this.clock = sinon.useFakeTimers({toFake: [
+                            'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
+                        ]});
                         this.randomStub = sinon.stub(Math, 'random');
                         this.fetchStub = sinon.stub(window, 'fetch');
 
@@ -5672,10 +5662,14 @@
                     same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
 
                     mixpanel.recordertest.start_session_recording();
-                    this.afterRecorderLoaded.call(this, function () {
-                        ok(Boolean(mixpanel.recordertest.get_session_recording_properties()["$mp_replay_id"]), 'replay id is populated in recording properties')
-                        mixpanel.recordertest.stop_session_recording();
-                    });
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            ok(Boolean(mixpanel.recordertest.get_session_recording_properties()["$mp_replay_id"]), 'replay id is populated in recording properties')
+                            mixpanel.recordertest.stop_session_recording();
+                            return this.clock.tickAsync(10 * 1000);
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(start)
                 });
 
                 asyncTest('can get replay link when recording is active', 7, function () {
@@ -5684,15 +5678,19 @@
                     same(mixpanel.recordertest.get_session_replay_url(), null, 'no recording is taking place')
 
                     mixpanel.recordertest.start_session_recording();
-                    this.afterRecorderLoaded.call(this, function () {
-                        var replay_url = new URL(mixpanel.recordertest.get_session_replay_url());
-                        same(replay_url.hostname, 'mixpanel.com');
-                        same(replay_url.pathname, '/projects/replay-redirect');
-                        same(replay_url.searchParams.get('token'), this.token)
-                        ok(replay_url.searchParams.get('replay_id'))
-                        ok(replay_url.searchParams.get('distinct_id'))
-                        mixpanel.recordertest.stop_session_recording();
-                    });
+                    this.waitForRecorderLoad()
+                        .then(_.bind(function () {
+                            var replay_url = new URL(mixpanel.recordertest.get_session_replay_url());
+                            same(replay_url.hostname, 'mixpanel.com');
+                            same(replay_url.pathname, '/projects/replay-redirect');
+                            same(replay_url.searchParams.get('token'), this.token)
+                            ok(replay_url.searchParams.get('replay_id'))
+                            ok(replay_url.searchParams.get('distinct_id'))
+                            mixpanel.recordertest.stop_session_recording();
+                            return this.clock.tickAsync(10 * 1000)
+                        }, this))
+                        .then(this.waitForFetchCalls(1))
+                        .then(start)
                 });
 
                 asyncTest('can manually start a session recording', 5, function () {
@@ -5998,10 +5996,11 @@
                 });
 
                 asyncTest('resets after idle timeout', 14, function () {
-                    this.randomStub.returns(0.02);
-                    this.initMixpanelRecorder({record_sessions_percent: 10});
+                    this.randomStub.restore();
+                    this.initMixpanelRecorder();
+                    mixpanel.recordertest.start_session_recording();
                     this.assertRecorderScript(true);
-
+                    
                     // fake the fetch / response promises since we're testing callback logic
                     this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                     this.responseBlobStub.returns(Promise.resolve(new Blob()));
@@ -6050,6 +6049,13 @@
 
 
                 asyncTest('handles race condition where the recording resets while a request is in flight', 16, function () {
+                    if (!IS_RECORDER_BUNDLED) {
+                        this.clock.restore();
+                        this.clock = sinon.useFakeTimers(this.startTime, {toFake: [
+                            'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
+                        ]});
+                    }
+
                     this.randomStub.returns(0.02);
 
                     this.initMixpanelRecorder({record_sessions_percent: 10});
