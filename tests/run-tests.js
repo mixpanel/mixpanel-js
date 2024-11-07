@@ -4,19 +4,31 @@
         $('#qunit-tests').addClass('hidepass');
     }
 
-    window.mixpanel.init("MIXPANEL_TOKEN",
-    {
-        cookie_name: "test",
-        reset_cookie: true,
-        debug: true,
-        loaded: function(mixpanel) {
-            mixpanel.init("MIXPANEL_NONBATCHING_TOKEN", {
-                batch_requests: false,
+    var initPromise = new Promise(function(resolve) {
+        window.mixpanel.init("MIXPANEL_TOKEN",
+            {
+                cookie_name: "test",
+                reset_cookie: true,
                 debug: true,
-            }, "nonbatching");
-            testMixpanel(mixpanel);
-        }
+                loaded: function(mixpanel) {
+                    mixpanel.init("MIXPANEL_NONBATCHING_TOKEN", {
+                        batch_requests: false,
+                        debug: true,
+                    }, "nonbatching");
+                    resolve(mixpanel);
+                }
+            });
+    });
+    window.initPromise = initPromise;
+    var testAsyncPromise = new Promise(function(resolve) {
+        testAsync(window.mixpanel, resolve);
     });
 
-    testAsync(window.mixpanel);
+    testAsyncPromise
+        .then(function() {
+            return initPromise;
+        })
+        .then(function(mp) {
+            testMixpanel(mp);
+        });
 })(window);
