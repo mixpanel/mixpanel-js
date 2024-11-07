@@ -1,7 +1,7 @@
 import { SharedLock } from './shared-lock';
 import { cheap_guid, console_with_prefix, localStorageSupported, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
 import { LocalStorageWrapper } from './storage/local-storage';
-import { PromisePolyfill } from './promise';
+import { Promise } from './promise';
 
 var logger = console_with_prefix('batch');
 
@@ -40,7 +40,7 @@ var RequestQueue = function (storageKey, options) {
 
 RequestQueue.prototype.ensureInit = function () {
     if (this.initialized) {
-        return PromisePolyfill.resolve();
+        return Promise.resolve();
     }
 
     return this.queueStorage
@@ -80,7 +80,7 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
 
     if (!this.usePersistence) {
         this.memQueue.push(queueEntry);
-        return PromisePolyfill.resolve(true);
+        return Promise.resolve(true);
     } else {
 
         var enqueueItem = _.bind(function () {
@@ -167,7 +167,7 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
                 }, this)
             );
     } else {
-        return PromisePolyfill.resolve(batch);
+        return Promise.resolve(batch);
     }
 };
 
@@ -198,7 +198,7 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
     if (!this.usePersistence) {
-        return PromisePolyfill.resolve(true);
+        return Promise.resolve(true);
     } else {
         var removeFromStorage = _.bind(function () {
             return this.ensureInit()
@@ -302,7 +302,7 @@ var updatePayloads = function (existingItems, itemsToUpdate) {
 RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
     this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
     if (!this.usePersistence) {
-        return PromisePolyfill.resolve(true);
+        return Promise.resolve(true);
     } else {
         return this.lock
             .withLock(
@@ -376,7 +376,7 @@ RequestQueue.prototype.saveToStorage = function (queue) {
         var serialized = JSONStringify(queue);
     } catch (err) {
         this.reportError('Error serializing queue', err);
-        return PromisePolyfill.resolve(false);
+        return Promise.resolve(false);
     }
 
     return this.ensureInit()
@@ -410,7 +410,7 @@ RequestQueue.prototype.clear = function () {
                 }, this)
             );
     } else {
-        return PromisePolyfill.resolve();
+        return Promise.resolve();
     }
 };
 

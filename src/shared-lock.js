@@ -1,4 +1,4 @@
-import { PromisePolyfill } from './promise';
+import { Promise } from './promise';
 import { console_with_prefix, localStorageSupported } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
@@ -45,7 +45,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     var keyZ = key + ':Z';
 
     var delay = function() {
-        return new PromisePolyfill(function (resolve) {
+        return new Promise(function (resolve) {
             if (new Date().getTime() - startTime > timeoutMS) {
                 logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                 storage.removeItem(keyZ);
@@ -59,7 +59,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
 
     var waitFor = function(predicate) {
         if (predicate()) {
-            return PromisePolyfill.resolve();
+            return Promise.resolve();
         } else {
             return delay().then(function () {
                 return waitFor(predicate);
@@ -128,10 +128,10 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
             .catch(function (err) {
                 clearLock();
                 // something went wrong acquiring lock, let caller handle the rejected promise
-                return PromisePolyfill.reject(err);
+                return Promise.reject(err);
             });
     } else {
-        return PromisePolyfill.reject(new Error('localStorage support check failed'));
+        return Promise.reject(new Error('localStorage support check failed'));
     }
 };
 

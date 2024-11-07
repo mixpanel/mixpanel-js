@@ -3,12 +3,12 @@
  * https://developers.google.com/closure/compiler/docs/externs-and-exports
  * @externs
  */
-var PromisePolyfill = {};
+var Promise = {};
 
-PromisePolyfill.resolve = function() {};
-PromisePolyfill.reject = function() {};
-PromisePolyfill.race = function() {};
-PromisePolyfill.all = function() {};
+Promise.resolve = function() {};
+Promise.reject = function() {};
+Promise.race = function() {};
+Promise.all = function() {};
 
-PromisePolyfill.prototype.then = function() {};
-PromisePolyfill.prototype.catch = function() {};
+Promise.prototype.then = function() {};
+Promise.prototype.catch = function() {};

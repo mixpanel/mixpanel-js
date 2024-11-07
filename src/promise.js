@@ -371,4 +371,4 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
     PromisePolyfill = NpoPromise;
 }
 
-export { PromisePolyfill };
+export { PromisePolyfill as Promise };

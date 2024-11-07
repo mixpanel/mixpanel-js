@@ -1,5 +1,5 @@
 import Config from './config';
-import { PromisePolyfill } from './promise';
+import { Promise } from './promise';
 import { RequestQueue } from './request-queue';
 import { console_with_prefix, isOnline, _ } from './utils'; // eslint-disable-line camelcase
 
@@ -112,7 +112,7 @@ RequestBatcher.prototype.scheduleFlush = function(flushMS) {
  * TODO: sendRequest should be promisified in the first place.
  */
 RequestBatcher.prototype.sendRequestPromise = function(data, options) {
-    return new PromisePolyfill(_.bind(function(resolve) {
+    return new Promise(_.bind(function(resolve) {
         this.sendRequest(data, options, resolve);
     }, this));
 };
@@ -131,7 +131,7 @@ RequestBatcher.prototype.sendRequestPromise = function(data, options) {
 RequestBatcher.prototype.flush = function(options) {
     if (this.requestInProgress) {
         logger.log('Flush: Request already in progress');
-        return PromisePolyfill.resolve();
+        return Promise.resolve();
     }
 
     this.requestInProgress = true;
@@ -190,7 +190,7 @@ RequestBatcher.prototype.flush = function(options) {
             if (dataForRequest.length < 1) {
                 this.requestInProgress = false;
                 this.resetFlush();
-                return PromisePolyfill.resolve(); // nothing to do
+                return Promise.resolve(); // nothing to do
             }
 
             var removeItemsFromQueue = _.bind(function () {
@@ -223,7 +223,7 @@ RequestBatcher.prototype.flush = function(options) {
                             this.consecutiveRemovalFailures = 0;
                             if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
                                 this.resetFlush(); // schedule next batch with a delay
-                                return PromisePolyfill.resolve();
+                                return Promise.resolve();
                             } else {
                                 return this.flush(); // handle next batch if the queue isn't empty
                             }
@@ -234,7 +234,7 @@ RequestBatcher.prototype.flush = function(options) {
                             } else {
                                 this.resetFlush();
                             }
-                            return PromisePolyfill.resolve();
+                            return Promise.resolve();
                         }
                     }, this));
             }, this);
@@ -274,7 +274,7 @@ RequestBatcher.prototype.flush = function(options) {
                         retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
                         this.reportError('Error; retry in ' + retryMS + ' ms');
                         this.scheduleFlush(retryMS);
-                        return PromisePolyfill.resolve();
+                        return Promise.resolve();
                     } else if (_.isObject(res) && res.httpStatusCode === 413) {
                         // 413 Payload Too Large
                         if (batch.length > 1) {
@@ -282,7 +282,7 @@ RequestBatcher.prototype.flush = function(options) {
                             this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
                             this.reportError('413 response; reducing batch size to ' + this.batchSize);
                             this.resetFlush();
-                            return PromisePolyfill.resolve();
+                            return Promise.resolve();
                         } else {
                             this.reportError('Single-event request too large; dropping', batch);
                             this.resetBatchSize();
