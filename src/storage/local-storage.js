@@ -1,4 +1,4 @@
-import { Promise } from '../promise';
+import { Promise } from '../promise-polyfill';
 import { _ } from '../utils'; // eslint-disable-line camelcase
 
 /**

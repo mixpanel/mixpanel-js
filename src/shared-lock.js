@@ -1,4 +1,4 @@
-import { Promise } from './promise';
+import { Promise } from './promise-polyfill';
 import { console_with_prefix, localStorageSupported } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');

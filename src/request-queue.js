@@ -1,7 +1,7 @@
 import { SharedLock } from './shared-lock';
 import { cheap_guid, console_with_prefix, localStorageSupported, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
 import { LocalStorageWrapper } from './storage/local-storage';
-import { Promise } from './promise';
+import { Promise } from './promise-polyfill';
 
 var logger = console_with_prefix('batch');
 
