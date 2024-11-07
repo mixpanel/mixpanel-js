@@ -108,7 +108,7 @@ RequestBatcher.prototype.scheduleFlush = function(flushMS) {
 };
 
 /**
- * Send a request using the sendRequest, but promisified.
+ * Send a request using the sendRequest callback, but promisified.
  * TODO: sendRequest should be promisified in the first place.
  */
 RequestBatcher.prototype.sendRequestPromise = function(data, options) {
