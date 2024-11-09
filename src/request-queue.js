@@ -52,7 +52,7 @@ RequestQueue.prototype.ensureInit = function () {
         )
         .catch(
             _.bind(function (err) {
-                this.reportError('Error initializing queue. Disabling persistence', err);
+                this.reportError('Error initializing queue persistence. Disabling persistence', err);
                 this.initialized = true;
                 this.usePersistence = false;
             }, this)
