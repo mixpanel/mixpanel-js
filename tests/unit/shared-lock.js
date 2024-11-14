@@ -37,15 +37,13 @@ describe(`SharedLock`, function() {
   describe(`withLock()`, function() {
     it(`runs the given code`, async function() {
       const sharedArray = [];
-      sharedLock.withLock(function() {
+      sharedLock.withLock(async function() {
         sharedArray.push(`A`);
-        return Promise.resolve();
       });
 
-      const secondLockPromise = sharedLock.withLock(function() {
+      const secondLockPromise = sharedLock.withLock(async function() {
         sharedArray.push(`B`);
         expect(sharedArray).to.eql([`A`, `B`]);
-        return Promise.resolve();
       });
 
       await clock.tickAsync(200);
@@ -58,16 +56,14 @@ describe(`SharedLock`, function() {
       acquireLockForPid(sharedLock, `foobar`);
 
       // this should block until 'foobar' process releases below
-      const firstLockPromise = sharedLock.withLock(function() {
+      const firstLockPromise = sharedLock.withLock(async function() {
         sharedArray.push(`B`);
         expect(sharedArray).to.eql([`A`, `B`]);
-        return Promise.resolve();
       });
 
       // 'foobar' process
-      sharedLock.withLock(function() {
+      sharedLock.withLock(async function() {
         sharedArray.push(`A`);
-        return Promise.resolve();
       }, `foobar`);
 
       await clock.tickAsync(1000);
@@ -88,17 +84,17 @@ describe(`SharedLock`, function() {
 
     it(`throws an error in the outer promise chain when not handled by lockedCB`, async function() {
       const error = new Error(`test error`);
-      
+
       let caughtError = null;
       const lockPromise = sharedLock.withLock(function() {
-        throw error
+        throw error;
       }).catch(function (err) {
         caughtError = err;
       });
-      
+
       await clock.tickAsync(1000);
       await lockPromise;
-      
+
       expect(caughtError).to.equal(error);
     });
 
@@ -109,12 +105,12 @@ describe(`SharedLock`, function() {
 
       it(`runs error callback immediately if setItem throws`, async function() {
         sinon.stub(localStorage, `setItem`).throws(`localStorage disabled`);
-        
+
         let caughtError = null;
         await sharedLock.withLock(() => Promise.resolve()).catch(function (err) {
           caughtError = err;
         });
-        
+
         expect(String(caughtError)).to.equal(`Error: localStorage support check failed`);
       });
 
@@ -128,7 +124,7 @@ describe(`SharedLock`, function() {
         await sharedLock.withLock(() => Promise.resolve()).catch(err => {
           caughtError = err;
         });
-        
+
         expect(String(caughtError)).to.equal(`Error: localStorage support check failed`);
       });
 
@@ -147,7 +143,7 @@ describe(`SharedLock`, function() {
         const lockPromise = sharedLock.withLock(() => Promise.resolve(), `mypid`).catch(err => {
           caughtError = err;
         });
-        
+
         await clock.tickAsync(1000);
         await lockPromise;
 
