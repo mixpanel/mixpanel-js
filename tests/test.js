@@ -805,7 +805,6 @@
                     'c': 'd'
                 }, function(response) {
                     same(response, 1, "tracking still works");
-                    ok(contains_obj(dc1.cookie.props, props), "Super properties saved");
                     clearLibInstance(dc1);
                     start();
                 });
@@ -818,6 +817,7 @@
                     'a': 'b',
                     'c': 'd'
                 }), 'super properties included correctly');
+                ok(contains_obj(dc1.cookie.props, props), "Super properties saved");
 
                 notOk(cookie.exists(c_name), "cookie 2 should not exist even after tracking/registering");
             });
