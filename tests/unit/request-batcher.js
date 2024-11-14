@@ -20,6 +20,7 @@ describe(`RequestBatcher`, function() {
   let batcher;
   let libConfig;
   let clock = null;
+  let fakeSendRequest = null;
 
   function configureBatchSize(batchSize) {
       libConfig.batch_size = batchSize;
@@ -28,19 +29,6 @@ describe(`RequestBatcher`, function() {
 
   function getLocalStorageItems() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY));
-  }
-
-  function fakeSendRequest(httpStatusCode, {error, retryAfter, delay} = {}) {
-    return async function(_data, _options, cb) {
-      if (delay) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-      return cb({
-        httpStatusCode,
-        retryAfter,
-        error,
-      });
-    };
   }
 
   function initBatcher(optionOverrides) {
@@ -66,6 +54,20 @@ describe(`RequestBatcher`, function() {
       clock.restore();
     }
     clock = sinon.useFakeTimers(START_TIME);
+    // uses fake timers for delay
+    fakeSendRequest = function(httpStatusCode, {error, retryAfter, delay} = {}) {
+      return async function(_data, _options, cb) {
+        if (delay) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        return cb({
+          httpStatusCode,
+          retryAfter,
+          error,
+        });
+      };
+    };
+
     localStorage.clear();
 
     initBatcher();
@@ -76,6 +78,7 @@ describe(`RequestBatcher`, function() {
       clock.restore();
     }
     clock = null;
+    fakeSendRequest = null;
   });
 
   describe(`enqueue`, function() {
