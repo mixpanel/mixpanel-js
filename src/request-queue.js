@@ -45,18 +45,14 @@ RequestQueue.prototype.ensureInit = function () {
 
     return this.queueStorage
         .init()
-        .then(
-            _.bind(function () {
-                this.initialized = true;
-            }, this)
-        )
-        .catch(
-            _.bind(function (err) {
-                this.reportError('Error initializing queue persistence. Disabling persistence', err);
-                this.initialized = true;
-                this.usePersistence = false;
-            }, this)
-        );
+        .then(_.bind(function () {
+            this.initialized = true;
+        }, this))
+        .catch(_.bind(function (err) {
+            this.reportError('Error initializing queue persistence. Disabling persistence', err);
+            this.initialized = true;
+            this.usePersistence = false;
+        }, this));
 };
 
 /**
@@ -85,42 +81,32 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
 
         var enqueueItem = _.bind(function () {
             return this.ensureInit()
-                .then(
-                    _.bind(function () {
-                        return this.readFromStorage();
-                    }, this)
-                )
-                .then(
-                    _.bind(function (storedQueue) {
-                        storedQueue.push(queueEntry);
-                        return this.saveToStorage(storedQueue);
-                    }, this)
-                )
-                .then(
-                    _.bind(function (succeeded) {
-                        // only add to in-memory queue when storage succeeds
-                        if (succeeded) {
-                            this.memQueue.push(queueEntry);
-                        }
-                        return succeeded;
-                    }, this)
-                )
-                .catch(
-                    _.bind(function (err) {
-                        this.reportError('Error enqueueing item', err, item);
-                        return false;
-                    }, this)
-                );
+                .then(_.bind(function () {
+                    return this.readFromStorage();
+                }, this))
+                .then(_.bind(function (storedQueue) {
+                    storedQueue.push(queueEntry);
+                    return this.saveToStorage(storedQueue);
+                }, this))
+                .then(_.bind(function (succeeded) {
+                    // only add to in-memory queue when storage succeeds
+                    if (succeeded) {
+                        this.memQueue.push(queueEntry);
+                    }
+                    return succeeded;
+                }, this))
+                .catch(_.bind(function (err) {
+                    this.reportError('Error enqueueing item', err, item);
+                    return false;
+                }, this));
         }, this);
 
         return this.lock
             .withLock(enqueueItem, this.pid)
-            .catch(
-                _.bind(function (err) {
-                    this.reportError('Error acquiring storage lock', err);
-                    return false;
-                }, this)
-            );
+            .catch(_.bind(function (err) {
+                this.reportError('Error acquiring storage lock', err);
+                return false;
+            }, this));
     }
 };
 
@@ -133,39 +119,35 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
 RequestQueue.prototype.fillBatch = function (batchSize) {
     var batch = this.memQueue.slice(0, batchSize);
     if (this.usePersistence && batch.length < batchSize) {
-    // don't need lock just to read events; localStorage is thread-safe
-    // and the worst that could happen is a duplicate send of some
-    // orphaned events, which will be deduplicated on the server side
+        // don't need lock just to read events; localStorage is thread-safe
+        // and the worst that could happen is a duplicate send of some
+        // orphaned events, which will be deduplicated on the server side
         return this.ensureInit()
-            .then(
-                _.bind(function () {
-                    return this.readFromStorage();
-                }, this)
-            )
-            .then(
-                _.bind(function (storedQueue) {
-                    if (storedQueue.length) {
-                    // item IDs already in batch; don't duplicate out of storage
-                        var idsInBatch = {}; // poor man's Set
-                        _.each(batch, function (item) {
-                            idsInBatch[item['id']] = true;
-                        });
+            .then(_.bind(function () {
+                return this.readFromStorage();
+            }, this))
+            .then(_.bind(function (storedQueue) {
+                if (storedQueue.length) {
+                // item IDs already in batch; don't duplicate out of storage
+                    var idsInBatch = {}; // poor man's Set
+                    _.each(batch, function (item) {
+                        idsInBatch[item['id']] = true;
+                    });
 
-                        for (var i = 0; i < storedQueue.length; i++) {
-                            var item = storedQueue[i];
-                            if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
-                                item.orphaned = true;
-                                batch.push(item);
-                                if (batch.length >= batchSize) {
-                                    break;
-                                }
+                    for (var i = 0; i < storedQueue.length; i++) {
+                        var item = storedQueue[i];
+                        if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                            item.orphaned = true;
+                            batch.push(item);
+                            if (batch.length >= batchSize) {
+                                break;
                             }
                         }
                     }
+                }
 
-                    return batch;
-                }, this)
-            );
+                return batch;
+            }, this));
     } else {
         return Promise.resolve(batch);
     }
@@ -202,77 +184,61 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
     } else {
         var removeFromStorage = _.bind(function () {
             return this.ensureInit()
-                .then(
-                    _.bind(function () {
-                        return this.readFromStorage();
-                    }, this)
-                )
-                .then(
-                    _.bind(function (storedQueue) {
-                        storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-                        return this.saveToStorage(storedQueue);
-                    }, this)
-                )
-                .then(
-                    _.bind(function () {
-                        return this.readFromStorage();
-                    }, this)
-                )
-                .then(
-                    _.bind(function (storedQueue) {
-                        // an extra check: did storage report success but somehow
-                        // the items are still there?
-                        for (var i = 0; i < storedQueue.length; i++) {
-                            var item = storedQueue[i];
-                            if (item['id'] && !!idSet[item['id']]) {
-                                throw new Error('Item not removed from storage');
-                            }
+                .then(_.bind(function () {
+                    return this.readFromStorage();
+                }, this))
+                .then(_.bind(function (storedQueue) {
+                    storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                    return this.saveToStorage(storedQueue);
+                }, this))
+                .then(_.bind(function () {
+                    return this.readFromStorage();
+                }, this))
+                .then(_.bind(function (storedQueue) {
+                    // an extra check: did storage report success but somehow
+                    // the items are still there?
+                    for (var i = 0; i < storedQueue.length; i++) {
+                        var item = storedQueue[i];
+                        if (item['id'] && !!idSet[item['id']]) {
+                            throw new Error('Item not removed from storage');
                         }
-                        return true;
-                    }, this)
-                )
-                .catch(
-                    _.bind(function (err) {
-                        this.reportError('Error removing items', err, ids);
-                        return false;
-                    }, this)
-                );
+                    }
+                    return true;
+                }, this))
+                .catch(_.bind(function (err) {
+                    this.reportError('Error removing items', err, ids);
+                    return false;
+                }, this));
         }, this);
 
         return this.lock
             .withLock(removeFromStorage, this.pid)
-            .catch(
-                _.bind(function (err) {
-                    this.reportError('Error acquiring storage lock', err);
-                    if (!localStorageSupported(this.queueStorage.storage, true)) {
-                        // Looks like localStorage writes have stopped working sometime after
-                        // initialization (probably full), and so nobody can acquire locks
-                        // anymore. Consider it temporarily safe to remove items without the
-                        // lock, since nobody's writing successfully anyway.
-                        return removeFromStorage()
-                            .then(
-                                _.bind(function (success) {
-                                    if (!success) {
-                                        // OK, we couldn't even write out the smaller queue. Try clearing it
-                                        // entirely.
-                                        return this.queueStorage.removeItem(this.storageKey).then(function () {
-                                            return success;
-                                        });
-                                    }
+            .catch(_.bind(function (err) {
+                this.reportError('Error acquiring storage lock', err);
+                if (!localStorageSupported(this.queueStorage.storage, true)) {
+                    // Looks like localStorage writes have stopped working sometime after
+                    // initialization (probably full), and so nobody can acquire locks
+                    // anymore. Consider it temporarily safe to remove items without the
+                    // lock, since nobody's writing successfully anyway.
+                    return removeFromStorage()
+                        .then(_.bind(function (success) {
+                            if (!success) {
+                                // OK, we couldn't even write out the smaller queue. Try clearing it
+                                // entirely.
+                                return this.queueStorage.removeItem(this.storageKey).then(function () {
                                     return success;
-                                }, this)
-                            )
-                            .catch(
-                                _.bind(function (err) {
-                                    this.reportError('Error clearing queue', err);
-                                    return false;
-                                }, this)
-                            );
-                    } else {
-                        return false;
-                    }
-                }, this)
-            );
+                                });
+                            }
+                            return success;
+                        }, this))
+                        .catch(_.bind(function (err) {
+                            this.reportError('Error clearing queue', err);
+                            return false;
+                        }, this));
+                } else {
+                    return false;
+                }
+            }, this));
     }
 };
 
@@ -305,35 +271,24 @@ RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
         return Promise.resolve(true);
     } else {
         return this.lock
-            .withLock(
-                _.bind(function lockAcquired() {
-                    return this.ensureInit()
-                        .then(
-                            _.bind(function () {
-                                return this.readFromStorage();
-                            }, this)
-                        )
-                        .then(
-                            _.bind(function (storedQueue) {
-                                storedQueue = updatePayloads(storedQueue, itemsToUpdate);
-                                return this.saveToStorage(storedQueue);
-                            }, this)
-                        )
-                        .catch(
-                            _.bind(function (err) {
-                                this.reportError('Error updating items', itemsToUpdate, err);
-                                return false;
-                            }, this)
-                        );
-                }, this),
-                this.pid
-            )
-            .catch(
-                _.bind(function (err) {
-                    this.reportError('Error acquiring storage lock', err);
-                    return false;
-                }, this)
-            );
+            .withLock(_.bind(function lockAcquired() {
+                return this.ensureInit()
+                    .then(_.bind(function () {
+                        return this.readFromStorage();
+                    }, this))
+                    .then(_.bind(function (storedQueue) {
+                        storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                        return this.saveToStorage(storedQueue);
+                    }, this))
+                    .catch(_.bind(function (err) {
+                        this.reportError('Error updating items', itemsToUpdate, err);
+                        return false;
+                    }, this));
+            }, this), this.pid)
+            .catch(_.bind(function (err) {
+                this.reportError('Error acquiring storage lock', err);
+                return false;
+            }, this));
     }
 };
 
@@ -343,29 +298,23 @@ RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
  */
 RequestQueue.prototype.readFromStorage = function () {
     return this.ensureInit()
-        .then(
-            _.bind(function () {
-                return this.queueStorage.getItem(this.storageKey);
-            }, this)
-        )
-        .then(
-            _.bind(function (storageEntry) {
-                if (storageEntry) {
-                    storageEntry = JSONParse(storageEntry);
-                    if (!_.isArray(storageEntry)) {
-                        this.reportError('Invalid storage entry:', storageEntry);
-                        storageEntry = null;
-                    }
+        .then(_.bind(function () {
+            return this.queueStorage.getItem(this.storageKey);
+        }, this))
+        .then(_.bind(function (storageEntry) {
+            if (storageEntry) {
+                storageEntry = JSONParse(storageEntry);
+                if (!_.isArray(storageEntry)) {
+                    this.reportError('Invalid storage entry:', storageEntry);
+                    storageEntry = null;
                 }
-                return storageEntry || [];
-            }, this)
-        )
-        .catch(
-            _.bind(function (err) {
-                this.reportError('Error retrieving queue', err);
-                return [];
-            }, this)
-        );
+            }
+            return storageEntry || [];
+        }, this))
+        .catch(_.bind(function (err) {
+            this.reportError('Error retrieving queue', err);
+            return [];
+        }, this));
 };
 
 /**
@@ -380,20 +329,16 @@ RequestQueue.prototype.saveToStorage = function (queue) {
     }
 
     return this.ensureInit()
-        .then(
-            _.bind(function () {
-                return this.queueStorage.setItem(this.storageKey, serialized);
-            }, this)
-        )
+        .then(_.bind(function () {
+            return this.queueStorage.setItem(this.storageKey, serialized);
+        }, this))
         .then(function () {
             return true;
         })
-        .catch(
-            _.bind(function (err) {
-                this.reportError('Error saving queue', err);
-                return false;
-            }, this)
-        );
+        .catch(_.bind(function (err) {
+            this.reportError('Error saving queue', err);
+            return false;
+        }, this));
 };
 
 /**
@@ -404,11 +349,9 @@ RequestQueue.prototype.clear = function () {
 
     if (this.usePersistence) {
         return this.ensureInit()
-            .then(
-                _.bind(function () {
-                    return this.queueStorage.removeItem(this.storageKey);
-                }, this)
-            );
+            .then(_.bind(function () {
+                return this.queueStorage.removeItem(this.storageKey);
+            }, this));
     } else {
         return Promise.resolve();
     }
