@@ -40,17 +40,7 @@
                     clearLibInstance(mixpanel.test);
                 }
 
-                if (mixpanel.mp_loader_test) {
-                    clearLibInstance(mixpanel.mp_loader_test);
-                }
-
-                if (mixpanel.pageviews) {
-                    clearLibInstance(mixpanel.pageviews);
-                }
-
-                if (mixpanel.pageviews_pathandquery) {
-                    clearLibInstance(mixpanel.pageviews_pathandquery);
-                }
+                clearAllLibInstances();
 
                 // Necessary because the alias tests can't clean up after themselves, as there is no callback.
                 _.each(document.cookie.split(';'), function(c) {
@@ -178,6 +168,20 @@
         }
 
         delete mixpanel[name];
+    }
+
+    function clearAllLibInstances() {
+        _.each(mixpanel, function(maybeLibInstance) {
+            if (
+                typeof(maybeLibInstance) === 'object'
+                && maybeLibInstance.config
+                && maybeLibInstance.config.name
+                && maybeLibInstance.config.name !== 'mixpanel'
+                && maybeLibInstance.config.name !== 'nonbatching' // set in the HTML wrapper, don't clear
+            ) {
+                clearLibInstance(maybeLibInstance);
+            }
+        });
     }
 
     var append_fixture = function(a) {
@@ -1029,8 +1033,6 @@
                     'foo': 'bar'
                 }, function(response) {
                     same(response, 1, "tracking still works");
-                    clearLibInstance(ut1);
-                    clearLibInstance(ut2);
                     start();
                 });
 
@@ -1065,7 +1067,6 @@
                     'foo': 'bar'
                 }, function(response) {
                     same(response, 1, "tracking still works");
-                    clearLibInstance(ut);
                     start();
                 });
 
@@ -1108,8 +1109,6 @@
                     'foo': 'bar'
                 }, function(response) {
                     same(response, 1, "tracking still works");
-                    clearLibInstance(instance1);
-                    clearLibInstance(instance2);
                     start();
                 });
 
@@ -1173,12 +1172,7 @@
         test("init accepts mp_loader config", 1, function() {
             mixpanel.init('mp-loader-test-token', {mp_loader: 'gtm-wrapper'}, 'mp_loader_test');
 
-            stop();
-            var event = mixpanel.mp_loader_test.track("check current url (loader)", {}, function () {
-                clearLibInstance(mixpanel.mp_loader_test);
-                start();
-            });
-
+            var event = mixpanel.mp_loader_test.track("check current url (loader)", {});
             var props = event.properties;
             equal(props["mp_loader"], "gtm-wrapper", "mp_loader is properly set");
         });
