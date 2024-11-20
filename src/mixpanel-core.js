@@ -2,6 +2,7 @@
 import Config from './config';
 import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice } from './utils';
 import { window } from './window';
+import { Autocapture } from './autocapture';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -364,10 +365,8 @@ MixpanelLib.prototype._init = function(token, config, name) {
         }, '');
     }
 
-    var track_pageview_option = this.get_config('track_pageview');
-    if (track_pageview_option) {
-        this._init_url_change_tracking(track_pageview_option);
-    }
+    this.autocapture = new Autocapture(this);
+    this.autocapture.init();
 
     if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
         this.start_session_recording();
@@ -490,55 +489,6 @@ MixpanelLib.prototype._track_dom = function(DomClass, args) {
 
     var dt = new DomClass().init(this);
     return dt.track.apply(dt, args);
-};
-
-MixpanelLib.prototype._init_url_change_tracking = function(track_pageview_option) {
-    var previous_tracked_url = '';
-    var tracked = this.track_pageview();
-    if (tracked) {
-        previous_tracked_url = _.info.currentUrl();
-    }
-
-    if (_.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
-        window.addEventListener('popstate', function() {
-            window.dispatchEvent(new Event('mp_locationchange'));
-        });
-        window.addEventListener('hashchange', function() {
-            window.dispatchEvent(new Event('mp_locationchange'));
-        });
-        var nativePushState = window.history.pushState;
-        if (typeof nativePushState === 'function') {
-            window.history.pushState = function(state, unused, url) {
-                nativePushState.call(window.history, state, unused, url);
-                window.dispatchEvent(new Event('mp_locationchange'));
-            };
-        }
-        var nativeReplaceState = window.history.replaceState;
-        if (typeof nativeReplaceState === 'function') {
-            window.history.replaceState = function(state, unused, url) {
-                nativeReplaceState.call(window.history, state, unused, url);
-                window.dispatchEvent(new Event('mp_locationchange'));
-            };
-        }
-        window.addEventListener('mp_locationchange', function() {
-            var current_url = _.info.currentUrl();
-            var should_track = false;
-            if (track_pageview_option === 'full-url') {
-                should_track = current_url !== previous_tracked_url;
-            } else if (track_pageview_option === 'url-with-path-and-query-string') {
-                should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
-            } else if (track_pageview_option === 'url-with-path') {
-                should_track = current_url.split('#')[0].split('?')[0] !== previous_tracked_url.split('#')[0].split('?')[0];
-            }
-
-            if (should_track) {
-                var tracked = this.track_pageview();
-                if (tracked) {
-                    previous_tracked_url = current_url;
-                }
-            }
-        }.bind(this));
-    }
 };
 
 /**
