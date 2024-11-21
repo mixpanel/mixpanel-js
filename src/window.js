@@ -11,7 +11,9 @@ if (typeof(window) === 'undefined') {
             referrer: ''
         },
         screen: { width: 0, height: 0 },
-        location: loc
+        location: loc,
+        addEventListener: function() {},
+        removeEventListener: function() {}
     };
 } else {
     win = window;
