@@ -10974,7 +10974,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":19}],5:[function(require,module,exports){
+},{"./utils":21}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -10982,7 +10982,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.56.0'
+    LIB_VERSION: '2.57.0-rc1'
 };
 
 exports['default'] = Config;
@@ -11151,7 +11151,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":19}],7:[function(require,module,exports){
+},{"./utils":21}],7:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -11464,7 +11464,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":19}],8:[function(require,module,exports){
+},{"./utils":21}],8:[function(require,module,exports){
 // For loading separate bundles asynchronously via script tag
 // so that we don't load them until they are needed at runtime.
 'use strict';
@@ -11518,7 +11518,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)(_bundleLoaders.loadNoop);
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"../mixpanel-core":10,"../recorder":14,"./bundle-loaders":8}],10:[function(require,module,exports){
+},{"../mixpanel-core":10,"../recorder":15,"./bundle-loaders":8}],10:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -12447,7 +12447,7 @@ MixpanelLib.prototype._track_or_batch = function (options, callback) {
     }, this);
 
     if (this._batch_requests && !should_send_immediately) {
-        batcher.enqueue(truncated_data, function (succeeded) {
+        batcher.enqueue(truncated_data).then(function (succeeded) {
             if (succeeded) {
                 callback(1, truncated_data);
             } else {
@@ -13823,7 +13823,7 @@ function init_as_module(bundle_loader) {
     return mixpanel_master;
 }
 
-},{"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./request-batcher":16,"./utils":19}],11:[function(require,module,exports){
+},{"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./request-batcher":17,"./utils":21}],11:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -14007,7 +14007,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":4,"./gdpr-utils":7,"./utils":19}],12:[function(require,module,exports){
+},{"./api-actions":4,"./gdpr-utils":7,"./utils":21}],12:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -14487,7 +14487,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":4,"./gdpr-utils":7,"./utils":19}],13:[function(require,module,exports){
+},{"./api-actions":4,"./gdpr-utils":7,"./utils":21}],13:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -14917,7 +14917,372 @@ exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":4,"./utils":19}],14:[function(require,module,exports){
+},{"./api-actions":4,"./utils":21}],14:[function(require,module,exports){
+/**
+ * Promise polyfill sourced from https://github.com/getify/native-promise-only.
+ * Modified to remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
+ */
+
+/*! Native Promise Only
+    v0.8.1 (c) Kyle Simpson
+    MIT License: http://getify.mit-license.org
+*/
+
+/*jshint validthis:true */
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+var builtInProp,
+    cycle,
+    schedulingQueue,
+    ToString = Object.prototype.toString,
+    timer = setTimeout;
+
+// dammit, IE8.
+try {
+    Object.defineProperty({}, 'x', {});
+    builtInProp = function builtInProp(obj, name, val, config) {
+        return Object.defineProperty(obj, name, {
+            value: val,
+            writable: true,
+            configurable: config !== false
+        });
+    };
+} catch (err) {
+    builtInProp = function builtInProp(obj, name, val) {
+        obj[name] = val;
+        return obj;
+    };
+}
+
+// Note: using a queue instead of array for efficiency
+schedulingQueue = (function Queue() {
+    var first, last, item;
+
+    function Item(fn, self) {
+        this.fn = fn;
+        this.self = self;
+        this.next = void 0;
+    }
+
+    return {
+        add: function add(fn, self) {
+            item = new Item(fn, self);
+            if (last) {
+                last.next = item;
+            } else {
+                first = item;
+            }
+            last = item;
+            item = void 0;
+        },
+        drain: function drain() {
+            var f = first;
+            first = last = cycle = void 0;
+
+            while (f) {
+                f.fn.call(f.self);
+                f = f.next;
+            }
+        }
+    };
+})();
+
+function schedule(fn, self) {
+    schedulingQueue.add(fn, self);
+    if (!cycle) {
+        cycle = timer(schedulingQueue.drain);
+    }
+}
+
+// promise duck typing
+function isThenable(o) {
+    var _then,
+        oType = typeof o;
+
+    if (o !== null && (oType === 'object' || oType === 'function')) {
+        _then = o.then;
+    }
+    return typeof _then === 'function' ? _then : false;
+}
+
+function notify() {
+    for (var i = 0; i < this.chain.length; i++) {
+        notifyIsolated(this, this.state === 1 ? this.chain[i].success : this.chain[i].failure, this.chain[i]);
+    }
+    this.chain.length = 0;
+}
+
+// NOTE: This is a separate function to isolate
+// the `try..catch` so that other code can be
+// optimized better
+function notifyIsolated(self, cb, chain) {
+    var ret, _then;
+    try {
+        if (cb === false) {
+            chain.reject(self.msg);
+        } else {
+            if (cb === true) {
+                ret = self.msg;
+            } else {
+                ret = cb.call(void 0, self.msg);
+            }
+
+            if (ret === chain.promise) {
+                chain.reject(TypeError('Promise-chain cycle'));
+            }
+            // eslint-disable-next-line no-cond-assign
+            else if (_then = isThenable(ret)) {
+                    _then.call(ret, chain.resolve, chain.reject);
+                } else {
+                    chain.resolve(ret);
+                }
+        }
+    } catch (err) {
+        chain.reject(err);
+    }
+}
+
+function resolve(msg) {
+    var _then,
+        self = this;
+
+    // already triggered?
+    if (self.triggered) {
+        return;
+    }
+
+    self.triggered = true;
+
+    // unwrap
+    if (self.def) {
+        self = self.def;
+    }
+
+    try {
+        // eslint-disable-next-line no-cond-assign
+        if (_then = isThenable(msg)) {
+            schedule(function () {
+                var defWrapper = new MakeDefWrapper(self);
+                try {
+                    _then.call(msg, function $resolve$() {
+                        resolve.apply(defWrapper, arguments);
+                    }, function $reject$() {
+                        reject.apply(defWrapper, arguments);
+                    });
+                } catch (err) {
+                    reject.call(defWrapper, err);
+                }
+            });
+        } else {
+            self.msg = msg;
+            self.state = 1;
+            if (self.chain.length > 0) {
+                schedule(notify, self);
+            }
+        }
+    } catch (err) {
+        reject.call(new MakeDefWrapper(self), err);
+    }
+}
+
+function reject(msg) {
+    var self = this;
+
+    // already triggered?
+    if (self.triggered) {
+        return;
+    }
+
+    self.triggered = true;
+
+    // unwrap
+    if (self.def) {
+        self = self.def;
+    }
+
+    self.msg = msg;
+    self.state = 2;
+    if (self.chain.length > 0) {
+        schedule(notify, self);
+    }
+}
+
+function iteratePromises(Constructor, arr, resolver, rejecter) {
+    for (var idx = 0; idx < arr.length; idx++) {
+        (function IIFE(idx) {
+            Constructor.resolve(arr[idx]).then(function $resolver$(msg) {
+                resolver(idx, msg);
+            }, rejecter);
+        })(idx);
+    }
+}
+
+function MakeDefWrapper(self) {
+    this.def = self;
+    this.triggered = false;
+}
+
+function MakeDef(self) {
+    this.promise = self;
+    this.state = 0;
+    this.triggered = false;
+    this.chain = [];
+    this.msg = void 0;
+}
+
+function NpoPromise(executor) {
+    if (typeof executor !== 'function') {
+        throw TypeError('Not a function');
+    }
+
+    if (this.__NPO__ !== 0) {
+        throw TypeError('Not a promise');
+    }
+
+    // instance shadowing the inherited "brand"
+    // to signal an already "initialized" promise
+    this.__NPO__ = 1;
+
+    var def = new MakeDef(this);
+
+    this['then'] = function then(success, failure) {
+        var o = {
+            success: typeof success === 'function' ? success : true,
+            failure: typeof failure === 'function' ? failure : false
+        };
+        // Note: `then(..)` itself can be borrowed to be used against
+        // a different promise constructor for making the chained promise,
+        // by substituting a different `this` binding.
+        o.promise = new this.constructor(function extractChain(resolve, reject) {
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            o.resolve = resolve;
+            o.reject = reject;
+        });
+        def.chain.push(o);
+
+        if (def.state !== 0) {
+            schedule(notify, def);
+        }
+
+        return o.promise;
+    };
+    this['catch'] = function $catch$(failure) {
+        return this.then(void 0, failure);
+    };
+
+    try {
+        executor.call(void 0, function publicResolve(msg) {
+            resolve.call(def, msg);
+        }, function publicReject(msg) {
+            reject.call(def, msg);
+        });
+    } catch (err) {
+        reject.call(def, err);
+    }
+}
+
+var PromisePrototype = builtInProp({}, 'constructor', NpoPromise,
+/*configurable=*/false);
+
+// Note: Android 4 cannot use `Object.defineProperty(..)` here
+NpoPromise.prototype = PromisePrototype;
+
+// built-in "brand" to signal an "uninitialized" promise
+builtInProp(PromisePrototype, '__NPO__', 0,
+/*configurable=*/false);
+
+builtInProp(NpoPromise, 'resolve', function Promise$resolve(msg) {
+    var Constructor = this;
+
+    // spec mandated checks
+    // note: best "isPromise" check that's practical for now
+    if (msg && typeof msg === 'object' && msg.__NPO__ === 1) {
+        return msg;
+    }
+
+    return new Constructor(function executor(resolve, reject) {
+        if (typeof resolve !== 'function' || typeof reject !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        resolve(msg);
+    });
+});
+
+builtInProp(NpoPromise, 'reject', function Promise$reject(msg) {
+    return new this(function executor(resolve, reject) {
+        if (typeof resolve !== 'function' || typeof reject !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        reject(msg);
+    });
+});
+
+builtInProp(NpoPromise, 'all', function Promise$all(arr) {
+    var Constructor = this;
+
+    // spec mandated checks
+    if (ToString.call(arr) !== '[object Array]') {
+        return Constructor.reject(TypeError('Not an array'));
+    }
+    if (arr.length === 0) {
+        return Constructor.resolve([]);
+    }
+
+    return new Constructor(function executor(resolve, reject) {
+        if (typeof resolve !== 'function' || typeof reject !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        var len = arr.length,
+            msgs = Array(len),
+            count = 0;
+
+        iteratePromises(Constructor, arr, function resolver(idx, msg) {
+            msgs[idx] = msg;
+            if (++count === len) {
+                resolve(msgs);
+            }
+        }, reject);
+    });
+});
+
+builtInProp(NpoPromise, 'race', function Promise$race(arr) {
+    var Constructor = this;
+
+    // spec mandated checks
+    if (ToString.call(arr) !== '[object Array]') {
+        return Constructor.reject(TypeError('Not an array'));
+    }
+
+    return new Constructor(function executor(resolve, reject) {
+        if (typeof resolve !== 'function' || typeof reject !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        iteratePromises(Constructor, arr, function resolver(idx, msg) {
+            resolve(msg);
+        }, reject);
+    });
+});
+
+var PromisePolyfill;
+if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
+    exports.Promise = PromisePolyfill = Promise;
+} else {
+    exports.Promise = PromisePolyfill = NpoPromise;
+}
+
+exports.Promise = PromisePolyfill;
+
+},{}],15:[function(require,module,exports){
 'use strict';
 
 var _rrweb = require('rrweb');
@@ -14996,7 +15361,7 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
 
 _utils.window['__mp_recorder'] = MixpanelRecorder;
 
-},{"../utils":19,"./session-recording":15,"rrweb":3}],15:[function(require,module,exports){
+},{"../utils":21,"./session-recording":16,"rrweb":3}],16:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -15305,7 +15670,7 @@ SessionRecording.prototype.reportError = function (msg, err) {
 
 exports.SessionRecording = SessionRecording;
 
-},{"../config":5,"../gdpr-utils":7,"../request-batcher":16,"../utils":19,"@rrweb/types":2}],16:[function(require,module,exports){
+},{"../config":5,"../gdpr-utils":7,"../request-batcher":17,"../utils":21,"@rrweb/types":2}],17:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -15317,6 +15682,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'd
 var _config = require('./config');
 
 var _config2 = _interopRequireDefault(_config);
+
+var _promisePolyfill = require('./promise-polyfill');
 
 var _requestQueue = require('./request-queue');
 
@@ -15339,7 +15706,8 @@ var RequestBatcher = function RequestBatcher(storageKey, options) {
     this.errorReporter = options.errorReporter;
     this.queue = new _requestQueue.RequestQueue(storageKey, {
         errorReporter: _utils._.bind(this.reportError, this),
-        storage: options.storage,
+        queueStorage: options.queueStorage,
+        sharedLockStorage: options.sharedLockStorage,
         usePersistence: options.usePersistence
     });
 
@@ -15367,8 +15735,8 @@ var RequestBatcher = function RequestBatcher(storageKey, options) {
 /**
  * Add one item to queue.
  */
-RequestBatcher.prototype.enqueue = function (item, cb) {
-    this.queue.enqueue(item, this.flushInterval, cb);
+RequestBatcher.prototype.enqueue = function (item) {
+    return this.queue.enqueue(item, this.flushInterval);
 };
 
 /**
@@ -15378,7 +15746,7 @@ RequestBatcher.prototype.enqueue = function (item, cb) {
 RequestBatcher.prototype.start = function () {
     this.stopped = false;
     this.consecutiveRemovalFailures = 0;
-    this.flush();
+    return this.flush();
 };
 
 /**
@@ -15396,7 +15764,7 @@ RequestBatcher.prototype.stop = function () {
  * Clear out queue.
  */
 RequestBatcher.prototype.clear = function () {
-    this.queue.clear();
+    return this.queue.clear();
 };
 
 /**
@@ -15429,6 +15797,16 @@ RequestBatcher.prototype.scheduleFlush = function (flushMS) {
 };
 
 /**
+ * Send a request using the sendRequest callback, but promisified.
+ * TODO: sendRequest should be promisified in the first place.
+ */
+RequestBatcher.prototype.sendRequestPromise = function (data, options) {
+    return new _promisePolyfill.Promise(_utils._.bind(function (resolve) {
+        this.sendRequest(data, options, resolve);
+    }, this));
+};
+
+/**
  * Flush one batch to network. Depending on success/failure modes, it will either
  * remove the batch from the queue or leave it in for retry, and schedule the next
  * flush. In cases of most network or API failures, it will back off exponentially
@@ -15439,18 +15817,20 @@ RequestBatcher.prototype.scheduleFlush = function (flushMS) {
  * sendBeacon offers no callbacks or status indications)
  */
 RequestBatcher.prototype.flush = function (options) {
-    try {
+    if (this.requestInProgress) {
+        logger.log('Flush: Request already in progress');
+        return _promisePolyfill.Promise.resolve();
+    }
 
-        if (this.requestInProgress) {
-            logger.log('Flush: Request already in progress');
-            return;
-        }
+    this.requestInProgress = true;
 
-        options = options || {};
-        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
-        var startTime = new Date().getTime();
-        var currentBatchSize = this.batchSize;
-        var batch = this.queue.fillBatch(currentBatchSize);
+    options = options || {};
+    var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+    var startTime = new Date().getTime();
+    var currentBatchSize = this.batchSize;
+
+    return this.queue.fillBatch(currentBatchSize).then(_utils._.bind(function (batch) {
+
         // if there's more items in the queue than the batch size, attempt
         // to flush again after the current batch is done.
         var attemptSecondaryFlush = batch.length === currentBatchSize;
@@ -15489,12 +15869,54 @@ RequestBatcher.prototype.flush = function (options) {
             }
             transformedItems[item['id']] = payload;
         }, this);
+
         if (dataForRequest.length < 1) {
+            this.requestInProgress = false;
             this.resetFlush();
-            return; // nothing to do
+            return _promisePolyfill.Promise.resolve(); // nothing to do
         }
 
-        this.requestInProgress = true;
+        var removeItemsFromQueue = _utils._.bind(function () {
+            return this.queue.removeItemsByID(_utils._.map(batch, function (item) {
+                return item['id'];
+            })).then(_utils._.bind(function (succeeded) {
+                // client-side dedupe
+                _utils._.each(batch, _utils._.bind(function (item) {
+                    var itemId = item['id'];
+                    if (itemId) {
+                        this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
+                        this.itemIdsSentSuccessfully[itemId]++;
+                        if (this.itemIdsSentSuccessfully[itemId] > 5) {
+                            this.reportError('[dupe] item ID sent too many times', {
+                                item: item,
+                                batchSize: batch.length,
+                                timesSent: this.itemIdsSentSuccessfully[itemId]
+                            });
+                        }
+                    } else {
+                        this.reportError('[dupe] found item with no ID while removing', { item: item });
+                    }
+                }, this));
+
+                if (succeeded) {
+                    this.consecutiveRemovalFailures = 0;
+                    if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
+                        this.resetFlush(); // schedule next batch with a delay
+                        return _promisePolyfill.Promise.resolve();
+                    } else {
+                        return this.flush(); // handle next batch if the queue isn't empty
+                    }
+                } else {
+                        if (++this.consecutiveRemovalFailures > 5) {
+                            this.reportError('Too many queue failures; disabling batching system.');
+                            this.stopAllBatching();
+                        } else {
+                            this.resetFlush();
+                        }
+                        return _promisePolyfill.Promise.resolve();
+                    }
+            }, this));
+        }, this);
 
         var batchSendCallback = _utils._.bind(function (res) {
             this.requestInProgress = false;
@@ -15504,13 +15926,12 @@ RequestBatcher.prototype.flush = function (options) {
                 // handle API response in a try-catch to make sure we can reset the
                 // flush operation if something goes wrong
 
-                var removeItemsFromQueue = false;
                 if (options.unloading) {
                     // update persisted data to include hook transformations
-                    this.queue.updatePayloads(transformedItems);
+                    return this.queue.updatePayloads(transformedItems);
                 } else if (_utils._.isObject(res) && res.error === 'timeout' && new Date().getTime() - startTime >= timeoutMS) {
                     this.reportError('Network timeout; retrying');
-                    this.flush();
+                    return this.flush();
                 } else if (_utils._.isObject(res) && (res.httpStatusCode >= 500 || res.httpStatusCode === 429 || res.httpStatusCode <= 0 && !(0, _utils.isOnline)() || res.error === 'timeout')) {
                     // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.flushInterval * 2;
@@ -15520,6 +15941,7 @@ RequestBatcher.prototype.flush = function (options) {
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
                     this.reportError('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
+                    return _promisePolyfill.Promise.resolve();
                 } else if (_utils._.isObject(res) && res.httpStatusCode === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
@@ -15527,56 +15949,16 @@ RequestBatcher.prototype.flush = function (options) {
                         this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
                         this.reportError('413 response; reducing batch size to ' + this.batchSize);
                         this.resetFlush();
+                        return _promisePolyfill.Promise.resolve();
                     } else {
                         this.reportError('Single-event request too large; dropping', batch);
                         this.resetBatchSize();
-                        removeItemsFromQueue = true;
+                        return removeItemsFromQueue();
                     }
                 } else {
                     // successful network request+response; remove each item in batch from queue
                     // (even if it was e.g. a 400, in which case retrying won't help)
-                    removeItemsFromQueue = true;
-                }
-
-                if (removeItemsFromQueue) {
-                    this.queue.removeItemsByID(_utils._.map(batch, function (item) {
-                        return item['id'];
-                    }), _utils._.bind(function (succeeded) {
-                        if (succeeded) {
-                            this.consecutiveRemovalFailures = 0;
-                            if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
-                                this.resetFlush(); // schedule next batch with a delay
-                            } else {
-                                    this.flush(); // handle next batch if the queue isn't empty
-                                }
-                        } else {
-                                this.reportError('Failed to remove items from queue');
-                                if (++this.consecutiveRemovalFailures > 5) {
-                                    this.reportError('Too many queue failures; disabling batching system.');
-                                    this.stopAllBatching();
-                                } else {
-                                    this.resetFlush();
-                                }
-                            }
-                    }, this));
-
-                    // client-side dedupe
-                    _utils._.each(batch, _utils._.bind(function (item) {
-                        var itemId = item['id'];
-                        if (itemId) {
-                            this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
-                            this.itemIdsSentSuccessfully[itemId]++;
-                            if (this.itemIdsSentSuccessfully[itemId] > 5) {
-                                this.reportError('[dupe] item ID sent too many times', {
-                                    item: item,
-                                    batchSize: batch.length,
-                                    timesSent: this.itemIdsSentSuccessfully[itemId]
-                                });
-                            }
-                        } else {
-                            this.reportError('[dupe] found item with no ID while removing', { item: item });
-                        }
-                    }, this));
+                    return removeItemsFromQueue();
                 }
             } catch (err) {
                 this.reportError('Error handling API response', err);
@@ -15593,11 +15975,11 @@ RequestBatcher.prototype.flush = function (options) {
             requestOptions.transport = 'sendBeacon';
         }
         logger.log('MIXPANEL REQUEST:', dataForRequest);
-        this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
-    } catch (err) {
+        return this.sendRequestPromise(dataForRequest, requestOptions).then(batchSendCallback);
+    }, this))['catch'](_utils._.bind(function (err) {
         this.reportError('Error flushing request queue', err);
         this.resetFlush();
-    }
+    }, this));
 };
 
 /**
@@ -15619,7 +16001,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./config":5,"./request-queue":17,"./utils":19}],17:[function(require,module,exports){
+},{"./config":5,"./promise-polyfill":14,"./request-queue":18,"./utils":21}],18:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -15631,6 +16013,10 @@ var _sharedLock = require('./shared-lock');
 var _utils = require('./utils');
 
 // eslint-disable-line camelcase
+
+var _storageLocalStorage = require('./storage/local-storage');
+
+var _promisePolyfill = require('./promise-polyfill');
 
 var logger = (0, _utils.console_with_prefix)('batch');
 
@@ -15655,14 +16041,30 @@ var RequestQueue = function RequestQueue(storageKey, options) {
     this.storageKey = storageKey;
     this.usePersistence = options.usePersistence;
     if (this.usePersistence) {
-        this.storage = options.storage || window.localStorage;
-        this.lock = new _sharedLock.SharedLock(storageKey, { storage: this.storage });
+        this.queueStorage = options.queueStorage || new _storageLocalStorage.LocalStorageWrapper();
+        this.lock = new _sharedLock.SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
+        this.queueStorage.init();
     }
     this.reportError = options.errorReporter || _utils._.bind(logger.error, logger);
 
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
     this.memQueue = [];
+    this.initialized = false;
+};
+
+RequestQueue.prototype.ensureInit = function () {
+    if (this.initialized) {
+        return _promisePolyfill.Promise.resolve();
+    }
+
+    return this.queueStorage.init().then(_utils._.bind(function () {
+        this.initialized = true;
+    }, this))['catch'](_utils._.bind(function (err) {
+        this.reportError('Error initializing queue persistence. Disabling persistence', err);
+        this.initialized = true;
+        this.usePersistence = false;
+    }, this));
 };
 
 /**
@@ -15677,7 +16079,7 @@ var RequestQueue = function RequestQueue(storageKey, options) {
  * failure of the enqueue operation; it is asynchronous because the localStorage
  * lock is asynchronous.
  */
-RequestQueue.prototype.enqueue = function (item, flushInterval, cb) {
+RequestQueue.prototype.enqueue = function (item, flushInterval) {
     var queueEntry = {
         'id': (0, _utils.cheap_guid)(),
         'flushAfter': new Date().getTime() + flushInterval * 2,
@@ -15686,33 +16088,31 @@ RequestQueue.prototype.enqueue = function (item, flushInterval, cb) {
 
     if (!this.usePersistence) {
         this.memQueue.push(queueEntry);
-        if (cb) {
-            cb(true);
-        }
+        return _promisePolyfill.Promise.resolve(true);
     } else {
-        this.lock.withLock(_utils._.bind(function lockAcquired() {
-            var succeeded;
-            try {
-                var storedQueue = this.readFromStorage();
+
+        var enqueueItem = _utils._.bind(function () {
+            return this.ensureInit().then(_utils._.bind(function () {
+                return this.readFromStorage();
+            }, this)).then(_utils._.bind(function (storedQueue) {
                 storedQueue.push(queueEntry);
-                succeeded = this.saveToStorage(storedQueue);
+                return this.saveToStorage(storedQueue);
+            }, this)).then(_utils._.bind(function (succeeded) {
+                // only add to in-memory queue when storage succeeds
                 if (succeeded) {
-                    // only add to in-memory queue when storage succeeds
                     this.memQueue.push(queueEntry);
                 }
-            } catch (err) {
-                this.reportError('Error enqueueing item', item);
-                succeeded = false;
-            }
-            if (cb) {
-                cb(succeeded);
-            }
-        }, this), _utils._.bind(function lockFailure(err) {
+                return succeeded;
+            }, this))['catch'](_utils._.bind(function (err) {
+                this.reportError('Error enqueueing item', err, item);
+                return false;
+            }, this));
+        }, this);
+
+        return this.lock.withLock(enqueueItem, this.pid)['catch'](_utils._.bind(function (err) {
             this.reportError('Error acquiring storage lock', err);
-            if (cb) {
-                cb(false);
-            }
-        }, this), this.pid);
+            return false;
+        }, this));
     }
 };
 
@@ -15728,27 +16128,33 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
         // don't need lock just to read events; localStorage is thread-safe
         // and the worst that could happen is a duplicate send of some
         // orphaned events, which will be deduplicated on the server side
-        var storedQueue = this.readFromStorage();
-        if (storedQueue.length) {
-            // item IDs already in batch; don't duplicate out of storage
-            var idsInBatch = {}; // poor man's Set
-            _utils._.each(batch, function (item) {
-                idsInBatch[item['id']] = true;
-            });
+        return this.ensureInit().then(_utils._.bind(function () {
+            return this.readFromStorage();
+        }, this)).then(_utils._.bind(function (storedQueue) {
+            if (storedQueue.length) {
+                // item IDs already in batch; don't duplicate out of storage
+                var idsInBatch = {}; // poor man's Set
+                _utils._.each(batch, function (item) {
+                    idsInBatch[item['id']] = true;
+                });
 
-            for (var i = 0; i < storedQueue.length; i++) {
-                var item = storedQueue[i];
-                if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
-                    item.orphaned = true;
-                    batch.push(item);
-                    if (batch.length >= batchSize) {
-                        break;
+                for (var i = 0; i < storedQueue.length; i++) {
+                    var item = storedQueue[i];
+                    if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                        item.orphaned = true;
+                        batch.push(item);
+                        if (batch.length >= batchSize) {
+                            break;
+                        }
                     }
                 }
             }
-        }
+
+            return batch;
+        }, this));
+    } else {
+        return _promisePolyfill.Promise.resolve(batch);
     }
-    return batch;
 };
 
 /**
@@ -15770,7 +16176,7 @@ var filterOutIDsAndInvalid = function filterOutIDsAndInvalid(items, idSet) {
  * Remove items with matching IDs from both in-memory queue
  * and persisted queue
  */
-RequestQueue.prototype.removeItemsByID = function (ids, cb) {
+RequestQueue.prototype.removeItemsByID = function (ids) {
     var idSet = {}; // poor man's Set
     _utils._.each(ids, function (id) {
         idSet[id] = true;
@@ -15778,64 +16184,56 @@ RequestQueue.prototype.removeItemsByID = function (ids, cb) {
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
     if (!this.usePersistence) {
-        if (cb) {
-            cb(true);
-        }
+        return _promisePolyfill.Promise.resolve(true);
     } else {
         var removeFromStorage = _utils._.bind(function () {
-            var succeeded;
-            try {
-                var storedQueue = this.readFromStorage();
+            return this.ensureInit().then(_utils._.bind(function () {
+                return this.readFromStorage();
+            }, this)).then(_utils._.bind(function (storedQueue) {
                 storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-                succeeded = this.saveToStorage(storedQueue);
-
+                return this.saveToStorage(storedQueue);
+            }, this)).then(_utils._.bind(function () {
+                return this.readFromStorage();
+            }, this)).then(_utils._.bind(function (storedQueue) {
                 // an extra check: did storage report success but somehow
                 // the items are still there?
-                if (succeeded) {
-                    storedQueue = this.readFromStorage();
-                    for (var i = 0; i < storedQueue.length; i++) {
-                        var item = storedQueue[i];
-                        if (item['id'] && !!idSet[item['id']]) {
-                            this.reportError('Item not removed from storage');
-                            return false;
-                        }
+                for (var i = 0; i < storedQueue.length; i++) {
+                    var item = storedQueue[i];
+                    if (item['id'] && !!idSet[item['id']]) {
+                        throw new Error('Item not removed from storage');
                     }
                 }
-            } catch (err) {
-                this.reportError('Error removing items', ids);
-                succeeded = false;
-            }
-            return succeeded;
+                return true;
+            }, this))['catch'](_utils._.bind(function (err) {
+                this.reportError('Error removing items', err, ids);
+                return false;
+            }, this));
         }, this);
 
-        this.lock.withLock(function lockAcquired() {
-            var succeeded = removeFromStorage();
-            if (cb) {
-                cb(succeeded);
-            }
-        }, _utils._.bind(function lockFailure(err) {
-            var succeeded = false;
+        return this.lock.withLock(removeFromStorage, this.pid)['catch'](_utils._.bind(function (err) {
             this.reportError('Error acquiring storage lock', err);
-            if (!(0, _utils.localStorageSupported)(this.storage, true)) {
+            if (!(0, _utils.localStorageSupported)(this.queueStorage.storage, true)) {
                 // Looks like localStorage writes have stopped working sometime after
                 // initialization (probably full), and so nobody can acquire locks
                 // anymore. Consider it temporarily safe to remove items without the
                 // lock, since nobody's writing successfully anyway.
-                succeeded = removeFromStorage();
-                if (!succeeded) {
-                    // OK, we couldn't even write out the smaller queue. Try clearing it
-                    // entirely.
-                    try {
-                        this.storage.removeItem(this.storageKey);
-                    } catch (err) {
-                        this.reportError('Error clearing queue', err);
+                return removeFromStorage().then(_utils._.bind(function (success) {
+                    if (!success) {
+                        // OK, we couldn't even write out the smaller queue. Try clearing it
+                        // entirely.
+                        return this.queueStorage.removeItem(this.storageKey).then(function () {
+                            return success;
+                        });
                     }
-                }
+                    return success;
+                }, this))['catch'](_utils._.bind(function (err) {
+                    this.reportError('Error clearing queue', err);
+                    return false;
+                }, this));
+            } else {
+                return false;
             }
-            if (cb) {
-                cb(succeeded);
-            }
-        }, this), this.pid);
+        }, this));
     }
 };
 
@@ -15862,32 +16260,25 @@ var updatePayloads = function updatePayloads(existingItems, itemsToUpdate) {
  * Update payloads of given items in both in-memory queue and
  * persisted queue. Items set to null are removed from queues.
  */
-RequestQueue.prototype.updatePayloads = function (itemsToUpdate, cb) {
+RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
     this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
     if (!this.usePersistence) {
-        if (cb) {
-            cb(true);
-        }
+        return _promisePolyfill.Promise.resolve(true);
     } else {
-        this.lock.withLock(_utils._.bind(function lockAcquired() {
-            var succeeded;
-            try {
-                var storedQueue = this.readFromStorage();
+        return this.lock.withLock(_utils._.bind(function lockAcquired() {
+            return this.ensureInit().then(_utils._.bind(function () {
+                return this.readFromStorage();
+            }, this)).then(_utils._.bind(function (storedQueue) {
                 storedQueue = updatePayloads(storedQueue, itemsToUpdate);
-                succeeded = this.saveToStorage(storedQueue);
-            } catch (err) {
-                this.reportError('Error updating items', itemsToUpdate);
-                succeeded = false;
-            }
-            if (cb) {
-                cb(succeeded);
-            }
-        }, this), _utils._.bind(function lockFailure(err) {
+                return this.saveToStorage(storedQueue);
+            }, this))['catch'](_utils._.bind(function (err) {
+                this.reportError('Error updating items', itemsToUpdate, err);
+                return false;
+            }, this));
+        }, this), this.pid)['catch'](_utils._.bind(function (err) {
             this.reportError('Error acquiring storage lock', err);
-            if (cb) {
-                cb(false);
-            }
-        }, this), this.pid);
+            return false;
+        }, this));
     }
 };
 
@@ -15896,9 +16287,9 @@ RequestQueue.prototype.updatePayloads = function (itemsToUpdate, cb) {
  * malformed/missing data if necessary.
  */
 RequestQueue.prototype.readFromStorage = function () {
-    var storageEntry;
-    try {
-        storageEntry = this.storage.getItem(this.storageKey);
+    return this.ensureInit().then(_utils._.bind(function () {
+        return this.queueStorage.getItem(this.storageKey);
+    }, this)).then(_utils._.bind(function (storageEntry) {
         if (storageEntry) {
             storageEntry = (0, _utils.JSONParse)(storageEntry);
             if (!_utils._.isArray(storageEntry)) {
@@ -15906,11 +16297,11 @@ RequestQueue.prototype.readFromStorage = function () {
                 storageEntry = null;
             }
         }
-    } catch (err) {
+        return storageEntry || [];
+    }, this))['catch'](_utils._.bind(function (err) {
         this.reportError('Error retrieving queue', err);
-        storageEntry = null;
-    }
-    return storageEntry || [];
+        return [];
+    }, this));
 };
 
 /**
@@ -15918,12 +16309,20 @@ RequestQueue.prototype.readFromStorage = function () {
  */
 RequestQueue.prototype.saveToStorage = function (queue) {
     try {
-        this.storage.setItem(this.storageKey, (0, _utils.JSONStringify)(queue));
-        return true;
+        var serialized = (0, _utils.JSONStringify)(queue);
     } catch (err) {
+        this.reportError('Error serializing queue', err);
+        return _promisePolyfill.Promise.resolve(false);
+    }
+
+    return this.ensureInit().then(_utils._.bind(function () {
+        return this.queueStorage.setItem(this.storageKey, serialized);
+    }, this)).then(function () {
+        return true;
+    })['catch'](_utils._.bind(function (err) {
         this.reportError('Error saving queue', err);
         return false;
-    }
+    }, this));
 };
 
 /**
@@ -15933,18 +16332,24 @@ RequestQueue.prototype.clear = function () {
     this.memQueue = [];
 
     if (this.usePersistence) {
-        this.storage.removeItem(this.storageKey);
+        return this.ensureInit().then(_utils._.bind(function () {
+            return this.queueStorage.removeItem(this.storageKey);
+        }, this));
+    } else {
+        return _promisePolyfill.Promise.resolve();
     }
 };
 
 exports.RequestQueue = RequestQueue;
 
-},{"./shared-lock":18,"./utils":19}],18:[function(require,module,exports){
+},{"./promise-polyfill":14,"./shared-lock":19,"./storage/local-storage":20,"./utils":21}],19:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
     value: true
 });
+
+var _promisePolyfill = require('./promise-polyfill');
 
 var _utils = require('./utils');
 
@@ -15981,17 +16386,9 @@ var SharedLock = function SharedLock(key, options) {
     this.timeoutMS = options.timeoutMS || 2000;
 };
 
-// pass in a specific pid to test contention scenarios; otherwise
-// it is chosen randomly for each acquisition attempt
-SharedLock.prototype.withLock = function (lockedCB, errorCB, pid) {
-    if (!pid && typeof errorCB !== 'function') {
-        pid = errorCB;
-        errorCB = null;
-    }
-
+SharedLock.prototype.withLock = function (lockedCB, pid) {
     var i = pid || new Date().getTime() + '|' + Math.random();
     var startTime = new Date().getTime();
-
     var key = this.storageKey;
     var pollIntervalMS = this.pollIntervalMS;
     var timeoutMS = this.timeoutMS;
@@ -16001,33 +16398,25 @@ SharedLock.prototype.withLock = function (lockedCB, errorCB, pid) {
     var keyY = key + ':Y';
     var keyZ = key + ':Z';
 
-    var reportError = function reportError(err) {
-        errorCB && errorCB(err);
-    };
-
-    var delay = function delay(cb) {
-        if (new Date().getTime() - startTime > timeoutMS) {
-            logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
-            storage.removeItem(keyZ);
-            storage.removeItem(keyY);
-            loop();
-            return;
-        }
-        setTimeout(function () {
-            try {
-                cb();
-            } catch (err) {
-                reportError(err);
+    var delay = function delay() {
+        return new _promisePolyfill.Promise(function (resolve) {
+            if (new Date().getTime() - startTime > timeoutMS) {
+                logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                storage.removeItem(keyZ);
+                storage.removeItem(keyY);
+                resolve(loop());
+            } else {
+                setTimeout(resolve, pollIntervalMS * (Math.random() + 0.1));
             }
-        }, pollIntervalMS * (Math.random() + 0.1));
+        });
     };
 
-    var waitFor = function waitFor(predicate, cb) {
+    var waitFor = function waitFor(predicate) {
         if (predicate()) {
-            cb();
+            return _promisePolyfill.Promise.resolve();
         } else {
-            delay(function () {
-                waitFor(predicate, cb);
+            return delay().then(function () {
+                return waitFor(predicate);
             });
         }
     };
@@ -16052,54 +16441,117 @@ SharedLock.prototype.withLock = function (lockedCB, errorCB, pid) {
 
     var loop = function loop() {
         storage.setItem(keyX, i);
-
-        waitFor(getSetY, function () {
+        return waitFor(getSetY).then(function () {
             if (storage.getItem(keyX) === i) {
-                criticalSection();
                 return;
             }
 
-            delay(function () {
-                if (storage.getItem(keyY) !== i) {
-                    loop();
-                    return;
-                }
-                waitFor(function () {
-                    return !storage.getItem(keyZ);
-                }, criticalSection);
+            return delay();
+        }).then(function () {
+            if (storage.getItem(keyY) !== i) {
+                return loop();
+            }
+
+            return waitFor(function () {
+                return !storage.getItem(keyZ);
             });
         });
     };
 
-    var criticalSection = function criticalSection() {
-        storage.setItem(keyZ, '1');
-        try {
-            lockedCB();
-        } finally {
-            storage.removeItem(keyZ);
-            if (storage.getItem(keyY) === i) {
-                storage.removeItem(keyY);
-            }
-            if (storage.getItem(keyX) === i) {
-                storage.removeItem(keyX);
-            }
+    var clearLock = function clearLock() {
+        storage.removeItem(keyZ);
+        if (storage.getItem(keyY) === i) {
+            storage.removeItem(keyY);
+        }
+        if (storage.getItem(keyX) === i) {
+            storage.removeItem(keyX);
         }
     };
 
-    try {
-        if ((0, _utils.localStorageSupported)(storage, true)) {
-            loop();
-        } else {
-            throw new Error('localStorage support check failed');
-        }
-    } catch (err) {
-        reportError(err);
+    if ((0, _utils.localStorageSupported)(storage, true)) {
+        return loop().then(function () {
+            return lockedCB();
+        }).then(function (returnValue) {
+            clearLock();
+            // propogate the return value from the lockedCB
+            return returnValue;
+        })['catch'](function (err) {
+            clearLock();
+            // something went wrong acquiring lock, let caller handle the rejected promise
+            return _promisePolyfill.Promise.reject(err);
+        });
+    } else {
+        return _promisePolyfill.Promise.reject(new Error('localStorage support check failed'));
     }
 };
 
 exports.SharedLock = SharedLock;
 
-},{"./utils":19}],19:[function(require,module,exports){
+},{"./promise-polyfill":14,"./utils":21}],20:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _promisePolyfill = require('../promise-polyfill');
+
+var _utils = require('../utils');
+
+// eslint-disable-line camelcase
+
+/**
+ * @typedef {import('./wrapper').StorageWrapper}
+ */
+
+/**
+ * @type {StorageWrapper}
+ */
+var LocalStorageWrapper = function LocalStorageWrapper(storageOverride) {
+    this.storage = storageOverride || localStorage;
+};
+
+LocalStorageWrapper.prototype.init = function () {
+    return _promisePolyfill.Promise.resolve();
+};
+
+LocalStorageWrapper.prototype.setItem = function (key, value) {
+    return new _promisePolyfill.Promise(_utils._.bind(function (resolve, reject) {
+        try {
+            this.storage.setItem(key, value);
+        } catch (e) {
+            reject(e);
+        }
+        resolve();
+    }, this));
+};
+
+LocalStorageWrapper.prototype.getItem = function (key) {
+    return new _promisePolyfill.Promise(_utils._.bind(function (resolve, reject) {
+        var item;
+        try {
+            item = this.storage.getItem(key);
+        } catch (e) {
+            reject(e);
+        }
+        resolve(item);
+    }, this));
+};
+
+LocalStorageWrapper.prototype.removeItem = function (key) {
+    return new _promisePolyfill.Promise(_utils._.bind(function (resolve, reject) {
+        try {
+            this.storage.removeItem(key);
+        } catch (e) {
+            reject(e);
+        }
+        resolve();
+    }, this));
+};
+
+exports.LocalStorageWrapper = LocalStorageWrapper;
+
+},{"../promise-polyfill":14,"../utils":21}],21:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
