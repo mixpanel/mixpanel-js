@@ -18,6 +18,10 @@ var CLICK_EVENT_PROPS = [
     'screenX', 'screenY',
     'x', 'y'
 ];
+var TRACKED_ATTRS = [
+    'aria-label', 'aria-labelledby', 'aria-describedby',
+    'href', 'name', 'role', 'title', 'type'
+];
 
 /**
  * Autocapture: manages automatic event tracking
@@ -157,18 +161,24 @@ function getPreviousElementSibling(el) {
 
 function getPropertiesFromElement(el) {
     var props = {
-        'classes': getClassName(el).split(' '),
-        'tag_name': el.tagName.toLowerCase()
+        '$classes': getClassName(el).split(' '),
+        '$tag_name': el.tagName.toLowerCase()
     };
+    var elId = el.id;
+    if (elId) {
+        props['$id'] = elId;
+    }
 
-    // NOT TRACKING ANY ARBITRARY ATTRIBUTES
-    // if (shouldTrackElement(el)) {
-    //     _.each(el.attributes, function(attr) {
-    //         if (shouldTrackValue(attr.value)) {
-    //             props['attr__' + attr.name] = attr.value;
-    //         }
-    //     });
-    // }
+    if (shouldTrackElement(el)) {
+        _.each(TRACKED_ATTRS, function(attr) {
+            if (el.hasAttribute(attr)) {
+                var attrVal = el.getAttribute(attr);
+                if (shouldTrackValue(attrVal)) {
+                    props['$attr-' + attr] = attrVal;
+                }
+            }
+        });
+    }
 
     var nthChild = 1;
     var nthOfType = 1;
@@ -179,8 +189,8 @@ function getPropertiesFromElement(el) {
             nthOfType++;
         }
     }
-    props['nth_child'] = nthChild;
-    props['nth_of_type'] = nthOfType;
+    props['$nth_child'] = nthChild;
+    props['$nth_of_type'] = nthOfType;
 
     return props;
 }
@@ -232,9 +242,9 @@ function getPropsForDOMEvent(ev) {
                 // TODO add target props
             };
             if (ev.type === EV_CLICK) {
-                var realTarget = guessRealClickTarget(ev).tagName;
+                var realTarget = guessRealClickTarget(ev);
                 if (realTarget) {
-                    props['$click_target'] = realTarget.toLowerCase();
+                    props['$click_target'] = getPropertiesFromElement(realTarget);
                 }
             }
         }
