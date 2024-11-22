@@ -7,6 +7,7 @@ if (typeof(window) === 'undefined') {
     win = {
         navigator: { userAgent: '', onLine: true },
         document: {
+            createElement: function() { return {}; },
             location: loc,
             referrer: ''
         },
