@@ -1,4 +1,4 @@
-import { _, window } from './utils';
+import { _, console_with_prefix, document, window } from './utils'; // eslint-disable-line camelcase
 
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
@@ -23,6 +23,8 @@ var TRACKED_ATTRS = [
     'href', 'name', 'role', 'title', 'type'
 ];
 
+var logger = console_with_prefix('autocapture');
+
 /**
  * Autocapture: manages automatic event tracking
  * @constructor
@@ -32,7 +34,10 @@ var Autocapture = function(mp) {
 };
 
 Autocapture.prototype.init = function() {
-    // TODO feature detect and eject early if not supported
+    if (!minDOMApisSupported()) {
+        logger.critical('Autocapture unavailable: missing required DOM APIs');
+        return;
+    }
 
     this.initPageviewTracking();
     this.initClickTracking();
@@ -306,6 +311,11 @@ function isTag(el, tag) {
  */
 function isTextNode(el) {
     return el && el.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
+}
+
+function minDOMApisSupported() {
+    var testEl = document.createElement('div');
+    return !!testEl['matches'];
 }
 
 /*
