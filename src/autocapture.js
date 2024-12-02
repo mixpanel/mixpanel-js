@@ -6,6 +6,8 @@ var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
 
+var MP_EV_CLICK = '$mp_click';
+
 var EV_CHANGE = 'change';
 var EV_CLICK = 'click';
 var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
@@ -74,8 +76,9 @@ Autocapture.prototype.initClickTracking = function() {
                     props['$' + prop] = ev[prop];
                 }
             });
-            // TODO actually track the event
-            window.console.log('$mp_click', ev, props);
+            // TODO remove this log
+            window.console.log(MP_EV_CLICK, ev, props);
+            this.mp.track(MP_EV_CLICK, props);
         }
     }.bind(this));
 };
