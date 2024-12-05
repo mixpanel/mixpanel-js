@@ -363,7 +363,6 @@ builtInProp(NpoPromise,'race',function Promise$race(arr) {
     });
 });
 
-
 var PromisePolyfill;
 if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
     PromisePolyfill = Promise;
@@ -371,4 +370,10 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
     PromisePolyfill = NpoPromise;
 }
 
-export { PromisePolyfill as Promise };
+var promisePolyfillUtils = {
+    getPromisePolyfill: function () {
+        return PromisePolyfill;
+    }
+};
+
+export { promisePolyfillUtils, PromisePolyfill as Promise, NpoPromise };

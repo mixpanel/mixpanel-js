@@ -1,4 +1,4 @@
-import { Promise } from './promise-polyfill';
+import { promisePolyfillUtils } from './promise-polyfill';
 import { console_with_prefix, localStorageSupported } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
@@ -33,6 +33,8 @@ var SharedLock = function(key, options) {
 };
 
 SharedLock.prototype.withLock = function(lockedCB, pid) {
+    var Promise = promisePolyfillUtils.getPromisePolyfill(); // allow stubbing for tests
+
     var i = pid || (new Date().getTime() + '|' + Math.random());
     var startTime = new Date().getTime();
     var key = this.storageKey;

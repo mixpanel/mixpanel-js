@@ -1,10 +1,11 @@
-import { expect, use as chaiUse } from 'chai';
+import { expect } from 'chai';
 
 import localStorage from 'localStorage';
 import sinon from 'sinon';
 
 import { acquireLockForPid } from './lock-test-utils';
 import { SharedLock } from '../../src/shared-lock';
+import { promisePolyfillUtils, NpoPromise } from '../../src/promise-polyfill';
 
 const START_TIME = 200000;
 const TIMEOUT_MS = 1000;
@@ -149,6 +150,53 @@ describe(`SharedLock`, function() {
 
         expect(String(caughtError)).to.equal(`Error: localStorage support dropped while acquiring lock`);
       });
+    });
+  });
+
+
+  describe(`withLock() with polyfilled NPO promise`, function() {
+    let promiseStub;
+    beforeEach(function () {
+      promiseStub = sinon.stub(promisePolyfillUtils, `getPromisePolyfill`).returns(NpoPromise);
+    });
+
+    afterEach(function () {
+      promiseStub.restore();
+    });
+
+    it(`runs the given code`, async function() {
+      const sharedArray = [];
+      sharedLock.withLock(async function() {
+        sharedArray.push(`A`);
+      });
+
+      const secondLockPromise = sharedLock.withLock(async function() {
+        sharedArray.push(`B`);
+        expect(sharedArray).to.eql([`A`, `B`]);
+      });
+
+      await clock.tickAsync(200);
+      await secondLockPromise;
+    });
+
+    it(`waits for previous acquirer to release lock`, async function() {
+      const sharedArray = [];
+
+      acquireLockForPid(sharedLock, `foobar`);
+
+      // this should block until 'foobar' process releases below
+      const firstLockPromise = sharedLock.withLock(async function() {
+        sharedArray.push(`B`);
+        expect(sharedArray).to.eql([`A`, `B`]);
+      });
+
+      // 'foobar' process
+      sharedLock.withLock(async function() {
+        sharedArray.push(`A`);
+      }, `foobar`);
+
+      await clock.tickAsync(1000);
+      await firstLockPromise;
     });
   });
 });
