@@ -3510,6 +3510,30 @@
             });
         });
 
+        mpmodule("promise polyfill")
+
+        asyncTest("can execute a chain of promises", 3, function () {
+            var NPO = mixpanel.NPO;
+            var promise1 = new NPO(function (resolve, reject) {
+                resolve('1st return value');
+            });
+
+            promise1
+                .then(function (value) {
+                    same(value, '1st return value');
+                    return NPO.resolve('2nd return value'); // return promise
+                })
+                .then(function (value) {
+                    same(value, '2nd return value');
+                    return '3rd return value'; // return value
+                })
+                .then(function (value) {
+                    same(value, '3rd return value');
+                    start();
+                });
+        });
+
+
         if (/Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent)) {
             mpmodule("mobile tests");
             test("device property included", 1, function() {

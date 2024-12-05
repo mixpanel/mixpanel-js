@@ -18,6 +18,7 @@ import {
     clearOptInOut,
     addOptOutCheckMixpanelLib
 } from './gdpr-utils';
+import { NpoPromise } from './promise-polyfill';
 
 /*
  * Mixpanel JS Library
@@ -2175,6 +2176,7 @@ var extend_mp = function() {
 
     // add private functions as _
     mixpanel_master['_'] = _;
+    mixpanel_master['NPO'] = NpoPromise; // for tests
 };
 
 var override_mp_init_func = function() {
