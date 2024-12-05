@@ -1,5 +1,5 @@
 import { promisePolyfillUtils } from './promise-polyfill';
-import { console_with_prefix, localStorageSupported } from './utils'; // eslint-disable-line camelcase
+import { console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
 
@@ -32,109 +32,121 @@ var SharedLock = function(key, options) {
     this.timeoutMS = options.timeoutMS || 2000;
 };
 
+// pass in a specific pid to test contention scenarios; otherwise
+// it is chosen randomly for each acquisition attempt
 SharedLock.prototype.withLock = function(lockedCB, pid) {
     var Promise = promisePolyfillUtils.getPromisePolyfill(); // allow stubbing for tests
+    return new Promise(_.bind(function (resolve, reject) {
+        var i = pid || (new Date().getTime() + '|' + Math.random());
+        var startTime = new Date().getTime();
 
-    var i = pid || (new Date().getTime() + '|' + Math.random());
-    var startTime = new Date().getTime();
-    var key = this.storageKey;
-    var pollIntervalMS = this.pollIntervalMS;
-    var timeoutMS = this.timeoutMS;
-    var storage = this.storage;
+        var key = this.storageKey;
+        var pollIntervalMS = this.pollIntervalMS;
+        var timeoutMS = this.timeoutMS;
+        var storage = this.storage;
 
-    var keyX = key + ':X';
-    var keyY = key + ':Y';
-    var keyZ = key + ':Z';
+        var keyX = key + ':X';
+        var keyY = key + ':Y';
+        var keyZ = key + ':Z';
 
-    var delay = function() {
-        return new Promise(function (resolve) {
+        var delay = function(cb) {
             if (new Date().getTime() - startTime > timeoutMS) {
                 logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                 storage.removeItem(keyZ);
                 storage.removeItem(keyY);
-                resolve(loop());
-            } else {
-                setTimeout(resolve, pollIntervalMS * (Math.random() + 0.1));
+                loop();
+                return;
             }
-        });
-    };
-
-    var waitFor = function(predicate) {
-        if (predicate()) {
-            return Promise.resolve();
-        } else {
-            return delay().then(function () {
-                return waitFor(predicate);
-            });
-        }
-    };
-
-    var getSetY = function() {
-        var valY = storage.getItem(keyY);
-        if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
-            return false;
-        } else {
-            storage.setItem(keyY, i);
-            if (storage.getItem(keyY) === i) {
-                return true;
-            } else {
-                if (!localStorageSupported(storage, true)) {
-                    throw new Error('localStorage support dropped while acquiring lock');
+            setTimeout(function() {
+                try {
+                    cb();
+                } catch(err) {
+                    reject(err);
                 }
-                return false;
-            }
-        }
-    };
+            }, pollIntervalMS * (Math.random() + 0.1));
+        };
 
-    var loop = function() {
-        storage.setItem(keyX, i);
-        return waitFor(getSetY)
-            .then(function () {
+        var waitFor = function(predicate, cb) {
+            if (predicate()) {
+                cb();
+            } else {
+                delay(function() {
+                    waitFor(predicate, cb);
+                });
+            }
+        };
+
+        var getSetY = function() {
+            var valY = storage.getItem(keyY);
+            if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
+                return false;
+            } else {
+                storage.setItem(keyY, i);
+                if (storage.getItem(keyY) === i) {
+                    return true;
+                } else {
+                    if (!localStorageSupported(storage, true)) {
+                        reject(new Error('localStorage support dropped while acquiring lock'));
+                    }
+                    return false;
+                }
+            }
+        };
+
+        var loop = function() {
+            storage.setItem(keyX, i);
+
+            waitFor(getSetY, function() {
                 if (storage.getItem(keyX) === i) {
+                    criticalSection();
                     return;
                 }
 
-                return delay();
-            })
-            .then(function () {
-                if (storage.getItem(keyY) !== i) {
-                    return loop();
-                }
-
-                return waitFor(function () {
-                    return !storage.getItem(keyZ);
+                delay(function() {
+                    if (storage.getItem(keyY) !== i) {
+                        loop();
+                        return;
+                    }
+                    waitFor(function() {
+                        return !storage.getItem(keyZ);
+                    }, criticalSection);
                 });
             });
-    };
+        };
 
-    var clearLock = function () {
-        storage.removeItem(keyZ);
-        if (storage.getItem(keyY) === i) {
-            storage.removeItem(keyY);
-        }
-        if (storage.getItem(keyX) === i) {
-            storage.removeItem(keyX);
-        }
-    };
+        var criticalSection = function() {
+            storage.setItem(keyZ, '1');
+            var removeLock = function () {
+                storage.removeItem(keyZ);
+                if (storage.getItem(keyY) === i) {
+                    storage.removeItem(keyY);
+                }
+                if (storage.getItem(keyX) === i) {
+                    storage.removeItem(keyX);
+                }
+            };
 
-    if (localStorageSupported(storage, true)) {
-        return loop()
-            .then(function () {
-                return lockedCB();
-            })
-            .then(function (returnValue) {
-                clearLock();
-                // propogate the return value from the lockedCB
-                return returnValue;
-            })
-            .catch(function (err) {
-                clearLock();
-                // something went wrong acquiring lock, let caller handle the rejected promise
-                return Promise.reject(err);
-            });
-    } else {
-        return Promise.reject(new Error('localStorage support check failed'));
-    }
+            lockedCB()
+                .then(function (ret) {
+                    removeLock();
+                    resolve(ret);
+                })
+                .catch(function (err) {
+                    removeLock();
+                    reject(err);
+                });
+        };
+
+        try {
+            if (localStorageSupported(storage, true)) {
+                loop();
+            } else {
+                throw new Error('localStorage support check failed');
+            }
+        } catch(err) {
+            reject(err);
+        }
+    }, this));
 };
 
 export { SharedLock };

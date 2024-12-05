@@ -75,7 +75,7 @@ describe(`SharedLock`, function() {
       acquireLockForPid(sharedLock, `foobar`);
 
       const startTime = Date.now();
-      const lockPromise = sharedLock.withLock(function() {
+      const lockPromise = sharedLock.withLock(async function() {
         expect(Date.now() - startTime).to.be.above(TIMEOUT_MS);
       });
 
