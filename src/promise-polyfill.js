@@ -1,7 +1,10 @@
+import { window } from './utils';
 /**
  * Promise polyfill sourced from https://github.com/getify/native-promise-only.
- * Modified to remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
- */
+ * Modified to
+ *  - remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
+ *  - renaming access notation to appease compilers, e.g. this.__NPO__ -> this['__NPO__']
+*/
 
 /*! Native Promise Only
     v0.8.1 (c) Kyle Simpson
@@ -11,9 +14,12 @@
 /*jshint validthis:true */
 'use strict';
 
+var setImmedate = window['setImmediate'];
 var builtInProp, cycle, schedulingQueue,
     ToString = Object.prototype.toString,
-    timer = setTimeout;
+    timer = (typeof setImmedate !== 'undefined') ?
+        function timer(fn) { return setImmedate(fn); } :
+        setTimeout;
 
 // dammit, IE8.
 try {
@@ -223,13 +229,13 @@ function NpoPromise(executor) {
         throw TypeError('Not a function');
     }
 
-    if (this.__NPO__ !== 0) {
+    if (this['__NPO__'] !== 0) {
         throw TypeError('Not a promise');
     }
 
     // instance shadowing the inherited "brand"
     // to signal an already "initialized" promise
-    this.__NPO__ = 1;
+    this['__NPO__'] = 1;
 
     var def = new MakeDef(this);
 
@@ -294,7 +300,7 @@ builtInProp(NpoPromise,'resolve',function Promise$resolve(msg) {
 
     // spec mandated checks
     // note: best "isPromise" check that's practical for now
-    if (msg && typeof msg === 'object' && msg.__NPO__ === 1) {
+    if (msg && typeof msg === 'object' && msg['__NPO__'] === 1) {
         return msg;
     }
 
@@ -370,6 +376,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
     PromisePolyfill = NpoPromise;
 }
 
+// wrapper object to allow stubbing in tests
 var promisePolyfillUtils = {
     getPromisePolyfill: function () {
         return PromisePolyfill;
