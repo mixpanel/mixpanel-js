@@ -2,11 +2,7 @@ import { Promise } from '../promise-polyfill';
 import { _ } from '../utils'; // eslint-disable-line camelcase
 
 /**
- * @typedef {import('./wrapper').StorageWrapper}
- */
-
-/**
- * @type {StorageWrapper}
+ * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function (storageOverride) {
     this.storage = storageOverride || localStorage;

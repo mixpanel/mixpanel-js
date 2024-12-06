@@ -7,6 +7,7 @@ import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
 import { MixpanelPeople } from './mixpanel-people';
+import { RecordingRegistry } from './recording-registry';
 import {
     MixpanelPersistence,
     PEOPLE_DISTINCT_ID_KEY,
@@ -369,20 +370,44 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.autocapture = new Autocapture(this);
     this.autocapture.init();
 
-    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
-        this.start_session_recording();
-    }
+    this._start_recording_if_enabled();
 };
 
-MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function () {
+MixpanelLib.prototype._start_recording_if_enabled = function() {
+    this._get_recording_registry()
+        .getActiveRecording()
+        .then(_.bind(function(serialized_recording) {
+            if (serialized_recording) {
+                this.start_session_recording(serialized_recording);
+            } else if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
+                this.start_session_recording();
+            }
+        }, this));
+};
+
+MixpanelLib.prototype._get_recording_registry = function () {
+    if (!this.recordingRegistry) {
+        this.recordingRegistry = new RecordingRegistry({
+            'errorReporter': this.get_config('error_reporter'),
+            'token': this.get_config('token'),
+            'mixpanelInstance': this,
+        });
+    }
+    return this.recordingRegistry;
+};
+
+MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function (active_serialized_recording) {
     if (!window['MutationObserver']) {
         console.critical('Browser does not support MutationObserver; skipping session recording');
         return;
     }
 
     var handleLoadedRecorder = _.bind(function() {
-        this._recorder = this._recorder || new window['__mp_recorder'](this);
-        this._recorder['startRecording']();
+        this._recorder = this._recorder || new window['__mp_recorder']({
+            'mixpanelInstance': this,
+            'recordingRegistry': this._get_recording_registry(),
+        });
+        this._recorder['startRecording']({'activeSerializedRecording': active_serialized_recording});
     }, this);
 
     if (_.isUndefined(window['__mp_recorder'])) {

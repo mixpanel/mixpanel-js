@@ -7,15 +7,22 @@ import { window } from '../window';
 var logger = console_with_prefix('recorder');
 
 /**
- * Recorder API: manages recordings and exposes methods public to the core Mixpanel library.
+ * Recorder API: bundles rrweb and and exposes methods to start and stop recordings.
  * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
- */
-var MixpanelRecorder = function(mixpanelInstance) {
-    this._mixpanel = mixpanelInstance;
+ * @param {import('../recording-registry').RecordingRegistry} [options.recordingRegistry] - reference to the recording registry
+*/
+var MixpanelRecorder = function(options) {
+    this.mixpanelInstance = options.mixpanelInstance;
+
+    /**
+     * @type {import('../recording-registry').RecordingRegistry}
+     */
+    this.recordingRegistry = options.recordingRegistry;
     this.activeRecording = null;
 };
 
-MixpanelRecorder.prototype.startRecording = function(shouldStopBatcher) {
+MixpanelRecorder.prototype.startRecording = function(options) {
+    options = options || {};
     if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
         logger.log('Recording already in progress, skipping startRecording.');
         return;
@@ -31,27 +38,34 @@ MixpanelRecorder.prototype.startRecording = function(shouldStopBatcher) {
         this.resetRecording();
     }, this);
 
+    var onBatchSent = _.bind(function () {
+        this._recordingRegistry.setRecording(this.activeRecording.serialize());
+    }, this);
+
     this.activeRecording = new SessionRecording({
-        mixpanelInstance: this._mixpanel,
+        mixpanelInstance: this.mixpanelInstance,
+        onBatchSent: onBatchSent,
         onIdleTimeout: onIdleTimeout,
         onMaxLengthReached: onMaxLengthReached,
         replayId: _.UUID(),
-        rrwebRecord: record
+        rrwebRecord: record,
+        serializedRecording: options.activeSerializedRecording
     });
 
-    this.activeRecording.startRecording(shouldStopBatcher);
+    this.activeRecording.startRecording(options.shouldStopBatcher);
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
     if (this.activeRecording) {
         this.activeRecording.stopRecording();
+        this.recordingRegistry.clearActiveRecording();
         this.activeRecording = null;
     }
 };
 
 MixpanelRecorder.prototype.resetRecording = function () {
     this.stopRecording();
-    this.startRecording(true);
+    this.startRecording({shouldStopBatcher: true});
 };
 
 MixpanelRecorder.prototype.getActiveReplayId = function () {
