@@ -8,6 +8,10 @@ var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
 
+var DEFAULT_PROPS = {
+    '$mp_autocapture': true
+};
+
 var MP_EV_CLICK = '$mp_click';
 
 var EV_CHANGE = 'change';
@@ -105,6 +109,7 @@ Autocapture.prototype.initClickTracking = function() {
                     props['$' + prop] = ev[prop];
                 }
             });
+            _.extend(props, DEFAULT_PROPS);
             this.mp.track(MP_EV_CLICK, props);
         }
     }.bind(this));
@@ -118,7 +123,7 @@ Autocapture.prototype.initPageviewTracking = function() {
     }
 
     var previousTrackedUrl = '';
-    var tracked = this.mp.track_pageview();
+    var tracked = this.mp.track_pageview(DEFAULT_PROPS);
     if (tracked) {
         previousTrackedUrl = _.info.currentUrl();
     }
@@ -156,7 +161,7 @@ Autocapture.prototype.initPageviewTracking = function() {
         }
 
         if (shouldTrack) {
-            var tracked = this.mp.track_pageview();
+            var tracked = this.mp.track_pageview(DEFAULT_PROPS);
             if (tracked) {
                 previousTrackedUrl = currentUrl;
             }
