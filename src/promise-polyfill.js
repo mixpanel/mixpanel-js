@@ -376,11 +376,4 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
     PromisePolyfill = NpoPromise;
 }
 
-// wrapper object to allow stubbing in tests
-var promisePolyfillUtils = {
-    getPromisePolyfill: function () {
-        return PromisePolyfill;
-    }
-};
-
-export { promisePolyfillUtils, PromisePolyfill as Promise, NpoPromise };
+export { PromisePolyfill as Promise, NpoPromise };

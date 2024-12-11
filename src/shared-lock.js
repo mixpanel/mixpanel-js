@@ -1,4 +1,3 @@
-import { promisePolyfillUtils } from './promise-polyfill';
 import { console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
@@ -30,12 +29,15 @@ var SharedLock = function(key, options) {
     this.storage = options.storage || window.localStorage;
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
+
+    // dependency-inject promise implementation for testing purposes
+    this.promiseImpl = options.promiseImpl || Promise;
 };
 
 // pass in a specific pid to test contention scenarios; otherwise
 // it is chosen randomly for each acquisition attempt
 SharedLock.prototype.withLock = function(lockedCB, pid) {
-    var Promise = promisePolyfillUtils.getPromisePolyfill(); // allow stubbing for tests
+    var Promise = this.promiseImpl;
     return new Promise(_.bind(function (resolve, reject) {
         var i = pid || (new Date().getTime() + '|' + Math.random());
         var startTime = new Date().getTime();

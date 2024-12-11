@@ -5,7 +5,7 @@ import sinon from 'sinon';
 
 import { acquireLockForPid } from './lock-test-utils';
 import { SharedLock } from '../../src/shared-lock';
-import { promisePolyfillUtils, NpoPromise } from '../../src/promise-polyfill';
+import { NpoPromise } from '../../src/promise-polyfill';
 
 const START_TIME = 200000;
 const TIMEOUT_MS = 1000;
@@ -160,13 +160,8 @@ describe(`SharedLock`, function() {
 
 
   describe(`withLock() with polyfilled NPO promise`, function() {
-    let promiseStub;
     beforeEach(function () {
-      promiseStub = sinon.stub(promisePolyfillUtils, `getPromisePolyfill`).returns(NpoPromise);
-    });
-
-    afterEach(function () {
-      promiseStub.restore();
+      sharedLock = new SharedLock(`some-key`, {storage: localStorage, timeoutMS: TIMEOUT_MS, promiseImpl: NpoPromise});
     });
 
     it(`runs the given code`, async function() {
