@@ -4,6 +4,7 @@ var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
 
 var CONFIG_BLOCK_SELECTORS = 'block_selectors';
+var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
 
@@ -54,6 +55,26 @@ Autocapture.prototype.getConfig = function(key) {
     return autocaptureConfig[key];
 };
 
+Autocapture.prototype.currentUrlBlocked = function() {
+    var blockUrlRegexes = this.getConfig(CONFIG_BLOCK_URL_REGEXES) || [];
+    if (!blockUrlRegexes || !blockUrlRegexes.length) {
+        return false;
+    }
+
+    var currentUrl = _.info.currentUrl();
+    for (var i = 0; i < blockUrlRegexes.length; i++) {
+        try {
+            if (currentUrl.match(blockUrlRegexes[i])) {
+                return true;
+            }
+        } catch (err) {
+            logger.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
+            return true;
+        }
+    }
+    return false;
+}
+
 Autocapture.prototype.pageviewTrackingConfig = function() {
     // supports both autocapture config and old track_pageview config
     var autocaptureConfig = this.mp.get_config(AUTOCAPTURE_CONFIG_KEY);
@@ -73,6 +94,10 @@ Autocapture.prototype.initClickTracking = function() {
 
     // TODO try/catch
     this.listenerClick = window.addEventListener(EV_CLICK, function(ev) {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
         var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
         if (props) {
             _.each(CLICK_EVENT_PROPS, function(prop) {
