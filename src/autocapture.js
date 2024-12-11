@@ -3,6 +3,7 @@ import { _, console_with_prefix, document, window } from './utils'; // eslint-di
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
 
+var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
 
@@ -72,7 +73,7 @@ Autocapture.prototype.initClickTracking = function() {
 
     // TODO try/catch
     this.listenerClick = window.addEventListener(EV_CLICK, function(ev) {
-        var props = getPropsForDOMEvent(ev);
+        var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
         if (props) {
             _.each(CLICK_EVENT_PROPS, function(prop) {
                 if (prop in ev) {
@@ -216,7 +217,8 @@ function getPropertiesFromElement(el) {
     return props;
 }
 
-function getPropsForDOMEvent(ev) {
+function getPropsForDOMEvent(ev, blockSelectors) {
+    blockSelectors = blockSelectors || [];
     var props = null;
 
     var target = typeof ev.target === 'undefined' ? ev.srcElement : ev.target;
@@ -251,6 +253,19 @@ function getPropsForDOMEvent(ev) {
                     explicitNoTrack = true;
                 }
             });
+
+            if (!explicitNoTrack) {
+                // programmatically prevent tracking of elements that match CSS selectors
+                _.each(blockSelectors, function(sel) {
+                    try {
+                        if (el.matches(sel)) {
+                            explicitNoTrack = true;
+                        }
+                    } catch (err) {
+                        logger.critical('Error while checking selector: ' + sel, err);
+                    }
+                });
+            }
 
             elementsJson.push(getPropertiesFromElement(el));
         }, this);
@@ -331,8 +346,12 @@ function isTextNode(el) {
 }
 
 function minDOMApisSupported() {
-    var testEl = document.createElement('div');
-    return !!testEl['matches'];
+    try {
+        var testEl = document.createElement('div');
+        return !!testEl['matches'];
+    } catch (err) {
+        return false;
+    }
 }
 
 /*
