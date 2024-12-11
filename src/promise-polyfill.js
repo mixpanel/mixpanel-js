@@ -3,7 +3,7 @@ import { window } from './window';
  * Promise polyfill sourced from https://github.com/getify/native-promise-only.
  * Modified to
  *  - remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
- *  - renaming access notation for dynamically referenced props to avoid minification, e.g. this.__NPO__ -> this['__NPO__']
+ *  - rename access notation for dynamically referenced props to avoid minification, e.g. this.__NPO__ -> this['__NPO__']
 */
 
 /*! Native Promise Only
