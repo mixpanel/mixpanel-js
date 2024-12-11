@@ -2176,7 +2176,7 @@ var extend_mp = function() {
 
     // add private functions as _
     mixpanel_master['_'] = _;
-    mixpanel_master['NPO'] = NpoPromise; // for tests
+    mixpanel_master['_']['NPO'] = NpoPromise; // for tests, declared here to avoid circular import
 };
 
 var override_mp_init_func = function() {

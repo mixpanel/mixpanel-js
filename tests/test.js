@@ -3513,7 +3513,7 @@
         mpmodule("promise polyfill")
 
         asyncTest("can execute a chain of promises", 3, function () {
-            var NPO = mixpanel.NPO;
+            var NPO = mixpanel._.NPO;
             var promise1 = new NPO(function (resolve, reject) {
                 resolve('1st return value');
             });
