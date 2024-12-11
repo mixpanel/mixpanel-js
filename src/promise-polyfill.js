@@ -14,11 +14,11 @@ import { window } from './utils';
 /*jshint validthis:true */
 'use strict';
 
-var setImmedate = window['setImmediate'];
+var setImmediate = window['setImmediate'];
 var builtInProp, cycle, schedulingQueue,
     ToString = Object.prototype.toString,
-    timer = (typeof setImmedate !== 'undefined') ?
-        function timer(fn) { return setImmedate(fn); } :
+    timer = (typeof setImmediate !== 'undefined') ?
+        function timer(fn) { return setImmediate(fn); } :
         setTimeout;
 
 // dammit, IE8.
