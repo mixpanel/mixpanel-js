@@ -1,6 +1,7 @@
 import { IncrementalSource, EventType } from '@rrweb/types';
 
-import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, _} from '../utils'; // eslint-disable-line camelcase
+import { window } from '../window';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 import Config from '../config';

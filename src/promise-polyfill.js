@@ -1,4 +1,4 @@
-import { window } from './utils';
+import { window } from './window';
 /**
  * Promise polyfill sourced from https://github.com/getify/native-promise-only.
  * Modified to

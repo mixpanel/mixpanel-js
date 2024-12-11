@@ -4,7 +4,7 @@ import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import { LocalStorageWrapper } from '../../src/storage/local-storage';
 
-import { window } from '../../src/utils';
+import { window } from '../../src/window';
 
 chai.use(sinonChai);
 

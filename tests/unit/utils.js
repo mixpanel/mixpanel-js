@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 
-import { extract_domain, _, window, document } from '../../src/utils';
+import { extract_domain, _, document } from '../../src/utils';
+import { window } from '../../src/window';
 
 describe(`extract_domain`, function() {
   it(`matches simple domain names`, function() {

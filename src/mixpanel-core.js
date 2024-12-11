@@ -1,6 +1,7 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, window, document, navigator, slice } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice } from './utils';
+import { window } from './window';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';

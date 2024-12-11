@@ -1,24 +1,7 @@
 /* eslint camelcase: "off", eqeqeq: "off" */
 import Config from './config';
-
-// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
-var win;
-if (typeof(window) === 'undefined') {
-    var loc = {
-        hostname: ''
-    };
-    win = {
-        navigator: { userAgent: '', onLine: true },
-        document: {
-            location: loc,
-            referrer: ''
-        },
-        screen: { width: 0, height: 0 },
-        location: loc
-    };
-} else {
-    win = window;
-}
+import { NpoPromise } from './promise-polyfill';
+import { window } from './window';
 
 // Maximum allowed session recording length
 var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -36,11 +19,11 @@ var ArrayProto = Array.prototype,
     slice = ArrayProto.slice,
     toString = ObjProto.toString,
     hasOwnProperty = ObjProto.hasOwnProperty,
-    windowConsole = win.console,
-    navigator = win.navigator,
-    document = win.document,
-    windowOpera = win.opera,
-    screen = win.screen,
+    windowConsole = window.console,
+    navigator = window.navigator,
+    document = window.document,
+    windowOpera = window.opera,
+    screen = window.screen,
     userAgent = navigator.userAgent;
 
 var nativeBind = FuncProto.bind,
@@ -839,8 +822,8 @@ _.UUID = (function() {
     var T = function() {
         var time = 1 * new Date(); // cross-browser version of Date.now()
         var ticks;
-        if (win.performance && win.performance.now) {
-            ticks = win.performance.now();
+        if (window.performance && window.performance.now) {
+            ticks = window.performance.now();
         } else {
             // fall back to busy loop
             ticks = 0;
@@ -1626,7 +1609,7 @@ _.info = {
     },
 
     currentUrl: function() {
-        return win.location.href;
+        return window.location.href;
     },
 
     properties: function(extra_props) {
@@ -1663,10 +1646,10 @@ _.info = {
     mpPageViewProperties: function() {
         return _.strip_empty_properties({
             'current_page_title': document.title,
-            'current_domain': win.location.hostname,
-            'current_url_path': win.location.pathname,
-            'current_url_protocol': win.location.protocol,
-            'current_url_search': win.location.search
+            'current_domain': window.location.hostname,
+            'current_url_path': window.location.pathname,
+            'current_url_protocol': window.location.protocol,
+            'current_url_search': window.location.search
         });
     }
 };
@@ -1709,7 +1692,7 @@ var extract_domain = function(hostname) {
  * @returns {boolean}
  */
 var isOnline = function() {
-    var onLine = win.navigator['onLine'];
+    var onLine = window.navigator['onLine'];
     return _.isUndefined(onLine) || onLine;
 };
 
@@ -1733,6 +1716,7 @@ _['info']['device']         = _.info.device;
 _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
+_['NPO']                    = NpoPromise;
 
 export {
     _,
@@ -1750,5 +1734,4 @@ export {
     navigator,
     slice,
     userAgent,
-    win as window
 };

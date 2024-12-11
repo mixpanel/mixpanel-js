@@ -1,7 +1,8 @@
 import {record} from 'rrweb';
 
 import { SessionRecording } from './session-recording';
-import { console_with_prefix, _, window} from '../utils'; // eslint-disable-line camelcase
+import { console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
+import { window } from '../window';
 
 var logger = console_with_prefix('recorder');
 
