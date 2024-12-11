@@ -10982,7 +10982,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.57.0'
+    LIB_VERSION: '2.57.1-rc1'
 };
 
 exports['default'] = Config;
@@ -11181,6 +11181,8 @@ exports.clearOptInOut = clearOptInOut;
 
 var _utils = require('./utils');
 
+var _window = require('./window');
+
 /**
  * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
  * @callback trackFunction
@@ -11372,7 +11374,7 @@ function _hasDoNotTrackFlagOn(options) {
     if (options && options.ignoreDnt) {
         return false;
     }
-    var win = options && options.window || _utils.window;
+    var win = options && options.window || _window.window;
     var nav = win['navigator'] || {};
     var hasDntOn = false;
 
@@ -11464,7 +11466,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":21}],8:[function(require,module,exports){
+},{"./utils":21,"./window":22}],8:[function(require,module,exports){
 // For loading separate bundles asynchronously via script tag
 // so that we don't load them until they are needed at runtime.
 'use strict';
@@ -11536,6 +11538,8 @@ var _config2 = _interopRequireDefault(_config);
 
 var _utils = require('./utils');
 
+var _window = require('./window');
+
 var _domTrackers = require('./dom-trackers');
 
 var _requestBatcher = require('./request-batcher');
@@ -11601,7 +11605,7 @@ var NOOP_FUNC = function NOOP_FUNC() {};
  */
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-var USE_XHR = _utils.window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
+var USE_XHR = _window.window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
 
 // IE<10 does not support cross-origin XHR's but script tags
 // with defer won't block window.onload; ENQUEUE_REQUESTS
@@ -11845,7 +11849,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
             });
         } else {
             this.init_batchers();
-            if (sendBeacon && _utils.window.addEventListener) {
+            if (sendBeacon && _window.window.addEventListener) {
                 // Before page closes or hides (user tabs away etc), attempt to flush any events
                 // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
                 // events will not be removed from the persistent store; if the site is loaded again,
@@ -11862,12 +11866,12 @@ MixpanelLib.prototype._init = function (token, config, name) {
                         this.request_batchers.events.flush({ unloading: true });
                     }
                 }, this);
-                _utils.window.addEventListener('pagehide', function (ev) {
+                _window.window.addEventListener('pagehide', function (ev) {
                     if (ev['persisted']) {
                         flush_on_unload();
                     }
                 });
-                _utils.window.addEventListener('visibilitychange', function () {
+                _window.window.addEventListener('visibilitychange', function () {
                     if (_utils.document['visibilityState'] === 'hidden') {
                         flush_on_unload();
                     }
@@ -11902,17 +11906,17 @@ MixpanelLib.prototype._init = function (token, config, name) {
 };
 
 MixpanelLib.prototype.start_session_recording = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function () {
-    if (!_utils.window['MutationObserver']) {
+    if (!_window.window['MutationObserver']) {
         _utils.console.critical('Browser does not support MutationObserver; skipping session recording');
         return;
     }
 
     var handleLoadedRecorder = _utils._.bind(function () {
-        this._recorder = this._recorder || new _utils.window['__mp_recorder'](this);
+        this._recorder = this._recorder || new _window.window['__mp_recorder'](this);
         this._recorder['startRecording']();
     }, this);
 
-    if (_utils._.isUndefined(_utils.window['__mp_recorder'])) {
+    if (_utils._.isUndefined(_window.window['__mp_recorder'])) {
         load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
     } else {
         handleLoadedRecorder();
@@ -12027,27 +12031,27 @@ MixpanelLib.prototype._init_url_change_tracking = function (track_pageview_optio
     }
 
     if (_utils._.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
-        _utils.window.addEventListener('popstate', function () {
-            _utils.window.dispatchEvent(new Event('mp_locationchange'));
+        _window.window.addEventListener('popstate', function () {
+            _window.window.dispatchEvent(new Event('mp_locationchange'));
         });
-        _utils.window.addEventListener('hashchange', function () {
-            _utils.window.dispatchEvent(new Event('mp_locationchange'));
+        _window.window.addEventListener('hashchange', function () {
+            _window.window.dispatchEvent(new Event('mp_locationchange'));
         });
-        var nativePushState = _utils.window.history.pushState;
+        var nativePushState = _window.window.history.pushState;
         if (typeof nativePushState === 'function') {
-            _utils.window.history.pushState = function (state, unused, url) {
-                nativePushState.call(_utils.window.history, state, unused, url);
-                _utils.window.dispatchEvent(new Event('mp_locationchange'));
+            _window.window.history.pushState = function (state, unused, url) {
+                nativePushState.call(_window.window.history, state, unused, url);
+                _window.window.dispatchEvent(new Event('mp_locationchange'));
             };
         }
-        var nativeReplaceState = _utils.window.history.replaceState;
+        var nativeReplaceState = _window.window.history.replaceState;
         if (typeof nativeReplaceState === 'function') {
-            _utils.window.history.replaceState = function (state, unused, url) {
-                nativeReplaceState.call(_utils.window.history, state, unused, url);
-                _utils.window.dispatchEvent(new Event('mp_locationchange'));
+            _window.window.history.replaceState = function (state, unused, url) {
+                nativeReplaceState.call(_window.window.history, state, unused, url);
+                _window.window.dispatchEvent(new Event('mp_locationchange'));
             };
         }
-        _utils.window.addEventListener('mp_locationchange', (function () {
+        _window.window.addEventListener('mp_locationchange', (function () {
             var current_url = _utils._.info.currentUrl();
             var should_track = false;
             if (track_pageview_option === 'full-url') {
@@ -13704,7 +13708,7 @@ var override_mp_init_func = function override_mp_init_func() {
 
             mixpanel_master = instance;
             if (init_type === INIT_SNIPPET) {
-                _utils.window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+                _window.window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
             }
             extend_mp();
         }
@@ -13756,7 +13760,7 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
         // check to make sure we arn't in a frame
         var toplevel = false;
         try {
-            toplevel = _utils.window.frameElement === null;
+            toplevel = _window.window.frameElement === null;
         } catch (e) {
             // noop
         }
@@ -13767,13 +13771,13 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
     }
 
     // fallback handler, always will work
-    _utils._.register_event(_utils.window, 'load', dom_loaded_handler, true);
+    _utils._.register_event(_window.window, 'load', dom_loaded_handler, true);
 };
 
 function init_from_snippet(bundle_loader) {
     load_extra_bundle = bundle_loader;
     init_type = INIT_SNIPPET;
-    mixpanel_master = _utils.window[PRIMARY_INSTANCE_NAME];
+    mixpanel_master = _window.window[PRIMARY_INSTANCE_NAME];
 
     // Initialization
     if (_utils._.isUndefined(mixpanel_master)) {
@@ -13823,7 +13827,7 @@ function init_as_module(bundle_loader) {
     return mixpanel_master;
 }
 
-},{"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./request-batcher":17,"./utils":21}],11:[function(require,module,exports){
+},{"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./request-batcher":17,"./utils":21,"./window":22}],11:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -14918,10 +14922,20 @@ exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
 },{"./api-actions":4,"./utils":21}],14:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _window = require('./window');
+
 /**
  * Promise polyfill sourced from https://github.com/getify/native-promise-only.
- * Modified to remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
- */
+ * Modified to
+ *  - remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
+ *  - rename access notation for dynamically referenced props to avoid minification, e.g. this.__NPO__ -> this['__NPO__']
+*/
 
 /*! Native Promise Only
     v0.8.1 (c) Kyle Simpson
@@ -14931,14 +14945,14 @@ exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 /*jshint validthis:true */
 'use strict';
 
-Object.defineProperty(exports, '__esModule', {
-    value: true
-});
+var setImmediate = _window.window['setImmediate'];
 var builtInProp,
     cycle,
     schedulingQueue,
     ToString = Object.prototype.toString,
-    timer = setTimeout;
+    timer = typeof setImmediate !== 'undefined' ? function timer(fn) {
+    return setImmediate(fn);
+} : setTimeout;
 
 // dammit, IE8.
 try {
@@ -15138,13 +15152,13 @@ function NpoPromise(executor) {
         throw TypeError('Not a function');
     }
 
-    if (this.__NPO__ !== 0) {
+    if (this['__NPO__'] !== 0) {
         throw TypeError('Not a promise');
     }
 
     // instance shadowing the inherited "brand"
     // to signal an already "initialized" promise
-    this.__NPO__ = 1;
+    this['__NPO__'] = 1;
 
     var def = new MakeDef(this);
 
@@ -15202,7 +15216,7 @@ builtInProp(NpoPromise, 'resolve', function Promise$resolve(msg) {
 
     // spec mandated checks
     // note: best "isPromise" check that's practical for now
-    if (msg && typeof msg === 'object' && msg.__NPO__ === 1) {
+    if (msg && typeof msg === 'object' && msg['__NPO__'] === 1) {
         return msg;
     }
 
@@ -15281,8 +15295,9 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 }
 
 exports.Promise = PromisePolyfill;
+exports.NpoPromise = NpoPromise;
 
-},{}],15:[function(require,module,exports){
+},{"./window":22}],15:[function(require,module,exports){
 'use strict';
 
 var _rrweb = require('rrweb');
@@ -15292,6 +15307,8 @@ var _sessionRecording = require('./session-recording');
 var _utils = require('../utils');
 
 // eslint-disable-line camelcase
+
+var _window = require('../window');
 
 var logger = (0, _utils.console_with_prefix)('recorder');
 
@@ -15359,9 +15376,9 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
     }
 });
 
-_utils.window['__mp_recorder'] = MixpanelRecorder;
+_window.window['__mp_recorder'] = MixpanelRecorder;
 
-},{"../utils":21,"./session-recording":16,"rrweb":3}],16:[function(require,module,exports){
+},{"../utils":21,"../window":22,"./session-recording":16,"rrweb":3}],16:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -15376,6 +15393,8 @@ var _utils = require('../utils');
 
 // eslint-disable-line camelcase
 
+var _window = require('../window');
+
 var _gdprUtils = require('../gdpr-utils');
 
 var _requestBatcher = require('../request-batcher');
@@ -15385,7 +15404,7 @@ var _config = require('../config');
 var _config2 = _interopRequireDefault(_config);
 
 var logger = (0, _utils.console_with_prefix)('recorder');
-var CompressionStream = _utils.window['CompressionStream'];
+var CompressionStream = _window.window['CompressionStream'];
 
 var RECORDER_BATCHER_LIB_CONFIG = {
     'batch_size': 1000,
@@ -15584,7 +15603,7 @@ SessionRecording.prototype._sendRequest = function (currentReplayId, reqParams, 
         });
     }, this);
 
-    _utils.window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+    _window.window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
@@ -15670,7 +15689,7 @@ SessionRecording.prototype.reportError = function (msg, err) {
 
 exports.SessionRecording = SessionRecording;
 
-},{"../config":5,"../gdpr-utils":7,"../request-batcher":17,"../utils":21,"@rrweb/types":2}],17:[function(require,module,exports){
+},{"../config":5,"../gdpr-utils":7,"../request-batcher":17,"../utils":21,"../window":22,"@rrweb/types":2}],17:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16384,105 +16403,125 @@ var SharedLock = function SharedLock(key, options) {
     this.storage = options.storage || window.localStorage;
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
+
+    // dependency-inject promise implementation for testing purposes
+    this.promiseImpl = options.promiseImpl || _promisePolyfill.Promise;
 };
 
+// pass in a specific pid to test contention scenarios; otherwise
+// it is chosen randomly for each acquisition attempt
 SharedLock.prototype.withLock = function (lockedCB, pid) {
-    var i = pid || new Date().getTime() + '|' + Math.random();
-    var startTime = new Date().getTime();
-    var key = this.storageKey;
-    var pollIntervalMS = this.pollIntervalMS;
-    var timeoutMS = this.timeoutMS;
-    var storage = this.storage;
+    var Promise = this.promiseImpl;
+    return new Promise(_utils._.bind(function (resolve, reject) {
+        var i = pid || new Date().getTime() + '|' + Math.random();
+        var startTime = new Date().getTime();
 
-    var keyX = key + ':X';
-    var keyY = key + ':Y';
-    var keyZ = key + ':Z';
+        var key = this.storageKey;
+        var pollIntervalMS = this.pollIntervalMS;
+        var timeoutMS = this.timeoutMS;
+        var storage = this.storage;
 
-    var delay = function delay() {
-        return new _promisePolyfill.Promise(function (resolve) {
+        var keyX = key + ':X';
+        var keyY = key + ':Y';
+        var keyZ = key + ':Z';
+
+        var delay = function delay(cb) {
             if (new Date().getTime() - startTime > timeoutMS) {
                 logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                 storage.removeItem(keyZ);
                 storage.removeItem(keyY);
-                resolve(loop());
-            } else {
-                setTimeout(resolve, pollIntervalMS * (Math.random() + 0.1));
-            }
-        });
-    };
-
-    var waitFor = function waitFor(predicate) {
-        if (predicate()) {
-            return _promisePolyfill.Promise.resolve();
-        } else {
-            return delay().then(function () {
-                return waitFor(predicate);
-            });
-        }
-    };
-
-    var getSetY = function getSetY() {
-        var valY = storage.getItem(keyY);
-        if (valY && valY !== i) {
-            // if Y == i then this process already has the lock (useful for test cases)
-            return false;
-        } else {
-            storage.setItem(keyY, i);
-            if (storage.getItem(keyY) === i) {
-                return true;
-            } else {
-                if (!(0, _utils.localStorageSupported)(storage, true)) {
-                    throw new Error('localStorage support dropped while acquiring lock');
-                }
-                return false;
-            }
-        }
-    };
-
-    var loop = function loop() {
-        storage.setItem(keyX, i);
-        return waitFor(getSetY).then(function () {
-            if (storage.getItem(keyX) === i) {
+                loop();
                 return;
             }
+            setTimeout(function () {
+                try {
+                    cb();
+                } catch (err) {
+                    reject(err);
+                }
+            }, pollIntervalMS * (Math.random() + 0.1));
+        };
 
-            return delay();
-        }).then(function () {
-            if (storage.getItem(keyY) !== i) {
-                return loop();
+        var waitFor = function waitFor(predicate, cb) {
+            if (predicate()) {
+                cb();
+            } else {
+                delay(function () {
+                    waitFor(predicate, cb);
+                });
             }
+        };
 
-            return waitFor(function () {
-                return !storage.getItem(keyZ);
+        var getSetY = function getSetY() {
+            var valY = storage.getItem(keyY);
+            if (valY && valY !== i) {
+                // if Y == i then this process already has the lock (useful for test cases)
+                return false;
+            } else {
+                storage.setItem(keyY, i);
+                if (storage.getItem(keyY) === i) {
+                    return true;
+                } else {
+                    if (!(0, _utils.localStorageSupported)(storage, true)) {
+                        reject(new Error('localStorage support dropped while acquiring lock'));
+                    }
+                    return false;
+                }
+            }
+        };
+
+        var loop = function loop() {
+            storage.setItem(keyX, i);
+
+            waitFor(getSetY, function () {
+                if (storage.getItem(keyX) === i) {
+                    criticalSection();
+                    return;
+                }
+
+                delay(function () {
+                    if (storage.getItem(keyY) !== i) {
+                        loop();
+                        return;
+                    }
+                    waitFor(function () {
+                        return !storage.getItem(keyZ);
+                    }, criticalSection);
+                });
             });
-        });
-    };
+        };
 
-    var clearLock = function clearLock() {
-        storage.removeItem(keyZ);
-        if (storage.getItem(keyY) === i) {
-            storage.removeItem(keyY);
-        }
-        if (storage.getItem(keyX) === i) {
-            storage.removeItem(keyX);
-        }
-    };
+        var criticalSection = function criticalSection() {
+            storage.setItem(keyZ, '1');
+            var removeLock = function removeLock() {
+                storage.removeItem(keyZ);
+                if (storage.getItem(keyY) === i) {
+                    storage.removeItem(keyY);
+                }
+                if (storage.getItem(keyX) === i) {
+                    storage.removeItem(keyX);
+                }
+            };
 
-    if ((0, _utils.localStorageSupported)(storage, true)) {
-        return loop().then(function () {
-            return lockedCB();
-        }).then(function (returnValue) {
-            clearLock();
-            // propogate the return value from the lockedCB
-            return returnValue;
-        })['catch'](function (err) {
-            clearLock();
-            // something went wrong acquiring lock, let caller handle the rejected promise
-            return _promisePolyfill.Promise.reject(err);
-        });
-    } else {
-        return _promisePolyfill.Promise.reject(new Error('localStorage support check failed'));
-    }
+            lockedCB().then(function (ret) {
+                removeLock();
+                resolve(ret);
+            })['catch'](function (err) {
+                removeLock();
+                reject(err);
+            });
+        };
+
+        try {
+            if ((0, _utils.localStorageSupported)(storage, true)) {
+                loop();
+            } else {
+                throw new Error('localStorage support check failed');
+            }
+        } catch (err) {
+            reject(err);
+        }
+    }, this));
 };
 
 exports.SharedLock = SharedLock;
@@ -16565,24 +16604,9 @@ var _config = require('./config');
 
 var _config2 = _interopRequireDefault(_config);
 
-// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
-var win;
-if (typeof window === 'undefined') {
-    var loc = {
-        hostname: ''
-    };
-    exports.window = win = {
-        navigator: { userAgent: '', onLine: true },
-        document: {
-            location: loc,
-            referrer: ''
-        },
-        screen: { width: 0, height: 0 },
-        location: loc
-    };
-} else {
-    exports.window = win = window;
-}
+var _promisePolyfill = require('./promise-polyfill');
+
+var _window = require('./window');
 
 // Maximum allowed session recording length
 var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -16600,11 +16624,11 @@ var ArrayProto = Array.prototype,
     slice = ArrayProto.slice,
     toString = ObjProto.toString,
     hasOwnProperty = ObjProto.hasOwnProperty,
-    windowConsole = win.console,
-    navigator = win.navigator,
-    document = win.document,
-    windowOpera = win.opera,
-    screen = win.screen,
+    windowConsole = _window.window.console,
+    navigator = _window.window.navigator,
+    document = _window.window.document,
+    windowOpera = _window.window.opera,
+    screen = _window.window.screen,
     userAgent = navigator.userAgent;
 
 var nativeBind = FuncProto.bind,
@@ -17399,8 +17423,8 @@ _.UUID = (function () {
     var T = function T() {
         var time = 1 * new Date(); // cross-browser version of Date.now()
         var ticks;
-        if (win.performance && win.performance.now) {
-            ticks = win.performance.now();
+        if (_window.window.performance && _window.window.performance.now) {
+            ticks = _window.window.performance.now();
         } else {
             // fall back to busy loop
             ticks = 0;
@@ -17624,7 +17648,7 @@ var localStorageSupported = function localStorageSupported(storage, forceCheck) 
 
     var supported = true;
     try {
-        storage = storage || window.localStorage;
+        storage = storage || _window.window.localStorage;
         var key = '__mplss_' + cheap_guid(8),
             val = 'xyz';
         storage.setItem(key, val);
@@ -17656,7 +17680,7 @@ _.localStorage = {
 
     get: function get(name) {
         try {
-            return window.localStorage.getItem(name);
+            return _window.window.localStorage.getItem(name);
         } catch (err) {
             _.localStorage.error(err);
         }
@@ -17674,7 +17698,7 @@ _.localStorage = {
 
     set: function set(name, value) {
         try {
-            window.localStorage.setItem(name, value);
+            _window.window.localStorage.setItem(name, value);
         } catch (err) {
             _.localStorage.error(err);
         }
@@ -17682,7 +17706,7 @@ _.localStorage = {
 
     remove: function remove(name) {
         try {
-            window.localStorage.removeItem(name);
+            _window.window.localStorage.removeItem(name);
         } catch (err) {
             _.localStorage.error(err);
         }
@@ -17721,7 +17745,7 @@ _.register_event = (function () {
 
     function makeHandler(element, new_handler, old_handlers) {
         var handler = function handler(event) {
-            event = event || fixEvent(window.event);
+            event = event || fixEvent(_window.window.event);
 
             // this basically happens in firefox whenever another script
             // overwrites the onload callback and doesn't pass the event
@@ -18167,7 +18191,7 @@ _.info = {
     },
 
     currentUrl: function currentUrl() {
-        return win.location.href;
+        return _window.window.location.href;
     },
 
     properties: function properties(extra_props) {
@@ -18204,10 +18228,10 @@ _.info = {
     mpPageViewProperties: function mpPageViewProperties() {
         return _.strip_empty_properties({
             'current_page_title': document.title,
-            'current_domain': win.location.hostname,
-            'current_url_path': win.location.pathname,
-            'current_url_protocol': win.location.protocol,
-            'current_url_search': win.location.search
+            'current_domain': _window.window.location.hostname,
+            'current_url_path': _window.window.location.pathname,
+            'current_url_protocol': _window.window.location.protocol,
+            'current_url_search': _window.window.location.search
         });
     }
 };
@@ -18250,7 +18274,7 @@ var extract_domain = function extract_domain(hostname) {
  * @returns {boolean}
  */
 var isOnline = function isOnline() {
-    var onLine = win.navigator['onLine'];
+    var onLine = _window.window.navigator['onLine'];
     return _.isUndefined(onLine) || onLine;
 };
 
@@ -18275,6 +18299,7 @@ _['info']['device'] = _.info.device;
 _['info']['browser'] = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties'] = _.info.properties;
+_['NPO'] = _promisePolyfill.NpoPromise;
 
 exports._ = _;
 exports.cheap_guid = cheap_guid;
@@ -18291,6 +18316,32 @@ exports.MAX_VALUE_FOR_MIN_RECORDING_MS = MAX_VALUE_FOR_MIN_RECORDING_MS;
 exports.navigator = navigator;
 exports.slice = slice;
 exports.userAgent = userAgent;
+
+},{"./config":5,"./promise-polyfill":14,"./window":22}],22:[function(require,module,exports){
+// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+var win;
+if (typeof window === 'undefined') {
+    var loc = {
+        hostname: ''
+    };
+    exports.window = win = {
+        navigator: { userAgent: '', onLine: true },
+        document: {
+            location: loc,
+            referrer: ''
+        },
+        screen: { width: 0, height: 0 },
+        location: loc
+    };
+} else {
+    exports.window = win = window;
+}
+
 exports.window = win;
 
-},{"./config":5}]},{},[1]);
+},{}]},{},[1]);

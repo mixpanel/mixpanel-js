@@ -3,10 +3,8 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.57.0'
+        LIB_VERSION: '2.57.1-rc1'
     };
-
-    /* eslint camelcase: "off", eqeqeq: "off" */
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
     var win;
@@ -26,6 +24,370 @@
     } else {
         win = window;
     }
+
+    var setImmediate = win['setImmediate'];
+    var builtInProp, cycle, schedulingQueue,
+        ToString = Object.prototype.toString,
+        timer = (typeof setImmediate !== 'undefined') ?
+            function timer(fn) { return setImmediate(fn); } :
+            setTimeout;
+
+    // dammit, IE8.
+    try {
+        Object.defineProperty({},'x',{});
+        builtInProp = function builtInProp(obj,name,val,config) {
+            return Object.defineProperty(obj,name,{
+                value: val,
+                writable: true,
+                configurable: config !== false
+            });
+        };
+    }
+    catch (err) {
+        builtInProp = function builtInProp(obj,name,val) {
+            obj[name] = val;
+            return obj;
+        };
+    }
+
+    // Note: using a queue instead of array for efficiency
+    schedulingQueue = (function Queue() {
+        var first, last, item;
+
+        function Item(fn,self) {
+            this.fn = fn;
+            this.self = self;
+            this.next = void 0;
+        }
+
+        return {
+            add: function add(fn,self) {
+                item = new Item(fn,self);
+                if (last) {
+                    last.next = item;
+                }
+                else {
+                    first = item;
+                }
+                last = item;
+                item = void 0;
+            },
+            drain: function drain() {
+                var f = first;
+                first = last = cycle = void 0;
+
+                while (f) {
+                    f.fn.call(f.self);
+                    f = f.next;
+                }
+            }
+        };
+    })();
+
+    function schedule(fn,self) {
+        schedulingQueue.add(fn,self);
+        if (!cycle) {
+            cycle = timer(schedulingQueue.drain);
+        }
+    }
+
+    // promise duck typing
+    function isThenable(o) {
+        var _then, oType = typeof o;
+
+        if (o !== null && (oType === 'object' || oType === 'function')) {
+            _then = o.then;
+        }
+        return typeof _then === 'function' ? _then : false;
+    }
+
+    function notify() {
+        for (var i=0; i<this.chain.length; i++) {
+            notifyIsolated(
+                this,
+                (this.state === 1) ? this.chain[i].success : this.chain[i].failure,
+                this.chain[i]
+            );
+        }
+        this.chain.length = 0;
+    }
+
+    // NOTE: This is a separate function to isolate
+    // the `try..catch` so that other code can be
+    // optimized better
+    function notifyIsolated(self,cb,chain) {
+        var ret, _then;
+        try {
+            if (cb === false) {
+                chain.reject(self.msg);
+            }
+            else {
+                if (cb === true) {
+                    ret = self.msg;
+                }
+                else {
+                    ret = cb.call(void 0,self.msg);
+                }
+
+                if (ret === chain.promise) {
+                    chain.reject(TypeError('Promise-chain cycle'));
+                }
+                // eslint-disable-next-line no-cond-assign
+                else if (_then = isThenable(ret)) {
+                    _then.call(ret,chain.resolve,chain.reject);
+                }
+                else {
+                    chain.resolve(ret);
+                }
+            }
+        }
+        catch (err) {
+            chain.reject(err);
+        }
+    }
+
+    function resolve(msg) {
+        var _then, self = this;
+
+        // already triggered?
+        if (self.triggered) { return; }
+
+        self.triggered = true;
+
+        // unwrap
+        if (self.def) {
+            self = self.def;
+        }
+
+        try {
+            // eslint-disable-next-line no-cond-assign
+            if (_then = isThenable(msg)) {
+                schedule(function(){
+                    var defWrapper = new MakeDefWrapper(self);
+                    try {
+                        _then.call(msg,
+                            function $resolve$(){ resolve.apply(defWrapper,arguments); },
+                            function $reject$(){ reject.apply(defWrapper,arguments); }
+                        );
+                    }
+                    catch (err) {
+                        reject.call(defWrapper,err);
+                    }
+                });
+            }
+            else {
+                self.msg = msg;
+                self.state = 1;
+                if (self.chain.length > 0) {
+                    schedule(notify,self);
+                }
+            }
+        }
+        catch (err) {
+            reject.call(new MakeDefWrapper(self),err);
+        }
+    }
+
+    function reject(msg) {
+        var self = this;
+
+        // already triggered?
+        if (self.triggered) { return; }
+
+        self.triggered = true;
+
+        // unwrap
+        if (self.def) {
+            self = self.def;
+        }
+
+        self.msg = msg;
+        self.state = 2;
+        if (self.chain.length > 0) {
+            schedule(notify,self);
+        }
+    }
+
+    function iteratePromises(Constructor,arr,resolver,rejecter) {
+        for (var idx=0; idx<arr.length; idx++) {
+            (function IIFE(idx){
+                Constructor.resolve(arr[idx])
+                    .then(
+                        function $resolver$(msg){
+                            resolver(idx,msg);
+                        },
+                        rejecter
+                    );
+            })(idx);
+        }
+    }
+
+    function MakeDefWrapper(self) {
+        this.def = self;
+        this.triggered = false;
+    }
+
+    function MakeDef(self) {
+        this.promise = self;
+        this.state = 0;
+        this.triggered = false;
+        this.chain = [];
+        this.msg = void 0;
+    }
+
+    function NpoPromise(executor) {
+        if (typeof executor !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        if (this['__NPO__'] !== 0) {
+            throw TypeError('Not a promise');
+        }
+
+        // instance shadowing the inherited "brand"
+        // to signal an already "initialized" promise
+        this['__NPO__'] = 1;
+
+        var def = new MakeDef(this);
+
+        this['then'] = function then(success,failure) {
+            var o = {
+                success: typeof success === 'function' ? success : true,
+                failure: typeof failure === 'function' ? failure : false
+            };
+                // Note: `then(..)` itself can be borrowed to be used against
+                // a different promise constructor for making the chained promise,
+                // by substituting a different `this` binding.
+            o.promise = new this.constructor(function extractChain(resolve,reject) {
+                if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                    throw TypeError('Not a function');
+                }
+
+                o.resolve = resolve;
+                o.reject = reject;
+            });
+            def.chain.push(o);
+
+            if (def.state !== 0) {
+                schedule(notify,def);
+            }
+
+            return o.promise;
+        };
+        this['catch'] = function $catch$(failure) {
+            return this.then(void 0,failure);
+        };
+
+        try {
+            executor.call(
+                void 0,
+                function publicResolve(msg){
+                    resolve.call(def,msg);
+                },
+                function publicReject(msg) {
+                    reject.call(def,msg);
+                }
+            );
+        }
+        catch (err) {
+            reject.call(def,err);
+        }
+    }
+
+    var PromisePrototype = builtInProp({},'constructor',NpoPromise,
+        /*configurable=*/false
+    );
+
+        // Note: Android 4 cannot use `Object.defineProperty(..)` here
+    NpoPromise.prototype = PromisePrototype;
+
+    // built-in "brand" to signal an "uninitialized" promise
+    builtInProp(PromisePrototype,'__NPO__',0,
+        /*configurable=*/false
+    );
+
+    builtInProp(NpoPromise,'resolve',function Promise$resolve(msg) {
+        var Constructor = this;
+
+        // spec mandated checks
+        // note: best "isPromise" check that's practical for now
+        if (msg && typeof msg === 'object' && msg['__NPO__'] === 1) {
+            return msg;
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            resolve(msg);
+        });
+    });
+
+    builtInProp(NpoPromise,'reject',function Promise$reject(msg) {
+        return new this(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            reject(msg);
+        });
+    });
+
+    builtInProp(NpoPromise,'all',function Promise$all(arr) {
+        var Constructor = this;
+
+        // spec mandated checks
+        if (ToString.call(arr) !== '[object Array]') {
+            return Constructor.reject(TypeError('Not an array'));
+        }
+        if (arr.length === 0) {
+            return Constructor.resolve([]);
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            var len = arr.length, msgs = Array(len), count = 0;
+
+            iteratePromises(Constructor,arr,function resolver(idx,msg) {
+                msgs[idx] = msg;
+                if (++count === len) {
+                    resolve(msgs);
+                }
+            },reject);
+        });
+    });
+
+    builtInProp(NpoPromise,'race',function Promise$race(arr) {
+        var Constructor = this;
+
+        // spec mandated checks
+        if (ToString.call(arr) !== '[object Array]') {
+            return Constructor.reject(TypeError('Not an array'));
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            iteratePromises(Constructor,arr,function resolver(idx,msg){
+                resolve(msg);
+            },reject);
+        });
+    });
+
+    var PromisePolyfill;
+    if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
+        PromisePolyfill = Promise;
+    } else {
+        PromisePolyfill = NpoPromise;
+    }
+
+    /* eslint camelcase: "off", eqeqeq: "off" */
 
     // Maximum allowed session recording length
     var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -1086,7 +1448,7 @@
 
         var supported = true;
         try {
-            storage = storage || window.localStorage;
+            storage = storage || win.localStorage;
             var key = '__mplss_' + cheap_guid(8),
                 val = 'xyz';
             storage.setItem(key, val);
@@ -1118,7 +1480,7 @@
 
         get: function(name) {
             try {
-                return window.localStorage.getItem(name);
+                return win.localStorage.getItem(name);
             } catch (err) {
                 _.localStorage.error(err);
             }
@@ -1136,7 +1498,7 @@
 
         set: function(name, value) {
             try {
-                window.localStorage.setItem(name, value);
+                win.localStorage.setItem(name, value);
             } catch (err) {
                 _.localStorage.error(err);
             }
@@ -1144,7 +1506,7 @@
 
         remove: function(name) {
             try {
-                window.localStorage.removeItem(name);
+                win.localStorage.removeItem(name);
             } catch (err) {
                 _.localStorage.error(err);
             }
@@ -1183,7 +1545,7 @@
 
         function makeHandler(element, new_handler, old_handlers) {
             var handler = function(event) {
-                event = event || fixEvent(window.event);
+                event = event || fixEvent(win.event);
 
                 // this basically happens in firefox whenever another script
                 // overwrites the onload callback and doesn't pass the event
@@ -1738,6 +2100,7 @@
     _['info']['browser']        = _.info.browser;
     _['info']['browserVersion'] = _.info.browserVersion;
     _['info']['properties']     = _.info.properties;
+    _['NPO']                    = NpoPromise;
 
     /* eslint camelcase: "off" */
 
@@ -1890,371 +2253,6 @@
         }, 0);
     };
 
-    /**
-     * Promise polyfill sourced from https://github.com/getify/native-promise-only.
-     * Modified to remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
-     */
-
-    var builtInProp, cycle, schedulingQueue,
-        ToString = Object.prototype.toString,
-        timer = setTimeout;
-
-    // dammit, IE8.
-    try {
-        Object.defineProperty({},'x',{});
-        builtInProp = function builtInProp(obj,name,val,config) {
-            return Object.defineProperty(obj,name,{
-                value: val,
-                writable: true,
-                configurable: config !== false
-            });
-        };
-    }
-    catch (err) {
-        builtInProp = function builtInProp(obj,name,val) {
-            obj[name] = val;
-            return obj;
-        };
-    }
-
-    // Note: using a queue instead of array for efficiency
-    schedulingQueue = (function Queue() {
-        var first, last, item;
-
-        function Item(fn,self) {
-            this.fn = fn;
-            this.self = self;
-            this.next = void 0;
-        }
-
-        return {
-            add: function add(fn,self) {
-                item = new Item(fn,self);
-                if (last) {
-                    last.next = item;
-                }
-                else {
-                    first = item;
-                }
-                last = item;
-                item = void 0;
-            },
-            drain: function drain() {
-                var f = first;
-                first = last = cycle = void 0;
-
-                while (f) {
-                    f.fn.call(f.self);
-                    f = f.next;
-                }
-            }
-        };
-    })();
-
-    function schedule(fn,self) {
-        schedulingQueue.add(fn,self);
-        if (!cycle) {
-            cycle = timer(schedulingQueue.drain);
-        }
-    }
-
-    // promise duck typing
-    function isThenable(o) {
-        var _then, oType = typeof o;
-
-        if (o !== null && (oType === 'object' || oType === 'function')) {
-            _then = o.then;
-        }
-        return typeof _then === 'function' ? _then : false;
-    }
-
-    function notify() {
-        for (var i=0; i<this.chain.length; i++) {
-            notifyIsolated(
-                this,
-                (this.state === 1) ? this.chain[i].success : this.chain[i].failure,
-                this.chain[i]
-            );
-        }
-        this.chain.length = 0;
-    }
-
-    // NOTE: This is a separate function to isolate
-    // the `try..catch` so that other code can be
-    // optimized better
-    function notifyIsolated(self,cb,chain) {
-        var ret, _then;
-        try {
-            if (cb === false) {
-                chain.reject(self.msg);
-            }
-            else {
-                if (cb === true) {
-                    ret = self.msg;
-                }
-                else {
-                    ret = cb.call(void 0,self.msg);
-                }
-
-                if (ret === chain.promise) {
-                    chain.reject(TypeError('Promise-chain cycle'));
-                }
-                // eslint-disable-next-line no-cond-assign
-                else if (_then = isThenable(ret)) {
-                    _then.call(ret,chain.resolve,chain.reject);
-                }
-                else {
-                    chain.resolve(ret);
-                }
-            }
-        }
-        catch (err) {
-            chain.reject(err);
-        }
-    }
-
-    function resolve(msg) {
-        var _then, self = this;
-
-        // already triggered?
-        if (self.triggered) { return; }
-
-        self.triggered = true;
-
-        // unwrap
-        if (self.def) {
-            self = self.def;
-        }
-
-        try {
-            // eslint-disable-next-line no-cond-assign
-            if (_then = isThenable(msg)) {
-                schedule(function(){
-                    var defWrapper = new MakeDefWrapper(self);
-                    try {
-                        _then.call(msg,
-                            function $resolve$(){ resolve.apply(defWrapper,arguments); },
-                            function $reject$(){ reject.apply(defWrapper,arguments); }
-                        );
-                    }
-                    catch (err) {
-                        reject.call(defWrapper,err);
-                    }
-                });
-            }
-            else {
-                self.msg = msg;
-                self.state = 1;
-                if (self.chain.length > 0) {
-                    schedule(notify,self);
-                }
-            }
-        }
-        catch (err) {
-            reject.call(new MakeDefWrapper(self),err);
-        }
-    }
-
-    function reject(msg) {
-        var self = this;
-
-        // already triggered?
-        if (self.triggered) { return; }
-
-        self.triggered = true;
-
-        // unwrap
-        if (self.def) {
-            self = self.def;
-        }
-
-        self.msg = msg;
-        self.state = 2;
-        if (self.chain.length > 0) {
-            schedule(notify,self);
-        }
-    }
-
-    function iteratePromises(Constructor,arr,resolver,rejecter) {
-        for (var idx=0; idx<arr.length; idx++) {
-            (function IIFE(idx){
-                Constructor.resolve(arr[idx])
-                    .then(
-                        function $resolver$(msg){
-                            resolver(idx,msg);
-                        },
-                        rejecter
-                    );
-            })(idx);
-        }
-    }
-
-    function MakeDefWrapper(self) {
-        this.def = self;
-        this.triggered = false;
-    }
-
-    function MakeDef(self) {
-        this.promise = self;
-        this.state = 0;
-        this.triggered = false;
-        this.chain = [];
-        this.msg = void 0;
-    }
-
-    function NpoPromise(executor) {
-        if (typeof executor !== 'function') {
-            throw TypeError('Not a function');
-        }
-
-        if (this.__NPO__ !== 0) {
-            throw TypeError('Not a promise');
-        }
-
-        // instance shadowing the inherited "brand"
-        // to signal an already "initialized" promise
-        this.__NPO__ = 1;
-
-        var def = new MakeDef(this);
-
-        this['then'] = function then(success,failure) {
-            var o = {
-                success: typeof success === 'function' ? success : true,
-                failure: typeof failure === 'function' ? failure : false
-            };
-                // Note: `then(..)` itself can be borrowed to be used against
-                // a different promise constructor for making the chained promise,
-                // by substituting a different `this` binding.
-            o.promise = new this.constructor(function extractChain(resolve,reject) {
-                if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                    throw TypeError('Not a function');
-                }
-
-                o.resolve = resolve;
-                o.reject = reject;
-            });
-            def.chain.push(o);
-
-            if (def.state !== 0) {
-                schedule(notify,def);
-            }
-
-            return o.promise;
-        };
-        this['catch'] = function $catch$(failure) {
-            return this.then(void 0,failure);
-        };
-
-        try {
-            executor.call(
-                void 0,
-                function publicResolve(msg){
-                    resolve.call(def,msg);
-                },
-                function publicReject(msg) {
-                    reject.call(def,msg);
-                }
-            );
-        }
-        catch (err) {
-            reject.call(def,err);
-        }
-    }
-
-    var PromisePrototype = builtInProp({},'constructor',NpoPromise,
-        /*configurable=*/false
-    );
-
-        // Note: Android 4 cannot use `Object.defineProperty(..)` here
-    NpoPromise.prototype = PromisePrototype;
-
-    // built-in "brand" to signal an "uninitialized" promise
-    builtInProp(PromisePrototype,'__NPO__',0,
-        /*configurable=*/false
-    );
-
-    builtInProp(NpoPromise,'resolve',function Promise$resolve(msg) {
-        var Constructor = this;
-
-        // spec mandated checks
-        // note: best "isPromise" check that's practical for now
-        if (msg && typeof msg === 'object' && msg.__NPO__ === 1) {
-            return msg;
-        }
-
-        return new Constructor(function executor(resolve,reject){
-            if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                throw TypeError('Not a function');
-            }
-
-            resolve(msg);
-        });
-    });
-
-    builtInProp(NpoPromise,'reject',function Promise$reject(msg) {
-        return new this(function executor(resolve,reject){
-            if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                throw TypeError('Not a function');
-            }
-
-            reject(msg);
-        });
-    });
-
-    builtInProp(NpoPromise,'all',function Promise$all(arr) {
-        var Constructor = this;
-
-        // spec mandated checks
-        if (ToString.call(arr) !== '[object Array]') {
-            return Constructor.reject(TypeError('Not an array'));
-        }
-        if (arr.length === 0) {
-            return Constructor.resolve([]);
-        }
-
-        return new Constructor(function executor(resolve,reject){
-            if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                throw TypeError('Not a function');
-            }
-
-            var len = arr.length, msgs = Array(len), count = 0;
-
-            iteratePromises(Constructor,arr,function resolver(idx,msg) {
-                msgs[idx] = msg;
-                if (++count === len) {
-                    resolve(msgs);
-                }
-            },reject);
-        });
-    });
-
-    builtInProp(NpoPromise,'race',function Promise$race(arr) {
-        var Constructor = this;
-
-        // spec mandated checks
-        if (ToString.call(arr) !== '[object Array]') {
-            return Constructor.reject(TypeError('Not an array'));
-        }
-
-        return new Constructor(function executor(resolve,reject){
-            if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                throw TypeError('Not a function');
-            }
-
-            iteratePromises(Constructor,arr,function resolver(idx,msg){
-                resolve(msg);
-            },reject);
-        });
-    });
-
-
-    var PromisePolyfill;
-    if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
-        PromisePolyfill = Promise;
-    } else {
-        PromisePolyfill = NpoPromise;
-    }
-
     var logger$2 = console_with_prefix('lock');
 
     /**
@@ -2284,109 +2282,126 @@
         this.storage = options.storage || window.localStorage;
         this.pollIntervalMS = options.pollIntervalMS || 100;
         this.timeoutMS = options.timeoutMS || 2000;
+
+        // dependency-inject promise implementation for testing purposes
+        this.promiseImpl = options.promiseImpl || PromisePolyfill;
     };
 
+    // pass in a specific pid to test contention scenarios; otherwise
+    // it is chosen randomly for each acquisition attempt
     SharedLock.prototype.withLock = function(lockedCB, pid) {
-        var i = pid || (new Date().getTime() + '|' + Math.random());
-        var startTime = new Date().getTime();
-        var key = this.storageKey;
-        var pollIntervalMS = this.pollIntervalMS;
-        var timeoutMS = this.timeoutMS;
-        var storage = this.storage;
+        var Promise = this.promiseImpl;
+        return new Promise(_.bind(function (resolve, reject) {
+            var i = pid || (new Date().getTime() + '|' + Math.random());
+            var startTime = new Date().getTime();
 
-        var keyX = key + ':X';
-        var keyY = key + ':Y';
-        var keyZ = key + ':Z';
+            var key = this.storageKey;
+            var pollIntervalMS = this.pollIntervalMS;
+            var timeoutMS = this.timeoutMS;
+            var storage = this.storage;
 
-        var delay = function() {
-            return new PromisePolyfill(function (resolve) {
+            var keyX = key + ':X';
+            var keyY = key + ':Y';
+            var keyZ = key + ':Z';
+
+            var delay = function(cb) {
                 if (new Date().getTime() - startTime > timeoutMS) {
                     logger$2.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                     storage.removeItem(keyZ);
                     storage.removeItem(keyY);
-                    resolve(loop());
-                } else {
-                    setTimeout(resolve, pollIntervalMS * (Math.random() + 0.1));
+                    loop();
+                    return;
                 }
-            });
-        };
-
-        var waitFor = function(predicate) {
-            if (predicate()) {
-                return PromisePolyfill.resolve();
-            } else {
-                return delay().then(function () {
-                    return waitFor(predicate);
-                });
-            }
-        };
-
-        var getSetY = function() {
-            var valY = storage.getItem(keyY);
-            if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
-                return false;
-            } else {
-                storage.setItem(keyY, i);
-                if (storage.getItem(keyY) === i) {
-                    return true;
-                } else {
-                    if (!localStorageSupported(storage, true)) {
-                        throw new Error('localStorage support dropped while acquiring lock');
+                setTimeout(function() {
+                    try {
+                        cb();
+                    } catch(err) {
+                        reject(err);
                     }
-                    return false;
-                }
-            }
-        };
+                }, pollIntervalMS * (Math.random() + 0.1));
+            };
 
-        var loop = function() {
-            storage.setItem(keyX, i);
-            return waitFor(getSetY)
-                .then(function () {
+            var waitFor = function(predicate, cb) {
+                if (predicate()) {
+                    cb();
+                } else {
+                    delay(function() {
+                        waitFor(predicate, cb);
+                    });
+                }
+            };
+
+            var getSetY = function() {
+                var valY = storage.getItem(keyY);
+                if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
+                    return false;
+                } else {
+                    storage.setItem(keyY, i);
+                    if (storage.getItem(keyY) === i) {
+                        return true;
+                    } else {
+                        if (!localStorageSupported(storage, true)) {
+                            reject(new Error('localStorage support dropped while acquiring lock'));
+                        }
+                        return false;
+                    }
+                }
+            };
+
+            var loop = function() {
+                storage.setItem(keyX, i);
+
+                waitFor(getSetY, function() {
                     if (storage.getItem(keyX) === i) {
+                        criticalSection();
                         return;
                     }
 
-                    return delay();
-                })
-                .then(function () {
-                    if (storage.getItem(keyY) !== i) {
-                        return loop();
-                    }
-
-                    return waitFor(function () {
-                        return !storage.getItem(keyZ);
+                    delay(function() {
+                        if (storage.getItem(keyY) !== i) {
+                            loop();
+                            return;
+                        }
+                        waitFor(function() {
+                            return !storage.getItem(keyZ);
+                        }, criticalSection);
                     });
                 });
-        };
+            };
 
-        var clearLock = function () {
-            storage.removeItem(keyZ);
-            if (storage.getItem(keyY) === i) {
-                storage.removeItem(keyY);
-            }
-            if (storage.getItem(keyX) === i) {
-                storage.removeItem(keyX);
-            }
-        };
+            var criticalSection = function() {
+                storage.setItem(keyZ, '1');
+                var removeLock = function () {
+                    storage.removeItem(keyZ);
+                    if (storage.getItem(keyY) === i) {
+                        storage.removeItem(keyY);
+                    }
+                    if (storage.getItem(keyX) === i) {
+                        storage.removeItem(keyX);
+                    }
+                };
 
-        if (localStorageSupported(storage, true)) {
-            return loop()
-                .then(function () {
-                    return lockedCB();
-                })
-                .then(function (returnValue) {
-                    clearLock();
-                    // propogate the return value from the lockedCB
-                    return returnValue;
-                })
-                .catch(function (err) {
-                    clearLock();
-                    // something went wrong acquiring lock, let caller handle the rejected promise
-                    return PromisePolyfill.reject(err);
-                });
-        } else {
-            return PromisePolyfill.reject(new Error('localStorage support check failed'));
-        }
+                lockedCB()
+                    .then(function (ret) {
+                        removeLock();
+                        resolve(ret);
+                    })
+                    .catch(function (err) {
+                        removeLock();
+                        reject(err);
+                    });
+            };
+
+            try {
+                if (localStorageSupported(storage, true)) {
+                    loop();
+                } else {
+                    throw new Error('localStorage support check failed');
+                }
+            } catch(err) {
+                reject(err);
+            }
+        }, this));
     };
 
     /**
