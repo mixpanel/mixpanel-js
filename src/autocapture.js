@@ -20,6 +20,9 @@ var CLICK_EVENT_PROPS = [
     'screenX', 'screenY',
     'x', 'y'
 ];
+var OPT_IN_CLASSES = ['mp-include'];
+var OPT_OUT_CLASSES = ['mp-no-track'];
+var SENSITIVE_DATA_CLASSES = OPT_OUT_CLASSES.concat(['mp-sensitive']);
 var TRACKED_ATTRS = [
     'aria-label', 'aria-labelledby', 'aria-describedby',
     'href', 'name', 'role', 'title', 'type'
@@ -76,8 +79,6 @@ Autocapture.prototype.initClickTracking = function() {
                     props['$' + prop] = ev[prop];
                 }
             });
-            // TODO remove this log
-            window.console.log(MP_EV_CLICK, ev, props);
             this.mp.track(MP_EV_CLICK, props);
         }
     }.bind(this));
@@ -139,6 +140,18 @@ Autocapture.prototype.initPageviewTracking = function() {
 
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
+
+function getClasses(el) {
+    var classes = {};
+    var classList = getClassName(el).split(' ');
+    for (var i = 0; i < classList.length; i++) {
+        var cls = classList[i];
+        if (cls) {
+            classes[cls] = true;
+        }
+    }
+    return classes;
+}
 
 /*
  * Get the className of an element, accounting for edge cases where element.className is an object
@@ -231,11 +244,13 @@ function getPropsForDOMEvent(ev) {
                 href = shouldTrackEl && shouldTrackValue(href) && href;
             }
 
-            // allow users to programmatically prevent tracking of elements by adding class 'mp-no-track'
-            var classes = getClassName(el).split(' ');
-            if (_.includes(classes, 'mp-no-track')) {
-                explicitNoTrack = true;
-            }
+            // allow users to programmatically prevent tracking of elements by adding classes such as 'mp-no-track'
+            var classes = getClasses(el);
+            _.each(OPT_OUT_CLASSES, function(cls) {
+                if (classes[cls]) {
+                    explicitNoTrack = true;
+                }
+            });
 
             elementsJson.push(getPropertiesFromElement(el));
         }, this);
@@ -247,7 +262,6 @@ function getPropsForDOMEvent(ev) {
                 '$pathname': window.location.pathname,
                 '$elements':  elementsJson,
                 '$el_attr__href': href
-                // TODO add target props
             };
             if (ev.type === EV_CLICK) {
                 var realTarget = guessRealClickTarget(ev);
@@ -357,15 +371,22 @@ function shouldTrackDomEvent(el, ev) {
  * @returns {boolean} whether the element should be tracked
  */
 function shouldTrackElement(el) {
+    var i;
+
     for (var curEl = el; curEl.parentNode && !isTag(curEl, 'body'); curEl = curEl.parentNode) {
-        var classes = getClassName(curEl).split(' ');
-        if (_.includes(classes, 'mp-sensitive') || _.includes(classes, 'mp-no-track')) {
-            return false;
+        var classes = getClasses(curEl);
+        for (i = 0; i < SENSITIVE_DATA_CLASSES.length; i++) {
+            if (classes[SENSITIVE_DATA_CLASSES[i]]) {
+                return false;
+            }
         }
     }
 
-    if (_.includes(getClassName(el).split(' '), 'mp-include')) {
-        return true;
+    var elClasses = getClasses(el);
+    for (i = 0; i < OPT_IN_CLASSES.length; i++) {
+        if (elClasses[OPT_IN_CLASSES[i]]) {
+            return true;
+        }
     }
 
     // don't send data from inputs or similar elements since there will always be
