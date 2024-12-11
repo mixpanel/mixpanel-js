@@ -38,13 +38,15 @@ describe(`SharedLock`, function() {
   describe(`withLock()`, function() {
     it(`runs the given code`, async function() {
       const sharedArray = [];
-      sharedLock.withLock(async function() {
+      sharedLock.withLock(function() {
         sharedArray.push(`A`);
+        return Promise.resolve();
       });
 
-      const secondLockPromise = sharedLock.withLock(async function() {
+      const secondLockPromise = sharedLock.withLock(function() {
         sharedArray.push(`B`);
         expect(sharedArray).to.eql([`A`, `B`]);
+        return Promise.resolve();
       });
 
       await clock.tickAsync(200);
@@ -57,14 +59,16 @@ describe(`SharedLock`, function() {
       acquireLockForPid(sharedLock, `foobar`);
 
       // this should block until 'foobar' process releases below
-      const firstLockPromise = sharedLock.withLock(async function() {
+      const firstLockPromise = sharedLock.withLock(function() {
         sharedArray.push(`B`);
         expect(sharedArray).to.eql([`A`, `B`]);
+        return Promise.resolve();
       });
 
       // 'foobar' process
-      sharedLock.withLock(async function() {
+      sharedLock.withLock(function() {
         sharedArray.push(`A`);
+        return Promise.resolve();
       }, `foobar`);
 
       await clock.tickAsync(1000);
@@ -75,8 +79,9 @@ describe(`SharedLock`, function() {
       acquireLockForPid(sharedLock, `foobar`);
 
       const startTime = Date.now();
-      const lockPromise = sharedLock.withLock(async function() {
+      const lockPromise = sharedLock.withLock(function() {
         expect(Date.now() - startTime).to.be.above(TIMEOUT_MS);
+        return Promise.resolve();
       });
 
       await clock.tickAsync(TIMEOUT_MS * 2);
@@ -166,13 +171,15 @@ describe(`SharedLock`, function() {
 
     it(`runs the given code`, async function() {
       const sharedArray = [];
-      sharedLock.withLock(async function() {
+      sharedLock.withLock(function() {
         sharedArray.push(`A`);
+        return Promise.resolve();
       });
 
-      const secondLockPromise = sharedLock.withLock(async function() {
+      const secondLockPromise = sharedLock.withLock(function() {
         sharedArray.push(`B`);
         expect(sharedArray).to.eql([`A`, `B`]);
+        return Promise.resolve();
       });
 
       await clock.tickAsync(200);
@@ -185,14 +192,16 @@ describe(`SharedLock`, function() {
       acquireLockForPid(sharedLock, `foobar`);
 
       // this should block until 'foobar' process releases below
-      const firstLockPromise = sharedLock.withLock(async function() {
+      const firstLockPromise = sharedLock.withLock(function() {
         sharedArray.push(`B`);
         expect(sharedArray).to.eql([`A`, `B`]);
+        return Promise.resolve();
       });
 
       // 'foobar' process
-      sharedLock.withLock(async function() {
+      sharedLock.withLock(function() {
         sharedArray.push(`A`);
+        return Promise.resolve();
       }, `foobar`);
 
       await clock.tickAsync(1000);
