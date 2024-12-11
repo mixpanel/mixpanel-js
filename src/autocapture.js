@@ -73,7 +73,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
         }
     }
     return false;
-}
+};
 
 Autocapture.prototype.pageviewTrackingConfig = function() {
     // supports both autocapture config and old track_pageview config
