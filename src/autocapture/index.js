@@ -1,4 +1,4 @@
-import { _, document, window } from '../utils'; // eslint-disable-line camelcase
+import { _, document, safewrap, safewrapClass, window } from '../utils';
 import {
     getPropsForDOMEvent, logger, minDOMApisSupported,
     EV_CLICK, EV_MP_LOCATION_CHANGE, EV_SCROLL
@@ -89,8 +89,7 @@ Autocapture.prototype.initClickTracking = function() {
         return;
     }
 
-    // TODO try/catch
-    this.listenerClick = window.addEventListener(EV_CLICK, function(ev) {
+    this.listenerClick = window.addEventListener(EV_CLICK, safewrap(function(ev) {
         if (this.currentUrlBlocked()) {
             return;
         }
@@ -105,7 +104,7 @@ Autocapture.prototype.initClickTracking = function() {
             _.extend(props, DEFAULT_PROPS);
             this.mp.track(MP_EV_CLICK, props);
         }
-    }.bind(this));
+    }.bind(this)));
 };
 
 Autocapture.prototype.initPageviewTracking = function() {
@@ -141,7 +140,7 @@ Autocapture.prototype.initPageviewTracking = function() {
             window.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
         };
     }
-    window.addEventListener(EV_MP_LOCATION_CHANGE, function() {
+    window.addEventListener(EV_MP_LOCATION_CHANGE, safewrap(function() {
         var currentUrl = _.info.currentUrl();
         var shouldTrack = false;
         var trackPageviewOption = this.pageviewTrackingConfig();
@@ -159,7 +158,7 @@ Autocapture.prototype.initPageviewTracking = function() {
                 previousTrackedUrl = currentUrl;
             }
         }
-    }.bind(this));
+    }.bind(this)));
 };
 
 Autocapture.prototype.initScrollTracking = function() {
@@ -169,7 +168,7 @@ Autocapture.prototype.initScrollTracking = function() {
         return;
     }
 
-    this.listenerScroll = window.addEventListener(EV_SCROLL, function() {
+    this.listenerScroll = window.addEventListener(EV_SCROLL, safewrap(function() {
         if (this.currentUrlBlocked()) {
             return;
         }
@@ -185,7 +184,9 @@ Autocapture.prototype.initScrollTracking = function() {
             logger.critical('Error while calculating scroll percentage', err);
         }
         this.mp.track(MP_EV_SCROLL, props);
-    }.bind(this));
+    }.bind(this)));
 };
+
+safewrapClass(Autocapture);
 
 export { Autocapture };

@@ -110,6 +110,29 @@ var console_with_prefix = function(prefix) {
 };
 
 
+var safewrap = function(f) {
+    return function() {
+        try {
+            return f.apply(this, arguments);
+        } catch (e) {
+            console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
+            if (Config.DEBUG){
+                console.critical(e);
+            }
+        }
+    };
+};
+
+var safewrapClass = function(klass) {
+    var proto = klass.prototype;
+    for (var func in proto) {
+        if (typeof(proto[func]) === 'function') {
+            proto[func] = safewrap(proto[func]);
+        }
+    }
+};
+
+
 // UNDERSCORE
 // Embed part of the Underscore Library
 _.bind = function(func, context) {
@@ -1732,6 +1755,8 @@ export {
     MAX_RECORDING_MS,
     MAX_VALUE_FOR_MIN_RECORDING_MS,
     navigator,
+    safewrap,
+    safewrapClass,
     slice,
     userAgent,
 };
