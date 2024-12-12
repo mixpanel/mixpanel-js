@@ -4510,7 +4510,7 @@ var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.57.1-rc1'
+    LIB_VERSION: '2.57.1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
