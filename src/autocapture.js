@@ -7,16 +7,19 @@ var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_SCROLL = 'scroll';
 
 var DEFAULT_PROPS = {
     '$mp_autocapture': true
 };
 
 var MP_EV_CLICK = '$mp_click';
+var MP_EV_SCROLL = '$mp_scroll';
 
 var EV_CHANGE = 'change';
 var EV_CLICK = 'click';
 var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
+var EV_SCROLL = 'scrollend';
 var EV_SUBMIT = 'submit';
 
 var CLICK_EVENT_PROPS = [
@@ -52,6 +55,7 @@ Autocapture.prototype.init = function() {
 
     this.initPageviewTracking();
     this.initClickTracking();
+    this.initScrollTracking();
 };
 
 Autocapture.prototype.getConfig = function(key) {
@@ -168,6 +172,33 @@ Autocapture.prototype.initPageviewTracking = function() {
         }
     }.bind(this));
 };
+
+Autocapture.prototype.initScrollTracking = function() {
+    window.removeEventListener(EV_SCROLL, this.listenerScroll);
+
+    if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
+        return;
+    }
+
+    this.listenerScroll = window.addEventListener(EV_SCROLL, function() {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        var scrollTop = window.scrollY;
+        var props = _.extend({'$scroll_top': scrollTop}, DEFAULT_PROPS);
+        try {
+            var scrollHeight = window.document.body.scrollHeight;
+            var scrollPercentage = Math.round((scrollTop / (scrollHeight - window.innerHeight)) * 100);
+            props['$scroll_height'] = scrollHeight;
+            props['$scroll_percentage'] = scrollPercentage;
+        } catch (err) {
+            logger.critical('Error while calculating scroll percentage', err);
+        }
+        this.mp.track(MP_EV_SCROLL, props);
+    }.bind(this));
+};
+
 
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
