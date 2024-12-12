@@ -5,7 +5,9 @@ import { _, console_with_prefix, document, window } from '../utils'; // eslint-d
 
 var EV_CHANGE = 'change';
 var EV_CLICK = 'click';
+var EV_HASHCHANGE = 'hashchange';
 var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
+var EV_POPSTATE = 'popstate';
 var EV_SCROLL = 'scrollend';
 var EV_SUBMIT = 'submit';
 
@@ -356,5 +358,5 @@ export {
     getPropsForDOMEvent,
     logger,
     minDOMApisSupported,
-    EV_CLICK, EV_MP_LOCATION_CHANGE, EV_SCROLL
+    EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE, EV_SCROLL
 };

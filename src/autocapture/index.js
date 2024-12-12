@@ -1,7 +1,7 @@
 import { _, document, safewrap, safewrapClass, window } from '../utils';
 import {
     getPropsForDOMEvent, logger, minDOMApisSupported,
-    EV_CLICK, EV_MP_LOCATION_CHANGE, EV_SCROLL
+    EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE, EV_SCROLL
 } from './utils';
 
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
@@ -108,7 +108,9 @@ Autocapture.prototype.initClickTracking = function() {
 };
 
 Autocapture.prototype.initPageviewTracking = function() {
-    // TODO remove any existing listeners before initializing
+    window.removeEventListener(EV_POPSTATE, this.listenerPopstate);
+    window.removeEventListener(EV_HASHCHANGE, this.listenerHashchange);
+    window.removeEventListener(EV_MP_LOCATION_CHANGE, this.listenerLocationchange);
 
     if (!this.pageviewTrackingConfig()) {
         return;
@@ -120,10 +122,10 @@ Autocapture.prototype.initPageviewTracking = function() {
         previousTrackedUrl = _.info.currentUrl();
     }
 
-    window.addEventListener('popstate', function() {
+    this.listenerPopstate = window.addEventListener(EV_POPSTATE, function() {
         window.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
     });
-    window.addEventListener('hashchange', function() {
+    this.listenerHashchange = window.addEventListener(EV_HASHCHANGE, function() {
         window.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
     });
     var nativePushState = window.history.pushState;
@@ -140,7 +142,7 @@ Autocapture.prototype.initPageviewTracking = function() {
             window.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
         };
     }
-    window.addEventListener(EV_MP_LOCATION_CHANGE, safewrap(function() {
+    this.listenerLocationchange = window.addEventListener(EV_MP_LOCATION_CHANGE, safewrap(function() {
         var currentUrl = _.info.currentUrl();
         var shouldTrack = false;
         var trackPageviewOption = this.pageviewTrackingConfig();
