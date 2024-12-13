@@ -158,11 +158,9 @@ function getPropsForDOMEvent(ev, blockSelectors) {
                 '$elements':  elementsJson,
                 '$el_attr__href': href
             };
-            if (ev.type === EV_CLICK) {
-                var realTarget = guessRealClickTarget(ev);
-                if (realTarget) {
-                    props['$click_target'] = getPropertiesFromElement(realTarget);
-                }
+            var realTarget = ev.type === EV_CLICK ? guessRealClickTarget(ev) : target;
+            if (realTarget) {
+                props['$target'] = getPropertiesFromElement(realTarget);
             }
         }
     }
@@ -358,5 +356,5 @@ export {
     getPropsForDOMEvent,
     logger,
     minDOMApisSupported,
-    EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE, EV_SCROLL
+    EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE, EV_SCROLL
 };
