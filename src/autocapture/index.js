@@ -1,7 +1,8 @@
 import { _, document, safewrap, safewrapClass, window } from '../utils';
 import {
     getPropsForDOMEvent, logger, minDOMApisSupported,
-    EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE, EV_SCROLL
+    EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,
+    EV_SCROLL, EV_SUBMIT
 } from './utils';
 
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
@@ -13,6 +14,7 @@ var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
 var CONFIG_TRACK_SCROLL = 'scroll';
+var CONFIG_TRACK_SUBMIT = 'submit';
 
 var DEFAULT_PROPS = {
     '$mp_autocapture': true
@@ -21,6 +23,7 @@ var DEFAULT_PROPS = {
 var MP_EV_CLICK = '$mp_click';
 var MP_EV_INPUT = '$mp_input_change';
 var MP_EV_SCROLL = '$mp_scroll';
+var MP_EV_SUBMIT = '$mp_submit';
 
 /**
  * Autocapture: manages automatic event tracking
@@ -38,8 +41,9 @@ Autocapture.prototype.init = function() {
 
     this.initPageviewTracking();
     this.initClickTracking();
-    this.initScrollTracking();
     this.initInputTracking();
+    this.initScrollTracking();
+    this.initSubmitTracking();
 };
 
 Autocapture.prototype.getConfig = function(key) {
@@ -77,6 +81,19 @@ Autocapture.prototype.pageviewTrackingConfig = function() {
     }
 };
 
+// helper for event handlers
+Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
+    if (this.currentUrlBlocked()) {
+        return;
+    }
+
+    var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
+    if (props) {
+        _.extend(props, DEFAULT_PROPS);
+        this.mp.track(mpEventName, props);
+    }
+};
+
 Autocapture.prototype.initClickTracking = function() {
     window.removeEventListener(EV_CLICK, this.listenerClick);
 
@@ -99,18 +116,6 @@ Autocapture.prototype.initInputTracking = function() {
     this.listenerChange = window.addEventListener(EV_CHANGE, function(ev) {
         this.trackDomEvent(ev, MP_EV_INPUT);
     }.bind(this));
-};
-
-Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
-    if (this.currentUrlBlocked()) {
-        return;
-    }
-
-    var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
-    if (props) {
-        _.extend(props, DEFAULT_PROPS);
-        this.mp.track(mpEventName, props);
-    }
 };
 
 Autocapture.prototype.initPageviewTracking = function() {
@@ -193,6 +198,18 @@ Autocapture.prototype.initScrollTracking = function() {
         }
         this.mp.track(MP_EV_SCROLL, props);
     }.bind(this)));
+};
+
+Autocapture.prototype.initSubmitTracking = function() {
+    window.removeEventListener(EV_SUBMIT, this.listenerSubmit);
+
+    if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
+        return;
+    }
+
+    this.listenerSubmit = window.addEventListener(EV_SUBMIT, function(ev) {
+        this.trackDomEvent(ev, MP_EV_SUBMIT);
+    }.bind(this));
 };
 
 safewrapClass(Autocapture);
