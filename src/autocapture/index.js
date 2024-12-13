@@ -84,17 +84,9 @@ Autocapture.prototype.initClickTracking = function() {
         return;
     }
 
-    this.listenerClick = window.addEventListener(EV_CLICK, safewrap(function(ev) {
-        if (this.currentUrlBlocked()) {
-            return;
-        }
-
-        var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
-        if (props) {
-            _.extend(props, DEFAULT_PROPS);
-            this.mp.track(MP_EV_CLICK, props);
-        }
-    }.bind(this)));
+    this.listenerClick = window.addEventListener(EV_CLICK, function(ev) {
+        this.trackDomEvent(ev, MP_EV_CLICK);
+    }.bind(this));
 };
 
 Autocapture.prototype.initInputTracking = function() {
@@ -104,17 +96,21 @@ Autocapture.prototype.initInputTracking = function() {
         return;
     }
 
-    this.listenerChange = window.addEventListener(EV_CHANGE, safewrap(function(ev) {
-        if (this.currentUrlBlocked()) {
-            return;
-        }
+    this.listenerChange = window.addEventListener(EV_CHANGE, function(ev) {
+        this.trackDomEvent(ev, MP_EV_INPUT);
+    }.bind(this));
+};
 
-        var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
-        if (props) {
-            _.extend(props, DEFAULT_PROPS);
-            this.mp.track(MP_EV_INPUT, props);
-        }
-    }.bind(this)));
+Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
+    if (this.currentUrlBlocked()) {
+        return;
+    }
+
+    var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
+    if (props) {
+        _.extend(props, DEFAULT_PROPS);
+        this.mp.track(mpEventName, props);
+    }
 };
 
 Autocapture.prototype.initPageviewTracking = function() {
