@@ -106,7 +106,7 @@ var DEFAULT_CONFIG = {
     'api_transport':                     'XHR',
     'api_payload_format':                PAYLOAD_TYPE_BASE64,
     'app_host':                          'https://mixpanel.com',
-    'autocapture':                       {},
+    'autocapture':                       false,
     'cdn':                               'https://cdn.mxpnl.com',
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,

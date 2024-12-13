@@ -8,6 +8,10 @@ import {
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
 
+var PAGEVIEW_OPTION_FULL_URL = 'full-url';
+var PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING = 'url-with-path-and-query-string';
+var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
+
 var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
 var CONFIG_TRACK_CLICK = 'click';
@@ -15,6 +19,13 @@ var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
 var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
+
+var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
 
 var DEFAULT_PROPS = {
     '$mp_autocapture': true
@@ -46,9 +57,21 @@ Autocapture.prototype.init = function() {
     this.initSubmitTracking();
 };
 
-Autocapture.prototype.getConfig = function(key) {
+Autocapture.prototype.getFullConfig = function() {
     var autocaptureConfig = this.mp.get_config(AUTOCAPTURE_CONFIG_KEY);
-    return autocaptureConfig[key];
+    if (!autocaptureConfig) {
+        // Autocapture is completely off
+        return {};
+    } else if (_.isObject(autocaptureConfig)) {
+        return _.extend({}, CONFIG_DEFAULTS, autocaptureConfig);
+    } else {
+        // Autocapture config is non-object truthy value, return default
+        return CONFIG_DEFAULTS;
+    }
+};
+
+Autocapture.prototype.getConfig = function(key) {
+    return this.getFullConfig()[key];
 };
 
 Autocapture.prototype.currentUrlBlocked = function() {
@@ -73,9 +96,8 @@ Autocapture.prototype.currentUrlBlocked = function() {
 
 Autocapture.prototype.pageviewTrackingConfig = function() {
     // supports both autocapture config and old track_pageview config
-    var autocaptureConfig = this.mp.get_config(AUTOCAPTURE_CONFIG_KEY);
-    if (CONFIG_TRACK_PAGEVIEW in autocaptureConfig) {
-        return autocaptureConfig[CONFIG_TRACK_PAGEVIEW];
+    if (_.isObject(this.mp.get_config(AUTOCAPTURE_CONFIG_KEY))) {
+        return this.getConfig(CONFIG_TRACK_PAGEVIEW);
     } else {
         return this.mp.get_config(LEGACY_PAGEVIEW_CONFIG_KEY);
     }
@@ -100,6 +122,7 @@ Autocapture.prototype.initClickTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_CLICK)) {
         return;
     }
+    logger.log('Initializing click tracking');
 
     this.listenerClick = window.addEventListener(EV_CLICK, function(ev) {
         this.trackDomEvent(ev, MP_EV_CLICK);
@@ -112,6 +135,7 @@ Autocapture.prototype.initInputTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_INPUT)) {
         return;
     }
+    logger.log('Initializing input tracking');
 
     this.listenerChange = window.addEventListener(EV_CHANGE, function(ev) {
         this.trackDomEvent(ev, MP_EV_INPUT);
@@ -126,6 +150,7 @@ Autocapture.prototype.initPageviewTracking = function() {
     if (!this.pageviewTrackingConfig()) {
         return;
     }
+    logger.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
     var tracked = this.mp.track_pageview(DEFAULT_PROPS);
@@ -157,11 +182,11 @@ Autocapture.prototype.initPageviewTracking = function() {
         var currentUrl = _.info.currentUrl();
         var shouldTrack = false;
         var trackPageviewOption = this.pageviewTrackingConfig();
-        if (trackPageviewOption === 'full-url') {
+        if (trackPageviewOption === PAGEVIEW_OPTION_FULL_URL) {
             shouldTrack = currentUrl !== previousTrackedUrl;
-        } else if (trackPageviewOption === 'url-with-path-and-query-string') {
+        } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING) {
             shouldTrack = currentUrl.split('#')[0] !== previousTrackedUrl.split('#')[0];
-        } else if (trackPageviewOption === 'url-with-path') {
+        } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH) {
             shouldTrack = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
         }
 
@@ -180,6 +205,7 @@ Autocapture.prototype.initScrollTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
     }
+    logger.log('Initializing scroll tracking');
 
     this.listenerScroll = window.addEventListener(EV_SCROLL, safewrap(function() {
         if (this.currentUrlBlocked()) {
@@ -206,6 +232,7 @@ Autocapture.prototype.initSubmitTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
         return;
     }
+    logger.log('Initializing submit tracking');
 
     this.listenerSubmit = window.addEventListener(EV_SUBMIT, function(ev) {
         this.trackDomEvent(ev, MP_EV_SUBMIT);
