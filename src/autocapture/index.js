@@ -22,14 +22,6 @@ var MP_EV_CLICK = '$mp_click';
 var MP_EV_INPUT = '$mp_input_change';
 var MP_EV_SCROLL = '$mp_scroll';
 
-var CLICK_EVENT_PROPS = [
-    'clientX', 'clientY',
-    'offsetX', 'offsetY',
-    'pageX', 'pageY',
-    'screenX', 'screenY',
-    'x', 'y'
-];
-
 /**
  * Autocapture: manages automatic event tracking
  * @constructor
@@ -99,11 +91,6 @@ Autocapture.prototype.initClickTracking = function() {
 
         var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
         if (props) {
-            _.each(CLICK_EVENT_PROPS, function(prop) {
-                if (prop in ev) {
-                    props['$' + prop] = ev[prop];
-                }
-            });
             _.extend(props, DEFAULT_PROPS);
             this.mp.track(MP_EV_CLICK, props);
         }

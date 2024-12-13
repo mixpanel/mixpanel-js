@@ -11,6 +11,13 @@ var EV_POPSTATE = 'popstate';
 var EV_SCROLL = 'scrollend';
 var EV_SUBMIT = 'submit';
 
+var CLICK_EVENT_PROPS = [
+    'clientX', 'clientY',
+    'offsetX', 'offsetY',
+    'pageX', 'pageY',
+    'screenX', 'screenY',
+    'x', 'y'
+];
 var OPT_IN_CLASSES = ['mp-include'];
 var OPT_OUT_CLASSES = ['mp-no-track'];
 var SENSITIVE_DATA_CLASSES = OPT_OUT_CLASSES.concat(['mp-sensitive']);
@@ -158,9 +165,16 @@ function getPropsForDOMEvent(ev, blockSelectors) {
                 '$elements':  elementsJson,
                 '$el_attr__href': href
             };
-            var realTarget = ev.type === EV_CLICK ? guessRealClickTarget(ev) : target;
-            if (realTarget) {
-                props['$target'] = getPropertiesFromElement(realTarget);
+            if (ev.type === EV_CLICK) {
+                _.each(CLICK_EVENT_PROPS, function(prop) {
+                    if (prop in ev) {
+                        props['$' + prop] = ev[prop];
+                    }
+                });
+                target = guessRealClickTarget(ev);
+            }
+            if (target) {
+                props['$target'] = getPropertiesFromElement(target);
             }
         }
     }
