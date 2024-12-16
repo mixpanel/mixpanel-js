@@ -14,6 +14,7 @@ var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
 
 var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
+var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
@@ -21,6 +22,7 @@ var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
 var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
 CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
@@ -109,7 +111,11 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
-    var props = getPropsForDOMEvent(ev, this.getConfig(CONFIG_BLOCK_SELECTORS));
+    var props = getPropsForDOMEvent(
+        ev,
+        this.getConfig(CONFIG_BLOCK_SELECTORS),
+        this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+    );
     if (props) {
         _.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);

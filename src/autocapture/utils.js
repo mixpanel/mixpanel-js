@@ -104,7 +104,7 @@ function getPropertiesFromElement(el) {
     return props;
 }
 
-function getPropsForDOMEvent(ev, blockSelectors) {
+function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
     blockSelectors = blockSelectors || [];
     var props = null;
 
@@ -165,6 +165,14 @@ function getPropsForDOMEvent(ev, blockSelectors) {
                 '$elements':  elementsJson,
                 '$el_attr__href': href
             };
+
+            if (captureTextContent) {
+                var elementText = getSafeText(target);
+                if (elementText && elementText.length) {
+                    props['$el_text'] = elementText;
+                }
+            }
+
             if (ev.type === EV_CLICK) {
                 _.each(CLICK_EVENT_PROPS, function(prop) {
                     if (prop in ev) {
@@ -180,6 +188,36 @@ function getPropsForDOMEvent(ev, blockSelectors) {
     }
 
     return props;
+}
+
+
+/*
+ * Get the direct text content of an element, protecting against sensitive data collection.
+ * Concats textContent of each of the element's text node children; this avoids potential
+ * collection of sensitive data that could happen if we used element.textContent and the
+ * element had sensitive child elements, since element.textContent includes child content.
+ * Scrubs values that look like they could be sensitive (i.e. cc or ssn number).
+ * @param {Element} el - element to get the text of
+ * @returns {string} the element's direct text content
+ */
+export function getSafeText(el) {
+    var elText = '';
+
+    if (shouldTrackElement(el) && el.childNodes && el.childNodes.length) {
+        _.each(el.childNodes, function(child) {
+            if (isTextNode(child) && child.textContent) {
+                elText += _.trim(child.textContent)
+                    // scrub potentially sensitive values
+                    .split(/(\s+)/).filter(shouldTrackValue).join('')
+                    // normalize whitespace
+                    .replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ')
+                    // truncate
+                    .substring(0, 255);
+            }
+        });
+    }
+
+    return _.trim(elText);
 }
 
 function guessRealClickTarget(ev) {
