@@ -5655,6 +5655,7 @@
                         var urlParams1 = validateAndGetUrlParams(fetchCall1)
                         same(urlParams1.get("seq"), "0")
                         ok(urlParams1.get("$current_url").endsWith('#my-url-1'), 'includes the current url from when we started recording');
+                        ok(urlParams1.get("replay_start_url").endsWith('#my-url-1'), 'includes the start url from when we started recording');
                         same(urlParams1.get("mp_lib"), "web");
 
                         simulateMouseClick(document.body);
@@ -5671,6 +5672,7 @@
                         var urlParams2 = validateAndGetUrlParams(fetchCall2)
                         same(urlParams2.get("seq"), "1")
                         ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
+                        ok(urlParams1.get("replay_start_url").endsWith('#my-url-1'), 'start url does not change in later batches');
 
                         mixpanel.recordertest.stop_session_recording();
                         start();

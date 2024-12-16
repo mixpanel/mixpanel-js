@@ -53,6 +53,7 @@ var SessionRecording = function(options) {
 
     this.seqNo = 0;
     this.replayStartTime = null;
+    this.replayStartUrl = null;
     this.batchStartUrl = null;
 
     this.idleTimeoutId = null;
@@ -104,6 +105,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
     this.replayStartTime = new Date().getTime();
     this.batchStartUrl = _.info.currentUrl();
+    this.replayStartUrl = _.info.currentUrl();
 
     if (shouldStopBatcher || this.recordMinMs > 0) {
         // the primary case for shouldStopBatcher is when we're starting recording after a reset
@@ -140,9 +142,17 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.getConfig('record_collect_fonts'),
+        'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
+            'type': 'image/webp',
+            'quality': 0.6
+        },
         'maskAllInputs': true,
         'maskTextClass': this.getConfig('record_mask_text_class'),
-        'maskTextSelector': this.getConfig('record_mask_text_selector')
+        'maskTextSelector': this.getConfig('record_mask_text_selector'),
+        'recordCanvas': this.getConfig('record_canvas'),
+        'sampling': {
+            'canvas': 15
+        }
     });
 
     if (typeof this._stopRecording !== 'function') {
@@ -260,6 +270,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             'replay_id': replayId,
             'replay_length_ms': replayLengthMs,
             'replay_start_time': this.replayStartTime / 1000,
+            'replay_start_url': this.replayStartUrl,
             'seq': this.seqNo
         };
         var eventsJson = _.JSONEncode(data);
