@@ -1,3 +1,7 @@
+**2.58.0** (16 Dec 2024)
+- Added canvas recording option
+- Session Replay checkpoint events now include a starting URL
+
 **2.57.1** (12 Dec 2024)
 - Asynchronous abstractions (primarily Promise support) introduced in internal refactor of batch/queue/retry system.
 
