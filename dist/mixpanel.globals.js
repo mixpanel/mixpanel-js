@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.57.1'
+        LIB_VERSION: '2.58.0-rc1'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -4746,6 +4746,7 @@
         'hooks':                             {},
         'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
         'record_block_selector':             'img, video',
+        'record_canvas':                     false,
         'record_collect_fonts':              false,
         'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
         'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),

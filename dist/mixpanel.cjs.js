@@ -4509,7 +4509,7 @@ var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.57.1'
+    LIB_VERSION: '2.58.0-rc1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -7840,6 +7840,7 @@ var SessionRecording = function(options) {
 
     this.seqNo = 0;
     this.replayStartTime = null;
+    this.replayStartUrl = null;
     this.batchStartUrl = null;
 
     this.idleTimeoutId = null;
@@ -7891,6 +7892,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
     this.replayStartTime = new Date().getTime();
     this.batchStartUrl = _.info.currentUrl();
+    this.replayStartUrl = _.info.currentUrl();
 
     if (shouldStopBatcher || this.recordMinMs > 0) {
         // the primary case for shouldStopBatcher is when we're starting recording after a reset
@@ -7927,9 +7929,17 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.getConfig('record_collect_fonts'),
+        'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
+            'type': 'image/webp',
+            'quality': 0.6
+        },
         'maskAllInputs': true,
         'maskTextClass': this.getConfig('record_mask_text_class'),
-        'maskTextSelector': this.getConfig('record_mask_text_selector')
+        'maskTextSelector': this.getConfig('record_mask_text_selector'),
+        'recordCanvas': this.getConfig('record_canvas'),
+        'sampling': {
+            'canvas': 15
+        }
     });
 
     if (typeof this._stopRecording !== 'function') {
@@ -8047,6 +8057,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             'replay_id': replayId,
             'replay_length_ms': replayLengthMs,
             'replay_start_time': this.replayStartTime / 1000,
+            'replay_start_url': this.replayStartUrl,
             'seq': this.seqNo
         };
         var eventsJson = _.JSONEncode(data);
@@ -9619,6 +9630,7 @@ var DEFAULT_CONFIG = {
     'hooks':                             {},
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
     'record_block_selector':             'img, video',
+    'record_canvas':                     false,
     'record_collect_fonts':              false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
