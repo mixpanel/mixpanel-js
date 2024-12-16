@@ -17,7 +17,7 @@ _srcLoadersLoaderModule2['default'].init("FAKE_TOKEN", {
 
 _srcLoadersLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loaders/loader-module":9}],2:[function(require,module,exports){
+},{"../../src/loaders/loader-module":11}],2:[function(require,module,exports){
 (function(global, factory) {
   typeof exports === "object" && typeof module !== "undefined" ? factory(exports) : typeof define === "function" && define.amd ? define(["exports"], factory) : (global = typeof globalThis !== "undefined" ? globalThis : global || self, factory(global.rrwebTypes = {}));
 })(this, function(exports2) {
@@ -10974,7 +10974,674 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":21}],5:[function(require,module,exports){
+},{"./utils":23}],5:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _utils = require('../utils');
+
+var _window = require('../window');
+
+var _utils2 = require('./utils');
+
+var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
+var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
+
+var PAGEVIEW_OPTION_FULL_URL = 'full-url';
+var PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING = 'url-with-path-and-query-string';
+var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
+
+var CONFIG_BLOCK_SELECTORS = 'block_selectors';
+var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
+var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
+var CONFIG_TRACK_CLICK = 'click';
+var CONFIG_TRACK_INPUT = 'input';
+var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_SCROLL = 'scroll';
+var CONFIG_TRACK_SUBMIT = 'submit';
+
+var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
+CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
+
+var DEFAULT_PROPS = {
+    '$mp_autocapture': true
+};
+
+var MP_EV_CLICK = '$mp_click';
+var MP_EV_INPUT = '$mp_input_change';
+var MP_EV_SCROLL = '$mp_scroll';
+var MP_EV_SUBMIT = '$mp_submit';
+
+/**
+ * Autocapture: manages automatic event tracking
+ * @constructor
+ */
+var Autocapture = function Autocapture(mp) {
+    this.mp = mp;
+};
+
+Autocapture.prototype.init = function () {
+    if (!(0, _utils2.minDOMApisSupported)()) {
+        _utils2.logger.critical('Autocapture unavailable: missing required DOM APIs');
+        return;
+    }
+
+    this.initPageviewTracking();
+    this.initClickTracking();
+    this.initInputTracking();
+    this.initScrollTracking();
+    this.initSubmitTracking();
+};
+
+Autocapture.prototype.getFullConfig = function () {
+    var autocaptureConfig = this.mp.get_config(AUTOCAPTURE_CONFIG_KEY);
+    if (!autocaptureConfig) {
+        // Autocapture is completely off
+        return {};
+    } else if (_utils._.isObject(autocaptureConfig)) {
+        return _utils._.extend({}, CONFIG_DEFAULTS, autocaptureConfig);
+    } else {
+        // Autocapture config is non-object truthy value, return default
+        return CONFIG_DEFAULTS;
+    }
+};
+
+Autocapture.prototype.getConfig = function (key) {
+    return this.getFullConfig()[key];
+};
+
+Autocapture.prototype.currentUrlBlocked = function () {
+    var blockUrlRegexes = this.getConfig(CONFIG_BLOCK_URL_REGEXES) || [];
+    if (!blockUrlRegexes || !blockUrlRegexes.length) {
+        return false;
+    }
+
+    var currentUrl = _utils._.info.currentUrl();
+    for (var i = 0; i < blockUrlRegexes.length; i++) {
+        try {
+            if (currentUrl.match(blockUrlRegexes[i])) {
+                return true;
+            }
+        } catch (err) {
+            _utils2.logger.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
+            return true;
+        }
+    }
+    return false;
+};
+
+Autocapture.prototype.pageviewTrackingConfig = function () {
+    // supports both autocapture config and old track_pageview config
+    if (_utils._.isObject(this.mp.get_config(AUTOCAPTURE_CONFIG_KEY))) {
+        return this.getConfig(CONFIG_TRACK_PAGEVIEW);
+    } else {
+        return this.mp.get_config(LEGACY_PAGEVIEW_CONFIG_KEY);
+    }
+};
+
+// helper for event handlers
+Autocapture.prototype.trackDomEvent = function (ev, mpEventName) {
+    if (this.currentUrlBlocked()) {
+        return;
+    }
+
+    var props = (0, _utils2.getPropsForDOMEvent)(ev, this.getConfig(CONFIG_BLOCK_SELECTORS), this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT));
+    if (props) {
+        _utils._.extend(props, DEFAULT_PROPS);
+        this.mp.track(mpEventName, props);
+    }
+};
+
+Autocapture.prototype.initClickTracking = function () {
+    _window.window.removeEventListener(_utils2.EV_CLICK, this.listenerClick);
+
+    if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+        return;
+    }
+    _utils2.logger.log('Initializing click tracking');
+
+    this.listenerClick = _window.window.addEventListener(_utils2.EV_CLICK, (function (ev) {
+        this.trackDomEvent(ev, MP_EV_CLICK);
+    }).bind(this));
+};
+
+Autocapture.prototype.initInputTracking = function () {
+    _window.window.removeEventListener(_utils2.EV_CHANGE, this.listenerChange);
+
+    if (!this.getConfig(CONFIG_TRACK_INPUT)) {
+        return;
+    }
+    _utils2.logger.log('Initializing input tracking');
+
+    this.listenerChange = _window.window.addEventListener(_utils2.EV_CHANGE, (function (ev) {
+        this.trackDomEvent(ev, MP_EV_INPUT);
+    }).bind(this));
+};
+
+Autocapture.prototype.initPageviewTracking = function () {
+    _window.window.removeEventListener(_utils2.EV_POPSTATE, this.listenerPopstate);
+    _window.window.removeEventListener(_utils2.EV_HASHCHANGE, this.listenerHashchange);
+    _window.window.removeEventListener(_utils2.EV_MP_LOCATION_CHANGE, this.listenerLocationchange);
+
+    if (!this.pageviewTrackingConfig()) {
+        return;
+    }
+    _utils2.logger.log('Initializing pageview tracking');
+
+    var previousTrackedUrl = '';
+    var tracked = this.mp.track_pageview(DEFAULT_PROPS);
+    if (tracked) {
+        previousTrackedUrl = _utils._.info.currentUrl();
+    }
+
+    this.listenerPopstate = _window.window.addEventListener(_utils2.EV_POPSTATE, function () {
+        _window.window.dispatchEvent(new Event(_utils2.EV_MP_LOCATION_CHANGE));
+    });
+    this.listenerHashchange = _window.window.addEventListener(_utils2.EV_HASHCHANGE, function () {
+        _window.window.dispatchEvent(new Event(_utils2.EV_MP_LOCATION_CHANGE));
+    });
+    var nativePushState = _window.window.history.pushState;
+    if (typeof nativePushState === 'function') {
+        _window.window.history.pushState = function (state, unused, url) {
+            nativePushState.call(_window.window.history, state, unused, url);
+            _window.window.dispatchEvent(new Event(_utils2.EV_MP_LOCATION_CHANGE));
+        };
+    }
+    var nativeReplaceState = _window.window.history.replaceState;
+    if (typeof nativeReplaceState === 'function') {
+        _window.window.history.replaceState = function (state, unused, url) {
+            nativeReplaceState.call(_window.window.history, state, unused, url);
+            _window.window.dispatchEvent(new Event(_utils2.EV_MP_LOCATION_CHANGE));
+        };
+    }
+    this.listenerLocationchange = _window.window.addEventListener(_utils2.EV_MP_LOCATION_CHANGE, (0, _utils.safewrap)((function () {
+        var currentUrl = _utils._.info.currentUrl();
+        var shouldTrack = false;
+        var trackPageviewOption = this.pageviewTrackingConfig();
+        if (trackPageviewOption === PAGEVIEW_OPTION_FULL_URL) {
+            shouldTrack = currentUrl !== previousTrackedUrl;
+        } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING) {
+            shouldTrack = currentUrl.split('#')[0] !== previousTrackedUrl.split('#')[0];
+        } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH) {
+            shouldTrack = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
+        }
+
+        if (shouldTrack) {
+            var tracked = this.mp.track_pageview(DEFAULT_PROPS);
+            if (tracked) {
+                previousTrackedUrl = currentUrl;
+            }
+        }
+    }).bind(this)));
+};
+
+Autocapture.prototype.initScrollTracking = function () {
+    _window.window.removeEventListener(_utils2.EV_SCROLL, this.listenerScroll);
+
+    if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
+        return;
+    }
+    _utils2.logger.log('Initializing scroll tracking');
+
+    this.listenerScroll = _window.window.addEventListener(_utils2.EV_SCROLL, (0, _utils.safewrap)((function () {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        var scrollTop = _window.window.scrollY;
+        var props = _utils._.extend({ '$scroll_top': scrollTop }, DEFAULT_PROPS);
+        try {
+            var scrollHeight = _utils.document.body.scrollHeight;
+            var scrollPercentage = Math.round(scrollTop / (scrollHeight - _window.window.innerHeight) * 100);
+            props['$scroll_height'] = scrollHeight;
+            props['$scroll_percentage'] = scrollPercentage;
+        } catch (err) {
+            _utils2.logger.critical('Error while calculating scroll percentage', err);
+        }
+        this.mp.track(MP_EV_SCROLL, props);
+    }).bind(this)));
+};
+
+Autocapture.prototype.initSubmitTracking = function () {
+    _window.window.removeEventListener(_utils2.EV_SUBMIT, this.listenerSubmit);
+
+    if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
+        return;
+    }
+    _utils2.logger.log('Initializing submit tracking');
+
+    this.listenerSubmit = _window.window.addEventListener(_utils2.EV_SUBMIT, (function (ev) {
+        this.trackDomEvent(ev, MP_EV_SUBMIT);
+    }).bind(this));
+};
+
+(0, _utils.safewrapClass)(Autocapture);
+
+exports.Autocapture = Autocapture;
+
+},{"../utils":23,"../window":24,"./utils":6}],6:[function(require,module,exports){
+// stateless utils
+// mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
+
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+exports.getSafeText = getSafeText;
+
+var _utils = require('../utils');
+
+// eslint-disable-line camelcase
+
+var _window = require('../window');
+
+var EV_CHANGE = 'change';
+var EV_CLICK = 'click';
+var EV_HASHCHANGE = 'hashchange';
+var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
+var EV_POPSTATE = 'popstate';
+var EV_SCROLL = 'scrollend';
+var EV_SUBMIT = 'submit';
+
+var CLICK_EVENT_PROPS = ['clientX', 'clientY', 'offsetX', 'offsetY', 'pageX', 'pageY', 'screenX', 'screenY', 'x', 'y'];
+var OPT_IN_CLASSES = ['mp-include'];
+var OPT_OUT_CLASSES = ['mp-no-track'];
+var SENSITIVE_DATA_CLASSES = OPT_OUT_CLASSES.concat(['mp-sensitive']);
+var TRACKED_ATTRS = ['aria-label', 'aria-labelledby', 'aria-describedby', 'href', 'name', 'role', 'title', 'type'];
+
+var logger = (0, _utils.console_with_prefix)('autocapture');
+
+function getClasses(el) {
+    var classes = {};
+    var classList = getClassName(el).split(' ');
+    for (var i = 0; i < classList.length; i++) {
+        var cls = classList[i];
+        if (cls) {
+            classes[cls] = true;
+        }
+    }
+    return classes;
+}
+
+/*
+ * Get the className of an element, accounting for edge cases where element.className is an object
+ * @param {Element} el - element to get the className of
+ * @returns {string} the element's class
+ */
+function getClassName(el) {
+    switch (typeof el.className) {
+        case 'string':
+            return el.className;
+        case 'object':
+            // handle cases where className might be SVGAnimatedString or some other type
+            return el.className.baseVal || el.getAttribute('class') || '';
+        default:
+            // future proof
+            return '';
+    }
+}
+
+function getPreviousElementSibling(el) {
+    if (el.previousElementSibling) {
+        return el.previousElementSibling;
+    } else {
+        do {
+            el = el.previousSibling;
+        } while (el && !isElementNode(el));
+        return el;
+    }
+}
+
+function getPropertiesFromElement(el) {
+    var props = {
+        '$classes': getClassName(el).split(' '),
+        '$tag_name': el.tagName.toLowerCase()
+    };
+    var elId = el.id;
+    if (elId) {
+        props['$id'] = elId;
+    }
+
+    if (shouldTrackElement(el)) {
+        _utils._.each(TRACKED_ATTRS, function (attr) {
+            if (el.hasAttribute(attr)) {
+                var attrVal = el.getAttribute(attr);
+                if (shouldTrackValue(attrVal)) {
+                    props['$attr-' + attr] = attrVal;
+                }
+            }
+        });
+    }
+
+    var nthChild = 1;
+    var nthOfType = 1;
+    var currentElem = el;
+    while (currentElem = getPreviousElementSibling(currentElem)) {
+        // eslint-disable-line no-cond-assign
+        nthChild++;
+        if (currentElem.tagName === el.tagName) {
+            nthOfType++;
+        }
+    }
+    props['$nth_child'] = nthChild;
+    props['$nth_of_type'] = nthOfType;
+
+    return props;
+}
+
+function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
+    blockSelectors = blockSelectors || [];
+    var props = null;
+
+    var target = typeof ev.target === 'undefined' ? ev.srcElement : ev.target;
+    if (isTextNode(target)) {
+        // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
+        target = target.parentNode;
+    }
+
+    if (shouldTrackDomEvent(target, ev)) {
+        var targetElementList = [target];
+        var curEl = target;
+        while (curEl.parentNode && !isTag(curEl, 'body')) {
+            targetElementList.push(curEl.parentNode);
+            curEl = curEl.parentNode;
+        }
+
+        var elementsJson = [];
+        var href,
+            explicitNoTrack = false;
+        _utils._.each(targetElementList, function (el) {
+            var shouldTrackEl = shouldTrackElement(el);
+
+            // if the element or a parent element is an anchor tag
+            // include the href as a property
+            if (el.tagName.toLowerCase() === 'a') {
+                href = el.getAttribute('href');
+                href = shouldTrackEl && shouldTrackValue(href) && href;
+            }
+
+            // allow users to programmatically prevent tracking of elements by adding classes such as 'mp-no-track'
+            var classes = getClasses(el);
+            _utils._.each(OPT_OUT_CLASSES, function (cls) {
+                if (classes[cls]) {
+                    explicitNoTrack = true;
+                }
+            });
+
+            if (!explicitNoTrack) {
+                // programmatically prevent tracking of elements that match CSS selectors
+                _utils._.each(blockSelectors, function (sel) {
+                    try {
+                        if (el.matches(sel)) {
+                            explicitNoTrack = true;
+                        }
+                    } catch (err) {
+                        logger.critical('Error while checking selector: ' + sel, err);
+                    }
+                });
+            }
+
+            elementsJson.push(getPropertiesFromElement(el));
+        }, this);
+
+        if (!explicitNoTrack) {
+            props = {
+                '$event_type': ev.type,
+                '$host': _window.window.location.host,
+                '$pathname': _window.window.location.pathname,
+                '$elements': elementsJson,
+                '$el_attr__href': href
+            };
+
+            if (captureTextContent) {
+                var elementText = getSafeText(target);
+                if (elementText && elementText.length) {
+                    props['$el_text'] = elementText;
+                }
+            }
+
+            if (ev.type === EV_CLICK) {
+                _utils._.each(CLICK_EVENT_PROPS, function (prop) {
+                    if (prop in ev) {
+                        props['$' + prop] = ev[prop];
+                    }
+                });
+                target = guessRealClickTarget(ev);
+            }
+            if (target) {
+                props['$target'] = getPropertiesFromElement(target);
+            }
+        }
+    }
+
+    return props;
+}
+
+/*
+ * Get the direct text content of an element, protecting against sensitive data collection.
+ * Concats textContent of each of the element's text node children; this avoids potential
+ * collection of sensitive data that could happen if we used element.textContent and the
+ * element had sensitive child elements, since element.textContent includes child content.
+ * Scrubs values that look like they could be sensitive (i.e. cc or ssn number).
+ * @param {Element} el - element to get the text of
+ * @returns {string} the element's direct text content
+ */
+
+function getSafeText(el) {
+    var elText = '';
+
+    if (shouldTrackElement(el) && el.childNodes && el.childNodes.length) {
+        _utils._.each(el.childNodes, function (child) {
+            if (isTextNode(child) && child.textContent) {
+                elText += _utils._.trim(child.textContent)
+                // scrub potentially sensitive values
+                .split(/(\s+)/).filter(shouldTrackValue).join('')
+                // normalize whitespace
+                .replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ')
+                // truncate
+                .substring(0, 255);
+            }
+        });
+    }
+
+    return _utils._.trim(elText);
+}
+
+function guessRealClickTarget(ev) {
+    var target = ev.target;
+    var composedPath = ev.composedPath();
+    for (var i = 0; i < composedPath.length; i++) {
+        var node = composedPath[i];
+        var tagName = node.tagName && node.tagName.toLowerCase();
+        if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'select' || node.getAttribute && node.getAttribute('role') === 'button') {
+            target = node;
+            break;
+        }
+        if (node === target) {
+            break;
+        }
+    }
+    return target;
+}
+
+/*
+ * Check whether an element has nodeType Node.ELEMENT_NODE
+ * @param {Element} el - element to check
+ * @returns {boolean} whether el is of the correct nodeType
+ */
+function isElementNode(el) {
+    return el && el.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
+}
+
+/*
+ * Check whether an element is of a given tag type.
+ * Due to potential reference discrepancies (such as the webcomponents.js polyfill),
+ * we want to match tagNames instead of specific references because something like
+ * element === document.body won't always work because element might not be a native
+ * element.
+ * @param {Element} el - element to check
+ * @param {string} tag - tag name (e.g., "div")
+ * @returns {boolean} whether el is of the given tag type
+ */
+function isTag(el, tag) {
+    return el && el.tagName && el.tagName.toLowerCase() === tag.toLowerCase();
+}
+
+/*
+ * Check whether an element has nodeType Node.TEXT_NODE
+ * @param {Element} el - element to check
+ * @returns {boolean} whether el is of the correct nodeType
+ */
+function isTextNode(el) {
+    return el && el.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
+}
+
+function minDOMApisSupported() {
+    try {
+        var testEl = _utils.document.createElement('div');
+        return !!testEl['matches'];
+    } catch (err) {
+        return false;
+    }
+}
+
+/*
+ * Check whether a DOM event should be "tracked" or if it may contain sentitive data
+ * using a variety of heuristics.
+ * @param {Element} el - element to check
+ * @param {Event} ev - event to check
+ * @returns {boolean} whether the event should be tracked
+ */
+function shouldTrackDomEvent(el, ev) {
+    if (!el || isTag(el, 'html') || !isElementNode(el)) {
+        return false;
+    }
+    var tag = el.tagName.toLowerCase();
+    switch (tag) {
+        case 'form':
+            return ev.type === EV_SUBMIT;
+        case 'input':
+            if (['button', 'submit'].indexOf(el.getAttribute('type')) === -1) {
+                return ev.type === EV_CHANGE;
+            } else {
+                return ev.type === EV_CLICK;
+            }
+        case 'select':
+        case 'textarea':
+            return ev.type === EV_CHANGE;
+        default:
+            return ev.type === EV_CLICK;
+    }
+}
+
+/*
+ * Check whether a DOM element should be "tracked" or if it may contain sentitive data
+ * using a variety of heuristics.
+ * @param {Element} el - element to check
+ * @returns {boolean} whether the element should be tracked
+ */
+function shouldTrackElement(el) {
+    var i;
+
+    for (var curEl = el; curEl.parentNode && !isTag(curEl, 'body'); curEl = curEl.parentNode) {
+        var classes = getClasses(curEl);
+        for (i = 0; i < SENSITIVE_DATA_CLASSES.length; i++) {
+            if (classes[SENSITIVE_DATA_CLASSES[i]]) {
+                return false;
+            }
+        }
+    }
+
+    var elClasses = getClasses(el);
+    for (i = 0; i < OPT_IN_CLASSES.length; i++) {
+        if (elClasses[OPT_IN_CLASSES[i]]) {
+            return true;
+        }
+    }
+
+    // don't send data from inputs or similar elements since there will always be
+    // a risk of clientside javascript placing sensitive data in attributes
+    if (isTag(el, 'input') || isTag(el, 'select') || isTag(el, 'textarea') || el.getAttribute('contenteditable') === 'true') {
+        return false;
+    }
+
+    // don't include hidden or password fields
+    var type = el.type || '';
+    if (typeof type === 'string') {
+        // it's possible for el.type to be a DOM element if el is a form with a child input[name="type"]
+        switch (type.toLowerCase()) {
+            case 'hidden':
+                return false;
+            case 'password':
+                return false;
+        }
+    }
+
+    // filter out data from fields that look like sensitive fields
+    var name = el.name || el.id || '';
+    if (typeof name === 'string') {
+        // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
+        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
+        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/*
+ * Check whether a string value should be "tracked" or if it may contain sentitive data
+ * using a variety of heuristics.
+ * @param {string} value - string value to check
+ * @returns {boolean} whether the element should be tracked
+ */
+function shouldTrackValue(value) {
+    if (value === null || _utils._.isUndefined(value)) {
+        return false;
+    }
+
+    if (typeof value === 'string') {
+        value = _utils._.trim(value);
+
+        // check to see if input value looks like a credit card number
+        // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
+        var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
+        if (ccRegex.test((value || '').replace(/[- ]/g, ''))) {
+            return false;
+        }
+
+        // check to see if input value looks like a social security number
+        var ssnRegex = /(^\d{3}-?\d{2}-?\d{4}$)/;
+        if (ssnRegex.test(value)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+exports.getPropsForDOMEvent = getPropsForDOMEvent;
+exports.logger = logger;
+exports.minDOMApisSupported = minDOMApisSupported;
+exports.EV_CHANGE = EV_CHANGE;
+exports.EV_CLICK = EV_CLICK;
+exports.EV_HASHCHANGE = EV_HASHCHANGE;
+exports.EV_MP_LOCATION_CHANGE = EV_MP_LOCATION_CHANGE;
+exports.EV_POPSTATE = EV_POPSTATE;
+exports.EV_SCROLL = EV_SCROLL;
+exports.EV_SUBMIT = EV_SUBMIT;
+
+},{"../utils":23,"../window":24}],7:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -10982,13 +11649,13 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.58.0'
+    LIB_VERSION: '2.59.0-ac-alpha-3'
 };
 
 exports['default'] = Config;
 module.exports = exports['default'];
 
-},{}],6:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -11151,7 +11818,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":21}],7:[function(require,module,exports){
+},{"./utils":23}],9:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -11466,7 +12133,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":21,"./window":22}],8:[function(require,module,exports){
+},{"./utils":23,"./window":24}],10:[function(require,module,exports){
 // For loading separate bundles asynchronously via script tag
 // so that we don't load them until they are needed at runtime.
 'use strict';
@@ -11501,7 +12168,7 @@ function loadThrowError(src, _onload) {
     throw new Error('This build of Mixpanel only includes core SDK functionality, could not load ' + src);
 }
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -11520,7 +12187,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)(_bundleLoaders.loadNoop);
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"../mixpanel-core":10,"../recorder":15,"./bundle-loaders":8}],10:[function(require,module,exports){
+},{"../mixpanel-core":12,"../recorder":17,"./bundle-loaders":10}],12:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -11539,6 +12206,8 @@ var _config2 = _interopRequireDefault(_config);
 var _utils = require('./utils');
 
 var _window = require('./window');
+
+var _autocapture = require('./autocapture');
 
 var _domTrackers = require('./dom-trackers');
 
@@ -11638,6 +12307,7 @@ var DEFAULT_CONFIG = {
     'api_transport': 'XHR',
     'api_payload_format': PAYLOAD_TYPE_BASE64,
     'app_host': 'https://mixpanel.com',
+    'autocapture': false,
     'cdn': 'https://cdn.mxpnl.com',
     'cross_site_cookie': false,
     'cross_subdomain_cookie': true,
@@ -11896,10 +12566,8 @@ MixpanelLib.prototype._init = function (token, config, name) {
         }, '');
     }
 
-    var track_pageview_option = this.get_config('track_pageview');
-    if (track_pageview_option) {
-        this._init_url_change_tracking(track_pageview_option);
-    }
+    this.autocapture = new _autocapture.Autocapture(this);
+    this.autocapture.init();
 
     if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
         this.start_session_recording();
@@ -12022,55 +12690,6 @@ MixpanelLib.prototype._track_dom = function (DomClass, args) {
 
     var dt = new DomClass().init(this);
     return dt.track.apply(dt, args);
-};
-
-MixpanelLib.prototype._init_url_change_tracking = function (track_pageview_option) {
-    var previous_tracked_url = '';
-    var tracked = this.track_pageview();
-    if (tracked) {
-        previous_tracked_url = _utils._.info.currentUrl();
-    }
-
-    if (_utils._.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
-        _window.window.addEventListener('popstate', function () {
-            _window.window.dispatchEvent(new Event('mp_locationchange'));
-        });
-        _window.window.addEventListener('hashchange', function () {
-            _window.window.dispatchEvent(new Event('mp_locationchange'));
-        });
-        var nativePushState = _window.window.history.pushState;
-        if (typeof nativePushState === 'function') {
-            _window.window.history.pushState = function (state, unused, url) {
-                nativePushState.call(_window.window.history, state, unused, url);
-                _window.window.dispatchEvent(new Event('mp_locationchange'));
-            };
-        }
-        var nativeReplaceState = _window.window.history.replaceState;
-        if (typeof nativeReplaceState === 'function') {
-            _window.window.history.replaceState = function (state, unused, url) {
-                nativeReplaceState.call(_window.window.history, state, unused, url);
-                _window.window.dispatchEvent(new Event('mp_locationchange'));
-            };
-        }
-        _window.window.addEventListener('mp_locationchange', (function () {
-            var current_url = _utils._.info.currentUrl();
-            var should_track = false;
-            if (track_pageview_option === 'full-url') {
-                should_track = current_url !== previous_tracked_url;
-            } else if (track_pageview_option === 'url-with-path-and-query-string') {
-                should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
-            } else if (track_pageview_option === 'url-with-path') {
-                should_track = current_url.split('#')[0].split('?')[0] !== previous_tracked_url.split('#')[0].split('?')[0];
-            }
-
-            if (should_track) {
-                var tracked = this.track_pageview();
-                if (tracked) {
-                    previous_tracked_url = current_url;
-                }
-            }
-        }).bind(this));
-    }
 };
 
 /**
@@ -13828,7 +14447,7 @@ function init_as_module(bundle_loader) {
     return mixpanel_master;
 }
 
-},{"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./request-batcher":17,"./utils":21,"./window":22}],11:[function(require,module,exports){
+},{"./autocapture":5,"./config":7,"./dom-trackers":8,"./gdpr-utils":9,"./mixpanel-group":13,"./mixpanel-people":14,"./mixpanel-persistence":15,"./request-batcher":19,"./utils":23,"./window":24}],13:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -14012,7 +14631,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":4,"./gdpr-utils":7,"./utils":21}],12:[function(require,module,exports){
+},{"./api-actions":4,"./gdpr-utils":9,"./utils":23}],14:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -14492,7 +15111,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":4,"./gdpr-utils":7,"./utils":21}],13:[function(require,module,exports){
+},{"./api-actions":4,"./gdpr-utils":9,"./utils":23}],15:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -14922,7 +15541,7 @@ exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":4,"./utils":21}],14:[function(require,module,exports){
+},{"./api-actions":4,"./utils":23}],16:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -15298,7 +15917,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 exports.Promise = PromisePolyfill;
 exports.NpoPromise = NpoPromise;
 
-},{"./window":22}],15:[function(require,module,exports){
+},{"./window":24}],17:[function(require,module,exports){
 'use strict';
 
 var _rrweb = require('rrweb');
@@ -15379,7 +15998,7 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
 
 _window.window['__mp_recorder'] = MixpanelRecorder;
 
-},{"../utils":21,"../window":22,"./session-recording":16,"rrweb":3}],16:[function(require,module,exports){
+},{"../utils":23,"../window":24,"./session-recording":18,"rrweb":3}],18:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -15701,7 +16320,7 @@ SessionRecording.prototype.reportError = function (msg, err) {
 
 exports.SessionRecording = SessionRecording;
 
-},{"../config":5,"../gdpr-utils":7,"../request-batcher":17,"../utils":21,"../window":22,"@rrweb/types":2}],17:[function(require,module,exports){
+},{"../config":7,"../gdpr-utils":9,"../request-batcher":19,"../utils":23,"../window":24,"@rrweb/types":2}],19:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16032,7 +16651,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./config":5,"./promise-polyfill":14,"./request-queue":18,"./utils":21}],18:[function(require,module,exports){
+},{"./config":7,"./promise-polyfill":16,"./request-queue":20,"./utils":23}],20:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16373,7 +16992,7 @@ RequestQueue.prototype.clear = function () {
 
 exports.RequestQueue = RequestQueue;
 
-},{"./promise-polyfill":14,"./shared-lock":19,"./storage/local-storage":20,"./utils":21}],19:[function(require,module,exports){
+},{"./promise-polyfill":16,"./shared-lock":21,"./storage/local-storage":22,"./utils":23}],21:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16538,7 +17157,7 @@ SharedLock.prototype.withLock = function (lockedCB, pid) {
 
 exports.SharedLock = SharedLock;
 
-},{"./promise-polyfill":14,"./utils":21}],20:[function(require,module,exports){
+},{"./promise-polyfill":16,"./utils":23}],22:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16602,7 +17221,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
 
 exports.LocalStorageWrapper = LocalStorageWrapper;
 
-},{"../promise-polyfill":14,"../utils":21}],21:[function(require,module,exports){
+},{"../promise-polyfill":16,"../utils":23}],23:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -16724,6 +17343,28 @@ var console_with_prefix = function console_with_prefix(prefix) {
         error: log_func_with_prefix(console.error, prefix),
         critical: log_func_with_prefix(console.critical, prefix)
     };
+};
+
+var safewrap = function safewrap(f) {
+    return function () {
+        try {
+            return f.apply(this, arguments);
+        } catch (e) {
+            console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
+            if (_config2['default'].DEBUG) {
+                console.critical(e);
+            }
+        }
+    };
+};
+
+var safewrapClass = function safewrapClass(klass) {
+    var proto = klass.prototype;
+    for (var func in proto) {
+        if (typeof proto[func] === 'function') {
+            proto[func] = safewrap(proto[func]);
+        }
+    }
 };
 
 // UNDERSCORE
@@ -18326,10 +18967,12 @@ exports.localStorageSupported = localStorageSupported;
 exports.MAX_RECORDING_MS = MAX_RECORDING_MS;
 exports.MAX_VALUE_FOR_MIN_RECORDING_MS = MAX_VALUE_FOR_MIN_RECORDING_MS;
 exports.navigator = navigator;
+exports.safewrap = safewrap;
+exports.safewrapClass = safewrapClass;
 exports.slice = slice;
 exports.userAgent = userAgent;
 
-},{"./config":5,"./promise-polyfill":14,"./window":22}],22:[function(require,module,exports){
+},{"./config":7,"./promise-polyfill":16,"./window":24}],24:[function(require,module,exports){
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 'use strict';
 
@@ -18344,11 +18987,16 @@ if (typeof window === 'undefined') {
     exports.window = win = {
         navigator: { userAgent: '', onLine: true },
         document: {
+            createElement: function createElement() {
+                return {};
+            },
             location: loc,
             referrer: ''
         },
         screen: { width: 0, height: 0 },
-        location: loc
+        location: loc,
+        addEventListener: function addEventListener() {},
+        removeEventListener: function removeEventListener() {}
     };
 } else {
     exports.window = win = window;

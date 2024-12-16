@@ -4513,7 +4513,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.58.0'
+        LIB_VERSION: '2.59.0-ac-alpha-3'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -4525,11 +4525,14 @@
         win = {
             navigator: { userAgent: '', onLine: true },
             document: {
+                createElement: function() { return {}; },
                 location: loc,
                 referrer: ''
             },
             screen: { width: 0, height: 0 },
-            location: loc
+            location: loc,
+            addEventListener: function() {},
+            removeEventListener: function() {}
         };
     } else {
         win = window;
@@ -5003,6 +5006,29 @@
             error: log_func_with_prefix(console$1.error, prefix),
             critical: log_func_with_prefix(console$1.critical, prefix)
         };
+    };
+
+
+    var safewrap = function(f) {
+        return function() {
+            try {
+                return f.apply(this, arguments);
+            } catch (e) {
+                console$1.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
+                if (Config.DEBUG){
+                    console$1.critical(e);
+                }
+            }
+        };
+    };
+
+    var safewrapClass = function(klass) {
+        var proto = klass.prototype;
+        for (var func in proto) {
+            if (typeof(proto[func]) === 'function') {
+                proto[func] = safewrap(proto[func]);
+            }
+        }
     };
 
 
@@ -6913,7 +6939,7 @@
         };
     }
 
-    var logger$4 = console_with_prefix('lock');
+    var logger$5 = console_with_prefix('lock');
 
     /**
      * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
@@ -6966,7 +6992,7 @@
 
             var delay = function(cb) {
                 if (new Date().getTime() - startTime > timeoutMS) {
-                    logger$4.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                    logger$5.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                     storage.removeItem(keyZ);
                     storage.removeItem(keyY);
                     loop();
@@ -7113,7 +7139,7 @@
         }, this));
     };
 
-    var logger$3 = console_with_prefix('batch');
+    var logger$4 = console_with_prefix('batch');
 
     /**
      * RequestQueue: queue for batching API requests with localStorage backup for retries.
@@ -7140,7 +7166,7 @@
             this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
             this.queueStorage.init();
         }
-        this.reportError = options.errorReporter || _.bind(logger$3.error, logger$3);
+        this.reportError = options.errorReporter || _.bind(logger$4.error, logger$4);
 
         this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
@@ -7470,7 +7496,7 @@
     // maximum interval between request retries after exponential backoff
     var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-    var logger$2 = console_with_prefix('batch');
+    var logger$3 = console_with_prefix('batch');
 
     /**
      * RequestBatcher: manages the queueing, flushing, retry etc of requests of one
@@ -7594,7 +7620,7 @@
      */
     RequestBatcher.prototype.flush = function(options) {
         if (this.requestInProgress) {
-            logger$2.log('Flush: Request already in progress');
+            logger$3.log('Flush: Request already in progress');
             return PromisePolyfill.resolve();
         }
 
@@ -7771,7 +7797,7 @@
                 if (options.unloading) {
                     requestOptions.transport = 'sendBeacon';
                 }
-                logger$2.log('MIXPANEL REQUEST:', dataForRequest);
+                logger$3.log('MIXPANEL REQUEST:', dataForRequest);
                 return this.sendRequestPromise(dataForRequest, requestOptions).then(batchSendCallback);
             }, this))
             .catch(_.bind(function(err) {
@@ -7784,7 +7810,7 @@
      * Log error to global logger and optional user-defined logger.
      */
     RequestBatcher.prototype.reportError = function(msg, err) {
-        logger$2.error.apply(logger$2.error, arguments);
+        logger$3.error.apply(logger$3.error, arguments);
         if (this.errorReporter) {
             try {
                 if (!(err instanceof Error)) {
@@ -7792,12 +7818,12 @@
                 }
                 this.errorReporter(msg, err);
             } catch(err) {
-                logger$2.error(err);
+                logger$3.error(err);
             }
         }
     };
 
-    var logger$1 = console_with_prefix('recorder');
+    var logger$2 = console_with_prefix('recorder');
     var CompressionStream = win['CompressionStream'];
 
     var RECORDER_BATCHER_LIB_CONFIG = {
@@ -7878,20 +7904,20 @@
 
     SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         if (this._stopRecording !== null) {
-            logger$1.log('Recording already in progress, skipping startRecording.');
+            logger$2.log('Recording already in progress, skipping startRecording.');
             return;
         }
 
         this.recordMaxMs = this.getConfig('record_max_ms');
         if (this.recordMaxMs > MAX_RECORDING_MS) {
             this.recordMaxMs = MAX_RECORDING_MS;
-            logger$1.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
+            logger$2.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
         }
 
         this.recordMinMs = this.getConfig('record_min_ms');
         if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
             this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
-            logger$1.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+            logger$2.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
         }
 
         this.replayStartTime = new Date().getTime();
@@ -8094,18 +8120,18 @@
 
 
     SessionRecording.prototype.reportError = function(msg, err) {
-        logger$1.error.apply(logger$1.error, arguments);
+        logger$2.error.apply(logger$2.error, arguments);
         try {
             if (!err && !(msg instanceof Error)) {
                 msg = new Error(msg);
             }
             this.getConfig('error_reporter')(msg, err);
         } catch(err) {
-            logger$1.error(err);
+            logger$2.error(err);
         }
     };
 
-    var logger = console_with_prefix('recorder');
+    var logger$1 = console_with_prefix('recorder');
 
     /**
      * Recorder API: manages recordings and exposes methods public to the core Mixpanel library.
@@ -8118,17 +8144,17 @@
 
     MixpanelRecorder.prototype.startRecording = function(shouldStopBatcher) {
         if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
-            logger.log('Recording already in progress, skipping startRecording.');
+            logger$1.log('Recording already in progress, skipping startRecording.');
             return;
         }
 
         var onIdleTimeout = _.bind(function () {
-            logger.log('Idle timeout reached, restarting recording.');
+            logger$1.log('Idle timeout reached, restarting recording.');
             this.resetRecording();
         }, this);
 
         var onMaxLengthReached = _.bind(function () {
-            logger.log('Max recording length reached, stopping recording.');
+            logger$1.log('Max recording length reached, stopping recording.');
             this.resetRecording();
         }, this);
 
@@ -8172,6 +8198,651 @@
     });
 
     win['__mp_recorder'] = MixpanelRecorder;
+
+    // stateless utils
+
+    var EV_CHANGE = 'change';
+    var EV_CLICK = 'click';
+    var EV_HASHCHANGE = 'hashchange';
+    var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
+    var EV_POPSTATE = 'popstate';
+    var EV_SCROLL = 'scrollend';
+    var EV_SUBMIT = 'submit';
+
+    var CLICK_EVENT_PROPS = [
+        'clientX', 'clientY',
+        'offsetX', 'offsetY',
+        'pageX', 'pageY',
+        'screenX', 'screenY',
+        'x', 'y'
+    ];
+    var OPT_IN_CLASSES = ['mp-include'];
+    var OPT_OUT_CLASSES = ['mp-no-track'];
+    var SENSITIVE_DATA_CLASSES = OPT_OUT_CLASSES.concat(['mp-sensitive']);
+    var TRACKED_ATTRS = [
+        'aria-label', 'aria-labelledby', 'aria-describedby',
+        'href', 'name', 'role', 'title', 'type'
+    ];
+
+    var logger = console_with_prefix('autocapture');
+
+
+    function getClasses(el) {
+        var classes = {};
+        var classList = getClassName(el).split(' ');
+        for (var i = 0; i < classList.length; i++) {
+            var cls = classList[i];
+            if (cls) {
+                classes[cls] = true;
+            }
+        }
+        return classes;
+    }
+
+    /*
+     * Get the className of an element, accounting for edge cases where element.className is an object
+     * @param {Element} el - element to get the className of
+     * @returns {string} the element's class
+     */
+    function getClassName(el) {
+        switch(typeof el.className) {
+            case 'string':
+                return el.className;
+            case 'object': // handle cases where className might be SVGAnimatedString or some other type
+                return el.className.baseVal || el.getAttribute('class') || '';
+            default: // future proof
+                return '';
+        }
+    }
+
+    function getPreviousElementSibling(el) {
+        if (el.previousElementSibling) {
+            return el.previousElementSibling;
+        } else {
+            do {
+                el = el.previousSibling;
+            } while (el && !isElementNode(el));
+            return el;
+        }
+    }
+
+    function getPropertiesFromElement(el) {
+        var props = {
+            '$classes': getClassName(el).split(' '),
+            '$tag_name': el.tagName.toLowerCase()
+        };
+        var elId = el.id;
+        if (elId) {
+            props['$id'] = elId;
+        }
+
+        if (shouldTrackElement(el)) {
+            _.each(TRACKED_ATTRS, function(attr) {
+                if (el.hasAttribute(attr)) {
+                    var attrVal = el.getAttribute(attr);
+                    if (shouldTrackValue(attrVal)) {
+                        props['$attr-' + attr] = attrVal;
+                    }
+                }
+            });
+        }
+
+        var nthChild = 1;
+        var nthOfType = 1;
+        var currentElem = el;
+        while (currentElem = getPreviousElementSibling(currentElem)) { // eslint-disable-line no-cond-assign
+            nthChild++;
+            if (currentElem.tagName === el.tagName) {
+                nthOfType++;
+            }
+        }
+        props['$nth_child'] = nthChild;
+        props['$nth_of_type'] = nthOfType;
+
+        return props;
+    }
+
+    function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
+        blockSelectors = blockSelectors || [];
+        var props = null;
+
+        var target = typeof ev.target === 'undefined' ? ev.srcElement : ev.target;
+        if (isTextNode(target)) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
+            target = target.parentNode;
+        }
+
+        if (shouldTrackDomEvent(target, ev)) {
+            var targetElementList = [target];
+            var curEl = target;
+            while (curEl.parentNode && !isTag(curEl, 'body')) {
+                targetElementList.push(curEl.parentNode);
+                curEl = curEl.parentNode;
+            }
+
+            var elementsJson = [];
+            var href, explicitNoTrack = false;
+            _.each(targetElementList, function(el) {
+                var shouldTrackEl = shouldTrackElement(el);
+
+                // if the element or a parent element is an anchor tag
+                // include the href as a property
+                if (el.tagName.toLowerCase() === 'a') {
+                    href = el.getAttribute('href');
+                    href = shouldTrackEl && shouldTrackValue(href) && href;
+                }
+
+                // allow users to programmatically prevent tracking of elements by adding classes such as 'mp-no-track'
+                var classes = getClasses(el);
+                _.each(OPT_OUT_CLASSES, function(cls) {
+                    if (classes[cls]) {
+                        explicitNoTrack = true;
+                    }
+                });
+
+                if (!explicitNoTrack) {
+                    // programmatically prevent tracking of elements that match CSS selectors
+                    _.each(blockSelectors, function(sel) {
+                        try {
+                            if (el.matches(sel)) {
+                                explicitNoTrack = true;
+                            }
+                        } catch (err) {
+                            logger.critical('Error while checking selector: ' + sel, err);
+                        }
+                    });
+                }
+
+                elementsJson.push(getPropertiesFromElement(el));
+            }, this);
+
+            if (!explicitNoTrack) {
+                props = {
+                    '$event_type': ev.type,
+                    '$host': win.location.host,
+                    '$pathname': win.location.pathname,
+                    '$elements':  elementsJson,
+                    '$el_attr__href': href
+                };
+
+                if (captureTextContent) {
+                    var elementText = getSafeText(target);
+                    if (elementText && elementText.length) {
+                        props['$el_text'] = elementText;
+                    }
+                }
+
+                if (ev.type === EV_CLICK) {
+                    _.each(CLICK_EVENT_PROPS, function(prop) {
+                        if (prop in ev) {
+                            props['$' + prop] = ev[prop];
+                        }
+                    });
+                    target = guessRealClickTarget(ev);
+                }
+                if (target) {
+                    props['$target'] = getPropertiesFromElement(target);
+                }
+            }
+        }
+
+        return props;
+    }
+
+
+    /*
+     * Get the direct text content of an element, protecting against sensitive data collection.
+     * Concats textContent of each of the element's text node children; this avoids potential
+     * collection of sensitive data that could happen if we used element.textContent and the
+     * element had sensitive child elements, since element.textContent includes child content.
+     * Scrubs values that look like they could be sensitive (i.e. cc or ssn number).
+     * @param {Element} el - element to get the text of
+     * @returns {string} the element's direct text content
+     */
+    function getSafeText(el) {
+        var elText = '';
+
+        if (shouldTrackElement(el) && el.childNodes && el.childNodes.length) {
+            _.each(el.childNodes, function(child) {
+                if (isTextNode(child) && child.textContent) {
+                    elText += _.trim(child.textContent)
+                        // scrub potentially sensitive values
+                        .split(/(\s+)/).filter(shouldTrackValue).join('')
+                        // normalize whitespace
+                        .replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ')
+                        // truncate
+                        .substring(0, 255);
+                }
+            });
+        }
+
+        return _.trim(elText);
+    }
+
+    function guessRealClickTarget(ev) {
+        var target = ev.target;
+        var composedPath = ev.composedPath();
+        for (var i = 0; i < composedPath.length; i++) {
+            var node = composedPath[i];
+            var tagName = node.tagName && node.tagName.toLowerCase();
+            if (
+                tagName === 'a' ||
+                tagName === 'button' ||
+                tagName === 'input' ||
+                tagName === 'select' ||
+                (node.getAttribute && node.getAttribute('role') === 'button')
+            ) {
+                target = node;
+                break;
+            }
+            if (node === target) {
+                break;
+            }
+        }
+        return target;
+    }
+
+    /*
+     * Check whether an element has nodeType Node.ELEMENT_NODE
+     * @param {Element} el - element to check
+     * @returns {boolean} whether el is of the correct nodeType
+     */
+    function isElementNode(el) {
+        return el && el.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
+    }
+
+    /*
+     * Check whether an element is of a given tag type.
+     * Due to potential reference discrepancies (such as the webcomponents.js polyfill),
+     * we want to match tagNames instead of specific references because something like
+     * element === document.body won't always work because element might not be a native
+     * element.
+     * @param {Element} el - element to check
+     * @param {string} tag - tag name (e.g., "div")
+     * @returns {boolean} whether el is of the given tag type
+     */
+    function isTag(el, tag) {
+        return el && el.tagName && el.tagName.toLowerCase() === tag.toLowerCase();
+    }
+
+    /*
+     * Check whether an element has nodeType Node.TEXT_NODE
+     * @param {Element} el - element to check
+     * @returns {boolean} whether el is of the correct nodeType
+     */
+    function isTextNode(el) {
+        return el && el.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
+    }
+
+    function minDOMApisSupported() {
+        try {
+            var testEl = document$1.createElement('div');
+            return !!testEl['matches'];
+        } catch (err) {
+            return false;
+        }
+    }
+
+    /*
+     * Check whether a DOM event should be "tracked" or if it may contain sentitive data
+     * using a variety of heuristics.
+     * @param {Element} el - element to check
+     * @param {Event} ev - event to check
+     * @returns {boolean} whether the event should be tracked
+     */
+    function shouldTrackDomEvent(el, ev) {
+        if (!el || isTag(el, 'html') || !isElementNode(el)) {
+            return false;
+        }
+        var tag = el.tagName.toLowerCase();
+        switch (tag) {
+            case 'form':
+                return ev.type === EV_SUBMIT;
+            case 'input':
+                if (['button', 'submit'].indexOf(el.getAttribute('type')) === -1) {
+                    return ev.type === EV_CHANGE;
+                } else {
+                    return ev.type === EV_CLICK;
+                }
+            case 'select':
+            case 'textarea':
+                return ev.type === EV_CHANGE;
+            default:
+                return ev.type === EV_CLICK;
+        }
+    }
+
+    /*
+     * Check whether a DOM element should be "tracked" or if it may contain sentitive data
+     * using a variety of heuristics.
+     * @param {Element} el - element to check
+     * @returns {boolean} whether the element should be tracked
+     */
+    function shouldTrackElement(el) {
+        var i;
+
+        for (var curEl = el; curEl.parentNode && !isTag(curEl, 'body'); curEl = curEl.parentNode) {
+            var classes = getClasses(curEl);
+            for (i = 0; i < SENSITIVE_DATA_CLASSES.length; i++) {
+                if (classes[SENSITIVE_DATA_CLASSES[i]]) {
+                    return false;
+                }
+            }
+        }
+
+        var elClasses = getClasses(el);
+        for (i = 0; i < OPT_IN_CLASSES.length; i++) {
+            if (elClasses[OPT_IN_CLASSES[i]]) {
+                return true;
+            }
+        }
+
+        // don't send data from inputs or similar elements since there will always be
+        // a risk of clientside javascript placing sensitive data in attributes
+        if (
+            isTag(el, 'input') ||
+            isTag(el, 'select') ||
+            isTag(el, 'textarea') ||
+            el.getAttribute('contenteditable') === 'true'
+        ) {
+            return false;
+        }
+
+        // don't include hidden or password fields
+        var type = el.type || '';
+        if (typeof type === 'string') { // it's possible for el.type to be a DOM element if el is a form with a child input[name="type"]
+            switch(type.toLowerCase()) {
+                case 'hidden':
+                    return false;
+                case 'password':
+                    return false;
+            }
+        }
+
+        // filter out data from fields that look like sensitive fields
+        var name = el.name || el.id || '';
+        if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
+            var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
+            if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    /*
+     * Check whether a string value should be "tracked" or if it may contain sentitive data
+     * using a variety of heuristics.
+     * @param {string} value - string value to check
+     * @returns {boolean} whether the element should be tracked
+     */
+    function shouldTrackValue(value) {
+        if (value === null || _.isUndefined(value)) {
+            return false;
+        }
+
+        if (typeof value === 'string') {
+            value = _.trim(value);
+
+            // check to see if input value looks like a credit card number
+            // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
+            var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
+            if (ccRegex.test((value || '').replace(/[- ]/g, ''))) {
+                return false;
+            }
+
+            // check to see if input value looks like a social security number
+            var ssnRegex = /(^\d{3}-?\d{2}-?\d{4}$)/;
+            if (ssnRegex.test(value)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
+    var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
+
+    var PAGEVIEW_OPTION_FULL_URL = 'full-url';
+    var PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING = 'url-with-path-and-query-string';
+    var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
+
+    var CONFIG_BLOCK_SELECTORS = 'block_selectors';
+    var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
+    var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
+    var CONFIG_TRACK_CLICK = 'click';
+    var CONFIG_TRACK_INPUT = 'input';
+    var CONFIG_TRACK_PAGEVIEW = 'pageview';
+    var CONFIG_TRACK_SCROLL = 'scroll';
+    var CONFIG_TRACK_SUBMIT = 'submit';
+
+    var CONFIG_DEFAULTS = {};
+    CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
+    CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
+    CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
+    CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+    CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
+    CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
+
+    var DEFAULT_PROPS = {
+        '$mp_autocapture': true
+    };
+
+    var MP_EV_CLICK = '$mp_click';
+    var MP_EV_INPUT = '$mp_input_change';
+    var MP_EV_SCROLL = '$mp_scroll';
+    var MP_EV_SUBMIT = '$mp_submit';
+
+    /**
+     * Autocapture: manages automatic event tracking
+     * @constructor
+     */
+    var Autocapture = function(mp) {
+        this.mp = mp;
+    };
+
+    Autocapture.prototype.init = function() {
+        if (!minDOMApisSupported()) {
+            logger.critical('Autocapture unavailable: missing required DOM APIs');
+            return;
+        }
+
+        this.initPageviewTracking();
+        this.initClickTracking();
+        this.initInputTracking();
+        this.initScrollTracking();
+        this.initSubmitTracking();
+    };
+
+    Autocapture.prototype.getFullConfig = function() {
+        var autocaptureConfig = this.mp.get_config(AUTOCAPTURE_CONFIG_KEY);
+        if (!autocaptureConfig) {
+            // Autocapture is completely off
+            return {};
+        } else if (_.isObject(autocaptureConfig)) {
+            return _.extend({}, CONFIG_DEFAULTS, autocaptureConfig);
+        } else {
+            // Autocapture config is non-object truthy value, return default
+            return CONFIG_DEFAULTS;
+        }
+    };
+
+    Autocapture.prototype.getConfig = function(key) {
+        return this.getFullConfig()[key];
+    };
+
+    Autocapture.prototype.currentUrlBlocked = function() {
+        var blockUrlRegexes = this.getConfig(CONFIG_BLOCK_URL_REGEXES) || [];
+        if (!blockUrlRegexes || !blockUrlRegexes.length) {
+            return false;
+        }
+
+        var currentUrl = _.info.currentUrl();
+        for (var i = 0; i < blockUrlRegexes.length; i++) {
+            try {
+                if (currentUrl.match(blockUrlRegexes[i])) {
+                    return true;
+                }
+            } catch (err) {
+                logger.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    Autocapture.prototype.pageviewTrackingConfig = function() {
+        // supports both autocapture config and old track_pageview config
+        if (_.isObject(this.mp.get_config(AUTOCAPTURE_CONFIG_KEY))) {
+            return this.getConfig(CONFIG_TRACK_PAGEVIEW);
+        } else {
+            return this.mp.get_config(LEGACY_PAGEVIEW_CONFIG_KEY);
+        }
+    };
+
+    // helper for event handlers
+    Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        var props = getPropsForDOMEvent(
+            ev,
+            this.getConfig(CONFIG_BLOCK_SELECTORS),
+            this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+        );
+        if (props) {
+            _.extend(props, DEFAULT_PROPS);
+            this.mp.track(mpEventName, props);
+        }
+    };
+
+    Autocapture.prototype.initClickTracking = function() {
+        win.removeEventListener(EV_CLICK, this.listenerClick);
+
+        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+            return;
+        }
+        logger.log('Initializing click tracking');
+
+        this.listenerClick = win.addEventListener(EV_CLICK, function(ev) {
+            this.trackDomEvent(ev, MP_EV_CLICK);
+        }.bind(this));
+    };
+
+    Autocapture.prototype.initInputTracking = function() {
+        win.removeEventListener(EV_CHANGE, this.listenerChange);
+
+        if (!this.getConfig(CONFIG_TRACK_INPUT)) {
+            return;
+        }
+        logger.log('Initializing input tracking');
+
+        this.listenerChange = win.addEventListener(EV_CHANGE, function(ev) {
+            this.trackDomEvent(ev, MP_EV_INPUT);
+        }.bind(this));
+    };
+
+    Autocapture.prototype.initPageviewTracking = function() {
+        win.removeEventListener(EV_POPSTATE, this.listenerPopstate);
+        win.removeEventListener(EV_HASHCHANGE, this.listenerHashchange);
+        win.removeEventListener(EV_MP_LOCATION_CHANGE, this.listenerLocationchange);
+
+        if (!this.pageviewTrackingConfig()) {
+            return;
+        }
+        logger.log('Initializing pageview tracking');
+
+        var previousTrackedUrl = '';
+        var tracked = this.mp.track_pageview(DEFAULT_PROPS);
+        if (tracked) {
+            previousTrackedUrl = _.info.currentUrl();
+        }
+
+        this.listenerPopstate = win.addEventListener(EV_POPSTATE, function() {
+            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+        });
+        this.listenerHashchange = win.addEventListener(EV_HASHCHANGE, function() {
+            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+        });
+        var nativePushState = win.history.pushState;
+        if (typeof nativePushState === 'function') {
+            win.history.pushState = function(state, unused, url) {
+                nativePushState.call(win.history, state, unused, url);
+                win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+            };
+        }
+        var nativeReplaceState = win.history.replaceState;
+        if (typeof nativeReplaceState === 'function') {
+            win.history.replaceState = function(state, unused, url) {
+                nativeReplaceState.call(win.history, state, unused, url);
+                win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+            };
+        }
+        this.listenerLocationchange = win.addEventListener(EV_MP_LOCATION_CHANGE, safewrap(function() {
+            var currentUrl = _.info.currentUrl();
+            var shouldTrack = false;
+            var trackPageviewOption = this.pageviewTrackingConfig();
+            if (trackPageviewOption === PAGEVIEW_OPTION_FULL_URL) {
+                shouldTrack = currentUrl !== previousTrackedUrl;
+            } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING) {
+                shouldTrack = currentUrl.split('#')[0] !== previousTrackedUrl.split('#')[0];
+            } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH) {
+                shouldTrack = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
+            }
+
+            if (shouldTrack) {
+                var tracked = this.mp.track_pageview(DEFAULT_PROPS);
+                if (tracked) {
+                    previousTrackedUrl = currentUrl;
+                }
+            }
+        }.bind(this)));
+    };
+
+    Autocapture.prototype.initScrollTracking = function() {
+        win.removeEventListener(EV_SCROLL, this.listenerScroll);
+
+        if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
+            return;
+        }
+        logger.log('Initializing scroll tracking');
+
+        this.listenerScroll = win.addEventListener(EV_SCROLL, safewrap(function() {
+            if (this.currentUrlBlocked()) {
+                return;
+            }
+
+            var scrollTop = win.scrollY;
+            var props = _.extend({'$scroll_top': scrollTop}, DEFAULT_PROPS);
+            try {
+                var scrollHeight = document$1.body.scrollHeight;
+                var scrollPercentage = Math.round((scrollTop / (scrollHeight - win.innerHeight)) * 100);
+                props['$scroll_height'] = scrollHeight;
+                props['$scroll_percentage'] = scrollPercentage;
+            } catch (err) {
+                logger.critical('Error while calculating scroll percentage', err);
+            }
+            this.mp.track(MP_EV_SCROLL, props);
+        }.bind(this)));
+    };
+
+    Autocapture.prototype.initSubmitTracking = function() {
+        win.removeEventListener(EV_SUBMIT, this.listenerSubmit);
+
+        if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
+            return;
+        }
+        logger.log('Initializing submit tracking');
+
+        this.listenerSubmit = win.addEventListener(EV_SUBMIT, function(ev) {
+            this.trackDomEvent(ev, MP_EV_SUBMIT);
+        }.bind(this));
+    };
+
+    safewrapClass(Autocapture);
 
     /* eslint camelcase: "off" */
 
@@ -9592,6 +10263,7 @@
         'api_transport':                     'XHR',
         'api_payload_format':                PAYLOAD_TYPE_BASE64,
         'app_host':                          'https://mixpanel.com',
+        'autocapture':                       false,
         'cdn':                               'https://cdn.mxpnl.com',
         'cross_site_cookie':                 false,
         'cross_subdomain_cookie':            true,
@@ -9851,10 +10523,8 @@
             }, '');
         }
 
-        var track_pageview_option = this.get_config('track_pageview');
-        if (track_pageview_option) {
-            this._init_url_change_tracking(track_pageview_option);
-        }
+        this.autocapture = new Autocapture(this);
+        this.autocapture.init();
 
         if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
             this.start_session_recording();
@@ -9977,55 +10647,6 @@
 
         var dt = new DomClass().init(this);
         return dt.track.apply(dt, args);
-    };
-
-    MixpanelLib.prototype._init_url_change_tracking = function(track_pageview_option) {
-        var previous_tracked_url = '';
-        var tracked = this.track_pageview();
-        if (tracked) {
-            previous_tracked_url = _.info.currentUrl();
-        }
-
-        if (_.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
-            win.addEventListener('popstate', function() {
-                win.dispatchEvent(new Event('mp_locationchange'));
-            });
-            win.addEventListener('hashchange', function() {
-                win.dispatchEvent(new Event('mp_locationchange'));
-            });
-            var nativePushState = win.history.pushState;
-            if (typeof nativePushState === 'function') {
-                win.history.pushState = function(state, unused, url) {
-                    nativePushState.call(win.history, state, unused, url);
-                    win.dispatchEvent(new Event('mp_locationchange'));
-                };
-            }
-            var nativeReplaceState = win.history.replaceState;
-            if (typeof nativeReplaceState === 'function') {
-                win.history.replaceState = function(state, unused, url) {
-                    nativeReplaceState.call(win.history, state, unused, url);
-                    win.dispatchEvent(new Event('mp_locationchange'));
-                };
-            }
-            win.addEventListener('mp_locationchange', function() {
-                var current_url = _.info.currentUrl();
-                var should_track = false;
-                if (track_pageview_option === 'full-url') {
-                    should_track = current_url !== previous_tracked_url;
-                } else if (track_pageview_option === 'url-with-path-and-query-string') {
-                    should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
-                } else if (track_pageview_option === 'url-with-path') {
-                    should_track = current_url.split('#')[0].split('?')[0] !== previous_tracked_url.split('#')[0].split('?')[0];
-                }
-
-                if (should_track) {
-                    var tracked = this.track_pageview();
-                    if (tracked) {
-                        previous_tracked_url = current_url;
-                    }
-                }
-            }.bind(this));
-        }
     };
 
     /**

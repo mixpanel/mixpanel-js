@@ -1,4 +1,5 @@
-import { _, document, safewrap, safewrapClass, window } from '../utils';
+import { _, document, safewrap, safewrapClass } from '../utils';
+import { window } from '../window';
 import {
     getPropsForDOMEvent, logger, minDOMApisSupported,
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,

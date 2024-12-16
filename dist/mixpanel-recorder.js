@@ -4510,7 +4510,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.58.0'
+        LIB_VERSION: '2.59.0-ac-alpha-3'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -4522,11 +4522,14 @@
         win = {
             navigator: { userAgent: '', onLine: true },
             document: {
+                createElement: function() { return {}; },
                 location: loc,
                 referrer: ''
             },
             screen: { width: 0, height: 0 },
-            location: loc
+            location: loc,
+            addEventListener: function() {},
+            removeEventListener: function() {}
         };
     } else {
         win = window;

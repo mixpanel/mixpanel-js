@@ -1,7 +1,8 @@
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
 
-import { _, console_with_prefix, document, window } from '../utils'; // eslint-disable-line camelcase
+import { _, console_with_prefix, document } from '../utils'; // eslint-disable-line camelcase
+import { window } from '../window';
 
 var EV_CHANGE = 'change';
 var EV_CLICK = 'click';
