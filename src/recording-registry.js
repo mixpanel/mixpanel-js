@@ -1,7 +1,8 @@
 import { Promise } from './promise-polyfill';
 import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from './storage/indexed-db';
 import { SessionRecording } from './recorder/session-recording';
-import { _, window } from './utils';
+import { _ } from './utils';
+import { window } from './window';
 
 /**
  * Module for handling the storage and retrieval of recording metadata as well as any active recordings.
