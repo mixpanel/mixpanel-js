@@ -25,7 +25,8 @@ var NOOP = function () {};
 
 /**
  * @typedef {Object} SerializedRecording
- * @property {number} expires
+ * @property {number} idleExpires
+ * @property {number} maxExpires
  * @property {number} replayStartTime
  * @property {number} seqNo
  * @property {string} batchStartUrl
@@ -56,7 +57,8 @@ var SessionRecording = function(options) {
     if (options.serializedRecording) {
         this.batchStartUrl = options.serializedRecording['batchStartUrl'];
         this.replayStartUrl = options.serializedRecording['replayStartUrl'];
-        this.expires = options.serializedRecording['expires'];
+        this.idleExpires = options.serializedRecording['idleExpires'];
+        this.maxExpires = options.serializedRecording['maxExpires'];
         this.replayId = options.serializedRecording['replayId'];
         this.replayStartTime = options.serializedRecording['replayStartTime'];
         this.seqNo = options.serializedRecording['seqNo'];
@@ -65,7 +67,8 @@ var SessionRecording = function(options) {
     } else {
         this.batchStartUrl = null;
         this.replayStartUrl = null;
-        this.expires = null;
+        this.idleExpires = null;
+        this.maxExpires = null;
         this.replayId = options.replayId;
         this.replayStartTime = null;
         this.seqNo = 0;
@@ -131,6 +134,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.recordMaxMs = MAX_RECORDING_MS;
         logger.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
     }
+    this.maxExpires = new Date().getTime() + this.recordMaxMs;
 
     this.recordMinMs = this.getConfig('record_min_ms');
     if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
@@ -159,7 +163,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         clearTimeout(this.idleTimeoutId);
         var idleTimeoutMs = this.getConfig('record_idle_timeout_ms');
         this.idleTimeoutId = setTimeout(this._onIdleTimeout, idleTimeoutMs);
-        this.expires = new Date().getTime() + idleTimeoutMs;
+        this.idleExpires = new Date().getTime() + idleTimeoutMs;
     }, this);
 
     var blockSelector = this.getConfig('record_block_selector');
@@ -251,7 +255,8 @@ SessionRecording.prototype.serialize = function () {
         'replayStartTime': this.replayStartTime,
         'batchStartUrl': this.batchStartUrl,
         'replayStartUrl': this.replayStartUrl,
-        'expires': this.expires,
+        'idleExpires': this.idleExpires,
+        'maxExpires': this.maxExpires
     };
 };
 

@@ -40,7 +40,7 @@ RecordingRegistry.prototype.getActiveRecording = function () {
     if (replayId) {
         activeRecordingPromise = this.idb.getItem(replayId)
             .then(function (serializedRecording) {
-                if (now > serializedRecording['expires']) {
+                if (serializedRecording && (now > serializedRecording['idleExpires'] || now > serializedRecording['maxExpires'])) {
                     return null;
                 } else {
                     return serializedRecording;
