@@ -345,8 +345,12 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
                 if (!(k in union_q)) {
                     union_q[k] = [];
                 }
-                // We may send duplicates, the server will dedup them.
-                union_q[k] = union_q[k].concat(v);
+                // Prevent duplicate values
+                _.each(v, function(item) {
+                    if (!_.include(union_q[k], item)) {
+                        union_q[k].push(item);
+                    }
+                });
             }
         });
         this._pop_from_people_queue(UNSET_ACTION, q_data);
