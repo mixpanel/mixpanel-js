@@ -1,3 +1,8 @@
+**2.57.1** (12 Dec 2024)
+- Introduced a storage abstraction that supports promise-based asynchronicity
+- Refactored SharedLock, RequestQueue, and RequestBatcher to use promise-based APIs instead of callbacks
+- Added minimal promise polyfill to support older browsers (IE)
+
 **2.56.0** (4 Nov 2024)
 - Recording payloads now include additional metadata: the current URL, library type, and library version.
 - Sourcemaps are now generated for the recorder module.
