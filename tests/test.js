@@ -5631,7 +5631,7 @@
                 });
             }
 
-            asyncTest('sends recording payload to server', 17, function () {
+            asyncTest('sends recording payload to server', 19, function () {
                 // set hash to test $current_url logic without reloading test page
                 window.location.hash = 'my-url-1';
                 this.randomStub.returns(0.02);
@@ -5672,7 +5672,7 @@
                         var urlParams2 = validateAndGetUrlParams(fetchCall2)
                         same(urlParams2.get("seq"), "1")
                         ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
-                        ok(urlParams1.get("replay_start_url").endsWith('#my-url-1'), 'start url does not change in later batches');
+                        ok(urlParams2.get("replay_start_url").endsWith('#my-url-1'), 'start url does not change in later batches');
 
                         mixpanel.recordertest.stop_session_recording();
                         start();
