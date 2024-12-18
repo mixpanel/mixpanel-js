@@ -1,6 +1,9 @@
 **2.57.1** (12 Dec 2024)
 - Asynchronous abstractions (primarily Promise support) introduced in internal refactor of batch/queue/retry system.
 
+**2.57.0** (Dec 2024)
+REDACTED
+
 **2.56.0** (4 Nov 2024)
 - Recording payloads now include additional metadata: the current URL, library type, and library version.
 - Sourcemaps are now generated for the recorder module.
