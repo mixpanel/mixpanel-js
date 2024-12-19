@@ -1,5 +1,5 @@
 import { Promise } from '../promise-polyfill';
-
+import { window } from '../window';
 var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
 
 var RECORDING_EVENTS_STORE_NAME = 'mixpanelReplayEvents';
@@ -21,11 +21,15 @@ var IDBStorageWrapper = function (storeName) {
 };
 
 IDBStorageWrapper.prototype.init = function () {
+    if (!window.indexedDB) {
+        return Promise.reject('indexedDB is not supported in this browser');
+    }
+
     var self = this;
     this.dbPromise = new Promise(function (resolve, reject) {
         var openRequest = indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
         openRequest.onerror = function () {
-            reject(false);
+            reject(openRequest.error);
         };
 
         openRequest.onsuccess = function () {
@@ -43,12 +47,11 @@ IDBStorageWrapper.prototype.init = function () {
     });
 
     return this.dbPromise
-        .then(function (maybeDb) {
-            if (maybeDb instanceof IDBDatabase) {
+        .then(function (dbOrError) {
+            if (dbOrError instanceof IDBDatabase) {
                 return Promise.resolve();
             } else {
-                // idb error message, handle this
-                return Promise.reject();
+                return Promise.reject(dbOrError);
             }
         });
 };

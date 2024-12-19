@@ -39,7 +39,7 @@ MixpanelRecorder.prototype.startRecording = function(options) {
     }, this);
 
     var onBatchSent = _.bind(function () {
-        this._recordingRegistry.setRecording(this.activeRecording.serialize());
+        this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
     }, this);
 
     this.activeRecording = new SessionRecording({
@@ -53,6 +53,7 @@ MixpanelRecorder.prototype.startRecording = function(options) {
     });
 
     this.activeRecording.startRecording(options.shouldStopBatcher);
+    this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {

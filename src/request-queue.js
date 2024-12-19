@@ -1,5 +1,5 @@
 import { SharedLock } from './shared-lock';
-import { cheap_guid, console_with_prefix, localStorageSupported, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
+import { cheap_guid, console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
 import { LocalStorageWrapper } from './storage/local-storage';
 import { Promise } from './promise-polyfill';
 
@@ -303,7 +303,6 @@ RequestQueue.prototype.readFromStorage = function () {
         }, this))
         .then(_.bind(function (storageEntry) {
             if (storageEntry) {
-                storageEntry = JSONParse(storageEntry);
                 if (!_.isArray(storageEntry)) {
                     this.reportError('Invalid storage entry:', storageEntry);
                     storageEntry = null;
@@ -321,16 +320,9 @@ RequestQueue.prototype.readFromStorage = function () {
  * Serialize the given items array to localStorage.
  */
 RequestQueue.prototype.saveToStorage = function (queue) {
-    try {
-        var serialized = JSONStringify(queue);
-    } catch (err) {
-        this.reportError('Error serializing queue', err);
-        return Promise.resolve(false);
-    }
-
     return this.ensureInit()
         .then(_.bind(function () {
-            return this.queueStorage.setItem(this.storageKey, serialized);
+            return this.queueStorage.setItem(this.storageKey, queue);
         }, this))
         .then(function () {
             return true;

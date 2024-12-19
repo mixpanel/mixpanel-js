@@ -18,13 +18,13 @@ var RecordingRegistry = function (options) {
 
     this._hasTabLock = null;
     this.tabLockKey = 'mp_recording_tab_lock_' + this.mixpanelInstance.get_config('token');
-    this.activeReplayIdKey = 'mp_active_replay_id' + this.mixpanelInstance.get_config('token');
+    this.activeReplayIdKey = 'mp_active_replay_id_' + this.mixpanelInstance.get_config('token');
 };
 
 /**
  * @param {import('./recorder/session-recording').SerializedRecording} recording
  */
-RecordingRegistry.prototype.setRecording = function (serializedRecording) {
+RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
     window.sessionStorage.setItem(this.activeReplayIdKey, serializedRecording['replayId']);
     return this.idb.setItem(serializedRecording['replayId'], serializedRecording);
 };
@@ -36,16 +36,15 @@ RecordingRegistry.prototype.setRecording = function (serializedRecording) {
 RecordingRegistry.prototype.getActiveRecording = function () {
     var replayId = this._getActiveReplayId();
     var activeRecordingPromise;
-    var now = new Date().getTime();
     if (replayId) {
         activeRecordingPromise = this.idb.getItem(replayId)
-            .then(function (serializedRecording) {
-                if (serializedRecording && (now > serializedRecording['idleExpires'] || now > serializedRecording['maxExpires'])) {
+            .then(_.bind(function (serializedRecording) {
+                if (serializedRecording && this._isExpired(serializedRecording)) {
                     return null;
                 } else {
                     return serializedRecording;
                 }
-            });
+            }, this));
     } else {
         activeRecordingPromise = Promise.resolve(null);
     }
@@ -64,7 +63,6 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
  * The main idea here is that we can flush remaining rrweb events on the next page load when a user navigates away mid-batch.
  */
 RecordingRegistry.prototype.flushInactiveRecordings = function () {
-    var now = new Date().getTime();
     var serializedRecordings = [];
 
     return this.idb.init()
@@ -91,10 +89,10 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
             );
         }, this))
         .then(_.bind(function() {
-            // clean up any expired recordings from the registry
-            var expiredRecordings = serializedRecordings.filter(function (serializedRecording) {
-                return now > serializedRecording['expires'];
-            });
+            // clean up any expired recordings from the registry, non-expired ones may be active in other tabs
+            var expiredRecordings = serializedRecordings.filter(_.bind(function (serializedRecording) {
+                return this._isExpired(serializedRecording);
+            }, this));
 
             return Promise.all(
                 expiredRecordings.map(_.bind(function (serializedRecording) {
@@ -116,9 +114,9 @@ RecordingRegistry.prototype._getTabLock = function () {
 
             if (this._hasTabLock) {
                 window.sessionStorage.setItem(this.tabLockKey, '1');
-                window.addEventListener('beforeunload', function () {
+                window.addEventListener('beforeunload', _.bind(function () {
                     window.sessionStorage.removeItem(this.tabLockKey);
-                });
+                }, this));
             }
         } catch (err) {
             this.reportError('checking tab lock failed', err);
@@ -131,11 +129,20 @@ RecordingRegistry.prototype._getTabLock = function () {
 
 RecordingRegistry.prototype._getActiveReplayId = function () {
     var replayId = null;
+    // todo(jakub) test what happens here after a tab is duplicated along with the lock, then it also falls into the sample and starts recording
     if (this._getTabLock()) {
-        var activeReplayKey = 'mp_active_replay_id' + this.mixpanelInstance.get_config('token');
-        replayId = window.sessionStorage.getItem(activeReplayKey);
+        replayId = window.sessionStorage.getItem(this.activeReplayIdKey);
     }
     return replayId;
+};
+
+/**
+ * @param {import('./recorder/session-recording').SerializedRecording} serializedRecording
+ * @returns {boolean}
+ */
+RecordingRegistry.prototype._isExpired = function (serializedRecording) {
+    var now = new Date().getTime();
+    return now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
 };
 
 export { RecordingRegistry };
