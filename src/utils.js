@@ -322,9 +322,6 @@ _.encodeDates = function(obj) {
 };
 
 _.timestamp = function() {
-    Date.now = Date.now || function() {
-        return +new Date;
-    };
     return Date.now();
 };
 
