@@ -5,7 +5,7 @@
  * currently not supported in the browser lib).
  */
 
-import mixpanel from '../../src/loader-module';
+import mixpanel from '../../src/loaders/loader-module';
 
 describe(`Module-based loader in Node env`, function() {
   it(`supports init() with options`, function(done) {

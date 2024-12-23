@@ -3,17 +3,17 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.48.1'
+        LIB_VERSION: '2.58.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
-    var window$1;
+    var win;
     if (typeof(window) === 'undefined') {
         var loc = {
             hostname: ''
         };
-        window$1 = {
-            navigator: { userAgent: '' },
+        win = {
+            navigator: { userAgent: '', onLine: true },
             document: {
                 location: loc,
                 referrer: ''
@@ -22,32 +22,401 @@
             location: loc
         };
     } else {
-        window$1 = window;
+        win = window;
     }
+
+    var setImmediate = win['setImmediate'];
+    var builtInProp, cycle, schedulingQueue,
+        ToString = Object.prototype.toString,
+        timer = (typeof setImmediate !== 'undefined') ?
+            function timer(fn) { return setImmediate(fn); } :
+            setTimeout;
+
+    // dammit, IE8.
+    try {
+        Object.defineProperty({},'x',{});
+        builtInProp = function builtInProp(obj,name,val,config) {
+            return Object.defineProperty(obj,name,{
+                value: val,
+                writable: true,
+                configurable: config !== false
+            });
+        };
+    }
+    catch (err) {
+        builtInProp = function builtInProp(obj,name,val) {
+            obj[name] = val;
+            return obj;
+        };
+    }
+
+    // Note: using a queue instead of array for efficiency
+    schedulingQueue = (function Queue() {
+        var first, last, item;
+
+        function Item(fn,self) {
+            this.fn = fn;
+            this.self = self;
+            this.next = void 0;
+        }
+
+        return {
+            add: function add(fn,self) {
+                item = new Item(fn,self);
+                if (last) {
+                    last.next = item;
+                }
+                else {
+                    first = item;
+                }
+                last = item;
+                item = void 0;
+            },
+            drain: function drain() {
+                var f = first;
+                first = last = cycle = void 0;
+
+                while (f) {
+                    f.fn.call(f.self);
+                    f = f.next;
+                }
+            }
+        };
+    })();
+
+    function schedule(fn,self) {
+        schedulingQueue.add(fn,self);
+        if (!cycle) {
+            cycle = timer(schedulingQueue.drain);
+        }
+    }
+
+    // promise duck typing
+    function isThenable(o) {
+        var _then, oType = typeof o;
+
+        if (o !== null && (oType === 'object' || oType === 'function')) {
+            _then = o.then;
+        }
+        return typeof _then === 'function' ? _then : false;
+    }
+
+    function notify() {
+        for (var i=0; i<this.chain.length; i++) {
+            notifyIsolated(
+                this,
+                (this.state === 1) ? this.chain[i].success : this.chain[i].failure,
+                this.chain[i]
+            );
+        }
+        this.chain.length = 0;
+    }
+
+    // NOTE: This is a separate function to isolate
+    // the `try..catch` so that other code can be
+    // optimized better
+    function notifyIsolated(self,cb,chain) {
+        var ret, _then;
+        try {
+            if (cb === false) {
+                chain.reject(self.msg);
+            }
+            else {
+                if (cb === true) {
+                    ret = self.msg;
+                }
+                else {
+                    ret = cb.call(void 0,self.msg);
+                }
+
+                if (ret === chain.promise) {
+                    chain.reject(TypeError('Promise-chain cycle'));
+                }
+                // eslint-disable-next-line no-cond-assign
+                else if (_then = isThenable(ret)) {
+                    _then.call(ret,chain.resolve,chain.reject);
+                }
+                else {
+                    chain.resolve(ret);
+                }
+            }
+        }
+        catch (err) {
+            chain.reject(err);
+        }
+    }
+
+    function resolve(msg) {
+        var _then, self = this;
+
+        // already triggered?
+        if (self.triggered) { return; }
+
+        self.triggered = true;
+
+        // unwrap
+        if (self.def) {
+            self = self.def;
+        }
+
+        try {
+            // eslint-disable-next-line no-cond-assign
+            if (_then = isThenable(msg)) {
+                schedule(function(){
+                    var defWrapper = new MakeDefWrapper(self);
+                    try {
+                        _then.call(msg,
+                            function $resolve$(){ resolve.apply(defWrapper,arguments); },
+                            function $reject$(){ reject.apply(defWrapper,arguments); }
+                        );
+                    }
+                    catch (err) {
+                        reject.call(defWrapper,err);
+                    }
+                });
+            }
+            else {
+                self.msg = msg;
+                self.state = 1;
+                if (self.chain.length > 0) {
+                    schedule(notify,self);
+                }
+            }
+        }
+        catch (err) {
+            reject.call(new MakeDefWrapper(self),err);
+        }
+    }
+
+    function reject(msg) {
+        var self = this;
+
+        // already triggered?
+        if (self.triggered) { return; }
+
+        self.triggered = true;
+
+        // unwrap
+        if (self.def) {
+            self = self.def;
+        }
+
+        self.msg = msg;
+        self.state = 2;
+        if (self.chain.length > 0) {
+            schedule(notify,self);
+        }
+    }
+
+    function iteratePromises(Constructor,arr,resolver,rejecter) {
+        for (var idx=0; idx<arr.length; idx++) {
+            (function IIFE(idx){
+                Constructor.resolve(arr[idx])
+                    .then(
+                        function $resolver$(msg){
+                            resolver(idx,msg);
+                        },
+                        rejecter
+                    );
+            })(idx);
+        }
+    }
+
+    function MakeDefWrapper(self) {
+        this.def = self;
+        this.triggered = false;
+    }
+
+    function MakeDef(self) {
+        this.promise = self;
+        this.state = 0;
+        this.triggered = false;
+        this.chain = [];
+        this.msg = void 0;
+    }
+
+    function NpoPromise(executor) {
+        if (typeof executor !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        if (this['__NPO__'] !== 0) {
+            throw TypeError('Not a promise');
+        }
+
+        // instance shadowing the inherited "brand"
+        // to signal an already "initialized" promise
+        this['__NPO__'] = 1;
+
+        var def = new MakeDef(this);
+
+        this['then'] = function then(success,failure) {
+            var o = {
+                success: typeof success === 'function' ? success : true,
+                failure: typeof failure === 'function' ? failure : false
+            };
+                // Note: `then(..)` itself can be borrowed to be used against
+                // a different promise constructor for making the chained promise,
+                // by substituting a different `this` binding.
+            o.promise = new this.constructor(function extractChain(resolve,reject) {
+                if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                    throw TypeError('Not a function');
+                }
+
+                o.resolve = resolve;
+                o.reject = reject;
+            });
+            def.chain.push(o);
+
+            if (def.state !== 0) {
+                schedule(notify,def);
+            }
+
+            return o.promise;
+        };
+        this['catch'] = function $catch$(failure) {
+            return this.then(void 0,failure);
+        };
+
+        try {
+            executor.call(
+                void 0,
+                function publicResolve(msg){
+                    resolve.call(def,msg);
+                },
+                function publicReject(msg) {
+                    reject.call(def,msg);
+                }
+            );
+        }
+        catch (err) {
+            reject.call(def,err);
+        }
+    }
+
+    var PromisePrototype = builtInProp({},'constructor',NpoPromise,
+        /*configurable=*/false
+    );
+
+        // Note: Android 4 cannot use `Object.defineProperty(..)` here
+    NpoPromise.prototype = PromisePrototype;
+
+    // built-in "brand" to signal an "uninitialized" promise
+    builtInProp(PromisePrototype,'__NPO__',0,
+        /*configurable=*/false
+    );
+
+    builtInProp(NpoPromise,'resolve',function Promise$resolve(msg) {
+        var Constructor = this;
+
+        // spec mandated checks
+        // note: best "isPromise" check that's practical for now
+        if (msg && typeof msg === 'object' && msg['__NPO__'] === 1) {
+            return msg;
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            resolve(msg);
+        });
+    });
+
+    builtInProp(NpoPromise,'reject',function Promise$reject(msg) {
+        return new this(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            reject(msg);
+        });
+    });
+
+    builtInProp(NpoPromise,'all',function Promise$all(arr) {
+        var Constructor = this;
+
+        // spec mandated checks
+        if (ToString.call(arr) !== '[object Array]') {
+            return Constructor.reject(TypeError('Not an array'));
+        }
+        if (arr.length === 0) {
+            return Constructor.resolve([]);
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            var len = arr.length, msgs = Array(len), count = 0;
+
+            iteratePromises(Constructor,arr,function resolver(idx,msg) {
+                msgs[idx] = msg;
+                if (++count === len) {
+                    resolve(msgs);
+                }
+            },reject);
+        });
+    });
+
+    builtInProp(NpoPromise,'race',function Promise$race(arr) {
+        var Constructor = this;
+
+        // spec mandated checks
+        if (ToString.call(arr) !== '[object Array]') {
+            return Constructor.reject(TypeError('Not an array'));
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            iteratePromises(Constructor,arr,function resolver(idx,msg){
+                resolve(msg);
+            },reject);
+        });
+    });
+
+    var PromisePolyfill;
+    if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
+        PromisePolyfill = Promise;
+    } else {
+        PromisePolyfill = NpoPromise;
+    }
+
+    /* eslint camelcase: "off", eqeqeq: "off" */
+
+    // Maximum allowed session recording length
+    var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
 
     /*
      * Saved references to long variable names, so that closure compiler can
      * minimize file size.
      */
 
-    var ArrayProto = Array.prototype;
-    var FuncProto = Function.prototype;
-    var ObjProto = Object.prototype;
-    var slice = ArrayProto.slice;
-    var toString = ObjProto.toString;
-    var hasOwnProperty = ObjProto.hasOwnProperty;
-    var windowConsole = window$1.console;
-    var navigator = window$1.navigator;
-    var document$1 = window$1.document;
-    var windowOpera = window$1.opera;
-    var screen = window$1.screen;
-    var userAgent = navigator.userAgent;
-    var nativeBind = FuncProto.bind;
-    var nativeForEach = ArrayProto.forEach;
-    var nativeIndexOf = ArrayProto.indexOf;
-    var nativeMap = ArrayProto.map;
-    var nativeIsArray = Array.isArray;
-    var breaker = {};
+    var ArrayProto = Array.prototype,
+        FuncProto = Function.prototype,
+        ObjProto = Object.prototype,
+        slice = ArrayProto.slice,
+        toString = ObjProto.toString,
+        hasOwnProperty = ObjProto.hasOwnProperty,
+        windowConsole = win.console,
+        navigator = win.navigator,
+        document$1 = win.document,
+        windowOpera = win.opera,
+        screen = win.screen,
+        userAgent = navigator.userAgent;
+
+    var nativeBind = FuncProto.bind,
+        nativeForEach = ArrayProto.forEach,
+        nativeIndexOf = ArrayProto.indexOf,
+        nativeMap = ArrayProto.map,
+        nativeIsArray = Array.isArray,
+        breaker = {};
+
     var _ = {
         trim: function(str) {
             // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
@@ -837,8 +1206,8 @@
         var T = function() {
             var time = 1 * new Date(); // cross-browser version of Date.now()
             var ticks;
-            if (window$1.performance && window$1.performance.now) {
-                ticks = window$1.performance.now();
+            if (win.performance && win.performance.now) {
+                ticks = win.performance.now();
             } else {
                 // fall back to busy loop
                 ticks = 0;
@@ -902,6 +1271,7 @@
     // sending false tracking data
     var BLOCKED_UA_STRS = [
         'ahrefsbot',
+        'ahrefssiteaudit',
         'baiduspider',
         'bingbot',
         'bingpreview',
@@ -961,7 +1331,7 @@
     _.getQueryParam = function(url, param) {
         // Expects a raw URL
 
-        param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+        param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
         var regexS = '[\\?&]' + param + '=([^&#]*)',
             regex = new RegExp(regexS),
             results = regex.exec(url);
@@ -1078,7 +1448,7 @@
 
         var supported = true;
         try {
-            storage = storage || window.localStorage;
+            storage = storage || win.localStorage;
             var key = '__mplss_' + cheap_guid(8),
                 val = 'xyz';
             storage.setItem(key, val);
@@ -1110,7 +1480,7 @@
 
         get: function(name) {
             try {
-                return window.localStorage.getItem(name);
+                return win.localStorage.getItem(name);
             } catch (err) {
                 _.localStorage.error(err);
             }
@@ -1128,7 +1498,7 @@
 
         set: function(name, value) {
             try {
-                window.localStorage.setItem(name, value);
+                win.localStorage.setItem(name, value);
             } catch (err) {
                 _.localStorage.error(err);
             }
@@ -1136,7 +1506,7 @@
 
         remove: function(name) {
             try {
-                window.localStorage.removeItem(name);
+                win.localStorage.removeItem(name);
             } catch (err) {
                 _.localStorage.error(err);
             }
@@ -1175,7 +1545,7 @@
 
         function makeHandler(element, new_handler, old_handlers) {
             var handler = function(event) {
-                event = event || fixEvent(window.event);
+                event = event || fixEvent(win.event);
 
                 // this basically happens in firefox whenever another script
                 // overwrites the onload callback and doesn't pass the event
@@ -1418,8 +1788,8 @@
         };
     })();
 
-    var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
-    var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'];
+    var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'utm_source_platform','utm_campaign_id', 'utm_creative_format', 'utm_marketing_tactic'];
+    var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'sccid', 'ttclid', 'twclid', 'wbraid'];
 
     _.info = {
         campaignParams: function(default_value) {
@@ -1622,7 +1992,14 @@
             return '';
         },
 
-        properties: function() {
+        currentUrl: function() {
+            return win.location.href;
+        },
+
+        properties: function(extra_props) {
+            if (typeof extra_props !== 'object') {
+                extra_props = {};
+            }
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
                 '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
@@ -1630,7 +2007,7 @@
                 '$referring_domain': _.info.referringDomain(document$1.referrer),
                 '$device': _.info.device(userAgent)
             }), {
-                '$current_url': window$1.location.href,
+                '$current_url': _.info.currentUrl(),
                 '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
                 '$screen_height': screen.height,
                 '$screen_width': screen.width,
@@ -1638,7 +2015,7 @@
                 '$lib_version': Config.LIB_VERSION,
                 '$insert_id': cheap_guid(),
                 'time': _.timestamp() / 1000 // epoch time in seconds
-            });
+            }, _.strip_empty_properties(extra_props));
         },
 
         people_properties: function() {
@@ -1653,10 +2030,10 @@
         mpPageViewProperties: function() {
             return _.strip_empty_properties({
                 'current_page_title': document$1.title,
-                'current_domain': window$1.location.hostname,
-                'current_url_path': window$1.location.pathname,
-                'current_url_protocol': window$1.location.protocol,
-                'current_url_search': window$1.location.search
+                'current_domain': win.location.hostname,
+                'current_url_path': win.location.pathname,
+                'current_url_protocol': win.location.protocol,
+                'current_url_search': win.location.search
             });
         }
     };
@@ -1694,8 +2071,16 @@
         return matches ? matches[0] : '';
     };
 
-    var JSONStringify = null;
-    var JSONParse = null;
+    /**
+     * Check whether we have network connection. default to true for browsers that don't support navigator.onLine (IE)
+     * @returns {boolean}
+     */
+    var isOnline = function() {
+        var onLine = win.navigator['onLine'];
+        return _.isUndefined(onLine) || onLine;
+    };
+
+    var JSONStringify = null, JSONParse = null;
     if (typeof JSON !== 'undefined') {
         JSONStringify = JSON.stringify;
         JSONParse = JSON.parse;
@@ -1715,6 +2100,9 @@
     _['info']['browser']        = _.info.browser;
     _['info']['browserVersion'] = _.info.browserVersion;
     _['info']['properties']     = _.info.properties;
+    _['NPO']                    = NpoPromise;
+
+    /* eslint camelcase: "off" */
 
     /**
      * DomTracker Object
@@ -1865,8 +2253,6 @@
         }, 0);
     };
 
-    // eslint-disable-line camelcase
-
     var logger$2 = console_with_prefix('lock');
 
     /**
@@ -1896,124 +2282,176 @@
         this.storage = options.storage || window.localStorage;
         this.pollIntervalMS = options.pollIntervalMS || 100;
         this.timeoutMS = options.timeoutMS || 2000;
+
+        // dependency-inject promise implementation for testing purposes
+        this.promiseImpl = options.promiseImpl || PromisePolyfill;
     };
 
     // pass in a specific pid to test contention scenarios; otherwise
     // it is chosen randomly for each acquisition attempt
-    SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
-        if (!pid && typeof errorCB !== 'function') {
-            pid = errorCB;
-            errorCB = null;
-        }
+    SharedLock.prototype.withLock = function(lockedCB, pid) {
+        var Promise = this.promiseImpl;
+        return new Promise(_.bind(function (resolve, reject) {
+            var i = pid || (new Date().getTime() + '|' + Math.random());
+            var startTime = new Date().getTime();
 
-        var i = pid || (new Date().getTime() + '|' + Math.random());
-        var startTime = new Date().getTime();
+            var key = this.storageKey;
+            var pollIntervalMS = this.pollIntervalMS;
+            var timeoutMS = this.timeoutMS;
+            var storage = this.storage;
 
-        var key = this.storageKey;
-        var pollIntervalMS = this.pollIntervalMS;
-        var timeoutMS = this.timeoutMS;
-        var storage = this.storage;
+            var keyX = key + ':X';
+            var keyY = key + ':Y';
+            var keyZ = key + ':Z';
 
-        var keyX = key + ':X';
-        var keyY = key + ':Y';
-        var keyZ = key + ':Z';
-
-        var reportError = function(err) {
-            errorCB && errorCB(err);
-        };
-
-        var delay = function(cb) {
-            if (new Date().getTime() - startTime > timeoutMS) {
-                logger$2.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
-                storage.removeItem(keyZ);
-                storage.removeItem(keyY);
-                loop();
-                return;
-            }
-            setTimeout(function() {
-                try {
-                    cb();
-                } catch(err) {
-                    reportError(err);
-                }
-            }, pollIntervalMS * (Math.random() + 0.1));
-        };
-
-        var waitFor = function(predicate, cb) {
-            if (predicate()) {
-                cb();
-            } else {
-                delay(function() {
-                    waitFor(predicate, cb);
-                });
-            }
-        };
-
-        var getSetY = function() {
-            var valY = storage.getItem(keyY);
-            if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
-                return false;
-            } else {
-                storage.setItem(keyY, i);
-                if (storage.getItem(keyY) === i) {
-                    return true;
-                } else {
-                    if (!localStorageSupported(storage, true)) {
-                        throw new Error('localStorage support dropped while acquiring lock');
-                    }
-                    return false;
-                }
-            }
-        };
-
-        var loop = function() {
-            storage.setItem(keyX, i);
-
-            waitFor(getSetY, function() {
-                if (storage.getItem(keyX) === i) {
-                    criticalSection();
+            var delay = function(cb) {
+                if (new Date().getTime() - startTime > timeoutMS) {
+                    logger$2.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                    storage.removeItem(keyZ);
+                    storage.removeItem(keyY);
+                    loop();
                     return;
                 }
+                setTimeout(function() {
+                    try {
+                        cb();
+                    } catch(err) {
+                        reject(err);
+                    }
+                }, pollIntervalMS * (Math.random() + 0.1));
+            };
 
-                delay(function() {
-                    if (storage.getItem(keyY) !== i) {
-                        loop();
+            var waitFor = function(predicate, cb) {
+                if (predicate()) {
+                    cb();
+                } else {
+                    delay(function() {
+                        waitFor(predicate, cb);
+                    });
+                }
+            };
+
+            var getSetY = function() {
+                var valY = storage.getItem(keyY);
+                if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
+                    return false;
+                } else {
+                    storage.setItem(keyY, i);
+                    if (storage.getItem(keyY) === i) {
+                        return true;
+                    } else {
+                        if (!localStorageSupported(storage, true)) {
+                            reject(new Error('localStorage support dropped while acquiring lock'));
+                        }
+                        return false;
+                    }
+                }
+            };
+
+            var loop = function() {
+                storage.setItem(keyX, i);
+
+                waitFor(getSetY, function() {
+                    if (storage.getItem(keyX) === i) {
+                        criticalSection();
                         return;
                     }
-                    waitFor(function() {
-                        return !storage.getItem(keyZ);
-                    }, criticalSection);
+
+                    delay(function() {
+                        if (storage.getItem(keyY) !== i) {
+                            loop();
+                            return;
+                        }
+                        waitFor(function() {
+                            return !storage.getItem(keyZ);
+                        }, criticalSection);
+                    });
                 });
-            });
-        };
+            };
 
-        var criticalSection = function() {
-            storage.setItem(keyZ, '1');
+            var criticalSection = function() {
+                storage.setItem(keyZ, '1');
+                var removeLock = function () {
+                    storage.removeItem(keyZ);
+                    if (storage.getItem(keyY) === i) {
+                        storage.removeItem(keyY);
+                    }
+                    if (storage.getItem(keyX) === i) {
+                        storage.removeItem(keyX);
+                    }
+                };
+
+                lockedCB()
+                    .then(function (ret) {
+                        removeLock();
+                        resolve(ret);
+                    })
+                    .catch(function (err) {
+                        removeLock();
+                        reject(err);
+                    });
+            };
+
             try {
-                lockedCB();
-            } finally {
-                storage.removeItem(keyZ);
-                if (storage.getItem(keyY) === i) {
-                    storage.removeItem(keyY);
+                if (localStorageSupported(storage, true)) {
+                    loop();
+                } else {
+                    throw new Error('localStorage support check failed');
                 }
-                if (storage.getItem(keyX) === i) {
-                    storage.removeItem(keyX);
-                }
+            } catch(err) {
+                reject(err);
             }
-        };
-
-        try {
-            if (localStorageSupported(storage, true)) {
-                loop();
-            } else {
-                throw new Error('localStorage support check failed');
-            }
-        } catch(err) {
-            reportError(err);
-        }
+        }, this));
     };
 
-    // eslint-disable-line camelcase
+    /**
+     * @typedef {import('./wrapper').StorageWrapper}
+     */
+
+    /**
+     * @type {StorageWrapper}
+     */
+    var LocalStorageWrapper = function (storageOverride) {
+        this.storage = storageOverride || localStorage;
+    };
+
+    LocalStorageWrapper.prototype.init = function () {
+        return PromisePolyfill.resolve();
+    };
+
+    LocalStorageWrapper.prototype.setItem = function (key, value) {
+        return new PromisePolyfill(_.bind(function (resolve, reject) {
+            try {
+                this.storage.setItem(key, value);
+            } catch (e) {
+                reject(e);
+            }
+            resolve();
+        }, this));
+    };
+
+    LocalStorageWrapper.prototype.getItem = function (key) {
+        return new PromisePolyfill(_.bind(function (resolve, reject) {
+            var item;
+            try {
+                item = this.storage.getItem(key);
+            } catch (e) {
+                reject(e);
+            }
+            resolve(item);
+        }, this));
+    };
+
+    LocalStorageWrapper.prototype.removeItem = function (key) {
+        return new PromisePolyfill(_.bind(function (resolve, reject) {
+            try {
+                this.storage.removeItem(key);
+            } catch (e) {
+                reject(e);
+            }
+            resolve();
+        }, this));
+    };
 
     var logger$1 = console_with_prefix('batch');
 
@@ -2033,16 +2471,38 @@
      * to data loss in some situations).
      * @constructor
      */
-    var RequestQueue = function(storageKey, options) {
+    var RequestQueue = function (storageKey, options) {
         options = options || {};
         this.storageKey = storageKey;
-        this.storage = options.storage || window.localStorage;
+        this.usePersistence = options.usePersistence;
+        if (this.usePersistence) {
+            this.queueStorage = options.queueStorage || new LocalStorageWrapper();
+            this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
+            this.queueStorage.init();
+        }
         this.reportError = options.errorReporter || _.bind(logger$1.error, logger$1);
-        this.lock = new SharedLock(storageKey, {storage: this.storage});
 
         this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
         this.memQueue = [];
+        this.initialized = false;
+    };
+
+    RequestQueue.prototype.ensureInit = function () {
+        if (this.initialized) {
+            return PromisePolyfill.resolve();
+        }
+
+        return this.queueStorage
+            .init()
+            .then(_.bind(function () {
+                this.initialized = true;
+            }, this))
+            .catch(_.bind(function (err) {
+                this.reportError('Error initializing queue persistence. Disabling persistence', err);
+                this.initialized = true;
+                this.usePersistence = false;
+            }, this));
     };
 
     /**
@@ -2057,36 +2517,47 @@
      * failure of the enqueue operation; it is asynchronous because the localStorage
      * lock is asynchronous.
      */
-    RequestQueue.prototype.enqueue = function(item, flushInterval, cb) {
+    RequestQueue.prototype.enqueue = function (item, flushInterval) {
         var queueEntry = {
             'id': cheap_guid(),
             'flushAfter': new Date().getTime() + flushInterval * 2,
             'payload': item
         };
 
-        this.lock.withLock(_.bind(function lockAcquired() {
-            var succeeded;
-            try {
-                var storedQueue = this.readFromStorage();
-                storedQueue.push(queueEntry);
-                succeeded = this.saveToStorage(storedQueue);
-                if (succeeded) {
-                    // only add to in-memory queue when storage succeeds
-                    this.memQueue.push(queueEntry);
-                }
-            } catch(err) {
-                this.reportError('Error enqueueing item', item);
-                succeeded = false;
-            }
-            if (cb) {
-                cb(succeeded);
-            }
-        }, this), _.bind(function lockFailure(err) {
-            this.reportError('Error acquiring storage lock', err);
-            if (cb) {
-                cb(false);
-            }
-        }, this), this.pid);
+        if (!this.usePersistence) {
+            this.memQueue.push(queueEntry);
+            return PromisePolyfill.resolve(true);
+        } else {
+
+            var enqueueItem = _.bind(function () {
+                return this.ensureInit()
+                    .then(_.bind(function () {
+                        return this.readFromStorage();
+                    }, this))
+                    .then(_.bind(function (storedQueue) {
+                        storedQueue.push(queueEntry);
+                        return this.saveToStorage(storedQueue);
+                    }, this))
+                    .then(_.bind(function (succeeded) {
+                        // only add to in-memory queue when storage succeeds
+                        if (succeeded) {
+                            this.memQueue.push(queueEntry);
+                        }
+                        return succeeded;
+                    }, this))
+                    .catch(_.bind(function (err) {
+                        this.reportError('Error enqueueing item', err, item);
+                        return false;
+                    }, this));
+            }, this);
+
+            return this.lock
+                .withLock(enqueueItem, this.pid)
+                .catch(_.bind(function (err) {
+                    this.reportError('Error acquiring storage lock', err);
+                    return false;
+                }, this));
+        }
     };
 
     /**
@@ -2095,31 +2566,41 @@
      * in the persisted queue (items where the 'flushAfter' time has
      * already passed).
      */
-    RequestQueue.prototype.fillBatch = function(batchSize) {
+    RequestQueue.prototype.fillBatch = function (batchSize) {
         var batch = this.memQueue.slice(0, batchSize);
-        if (batch.length < batchSize) {
+        if (this.usePersistence && batch.length < batchSize) {
             // don't need lock just to read events; localStorage is thread-safe
             // and the worst that could happen is a duplicate send of some
             // orphaned events, which will be deduplicated on the server side
-            var storedQueue = this.readFromStorage();
-            if (storedQueue.length) {
-                // item IDs already in batch; don't duplicate out of storage
-                var idsInBatch = {}; // poor man's Set
-                _.each(batch, function(item) { idsInBatch[item['id']] = true; });
+            return this.ensureInit()
+                .then(_.bind(function () {
+                    return this.readFromStorage();
+                }, this))
+                .then(_.bind(function (storedQueue) {
+                    if (storedQueue.length) {
+                    // item IDs already in batch; don't duplicate out of storage
+                        var idsInBatch = {}; // poor man's Set
+                        _.each(batch, function (item) {
+                            idsInBatch[item['id']] = true;
+                        });
 
-                for (var i = 0; i < storedQueue.length; i++) {
-                    var item = storedQueue[i];
-                    if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
-                        item.orphaned = true;
-                        batch.push(item);
-                        if (batch.length >= batchSize) {
-                            break;
+                        for (var i = 0; i < storedQueue.length; i++) {
+                            var item = storedQueue[i];
+                            if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                                item.orphaned = true;
+                                batch.push(item);
+                                if (batch.length >= batchSize) {
+                                    break;
+                                }
+                            }
                         }
                     }
-                }
-            }
+
+                    return batch;
+                }, this));
+        } else {
+            return PromisePolyfill.resolve(batch);
         }
-        return batch;
     };
 
     /**
@@ -2127,9 +2608,9 @@
      * also remove any item without a valid id (e.g., malformed
      * storage entries).
      */
-    var filterOutIDsAndInvalid = function(items, idSet) {
+    var filterOutIDsAndInvalid = function (items, idSet) {
         var filteredItems = [];
-        _.each(items, function(item) {
+        _.each(items, function (item) {
             if (item['id'] && !idSet[item['id']]) {
                 filteredItems.push(item);
             }
@@ -2141,72 +2622,80 @@
      * Remove items with matching IDs from both in-memory queue
      * and persisted queue
      */
-    RequestQueue.prototype.removeItemsByID = function(ids, cb) {
+    RequestQueue.prototype.removeItemsByID = function (ids) {
         var idSet = {}; // poor man's Set
-        _.each(ids, function(id) { idSet[id] = true; });
+        _.each(ids, function (id) {
+            idSet[id] = true;
+        });
 
         this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-
-        var removeFromStorage = _.bind(function() {
-            var succeeded;
-            try {
-                var storedQueue = this.readFromStorage();
-                storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-                succeeded = this.saveToStorage(storedQueue);
-
-                // an extra check: did storage report success but somehow
-                // the items are still there?
-                if (succeeded) {
-                    storedQueue = this.readFromStorage();
-                    for (var i = 0; i < storedQueue.length; i++) {
-                        var item = storedQueue[i];
-                        if (item['id'] && !!idSet[item['id']]) {
-                            this.reportError('Item not removed from storage');
-                            return false;
+        if (!this.usePersistence) {
+            return PromisePolyfill.resolve(true);
+        } else {
+            var removeFromStorage = _.bind(function () {
+                return this.ensureInit()
+                    .then(_.bind(function () {
+                        return this.readFromStorage();
+                    }, this))
+                    .then(_.bind(function (storedQueue) {
+                        storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                        return this.saveToStorage(storedQueue);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.readFromStorage();
+                    }, this))
+                    .then(_.bind(function (storedQueue) {
+                        // an extra check: did storage report success but somehow
+                        // the items are still there?
+                        for (var i = 0; i < storedQueue.length; i++) {
+                            var item = storedQueue[i];
+                            if (item['id'] && !!idSet[item['id']]) {
+                                throw new Error('Item not removed from storage');
+                            }
                         }
-                    }
-                }
-            } catch(err) {
-                this.reportError('Error removing items', ids);
-                succeeded = false;
-            }
-            return succeeded;
-        }, this);
+                        return true;
+                    }, this))
+                    .catch(_.bind(function (err) {
+                        this.reportError('Error removing items', err, ids);
+                        return false;
+                    }, this));
+            }, this);
 
-        this.lock.withLock(function lockAcquired() {
-            var succeeded = removeFromStorage();
-            if (cb) {
-                cb(succeeded);
-            }
-        }, _.bind(function lockFailure(err) {
-            var succeeded = false;
-            this.reportError('Error acquiring storage lock', err);
-            if (!localStorageSupported(this.storage, true)) {
-                // Looks like localStorage writes have stopped working sometime after
-                // initialization (probably full), and so nobody can acquire locks
-                // anymore. Consider it temporarily safe to remove items without the
-                // lock, since nobody's writing successfully anyway.
-                succeeded = removeFromStorage();
-                if (!succeeded) {
-                    // OK, we couldn't even write out the smaller queue. Try clearing it
-                    // entirely.
-                    try {
-                        this.storage.removeItem(this.storageKey);
-                    } catch(err) {
-                        this.reportError('Error clearing queue', err);
+            return this.lock
+                .withLock(removeFromStorage, this.pid)
+                .catch(_.bind(function (err) {
+                    this.reportError('Error acquiring storage lock', err);
+                    if (!localStorageSupported(this.queueStorage.storage, true)) {
+                        // Looks like localStorage writes have stopped working sometime after
+                        // initialization (probably full), and so nobody can acquire locks
+                        // anymore. Consider it temporarily safe to remove items without the
+                        // lock, since nobody's writing successfully anyway.
+                        return removeFromStorage()
+                            .then(_.bind(function (success) {
+                                if (!success) {
+                                    // OK, we couldn't even write out the smaller queue. Try clearing it
+                                    // entirely.
+                                    return this.queueStorage.removeItem(this.storageKey).then(function () {
+                                        return success;
+                                    });
+                                }
+                                return success;
+                            }, this))
+                            .catch(_.bind(function (err) {
+                                this.reportError('Error clearing queue', err);
+                                return false;
+                            }, this));
+                    } else {
+                        return false;
                     }
-                }
-            }
-            if (cb) {
-                cb(succeeded);
-            }
-        }, this), this.pid);
+                }, this));
+        }
     };
 
     // internal helper for RequestQueue.updatePayloads
-    var updatePayloads = function(existingItems, itemsToUpdate) {
+    var updatePayloads = function (existingItems, itemsToUpdate) {
         var newItems = [];
-        _.each(existingItems, function(item) {
+        _.each(existingItems, function (item) {
             var id = item['id'];
             if (id in itemsToUpdate) {
                 var newPayload = itemsToUpdate[id];
@@ -2226,73 +2715,97 @@
      * Update payloads of given items in both in-memory queue and
      * persisted queue. Items set to null are removed from queues.
      */
-    RequestQueue.prototype.updatePayloads = function(itemsToUpdate, cb) {
+    RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
         this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
-        this.lock.withLock(_.bind(function lockAcquired() {
-            var succeeded;
-            try {
-                var storedQueue = this.readFromStorage();
-                storedQueue = updatePayloads(storedQueue, itemsToUpdate);
-                succeeded = this.saveToStorage(storedQueue);
-            } catch(err) {
-                this.reportError('Error updating items', itemsToUpdate);
-                succeeded = false;
-            }
-            if (cb) {
-                cb(succeeded);
-            }
-        }, this), _.bind(function lockFailure(err) {
-            this.reportError('Error acquiring storage lock', err);
-            if (cb) {
-                cb(false);
-            }
-        }, this), this.pid);
+        if (!this.usePersistence) {
+            return PromisePolyfill.resolve(true);
+        } else {
+            return this.lock
+                .withLock(_.bind(function lockAcquired() {
+                    return this.ensureInit()
+                        .then(_.bind(function () {
+                            return this.readFromStorage();
+                        }, this))
+                        .then(_.bind(function (storedQueue) {
+                            storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                            return this.saveToStorage(storedQueue);
+                        }, this))
+                        .catch(_.bind(function (err) {
+                            this.reportError('Error updating items', itemsToUpdate, err);
+                            return false;
+                        }, this));
+                }, this), this.pid)
+                .catch(_.bind(function (err) {
+                    this.reportError('Error acquiring storage lock', err);
+                    return false;
+                }, this));
+        }
     };
 
     /**
      * Read and parse items array from localStorage entry, handling
      * malformed/missing data if necessary.
      */
-    RequestQueue.prototype.readFromStorage = function() {
-        var storageEntry;
-        try {
-            storageEntry = this.storage.getItem(this.storageKey);
-            if (storageEntry) {
-                storageEntry = JSONParse(storageEntry);
-                if (!_.isArray(storageEntry)) {
-                    this.reportError('Invalid storage entry:', storageEntry);
-                    storageEntry = null;
+    RequestQueue.prototype.readFromStorage = function () {
+        return this.ensureInit()
+            .then(_.bind(function () {
+                return this.queueStorage.getItem(this.storageKey);
+            }, this))
+            .then(_.bind(function (storageEntry) {
+                if (storageEntry) {
+                    storageEntry = JSONParse(storageEntry);
+                    if (!_.isArray(storageEntry)) {
+                        this.reportError('Invalid storage entry:', storageEntry);
+                        storageEntry = null;
+                    }
                 }
-            }
-        } catch (err) {
-            this.reportError('Error retrieving queue', err);
-            storageEntry = null;
-        }
-        return storageEntry || [];
+                return storageEntry || [];
+            }, this))
+            .catch(_.bind(function (err) {
+                this.reportError('Error retrieving queue', err);
+                return [];
+            }, this));
     };
 
     /**
      * Serialize the given items array to localStorage.
      */
-    RequestQueue.prototype.saveToStorage = function(queue) {
+    RequestQueue.prototype.saveToStorage = function (queue) {
         try {
-            this.storage.setItem(this.storageKey, JSONStringify(queue));
-            return true;
+            var serialized = JSONStringify(queue);
         } catch (err) {
-            this.reportError('Error saving queue', err);
-            return false;
+            this.reportError('Error serializing queue', err);
+            return PromisePolyfill.resolve(false);
         }
+
+        return this.ensureInit()
+            .then(_.bind(function () {
+                return this.queueStorage.setItem(this.storageKey, serialized);
+            }, this))
+            .then(function () {
+                return true;
+            })
+            .catch(_.bind(function (err) {
+                this.reportError('Error saving queue', err);
+                return false;
+            }, this));
     };
 
     /**
      * Clear out queues (memory and localStorage).
      */
-    RequestQueue.prototype.clear = function() {
+    RequestQueue.prototype.clear = function () {
         this.memQueue = [];
-        this.storage.removeItem(this.storageKey);
-    };
 
-    // eslint-disable-line camelcase
+        if (this.usePersistence) {
+            return this.ensureInit()
+                .then(_.bind(function () {
+                    return this.queueStorage.removeItem(this.storageKey);
+                }, this));
+        } else {
+            return PromisePolyfill.resolve();
+        }
+    };
 
     // maximum interval between request retries after exponential backoff
     var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -2309,7 +2822,9 @@
         this.errorReporter = options.errorReporter;
         this.queue = new RequestQueue(storageKey, {
             errorReporter: _.bind(this.reportError, this),
-            storage: options.storage
+            queueStorage: options.queueStorage,
+            sharedLockStorage: options.sharedLockStorage,
+            usePersistence: options.usePersistence
         });
 
         this.libConfig = options.libConfig;
@@ -2326,13 +2841,18 @@
 
         // extra client-side dedupe
         this.itemIdsSentSuccessfully = {};
+
+        // Make the flush occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
+        // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
+        // in a request loop and get ratelimited by the server.
+        this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
     };
 
     /**
      * Add one item to queue.
      */
-    RequestBatcher.prototype.enqueue = function(item, cb) {
-        this.queue.enqueue(item, this.flushInterval, cb);
+    RequestBatcher.prototype.enqueue = function(item) {
+        return this.queue.enqueue(item, this.flushInterval);
     };
 
     /**
@@ -2342,7 +2862,7 @@
     RequestBatcher.prototype.start = function() {
         this.stopped = false;
         this.consecutiveRemovalFailures = 0;
-        this.flush();
+        return this.flush();
     };
 
     /**
@@ -2360,7 +2880,7 @@
      * Clear out queue.
      */
     RequestBatcher.prototype.clear = function() {
-        this.queue.clear();
+        return this.queue.clear();
     };
 
     /**
@@ -2383,9 +2903,24 @@
     RequestBatcher.prototype.scheduleFlush = function(flushMS) {
         this.flushInterval = flushMS;
         if (!this.stopped) { // don't schedule anymore if batching has been stopped
-            this.timeoutID = setTimeout(_.bind(this.flush, this), this.flushInterval);
+            this.timeoutID = setTimeout(_.bind(function() {
+                if (!this.stopped) {
+                    this.flush();
+                }
+            }, this), this.flushInterval);
         }
     };
+
+    /**
+     * Send a request using the sendRequest callback, but promisified.
+     * TODO: sendRequest should be promisified in the first place.
+     */
+    RequestBatcher.prototype.sendRequestPromise = function(data, options) {
+        return new PromisePolyfill(_.bind(function(resolve) {
+            this.sendRequest(data, options, resolve);
+        }, this));
+    };
+
 
     /**
      * Flush one batch to network. Depending on success/failure modes, it will either
@@ -2398,177 +2933,191 @@
      * sendBeacon offers no callbacks or status indications)
      */
     RequestBatcher.prototype.flush = function(options) {
-        try {
+        if (this.requestInProgress) {
+            logger.log('Flush: Request already in progress');
+            return PromisePolyfill.resolve();
+        }
 
-            if (this.requestInProgress) {
-                logger.log('Flush: Request already in progress');
-                return;
-            }
+        this.requestInProgress = true;
 
-            options = options || {};
-            var timeoutMS = this.libConfig['batch_request_timeout_ms'];
-            var startTime = new Date().getTime();
-            var currentBatchSize = this.batchSize;
-            var batch = this.queue.fillBatch(currentBatchSize);
-            var dataForRequest = [];
-            var transformedItems = {};
-            _.each(batch, function(item) {
-                var payload = item['payload'];
-                if (this.beforeSendHook && !item.orphaned) {
-                    payload = this.beforeSendHook(payload);
-                }
-                if (payload) {
-                    // mp_sent_by_lib_version prop captures which lib version actually
-                    // sends each event (regardless of which version originally queued
-                    // it for sending)
-                    if (payload['event'] && payload['properties']) {
-                        payload['properties'] = _.extend(
-                            {},
-                            payload['properties'],
-                            {'mp_sent_by_lib_version': Config.LIB_VERSION}
-                        );
+        options = options || {};
+        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+        var startTime = new Date().getTime();
+        var currentBatchSize = this.batchSize;
+
+        return this.queue.fillBatch(currentBatchSize)
+            .then(_.bind(function(batch) {
+
+                // if there's more items in the queue than the batch size, attempt
+                // to flush again after the current batch is done.
+                var attemptSecondaryFlush = batch.length === currentBatchSize;
+                var dataForRequest = [];
+                var transformedItems = {};
+                _.each(batch, function(item) {
+                    var payload = item['payload'];
+                    if (this.beforeSendHook && !item.orphaned) {
+                        payload = this.beforeSendHook(payload);
                     }
-                    var addPayload = true;
-                    var itemId = item['id'];
-                    if (itemId) {
-                        if ((this.itemIdsSentSuccessfully[itemId] || 0) > 5) {
-                            this.reportError('[dupe] item ID sent too many times, not sending', {
-                                item: item,
-                                batchSize: batch.length,
-                                timesSent: this.itemIdsSentSuccessfully[itemId]
-                            });
-                            addPayload = false;
+                    if (payload) {
+                        // mp_sent_by_lib_version prop captures which lib version actually
+                        // sends each event (regardless of which version originally queued
+                        // it for sending)
+                        if (payload['event'] && payload['properties']) {
+                            payload['properties'] = _.extend(
+                                {},
+                                payload['properties'],
+                                {'mp_sent_by_lib_version': Config.LIB_VERSION}
+                            );
                         }
-                    } else {
-                        this.reportError('[dupe] found item with no ID', {item: item});
-                    }
-
-                    if (addPayload) {
-                        dataForRequest.push(payload);
-                    }
-                }
-                transformedItems[item['id']] = payload;
-            }, this);
-            if (dataForRequest.length < 1) {
-                this.resetFlush();
-                return; // nothing to do
-            }
-
-            this.requestInProgress = true;
-
-            var batchSendCallback = _.bind(function(res) {
-                this.requestInProgress = false;
-
-                try {
-
-                    // handle API response in a try-catch to make sure we can reset the
-                    // flush operation if something goes wrong
-
-                    var removeItemsFromQueue = false;
-                    if (options.unloading) {
-                        // update persisted data to include hook transformations
-                        this.queue.updatePayloads(transformedItems);
-                    } else if (
-                        _.isObject(res) &&
-                        res.error === 'timeout' &&
-                        new Date().getTime() - startTime >= timeoutMS
-                    ) {
-                        this.reportError('Network timeout; retrying');
-                        this.flush();
-                    } else if (
-                        _.isObject(res) &&
-                        res.xhr_req &&
-                        (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')
-                    ) {
-                        // network or API error, or 429 Too Many Requests, retry
-                        var retryMS = this.flushInterval * 2;
-                        var headers = res.xhr_req['responseHeaders'];
-                        if (headers) {
-                            var retryAfter = headers['Retry-After'];
-                            if (retryAfter) {
-                                retryMS = (parseInt(retryAfter, 10) * 1000) || retryMS;
+                        var addPayload = true;
+                        var itemId = item['id'];
+                        if (itemId) {
+                            if ((this.itemIdsSentSuccessfully[itemId] || 0) > 5) {
+                                this.reportError('[dupe] item ID sent too many times, not sending', {
+                                    item: item,
+                                    batchSize: batch.length,
+                                    timesSent: this.itemIdsSentSuccessfully[itemId]
+                                });
+                                addPayload = false;
                             }
-                        }
-                        retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
-                        this.reportError('Error; retry in ' + retryMS + ' ms');
-                        this.scheduleFlush(retryMS);
-                    } else if (_.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
-                        // 413 Payload Too Large
-                        if (batch.length > 1) {
-                            var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
-                            this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
-                            this.reportError('413 response; reducing batch size to ' + this.batchSize);
-                            this.resetFlush();
                         } else {
-                            this.reportError('Single-event request too large; dropping', batch);
-                            this.resetBatchSize();
-                            removeItemsFromQueue = true;
+                            this.reportError('[dupe] found item with no ID', {item: item});
                         }
-                    } else {
-                        // successful network request+response; remove each item in batch from queue
-                        // (even if it was e.g. a 400, in which case retrying won't help)
-                        removeItemsFromQueue = true;
+
+                        if (addPayload) {
+                            dataForRequest.push(payload);
+                        }
                     }
+                    transformedItems[item['id']] = payload;
+                }, this);
 
-                    if (removeItemsFromQueue) {
-                        this.queue.removeItemsByID(
-                            _.map(batch, function(item) { return item['id']; }),
-                            _.bind(function(succeeded) {
-                                if (succeeded) {
-                                    this.consecutiveRemovalFailures = 0;
-                                    this.flush(); // handle next batch if the queue isn't empty
-                                } else {
-                                    this.reportError('Failed to remove items from queue');
-                                    if (++this.consecutiveRemovalFailures > 5) {
-                                        this.reportError('Too many queue failures; disabling batching system.');
-                                        this.stopAllBatching();
-                                    } else {
-                                        this.resetFlush();
+                if (dataForRequest.length < 1) {
+                    this.requestInProgress = false;
+                    this.resetFlush();
+                    return PromisePolyfill.resolve(); // nothing to do
+                }
+
+                var removeItemsFromQueue = _.bind(function () {
+                    return this.queue
+                        .removeItemsByID(
+                            _.map(batch, function (item) {
+                                return item['id'];
+                            })
+                        )
+                        .then(_.bind(function (succeeded) {
+                            // client-side dedupe
+                            _.each(batch, _.bind(function(item) {
+                                var itemId = item['id'];
+                                if (itemId) {
+                                    this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
+                                    this.itemIdsSentSuccessfully[itemId]++;
+                                    if (this.itemIdsSentSuccessfully[itemId] > 5) {
+                                        this.reportError('[dupe] item ID sent too many times', {
+                                            item: item,
+                                            batchSize: batch.length,
+                                            timesSent: this.itemIdsSentSuccessfully[itemId]
+                                        });
                                     }
+                                } else {
+                                    this.reportError('[dupe] found item with no ID while removing', {item: item});
                                 }
-                            }, this)
-                        );
+                            }, this));
 
-                        // client-side dedupe
-                        _.each(batch, _.bind(function(item) {
-                            var itemId = item['id'];
-                            if (itemId) {
-                                this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
-                                this.itemIdsSentSuccessfully[itemId]++;
-                                if (this.itemIdsSentSuccessfully[itemId] > 5) {
-                                    this.reportError('[dupe] item ID sent too many times', {
-                                        item: item,
-                                        batchSize: batch.length,
-                                        timesSent: this.itemIdsSentSuccessfully[itemId]
-                                    });
+                            if (succeeded) {
+                                this.consecutiveRemovalFailures = 0;
+                                if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
+                                    this.resetFlush(); // schedule next batch with a delay
+                                    return PromisePolyfill.resolve();
+                                } else {
+                                    return this.flush(); // handle next batch if the queue isn't empty
                                 }
                             } else {
-                                this.reportError('[dupe] found item with no ID while removing', {item: item});
+                                if (++this.consecutiveRemovalFailures > 5) {
+                                    this.reportError('Too many queue failures; disabling batching system.');
+                                    this.stopAllBatching();
+                                } else {
+                                    this.resetFlush();
+                                }
+                                return PromisePolyfill.resolve();
                             }
                         }, this));
+                }, this);
+
+                var batchSendCallback = _.bind(function(res) {
+                    this.requestInProgress = false;
+
+                    try {
+
+                        // handle API response in a try-catch to make sure we can reset the
+                        // flush operation if something goes wrong
+
+                        if (options.unloading) {
+                            // update persisted data to include hook transformations
+                            return this.queue.updatePayloads(transformedItems);
+                        } else if (
+                            _.isObject(res) &&
+                                res.error === 'timeout' &&
+                                new Date().getTime() - startTime >= timeoutMS
+                        ) {
+                            this.reportError('Network timeout; retrying');
+                            return this.flush();
+                        } else if (
+                            _.isObject(res) &&
+                                (
+                                    res.httpStatusCode >= 500
+                                    || res.httpStatusCode === 429
+                                    || (res.httpStatusCode <= 0 && !isOnline())
+                                    || res.error === 'timeout'
+                                )
+                        ) {
+                            // network or API error, or 429 Too Many Requests, retry
+                            var retryMS = this.flushInterval * 2;
+                            if (res.retryAfter) {
+                                retryMS = (parseInt(res.retryAfter, 10) * 1000) || retryMS;
+                            }
+                            retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
+                            this.reportError('Error; retry in ' + retryMS + ' ms');
+                            this.scheduleFlush(retryMS);
+                            return PromisePolyfill.resolve();
+                        } else if (_.isObject(res) && res.httpStatusCode === 413) {
+                            // 413 Payload Too Large
+                            if (batch.length > 1) {
+                                var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
+                                this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
+                                this.reportError('413 response; reducing batch size to ' + this.batchSize);
+                                this.resetFlush();
+                                return PromisePolyfill.resolve();
+                            } else {
+                                this.reportError('Single-event request too large; dropping', batch);
+                                this.resetBatchSize();
+                                return removeItemsFromQueue();
+                            }
+                        } else {
+                            // successful network request+response; remove each item in batch from queue
+                            // (even if it was e.g. a 400, in which case retrying won't help)
+                            return removeItemsFromQueue();
+                        }
+                    } catch(err) {
+                        this.reportError('Error handling API response', err);
+                        this.resetFlush();
                     }
-
-                } catch(err) {
-                    this.reportError('Error handling API response', err);
-                    this.resetFlush();
+                }, this);
+                var requestOptions = {
+                    method: 'POST',
+                    verbose: true,
+                    ignore_json_errors: true, // eslint-disable-line camelcase
+                    timeout_ms: timeoutMS // eslint-disable-line camelcase
+                };
+                if (options.unloading) {
+                    requestOptions.transport = 'sendBeacon';
                 }
-            }, this);
-            var requestOptions = {
-                method: 'POST',
-                verbose: true,
-                ignore_json_errors: true, // eslint-disable-line camelcase
-                timeout_ms: timeoutMS // eslint-disable-line camelcase
-            };
-            if (options.unloading) {
-                requestOptions.transport = 'sendBeacon';
-            }
-            logger.log('MIXPANEL REQUEST:', dataForRequest);
-            this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
-
-        } catch(err) {
-            this.reportError('Error flushing request queue', err);
-            this.resetFlush();
-        }
+                logger.log('MIXPANEL REQUEST:', dataForRequest);
+                return this.sendRequestPromise(dataForRequest, requestOptions).then(batchSendCallback);
+            }, this))
+            .catch(_.bind(function(err) {
+                this.reportError('Error flushing request queue', err);
+                this.resetFlush();
+            }, this));
     };
 
     /**
@@ -2587,6 +3136,19 @@
             }
         }
     };
+
+    /**
+     * GDPR utils
+     *
+     * The General Data Protection Regulation (GDPR) is a regulation in EU law on data protection
+     * and privacy for all individuals within the European Union. It addresses the export of personal
+     * data outside the EU. The GDPR aims primarily to give control back to citizens and residents
+     * over their personal data and to simplify the regulatory environment for international business
+     * by unifying the regulation within the EU.
+     *
+     * This set of utilities is intended to enable opt in/out functionality in the Mixpanel JS SDK.
+     * These functions are used internally by the SDK and are not intended to be publicly exposed.
+     */
 
     /**
      * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
@@ -2773,14 +3335,14 @@
         if (options && options.ignoreDnt) {
             return false;
         }
-        var win = (options && options.window) || window$1;
-        var nav = win['navigator'] || {};
+        var win$1 = (options && options.window) || win;
+        var nav = win$1['navigator'] || {};
         var hasDntOn = false;
 
         _.each([
             nav['doNotTrack'], // standard
             nav['msDoNotTrack'],
-            win['doNotTrack']
+            win$1['doNotTrack']
         ], function(dntValue) {
             if (_.includes([true, 1, '1', 'yes'], dntValue)) {
                 hasDntOn = true;
@@ -2873,6 +3435,8 @@
             return;
         };
     }
+
+    /* eslint camelcase: "off" */
 
     /** @const */ var SET_ACTION      = '$set';
     /** @const */ var SET_ONCE_ACTION = '$set_once';
@@ -2990,6 +3554,8 @@
             return data;
         }
     };
+
+    /* eslint camelcase: "off" */
 
     /**
      * Mixpanel Group Object
@@ -3159,6 +3725,8 @@
     MixpanelGroup.prototype['unset']    = MixpanelGroup.prototype.unset;
     MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
+    /* eslint camelcase: "off" */
+
     /**
      * Mixpanel People Object
      * @constructor
@@ -3204,7 +3772,6 @@
         data[SET_ACTION] = _.extend(
             {},
             _.info.people_properties(),
-            this._mixpanel['persistence'].get_referrer_info(),
             data[SET_ACTION]
         );
         return this._send_request(data, callback);
@@ -3628,6 +4195,8 @@
     MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user;
     MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
+    /* eslint camelcase: "off" */
+
     /*
      * Constants
      */
@@ -3683,7 +4252,7 @@
 
         this.load();
         this.update_config(config);
-        this.upgrade(config);
+        this.upgrade();
         this.save();
     };
 
@@ -3711,49 +4280,12 @@
         }
     };
 
-    MixpanelPersistence.prototype.upgrade = function(config) {
-        var upgrade_from_old_lib = config['upgrade'],
-            old_cookie_name,
-            old_cookie;
+    MixpanelPersistence.prototype.upgrade = function() {
+        var old_cookie,
+            old_localstorage;
 
-        if (upgrade_from_old_lib) {
-            old_cookie_name = 'mp_super_properties';
-            // Case where they had a custom cookie name before.
-            if (typeof(upgrade_from_old_lib) === 'string') {
-                old_cookie_name = upgrade_from_old_lib;
-            }
-
-            old_cookie = this.storage.parse(old_cookie_name);
-
-            // remove the cookie
-            this.storage.remove(old_cookie_name);
-            this.storage.remove(old_cookie_name, true);
-
-            if (old_cookie) {
-                this['props'] = _.extend(
-                    this['props'],
-                    old_cookie['all'],
-                    old_cookie['events']
-                );
-            }
-        }
-
-        if (!config['cookie_name'] && config['name'] !== 'mixpanel') {
-            // special case to handle people with cookies of the form
-            // mp_TOKEN_INSTANCENAME from the first release of this library
-            old_cookie_name = 'mp_' + config['token'] + '_' + config['name'];
-            old_cookie = this.storage.parse(old_cookie_name);
-
-            if (old_cookie) {
-                this.storage.remove(old_cookie_name);
-                this.storage.remove(old_cookie_name, true);
-
-                // Save the prop values that were in the cookie from before -
-                // this should only happen once as we delete the old one.
-                this.register_once(old_cookie);
-            }
-        }
-
+        // if transferring from cookie to localStorage or vice-versa, copy existing
+        // super properties over to new storage mode
         if (this.storage === _.localStorage) {
             old_cookie = _.cookie.parse(this.name);
 
@@ -3762,6 +4294,14 @@
 
             if (old_cookie) {
                 this.register_once(old_cookie);
+            }
+        } else if (this.storage === _.cookie) {
+            old_localstorage = _.localStorage.parse(this.name);
+
+            _.localStorage.remove(this.name);
+
+            if (old_localstorage) {
+                this.register_once(old_localstorage);
             }
         }
     };
@@ -4077,6 +4617,8 @@
         return timestamp;
     };
 
+    /* eslint camelcase: "off" */
+
     /*
      * Mixpanel JS Library
      *
@@ -4105,6 +4647,12 @@
     */
 
     var init_type;       // MODULE or SNIPPET loader
+    // allow bundlers to specify how extra code (recorder bundle) should be loaded
+    // eslint-disable-next-line no-unused-vars
+    var load_extra_bundle = function(src, _onload) {
+        throw new Error(src + ' not available in this build.');
+    };
+
     var mixpanel_master; // main mixpanel instance / object
     var INIT_MODULE  = 0;
     var INIT_SNIPPET = 1;
@@ -4123,7 +4671,7 @@
      */
     // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
     // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-    var USE_XHR = (window$1.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
+    var USE_XHR = (win.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
 
     // IE<10 does not support cross-origin XHR's but script tags
     // with defer won't block window.onload; ENQUEUE_REQUESTS
@@ -4142,7 +4690,8 @@
     var DEFAULT_API_ROUTES = {
         'track': 'track/',
         'engage': 'engage/',
-        'groups': 'groups/'
+        'groups': 'groups/',
+        'record': 'record/'
     };
 
     /*
@@ -4164,10 +4713,12 @@
         'cookie_domain':                     '',
         'cookie_name':                       '',
         'loaded':                            NOOP_FUNC,
+        'mp_loader':                         null,
         'track_marketing':                   true,
         'track_pageview':                    false,
         'skip_first_touch_marketing':        false,
         'store_google':                      true,
+        'stop_utm_persistence':              false,
         'save_referrer':                     true,
         'test':                              false,
         'verbose':                           false,
@@ -4192,7 +4743,18 @@
         'batch_flush_interval_ms':           5000,
         'batch_request_timeout_ms':          90000,
         'batch_autostart':                   true,
-        'hooks':                             {}
+        'hooks':                             {},
+        'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
+        'record_block_selector':             'img, video',
+        'record_canvas':                     false,
+        'record_collect_fonts':              false,
+        'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
+        'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
+        'record_mask_text_selector':         '*',
+        'record_max_ms':                     MAX_RECORDING_MS,
+        'record_min_ms':                     0,
+        'record_sessions_percent':           0,
+        'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
     };
 
     var DOM_LOADED = false;
@@ -4355,7 +4917,7 @@
                 });
             } else {
                 this.init_batchers();
-                if (sendBeacon && window$1.addEventListener) {
+                if (sendBeacon && win.addEventListener) {
                     // Before page closes or hides (user tabs away etc), attempt to flush any events
                     // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
                     // events will not be removed from the persistent store; if the site is loaded again,
@@ -4372,12 +4934,12 @@
                             this.request_batchers.events.flush({unloading: true});
                         }
                     }, this);
-                    window$1.addEventListener('pagehide', function(ev) {
+                    win.addEventListener('pagehide', function(ev) {
                         if (ev['persisted']) {
                             flush_on_unload();
                         }
                     });
-                    window$1.addEventListener('visibilitychange', function() {
+                    win.addEventListener('visibilitychange', function() {
                         if (document$1['visibilityState'] === 'hidden') {
                             flush_on_unload();
                         }
@@ -4401,9 +4963,71 @@
             }, '');
         }
 
-        if (this.get_config('track_pageview')) {
-            this.track_pageview();
+        var track_pageview_option = this.get_config('track_pageview');
+        if (track_pageview_option) {
+            this._init_url_change_tracking(track_pageview_option);
         }
+
+        if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
+            this.start_session_recording();
+        }
+    };
+
+    MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function () {
+        if (!win['MutationObserver']) {
+            console.critical('Browser does not support MutationObserver; skipping session recording');
+            return;
+        }
+
+        var handleLoadedRecorder = _.bind(function() {
+            this._recorder = this._recorder || new win['__mp_recorder'](this);
+            this._recorder['startRecording']();
+        }, this);
+
+        if (_.isUndefined(win['__mp_recorder'])) {
+            load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+        } else {
+            handleLoadedRecorder();
+        }
+    });
+
+    MixpanelLib.prototype.stop_session_recording = function () {
+        if (this._recorder) {
+            this._recorder['stopRecording']();
+        } else {
+            console.critical('Session recorder module not loaded');
+        }
+    };
+
+    MixpanelLib.prototype.get_session_recording_properties = function () {
+        var props = {};
+        var replay_id = this._get_session_replay_id();
+        if (replay_id) {
+            props['$mp_replay_id'] = replay_id;
+        }
+        return props;
+    };
+
+    MixpanelLib.prototype.get_session_replay_url = function () {
+        var replay_url = null;
+        var replay_id = this._get_session_replay_id();
+        if (replay_id) {
+            var query_params = _.HTTPBuildQuery({
+                'replay_id': replay_id,
+                'distinct_id': this.get_distinct_id(),
+                'token': this.get_config('token')
+            });
+            replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
+        }
+        return replay_url;
+    };
+
+    MixpanelLib.prototype._get_session_replay_id = function () {
+        var replay_id = null;
+        if (this._recorder) {
+            replay_id = this._recorder['replayId'];
+        }
+        return replay_id || null;
     };
 
     // Private methods
@@ -4411,12 +5035,25 @@
     MixpanelLib.prototype._loaded = function() {
         this.get_config('loaded')(this);
         this._set_default_superprops();
+        this['people'].set_once(this['persistence'].get_referrer_info());
+
+        // `store_google` is now deprecated and previously stored UTM parameters are cleared
+        // from persistence by default.
+        if (this.get_config('store_google') && this.get_config('stop_utm_persistence')) {
+            var utm_params = _.info.campaignParams(null);
+            _.each(utm_params, function(_utm_value, utm_key) {
+                // We need to unregister persisted UTM parameters so old values
+                // are not mixed with the new UTM parameters
+                this.unregister(utm_key);
+            }.bind(this));
+        }
     };
 
     // update persistence with info on referrer, UTM params, etc
     MixpanelLib.prototype._set_default_superprops = function() {
         this['persistence'].update_search_keyword(document$1.referrer);
-        if (this.get_config('store_google')) {
+        // Registering super properties for UTM persistence by 'store_google' is deprecated.
+        if (this.get_config('store_google') && !this.get_config('stop_utm_persistence')) {
             this.register(_.info.campaignParams());
         }
         if (this.get_config('save_referrer')) {
@@ -4452,6 +5089,55 @@
 
         var dt = new DomClass().init(this);
         return dt.track.apply(dt, args);
+    };
+
+    MixpanelLib.prototype._init_url_change_tracking = function(track_pageview_option) {
+        var previous_tracked_url = '';
+        var tracked = this.track_pageview();
+        if (tracked) {
+            previous_tracked_url = _.info.currentUrl();
+        }
+
+        if (_.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
+            win.addEventListener('popstate', function() {
+                win.dispatchEvent(new Event('mp_locationchange'));
+            });
+            win.addEventListener('hashchange', function() {
+                win.dispatchEvent(new Event('mp_locationchange'));
+            });
+            var nativePushState = win.history.pushState;
+            if (typeof nativePushState === 'function') {
+                win.history.pushState = function(state, unused, url) {
+                    nativePushState.call(win.history, state, unused, url);
+                    win.dispatchEvent(new Event('mp_locationchange'));
+                };
+            }
+            var nativeReplaceState = win.history.replaceState;
+            if (typeof nativeReplaceState === 'function') {
+                win.history.replaceState = function(state, unused, url) {
+                    nativeReplaceState.call(win.history, state, unused, url);
+                    win.dispatchEvent(new Event('mp_locationchange'));
+                };
+            }
+            win.addEventListener('mp_locationchange', function() {
+                var current_url = _.info.currentUrl();
+                var should_track = false;
+                if (track_pageview_option === 'full-url') {
+                    should_track = current_url !== previous_tracked_url;
+                } else if (track_pageview_option === 'url-with-path-and-query-string') {
+                    should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
+                } else if (track_pageview_option === 'url-with-path') {
+                    should_track = current_url.split('#')[0].split('?')[0] !== previous_tracked_url.split('#')[0].split('?')[0];
+                }
+
+                if (should_track) {
+                    var tracked = this.track_pageview();
+                    if (tracked) {
+                        previous_tracked_url = current_url;
+                    }
+                }
+            }.bind(this));
+        }
     };
 
     /**
@@ -4618,7 +5304,8 @@
                             lib.report_error(error);
                             if (callback) {
                                 if (verbose_mode) {
-                                    callback({status: 0, error: error, xhr_req: req});
+                                    var response_headers = req['responseHeaders'] || {};
+                                    callback({status: 0, httpStatusCode: req['status'], error: error, retryAfter: response_headers['Retry-After']});
                                 } else {
                                     callback(0);
                                 }
@@ -4718,6 +5405,7 @@
                     attrs.queue_key,
                     {
                         libConfig: this['config'],
+                        errorReporter: this.get_config('error_reporter'),
                         sendRequestFunc: _.bind(function(data, options, cb) {
                             this._send_request(
                                 this.get_config('api_host') + attrs.endpoint,
@@ -4729,8 +5417,8 @@
                         beforeSendHook: _.bind(function(item) {
                             return this._run_hook('before_send_' + attrs.type, item);
                         }, this),
-                        errorReporter: this.get_config('error_reporter'),
-                        stopAllBatchingFunc: _.bind(this.stop_batch_senders, this)
+                        stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
+                        usePersistence: true
                     }
                 );
             }, this);
@@ -4836,7 +5524,7 @@
         }, this);
 
         if (this._batch_requests && !should_send_immediately) {
-            batcher.enqueue(truncated_data, function(succeeded) {
+            batcher.enqueue(truncated_data).then(function(succeeded) {
                 if (succeeded) {
                     callback(1, truncated_data);
                 } else {
@@ -4922,10 +5610,11 @@
         // update properties with pageview info and super-properties
         properties = _.extend(
             {},
-            _.info.properties(),
+            _.info.properties({'mp_loader': this.get_config('mp_loader')}),
             marketing_properties,
             this['persistence'].properties(),
             this.unpersisted_superprops,
+            this.get_session_recording_properties(),
             properties
         );
 
@@ -5086,10 +5775,9 @@
 
     /**
      * Track a default Mixpanel page view event, which includes extra default event properties to
-     * improve page view data. The `config.track_pageview` option for <a href="#mixpanelinit">mixpanel.init()</a>
-     * may be turned on for tracking page loads automatically.
+     * improve page view data.
      *
-     * ### Usage
+     * ### Usage:
      *
      *     // track a default $mp_web_page_view event
      *     mixpanel.track_pageview();
@@ -5105,6 +5793,23 @@
      *     // individual pages on the same site or product. Use cases for custom event_name may be page
      *     // views on different products or internal applications that are considered completely separate
      *     mixpanel.track_pageview({'page': 'customer-search'}, {'event_name': '[internal] Admin Page View'});
+     *
+     * ### Notes:
+     *
+     * The `config.track_pageview` option for <a href="#mixpanelinit">mixpanel.init()</a>
+     * may be turned on for tracking page loads automatically.
+     *
+     *     // track only page loads
+     *     mixpanel.init(PROJECT_TOKEN, {track_pageview: true});
+     *
+     *     // track when the URL changes in any manner
+     *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'full-url'});
+     *
+     *     // track when the URL changes, ignoring any changes in the hash part
+     *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path-and-query-string'});
+     *
+     *     // track when the path changes, ignoring any query parameter or hash changes
+     *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path'});
      *
      * @param {Object} [properties] An optional set of additional properties to send with the page view event
      * @param {Object} [options] Page view tracking options
@@ -5856,7 +6561,7 @@
     /**
      * Opt the user in to data tracking and cookies/localstorage for this Mixpanel instance
      *
-     * ### Usage
+     * ### Usage:
      *
      *     // opt user in
      *     mixpanel.opt_in_tracking();
@@ -5896,7 +6601,7 @@
     /**
      * Opt the user out of data tracking and cookies/localstorage for this Mixpanel instance
      *
-     * ### Usage
+     * ### Usage:
      *
      *     // opt user out
      *     mixpanel.opt_out_tracking();
@@ -5937,7 +6642,7 @@
     /**
      * Check whether the user has opted in to data tracking and cookies/localstorage for this Mixpanel instance
      *
-     * ### Usage
+     * ### Usage:
      *
      *     var has_opted_in = mixpanel.has_opted_in_tracking();
      *     // use has_opted_in value
@@ -5954,7 +6659,7 @@
     /**
      * Check whether the user has opted out of data tracking and cookies/localstorage for this Mixpanel instance
      *
-     * ### Usage
+     * ### Usage:
      *
      *     var has_opted_out = mixpanel.has_opted_out_tracking();
      *     // use has_opted_out value
@@ -5971,7 +6676,7 @@
     /**
      * Clear the user's opt in/out status of data tracking and cookies/localstorage for this Mixpanel instance
      *
-     * ### Usage
+     * ### Usage:
      *
      *     // clear user's opt-in/out status
      *     mixpanel.clear_opt_in_out_tracking();
@@ -6017,38 +6722,42 @@
     // EXPORTS (for closure compiler)
 
     // MixpanelLib Exports
-    MixpanelLib.prototype['init']                      = MixpanelLib.prototype.init;
-    MixpanelLib.prototype['reset']                     = MixpanelLib.prototype.reset;
-    MixpanelLib.prototype['disable']                   = MixpanelLib.prototype.disable;
-    MixpanelLib.prototype['time_event']                = MixpanelLib.prototype.time_event;
-    MixpanelLib.prototype['track']                     = MixpanelLib.prototype.track;
-    MixpanelLib.prototype['track_links']               = MixpanelLib.prototype.track_links;
-    MixpanelLib.prototype['track_forms']               = MixpanelLib.prototype.track_forms;
-    MixpanelLib.prototype['track_pageview']            = MixpanelLib.prototype.track_pageview;
-    MixpanelLib.prototype['register']                  = MixpanelLib.prototype.register;
-    MixpanelLib.prototype['register_once']             = MixpanelLib.prototype.register_once;
-    MixpanelLib.prototype['unregister']                = MixpanelLib.prototype.unregister;
-    MixpanelLib.prototype['identify']                  = MixpanelLib.prototype.identify;
-    MixpanelLib.prototype['alias']                     = MixpanelLib.prototype.alias;
-    MixpanelLib.prototype['name_tag']                  = MixpanelLib.prototype.name_tag;
-    MixpanelLib.prototype['set_config']                = MixpanelLib.prototype.set_config;
-    MixpanelLib.prototype['get_config']                = MixpanelLib.prototype.get_config;
-    MixpanelLib.prototype['get_property']              = MixpanelLib.prototype.get_property;
-    MixpanelLib.prototype['get_distinct_id']           = MixpanelLib.prototype.get_distinct_id;
-    MixpanelLib.prototype['toString']                  = MixpanelLib.prototype.toString;
-    MixpanelLib.prototype['opt_out_tracking']          = MixpanelLib.prototype.opt_out_tracking;
-    MixpanelLib.prototype['opt_in_tracking']           = MixpanelLib.prototype.opt_in_tracking;
-    MixpanelLib.prototype['has_opted_out_tracking']    = MixpanelLib.prototype.has_opted_out_tracking;
-    MixpanelLib.prototype['has_opted_in_tracking']     = MixpanelLib.prototype.has_opted_in_tracking;
-    MixpanelLib.prototype['clear_opt_in_out_tracking'] = MixpanelLib.prototype.clear_opt_in_out_tracking;
-    MixpanelLib.prototype['get_group']                 = MixpanelLib.prototype.get_group;
-    MixpanelLib.prototype['set_group']                 = MixpanelLib.prototype.set_group;
-    MixpanelLib.prototype['add_group']                 = MixpanelLib.prototype.add_group;
-    MixpanelLib.prototype['remove_group']              = MixpanelLib.prototype.remove_group;
-    MixpanelLib.prototype['track_with_groups']         = MixpanelLib.prototype.track_with_groups;
-    MixpanelLib.prototype['start_batch_senders']       = MixpanelLib.prototype.start_batch_senders;
-    MixpanelLib.prototype['stop_batch_senders']        = MixpanelLib.prototype.stop_batch_senders;
-    MixpanelLib.prototype['DEFAULT_API_ROUTES']        = DEFAULT_API_ROUTES;
+    MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
+    MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
+    MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
+    MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
+    MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
+    MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
+    MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
+    MixpanelLib.prototype['track_pageview']                     = MixpanelLib.prototype.track_pageview;
+    MixpanelLib.prototype['register']                           = MixpanelLib.prototype.register;
+    MixpanelLib.prototype['register_once']                      = MixpanelLib.prototype.register_once;
+    MixpanelLib.prototype['unregister']                         = MixpanelLib.prototype.unregister;
+    MixpanelLib.prototype['identify']                           = MixpanelLib.prototype.identify;
+    MixpanelLib.prototype['alias']                              = MixpanelLib.prototype.alias;
+    MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
+    MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
+    MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
+    MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
+    MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
+    MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;
+    MixpanelLib.prototype['opt_out_tracking']                   = MixpanelLib.prototype.opt_out_tracking;
+    MixpanelLib.prototype['opt_in_tracking']                    = MixpanelLib.prototype.opt_in_tracking;
+    MixpanelLib.prototype['has_opted_out_tracking']             = MixpanelLib.prototype.has_opted_out_tracking;
+    MixpanelLib.prototype['has_opted_in_tracking']              = MixpanelLib.prototype.has_opted_in_tracking;
+    MixpanelLib.prototype['clear_opt_in_out_tracking']          = MixpanelLib.prototype.clear_opt_in_out_tracking;
+    MixpanelLib.prototype['get_group']                          = MixpanelLib.prototype.get_group;
+    MixpanelLib.prototype['set_group']                          = MixpanelLib.prototype.set_group;
+    MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
+    MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
+    MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
+    MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
+    MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
+    MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
+    MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
+    MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
+    MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
+    MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
     // MixpanelPersistence Exports
     MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
@@ -6095,7 +6804,7 @@
 
                 mixpanel_master = instance;
                 if (init_type === INIT_SNIPPET) {
-                    window$1[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+                    win[PRIMARY_INSTANCE_NAME] = mixpanel_master;
                 }
                 extend_mp();
             }
@@ -6145,7 +6854,7 @@
             // check to make sure we arn't in a frame
             var toplevel = false;
             try {
-                toplevel = window$1.frameElement === null;
+                toplevel = win.frameElement === null;
             } catch(e) {
                 // noop
             }
@@ -6156,12 +6865,13 @@
         }
 
         // fallback handler, always will work
-        _.register_event(window$1, 'load', dom_loaded_handler, true);
+        _.register_event(win, 'load', dom_loaded_handler, true);
     };
 
-    function init_from_snippet() {
+    function init_from_snippet(bundle_loader) {
+        load_extra_bundle = bundle_loader;
         init_type = INIT_SNIPPET;
-        mixpanel_master = window$1[PRIMARY_INSTANCE_NAME];
+        mixpanel_master = win[PRIMARY_INSTANCE_NAME];
 
         // Initialization
         if (_.isUndefined(mixpanel_master)) {
@@ -6199,6 +6909,19 @@
         add_dom_loaded_handler();
     }
 
-    init_from_snippet();
+    // For loading separate bundles asynchronously via script tag
+    // so that we don't load them until they are needed at runtime.
+    function loadAsync (src, onload) {
+        var scriptEl = document.createElement('script');
+        scriptEl.type = 'text/javascript';
+        scriptEl.async = true;
+        scriptEl.onload = onload;
+        scriptEl.src = src;
+        document.head.appendChild(scriptEl);
+    }
 
-}());
+    /* eslint camelcase: "off" */
+
+    init_from_snippet(loadAsync);
+
+})();

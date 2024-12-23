@@ -7,6 +7,7 @@ import sinon from 'sinon';
 
 import { acquireLockForPid } from './lock-test-utils';
 import { RequestQueue } from '../../src/request-queue';
+import { LocalStorageWrapper } from '../../src/storage/local-storage';
 
 const DEFAULT_FLUSH_INTERVAL = 10000;
 const START_TIME = 50000;
@@ -21,7 +22,11 @@ describe(`RequestQueue`, function() {
     }
     clock = sinon.useFakeTimers(START_TIME);
     localStorage.clear();
-    queue = new RequestQueue(`fake-rq-key`, {storage: localStorage});
+    queue = new RequestQueue(`fake-rq-key`, {
+      queueStorage: new LocalStorageWrapper(localStorage),
+      sharedLockStorage: localStorage,
+      usePersistence: true,
+    });
   });
 
   afterEach(function() {
@@ -39,9 +44,9 @@ describe(`RequestQueue`, function() {
   describe(`enqueue`, function() {
     const item = {event: `foo`, properties: {bar: `baz`}};
 
-    it(`stores the given item in memory`, function() {
+    it(`stores the given item in memory`, async function() {
       expect(queue.memQueue).to.be.empty;
-      queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+      await queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
       expect(queue.memQueue).to.have.lengthOf(1);
 
       const queuedEntry = queue.memQueue[0];
@@ -50,74 +55,88 @@ describe(`RequestQueue`, function() {
       expect(queuedEntry.payload).to.deep.equal(item);
     });
 
-    it(`persists the given item in localStorage`, function() {
+    it(`persists the given item in localStorage`, async function() {
       expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
-      expect(queue.readFromStorage()).to.be.empty;
-      queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+      const storedQueue = await queue.readFromStorage();
+      expect(storedQueue).to.be.empty;
+      await queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
       expect(localStorage.getItem(`fake-rq-key`)).to.be.a(`string`);
     });
 
-    it(`runs callback after persisting`, function(done) {
-      expect(queue.readFromStorage()).to.be.empty;
-      queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function(succeeded) {
-        expect(succeeded).to.be.ok;
+    it(`promise resolves after persisting`, async function() {
+      expect(await queue.readFromStorage()).to.be.empty;
+      
+      await queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+      
+      const storedQueue = await queue.readFromStorage();
+      expect(storedQueue).to.have.lengthOf(1);
 
-        expect(localStorage.getItem(`fake-rq-key`)).to.be.a(`string`);
-        const storedQueue = queue.readFromStorage();
-        expect(storedQueue).to.have.lengthOf(1);
-
-        const queuedEntry = storedQueue[0];
-        expect(queuedEntry.id).to.be.a(`string`);
-        expect(queuedEntry.flushAfter).to.be.greaterThan(+(new Date()) + DEFAULT_FLUSH_INTERVAL);
-        expect(queuedEntry.payload).to.deep.equal(item);
-
-        done();
-      });
+      const queuedEntry = storedQueue[0];
+      expect(queuedEntry.id).to.be.a(`string`);
+      expect(queuedEntry.flushAfter).to.be.greaterThan(+(new Date()) + DEFAULT_FLUSH_INTERVAL);
+      expect(queuedEntry.payload).to.deep.equal(item);
     });
 
-    it(`waits for current lock holder to release`, function(done) {
-      const firstHolder = new RequestQueue(`fake-rq-key`, {storage: localStorage, pid: `first-holder`});
+    it(`waits for current lock holder to release`, async function() {
+      const firstHolder = new RequestQueue(`fake-rq-key`, {
+        queueStorage: new LocalStorageWrapper(localStorage),
+        sharedLockStorage: localStorage,
+        pid: `first-holder`,
+        usePersistence: true,
+      });
       const firstItem = {event: `first`};
       acquireLockForPid(queue.lock, `first-holder`);
 
-      expect(queue.readFromStorage()).to.be.empty;
+      expect(await queue.readFromStorage()).to.be.empty;
 
       // should not get enqueued until after firstHolder's enqueue() below, since
       // firstHolder has the lock
-      queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function() {
-        const storedQueue = queue.readFromStorage();
+      const enqueuePromise = queue.enqueue(item, DEFAULT_FLUSH_INTERVAL).then(async function() {
+        const storedQueue = await queue.readFromStorage();
         expect(storedQueue).to.have.lengthOf(2);
         expect(storedQueue[0].payload).to.deep.equal(firstItem);
         expect(storedQueue[1].payload).to.deep.equal(item);
-        done();
       });
 
       firstHolder.enqueue(firstItem, DEFAULT_FLUSH_INTERVAL);
 
-      clock.tick(1000);
+      clock.tickAsync(1000);
+      await enqueuePromise;
+    });
+
+    it(`switches to in-memory queue if storage initialization fails`, async function() {
+      sinon.stub(queue.queueStorage, `init`).returns(Promise.reject('something went wrong'));
+      expect(await queue.readFromStorage()).to.be.empty;
+
+      await queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+
+      expect(queue.memQueue).to.have.lengthOf(1);
+      expect(queue.memQueue[0].payload).to.deep.equal(item);
+      expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
     });
 
     context(`when persistence fails`, function() {
       function persistenceFailureTests() {
-        it(`reports failure in callback`, function(done) {
-          expect(queue.readFromStorage()).to.be.empty;
-          queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function(succeeded) {
-            expect(succeeded).not.to.be.ok;
-            expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
-            expect(queue.readFromStorage()).to.be.empty;
-            done();
-          });
-          clock.tick(1000);
+        it(`reports failure in resolved promise`, async function() {
+          expect(await queue.readFromStorage()).to.be.empty;
+
+          const enqueuePromise = queue.enqueue(item, DEFAULT_FLUSH_INTERVAL)
+          
+          await clock.tickAsync(1000);
+
+          expect(await enqueuePromise).to.be.false;
+          expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
+          expect(await queue.readFromStorage()).to.be.empty;
         });
 
-        it(`does not add item to in-mem queue`, function(done) {
-          expect(queue.readFromStorage()).to.be.empty;
-          queue.enqueue(item, DEFAULT_FLUSH_INTERVAL, function(succeeded) {
-            expect(succeeded).not.to.be.ok;
-            expect(queue.memQueue).to.have.lengthOf(0);
-            done();
-          });
-          clock.tick(1000);
+        it(`does not add item to in-mem queue`, async function() {
+          expect(await queue.readFromStorage()).to.be.empty;
+
+          const enqueuePromise = queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+
+          await clock.tickAsync(1000);
+          expect(await enqueuePromise).to.be.false;
+          expect(queue.memQueue).to.have.lengthOf(0);
         });
       }
 
@@ -136,7 +155,12 @@ describe(`RequestQueue`, function() {
       context(`mid-acquisition`, function() {
         beforeEach(function() {
           localStorage.clear();
-          queue = new RequestQueue(`fake-rq-key`, {storage: localStorage, pid: `mypid`});
+          queue = new RequestQueue(`fake-rq-key`, {
+            queueStorage: new LocalStorageWrapper(localStorage),
+            sharedLockStorage: localStorage,
+            pid: `mypid`,
+            usePersistence: true,
+          });
           sinon.stub(localStorage, `setItem`)
             .withArgs(`fake-rq-key:Y`, `mypid`)
             .onCall(0).returns(null)
@@ -157,12 +181,14 @@ describe(`RequestQueue`, function() {
 
       context(`after lock acquisition`, function() {
         beforeEach(function() {
-          queue.storage = {
+          const queueStorage = {
             getItem: localStorage.getItem.bind(localStorage),
             setItem: () => {
               throw new Error(`persistence failure`);
             },
-          };
+          }
+
+          queue.queueStorage = new LocalStorageWrapper(queueStorage);
         });
 
         persistenceFailureTests();
@@ -179,37 +205,37 @@ describe(`RequestQueue`, function() {
       {event: `foo5`, properties: {bar5: `baz5`}},
     ];
 
-    beforeEach(function() {
+    beforeEach(async function() {
       for (const item of items) {
-        queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+        await queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
       }
-      expect(queue.readFromStorage()).to.have.lengthOf(items.length);
+      expect(await queue.readFromStorage()).to.have.lengthOf(items.length);
     });
 
-    it(`reads the requested number of items from the in-mem queue`, function() {
-      const batch = queue.fillBatch(3);
+    it(`reads the requested number of items from the in-mem queue`, async function() {
+      const batch = await queue.fillBatch(3);
       expect(batch).to.have.lengthOf(3);
       expect(batch[0].payload).to.deep.equal(items[0]);
       expect(batch[1].payload).to.deep.equal(items[1]);
       expect(batch[2].payload).to.deep.equal(items[2]);
     });
 
-    it(`does not remove items from any queue`, function() {
-      const batch = queue.fillBatch(3);
+    it(`does not remove items from any queue`, async function() {
+      const batch = await queue.fillBatch(3);
       expect(batch).to.have.lengthOf(3);
       expect(queue.memQueue).to.have.lengthOf(items.length);
-      expect(queue.readFromStorage()).to.have.lengthOf(items.length);
+      expect(await queue.readFromStorage()).to.have.lengthOf(items.length);
     });
 
-    it(`gracefully accepts requests for more items than are in the queue`, function() {
-      const batch = queue.fillBatch(50);
+    it(`gracefully accepts requests for more items than are in the queue`, async function() {
+      const batch = await queue.fillBatch(50);
       expect(batch).to.have.lengthOf(items.length);
     });
 
     context(`with orphaned items in the persisted queue (localStorage)`, function() {
       let persistedItems;
 
-      beforeEach(function() {
+      beforeEach(async function() {
         persistedItems = [
           // orphaned, flush anytime
           {id: `abc`, flushAfter: +(new Date()) - 60000, payload: {event: `foo6`, properties: {bar6: `baz6`}}},
@@ -220,19 +246,19 @@ describe(`RequestQueue`, function() {
           // orphaned, flush anytime
           {id: `ghi`, flushAfter: +(new Date()) - 60000, payload: {event: `foo8`, properties: {bar8: `baz8`}}},
         ];
-        queue.saveToStorage(persistedItems);
+        await queue.saveToStorage(persistedItems);
       });
 
-      it(`does not look in the persisted queue if the in-mem queue has enough items`, function() {
-        const batch = queue.fillBatch(3);
+      it(`does not look in the persisted queue if the in-mem queue has enough items`, async function() {
+        const batch = await queue.fillBatch(3);
         expect(batch).to.have.lengthOf(3);
         const persistedIDs = map(persistedItems, `id`);
         const batchIDs = map(batch, `id`);
         expect(intersection(batchIDs, persistedIDs)).to.be.empty;
       });
 
-      it(`adds persisted items to the batch which are past their flushAfter time`, function() {
-        const batch = queue.fillBatch(7);
+      it(`adds persisted items to the batch which are past their flushAfter time`, async function() {
+        const batch = await queue.fillBatch(7);
         expect(batch).to.have.lengthOf(7);
         const batchIDs = map(batch, `id`);
         expect(batchIDs).to.include(`abc`);
@@ -240,27 +266,28 @@ describe(`RequestQueue`, function() {
         expect(batchIDs).to.include(`ghi`);
       });
 
-      it(`does not add persisted items to the batch which are not yet past their flushAfter time`, function() {
-        const batch = queue.fillBatch(10);
+      it(`does not add persisted items to the batch which are not yet past their flushAfter time`, async function() {
+        const batch = await queue.fillBatch(10);
         expect(batch).to.have.lengthOf(7);
         const batchIDs = map(batch, `id`);
         expect(batchIDs).not.to.include(`def`);
       });
 
-      it(`does not duplicate in-mem items which are already in the batch`, function() {
+      it(`does not duplicate in-mem items which are already in the batch`, async function() {
         // duplicate the ID of an in-mem item into persistence with a past flushAfter time
         persistedItems[0].id = queue.memQueue[0].id;
-        queue.saveToStorage(persistedItems);
+        await queue.saveToStorage(persistedItems);
 
-        const batch = queue.fillBatch(7);
+        const batch = await queue.fillBatch(7);
         expect(batch).to.have.lengthOf(6);
         const batchIDs = map(batch, `id`);
         expect(uniq(batchIDs).length).to.equal(batchIDs.length);
         expect(batchIDs).to.include(`ghi`); // good persisted item
       });
 
-      it(`marks orphaned items`, function() {
-        const batchAttrs = queue.fillBatch(7).map(item => ({
+      it(`marks orphaned items`, async function() {
+        const batch = await queue.fillBatch(7);
+        const batchAttrs = batch.map(item => ({
           event: item.payload.event,
           orphaned: !!item.orphaned,
         }));
@@ -276,21 +303,21 @@ describe(`RequestQueue`, function() {
         ]);
       });
 
-      it(`is resilient to malformed localStorage entries`, function() {
+      it(`is resilient to malformed localStorage entries`, async function() {
         let batch;
         const origStorageEntry = localStorage.getItem(`fake-rq-key`);
 
         localStorage.setItem(`fake-rq-key`, `garbage`);
-        batch = queue.fillBatch(10);
+        batch = await queue.fillBatch(10);
         expect(batch).to.have.lengthOf(5);
 
         localStorage.setItem(`fake-rq-key`, `{}`); // valid JSON, wrong type
-        batch = queue.fillBatch(10);
+        batch = await queue.fillBatch(10);
         expect(batch).to.have.lengthOf(5);
 
         // just to verify that the storage (de)serialization here works
         localStorage.setItem(`fake-rq-key`, origStorageEntry);
-        batch = queue.fillBatch(10);
+        batch = await queue.fillBatch(10);
         expect(batch).to.have.lengthOf(7);
       });
     });
@@ -306,96 +333,91 @@ describe(`RequestQueue`, function() {
     ];
     let origIDs; // generated item IDs from initial queue
 
-    beforeEach(function() {
+    beforeEach(async function() {
       for (const item of items) {
-        queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+        await queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
       }
-      expect(queue.readFromStorage()).to.have.lengthOf(items.length);
+      expect(await queue.readFromStorage()).to.have.lengthOf(items.length);
       origIDs = map(queue.memQueue, `id`);
     });
 
-    it(`removes items with the given IDs from the in-mem queue`, function() {
-      queue.removeItemsByID([origIDs[0], origIDs[3]]); // remove 1st and 4th entries
+    it(`removes items with the given IDs from the in-mem queue`, async function() {
+      await queue.removeItemsByID([origIDs[0], origIDs[3]]); // remove 1st and 4th entries
       expect(queue.memQueue).to.have.lengthOf(3);
       expect(queue.memQueue[0].payload.event).to.equal(`foo2`);
       expect(queue.memQueue[1].payload.event).to.equal(`foo3`);
       expect(queue.memQueue[2].payload.event).to.equal(`foo5`);
     });
 
-    it(`removes items with the given IDs from the persisted queue`, function() {
-      queue.removeItemsByID([origIDs[1], origIDs[2]]); // remove 2nd and 3rd entries
-      const storedQueue = queue.readFromStorage();
+    it(`removes items with the given IDs from the persisted queue`, async function() {
+      await queue.removeItemsByID([origIDs[1], origIDs[2]]); // remove 2nd and 3rd entries
+      const storedQueue = await queue.readFromStorage();
       expect(storedQueue).to.have.lengthOf(3);
       expect(storedQueue[0].payload.event).to.equal(`foo1`);
       expect(storedQueue[1].payload.event).to.equal(`foo4`);
       expect(storedQueue[2].payload.event).to.equal(`foo5`);
     });
 
-    it(`removes invalid items from both queues`, function() {
+    it(`removes invalid items from both queues`, async function() {
       // sprinkle some bad items into the queue
       queue.memQueue.splice(1, 0, `garbage entry {{`);
       queue.memQueue.push({pure: `nonsense`});
-      queue.saveToStorage(queue.memQueue);
+      await queue.saveToStorage(queue.memQueue);
 
       expect(queue.memQueue).to.have.lengthOf(7);
-      let storedQueue = queue.readFromStorage();
+      let storedQueue = await queue.readFromStorage();
       expect(storedQueue).to.have.lengthOf(7);
 
-      queue.removeItemsByID([origIDs[0], origIDs[3]]); // remove foo1 and foo4
+      await queue.removeItemsByID([origIDs[0], origIDs[3]]); // remove foo1 and foo4
 
       expect(queue.memQueue).to.have.lengthOf(3); // 7 total minus 2 invalid minus 2 removed by ID
       expect(queue.memQueue[0].payload.event).to.equal(`foo2`);
       expect(queue.memQueue[1].payload.event).to.equal(`foo3`);
       expect(queue.memQueue[2].payload.event).to.equal(`foo5`);
 
-      storedQueue = queue.readFromStorage();
+      storedQueue = await queue.readFromStorage();
       expect(storedQueue).to.have.lengthOf(3);
       expect(storedQueue[0].payload.event).to.equal(`foo2`);
       expect(storedQueue[1].payload.event).to.equal(`foo3`);
       expect(storedQueue[2].payload.event).to.equal(`foo5`);
     });
 
-    it(`runs callback after persisting`, function(done) {
-      queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
-        expect(succeeded).to.be.ok;
-        const storedQueue = queue.readFromStorage();
-        expect(storedQueue).to.have.lengthOf(3);
-        expect(storedQueue[0].payload.event).to.equal(`foo1`);
-        expect(storedQueue[1].payload.event).to.equal(`foo4`);
-        expect(storedQueue[2].payload.event).to.equal(`foo5`);
-        done();
-      });
+    it(`resolves to true after persisting`, async function() {
+      const succeeded = await queue.removeItemsByID([origIDs[1], origIDs[2]]);
+      expect(succeeded).to.be.true;
+
+      const storedQueue = await queue.readFromStorage();
+      expect(storedQueue).to.have.lengthOf(3);
+      expect(storedQueue[0].payload.event).to.equal(`foo1`);
+      expect(storedQueue[1].payload.event).to.equal(`foo4`);
+      expect(storedQueue[2].payload.event).to.equal(`foo5`);
     });
 
     context(`when persistence fails`, function() {
       beforeEach(function() {
-        queue.storage = {
+        queue.queueStorage = new LocalStorageWrapper({
           getItem: localStorage.getItem.bind(localStorage),
           setItem: () => {
             throw new Error(`persistence failure`);
           },
-        };
-      });
-
-      it(`reports failure in callback`, function(done) {
-        queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
-          expect(succeeded).not.to.be.ok;
-          done();
         });
       });
 
-      it(`still removes items from in-mem queue`, function(done) {
-        queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
-          expect(succeeded).not.to.be.ok;
-          expect(queue.memQueue).to.have.lengthOf(3);
-          expect(queue.memQueue[0].payload.event).to.equal(`foo1`);
-          expect(queue.memQueue[1].payload.event).to.equal(`foo4`);
-          expect(queue.memQueue[2].payload.event).to.equal(`foo5`);
-          done();
-        });
+      it(`reports failure in resolved promise`, async function() {
+        const succeeded = await queue.removeItemsByID([origIDs[1], origIDs[2]]);
+        expect(succeeded).to.be.false;
       });
 
-      it(`reports failure if storage set silently doesn't work`, function() {
+      it(`still removes items from in-mem queue`, async function() {
+        const succeeded = await queue.removeItemsByID([origIDs[1], origIDs[2]]);
+        expect(succeeded).to.be.false;
+        expect(queue.memQueue).to.have.lengthOf(3);
+        expect(queue.memQueue[0].payload.event).to.equal(`foo1`);
+        expect(queue.memQueue[1].payload.event).to.equal(`foo4`);
+        expect(queue.memQueue[2].payload.event).to.equal(`foo5`);
+      });
+
+      it(`reports failure if storage set silently doesn't work`, async function() {
         queue.storage = {
           getItem: localStorage.getItem.bind(localStorage),
           setItem: () => {
@@ -404,11 +426,9 @@ describe(`RequestQueue`, function() {
           },
         };
 
-        queue.removeItemsByID([origIDs[1], origIDs[2]], function(succeeded) {
-          expect(succeeded).not.to.be.ok;
-          // still removes from in-mem queue
-          expect(queue.memQueue).to.have.lengthOf(3);
-        });
+        const succeeded = await queue.removeItemsByID([origIDs[1], origIDs[2]]);
+        expect(succeeded).to.be.false;
+        expect(queue.memQueue).to.have.lengthOf(3);
       });
     });
   });
@@ -423,11 +443,11 @@ describe(`RequestQueue`, function() {
     ];
     let origIDs; // generated item IDs from initial queue
 
-    beforeEach(function() {
+    beforeEach(async function() {
       for (const item of items) {
-        queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
+        await queue.enqueue(item, DEFAULT_FLUSH_INTERVAL);
       }
-      expect(queue.readFromStorage()).to.have.lengthOf(items.length);
+      expect(await queue.readFromStorage()).to.have.lengthOf(items.length);
       origIDs = map(queue.memQueue, `id`);
     });
 
@@ -439,19 +459,23 @@ describe(`RequestQueue`, function() {
       expect(queue.memQueue[0].payload).to.deep.equal({foo: `bar`});
     });
 
-    it(`replaces payloads in persisted queue`, function() {
-      queue.updatePayloads({
+    it(`replaces payloads in persisted queue`, async function() {
+      await queue.updatePayloads({
         [origIDs[3]]: {foo: `bar`},
       });
-      expect(queue.readFromStorage()[3].payload).to.deep.equal({foo: `bar`});
+      const storedQueue = await queue.readFromStorage();
+      expect(storedQueue[3].payload).to.deep.equal({foo: `bar`});
     });
 
-    it(`doesn't affect items which are not in itemsToUpdate`, function() {
-      queue.updatePayloads({
+    it(`doesn't affect items which are not in itemsToUpdate`, async function() {
+      const succeeded = await queue.updatePayloads({
         [origIDs[1]]: {foo1: `bar`},
         [origIDs[3]]: {foo3: `bar`},
       });
-      expect(map(queue.readFromStorage(), `payload`)).to.deep.equal([
+      expect(succeeded).to.be.true;
+
+      const storedQueue = await queue.readFromStorage();
+      expect(map(storedQueue, `payload`)).to.deep.equal([
         {event: `foo1`, properties: {bar1: `baz1`}},
         {foo1: `bar`},
         {event: `foo3`, properties: {bar3: `baz3`}},
@@ -460,13 +484,15 @@ describe(`RequestQueue`, function() {
       ]);
     });
 
-    it(`removes items which are set to null`, function() {
-      queue.updatePayloads({
+    it(`removes items which are set to null`, async function() {
+      await queue.updatePayloads({
         [origIDs[1]]: null,
         [origIDs[3]]: {foo3: `bar`},
         [origIDs[4]]: null,
       });
-      expect(map(queue.readFromStorage(), `payload`)).to.deep.equal([
+
+      const storedQueue = await queue.readFromStorage();
+      expect(map(storedQueue, `payload`)).to.deep.equal([
         {event: `foo1`, properties: {bar1: `baz1`}},
         // deleted item
         {event: `foo3`, properties: {bar3: `baz3`}},
@@ -477,85 +503,85 @@ describe(`RequestQueue`, function() {
   });
 
   describe(`readFromStorage`, function() {
-    it(`decodes any serialized array from localStorage`, function() {
+    it(`decodes any serialized array from localStorage`, async function() {
       localStorage.setItem(`fake-rq-key`, `[]`);
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
 
       localStorage.setItem(`fake-rq-key`, `[3, 2, "a"]`);
-      expect(queue.readFromStorage()).to.eql([3, 2, `a`]);
+      expect(await queue.readFromStorage()).to.eql([3, 2, `a`]);
 
       localStorage.setItem(`fake-rq-key`, `[{"id":"abc","payload":{"foo":"bar"}},{"id":"def","payload":{"baz":"quux"}}]`);
-      expect(queue.readFromStorage()).to.eql([
+      expect(await queue.readFromStorage()).to.eql([
         {id: `abc`, payload: {foo: `bar`}},
         {id: `def`, payload: {baz: `quux`}},
       ]);
     });
 
-    it(`turns non-array serialized data into an empty array`, function() {
+    it(`turns non-array serialized data into an empty array`, async function() {
       localStorage.setItem(`fake-rq-key`, `5`);
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
 
       localStorage.setItem(`fake-rq-key`, `"a"`);
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
 
       localStorage.setItem(`fake-rq-key`, `{}`);
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
 
       localStorage.setItem(`fake-rq-key`, ``);
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
     });
 
-    it(`turns malformed serialized data into an empty array`, function() {
+    it(`turns malformed serialized data into an empty array`, async function() {
       localStorage.setItem(`fake-rq-key`, `asdf{xc`);
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
 
       localStorage.setItem(`fake-rq-key`, `[{"foo":"bar"},`);
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
     });
 
-    it(`returns an empty array when the storage entry is missing`, function() {
+    it(`returns an empty array when the storage entry is missing`, async function() {
       localStorage.removeItem(`fake-rq-key`);
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
     });
   });
 
   describe(`saveToStorage`, function() {
-    it(`serializes any array to localStorage`, function() {
-      queue.saveToStorage([]);
+    it(`serializes any array to localStorage`, async function() {
+      await queue.saveToStorage([]);
       expect(localStorage.getItem(`fake-rq-key`)).to.equal(`[]`);
 
-      queue.saveToStorage([`a`, `b`, {foo: `bar`}]);
+      await queue.saveToStorage([`a`, `b`, {foo: `bar`}]);
       expect(localStorage.getItem(`fake-rq-key`)).to.equal(`["a","b",{"foo":"bar"}]`);
     });
 
-    it(`returns true on success`, function() {
-      expect(queue.saveToStorage([1, 2, 3])).to.be.ok;
+    it(`returns true on success`, async function() {
+      expect(await queue.saveToStorage([1, 2, 3])).to.be.ok;
     });
 
-    it(`returns false on failure`, function() {
+    it(`returns false on failure`, async function() {
       const unstringifyable = {};
       unstringifyable.foo = unstringifyable; // circular reference
-      expect(queue.saveToStorage(unstringifyable)).not.to.be.ok;
+      expect(await queue.saveToStorage(unstringifyable)).not.to.be.ok;
     });
   });
 
   describe(`clear`, function() {
-    beforeEach(function() {
-      queue.enqueue({event: `foo1`, properties: {bar1: `baz1`}}, DEFAULT_FLUSH_INTERVAL);
-      queue.enqueue({event: `foo2`, properties: {bar2: `baz2`}}, DEFAULT_FLUSH_INTERVAL);
-      expect(queue.readFromStorage()).to.have.lengthOf(2);
+    beforeEach(async function() {
+      await queue.enqueue({event: `foo1`, properties: {bar1: `baz1`}}, DEFAULT_FLUSH_INTERVAL);
+      await queue.enqueue({event: `foo2`, properties: {bar2: `baz2`}}, DEFAULT_FLUSH_INTERVAL);
+      expect(await queue.readFromStorage()).to.have.lengthOf(2);
     });
 
-    it(`removes all items from in-mem queue`, function() {
+    it(`removes all items from in-mem queue`, async function() {
       expect(queue.memQueue).to.have.lengthOf(2);
-      queue.clear();
+      await queue.clear();
       expect(queue.memQueue).to.be.empty;
     });
 
-    it(`removes all items from localStorage`, function() {
-      queue.clear();
+    it(`removes all items from localStorage`, async function() {
+      await queue.clear();
       expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
-      expect(queue.readFromStorage()).to.eql([]);
+      expect(await queue.readFromStorage()).to.eql([]);
     });
   });
 });

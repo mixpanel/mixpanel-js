@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Mocha (Test single file)",
+        "type": "node",
+        "request": "launch",
+        "env": {
+            "BABEL_ENV": "test"
+        },
+        "runtimeArgs": [
+          "--require",
+          "babel-core/register",
+          "${workspaceRoot}/node_modules/.bin/mocha",
+          "--inspect-brk",
+          "${relativeFile}",
+        ],
+        "console": "integratedTerminal",
+        "internalConsoleOptions": "neverOpen",
+        "port": 9229
+      }
+    ]
+}

@@ -1,3 +1,61 @@
+**2.58.0** (16 Dec 2024)
+- Added canvas recording option
+- Session Replay checkpoint events now include a starting URL
+
+**2.57.1** (12 Dec 2024)
+- Asynchronous abstractions (primarily Promise support) introduced in internal refactor of batch/queue/retry system.
+
+**2.57.0** (Dec 2024)
+REDACTED
+
+**2.56.0** (4 Nov 2024)
+- Recording payloads now include additional metadata: the current URL, library type, and library version.
+- Sourcemaps are now generated for the recorder module.
+- Added debugging method `mixpanel.get_session_replay_url()` which will return a Mixpanel UI link to the session replay if there is an active recording taking place.
+- Refactored session recording module to encapsulate each active recording and its metadata. Added a unit test suite for the new `session-recording.js`.
+- Added some additional error handling for when `stopRecording` fails or rrweb silently fails to start recording.
+- Removed `record_inline_images` option due to buggy behavior in rrweb.
+
+**2.55.1** (27 Aug 2024)
+- Adds a minimum recording length option for session recording
+- Fixes and improvements for session recording batcher to support offline queueing and retry
+- Fix for query param parsing/escaping
+- Support for more UTM tags / click IDs (thanks @aliyalcinkaya)
+
+**2.55.0** (2 Aug 2024)
+- Added new build to support native JavaScript modules
+
+**2.54.1** (30 Jul 2024)
+- Fixes and improvements for user-idleness detection in session recording
+
+**2.54.0** (23 Jul 2024)
+- Provides optional builds without session recording module and without asynchronous script loading.
+- Integrates request batcher with session recording module for increased reliability.
+- Improved user inactivity heuristic for session recording timeout.
+- Adds config options to inline images and collect fonts during session recording.
+
+**2.53.0** (21 Jun 2024)
+- Switch to new session-recording network payload format, utilizing client-side compression when available
+- Session-recording methods are now available through Google Tag Manager wrapper
+
+**2.52.0** (7 Jun 2024)
+- Reverted UTM param persistence change from 2.51.0: UTM parameters are again persisted by default
+
+**2.51.0** (30 May 2024)
+- UTM parameter properties are no longer persisted by default
+- Existing superproperties persisted in localStorage are now copied back to cookie storage if the library is initialized with cookie persistence (support migrations from localStorage->cookie)
+- Added session-recording options `record_block_class`, `record_block_selector`, and `record_mask_text_class`
+- Added method `mixpanel.get_session_recording_properties()` for interop with other client-side SDKs
+
+**2.50.0** (26 Apr 2024)
+- Initial support for session recording
+
+**2.49.0** (5 Feb 2024)
+- SPA support in pageview-tracking
+- Support for configurable UTM parameter persistence
+- Initial-referrer profile properties are now stored with `set_once` instead of `set`
+- Ignore AhrefsSiteAudit crawler
+
 **2.48.1** (14 Nov 2023)
 - UTM campaign properties will always be persisted super properties (fixes discrepancy between
 minified and unminified package)

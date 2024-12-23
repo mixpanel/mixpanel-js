@@ -2,7 +2,7 @@
   "name": "mixpanel",
   "homepage": "https://github.com/mixpanel/mixpanel-js",
   "description": "Mixpanel JavaScript Library",
-  "main": "mixpanel-jslib-snippet.js",
+  "main": "src/loaders/mixpanel-jslib-snippet.js",
   "repository": {
     "type": "git",
     "url": "git@github.com:mixpanel/mixpanel-js.git"
