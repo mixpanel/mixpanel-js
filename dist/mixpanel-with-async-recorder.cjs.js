@@ -3763,7 +3763,7 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
         callback = to;
     }
     // make sure that the referrer info has been updated and saved
-    if (this._get_config('save_referrer')) {
+    if (this._get_config('save_referrer') && typeof document !== 'undefined') {
         this._mixpanel['persistence'].update_referrer_info(document.referrer);
     }
 
@@ -4671,11 +4671,12 @@ var NOOP_FUNC = function() {};
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
 var USE_XHR = (win.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest());
+var USE_FETCH = !_.isUndefined(fetch) && typeof(fetch) === 'function';
 
 // IE<10 does not support cross-origin XHR's but script tags
 // with defer won't block window.onload; ENQUEUE_REQUESTS
 // should only be true for Opera<12
-var ENQUEUE_REQUESTS = !USE_XHR && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
+var ENQUEUE_REQUESTS = !USE_XHR && !USE_FETCH && (userAgent.indexOf('MSIE') === -1) && (userAgent.indexOf('Mozilla') === -1);
 
 // save reference to navigator.sendBeacon so it can be minified
 var sendBeacon = null;
@@ -4951,7 +4952,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.unpersisted_superprops = {};
     this._gdpr_init();
 
-    var uuid = _.UUID();
+    var uuid = config['device_id'] || _.UUID();
     if (!this.get_distinct_id()) {
         // There is no need to set the distinct id
         // or the device id if something was already stored
@@ -5153,7 +5154,7 @@ MixpanelLib.prototype._prepare_callback = function(callback, data) {
         return null;
     }
 
-    if (USE_XHR) {
+    if (USE_XHR || USE_FETCH) {
         var callback_function = function(response) {
             callback(response, data);
         };
@@ -5193,7 +5194,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         options = null;
     }
     options = _.extend(DEFAULT_OPTIONS, options || {});
-    if (!USE_XHR) {
+    if (!USE_XHR && !USE_FETCH) {
         options.method = 'GET';
     }
     var use_post = options.method === 'POST';
@@ -5206,7 +5207,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     if (this.get_config('test')) { data['test'] = 1; }
     if (verbose_mode) { data['verbose'] = 1; }
     if (this.get_config('img')) { data['img'] = 1; }
-    if (!USE_XHR) {
+    if (!USE_XHR && !USE_FETCH) {
         if (callback) {
             data['callback'] = callback;
         } else if (verbose_mode || this.get_config('test')) {
@@ -5317,14 +5318,71 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
             lib.report_error(e);
             succeeded = false;
         }
-    } else {
-        var script = document$1.createElement('script');
-        script.type = 'text/javascript';
-        script.async = true;
-        script.defer = true;
-        script.src = url;
-        var s = document$1.getElementsByTagName('script')[0];
-        s.parentNode.insertBefore(script, s);
+    } else if (USE_FETCH) {
+        try {
+            var headersFetch = this.get_config('xhr_headers');
+            if (use_post) {
+                headersFetch['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+
+            var fetchOpts = {
+                method: options.method,
+                mode: 'cors',
+                credentials: 'include',
+                headers: headersFetch,
+                body: body_data
+            };
+
+            fetch(url, fetchOpts)
+                .then(function (response) {
+                    return response.text().then(function (body) {
+                        return {
+                            status: response.status,
+                            statusText: response.statusText,
+                            headers: response.headers,
+                            body: body
+                        };
+                    });
+                })
+                .then(function (res) {
+                    if (res.status === 200) {
+                        if (callback) {
+                            var body = res.body;
+                            if (verbose_mode) {
+                                var response;
+                                try {
+                                    response = _.JSONDecode(body);
+                                } catch (e) {
+                                    lib.report_error(e);
+                                    if (options.ignore_json_errors) {
+                                        response = body;
+                                    } else {
+                                        return;
+                                    }
+                                }
+                                callback(response);
+                            } else {
+                                callback(Number(body));
+                            }
+                        }
+                    } else {
+                        var error = 'Bad HTTP status: ' + res.status + ' ' + res.statusText;
+                        lib.report_error(error);
+
+                        if (callback) {
+                            if (verbose_mode) {
+                                var xhr_req = { status: res.status, responseHeaders: res.headers };
+                                callback({ status: 0, error: error, xhr_req: xhr_req });
+                            } else {
+                                callback(0);
+                            }
+                        }
+                    }
+                });
+        } catch (e) {
+            lib.report_error(e);
+            succeeded = false;
+        }
     }
 
     return succeeded;
@@ -6012,6 +6070,11 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+    if (this.config['device_id']) {
+        // Do not persist explicit device id
+        delete props['$device_id'];
+    }
+
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
         this['persistence'].register_once(props, default_value, options['days']);
@@ -6440,7 +6503,12 @@ MixpanelLib.prototype._run_hook = function(hook_name) {
  * @param {String} property_name The name of the super property you want to retrieve
  */
 MixpanelLib.prototype.get_property = function(property_name) {
-    return this['persistence'].load_prop([property_name]);
+    if (property_name === '$device_id' && this.get_config('device_id')) {
+        // Ignore persistence completely, but keep the persisted data anyway
+        return this.get_config('device_id');
+    }
+    return this['persistence']['props'][property_name];
+    // return this['persistence'].load_prop([property_name]);
 };
 
 MixpanelLib.prototype.toString = function() {
