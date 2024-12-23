@@ -1,4 +1,5 @@
-import { console_with_prefix, localStorageSupported } from './utils'; // eslint-disable-line camelcase
+import { Promise } from './promise-polyfill';
+import { console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
 
@@ -29,121 +30,126 @@ var SharedLock = function(key, options) {
     this.storage = options.storage || window.localStorage;
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
+
+    // dependency-inject promise implementation for testing purposes
+    this.promiseImpl = options.promiseImpl || Promise;
 };
 
 // pass in a specific pid to test contention scenarios; otherwise
 // it is chosen randomly for each acquisition attempt
-SharedLock.prototype.withLock = function(lockedCB, errorCB, pid) {
-    if (!pid && typeof errorCB !== 'function') {
-        pid = errorCB;
-        errorCB = null;
-    }
+SharedLock.prototype.withLock = function(lockedCB, pid) {
+    var Promise = this.promiseImpl;
+    return new Promise(_.bind(function (resolve, reject) {
+        var i = pid || (new Date().getTime() + '|' + Math.random());
+        var startTime = new Date().getTime();
 
-    var i = pid || (new Date().getTime() + '|' + Math.random());
-    var startTime = new Date().getTime();
+        var key = this.storageKey;
+        var pollIntervalMS = this.pollIntervalMS;
+        var timeoutMS = this.timeoutMS;
+        var storage = this.storage;
 
-    var key = this.storageKey;
-    var pollIntervalMS = this.pollIntervalMS;
-    var timeoutMS = this.timeoutMS;
-    var storage = this.storage;
+        var keyX = key + ':X';
+        var keyY = key + ':Y';
+        var keyZ = key + ':Z';
 
-    var keyX = key + ':X';
-    var keyY = key + ':Y';
-    var keyZ = key + ':Z';
-
-    var reportError = function(err) {
-        errorCB && errorCB(err);
-    };
-
-    var delay = function(cb) {
-        if (new Date().getTime() - startTime > timeoutMS) {
-            logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
-            storage.removeItem(keyZ);
-            storage.removeItem(keyY);
-            loop();
-            return;
-        }
-        setTimeout(function() {
-            try {
-                cb();
-            } catch(err) {
-                reportError(err);
-            }
-        }, pollIntervalMS * (Math.random() + 0.1));
-    };
-
-    var waitFor = function(predicate, cb) {
-        if (predicate()) {
-            cb();
-        } else {
-            delay(function() {
-                waitFor(predicate, cb);
-            });
-        }
-    };
-
-    var getSetY = function() {
-        var valY = storage.getItem(keyY);
-        if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
-            return false;
-        } else {
-            storage.setItem(keyY, i);
-            if (storage.getItem(keyY) === i) {
-                return true;
-            } else {
-                if (!localStorageSupported(storage, true)) {
-                    throw new Error('localStorage support dropped while acquiring lock');
-                }
-                return false;
-            }
-        }
-    };
-
-    var loop = function() {
-        storage.setItem(keyX, i);
-
-        waitFor(getSetY, function() {
-            if (storage.getItem(keyX) === i) {
-                criticalSection();
+        var delay = function(cb) {
+            if (new Date().getTime() - startTime > timeoutMS) {
+                logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                storage.removeItem(keyZ);
+                storage.removeItem(keyY);
+                loop();
                 return;
             }
+            setTimeout(function() {
+                try {
+                    cb();
+                } catch(err) {
+                    reject(err);
+                }
+            }, pollIntervalMS * (Math.random() + 0.1));
+        };
 
-            delay(function() {
-                if (storage.getItem(keyY) !== i) {
-                    loop();
+        var waitFor = function(predicate, cb) {
+            if (predicate()) {
+                cb();
+            } else {
+                delay(function() {
+                    waitFor(predicate, cb);
+                });
+            }
+        };
+
+        var getSetY = function() {
+            var valY = storage.getItem(keyY);
+            if (valY && valY !== i) { // if Y == i then this process already has the lock (useful for test cases)
+                return false;
+            } else {
+                storage.setItem(keyY, i);
+                if (storage.getItem(keyY) === i) {
+                    return true;
+                } else {
+                    if (!localStorageSupported(storage, true)) {
+                        reject(new Error('localStorage support dropped while acquiring lock'));
+                    }
+                    return false;
+                }
+            }
+        };
+
+        var loop = function() {
+            storage.setItem(keyX, i);
+
+            waitFor(getSetY, function() {
+                if (storage.getItem(keyX) === i) {
+                    criticalSection();
                     return;
                 }
-                waitFor(function() {
-                    return !storage.getItem(keyZ);
-                }, criticalSection);
+
+                delay(function() {
+                    if (storage.getItem(keyY) !== i) {
+                        loop();
+                        return;
+                    }
+                    waitFor(function() {
+                        return !storage.getItem(keyZ);
+                    }, criticalSection);
+                });
             });
-        });
-    };
+        };
 
-    var criticalSection = function() {
-        storage.setItem(keyZ, '1');
+        var criticalSection = function() {
+            storage.setItem(keyZ, '1');
+            var removeLock = function () {
+                storage.removeItem(keyZ);
+                if (storage.getItem(keyY) === i) {
+                    storage.removeItem(keyY);
+                }
+                if (storage.getItem(keyX) === i) {
+                    storage.removeItem(keyX);
+                }
+            };
+
+            lockedCB()
+                .then(function (ret) {
+                    removeLock();
+                    resolve(ret);
+                })
+                .catch(function (err) {
+                    removeLock();
+                    reject(err);
+                });
+        };
+
         try {
-            lockedCB();
-        } finally {
-            storage.removeItem(keyZ);
-            if (storage.getItem(keyY) === i) {
-                storage.removeItem(keyY);
+            if (localStorageSupported(storage, true)) {
+                loop();
+            } else {
+                throw new Error('localStorage support check failed');
             }
-            if (storage.getItem(keyX) === i) {
-                storage.removeItem(keyX);
-            }
+        } catch(err) {
+            reject(err);
         }
-    };
-
-    try {
-        if (localStorageSupported(storage, true)) {
-            loop();
-        } else {
-            throw new Error('localStorage support check failed');
-        }
-    } catch(err) {
-        reportError(err);
-    }
+    }, this));
 };
 
 export { SharedLock };

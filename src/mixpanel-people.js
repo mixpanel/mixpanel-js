@@ -57,7 +57,6 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
     data[SET_ACTION] = _.extend(
         {},
         _.info.people_properties(),
-        this._mixpanel['persistence'].get_referrer_info(),
         data[SET_ACTION]
     );
     return this._send_request(data, callback);

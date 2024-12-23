@@ -3,21 +3,10840 @@
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-var _srcLoaderModule = require('../../src/loader-module');
+var _srcLoadersLoaderModule = require('../../src/loaders/loader-module');
 
-var _srcLoaderModule2 = _interopRequireDefault(_srcLoaderModule);
+var _srcLoadersLoaderModule2 = _interopRequireDefault(_srcLoadersLoaderModule);
 
-_srcLoaderModule2['default'].init("FAKE_TOKEN", {
+_srcLoadersLoaderModule2['default'].init("FAKE_TOKEN", {
     debug: true,
     loaded: function loaded() {
-        _srcLoaderModule2['default'].track('loaded() callback works but is unnecessary');
+        _srcLoadersLoaderModule2['default'].track('loaded() callback works but is unnecessary');
         alert("Mixpanel loaded successfully via ES2015 Modules/Babelify");
     }
 });
 
-_srcLoaderModule2['default'].track('Tracking after mixpanel.init');
+_srcLoadersLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loader-module":6}],2:[function(require,module,exports){
+},{"../../src/loaders/loader-module":9}],2:[function(require,module,exports){
+(function(global, factory) {
+  typeof exports === "object" && typeof module !== "undefined" ? factory(exports) : typeof define === "function" && define.amd ? define(["exports"], factory) : (global = typeof globalThis !== "undefined" ? globalThis : global || self, factory(global.rrwebTypes = {}));
+})(this, function(exports2) {
+  "use strict";
+  var EventType = /* @__PURE__ */ ((EventType2) => {
+    EventType2[EventType2["DomContentLoaded"] = 0] = "DomContentLoaded";
+    EventType2[EventType2["Load"] = 1] = "Load";
+    EventType2[EventType2["FullSnapshot"] = 2] = "FullSnapshot";
+    EventType2[EventType2["IncrementalSnapshot"] = 3] = "IncrementalSnapshot";
+    EventType2[EventType2["Meta"] = 4] = "Meta";
+    EventType2[EventType2["Custom"] = 5] = "Custom";
+    EventType2[EventType2["Plugin"] = 6] = "Plugin";
+    return EventType2;
+  })(EventType || {});
+  var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
+    IncrementalSource2[IncrementalSource2["Mutation"] = 0] = "Mutation";
+    IncrementalSource2[IncrementalSource2["MouseMove"] = 1] = "MouseMove";
+    IncrementalSource2[IncrementalSource2["MouseInteraction"] = 2] = "MouseInteraction";
+    IncrementalSource2[IncrementalSource2["Scroll"] = 3] = "Scroll";
+    IncrementalSource2[IncrementalSource2["ViewportResize"] = 4] = "ViewportResize";
+    IncrementalSource2[IncrementalSource2["Input"] = 5] = "Input";
+    IncrementalSource2[IncrementalSource2["TouchMove"] = 6] = "TouchMove";
+    IncrementalSource2[IncrementalSource2["MediaInteraction"] = 7] = "MediaInteraction";
+    IncrementalSource2[IncrementalSource2["StyleSheetRule"] = 8] = "StyleSheetRule";
+    IncrementalSource2[IncrementalSource2["CanvasMutation"] = 9] = "CanvasMutation";
+    IncrementalSource2[IncrementalSource2["Font"] = 10] = "Font";
+    IncrementalSource2[IncrementalSource2["Log"] = 11] = "Log";
+    IncrementalSource2[IncrementalSource2["Drag"] = 12] = "Drag";
+    IncrementalSource2[IncrementalSource2["StyleDeclaration"] = 13] = "StyleDeclaration";
+    IncrementalSource2[IncrementalSource2["Selection"] = 14] = "Selection";
+    IncrementalSource2[IncrementalSource2["AdoptedStyleSheet"] = 15] = "AdoptedStyleSheet";
+    IncrementalSource2[IncrementalSource2["CustomElement"] = 16] = "CustomElement";
+    return IncrementalSource2;
+  })(IncrementalSource || {});
+  var MouseInteractions = /* @__PURE__ */ ((MouseInteractions2) => {
+    MouseInteractions2[MouseInteractions2["MouseUp"] = 0] = "MouseUp";
+    MouseInteractions2[MouseInteractions2["MouseDown"] = 1] = "MouseDown";
+    MouseInteractions2[MouseInteractions2["Click"] = 2] = "Click";
+    MouseInteractions2[MouseInteractions2["ContextMenu"] = 3] = "ContextMenu";
+    MouseInteractions2[MouseInteractions2["DblClick"] = 4] = "DblClick";
+    MouseInteractions2[MouseInteractions2["Focus"] = 5] = "Focus";
+    MouseInteractions2[MouseInteractions2["Blur"] = 6] = "Blur";
+    MouseInteractions2[MouseInteractions2["TouchStart"] = 7] = "TouchStart";
+    MouseInteractions2[MouseInteractions2["TouchMove_Departed"] = 8] = "TouchMove_Departed";
+    MouseInteractions2[MouseInteractions2["TouchEnd"] = 9] = "TouchEnd";
+    MouseInteractions2[MouseInteractions2["TouchCancel"] = 10] = "TouchCancel";
+    return MouseInteractions2;
+  })(MouseInteractions || {});
+  var PointerTypes = /* @__PURE__ */ ((PointerTypes2) => {
+    PointerTypes2[PointerTypes2["Mouse"] = 0] = "Mouse";
+    PointerTypes2[PointerTypes2["Pen"] = 1] = "Pen";
+    PointerTypes2[PointerTypes2["Touch"] = 2] = "Touch";
+    return PointerTypes2;
+  })(PointerTypes || {});
+  var CanvasContext = /* @__PURE__ */ ((CanvasContext2) => {
+    CanvasContext2[CanvasContext2["2D"] = 0] = "2D";
+    CanvasContext2[CanvasContext2["WebGL"] = 1] = "WebGL";
+    CanvasContext2[CanvasContext2["WebGL2"] = 2] = "WebGL2";
+    return CanvasContext2;
+  })(CanvasContext || {});
+  var MediaInteractions = /* @__PURE__ */ ((MediaInteractions2) => {
+    MediaInteractions2[MediaInteractions2["Play"] = 0] = "Play";
+    MediaInteractions2[MediaInteractions2["Pause"] = 1] = "Pause";
+    MediaInteractions2[MediaInteractions2["Seeked"] = 2] = "Seeked";
+    MediaInteractions2[MediaInteractions2["VolumeChange"] = 3] = "VolumeChange";
+    MediaInteractions2[MediaInteractions2["RateChange"] = 4] = "RateChange";
+    return MediaInteractions2;
+  })(MediaInteractions || {});
+  var ReplayerEvents = /* @__PURE__ */ ((ReplayerEvents2) => {
+    ReplayerEvents2["Start"] = "start";
+    ReplayerEvents2["Pause"] = "pause";
+    ReplayerEvents2["Resume"] = "resume";
+    ReplayerEvents2["Resize"] = "resize";
+    ReplayerEvents2["Finish"] = "finish";
+    ReplayerEvents2["FullsnapshotRebuilded"] = "fullsnapshot-rebuilded";
+    ReplayerEvents2["LoadStylesheetStart"] = "load-stylesheet-start";
+    ReplayerEvents2["LoadStylesheetEnd"] = "load-stylesheet-end";
+    ReplayerEvents2["SkipStart"] = "skip-start";
+    ReplayerEvents2["SkipEnd"] = "skip-end";
+    ReplayerEvents2["MouseInteraction"] = "mouse-interaction";
+    ReplayerEvents2["EventCast"] = "event-cast";
+    ReplayerEvents2["CustomEvent"] = "custom-event";
+    ReplayerEvents2["Flush"] = "flush";
+    ReplayerEvents2["StateChange"] = "state-change";
+    ReplayerEvents2["PlayBack"] = "play-back";
+    ReplayerEvents2["Destroy"] = "destroy";
+    return ReplayerEvents2;
+  })(ReplayerEvents || {});
+  exports2.CanvasContext = CanvasContext;
+  exports2.EventType = EventType;
+  exports2.IncrementalSource = IncrementalSource;
+  exports2.MediaInteractions = MediaInteractions;
+  exports2.MouseInteractions = MouseInteractions;
+  exports2.PointerTypes = PointerTypes;
+  exports2.ReplayerEvents = ReplayerEvents;
+  Object.defineProperties(exports2, { __esModule: { value: true }, [Symbol.toStringTag]: { value: "Module" } });
+});
+
+
+},{}],3:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+var NodeType$2;
+(function (NodeType) {
+    NodeType[NodeType["Document"] = 0] = "Document";
+    NodeType[NodeType["DocumentType"] = 1] = "DocumentType";
+    NodeType[NodeType["Element"] = 2] = "Element";
+    NodeType[NodeType["Text"] = 3] = "Text";
+    NodeType[NodeType["CDATA"] = 4] = "CDATA";
+    NodeType[NodeType["Comment"] = 5] = "Comment";
+})(NodeType$2 || (NodeType$2 = {}));
+
+function isElement(n) {
+    return n.nodeType === n.ELEMENT_NODE;
+}
+function isShadowRoot(n) {
+    const host = n === null || n === void 0 ? void 0 : n.host;
+    return Boolean((host === null || host === void 0 ? void 0 : host.shadowRoot) === n);
+}
+function isNativeShadowDom(shadowRoot) {
+    return Object.prototype.toString.call(shadowRoot) === '[object ShadowRoot]';
+}
+function fixBrowserCompatibilityIssuesInCSS(cssText) {
+    if (cssText.includes(' background-clip: text;') &&
+        !cssText.includes(' -webkit-background-clip: text;')) {
+        cssText = cssText.replace(' background-clip: text;', ' -webkit-background-clip: text; background-clip: text;');
+    }
+    return cssText;
+}
+function escapeImportStatement(rule) {
+    const { cssText } = rule;
+    if (cssText.split('"').length < 3)
+        return cssText;
+    const statement = ['@import', `url(${JSON.stringify(rule.href)})`];
+    if (rule.layerName === '') {
+        statement.push(`layer`);
+    }
+    else if (rule.layerName) {
+        statement.push(`layer(${rule.layerName})`);
+    }
+    if (rule.supportsText) {
+        statement.push(`supports(${rule.supportsText})`);
+    }
+    if (rule.media.length) {
+        statement.push(rule.media.mediaText);
+    }
+    return statement.join(' ') + ';';
+}
+function stringifyStylesheet(s) {
+    try {
+        const rules = s.rules || s.cssRules;
+        return rules
+            ? fixBrowserCompatibilityIssuesInCSS(Array.from(rules, stringifyRule).join(''))
+            : null;
+    }
+    catch (error) {
+        return null;
+    }
+}
+function stringifyRule(rule) {
+    let importStringified;
+    if (isCSSImportRule(rule)) {
+        try {
+            importStringified =
+                stringifyStylesheet(rule.styleSheet) ||
+                    escapeImportStatement(rule);
+        }
+        catch (error) {
+        }
+    }
+    else if (isCSSStyleRule(rule) && rule.selectorText.includes(':')) {
+        return fixSafariColons(rule.cssText);
+    }
+    return importStringified || rule.cssText;
+}
+function fixSafariColons(cssStringified) {
+    const regex = /(\[(?:[\w-]+)[^\\])(:(?:[\w-]+)\])/gm;
+    return cssStringified.replace(regex, '$1\\$2');
+}
+function isCSSImportRule(rule) {
+    return 'styleSheet' in rule;
+}
+function isCSSStyleRule(rule) {
+    return 'selectorText' in rule;
+}
+class Mirror$2 {
+    constructor() {
+        this.idNodeMap = new Map();
+        this.nodeMetaMap = new WeakMap();
+    }
+    getId(n) {
+        var _a;
+        if (!n)
+            return -1;
+        const id = (_a = this.getMeta(n)) === null || _a === void 0 ? void 0 : _a.id;
+        return id !== null && id !== void 0 ? id : -1;
+    }
+    getNode(id) {
+        return this.idNodeMap.get(id) || null;
+    }
+    getIds() {
+        return Array.from(this.idNodeMap.keys());
+    }
+    getMeta(n) {
+        return this.nodeMetaMap.get(n) || null;
+    }
+    removeNodeFromMap(n) {
+        const id = this.getId(n);
+        this.idNodeMap.delete(id);
+        if (n.childNodes) {
+            n.childNodes.forEach((childNode) => this.removeNodeFromMap(childNode));
+        }
+    }
+    has(id) {
+        return this.idNodeMap.has(id);
+    }
+    hasNode(node) {
+        return this.nodeMetaMap.has(node);
+    }
+    add(n, meta) {
+        const id = meta.id;
+        this.idNodeMap.set(id, n);
+        this.nodeMetaMap.set(n, meta);
+    }
+    replace(id, n) {
+        const oldNode = this.getNode(id);
+        if (oldNode) {
+            const meta = this.nodeMetaMap.get(oldNode);
+            if (meta)
+                this.nodeMetaMap.set(n, meta);
+        }
+        this.idNodeMap.set(id, n);
+    }
+    reset() {
+        this.idNodeMap = new Map();
+        this.nodeMetaMap = new WeakMap();
+    }
+}
+function createMirror$2() {
+    return new Mirror$2();
+}
+function maskInputValue({ element, maskInputOptions, tagName, type, value, maskInputFn, }) {
+    let text = value || '';
+    const actualType = type && toLowerCase(type);
+    if (maskInputOptions[tagName.toLowerCase()] ||
+        (actualType && maskInputOptions[actualType])) {
+        if (maskInputFn) {
+            text = maskInputFn(text, element);
+        }
+        else {
+            text = '*'.repeat(text.length);
+        }
+    }
+    return text;
+}
+function toLowerCase(str) {
+    return str.toLowerCase();
+}
+const ORIGINAL_ATTRIBUTE_NAME$1 = '__rrweb_original__';
+function is2DCanvasBlank(canvas) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx)
+        return true;
+    const chunkSize = 50;
+    for (let x = 0; x < canvas.width; x += chunkSize) {
+        for (let y = 0; y < canvas.height; y += chunkSize) {
+            const getImageData = ctx.getImageData;
+            const originalGetImageData = ORIGINAL_ATTRIBUTE_NAME$1 in getImageData
+                ? getImageData[ORIGINAL_ATTRIBUTE_NAME$1]
+                : getImageData;
+            const pixelBuffer = new Uint32Array(originalGetImageData.call(ctx, x, y, Math.min(chunkSize, canvas.width - x), Math.min(chunkSize, canvas.height - y)).data.buffer);
+            if (pixelBuffer.some((pixel) => pixel !== 0))
+                return false;
+        }
+    }
+    return true;
+}
+function isNodeMetaEqual(a, b) {
+    if (!a || !b || a.type !== b.type)
+        return false;
+    if (a.type === NodeType$2.Document)
+        return a.compatMode === b.compatMode;
+    else if (a.type === NodeType$2.DocumentType)
+        return (a.name === b.name &&
+            a.publicId === b.publicId &&
+            a.systemId === b.systemId);
+    else if (a.type === NodeType$2.Comment ||
+        a.type === NodeType$2.Text ||
+        a.type === NodeType$2.CDATA)
+        return a.textContent === b.textContent;
+    else if (a.type === NodeType$2.Element)
+        return (a.tagName === b.tagName &&
+            JSON.stringify(a.attributes) ===
+                JSON.stringify(b.attributes) &&
+            a.isSVG === b.isSVG &&
+            a.needBlock === b.needBlock);
+    return false;
+}
+function getInputType(element) {
+    const type = element.type;
+    return element.hasAttribute('data-rr-is-password')
+        ? 'password'
+        : type
+            ?
+                toLowerCase(type)
+            : null;
+}
+function extractFileExtension(path, baseURL) {
+    var _a;
+    let url;
+    try {
+        url = new URL(path, baseURL !== null && baseURL !== void 0 ? baseURL : window.location.href);
+    }
+    catch (err) {
+        return null;
+    }
+    const regex = /\.([0-9a-z]+)(?:$)/i;
+    const match = url.pathname.match(regex);
+    return (_a = match === null || match === void 0 ? void 0 : match[1]) !== null && _a !== void 0 ? _a : null;
+}
+
+let _id = 1;
+const tagNameRegex = new RegExp('[^a-z0-9-_:]');
+const IGNORED_NODE = -2;
+function genId() {
+    return _id++;
+}
+function getValidTagName$1(element) {
+    if (element instanceof HTMLFormElement) {
+        return 'form';
+    }
+    const processedTagName = toLowerCase(element.tagName);
+    if (tagNameRegex.test(processedTagName)) {
+        return 'div';
+    }
+    return processedTagName;
+}
+function extractOrigin(url) {
+    let origin = '';
+    if (url.indexOf('//') > -1) {
+        origin = url.split('/').slice(0, 3).join('/');
+    }
+    else {
+        origin = url.split('/')[0];
+    }
+    origin = origin.split('?')[0];
+    return origin;
+}
+let canvasService;
+let canvasCtx;
+const URL_IN_CSS_REF = /url\((?:(')([^']*)'|(")(.*?)"|([^)]*))\)/gm;
+const URL_PROTOCOL_MATCH = /^(?:[a-z+]+:)?\/\//i;
+const URL_WWW_MATCH = /^www\..*/i;
+const DATA_URI = /^(data:)([^,]*),(.*)/i;
+function absoluteToStylesheet(cssText, href) {
+    return (cssText || '').replace(URL_IN_CSS_REF, (origin, quote1, path1, quote2, path2, path3) => {
+        const filePath = path1 || path2 || path3;
+        const maybeQuote = quote1 || quote2 || '';
+        if (!filePath) {
+            return origin;
+        }
+        if (URL_PROTOCOL_MATCH.test(filePath) || URL_WWW_MATCH.test(filePath)) {
+            return `url(${maybeQuote}${filePath}${maybeQuote})`;
+        }
+        if (DATA_URI.test(filePath)) {
+            return `url(${maybeQuote}${filePath}${maybeQuote})`;
+        }
+        if (filePath[0] === '/') {
+            return `url(${maybeQuote}${extractOrigin(href) + filePath}${maybeQuote})`;
+        }
+        const stack = href.split('/');
+        const parts = filePath.split('/');
+        stack.pop();
+        for (const part of parts) {
+            if (part === '.') {
+                continue;
+            }
+            else if (part === '..') {
+                stack.pop();
+            }
+            else {
+                stack.push(part);
+            }
+        }
+        return `url(${maybeQuote}${stack.join('/')}${maybeQuote})`;
+    });
+}
+const SRCSET_NOT_SPACES = /^[^ \t\n\r\u000c]+/;
+const SRCSET_COMMAS_OR_SPACES = /^[, \t\n\r\u000c]+/;
+function getAbsoluteSrcsetString(doc, attributeValue) {
+    if (attributeValue.trim() === '') {
+        return attributeValue;
+    }
+    let pos = 0;
+    function collectCharacters(regEx) {
+        let chars;
+        const match = regEx.exec(attributeValue.substring(pos));
+        if (match) {
+            chars = match[0];
+            pos += chars.length;
+            return chars;
+        }
+        return '';
+    }
+    const output = [];
+    while (true) {
+        collectCharacters(SRCSET_COMMAS_OR_SPACES);
+        if (pos >= attributeValue.length) {
+            break;
+        }
+        let url = collectCharacters(SRCSET_NOT_SPACES);
+        if (url.slice(-1) === ',') {
+            url = absoluteToDoc(doc, url.substring(0, url.length - 1));
+            output.push(url);
+        }
+        else {
+            let descriptorsStr = '';
+            url = absoluteToDoc(doc, url);
+            let inParens = false;
+            while (true) {
+                const c = attributeValue.charAt(pos);
+                if (c === '') {
+                    output.push((url + descriptorsStr).trim());
+                    break;
+                }
+                else if (!inParens) {
+                    if (c === ',') {
+                        pos += 1;
+                        output.push((url + descriptorsStr).trim());
+                        break;
+                    }
+                    else if (c === '(') {
+                        inParens = true;
+                    }
+                }
+                else {
+                    if (c === ')') {
+                        inParens = false;
+                    }
+                }
+                descriptorsStr += c;
+                pos += 1;
+            }
+        }
+    }
+    return output.join(', ');
+}
+function absoluteToDoc(doc, attributeValue) {
+    if (!attributeValue || attributeValue.trim() === '') {
+        return attributeValue;
+    }
+    const a = doc.createElement('a');
+    a.href = attributeValue;
+    return a.href;
+}
+function isSVGElement(el) {
+    return Boolean(el.tagName === 'svg' || el.ownerSVGElement);
+}
+function getHref() {
+    const a = document.createElement('a');
+    a.href = '';
+    return a.href;
+}
+function transformAttribute(doc, tagName, name, value) {
+    if (!value) {
+        return value;
+    }
+    if (name === 'src' ||
+        (name === 'href' && !(tagName === 'use' && value[0] === '#'))) {
+        return absoluteToDoc(doc, value);
+    }
+    else if (name === 'xlink:href' && value[0] !== '#') {
+        return absoluteToDoc(doc, value);
+    }
+    else if (name === 'background' &&
+        (tagName === 'table' || tagName === 'td' || tagName === 'th')) {
+        return absoluteToDoc(doc, value);
+    }
+    else if (name === 'srcset') {
+        return getAbsoluteSrcsetString(doc, value);
+    }
+    else if (name === 'style') {
+        return absoluteToStylesheet(value, getHref());
+    }
+    else if (tagName === 'object' && name === 'data') {
+        return absoluteToDoc(doc, value);
+    }
+    return value;
+}
+function ignoreAttribute(tagName, name, _value) {
+    return (tagName === 'video' || tagName === 'audio') && name === 'autoplay';
+}
+function _isBlockedElement(element, blockClass, blockSelector) {
+    try {
+        if (typeof blockClass === 'string') {
+            if (element.classList.contains(blockClass)) {
+                return true;
+            }
+        }
+        else {
+            for (let eIndex = element.classList.length; eIndex--;) {
+                const className = element.classList[eIndex];
+                if (blockClass.test(className)) {
+                    return true;
+                }
+            }
+        }
+        if (blockSelector) {
+            return element.matches(blockSelector);
+        }
+    }
+    catch (e) {
+    }
+    return false;
+}
+function classMatchesRegex(node, regex, checkAncestors) {
+    if (!node)
+        return false;
+    if (node.nodeType !== node.ELEMENT_NODE) {
+        if (!checkAncestors)
+            return false;
+        return classMatchesRegex(node.parentNode, regex, checkAncestors);
+    }
+    for (let eIndex = node.classList.length; eIndex--;) {
+        const className = node.classList[eIndex];
+        if (regex.test(className)) {
+            return true;
+        }
+    }
+    if (!checkAncestors)
+        return false;
+    return classMatchesRegex(node.parentNode, regex, checkAncestors);
+}
+function needMaskingText(node, maskTextClass, maskTextSelector, checkAncestors) {
+    try {
+        const el = node.nodeType === node.ELEMENT_NODE
+            ? node
+            : node.parentElement;
+        if (el === null)
+            return false;
+        if (typeof maskTextClass === 'string') {
+            if (checkAncestors) {
+                if (el.closest(`.${maskTextClass}`))
+                    return true;
+            }
+            else {
+                if (el.classList.contains(maskTextClass))
+                    return true;
+            }
+        }
+        else {
+            if (classMatchesRegex(el, maskTextClass, checkAncestors))
+                return true;
+        }
+        if (maskTextSelector) {
+            if (checkAncestors) {
+                if (el.closest(maskTextSelector))
+                    return true;
+            }
+            else {
+                if (el.matches(maskTextSelector))
+                    return true;
+            }
+        }
+    }
+    catch (e) {
+    }
+    return false;
+}
+function onceIframeLoaded(iframeEl, listener, iframeLoadTimeout) {
+    const win = iframeEl.contentWindow;
+    if (!win) {
+        return;
+    }
+    let fired = false;
+    let readyState;
+    try {
+        readyState = win.document.readyState;
+    }
+    catch (error) {
+        return;
+    }
+    if (readyState !== 'complete') {
+        const timer = setTimeout(() => {
+            if (!fired) {
+                listener();
+                fired = true;
+            }
+        }, iframeLoadTimeout);
+        iframeEl.addEventListener('load', () => {
+            clearTimeout(timer);
+            fired = true;
+            listener();
+        });
+        return;
+    }
+    const blankUrl = 'about:blank';
+    if (win.location.href !== blankUrl ||
+        iframeEl.src === blankUrl ||
+        iframeEl.src === '') {
+        setTimeout(listener, 0);
+        return iframeEl.addEventListener('load', listener);
+    }
+    iframeEl.addEventListener('load', listener);
+}
+function onceStylesheetLoaded(link, listener, styleSheetLoadTimeout) {
+    let fired = false;
+    let styleSheetLoaded;
+    try {
+        styleSheetLoaded = link.sheet;
+    }
+    catch (error) {
+        return;
+    }
+    if (styleSheetLoaded)
+        return;
+    const timer = setTimeout(() => {
+        if (!fired) {
+            listener();
+            fired = true;
+        }
+    }, styleSheetLoadTimeout);
+    link.addEventListener('load', () => {
+        clearTimeout(timer);
+        fired = true;
+        listener();
+    });
+}
+function serializeNode(n, options) {
+    const { doc, mirror, blockClass, blockSelector, needsMask, inlineStylesheet, maskInputOptions = {}, maskTextFn, maskInputFn, dataURLOptions = {}, inlineImages, recordCanvas, keepIframeSrcFn, newlyAddedElement = false, } = options;
+    const rootId = getRootId(doc, mirror);
+    switch (n.nodeType) {
+        case n.DOCUMENT_NODE:
+            if (n.compatMode !== 'CSS1Compat') {
+                return {
+                    type: NodeType$2.Document,
+                    childNodes: [],
+                    compatMode: n.compatMode,
+                };
+            }
+            else {
+                return {
+                    type: NodeType$2.Document,
+                    childNodes: [],
+                };
+            }
+        case n.DOCUMENT_TYPE_NODE:
+            return {
+                type: NodeType$2.DocumentType,
+                name: n.name,
+                publicId: n.publicId,
+                systemId: n.systemId,
+                rootId,
+            };
+        case n.ELEMENT_NODE:
+            return serializeElementNode(n, {
+                doc,
+                blockClass,
+                blockSelector,
+                inlineStylesheet,
+                maskInputOptions,
+                maskInputFn,
+                dataURLOptions,
+                inlineImages,
+                recordCanvas,
+                keepIframeSrcFn,
+                newlyAddedElement,
+                rootId,
+            });
+        case n.TEXT_NODE:
+            return serializeTextNode(n, {
+                needsMask,
+                maskTextFn,
+                rootId,
+            });
+        case n.CDATA_SECTION_NODE:
+            return {
+                type: NodeType$2.CDATA,
+                textContent: '',
+                rootId,
+            };
+        case n.COMMENT_NODE:
+            return {
+                type: NodeType$2.Comment,
+                textContent: n.textContent || '',
+                rootId,
+            };
+        default:
+            return false;
+    }
+}
+function getRootId(doc, mirror) {
+    if (!mirror.hasNode(doc))
+        return undefined;
+    const docId = mirror.getId(doc);
+    return docId === 1 ? undefined : docId;
+}
+function serializeTextNode(n, options) {
+    var _a;
+    const { needsMask, maskTextFn, rootId } = options;
+    const parentTagName = n.parentNode && n.parentNode.tagName;
+    let textContent = n.textContent;
+    const isStyle = parentTagName === 'STYLE' ? true : undefined;
+    const isScript = parentTagName === 'SCRIPT' ? true : undefined;
+    if (isStyle && textContent) {
+        try {
+            if (n.nextSibling || n.previousSibling) {
+            }
+            else if ((_a = n.parentNode.sheet) === null || _a === void 0 ? void 0 : _a.cssRules) {
+                textContent = stringifyStylesheet(n.parentNode.sheet);
+            }
+        }
+        catch (err) {
+            console.warn(`Cannot get CSS styles from text's parentNode. Error: ${err}`, n);
+        }
+        textContent = absoluteToStylesheet(textContent, getHref());
+    }
+    if (isScript) {
+        textContent = 'SCRIPT_PLACEHOLDER';
+    }
+    if (!isStyle && !isScript && textContent && needsMask) {
+        textContent = maskTextFn
+            ? maskTextFn(textContent, n.parentElement)
+            : textContent.replace(/[\S]/g, '*');
+    }
+    return {
+        type: NodeType$2.Text,
+        textContent: textContent || '',
+        isStyle,
+        rootId,
+    };
+}
+function serializeElementNode(n, options) {
+    const { doc, blockClass, blockSelector, inlineStylesheet, maskInputOptions = {}, maskInputFn, dataURLOptions = {}, inlineImages, recordCanvas, keepIframeSrcFn, newlyAddedElement = false, rootId, } = options;
+    const needBlock = _isBlockedElement(n, blockClass, blockSelector);
+    const tagName = getValidTagName$1(n);
+    let attributes = {};
+    const len = n.attributes.length;
+    for (let i = 0; i < len; i++) {
+        const attr = n.attributes[i];
+        if (!ignoreAttribute(tagName, attr.name, attr.value)) {
+            attributes[attr.name] = transformAttribute(doc, tagName, toLowerCase(attr.name), attr.value);
+        }
+    }
+    if (tagName === 'link' && inlineStylesheet) {
+        const stylesheet = Array.from(doc.styleSheets).find((s) => {
+            return s.href === n.href;
+        });
+        let cssText = null;
+        if (stylesheet) {
+            cssText = stringifyStylesheet(stylesheet);
+        }
+        if (cssText) {
+            delete attributes.rel;
+            delete attributes.href;
+            attributes._cssText = absoluteToStylesheet(cssText, stylesheet.href);
+        }
+    }
+    if (tagName === 'style' &&
+        n.sheet &&
+        !(n.innerText || n.textContent || '').trim().length) {
+        const cssText = stringifyStylesheet(n.sheet);
+        if (cssText) {
+            attributes._cssText = absoluteToStylesheet(cssText, getHref());
+        }
+    }
+    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+        const value = n.value;
+        const checked = n.checked;
+        if (attributes.type !== 'radio' &&
+            attributes.type !== 'checkbox' &&
+            attributes.type !== 'submit' &&
+            attributes.type !== 'button' &&
+            value) {
+            attributes.value = maskInputValue({
+                element: n,
+                type: getInputType(n),
+                tagName,
+                value,
+                maskInputOptions,
+                maskInputFn,
+            });
+        }
+        else if (checked) {
+            attributes.checked = checked;
+        }
+    }
+    if (tagName === 'option') {
+        if (n.selected && !maskInputOptions['select']) {
+            attributes.selected = true;
+        }
+        else {
+            delete attributes.selected;
+        }
+    }
+    if (tagName === 'canvas' && recordCanvas) {
+        if (n.__context === '2d') {
+            if (!is2DCanvasBlank(n)) {
+                attributes.rr_dataURL = n.toDataURL(dataURLOptions.type, dataURLOptions.quality);
+            }
+        }
+        else if (!('__context' in n)) {
+            const canvasDataURL = n.toDataURL(dataURLOptions.type, dataURLOptions.quality);
+            const blankCanvas = document.createElement('canvas');
+            blankCanvas.width = n.width;
+            blankCanvas.height = n.height;
+            const blankCanvasDataURL = blankCanvas.toDataURL(dataURLOptions.type, dataURLOptions.quality);
+            if (canvasDataURL !== blankCanvasDataURL) {
+                attributes.rr_dataURL = canvasDataURL;
+            }
+        }
+    }
+    if (tagName === 'img' && inlineImages) {
+        if (!canvasService) {
+            canvasService = doc.createElement('canvas');
+            canvasCtx = canvasService.getContext('2d');
+        }
+        const image = n;
+        const oldValue = image.crossOrigin;
+        image.crossOrigin = 'anonymous';
+        const recordInlineImage = () => {
+            image.removeEventListener('load', recordInlineImage);
+            try {
+                canvasService.width = image.naturalWidth;
+                canvasService.height = image.naturalHeight;
+                canvasCtx.drawImage(image, 0, 0);
+                attributes.rr_dataURL = canvasService.toDataURL(dataURLOptions.type, dataURLOptions.quality);
+            }
+            catch (err) {
+                console.warn(`Cannot inline img src=${image.currentSrc}! Error: ${err}`);
+            }
+            oldValue
+                ? (attributes.crossOrigin = oldValue)
+                : image.removeAttribute('crossorigin');
+        };
+        if (image.complete && image.naturalWidth !== 0)
+            recordInlineImage();
+        else
+            image.addEventListener('load', recordInlineImage);
+    }
+    if (tagName === 'audio' || tagName === 'video') {
+        const mediaAttributes = attributes;
+        mediaAttributes.rr_mediaState = n.paused
+            ? 'paused'
+            : 'played';
+        mediaAttributes.rr_mediaCurrentTime = n.currentTime;
+        mediaAttributes.rr_mediaPlaybackRate = n.playbackRate;
+        mediaAttributes.rr_mediaMuted = n.muted;
+        mediaAttributes.rr_mediaLoop = n.loop;
+        mediaAttributes.rr_mediaVolume = n.volume;
+    }
+    if (!newlyAddedElement) {
+        if (n.scrollLeft) {
+            attributes.rr_scrollLeft = n.scrollLeft;
+        }
+        if (n.scrollTop) {
+            attributes.rr_scrollTop = n.scrollTop;
+        }
+    }
+    if (needBlock) {
+        const { width, height } = n.getBoundingClientRect();
+        attributes = {
+            class: attributes.class,
+            rr_width: `${width}px`,
+            rr_height: `${height}px`,
+        };
+    }
+    if (tagName === 'iframe' && !keepIframeSrcFn(attributes.src)) {
+        if (!n.contentDocument) {
+            attributes.rr_src = attributes.src;
+        }
+        delete attributes.src;
+    }
+    let isCustomElement;
+    try {
+        if (customElements.get(tagName))
+            isCustomElement = true;
+    }
+    catch (e) {
+    }
+    return {
+        type: NodeType$2.Element,
+        tagName,
+        attributes,
+        childNodes: [],
+        isSVG: isSVGElement(n) || undefined,
+        needBlock,
+        rootId,
+        isCustom: isCustomElement,
+    };
+}
+function lowerIfExists(maybeAttr) {
+    if (maybeAttr === undefined || maybeAttr === null) {
+        return '';
+    }
+    else {
+        return maybeAttr.toLowerCase();
+    }
+}
+function slimDOMExcluded(sn, slimDOMOptions) {
+    if (slimDOMOptions.comment && sn.type === NodeType$2.Comment) {
+        return true;
+    }
+    else if (sn.type === NodeType$2.Element) {
+        if (slimDOMOptions.script &&
+            (sn.tagName === 'script' ||
+                (sn.tagName === 'link' &&
+                    (sn.attributes.rel === 'preload' ||
+                        sn.attributes.rel === 'modulepreload') &&
+                    sn.attributes.as === 'script') ||
+                (sn.tagName === 'link' &&
+                    sn.attributes.rel === 'prefetch' &&
+                    typeof sn.attributes.href === 'string' &&
+                    extractFileExtension(sn.attributes.href) === 'js'))) {
+            return true;
+        }
+        else if (slimDOMOptions.headFavicon &&
+            ((sn.tagName === 'link' && sn.attributes.rel === 'shortcut icon') ||
+                (sn.tagName === 'meta' &&
+                    (lowerIfExists(sn.attributes.name).match(/^msapplication-tile(image|color)$/) ||
+                        lowerIfExists(sn.attributes.name) === 'application-name' ||
+                        lowerIfExists(sn.attributes.rel) === 'icon' ||
+                        lowerIfExists(sn.attributes.rel) === 'apple-touch-icon' ||
+                        lowerIfExists(sn.attributes.rel) === 'shortcut icon')))) {
+            return true;
+        }
+        else if (sn.tagName === 'meta') {
+            if (slimDOMOptions.headMetaDescKeywords &&
+                lowerIfExists(sn.attributes.name).match(/^description|keywords$/)) {
+                return true;
+            }
+            else if (slimDOMOptions.headMetaSocial &&
+                (lowerIfExists(sn.attributes.property).match(/^(og|twitter|fb):/) ||
+                    lowerIfExists(sn.attributes.name).match(/^(og|twitter):/) ||
+                    lowerIfExists(sn.attributes.name) === 'pinterest')) {
+                return true;
+            }
+            else if (slimDOMOptions.headMetaRobots &&
+                (lowerIfExists(sn.attributes.name) === 'robots' ||
+                    lowerIfExists(sn.attributes.name) === 'googlebot' ||
+                    lowerIfExists(sn.attributes.name) === 'bingbot')) {
+                return true;
+            }
+            else if (slimDOMOptions.headMetaHttpEquiv &&
+                sn.attributes['http-equiv'] !== undefined) {
+                return true;
+            }
+            else if (slimDOMOptions.headMetaAuthorship &&
+                (lowerIfExists(sn.attributes.name) === 'author' ||
+                    lowerIfExists(sn.attributes.name) === 'generator' ||
+                    lowerIfExists(sn.attributes.name) === 'framework' ||
+                    lowerIfExists(sn.attributes.name) === 'publisher' ||
+                    lowerIfExists(sn.attributes.name) === 'progid' ||
+                    lowerIfExists(sn.attributes.property).match(/^article:/) ||
+                    lowerIfExists(sn.attributes.property).match(/^product:/))) {
+                return true;
+            }
+            else if (slimDOMOptions.headMetaVerification &&
+                (lowerIfExists(sn.attributes.name) === 'google-site-verification' ||
+                    lowerIfExists(sn.attributes.name) === 'yandex-verification' ||
+                    lowerIfExists(sn.attributes.name) === 'csrf-token' ||
+                    lowerIfExists(sn.attributes.name) === 'p:domain_verify' ||
+                    lowerIfExists(sn.attributes.name) === 'verify-v1' ||
+                    lowerIfExists(sn.attributes.name) === 'verification' ||
+                    lowerIfExists(sn.attributes.name) === 'shopify-checkout-api-token')) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function serializeNodeWithId(n, options) {
+    const { doc, mirror, blockClass, blockSelector, maskTextClass, maskTextSelector, skipChild = false, inlineStylesheet = true, maskInputOptions = {}, maskTextFn, maskInputFn, slimDOMOptions, dataURLOptions = {}, inlineImages = false, recordCanvas = false, onSerialize, onIframeLoad, iframeLoadTimeout = 5000, onStylesheetLoad, stylesheetLoadTimeout = 5000, keepIframeSrcFn = () => false, newlyAddedElement = false, } = options;
+    let { needsMask } = options;
+    let { preserveWhiteSpace = true } = options;
+    if (!needsMask &&
+        n.childNodes) {
+        const checkAncestors = needsMask === undefined;
+        needsMask = needMaskingText(n, maskTextClass, maskTextSelector, checkAncestors);
+    }
+    const _serializedNode = serializeNode(n, {
+        doc,
+        mirror,
+        blockClass,
+        blockSelector,
+        needsMask,
+        inlineStylesheet,
+        maskInputOptions,
+        maskTextFn,
+        maskInputFn,
+        dataURLOptions,
+        inlineImages,
+        recordCanvas,
+        keepIframeSrcFn,
+        newlyAddedElement,
+    });
+    if (!_serializedNode) {
+        console.warn(n, 'not serialized');
+        return null;
+    }
+    let id;
+    if (mirror.hasNode(n)) {
+        id = mirror.getId(n);
+    }
+    else if (slimDOMExcluded(_serializedNode, slimDOMOptions) ||
+        (!preserveWhiteSpace &&
+            _serializedNode.type === NodeType$2.Text &&
+            !_serializedNode.isStyle &&
+            !_serializedNode.textContent.replace(/^\s+|\s+$/gm, '').length)) {
+        id = IGNORED_NODE;
+    }
+    else {
+        id = genId();
+    }
+    const serializedNode = Object.assign(_serializedNode, { id });
+    mirror.add(n, serializedNode);
+    if (id === IGNORED_NODE) {
+        return null;
+    }
+    if (onSerialize) {
+        onSerialize(n);
+    }
+    let recordChild = !skipChild;
+    if (serializedNode.type === NodeType$2.Element) {
+        recordChild = recordChild && !serializedNode.needBlock;
+        delete serializedNode.needBlock;
+        const shadowRoot = n.shadowRoot;
+        if (shadowRoot && isNativeShadowDom(shadowRoot))
+            serializedNode.isShadowHost = true;
+    }
+    if ((serializedNode.type === NodeType$2.Document ||
+        serializedNode.type === NodeType$2.Element) &&
+        recordChild) {
+        if (slimDOMOptions.headWhitespace &&
+            serializedNode.type === NodeType$2.Element &&
+            serializedNode.tagName === 'head') {
+            preserveWhiteSpace = false;
+        }
+        const bypassOptions = {
+            doc,
+            mirror,
+            blockClass,
+            blockSelector,
+            needsMask,
+            maskTextClass,
+            maskTextSelector,
+            skipChild,
+            inlineStylesheet,
+            maskInputOptions,
+            maskTextFn,
+            maskInputFn,
+            slimDOMOptions,
+            dataURLOptions,
+            inlineImages,
+            recordCanvas,
+            preserveWhiteSpace,
+            onSerialize,
+            onIframeLoad,
+            iframeLoadTimeout,
+            onStylesheetLoad,
+            stylesheetLoadTimeout,
+            keepIframeSrcFn,
+        };
+        if (serializedNode.type === NodeType$2.Element &&
+            serializedNode.tagName === 'textarea' &&
+            serializedNode.attributes.value !== undefined) ;
+        else {
+            for (const childN of Array.from(n.childNodes)) {
+                const serializedChildNode = serializeNodeWithId(childN, bypassOptions);
+                if (serializedChildNode) {
+                    serializedNode.childNodes.push(serializedChildNode);
+                }
+            }
+        }
+        if (isElement(n) && n.shadowRoot) {
+            for (const childN of Array.from(n.shadowRoot.childNodes)) {
+                const serializedChildNode = serializeNodeWithId(childN, bypassOptions);
+                if (serializedChildNode) {
+                    isNativeShadowDom(n.shadowRoot) &&
+                        (serializedChildNode.isShadow = true);
+                    serializedNode.childNodes.push(serializedChildNode);
+                }
+            }
+        }
+    }
+    if (n.parentNode &&
+        isShadowRoot(n.parentNode) &&
+        isNativeShadowDom(n.parentNode)) {
+        serializedNode.isShadow = true;
+    }
+    if (serializedNode.type === NodeType$2.Element &&
+        serializedNode.tagName === 'iframe') {
+        onceIframeLoaded(n, () => {
+            const iframeDoc = n.contentDocument;
+            if (iframeDoc && onIframeLoad) {
+                const serializedIframeNode = serializeNodeWithId(iframeDoc, {
+                    doc: iframeDoc,
+                    mirror,
+                    blockClass,
+                    blockSelector,
+                    needsMask,
+                    maskTextClass,
+                    maskTextSelector,
+                    skipChild: false,
+                    inlineStylesheet,
+                    maskInputOptions,
+                    maskTextFn,
+                    maskInputFn,
+                    slimDOMOptions,
+                    dataURLOptions,
+                    inlineImages,
+                    recordCanvas,
+                    preserveWhiteSpace,
+                    onSerialize,
+                    onIframeLoad,
+                    iframeLoadTimeout,
+                    onStylesheetLoad,
+                    stylesheetLoadTimeout,
+                    keepIframeSrcFn,
+                });
+                if (serializedIframeNode) {
+                    onIframeLoad(n, serializedIframeNode);
+                }
+            }
+        }, iframeLoadTimeout);
+    }
+    if (serializedNode.type === NodeType$2.Element &&
+        serializedNode.tagName === 'link' &&
+        typeof serializedNode.attributes.rel === 'string' &&
+        (serializedNode.attributes.rel === 'stylesheet' ||
+            (serializedNode.attributes.rel === 'preload' &&
+                typeof serializedNode.attributes.href === 'string' &&
+                extractFileExtension(serializedNode.attributes.href) === 'css'))) {
+        onceStylesheetLoaded(n, () => {
+            if (onStylesheetLoad) {
+                const serializedLinkNode = serializeNodeWithId(n, {
+                    doc,
+                    mirror,
+                    blockClass,
+                    blockSelector,
+                    needsMask,
+                    maskTextClass,
+                    maskTextSelector,
+                    skipChild: false,
+                    inlineStylesheet,
+                    maskInputOptions,
+                    maskTextFn,
+                    maskInputFn,
+                    slimDOMOptions,
+                    dataURLOptions,
+                    inlineImages,
+                    recordCanvas,
+                    preserveWhiteSpace,
+                    onSerialize,
+                    onIframeLoad,
+                    iframeLoadTimeout,
+                    onStylesheetLoad,
+                    stylesheetLoadTimeout,
+                    keepIframeSrcFn,
+                });
+                if (serializedLinkNode) {
+                    onStylesheetLoad(n, serializedLinkNode);
+                }
+            }
+        }, stylesheetLoadTimeout);
+    }
+    return serializedNode;
+}
+function snapshot(n, options) {
+    const { mirror = new Mirror$2(), blockClass = 'rr-block', blockSelector = null, maskTextClass = 'rr-mask', maskTextSelector = null, inlineStylesheet = true, inlineImages = false, recordCanvas = false, maskAllInputs = false, maskTextFn, maskInputFn, slimDOM = false, dataURLOptions, preserveWhiteSpace, onSerialize, onIframeLoad, iframeLoadTimeout, onStylesheetLoad, stylesheetLoadTimeout, keepIframeSrcFn = () => false, } = options || {};
+    const maskInputOptions = maskAllInputs === true
+        ? {
+            color: true,
+            date: true,
+            'datetime-local': true,
+            email: true,
+            month: true,
+            number: true,
+            range: true,
+            search: true,
+            tel: true,
+            text: true,
+            time: true,
+            url: true,
+            week: true,
+            textarea: true,
+            select: true,
+            password: true,
+        }
+        : maskAllInputs === false
+            ? {
+                password: true,
+            }
+            : maskAllInputs;
+    const slimDOMOptions = slimDOM === true || slimDOM === 'all'
+        ?
+            {
+                script: true,
+                comment: true,
+                headFavicon: true,
+                headWhitespace: true,
+                headMetaDescKeywords: slimDOM === 'all',
+                headMetaSocial: true,
+                headMetaRobots: true,
+                headMetaHttpEquiv: true,
+                headMetaAuthorship: true,
+                headMetaVerification: true,
+            }
+        : slimDOM === false
+            ? {}
+            : slimDOM;
+    return serializeNodeWithId(n, {
+        doc: n,
+        mirror,
+        blockClass,
+        blockSelector,
+        maskTextClass,
+        maskTextSelector,
+        skipChild: false,
+        inlineStylesheet,
+        maskInputOptions,
+        maskTextFn,
+        maskInputFn,
+        slimDOMOptions,
+        dataURLOptions,
+        inlineImages,
+        recordCanvas,
+        preserveWhiteSpace,
+        onSerialize,
+        onIframeLoad,
+        iframeLoadTimeout,
+        onStylesheetLoad,
+        stylesheetLoadTimeout,
+        keepIframeSrcFn,
+        newlyAddedElement: false,
+    });
+}
+
+const commentre = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//g;
+function parse(css, options = {}) {
+    let lineno = 1;
+    let column = 1;
+    function updatePosition(str) {
+        const lines = str.match(/\n/g);
+        if (lines) {
+            lineno += lines.length;
+        }
+        const i = str.lastIndexOf('\n');
+        column = i === -1 ? column + str.length : str.length - i;
+    }
+    function position() {
+        const start = { line: lineno, column };
+        return (node) => {
+            node.position = new Position(start);
+            whitespace();
+            return node;
+        };
+    }
+    class Position {
+        constructor(start) {
+            this.start = start;
+            this.end = { line: lineno, column };
+            this.source = options.source;
+        }
+    }
+    Position.prototype.content = css;
+    const errorsList = [];
+    function error(msg) {
+        const err = new Error(`${options.source || ''}:${lineno}:${column}: ${msg}`);
+        err.reason = msg;
+        err.filename = options.source;
+        err.line = lineno;
+        err.column = column;
+        err.source = css;
+        if (options.silent) {
+            errorsList.push(err);
+        }
+        else {
+            throw err;
+        }
+    }
+    function stylesheet() {
+        const rulesList = rules();
+        return {
+            type: 'stylesheet',
+            stylesheet: {
+                source: options.source,
+                rules: rulesList,
+                parsingErrors: errorsList,
+            },
+        };
+    }
+    function open() {
+        return match(/^{\s*/);
+    }
+    function close() {
+        return match(/^}/);
+    }
+    function rules() {
+        let node;
+        const rules = [];
+        whitespace();
+        comments(rules);
+        while (css.length && css.charAt(0) !== '}' && (node = atrule() || rule())) {
+            if (node) {
+                rules.push(node);
+                comments(rules);
+            }
+        }
+        return rules;
+    }
+    function match(re) {
+        const m = re.exec(css);
+        if (!m) {
+            return;
+        }
+        const str = m[0];
+        updatePosition(str);
+        css = css.slice(str.length);
+        return m;
+    }
+    function whitespace() {
+        match(/^\s*/);
+    }
+    function comments(rules = []) {
+        let c;
+        while ((c = comment())) {
+            if (c) {
+                rules.push(c);
+            }
+            c = comment();
+        }
+        return rules;
+    }
+    function comment() {
+        const pos = position();
+        if ('/' !== css.charAt(0) || '*' !== css.charAt(1)) {
+            return;
+        }
+        let i = 2;
+        while ('' !== css.charAt(i) &&
+            ('*' !== css.charAt(i) || '/' !== css.charAt(i + 1))) {
+            ++i;
+        }
+        i += 2;
+        if ('' === css.charAt(i - 1)) {
+            return error('End of comment missing');
+        }
+        const str = css.slice(2, i - 2);
+        column += 2;
+        updatePosition(str);
+        css = css.slice(i);
+        column += 2;
+        return pos({
+            type: 'comment',
+            comment: str,
+        });
+    }
+    function selector() {
+        whitespace();
+        while (css[0] == '}') {
+            error('extra closing bracket');
+            css = css.slice(1);
+            whitespace();
+        }
+        const m = match(/^(("(?:\\"|[^"])*"|'(?:\\'|[^'])*'|[^{])+)/);
+        if (!m) {
+            return;
+        }
+        const cleanedInput = m[0]
+            .trim()
+            .replace(/\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*\/+/g, '')
+            .replace(/"(?:\\"|[^"])*"|'(?:\\'|[^'])*'/g, (m) => {
+            return m.replace(/,/g, '\u200C');
+        });
+        return customSplit(cleanedInput).map((s) => s.replace(/\u200C/g, ',').trim());
+    }
+    function customSplit(input) {
+        const result = [];
+        let currentSegment = '';
+        let depthParentheses = 0;
+        let depthBrackets = 0;
+        for (const char of input) {
+            if (char === '(') {
+                depthParentheses++;
+            }
+            else if (char === ')') {
+                depthParentheses--;
+            }
+            else if (char === '[') {
+                depthBrackets++;
+            }
+            else if (char === ']') {
+                depthBrackets--;
+            }
+            if (char === ',' && depthParentheses === 0 && depthBrackets === 0) {
+                result.push(currentSegment);
+                currentSegment = '';
+            }
+            else {
+                currentSegment += char;
+            }
+        }
+        if (currentSegment) {
+            result.push(currentSegment);
+        }
+        return result;
+    }
+    function declaration() {
+        const pos = position();
+        const propMatch = match(/^(\*?[-#\/\*\\\w]+(\[[0-9a-z_-]+\])?)\s*/);
+        if (!propMatch) {
+            return;
+        }
+        const prop = trim(propMatch[0]);
+        if (!match(/^:\s*/)) {
+            return error(`property missing ':'`);
+        }
+        const val = match(/^((?:'(?:\\'|.)*?'|"(?:\\"|.)*?"|\([^\)]*?\)|[^};])+)/);
+        const ret = pos({
+            type: 'declaration',
+            property: prop.replace(commentre, ''),
+            value: val ? trim(val[0]).replace(commentre, '') : '',
+        });
+        match(/^[;\s]*/);
+        return ret;
+    }
+    function declarations() {
+        const decls = [];
+        if (!open()) {
+            return error(`missing '{'`);
+        }
+        comments(decls);
+        let decl;
+        while ((decl = declaration())) {
+            if (decl !== false) {
+                decls.push(decl);
+                comments(decls);
+            }
+            decl = declaration();
+        }
+        if (!close()) {
+            return error(`missing '}'`);
+        }
+        return decls;
+    }
+    function keyframe() {
+        let m;
+        const vals = [];
+        const pos = position();
+        while ((m = match(/^((\d+\.\d+|\.\d+|\d+)%?|[a-z]+)\s*/))) {
+            vals.push(m[1]);
+            match(/^,\s*/);
+        }
+        if (!vals.length) {
+            return;
+        }
+        return pos({
+            type: 'keyframe',
+            values: vals,
+            declarations: declarations(),
+        });
+    }
+    function atkeyframes() {
+        const pos = position();
+        let m = match(/^@([-\w]+)?keyframes\s*/);
+        if (!m) {
+            return;
+        }
+        const vendor = m[1];
+        m = match(/^([-\w]+)\s*/);
+        if (!m) {
+            return error('@keyframes missing name');
+        }
+        const name = m[1];
+        if (!open()) {
+            return error(`@keyframes missing '{'`);
+        }
+        let frame;
+        let frames = comments();
+        while ((frame = keyframe())) {
+            frames.push(frame);
+            frames = frames.concat(comments());
+        }
+        if (!close()) {
+            return error(`@keyframes missing '}'`);
+        }
+        return pos({
+            type: 'keyframes',
+            name,
+            vendor,
+            keyframes: frames,
+        });
+    }
+    function atsupports() {
+        const pos = position();
+        const m = match(/^@supports *([^{]+)/);
+        if (!m) {
+            return;
+        }
+        const supports = trim(m[1]);
+        if (!open()) {
+            return error(`@supports missing '{'`);
+        }
+        const style = comments().concat(rules());
+        if (!close()) {
+            return error(`@supports missing '}'`);
+        }
+        return pos({
+            type: 'supports',
+            supports,
+            rules: style,
+        });
+    }
+    function athost() {
+        const pos = position();
+        const m = match(/^@host\s*/);
+        if (!m) {
+            return;
+        }
+        if (!open()) {
+            return error(`@host missing '{'`);
+        }
+        const style = comments().concat(rules());
+        if (!close()) {
+            return error(`@host missing '}'`);
+        }
+        return pos({
+            type: 'host',
+            rules: style,
+        });
+    }
+    function atmedia() {
+        const pos = position();
+        const m = match(/^@media *([^{]+)/);
+        if (!m) {
+            return;
+        }
+        const media = trim(m[1]);
+        if (!open()) {
+            return error(`@media missing '{'`);
+        }
+        const style = comments().concat(rules());
+        if (!close()) {
+            return error(`@media missing '}'`);
+        }
+        return pos({
+            type: 'media',
+            media,
+            rules: style,
+        });
+    }
+    function atcustommedia() {
+        const pos = position();
+        const m = match(/^@custom-media\s+(--[^\s]+)\s*([^{;]+);/);
+        if (!m) {
+            return;
+        }
+        return pos({
+            type: 'custom-media',
+            name: trim(m[1]),
+            media: trim(m[2]),
+        });
+    }
+    function atpage() {
+        const pos = position();
+        const m = match(/^@page */);
+        if (!m) {
+            return;
+        }
+        const sel = selector() || [];
+        if (!open()) {
+            return error(`@page missing '{'`);
+        }
+        let decls = comments();
+        let decl;
+        while ((decl = declaration())) {
+            decls.push(decl);
+            decls = decls.concat(comments());
+        }
+        if (!close()) {
+            return error(`@page missing '}'`);
+        }
+        return pos({
+            type: 'page',
+            selectors: sel,
+            declarations: decls,
+        });
+    }
+    function atdocument() {
+        const pos = position();
+        const m = match(/^@([-\w]+)?document *([^{]+)/);
+        if (!m) {
+            return;
+        }
+        const vendor = trim(m[1]);
+        const doc = trim(m[2]);
+        if (!open()) {
+            return error(`@document missing '{'`);
+        }
+        const style = comments().concat(rules());
+        if (!close()) {
+            return error(`@document missing '}'`);
+        }
+        return pos({
+            type: 'document',
+            document: doc,
+            vendor,
+            rules: style,
+        });
+    }
+    function atfontface() {
+        const pos = position();
+        const m = match(/^@font-face\s*/);
+        if (!m) {
+            return;
+        }
+        if (!open()) {
+            return error(`@font-face missing '{'`);
+        }
+        let decls = comments();
+        let decl;
+        while ((decl = declaration())) {
+            decls.push(decl);
+            decls = decls.concat(comments());
+        }
+        if (!close()) {
+            return error(`@font-face missing '}'`);
+        }
+        return pos({
+            type: 'font-face',
+            declarations: decls,
+        });
+    }
+    const atimport = _compileAtrule('import');
+    const atcharset = _compileAtrule('charset');
+    const atnamespace = _compileAtrule('namespace');
+    function _compileAtrule(name) {
+        const re = new RegExp('^@' + name + '\\s*([^;]+);');
+        return () => {
+            const pos = position();
+            const m = match(re);
+            if (!m) {
+                return;
+            }
+            const ret = { type: name };
+            ret[name] = m[1].trim();
+            return pos(ret);
+        };
+    }
+    function atrule() {
+        if (css[0] !== '@') {
+            return;
+        }
+        return (atkeyframes() ||
+            atmedia() ||
+            atcustommedia() ||
+            atsupports() ||
+            atimport() ||
+            atcharset() ||
+            atnamespace() ||
+            atdocument() ||
+            atpage() ||
+            athost() ||
+            atfontface());
+    }
+    function rule() {
+        const pos = position();
+        const sel = selector();
+        if (!sel) {
+            return error('selector missing');
+        }
+        comments();
+        return pos({
+            type: 'rule',
+            selectors: sel,
+            declarations: declarations(),
+        });
+    }
+    return addParent(stylesheet());
+}
+function trim(str) {
+    return str ? str.replace(/^\s+|\s+$/g, '') : '';
+}
+function addParent(obj, parent) {
+    const isNode = obj && typeof obj.type === 'string';
+    const childParent = isNode ? obj : parent;
+    for (const k of Object.keys(obj)) {
+        const value = obj[k];
+        if (Array.isArray(value)) {
+            value.forEach((v) => {
+                addParent(v, childParent);
+            });
+        }
+        else if (value && typeof value === 'object') {
+            addParent(value, childParent);
+        }
+    }
+    if (isNode) {
+        Object.defineProperty(obj, 'parent', {
+            configurable: true,
+            writable: true,
+            enumerable: false,
+            value: parent || null,
+        });
+    }
+    return obj;
+}
+
+const tagMap = {
+    script: 'noscript',
+    altglyph: 'altGlyph',
+    altglyphdef: 'altGlyphDef',
+    altglyphitem: 'altGlyphItem',
+    animatecolor: 'animateColor',
+    animatemotion: 'animateMotion',
+    animatetransform: 'animateTransform',
+    clippath: 'clipPath',
+    feblend: 'feBlend',
+    fecolormatrix: 'feColorMatrix',
+    fecomponenttransfer: 'feComponentTransfer',
+    fecomposite: 'feComposite',
+    feconvolvematrix: 'feConvolveMatrix',
+    fediffuselighting: 'feDiffuseLighting',
+    fedisplacementmap: 'feDisplacementMap',
+    fedistantlight: 'feDistantLight',
+    fedropshadow: 'feDropShadow',
+    feflood: 'feFlood',
+    fefunca: 'feFuncA',
+    fefuncb: 'feFuncB',
+    fefuncg: 'feFuncG',
+    fefuncr: 'feFuncR',
+    fegaussianblur: 'feGaussianBlur',
+    feimage: 'feImage',
+    femerge: 'feMerge',
+    femergenode: 'feMergeNode',
+    femorphology: 'feMorphology',
+    feoffset: 'feOffset',
+    fepointlight: 'fePointLight',
+    fespecularlighting: 'feSpecularLighting',
+    fespotlight: 'feSpotLight',
+    fetile: 'feTile',
+    feturbulence: 'feTurbulence',
+    foreignobject: 'foreignObject',
+    glyphref: 'glyphRef',
+    lineargradient: 'linearGradient',
+    radialgradient: 'radialGradient',
+};
+function getTagName(n) {
+    let tagName = tagMap[n.tagName] ? tagMap[n.tagName] : n.tagName;
+    if (tagName === 'link' && n.attributes._cssText) {
+        tagName = 'style';
+    }
+    return tagName;
+}
+function escapeRegExp(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+const MEDIA_SELECTOR = /(max|min)-device-(width|height)/;
+const MEDIA_SELECTOR_GLOBAL = new RegExp(MEDIA_SELECTOR.source, 'g');
+const HOVER_SELECTOR = /([^\\]):hover/;
+const HOVER_SELECTOR_GLOBAL = new RegExp(HOVER_SELECTOR.source, 'g');
+function adaptCssForReplay(cssText, cache) {
+    const cachedStyle = cache === null || cache === void 0 ? void 0 : cache.stylesWithHoverClass.get(cssText);
+    if (cachedStyle)
+        return cachedStyle;
+    const ast = parse(cssText, {
+        silent: true,
+    });
+    if (!ast.stylesheet) {
+        return cssText;
+    }
+    const selectors = [];
+    const medias = [];
+    function getSelectors(rule) {
+        if ('selectors' in rule && rule.selectors) {
+            rule.selectors.forEach((selector) => {
+                if (HOVER_SELECTOR.test(selector)) {
+                    selectors.push(selector);
+                }
+            });
+        }
+        if ('media' in rule && rule.media && MEDIA_SELECTOR.test(rule.media)) {
+            medias.push(rule.media);
+        }
+        if ('rules' in rule && rule.rules) {
+            rule.rules.forEach(getSelectors);
+        }
+    }
+    getSelectors(ast.stylesheet);
+    let result = cssText;
+    if (selectors.length > 0) {
+        const selectorMatcher = new RegExp(selectors
+            .filter((selector, index) => selectors.indexOf(selector) === index)
+            .sort((a, b) => b.length - a.length)
+            .map((selector) => {
+            return escapeRegExp(selector);
+        })
+            .join('|'), 'g');
+        result = result.replace(selectorMatcher, (selector) => {
+            const newSelector = selector.replace(HOVER_SELECTOR_GLOBAL, '$1.\\:hover');
+            return `${selector}, ${newSelector}`;
+        });
+    }
+    if (medias.length > 0) {
+        const mediaMatcher = new RegExp(medias
+            .filter((media, index) => medias.indexOf(media) === index)
+            .sort((a, b) => b.length - a.length)
+            .map((media) => {
+            return escapeRegExp(media);
+        })
+            .join('|'), 'g');
+        result = result.replace(mediaMatcher, (media) => {
+            return media.replace(MEDIA_SELECTOR_GLOBAL, '$1-$2');
+        });
+    }
+    cache === null || cache === void 0 ? void 0 : cache.stylesWithHoverClass.set(cssText, result);
+    return result;
+}
+function createCache() {
+    const stylesWithHoverClass = new Map();
+    return {
+        stylesWithHoverClass,
+    };
+}
+function buildNode(n, options) {
+    var _a;
+    const { doc, hackCss, cache } = options;
+    switch (n.type) {
+        case NodeType$2.Document:
+            return doc.implementation.createDocument(null, '', null);
+        case NodeType$2.DocumentType:
+            return doc.implementation.createDocumentType(n.name || 'html', n.publicId, n.systemId);
+        case NodeType$2.Element: {
+            const tagName = getTagName(n);
+            let node;
+            if (n.isSVG) {
+                node = doc.createElementNS('http://www.w3.org/2000/svg', tagName);
+            }
+            else {
+                if (n.isCustom &&
+                    ((_a = doc.defaultView) === null || _a === void 0 ? void 0 : _a.customElements) &&
+                    !doc.defaultView.customElements.get(n.tagName))
+                    doc.defaultView.customElements.define(n.tagName, class extends doc.defaultView.HTMLElement {
+                    });
+                node = doc.createElement(tagName);
+            }
+            const specialAttributes = {};
+            for (const name in n.attributes) {
+                if (!Object.prototype.hasOwnProperty.call(n.attributes, name)) {
+                    continue;
+                }
+                let value = n.attributes[name];
+                if (tagName === 'option' &&
+                    name === 'selected' &&
+                    value === false) {
+                    continue;
+                }
+                if (value === null) {
+                    continue;
+                }
+                if (value === true)
+                    value = '';
+                if (name.startsWith('rr_')) {
+                    specialAttributes[name] = value;
+                    continue;
+                }
+                const isTextarea = tagName === 'textarea' && name === 'value';
+                const isRemoteOrDynamicCss = tagName === 'style' && name === '_cssText';
+                if (isRemoteOrDynamicCss && hackCss && typeof value === 'string') {
+                    value = adaptCssForReplay(value, cache);
+                }
+                if ((isTextarea || isRemoteOrDynamicCss) && typeof value === 'string') {
+                    node.appendChild(doc.createTextNode(value));
+                    n.childNodes = [];
+                    continue;
+                }
+                try {
+                    if (n.isSVG && name === 'xlink:href') {
+                        node.setAttributeNS('http://www.w3.org/1999/xlink', name, value.toString());
+                    }
+                    else if (name === 'onload' ||
+                        name === 'onclick' ||
+                        name.substring(0, 7) === 'onmouse') {
+                        node.setAttribute('_' + name, value.toString());
+                    }
+                    else if (tagName === 'meta' &&
+                        n.attributes['http-equiv'] === 'Content-Security-Policy' &&
+                        name === 'content') {
+                        node.setAttribute('csp-content', value.toString());
+                        continue;
+                    }
+                    else if (tagName === 'link' &&
+                        (n.attributes.rel === 'preload' ||
+                            n.attributes.rel === 'modulepreload') &&
+                        n.attributes.as === 'script') {
+                    }
+                    else if (tagName === 'link' &&
+                        n.attributes.rel === 'prefetch' &&
+                        typeof n.attributes.href === 'string' &&
+                        n.attributes.href.endsWith('.js')) {
+                    }
+                    else if (tagName === 'img' &&
+                        n.attributes.srcset &&
+                        n.attributes.rr_dataURL) {
+                        node.setAttribute('rrweb-original-srcset', n.attributes.srcset);
+                    }
+                    else {
+                        node.setAttribute(name, value.toString());
+                    }
+                }
+                catch (error) {
+                }
+            }
+            for (const name in specialAttributes) {
+                const value = specialAttributes[name];
+                if (tagName === 'canvas' && name === 'rr_dataURL') {
+                    const image = document.createElement('img');
+                    image.onload = () => {
+                        const ctx = node.getContext('2d');
+                        if (ctx) {
+                            ctx.drawImage(image, 0, 0, image.width, image.height);
+                        }
+                    };
+                    image.src = value.toString();
+                    if (node.RRNodeType)
+                        node.rr_dataURL = value.toString();
+                }
+                else if (tagName === 'img' && name === 'rr_dataURL') {
+                    const image = node;
+                    if (!image.currentSrc.startsWith('data:')) {
+                        image.setAttribute('rrweb-original-src', n.attributes.src);
+                        image.src = value.toString();
+                    }
+                }
+                if (name === 'rr_width') {
+                    node.style.width = value.toString();
+                }
+                else if (name === 'rr_height') {
+                    node.style.height = value.toString();
+                }
+                else if (name === 'rr_mediaCurrentTime' &&
+                    typeof value === 'number') {
+                    node.currentTime = value;
+                }
+                else if (name === 'rr_mediaState') {
+                    switch (value) {
+                        case 'played':
+                            node
+                                .play()
+                                .catch((e) => console.warn('media playback error', e));
+                            break;
+                        case 'paused':
+                            node.pause();
+                            break;
+                    }
+                }
+                else if (name === 'rr_mediaPlaybackRate' &&
+                    typeof value === 'number') {
+                    node.playbackRate = value;
+                }
+                else if (name === 'rr_mediaMuted' && typeof value === 'boolean') {
+                    node.muted = value;
+                }
+                else if (name === 'rr_mediaLoop' && typeof value === 'boolean') {
+                    node.loop = value;
+                }
+                else if (name === 'rr_mediaVolume' && typeof value === 'number') {
+                    node.volume = value;
+                }
+            }
+            if (n.isShadowHost) {
+                if (!node.shadowRoot) {
+                    node.attachShadow({ mode: 'open' });
+                }
+                else {
+                    while (node.shadowRoot.firstChild) {
+                        node.shadowRoot.removeChild(node.shadowRoot.firstChild);
+                    }
+                }
+            }
+            return node;
+        }
+        case NodeType$2.Text:
+            return doc.createTextNode(n.isStyle && hackCss
+                ? adaptCssForReplay(n.textContent, cache)
+                : n.textContent);
+        case NodeType$2.CDATA:
+            return doc.createCDATASection(n.textContent);
+        case NodeType$2.Comment:
+            return doc.createComment(n.textContent);
+        default:
+            return null;
+    }
+}
+function buildNodeWithSN(n, options) {
+    const { doc, mirror, skipChild = false, hackCss = true, afterAppend, cache, } = options;
+    if (mirror.has(n.id)) {
+        const nodeInMirror = mirror.getNode(n.id);
+        const meta = mirror.getMeta(nodeInMirror);
+        if (isNodeMetaEqual(meta, n))
+            return mirror.getNode(n.id);
+    }
+    let node = buildNode(n, { doc, hackCss, cache });
+    if (!node) {
+        return null;
+    }
+    if (n.rootId && mirror.getNode(n.rootId) !== doc) {
+        mirror.replace(n.rootId, doc);
+    }
+    if (n.type === NodeType$2.Document) {
+        doc.close();
+        doc.open();
+        if (n.compatMode === 'BackCompat' &&
+            n.childNodes &&
+            n.childNodes[0].type !== NodeType$2.DocumentType) {
+            if (n.childNodes[0].type === NodeType$2.Element &&
+                'xmlns' in n.childNodes[0].attributes &&
+                n.childNodes[0].attributes.xmlns === 'http://www.w3.org/1999/xhtml') {
+                doc.write('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "">');
+            }
+            else {
+                doc.write('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "">');
+            }
+        }
+        node = doc;
+    }
+    mirror.add(node, n);
+    if ((n.type === NodeType$2.Document || n.type === NodeType$2.Element) &&
+        !skipChild) {
+        for (const childN of n.childNodes) {
+            const childNode = buildNodeWithSN(childN, {
+                doc,
+                mirror,
+                skipChild: false,
+                hackCss,
+                afterAppend,
+                cache,
+            });
+            if (!childNode) {
+                console.warn('Failed to rebuild', childN);
+                continue;
+            }
+            if (childN.isShadow && isElement(node) && node.shadowRoot) {
+                node.shadowRoot.appendChild(childNode);
+            }
+            else if (n.type === NodeType$2.Document &&
+                childN.type == NodeType$2.Element) {
+                const htmlElement = childNode;
+                let body = null;
+                htmlElement.childNodes.forEach((child) => {
+                    if (child.nodeName === 'BODY')
+                        body = child;
+                });
+                if (body) {
+                    htmlElement.removeChild(body);
+                    node.appendChild(childNode);
+                    htmlElement.appendChild(body);
+                }
+                else {
+                    node.appendChild(childNode);
+                }
+            }
+            else {
+                node.appendChild(childNode);
+            }
+            if (afterAppend) {
+                afterAppend(childNode, childN.id);
+            }
+        }
+    }
+    return node;
+}
+function visit(mirror, onVisit) {
+    function walk(node) {
+        onVisit(node);
+    }
+    for (const id of mirror.getIds()) {
+        if (mirror.has(id)) {
+            walk(mirror.getNode(id));
+        }
+    }
+}
+function handleScroll(node, mirror) {
+    const n = mirror.getMeta(node);
+    if ((n === null || n === void 0 ? void 0 : n.type) !== NodeType$2.Element) {
+        return;
+    }
+    const el = node;
+    for (const name in n.attributes) {
+        if (!(Object.prototype.hasOwnProperty.call(n.attributes, name) &&
+            name.startsWith('rr_'))) {
+            continue;
+        }
+        const value = n.attributes[name];
+        if (name === 'rr_scrollLeft') {
+            el.scrollLeft = value;
+        }
+        if (name === 'rr_scrollTop') {
+            el.scrollTop = value;
+        }
+    }
+}
+function rebuild(n, options) {
+    const { doc, onVisit, hackCss = true, afterAppend, cache, mirror = new Mirror$2(), } = options;
+    const node = buildNodeWithSN(n, {
+        doc,
+        mirror,
+        skipChild: false,
+        hackCss,
+        afterAppend,
+        cache,
+    });
+    visit(mirror, (visitedNode) => {
+        if (onVisit) {
+            onVisit(visitedNode);
+        }
+        handleScroll(visitedNode, mirror);
+    });
+    return node;
+}
+
+function on(type, fn, target = document) {
+    const options = { capture: true, passive: true };
+    target.addEventListener(type, fn, options);
+    return () => target.removeEventListener(type, fn, options);
+}
+const DEPARTED_MIRROR_ACCESS_WARNING = 'Please stop import mirror directly. Instead of that,' +
+    '\r\n' +
+    'now you can use replayer.getMirror() to access the mirror instance of a replayer,' +
+    '\r\n' +
+    'or you can use record.mirror to access the mirror instance during recording.';
+exports.mirror = {
+    map: {},
+    getId() {
+        console.error(DEPARTED_MIRROR_ACCESS_WARNING);
+        return -1;
+    },
+    getNode() {
+        console.error(DEPARTED_MIRROR_ACCESS_WARNING);
+        return null;
+    },
+    removeNodeFromMap() {
+        console.error(DEPARTED_MIRROR_ACCESS_WARNING);
+    },
+    has() {
+        console.error(DEPARTED_MIRROR_ACCESS_WARNING);
+        return false;
+    },
+    reset() {
+        console.error(DEPARTED_MIRROR_ACCESS_WARNING);
+    },
+};
+if (typeof window !== 'undefined' && window.Proxy && window.Reflect) {
+    exports.mirror = new Proxy(exports.mirror, {
+        get(target, prop, receiver) {
+            if (prop === 'map') {
+                console.error(DEPARTED_MIRROR_ACCESS_WARNING);
+            }
+            return Reflect.get(target, prop, receiver);
+        },
+    });
+}
+function throttle(func, wait, options = {}) {
+    let timeout = null;
+    let previous = 0;
+    return function (...args) {
+        const now = Date.now();
+        if (!previous && options.leading === false) {
+            previous = now;
+        }
+        const remaining = wait - (now - previous);
+        const context = this;
+        if (remaining <= 0 || remaining > wait) {
+            if (timeout) {
+                clearTimeout(timeout);
+                timeout = null;
+            }
+            previous = now;
+            func.apply(context, args);
+        }
+        else if (!timeout && options.trailing !== false) {
+            timeout = setTimeout(() => {
+                previous = options.leading === false ? 0 : Date.now();
+                timeout = null;
+                func.apply(context, args);
+            }, remaining);
+        }
+    };
+}
+function hookSetter(target, key, d, isRevoked, win = window) {
+    const original = win.Object.getOwnPropertyDescriptor(target, key);
+    win.Object.defineProperty(target, key, isRevoked
+        ? d
+        : {
+            set(value) {
+                setTimeout(() => {
+                    d.set.call(this, value);
+                }, 0);
+                if (original && original.set) {
+                    original.set.call(this, value);
+                }
+            },
+        });
+    return () => hookSetter(target, key, original || {}, true);
+}
+function patch(source, name, replacement) {
+    try {
+        if (!(name in source)) {
+            return () => {
+            };
+        }
+        const original = source[name];
+        const wrapped = replacement(original);
+        if (typeof wrapped === 'function') {
+            wrapped.prototype = wrapped.prototype || {};
+            Object.defineProperties(wrapped, {
+                __rrweb_original__: {
+                    enumerable: false,
+                    value: original,
+                },
+            });
+        }
+        source[name] = wrapped;
+        return () => {
+            source[name] = original;
+        };
+    }
+    catch (_a) {
+        return () => {
+        };
+    }
+}
+let nowTimestamp = Date.now;
+if (!(/[1-9][0-9]{12}/.test(Date.now().toString()))) {
+    nowTimestamp = () => new Date().getTime();
+}
+function getWindowScroll(win) {
+    var _a, _b, _c, _d, _e, _f;
+    const doc = win.document;
+    return {
+        left: doc.scrollingElement
+            ? doc.scrollingElement.scrollLeft
+            : win.pageXOffset !== undefined
+                ? win.pageXOffset
+                : (doc === null || doc === void 0 ? void 0 : doc.documentElement.scrollLeft) ||
+                    ((_b = (_a = doc === null || doc === void 0 ? void 0 : doc.body) === null || _a === void 0 ? void 0 : _a.parentElement) === null || _b === void 0 ? void 0 : _b.scrollLeft) ||
+                    ((_c = doc === null || doc === void 0 ? void 0 : doc.body) === null || _c === void 0 ? void 0 : _c.scrollLeft) ||
+                    0,
+        top: doc.scrollingElement
+            ? doc.scrollingElement.scrollTop
+            : win.pageYOffset !== undefined
+                ? win.pageYOffset
+                : (doc === null || doc === void 0 ? void 0 : doc.documentElement.scrollTop) ||
+                    ((_e = (_d = doc === null || doc === void 0 ? void 0 : doc.body) === null || _d === void 0 ? void 0 : _d.parentElement) === null || _e === void 0 ? void 0 : _e.scrollTop) ||
+                    ((_f = doc === null || doc === void 0 ? void 0 : doc.body) === null || _f === void 0 ? void 0 : _f.scrollTop) ||
+                    0,
+    };
+}
+function getWindowHeight() {
+    return (window.innerHeight ||
+        (document.documentElement && document.documentElement.clientHeight) ||
+        (document.body && document.body.clientHeight));
+}
+function getWindowWidth() {
+    return (window.innerWidth ||
+        (document.documentElement && document.documentElement.clientWidth) ||
+        (document.body && document.body.clientWidth));
+}
+function closestElementOfNode(node) {
+    if (!node) {
+        return null;
+    }
+    const el = node.nodeType === node.ELEMENT_NODE
+        ? node
+        : node.parentElement;
+    return el;
+}
+function isBlocked(node, blockClass, blockSelector, checkAncestors) {
+    if (!node) {
+        return false;
+    }
+    const el = closestElementOfNode(node);
+    if (!el) {
+        return false;
+    }
+    try {
+        if (typeof blockClass === 'string') {
+            if (el.classList.contains(blockClass))
+                return true;
+            if (checkAncestors && el.closest('.' + blockClass) !== null)
+                return true;
+        }
+        else {
+            if (classMatchesRegex(el, blockClass, checkAncestors))
+                return true;
+        }
+    }
+    catch (e) {
+    }
+    if (blockSelector) {
+        if (el.matches(blockSelector))
+            return true;
+        if (checkAncestors && el.closest(blockSelector) !== null)
+            return true;
+    }
+    return false;
+}
+function isSerialized(n, mirror) {
+    return mirror.getId(n) !== -1;
+}
+function isIgnored(n, mirror) {
+    return mirror.getId(n) === IGNORED_NODE;
+}
+function isAncestorRemoved(target, mirror) {
+    if (isShadowRoot(target)) {
+        return false;
+    }
+    const id = mirror.getId(target);
+    if (!mirror.has(id)) {
+        return true;
+    }
+    if (target.parentNode &&
+        target.parentNode.nodeType === target.DOCUMENT_NODE) {
+        return false;
+    }
+    if (!target.parentNode) {
+        return true;
+    }
+    return isAncestorRemoved(target.parentNode, mirror);
+}
+function legacy_isTouchEvent(event) {
+    return Boolean(event.changedTouches);
+}
+function polyfill$1(win = window) {
+    if ('NodeList' in win && !win.NodeList.prototype.forEach) {
+        win.NodeList.prototype.forEach = Array.prototype
+            .forEach;
+    }
+    if ('DOMTokenList' in win && !win.DOMTokenList.prototype.forEach) {
+        win.DOMTokenList.prototype.forEach = Array.prototype
+            .forEach;
+    }
+    if (!Node.prototype.contains) {
+        Node.prototype.contains = (...args) => {
+            let node = args[0];
+            if (!(0 in args)) {
+                throw new TypeError('1 argument is required');
+            }
+            do {
+                if (this === node) {
+                    return true;
+                }
+            } while ((node = node && node.parentNode));
+            return false;
+        };
+    }
+}
+function queueToResolveTrees(queue) {
+    const queueNodeMap = {};
+    const putIntoMap = (m, parent) => {
+        const nodeInTree = {
+            value: m,
+            parent,
+            children: [],
+        };
+        queueNodeMap[m.node.id] = nodeInTree;
+        return nodeInTree;
+    };
+    const queueNodeTrees = [];
+    for (const mutation of queue) {
+        const { nextId, parentId } = mutation;
+        if (nextId && nextId in queueNodeMap) {
+            const nextInTree = queueNodeMap[nextId];
+            if (nextInTree.parent) {
+                const idx = nextInTree.parent.children.indexOf(nextInTree);
+                nextInTree.parent.children.splice(idx, 0, putIntoMap(mutation, nextInTree.parent));
+            }
+            else {
+                const idx = queueNodeTrees.indexOf(nextInTree);
+                queueNodeTrees.splice(idx, 0, putIntoMap(mutation, null));
+            }
+            continue;
+        }
+        if (parentId in queueNodeMap) {
+            const parentInTree = queueNodeMap[parentId];
+            parentInTree.children.push(putIntoMap(mutation, parentInTree));
+            continue;
+        }
+        queueNodeTrees.push(putIntoMap(mutation, null));
+    }
+    return queueNodeTrees;
+}
+function iterateResolveTree(tree, cb) {
+    cb(tree.value);
+    for (let i = tree.children.length - 1; i >= 0; i--) {
+        iterateResolveTree(tree.children[i], cb);
+    }
+}
+function isSerializedIframe(n, mirror) {
+    return Boolean(n.nodeName === 'IFRAME' && mirror.getMeta(n));
+}
+function isSerializedStylesheet(n, mirror) {
+    return Boolean(n.nodeName === 'LINK' &&
+        n.nodeType === n.ELEMENT_NODE &&
+        n.getAttribute &&
+        n.getAttribute('rel') === 'stylesheet' &&
+        mirror.getMeta(n));
+}
+function getBaseDimension(node, rootIframe) {
+    var _a, _b;
+    const frameElement = (_b = (_a = node.ownerDocument) === null || _a === void 0 ? void 0 : _a.defaultView) === null || _b === void 0 ? void 0 : _b.frameElement;
+    if (!frameElement || frameElement === rootIframe) {
+        return {
+            x: 0,
+            y: 0,
+            relativeScale: 1,
+            absoluteScale: 1,
+        };
+    }
+    const frameDimension = frameElement.getBoundingClientRect();
+    const frameBaseDimension = getBaseDimension(frameElement, rootIframe);
+    const relativeScale = frameDimension.height / frameElement.clientHeight;
+    return {
+        x: frameDimension.x * frameBaseDimension.relativeScale +
+            frameBaseDimension.x,
+        y: frameDimension.y * frameBaseDimension.relativeScale +
+            frameBaseDimension.y,
+        relativeScale,
+        absoluteScale: frameBaseDimension.absoluteScale * relativeScale,
+    };
+}
+function hasShadowRoot(n) {
+    return Boolean(n === null || n === void 0 ? void 0 : n.shadowRoot);
+}
+function getNestedRule(rules, position) {
+    const rule = rules[position[0]];
+    if (position.length === 1) {
+        return rule;
+    }
+    else {
+        return getNestedRule(rule.cssRules[position[1]].cssRules, position.slice(2));
+    }
+}
+function getPositionsAndIndex(nestedIndex) {
+    const positions = [...nestedIndex];
+    const index = positions.pop();
+    return { positions, index };
+}
+function uniqueTextMutations(mutations) {
+    const idSet = new Set();
+    const uniqueMutations = [];
+    for (let i = mutations.length; i--;) {
+        const mutation = mutations[i];
+        if (!idSet.has(mutation.id)) {
+            uniqueMutations.push(mutation);
+            idSet.add(mutation.id);
+        }
+    }
+    return uniqueMutations;
+}
+class StyleSheetMirror {
+    constructor() {
+        this.id = 1;
+        this.styleIDMap = new WeakMap();
+        this.idStyleMap = new Map();
+    }
+    getId(stylesheet) {
+        var _a;
+        return (_a = this.styleIDMap.get(stylesheet)) !== null && _a !== void 0 ? _a : -1;
+    }
+    has(stylesheet) {
+        return this.styleIDMap.has(stylesheet);
+    }
+    add(stylesheet, id) {
+        if (this.has(stylesheet))
+            return this.getId(stylesheet);
+        let newId;
+        if (id === undefined) {
+            newId = this.id++;
+        }
+        else
+            newId = id;
+        this.styleIDMap.set(stylesheet, newId);
+        this.idStyleMap.set(newId, stylesheet);
+        return newId;
+    }
+    getStyle(id) {
+        return this.idStyleMap.get(id) || null;
+    }
+    reset() {
+        this.styleIDMap = new WeakMap();
+        this.idStyleMap = new Map();
+        this.id = 1;
+    }
+    generateId() {
+        return this.id++;
+    }
+}
+function getShadowHost(n) {
+    var _a, _b;
+    let shadowHost = null;
+    if (((_b = (_a = n.getRootNode) === null || _a === void 0 ? void 0 : _a.call(n)) === null || _b === void 0 ? void 0 : _b.nodeType) === Node.DOCUMENT_FRAGMENT_NODE &&
+        n.getRootNode().host)
+        shadowHost = n.getRootNode().host;
+    return shadowHost;
+}
+function getRootShadowHost(n) {
+    let rootShadowHost = n;
+    let shadowHost;
+    while ((shadowHost = getShadowHost(rootShadowHost)))
+        rootShadowHost = shadowHost;
+    return rootShadowHost;
+}
+function shadowHostInDom(n) {
+    const doc = n.ownerDocument;
+    if (!doc)
+        return false;
+    const shadowHost = getRootShadowHost(n);
+    return doc.contains(shadowHost);
+}
+function inDom(n) {
+    const doc = n.ownerDocument;
+    if (!doc)
+        return false;
+    return doc.contains(n) || shadowHostInDom(n);
+}
+
+var utils = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    on: on,
+    get _mirror () { return exports.mirror; },
+    throttle: throttle,
+    hookSetter: hookSetter,
+    patch: patch,
+    get nowTimestamp () { return nowTimestamp; },
+    getWindowScroll: getWindowScroll,
+    getWindowHeight: getWindowHeight,
+    getWindowWidth: getWindowWidth,
+    closestElementOfNode: closestElementOfNode,
+    isBlocked: isBlocked,
+    isSerialized: isSerialized,
+    isIgnored: isIgnored,
+    isAncestorRemoved: isAncestorRemoved,
+    legacy_isTouchEvent: legacy_isTouchEvent,
+    polyfill: polyfill$1,
+    queueToResolveTrees: queueToResolveTrees,
+    iterateResolveTree: iterateResolveTree,
+    isSerializedIframe: isSerializedIframe,
+    isSerializedStylesheet: isSerializedStylesheet,
+    getBaseDimension: getBaseDimension,
+    hasShadowRoot: hasShadowRoot,
+    getNestedRule: getNestedRule,
+    getPositionsAndIndex: getPositionsAndIndex,
+    uniqueTextMutations: uniqueTextMutations,
+    StyleSheetMirror: StyleSheetMirror,
+    getShadowHost: getShadowHost,
+    getRootShadowHost: getRootShadowHost,
+    shadowHostInDom: shadowHostInDom,
+    inDom: inDom
+});
+
+var EventType = /* @__PURE__ */ ((EventType2) => {
+  EventType2[EventType2["DomContentLoaded"] = 0] = "DomContentLoaded";
+  EventType2[EventType2["Load"] = 1] = "Load";
+  EventType2[EventType2["FullSnapshot"] = 2] = "FullSnapshot";
+  EventType2[EventType2["IncrementalSnapshot"] = 3] = "IncrementalSnapshot";
+  EventType2[EventType2["Meta"] = 4] = "Meta";
+  EventType2[EventType2["Custom"] = 5] = "Custom";
+  EventType2[EventType2["Plugin"] = 6] = "Plugin";
+  return EventType2;
+})(EventType || {});
+var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
+  IncrementalSource2[IncrementalSource2["Mutation"] = 0] = "Mutation";
+  IncrementalSource2[IncrementalSource2["MouseMove"] = 1] = "MouseMove";
+  IncrementalSource2[IncrementalSource2["MouseInteraction"] = 2] = "MouseInteraction";
+  IncrementalSource2[IncrementalSource2["Scroll"] = 3] = "Scroll";
+  IncrementalSource2[IncrementalSource2["ViewportResize"] = 4] = "ViewportResize";
+  IncrementalSource2[IncrementalSource2["Input"] = 5] = "Input";
+  IncrementalSource2[IncrementalSource2["TouchMove"] = 6] = "TouchMove";
+  IncrementalSource2[IncrementalSource2["MediaInteraction"] = 7] = "MediaInteraction";
+  IncrementalSource2[IncrementalSource2["StyleSheetRule"] = 8] = "StyleSheetRule";
+  IncrementalSource2[IncrementalSource2["CanvasMutation"] = 9] = "CanvasMutation";
+  IncrementalSource2[IncrementalSource2["Font"] = 10] = "Font";
+  IncrementalSource2[IncrementalSource2["Log"] = 11] = "Log";
+  IncrementalSource2[IncrementalSource2["Drag"] = 12] = "Drag";
+  IncrementalSource2[IncrementalSource2["StyleDeclaration"] = 13] = "StyleDeclaration";
+  IncrementalSource2[IncrementalSource2["Selection"] = 14] = "Selection";
+  IncrementalSource2[IncrementalSource2["AdoptedStyleSheet"] = 15] = "AdoptedStyleSheet";
+  IncrementalSource2[IncrementalSource2["CustomElement"] = 16] = "CustomElement";
+  return IncrementalSource2;
+})(IncrementalSource || {});
+var MouseInteractions = /* @__PURE__ */ ((MouseInteractions2) => {
+  MouseInteractions2[MouseInteractions2["MouseUp"] = 0] = "MouseUp";
+  MouseInteractions2[MouseInteractions2["MouseDown"] = 1] = "MouseDown";
+  MouseInteractions2[MouseInteractions2["Click"] = 2] = "Click";
+  MouseInteractions2[MouseInteractions2["ContextMenu"] = 3] = "ContextMenu";
+  MouseInteractions2[MouseInteractions2["DblClick"] = 4] = "DblClick";
+  MouseInteractions2[MouseInteractions2["Focus"] = 5] = "Focus";
+  MouseInteractions2[MouseInteractions2["Blur"] = 6] = "Blur";
+  MouseInteractions2[MouseInteractions2["TouchStart"] = 7] = "TouchStart";
+  MouseInteractions2[MouseInteractions2["TouchMove_Departed"] = 8] = "TouchMove_Departed";
+  MouseInteractions2[MouseInteractions2["TouchEnd"] = 9] = "TouchEnd";
+  MouseInteractions2[MouseInteractions2["TouchCancel"] = 10] = "TouchCancel";
+  return MouseInteractions2;
+})(MouseInteractions || {});
+var PointerTypes = /* @__PURE__ */ ((PointerTypes2) => {
+  PointerTypes2[PointerTypes2["Mouse"] = 0] = "Mouse";
+  PointerTypes2[PointerTypes2["Pen"] = 1] = "Pen";
+  PointerTypes2[PointerTypes2["Touch"] = 2] = "Touch";
+  return PointerTypes2;
+})(PointerTypes || {});
+var CanvasContext = /* @__PURE__ */ ((CanvasContext2) => {
+  CanvasContext2[CanvasContext2["2D"] = 0] = "2D";
+  CanvasContext2[CanvasContext2["WebGL"] = 1] = "WebGL";
+  CanvasContext2[CanvasContext2["WebGL2"] = 2] = "WebGL2";
+  return CanvasContext2;
+})(CanvasContext || {});
+var ReplayerEvents = /* @__PURE__ */ ((ReplayerEvents2) => {
+  ReplayerEvents2["Start"] = "start";
+  ReplayerEvents2["Pause"] = "pause";
+  ReplayerEvents2["Resume"] = "resume";
+  ReplayerEvents2["Resize"] = "resize";
+  ReplayerEvents2["Finish"] = "finish";
+  ReplayerEvents2["FullsnapshotRebuilded"] = "fullsnapshot-rebuilded";
+  ReplayerEvents2["LoadStylesheetStart"] = "load-stylesheet-start";
+  ReplayerEvents2["LoadStylesheetEnd"] = "load-stylesheet-end";
+  ReplayerEvents2["SkipStart"] = "skip-start";
+  ReplayerEvents2["SkipEnd"] = "skip-end";
+  ReplayerEvents2["MouseInteraction"] = "mouse-interaction";
+  ReplayerEvents2["EventCast"] = "event-cast";
+  ReplayerEvents2["CustomEvent"] = "custom-event";
+  ReplayerEvents2["Flush"] = "flush";
+  ReplayerEvents2["StateChange"] = "state-change";
+  ReplayerEvents2["PlayBack"] = "play-back";
+  ReplayerEvents2["Destroy"] = "destroy";
+  return ReplayerEvents2;
+})(ReplayerEvents || {});
+
+function isNodeInLinkedList(n) {
+    return '__ln' in n;
+}
+class DoubleLinkedList {
+    constructor() {
+        this.length = 0;
+        this.head = null;
+        this.tail = null;
+    }
+    get(position) {
+        if (position >= this.length) {
+            throw new Error('Position outside of list range');
+        }
+        let current = this.head;
+        for (let index = 0; index < position; index++) {
+            current = (current === null || current === void 0 ? void 0 : current.next) || null;
+        }
+        return current;
+    }
+    addNode(n) {
+        const node = {
+            value: n,
+            previous: null,
+            next: null,
+        };
+        n.__ln = node;
+        if (n.previousSibling && isNodeInLinkedList(n.previousSibling)) {
+            const current = n.previousSibling.__ln.next;
+            node.next = current;
+            node.previous = n.previousSibling.__ln;
+            n.previousSibling.__ln.next = node;
+            if (current) {
+                current.previous = node;
+            }
+        }
+        else if (n.nextSibling &&
+            isNodeInLinkedList(n.nextSibling) &&
+            n.nextSibling.__ln.previous) {
+            const current = n.nextSibling.__ln.previous;
+            node.previous = current;
+            node.next = n.nextSibling.__ln;
+            n.nextSibling.__ln.previous = node;
+            if (current) {
+                current.next = node;
+            }
+        }
+        else {
+            if (this.head) {
+                this.head.previous = node;
+            }
+            node.next = this.head;
+            this.head = node;
+        }
+        if (node.next === null) {
+            this.tail = node;
+        }
+        this.length++;
+    }
+    removeNode(n) {
+        const current = n.__ln;
+        if (!this.head) {
+            return;
+        }
+        if (!current.previous) {
+            this.head = current.next;
+            if (this.head) {
+                this.head.previous = null;
+            }
+            else {
+                this.tail = null;
+            }
+        }
+        else {
+            current.previous.next = current.next;
+            if (current.next) {
+                current.next.previous = current.previous;
+            }
+            else {
+                this.tail = current.previous;
+            }
+        }
+        if (n.__ln) {
+            delete n.__ln;
+        }
+        this.length--;
+    }
+}
+const moveKey = (id, parentId) => `${id}@${parentId}`;
+class MutationBuffer {
+    constructor() {
+        this.frozen = false;
+        this.locked = false;
+        this.texts = [];
+        this.attributes = [];
+        this.attributeMap = new WeakMap();
+        this.removes = [];
+        this.mapRemoves = [];
+        this.movedMap = {};
+        this.addedSet = new Set();
+        this.movedSet = new Set();
+        this.droppedSet = new Set();
+        this.processMutations = (mutations) => {
+            mutations.forEach(this.processMutation);
+            this.emit();
+        };
+        this.emit = () => {
+            if (this.frozen || this.locked) {
+                return;
+            }
+            const adds = [];
+            const addedIds = new Set();
+            const addList = new DoubleLinkedList();
+            const getNextId = (n) => {
+                let ns = n;
+                let nextId = IGNORED_NODE;
+                while (nextId === IGNORED_NODE) {
+                    ns = ns && ns.nextSibling;
+                    nextId = ns && this.mirror.getId(ns);
+                }
+                return nextId;
+            };
+            const pushAdd = (n) => {
+                if (!n.parentNode ||
+                    !inDom(n) ||
+                    n.parentNode.tagName === 'TEXTAREA') {
+                    return;
+                }
+                const parentId = isShadowRoot(n.parentNode)
+                    ? this.mirror.getId(getShadowHost(n))
+                    : this.mirror.getId(n.parentNode);
+                const nextId = getNextId(n);
+                if (parentId === -1 || nextId === -1) {
+                    return addList.addNode(n);
+                }
+                const sn = serializeNodeWithId(n, {
+                    doc: this.doc,
+                    mirror: this.mirror,
+                    blockClass: this.blockClass,
+                    blockSelector: this.blockSelector,
+                    maskTextClass: this.maskTextClass,
+                    maskTextSelector: this.maskTextSelector,
+                    skipChild: true,
+                    newlyAddedElement: true,
+                    inlineStylesheet: this.inlineStylesheet,
+                    maskInputOptions: this.maskInputOptions,
+                    maskTextFn: this.maskTextFn,
+                    maskInputFn: this.maskInputFn,
+                    slimDOMOptions: this.slimDOMOptions,
+                    dataURLOptions: this.dataURLOptions,
+                    recordCanvas: this.recordCanvas,
+                    inlineImages: this.inlineImages,
+                    onSerialize: (currentN) => {
+                        if (isSerializedIframe(currentN, this.mirror)) {
+                            this.iframeManager.addIframe(currentN);
+                        }
+                        if (isSerializedStylesheet(currentN, this.mirror)) {
+                            this.stylesheetManager.trackLinkElement(currentN);
+                        }
+                        if (hasShadowRoot(n)) {
+                            this.shadowDomManager.addShadowRoot(n.shadowRoot, this.doc);
+                        }
+                    },
+                    onIframeLoad: (iframe, childSn) => {
+                        this.iframeManager.attachIframe(iframe, childSn);
+                        this.shadowDomManager.observeAttachShadow(iframe);
+                    },
+                    onStylesheetLoad: (link, childSn) => {
+                        this.stylesheetManager.attachLinkElement(link, childSn);
+                    },
+                });
+                if (sn) {
+                    adds.push({
+                        parentId,
+                        nextId,
+                        node: sn,
+                    });
+                    addedIds.add(sn.id);
+                }
+            };
+            while (this.mapRemoves.length) {
+                this.mirror.removeNodeFromMap(this.mapRemoves.shift());
+            }
+            for (const n of this.movedSet) {
+                if (isParentRemoved(this.removes, n, this.mirror) &&
+                    !this.movedSet.has(n.parentNode)) {
+                    continue;
+                }
+                pushAdd(n);
+            }
+            for (const n of this.addedSet) {
+                if (!isAncestorInSet(this.droppedSet, n) &&
+                    !isParentRemoved(this.removes, n, this.mirror)) {
+                    pushAdd(n);
+                }
+                else if (isAncestorInSet(this.movedSet, n)) {
+                    pushAdd(n);
+                }
+                else {
+                    this.droppedSet.add(n);
+                }
+            }
+            let candidate = null;
+            while (addList.length) {
+                let node = null;
+                if (candidate) {
+                    const parentId = this.mirror.getId(candidate.value.parentNode);
+                    const nextId = getNextId(candidate.value);
+                    if (parentId !== -1 && nextId !== -1) {
+                        node = candidate;
+                    }
+                }
+                if (!node) {
+                    let tailNode = addList.tail;
+                    while (tailNode) {
+                        const _node = tailNode;
+                        tailNode = tailNode.previous;
+                        if (_node) {
+                            const parentId = this.mirror.getId(_node.value.parentNode);
+                            const nextId = getNextId(_node.value);
+                            if (nextId === -1)
+                                continue;
+                            else if (parentId !== -1) {
+                                node = _node;
+                                break;
+                            }
+                            else {
+                                const unhandledNode = _node.value;
+                                if (unhandledNode.parentNode &&
+                                    unhandledNode.parentNode.nodeType ===
+                                        Node.DOCUMENT_FRAGMENT_NODE) {
+                                    const shadowHost = unhandledNode.parentNode
+                                        .host;
+                                    const parentId = this.mirror.getId(shadowHost);
+                                    if (parentId !== -1) {
+                                        node = _node;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!node) {
+                    while (addList.head) {
+                        addList.removeNode(addList.head.value);
+                    }
+                    break;
+                }
+                candidate = node.previous;
+                addList.removeNode(node.value);
+                pushAdd(node.value);
+            }
+            const payload = {
+                texts: this.texts
+                    .map((text) => {
+                    const n = text.node;
+                    if (n.parentNode &&
+                        n.parentNode.tagName === 'TEXTAREA') {
+                        this.genTextAreaValueMutation(n.parentNode);
+                    }
+                    return {
+                        id: this.mirror.getId(n),
+                        value: text.value,
+                    };
+                })
+                    .filter((text) => !addedIds.has(text.id))
+                    .filter((text) => this.mirror.has(text.id)),
+                attributes: this.attributes
+                    .map((attribute) => {
+                    const { attributes } = attribute;
+                    if (typeof attributes.style === 'string') {
+                        const diffAsStr = JSON.stringify(attribute.styleDiff);
+                        const unchangedAsStr = JSON.stringify(attribute._unchangedStyles);
+                        if (diffAsStr.length < attributes.style.length) {
+                            if ((diffAsStr + unchangedAsStr).split('var(').length ===
+                                attributes.style.split('var(').length) {
+                                attributes.style = attribute.styleDiff;
+                            }
+                        }
+                    }
+                    return {
+                        id: this.mirror.getId(attribute.node),
+                        attributes: attributes,
+                    };
+                })
+                    .filter((attribute) => !addedIds.has(attribute.id))
+                    .filter((attribute) => this.mirror.has(attribute.id)),
+                removes: this.removes,
+                adds,
+            };
+            if (!payload.texts.length &&
+                !payload.attributes.length &&
+                !payload.removes.length &&
+                !payload.adds.length) {
+                return;
+            }
+            this.texts = [];
+            this.attributes = [];
+            this.attributeMap = new WeakMap();
+            this.removes = [];
+            this.addedSet = new Set();
+            this.movedSet = new Set();
+            this.droppedSet = new Set();
+            this.movedMap = {};
+            this.mutationCb(payload);
+        };
+        this.genTextAreaValueMutation = (textarea) => {
+            let item = this.attributeMap.get(textarea);
+            if (!item) {
+                item = {
+                    node: textarea,
+                    attributes: {},
+                    styleDiff: {},
+                    _unchangedStyles: {},
+                };
+                this.attributes.push(item);
+                this.attributeMap.set(textarea, item);
+            }
+            item.attributes.value = Array.from(textarea.childNodes, (cn) => cn.textContent || '').join('');
+        };
+        this.processMutation = (m) => {
+            if (isIgnored(m.target, this.mirror)) {
+                return;
+            }
+            switch (m.type) {
+                case 'characterData': {
+                    const value = m.target.textContent;
+                    if (!isBlocked(m.target, this.blockClass, this.blockSelector, false) &&
+                        value !== m.oldValue) {
+                        this.texts.push({
+                            value: needMaskingText(m.target, this.maskTextClass, this.maskTextSelector, true) && value
+                                ? this.maskTextFn
+                                    ? this.maskTextFn(value, closestElementOfNode(m.target))
+                                    : value.replace(/[\S]/g, '*')
+                                : value,
+                            node: m.target,
+                        });
+                    }
+                    break;
+                }
+                case 'attributes': {
+                    const target = m.target;
+                    let attributeName = m.attributeName;
+                    let value = m.target.getAttribute(attributeName);
+                    if (attributeName === 'value') {
+                        const type = getInputType(target);
+                        value = maskInputValue({
+                            element: target,
+                            maskInputOptions: this.maskInputOptions,
+                            tagName: target.tagName,
+                            type,
+                            value,
+                            maskInputFn: this.maskInputFn,
+                        });
+                    }
+                    if (isBlocked(m.target, this.blockClass, this.blockSelector, false) ||
+                        value === m.oldValue) {
+                        return;
+                    }
+                    let item = this.attributeMap.get(m.target);
+                    if (target.tagName === 'IFRAME' &&
+                        attributeName === 'src' &&
+                        !this.keepIframeSrcFn(value)) {
+                        if (!target.contentDocument) {
+                            attributeName = 'rr_src';
+                        }
+                        else {
+                            return;
+                        }
+                    }
+                    if (!item) {
+                        item = {
+                            node: m.target,
+                            attributes: {},
+                            styleDiff: {},
+                            _unchangedStyles: {},
+                        };
+                        this.attributes.push(item);
+                        this.attributeMap.set(m.target, item);
+                    }
+                    if (attributeName === 'type' &&
+                        target.tagName === 'INPUT' &&
+                        (m.oldValue || '').toLowerCase() === 'password') {
+                        target.setAttribute('data-rr-is-password', 'true');
+                    }
+                    if (!ignoreAttribute(target.tagName, attributeName)) {
+                        item.attributes[attributeName] = transformAttribute(this.doc, toLowerCase(target.tagName), toLowerCase(attributeName), value);
+                        if (attributeName === 'style') {
+                            if (!this.unattachedDoc) {
+                                try {
+                                    this.unattachedDoc =
+                                        document.implementation.createHTMLDocument();
+                                }
+                                catch (e) {
+                                    this.unattachedDoc = this.doc;
+                                }
+                            }
+                            const old = this.unattachedDoc.createElement('span');
+                            if (m.oldValue) {
+                                old.setAttribute('style', m.oldValue);
+                            }
+                            for (const pname of Array.from(target.style)) {
+                                const newValue = target.style.getPropertyValue(pname);
+                                const newPriority = target.style.getPropertyPriority(pname);
+                                if (newValue !== old.style.getPropertyValue(pname) ||
+                                    newPriority !== old.style.getPropertyPriority(pname)) {
+                                    if (newPriority === '') {
+                                        item.styleDiff[pname] = newValue;
+                                    }
+                                    else {
+                                        item.styleDiff[pname] = [newValue, newPriority];
+                                    }
+                                }
+                                else {
+                                    item._unchangedStyles[pname] = [newValue, newPriority];
+                                }
+                            }
+                            for (const pname of Array.from(old.style)) {
+                                if (target.style.getPropertyValue(pname) === '') {
+                                    item.styleDiff[pname] = false;
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+                case 'childList': {
+                    if (isBlocked(m.target, this.blockClass, this.blockSelector, true))
+                        return;
+                    if (m.target.tagName === 'TEXTAREA') {
+                        this.genTextAreaValueMutation(m.target);
+                        return;
+                    }
+                    m.addedNodes.forEach((n) => this.genAdds(n, m.target));
+                    m.removedNodes.forEach((n) => {
+                        const nodeId = this.mirror.getId(n);
+                        const parentId = isShadowRoot(m.target)
+                            ? this.mirror.getId(m.target.host)
+                            : this.mirror.getId(m.target);
+                        if (isBlocked(m.target, this.blockClass, this.blockSelector, false) ||
+                            isIgnored(n, this.mirror) ||
+                            !isSerialized(n, this.mirror)) {
+                            return;
+                        }
+                        if (this.addedSet.has(n)) {
+                            deepDelete(this.addedSet, n);
+                            this.droppedSet.add(n);
+                        }
+                        else if (this.addedSet.has(m.target) && nodeId === -1) ;
+                        else if (isAncestorRemoved(m.target, this.mirror)) ;
+                        else if (this.movedSet.has(n) &&
+                            this.movedMap[moveKey(nodeId, parentId)]) {
+                            deepDelete(this.movedSet, n);
+                        }
+                        else {
+                            this.removes.push({
+                                parentId,
+                                id: nodeId,
+                                isShadow: isShadowRoot(m.target) && isNativeShadowDom(m.target)
+                                    ? true
+                                    : undefined,
+                            });
+                        }
+                        this.mapRemoves.push(n);
+                    });
+                    break;
+                }
+            }
+        };
+        this.genAdds = (n, target) => {
+            if (this.processedNodeManager.inOtherBuffer(n, this))
+                return;
+            if (this.addedSet.has(n) || this.movedSet.has(n))
+                return;
+            if (this.mirror.hasNode(n)) {
+                if (isIgnored(n, this.mirror)) {
+                    return;
+                }
+                this.movedSet.add(n);
+                let targetId = null;
+                if (target && this.mirror.hasNode(target)) {
+                    targetId = this.mirror.getId(target);
+                }
+                if (targetId && targetId !== -1) {
+                    this.movedMap[moveKey(this.mirror.getId(n), targetId)] = true;
+                }
+            }
+            else {
+                this.addedSet.add(n);
+                this.droppedSet.delete(n);
+            }
+            if (!isBlocked(n, this.blockClass, this.blockSelector, false)) {
+                n.childNodes.forEach((childN) => this.genAdds(childN));
+                if (hasShadowRoot(n)) {
+                    n.shadowRoot.childNodes.forEach((childN) => {
+                        this.processedNodeManager.add(childN, this);
+                        this.genAdds(childN, n);
+                    });
+                }
+            }
+        };
+    }
+    init(options) {
+        [
+            'mutationCb',
+            'blockClass',
+            'blockSelector',
+            'maskTextClass',
+            'maskTextSelector',
+            'inlineStylesheet',
+            'maskInputOptions',
+            'maskTextFn',
+            'maskInputFn',
+            'keepIframeSrcFn',
+            'recordCanvas',
+            'inlineImages',
+            'slimDOMOptions',
+            'dataURLOptions',
+            'doc',
+            'mirror',
+            'iframeManager',
+            'stylesheetManager',
+            'shadowDomManager',
+            'canvasManager',
+            'processedNodeManager',
+        ].forEach((key) => {
+            this[key] = options[key];
+        });
+    }
+    freeze() {
+        this.frozen = true;
+        this.canvasManager.freeze();
+    }
+    unfreeze() {
+        this.frozen = false;
+        this.canvasManager.unfreeze();
+        this.emit();
+    }
+    isFrozen() {
+        return this.frozen;
+    }
+    lock() {
+        this.locked = true;
+        this.canvasManager.lock();
+    }
+    unlock() {
+        this.locked = false;
+        this.canvasManager.unlock();
+        this.emit();
+    }
+    reset() {
+        this.shadowDomManager.reset();
+        this.canvasManager.reset();
+    }
+}
+function deepDelete(addsSet, n) {
+    addsSet.delete(n);
+    n.childNodes.forEach((childN) => deepDelete(addsSet, childN));
+}
+function isParentRemoved(removes, n, mirror) {
+    if (removes.length === 0)
+        return false;
+    return _isParentRemoved(removes, n, mirror);
+}
+function _isParentRemoved(removes, n, mirror) {
+    const { parentNode } = n;
+    if (!parentNode) {
+        return false;
+    }
+    const parentId = mirror.getId(parentNode);
+    if (removes.some((r) => r.id === parentId)) {
+        return true;
+    }
+    return _isParentRemoved(removes, parentNode, mirror);
+}
+function isAncestorInSet(set, n) {
+    if (set.size === 0)
+        return false;
+    return _isAncestorInSet(set, n);
+}
+function _isAncestorInSet(set, n) {
+    const { parentNode } = n;
+    if (!parentNode) {
+        return false;
+    }
+    if (set.has(parentNode)) {
+        return true;
+    }
+    return _isAncestorInSet(set, parentNode);
+}
+
+let errorHandler;
+function registerErrorHandler(handler) {
+    errorHandler = handler;
+}
+function unregisterErrorHandler() {
+    errorHandler = undefined;
+}
+const callbackWrapper = (cb) => {
+    if (!errorHandler) {
+        return cb;
+    }
+    const rrwebWrapped = ((...rest) => {
+        try {
+            return cb(...rest);
+        }
+        catch (error) {
+            if (errorHandler && errorHandler(error) === true) {
+                return;
+            }
+            throw error;
+        }
+    });
+    return rrwebWrapped;
+};
+
+const mutationBuffers = [];
+function getEventTarget(event) {
+    try {
+        if ('composedPath' in event) {
+            const path = event.composedPath();
+            if (path.length) {
+                return path[0];
+            }
+        }
+        else if ('path' in event && event.path.length) {
+            return event.path[0];
+        }
+    }
+    catch (_a) {
+    }
+    return event && event.target;
+}
+function initMutationObserver(options, rootEl) {
+    var _a, _b;
+    const mutationBuffer = new MutationBuffer();
+    mutationBuffers.push(mutationBuffer);
+    mutationBuffer.init(options);
+    let mutationObserverCtor = window.MutationObserver ||
+        window.__rrMutationObserver;
+    const angularZoneSymbol = (_b = (_a = window === null || window === void 0 ? void 0 : window.Zone) === null || _a === void 0 ? void 0 : _a.__symbol__) === null || _b === void 0 ? void 0 : _b.call(_a, 'MutationObserver');
+    if (angularZoneSymbol &&
+        window[angularZoneSymbol]) {
+        mutationObserverCtor = window[angularZoneSymbol];
+    }
+    const observer = new mutationObserverCtor(callbackWrapper(mutationBuffer.processMutations.bind(mutationBuffer)));
+    observer.observe(rootEl, {
+        attributes: true,
+        attributeOldValue: true,
+        characterData: true,
+        characterDataOldValue: true,
+        childList: true,
+        subtree: true,
+    });
+    return observer;
+}
+function initMoveObserver({ mousemoveCb, sampling, doc, mirror, }) {
+    if (sampling.mousemove === false) {
+        return () => {
+        };
+    }
+    const threshold = typeof sampling.mousemove === 'number' ? sampling.mousemove : 50;
+    const callbackThreshold = typeof sampling.mousemoveCallback === 'number'
+        ? sampling.mousemoveCallback
+        : 500;
+    let positions = [];
+    let timeBaseline;
+    const wrappedCb = throttle(callbackWrapper((source) => {
+        const totalOffset = Date.now() - timeBaseline;
+        mousemoveCb(positions.map((p) => {
+            p.timeOffset -= totalOffset;
+            return p;
+        }), source);
+        positions = [];
+        timeBaseline = null;
+    }), callbackThreshold);
+    const updatePosition = callbackWrapper(throttle(callbackWrapper((evt) => {
+        const target = getEventTarget(evt);
+        const { clientX, clientY } = legacy_isTouchEvent(evt)
+            ? evt.changedTouches[0]
+            : evt;
+        if (!timeBaseline) {
+            timeBaseline = nowTimestamp();
+        }
+        positions.push({
+            x: clientX,
+            y: clientY,
+            id: mirror.getId(target),
+            timeOffset: nowTimestamp() - timeBaseline,
+        });
+        wrappedCb(typeof DragEvent !== 'undefined' && evt instanceof DragEvent
+            ? IncrementalSource.Drag
+            : evt instanceof MouseEvent
+                ? IncrementalSource.MouseMove
+                : IncrementalSource.TouchMove);
+    }), threshold, {
+        trailing: false,
+    }));
+    const handlers = [
+        on('mousemove', updatePosition, doc),
+        on('touchmove', updatePosition, doc),
+        on('drag', updatePosition, doc),
+    ];
+    return callbackWrapper(() => {
+        handlers.forEach((h) => h());
+    });
+}
+function initMouseInteractionObserver({ mouseInteractionCb, doc, mirror, blockClass, blockSelector, sampling, }) {
+    if (sampling.mouseInteraction === false) {
+        return () => {
+        };
+    }
+    const disableMap = sampling.mouseInteraction === true ||
+        sampling.mouseInteraction === undefined
+        ? {}
+        : sampling.mouseInteraction;
+    const handlers = [];
+    let currentPointerType = null;
+    const getHandler = (eventKey) => {
+        return (event) => {
+            const target = getEventTarget(event);
+            if (isBlocked(target, blockClass, blockSelector, true)) {
+                return;
+            }
+            let pointerType = null;
+            let thisEventKey = eventKey;
+            if ('pointerType' in event) {
+                switch (event.pointerType) {
+                    case 'mouse':
+                        pointerType = PointerTypes.Mouse;
+                        break;
+                    case 'touch':
+                        pointerType = PointerTypes.Touch;
+                        break;
+                    case 'pen':
+                        pointerType = PointerTypes.Pen;
+                        break;
+                }
+                if (pointerType === PointerTypes.Touch) {
+                    if (MouseInteractions[eventKey] === MouseInteractions.MouseDown) {
+                        thisEventKey = 'TouchStart';
+                    }
+                    else if (MouseInteractions[eventKey] === MouseInteractions.MouseUp) {
+                        thisEventKey = 'TouchEnd';
+                    }
+                }
+                else if (pointerType === PointerTypes.Pen) ;
+            }
+            else if (legacy_isTouchEvent(event)) {
+                pointerType = PointerTypes.Touch;
+            }
+            if (pointerType !== null) {
+                currentPointerType = pointerType;
+                if ((thisEventKey.startsWith('Touch') &&
+                    pointerType === PointerTypes.Touch) ||
+                    (thisEventKey.startsWith('Mouse') &&
+                        pointerType === PointerTypes.Mouse)) {
+                    pointerType = null;
+                }
+            }
+            else if (MouseInteractions[eventKey] === MouseInteractions.Click) {
+                pointerType = currentPointerType;
+                currentPointerType = null;
+            }
+            const e = legacy_isTouchEvent(event) ? event.changedTouches[0] : event;
+            if (!e) {
+                return;
+            }
+            const id = mirror.getId(target);
+            const { clientX, clientY } = e;
+            callbackWrapper(mouseInteractionCb)(Object.assign({ type: MouseInteractions[thisEventKey], id, x: clientX, y: clientY }, (pointerType !== null && { pointerType })));
+        };
+    };
+    Object.keys(MouseInteractions)
+        .filter((key) => Number.isNaN(Number(key)) &&
+        !key.endsWith('_Departed') &&
+        disableMap[key] !== false)
+        .forEach((eventKey) => {
+        let eventName = toLowerCase(eventKey);
+        const handler = getHandler(eventKey);
+        if (window.PointerEvent) {
+            switch (MouseInteractions[eventKey]) {
+                case MouseInteractions.MouseDown:
+                case MouseInteractions.MouseUp:
+                    eventName = eventName.replace('mouse', 'pointer');
+                    break;
+                case MouseInteractions.TouchStart:
+                case MouseInteractions.TouchEnd:
+                    return;
+            }
+        }
+        handlers.push(on(eventName, handler, doc));
+    });
+    return callbackWrapper(() => {
+        handlers.forEach((h) => h());
+    });
+}
+function initScrollObserver({ scrollCb, doc, mirror, blockClass, blockSelector, sampling, }) {
+    const updatePosition = callbackWrapper(throttle(callbackWrapper((evt) => {
+        const target = getEventTarget(evt);
+        if (!target ||
+            isBlocked(target, blockClass, blockSelector, true)) {
+            return;
+        }
+        const id = mirror.getId(target);
+        if (target === doc && doc.defaultView) {
+            const scrollLeftTop = getWindowScroll(doc.defaultView);
+            scrollCb({
+                id,
+                x: scrollLeftTop.left,
+                y: scrollLeftTop.top,
+            });
+        }
+        else {
+            scrollCb({
+                id,
+                x: target.scrollLeft,
+                y: target.scrollTop,
+            });
+        }
+    }), sampling.scroll || 100));
+    return on('scroll', updatePosition, doc);
+}
+function initViewportResizeObserver({ viewportResizeCb }, { win }) {
+    let lastH = -1;
+    let lastW = -1;
+    const updateDimension = callbackWrapper(throttle(callbackWrapper(() => {
+        const height = getWindowHeight();
+        const width = getWindowWidth();
+        if (lastH !== height || lastW !== width) {
+            viewportResizeCb({
+                width: Number(width),
+                height: Number(height),
+            });
+            lastH = height;
+            lastW = width;
+        }
+    }), 200));
+    return on('resize', updateDimension, win);
+}
+const INPUT_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
+const lastInputValueMap = new WeakMap();
+function initInputObserver({ inputCb, doc, mirror, blockClass, blockSelector, ignoreClass, ignoreSelector, maskInputOptions, maskInputFn, sampling, userTriggeredOnInput, }) {
+    function eventHandler(event) {
+        let target = getEventTarget(event);
+        const userTriggered = event.isTrusted;
+        const tagName = target && target.tagName;
+        if (target && tagName === 'OPTION') {
+            target = target.parentElement;
+        }
+        if (!target ||
+            !tagName ||
+            INPUT_TAGS.indexOf(tagName) < 0 ||
+            isBlocked(target, blockClass, blockSelector, true)) {
+            return;
+        }
+        if (target.classList.contains(ignoreClass) ||
+            (ignoreSelector && target.matches(ignoreSelector))) {
+            return;
+        }
+        let text = target.value;
+        let isChecked = false;
+        const type = getInputType(target) || '';
+        if (type === 'radio' || type === 'checkbox') {
+            isChecked = target.checked;
+        }
+        else if (maskInputOptions[tagName.toLowerCase()] ||
+            maskInputOptions[type]) {
+            text = maskInputValue({
+                element: target,
+                maskInputOptions,
+                tagName,
+                type,
+                value: text,
+                maskInputFn,
+            });
+        }
+        cbWithDedup(target, userTriggeredOnInput
+            ? { text, isChecked, userTriggered }
+            : { text, isChecked });
+        const name = target.name;
+        if (type === 'radio' && name && isChecked) {
+            doc
+                .querySelectorAll(`input[type="radio"][name="${name}"]`)
+                .forEach((el) => {
+                if (el !== target) {
+                    const text = el.value;
+                    cbWithDedup(el, userTriggeredOnInput
+                        ? { text, isChecked: !isChecked, userTriggered: false }
+                        : { text, isChecked: !isChecked });
+                }
+            });
+        }
+    }
+    function cbWithDedup(target, v) {
+        const lastInputValue = lastInputValueMap.get(target);
+        if (!lastInputValue ||
+            lastInputValue.text !== v.text ||
+            lastInputValue.isChecked !== v.isChecked) {
+            lastInputValueMap.set(target, v);
+            const id = mirror.getId(target);
+            callbackWrapper(inputCb)(Object.assign(Object.assign({}, v), { id }));
+        }
+    }
+    const events = sampling.input === 'last' ? ['change'] : ['input', 'change'];
+    const handlers = events.map((eventName) => on(eventName, callbackWrapper(eventHandler), doc));
+    const currentWindow = doc.defaultView;
+    if (!currentWindow) {
+        return () => {
+            handlers.forEach((h) => h());
+        };
+    }
+    const propertyDescriptor = currentWindow.Object.getOwnPropertyDescriptor(currentWindow.HTMLInputElement.prototype, 'value');
+    const hookProperties = [
+        [currentWindow.HTMLInputElement.prototype, 'value'],
+        [currentWindow.HTMLInputElement.prototype, 'checked'],
+        [currentWindow.HTMLSelectElement.prototype, 'value'],
+        [currentWindow.HTMLTextAreaElement.prototype, 'value'],
+        [currentWindow.HTMLSelectElement.prototype, 'selectedIndex'],
+        [currentWindow.HTMLOptionElement.prototype, 'selected'],
+    ];
+    if (propertyDescriptor && propertyDescriptor.set) {
+        handlers.push(...hookProperties.map((p) => hookSetter(p[0], p[1], {
+            set() {
+                callbackWrapper(eventHandler)({
+                    target: this,
+                    isTrusted: false,
+                });
+            },
+        }, false, currentWindow)));
+    }
+    return callbackWrapper(() => {
+        handlers.forEach((h) => h());
+    });
+}
+function getNestedCSSRulePositions(rule) {
+    const positions = [];
+    function recurse(childRule, pos) {
+        if ((hasNestedCSSRule('CSSGroupingRule') &&
+            childRule.parentRule instanceof CSSGroupingRule) ||
+            (hasNestedCSSRule('CSSMediaRule') &&
+                childRule.parentRule instanceof CSSMediaRule) ||
+            (hasNestedCSSRule('CSSSupportsRule') &&
+                childRule.parentRule instanceof CSSSupportsRule) ||
+            (hasNestedCSSRule('CSSConditionRule') &&
+                childRule.parentRule instanceof CSSConditionRule)) {
+            const rules = Array.from(childRule.parentRule.cssRules);
+            const index = rules.indexOf(childRule);
+            pos.unshift(index);
+        }
+        else if (childRule.parentStyleSheet) {
+            const rules = Array.from(childRule.parentStyleSheet.cssRules);
+            const index = rules.indexOf(childRule);
+            pos.unshift(index);
+        }
+        return pos;
+    }
+    return recurse(rule, positions);
+}
+function getIdAndStyleId(sheet, mirror, styleMirror) {
+    let id, styleId;
+    if (!sheet)
+        return {};
+    if (sheet.ownerNode)
+        id = mirror.getId(sheet.ownerNode);
+    else
+        styleId = styleMirror.getId(sheet);
+    return {
+        styleId,
+        id,
+    };
+}
+function initStyleSheetObserver({ styleSheetRuleCb, mirror, stylesheetManager }, { win }) {
+    if (!win.CSSStyleSheet || !win.CSSStyleSheet.prototype) {
+        return () => {
+        };
+    }
+    const insertRule = win.CSSStyleSheet.prototype.insertRule;
+    win.CSSStyleSheet.prototype.insertRule = new Proxy(insertRule, {
+        apply: callbackWrapper((target, thisArg, argumentsList) => {
+            const [rule, index] = argumentsList;
+            const { id, styleId } = getIdAndStyleId(thisArg, mirror, stylesheetManager.styleMirror);
+            if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                styleSheetRuleCb({
+                    id,
+                    styleId,
+                    adds: [{ rule, index }],
+                });
+            }
+            return target.apply(thisArg, argumentsList);
+        }),
+    });
+    const deleteRule = win.CSSStyleSheet.prototype.deleteRule;
+    win.CSSStyleSheet.prototype.deleteRule = new Proxy(deleteRule, {
+        apply: callbackWrapper((target, thisArg, argumentsList) => {
+            const [index] = argumentsList;
+            const { id, styleId } = getIdAndStyleId(thisArg, mirror, stylesheetManager.styleMirror);
+            if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                styleSheetRuleCb({
+                    id,
+                    styleId,
+                    removes: [{ index }],
+                });
+            }
+            return target.apply(thisArg, argumentsList);
+        }),
+    });
+    let replace;
+    if (win.CSSStyleSheet.prototype.replace) {
+        replace = win.CSSStyleSheet.prototype.replace;
+        win.CSSStyleSheet.prototype.replace = new Proxy(replace, {
+            apply: callbackWrapper((target, thisArg, argumentsList) => {
+                const [text] = argumentsList;
+                const { id, styleId } = getIdAndStyleId(thisArg, mirror, stylesheetManager.styleMirror);
+                if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                    styleSheetRuleCb({
+                        id,
+                        styleId,
+                        replace: text,
+                    });
+                }
+                return target.apply(thisArg, argumentsList);
+            }),
+        });
+    }
+    let replaceSync;
+    if (win.CSSStyleSheet.prototype.replaceSync) {
+        replaceSync = win.CSSStyleSheet.prototype.replaceSync;
+        win.CSSStyleSheet.prototype.replaceSync = new Proxy(replaceSync, {
+            apply: callbackWrapper((target, thisArg, argumentsList) => {
+                const [text] = argumentsList;
+                const { id, styleId } = getIdAndStyleId(thisArg, mirror, stylesheetManager.styleMirror);
+                if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                    styleSheetRuleCb({
+                        id,
+                        styleId,
+                        replaceSync: text,
+                    });
+                }
+                return target.apply(thisArg, argumentsList);
+            }),
+        });
+    }
+    const supportedNestedCSSRuleTypes = {};
+    if (canMonkeyPatchNestedCSSRule('CSSGroupingRule')) {
+        supportedNestedCSSRuleTypes.CSSGroupingRule = win.CSSGroupingRule;
+    }
+    else {
+        if (canMonkeyPatchNestedCSSRule('CSSMediaRule')) {
+            supportedNestedCSSRuleTypes.CSSMediaRule = win.CSSMediaRule;
+        }
+        if (canMonkeyPatchNestedCSSRule('CSSConditionRule')) {
+            supportedNestedCSSRuleTypes.CSSConditionRule = win.CSSConditionRule;
+        }
+        if (canMonkeyPatchNestedCSSRule('CSSSupportsRule')) {
+            supportedNestedCSSRuleTypes.CSSSupportsRule = win.CSSSupportsRule;
+        }
+    }
+    const unmodifiedFunctions = {};
+    Object.entries(supportedNestedCSSRuleTypes).forEach(([typeKey, type]) => {
+        unmodifiedFunctions[typeKey] = {
+            insertRule: type.prototype.insertRule,
+            deleteRule: type.prototype.deleteRule,
+        };
+        type.prototype.insertRule = new Proxy(unmodifiedFunctions[typeKey].insertRule, {
+            apply: callbackWrapper((target, thisArg, argumentsList) => {
+                const [rule, index] = argumentsList;
+                const { id, styleId } = getIdAndStyleId(thisArg.parentStyleSheet, mirror, stylesheetManager.styleMirror);
+                if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                    styleSheetRuleCb({
+                        id,
+                        styleId,
+                        adds: [
+                            {
+                                rule,
+                                index: [
+                                    ...getNestedCSSRulePositions(thisArg),
+                                    index || 0,
+                                ],
+                            },
+                        ],
+                    });
+                }
+                return target.apply(thisArg, argumentsList);
+            }),
+        });
+        type.prototype.deleteRule = new Proxy(unmodifiedFunctions[typeKey].deleteRule, {
+            apply: callbackWrapper((target, thisArg, argumentsList) => {
+                const [index] = argumentsList;
+                const { id, styleId } = getIdAndStyleId(thisArg.parentStyleSheet, mirror, stylesheetManager.styleMirror);
+                if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                    styleSheetRuleCb({
+                        id,
+                        styleId,
+                        removes: [
+                            { index: [...getNestedCSSRulePositions(thisArg), index] },
+                        ],
+                    });
+                }
+                return target.apply(thisArg, argumentsList);
+            }),
+        });
+    });
+    return callbackWrapper(() => {
+        win.CSSStyleSheet.prototype.insertRule = insertRule;
+        win.CSSStyleSheet.prototype.deleteRule = deleteRule;
+        replace && (win.CSSStyleSheet.prototype.replace = replace);
+        replaceSync && (win.CSSStyleSheet.prototype.replaceSync = replaceSync);
+        Object.entries(supportedNestedCSSRuleTypes).forEach(([typeKey, type]) => {
+            type.prototype.insertRule = unmodifiedFunctions[typeKey].insertRule;
+            type.prototype.deleteRule = unmodifiedFunctions[typeKey].deleteRule;
+        });
+    });
+}
+function initAdoptedStyleSheetObserver({ mirror, stylesheetManager, }, host) {
+    var _a, _b, _c;
+    let hostId = null;
+    if (host.nodeName === '#document')
+        hostId = mirror.getId(host);
+    else
+        hostId = mirror.getId(host.host);
+    const patchTarget = host.nodeName === '#document'
+        ? (_a = host.defaultView) === null || _a === void 0 ? void 0 : _a.Document
+        : (_c = (_b = host.ownerDocument) === null || _b === void 0 ? void 0 : _b.defaultView) === null || _c === void 0 ? void 0 : _c.ShadowRoot;
+    const originalPropertyDescriptor = (patchTarget === null || patchTarget === void 0 ? void 0 : patchTarget.prototype)
+        ? Object.getOwnPropertyDescriptor(patchTarget === null || patchTarget === void 0 ? void 0 : patchTarget.prototype, 'adoptedStyleSheets')
+        : undefined;
+    if (hostId === null ||
+        hostId === -1 ||
+        !patchTarget ||
+        !originalPropertyDescriptor)
+        return () => {
+        };
+    Object.defineProperty(host, 'adoptedStyleSheets', {
+        configurable: originalPropertyDescriptor.configurable,
+        enumerable: originalPropertyDescriptor.enumerable,
+        get() {
+            var _a;
+            return (_a = originalPropertyDescriptor.get) === null || _a === void 0 ? void 0 : _a.call(this);
+        },
+        set(sheets) {
+            var _a;
+            const result = (_a = originalPropertyDescriptor.set) === null || _a === void 0 ? void 0 : _a.call(this, sheets);
+            if (hostId !== null && hostId !== -1) {
+                try {
+                    stylesheetManager.adoptStyleSheets(sheets, hostId);
+                }
+                catch (e) {
+                }
+            }
+            return result;
+        },
+    });
+    return callbackWrapper(() => {
+        Object.defineProperty(host, 'adoptedStyleSheets', {
+            configurable: originalPropertyDescriptor.configurable,
+            enumerable: originalPropertyDescriptor.enumerable,
+            get: originalPropertyDescriptor.get,
+            set: originalPropertyDescriptor.set,
+        });
+    });
+}
+function initStyleDeclarationObserver({ styleDeclarationCb, mirror, ignoreCSSAttributes, stylesheetManager, }, { win }) {
+    const setProperty = win.CSSStyleDeclaration.prototype.setProperty;
+    win.CSSStyleDeclaration.prototype.setProperty = new Proxy(setProperty, {
+        apply: callbackWrapper((target, thisArg, argumentsList) => {
+            var _a;
+            const [property, value, priority] = argumentsList;
+            if (ignoreCSSAttributes.has(property)) {
+                return setProperty.apply(thisArg, [property, value, priority]);
+            }
+            const { id, styleId } = getIdAndStyleId((_a = thisArg.parentRule) === null || _a === void 0 ? void 0 : _a.parentStyleSheet, mirror, stylesheetManager.styleMirror);
+            if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                styleDeclarationCb({
+                    id,
+                    styleId,
+                    set: {
+                        property,
+                        value,
+                        priority,
+                    },
+                    index: getNestedCSSRulePositions(thisArg.parentRule),
+                });
+            }
+            return target.apply(thisArg, argumentsList);
+        }),
+    });
+    const removeProperty = win.CSSStyleDeclaration.prototype.removeProperty;
+    win.CSSStyleDeclaration.prototype.removeProperty = new Proxy(removeProperty, {
+        apply: callbackWrapper((target, thisArg, argumentsList) => {
+            var _a;
+            const [property] = argumentsList;
+            if (ignoreCSSAttributes.has(property)) {
+                return removeProperty.apply(thisArg, [property]);
+            }
+            const { id, styleId } = getIdAndStyleId((_a = thisArg.parentRule) === null || _a === void 0 ? void 0 : _a.parentStyleSheet, mirror, stylesheetManager.styleMirror);
+            if ((id && id !== -1) || (styleId && styleId !== -1)) {
+                styleDeclarationCb({
+                    id,
+                    styleId,
+                    remove: {
+                        property,
+                    },
+                    index: getNestedCSSRulePositions(thisArg.parentRule),
+                });
+            }
+            return target.apply(thisArg, argumentsList);
+        }),
+    });
+    return callbackWrapper(() => {
+        win.CSSStyleDeclaration.prototype.setProperty = setProperty;
+        win.CSSStyleDeclaration.prototype.removeProperty = removeProperty;
+    });
+}
+function initMediaInteractionObserver({ mediaInteractionCb, blockClass, blockSelector, mirror, sampling, doc, }) {
+    const handler = callbackWrapper((type) => throttle(callbackWrapper((event) => {
+        const target = getEventTarget(event);
+        if (!target ||
+            isBlocked(target, blockClass, blockSelector, true)) {
+            return;
+        }
+        const { currentTime, volume, muted, playbackRate, loop } = target;
+        mediaInteractionCb({
+            type,
+            id: mirror.getId(target),
+            currentTime,
+            volume,
+            muted,
+            playbackRate,
+            loop,
+        });
+    }), sampling.media || 500));
+    const handlers = [
+        on('play', handler(0), doc),
+        on('pause', handler(1), doc),
+        on('seeked', handler(2), doc),
+        on('volumechange', handler(3), doc),
+        on('ratechange', handler(4), doc),
+    ];
+    return callbackWrapper(() => {
+        handlers.forEach((h) => h());
+    });
+}
+function initFontObserver({ fontCb, doc }) {
+    const win = doc.defaultView;
+    if (!win) {
+        return () => {
+        };
+    }
+    const handlers = [];
+    const fontMap = new WeakMap();
+    const originalFontFace = win.FontFace;
+    win.FontFace = function FontFace(family, source, descriptors) {
+        const fontFace = new originalFontFace(family, source, descriptors);
+        fontMap.set(fontFace, {
+            family,
+            buffer: typeof source !== 'string',
+            descriptors,
+            fontSource: typeof source === 'string'
+                ? source
+                : JSON.stringify(Array.from(new Uint8Array(source))),
+        });
+        return fontFace;
+    };
+    const restoreHandler = patch(doc.fonts, 'add', function (original) {
+        return function (fontFace) {
+            setTimeout(callbackWrapper(() => {
+                const p = fontMap.get(fontFace);
+                if (p) {
+                    fontCb(p);
+                    fontMap.delete(fontFace);
+                }
+            }), 0);
+            return original.apply(this, [fontFace]);
+        };
+    });
+    handlers.push(() => {
+        win.FontFace = originalFontFace;
+    });
+    handlers.push(restoreHandler);
+    return callbackWrapper(() => {
+        handlers.forEach((h) => h());
+    });
+}
+function initSelectionObserver(param) {
+    const { doc, mirror, blockClass, blockSelector, selectionCb } = param;
+    let collapsed = true;
+    const updateSelection = callbackWrapper(() => {
+        const selection = doc.getSelection();
+        if (!selection || (collapsed && (selection === null || selection === void 0 ? void 0 : selection.isCollapsed)))
+            return;
+        collapsed = selection.isCollapsed || false;
+        const ranges = [];
+        const count = selection.rangeCount || 0;
+        for (let i = 0; i < count; i++) {
+            const range = selection.getRangeAt(i);
+            const { startContainer, startOffset, endContainer, endOffset } = range;
+            const blocked = isBlocked(startContainer, blockClass, blockSelector, true) ||
+                isBlocked(endContainer, blockClass, blockSelector, true);
+            if (blocked)
+                continue;
+            ranges.push({
+                start: mirror.getId(startContainer),
+                startOffset,
+                end: mirror.getId(endContainer),
+                endOffset,
+            });
+        }
+        selectionCb({ ranges });
+    });
+    updateSelection();
+    return on('selectionchange', updateSelection);
+}
+function initCustomElementObserver({ doc, customElementCb, }) {
+    const win = doc.defaultView;
+    if (!win || !win.customElements)
+        return () => { };
+    const restoreHandler = patch(win.customElements, 'define', function (original) {
+        return function (name, constructor, options) {
+            try {
+                customElementCb({
+                    define: {
+                        name,
+                    },
+                });
+            }
+            catch (e) {
+                console.warn(`Custom element callback failed for ${name}`);
+            }
+            return original.apply(this, [name, constructor, options]);
+        };
+    });
+    return restoreHandler;
+}
+function mergeHooks(o, hooks) {
+    const { mutationCb, mousemoveCb, mouseInteractionCb, scrollCb, viewportResizeCb, inputCb, mediaInteractionCb, styleSheetRuleCb, styleDeclarationCb, canvasMutationCb, fontCb, selectionCb, customElementCb, } = o;
+    o.mutationCb = (...p) => {
+        if (hooks.mutation) {
+            hooks.mutation(...p);
+        }
+        mutationCb(...p);
+    };
+    o.mousemoveCb = (...p) => {
+        if (hooks.mousemove) {
+            hooks.mousemove(...p);
+        }
+        mousemoveCb(...p);
+    };
+    o.mouseInteractionCb = (...p) => {
+        if (hooks.mouseInteraction) {
+            hooks.mouseInteraction(...p);
+        }
+        mouseInteractionCb(...p);
+    };
+    o.scrollCb = (...p) => {
+        if (hooks.scroll) {
+            hooks.scroll(...p);
+        }
+        scrollCb(...p);
+    };
+    o.viewportResizeCb = (...p) => {
+        if (hooks.viewportResize) {
+            hooks.viewportResize(...p);
+        }
+        viewportResizeCb(...p);
+    };
+    o.inputCb = (...p) => {
+        if (hooks.input) {
+            hooks.input(...p);
+        }
+        inputCb(...p);
+    };
+    o.mediaInteractionCb = (...p) => {
+        if (hooks.mediaInteaction) {
+            hooks.mediaInteaction(...p);
+        }
+        mediaInteractionCb(...p);
+    };
+    o.styleSheetRuleCb = (...p) => {
+        if (hooks.styleSheetRule) {
+            hooks.styleSheetRule(...p);
+        }
+        styleSheetRuleCb(...p);
+    };
+    o.styleDeclarationCb = (...p) => {
+        if (hooks.styleDeclaration) {
+            hooks.styleDeclaration(...p);
+        }
+        styleDeclarationCb(...p);
+    };
+    o.canvasMutationCb = (...p) => {
+        if (hooks.canvasMutation) {
+            hooks.canvasMutation(...p);
+        }
+        canvasMutationCb(...p);
+    };
+    o.fontCb = (...p) => {
+        if (hooks.font) {
+            hooks.font(...p);
+        }
+        fontCb(...p);
+    };
+    o.selectionCb = (...p) => {
+        if (hooks.selection) {
+            hooks.selection(...p);
+        }
+        selectionCb(...p);
+    };
+    o.customElementCb = (...c) => {
+        if (hooks.customElement) {
+            hooks.customElement(...c);
+        }
+        customElementCb(...c);
+    };
+}
+function initObservers(o, hooks = {}) {
+    const currentWindow = o.doc.defaultView;
+    if (!currentWindow) {
+        return () => {
+        };
+    }
+    mergeHooks(o, hooks);
+    let mutationObserver;
+    if (o.recordDOM) {
+        mutationObserver = initMutationObserver(o, o.doc);
+    }
+    const mousemoveHandler = initMoveObserver(o);
+    const mouseInteractionHandler = initMouseInteractionObserver(o);
+    const scrollHandler = initScrollObserver(o);
+    const viewportResizeHandler = initViewportResizeObserver(o, {
+        win: currentWindow,
+    });
+    const inputHandler = initInputObserver(o);
+    const mediaInteractionHandler = initMediaInteractionObserver(o);
+    let styleSheetObserver = () => { };
+    let adoptedStyleSheetObserver = () => { };
+    let styleDeclarationObserver = () => { };
+    let fontObserver = () => { };
+    if (o.recordDOM) {
+        styleSheetObserver = initStyleSheetObserver(o, { win: currentWindow });
+        adoptedStyleSheetObserver = initAdoptedStyleSheetObserver(o, o.doc);
+        styleDeclarationObserver = initStyleDeclarationObserver(o, {
+            win: currentWindow,
+        });
+        if (o.collectFonts) {
+            fontObserver = initFontObserver(o);
+        }
+    }
+    const selectionObserver = initSelectionObserver(o);
+    const customElementObserver = initCustomElementObserver(o);
+    const pluginHandlers = [];
+    for (const plugin of o.plugins) {
+        pluginHandlers.push(plugin.observer(plugin.callback, currentWindow, plugin.options));
+    }
+    return callbackWrapper(() => {
+        mutationBuffers.forEach((b) => b.reset());
+        mutationObserver === null || mutationObserver === void 0 ? void 0 : mutationObserver.disconnect();
+        mousemoveHandler();
+        mouseInteractionHandler();
+        scrollHandler();
+        viewportResizeHandler();
+        inputHandler();
+        mediaInteractionHandler();
+        styleSheetObserver();
+        adoptedStyleSheetObserver();
+        styleDeclarationObserver();
+        fontObserver();
+        selectionObserver();
+        customElementObserver();
+        pluginHandlers.forEach((h) => h());
+    });
+}
+function hasNestedCSSRule(prop) {
+    return typeof window[prop] !== 'undefined';
+}
+function canMonkeyPatchNestedCSSRule(prop) {
+    return Boolean(typeof window[prop] !== 'undefined' &&
+        window[prop].prototype &&
+        'insertRule' in window[prop].prototype &&
+        'deleteRule' in window[prop].prototype);
+}
+
+class CrossOriginIframeMirror {
+    constructor(generateIdFn) {
+        this.generateIdFn = generateIdFn;
+        this.iframeIdToRemoteIdMap = new WeakMap();
+        this.iframeRemoteIdToIdMap = new WeakMap();
+    }
+    getId(iframe, remoteId, idToRemoteMap, remoteToIdMap) {
+        const idToRemoteIdMap = idToRemoteMap || this.getIdToRemoteIdMap(iframe);
+        const remoteIdToIdMap = remoteToIdMap || this.getRemoteIdToIdMap(iframe);
+        let id = idToRemoteIdMap.get(remoteId);
+        if (!id) {
+            id = this.generateIdFn();
+            idToRemoteIdMap.set(remoteId, id);
+            remoteIdToIdMap.set(id, remoteId);
+        }
+        return id;
+    }
+    getIds(iframe, remoteId) {
+        const idToRemoteIdMap = this.getIdToRemoteIdMap(iframe);
+        const remoteIdToIdMap = this.getRemoteIdToIdMap(iframe);
+        return remoteId.map((id) => this.getId(iframe, id, idToRemoteIdMap, remoteIdToIdMap));
+    }
+    getRemoteId(iframe, id, map) {
+        const remoteIdToIdMap = map || this.getRemoteIdToIdMap(iframe);
+        if (typeof id !== 'number')
+            return id;
+        const remoteId = remoteIdToIdMap.get(id);
+        if (!remoteId)
+            return -1;
+        return remoteId;
+    }
+    getRemoteIds(iframe, ids) {
+        const remoteIdToIdMap = this.getRemoteIdToIdMap(iframe);
+        return ids.map((id) => this.getRemoteId(iframe, id, remoteIdToIdMap));
+    }
+    reset(iframe) {
+        if (!iframe) {
+            this.iframeIdToRemoteIdMap = new WeakMap();
+            this.iframeRemoteIdToIdMap = new WeakMap();
+            return;
+        }
+        this.iframeIdToRemoteIdMap.delete(iframe);
+        this.iframeRemoteIdToIdMap.delete(iframe);
+    }
+    getIdToRemoteIdMap(iframe) {
+        let idToRemoteIdMap = this.iframeIdToRemoteIdMap.get(iframe);
+        if (!idToRemoteIdMap) {
+            idToRemoteIdMap = new Map();
+            this.iframeIdToRemoteIdMap.set(iframe, idToRemoteIdMap);
+        }
+        return idToRemoteIdMap;
+    }
+    getRemoteIdToIdMap(iframe) {
+        let remoteIdToIdMap = this.iframeRemoteIdToIdMap.get(iframe);
+        if (!remoteIdToIdMap) {
+            remoteIdToIdMap = new Map();
+            this.iframeRemoteIdToIdMap.set(iframe, remoteIdToIdMap);
+        }
+        return remoteIdToIdMap;
+    }
+}
+
+class IframeManager {
+    constructor(options) {
+        this.iframes = new WeakMap();
+        this.crossOriginIframeMap = new WeakMap();
+        this.crossOriginIframeMirror = new CrossOriginIframeMirror(genId);
+        this.crossOriginIframeRootIdMap = new WeakMap();
+        this.mutationCb = options.mutationCb;
+        this.wrappedEmit = options.wrappedEmit;
+        this.stylesheetManager = options.stylesheetManager;
+        this.recordCrossOriginIframes = options.recordCrossOriginIframes;
+        this.crossOriginIframeStyleMirror = new CrossOriginIframeMirror(this.stylesheetManager.styleMirror.generateId.bind(this.stylesheetManager.styleMirror));
+        this.mirror = options.mirror;
+        if (this.recordCrossOriginIframes) {
+            window.addEventListener('message', this.handleMessage.bind(this));
+        }
+    }
+    addIframe(iframeEl) {
+        this.iframes.set(iframeEl, true);
+        if (iframeEl.contentWindow)
+            this.crossOriginIframeMap.set(iframeEl.contentWindow, iframeEl);
+    }
+    addLoadListener(cb) {
+        this.loadListener = cb;
+    }
+    attachIframe(iframeEl, childSn) {
+        var _a;
+        this.mutationCb({
+            adds: [
+                {
+                    parentId: this.mirror.getId(iframeEl),
+                    nextId: null,
+                    node: childSn,
+                },
+            ],
+            removes: [],
+            texts: [],
+            attributes: [],
+            isAttachIframe: true,
+        });
+        (_a = this.loadListener) === null || _a === void 0 ? void 0 : _a.call(this, iframeEl);
+        if (iframeEl.contentDocument &&
+            iframeEl.contentDocument.adoptedStyleSheets &&
+            iframeEl.contentDocument.adoptedStyleSheets.length > 0)
+            this.stylesheetManager.adoptStyleSheets(iframeEl.contentDocument.adoptedStyleSheets, this.mirror.getId(iframeEl.contentDocument));
+    }
+    handleMessage(message) {
+        const crossOriginMessageEvent = message;
+        if (crossOriginMessageEvent.data.type !== 'rrweb' ||
+            crossOriginMessageEvent.origin !== crossOriginMessageEvent.data.origin)
+            return;
+        const iframeSourceWindow = message.source;
+        if (!iframeSourceWindow)
+            return;
+        const iframeEl = this.crossOriginIframeMap.get(message.source);
+        if (!iframeEl)
+            return;
+        const transformedEvent = this.transformCrossOriginEvent(iframeEl, crossOriginMessageEvent.data.event);
+        if (transformedEvent)
+            this.wrappedEmit(transformedEvent, crossOriginMessageEvent.data.isCheckout);
+    }
+    transformCrossOriginEvent(iframeEl, e) {
+        var _a;
+        switch (e.type) {
+            case EventType.FullSnapshot: {
+                this.crossOriginIframeMirror.reset(iframeEl);
+                this.crossOriginIframeStyleMirror.reset(iframeEl);
+                this.replaceIdOnNode(e.data.node, iframeEl);
+                const rootId = e.data.node.id;
+                this.crossOriginIframeRootIdMap.set(iframeEl, rootId);
+                this.patchRootIdOnNode(e.data.node, rootId);
+                return {
+                    timestamp: e.timestamp,
+                    type: EventType.IncrementalSnapshot,
+                    data: {
+                        source: IncrementalSource.Mutation,
+                        adds: [
+                            {
+                                parentId: this.mirror.getId(iframeEl),
+                                nextId: null,
+                                node: e.data.node,
+                            },
+                        ],
+                        removes: [],
+                        texts: [],
+                        attributes: [],
+                        isAttachIframe: true,
+                    },
+                };
+            }
+            case EventType.Meta:
+            case EventType.Load:
+            case EventType.DomContentLoaded: {
+                return false;
+            }
+            case EventType.Plugin: {
+                return e;
+            }
+            case EventType.Custom: {
+                this.replaceIds(e.data.payload, iframeEl, ['id', 'parentId', 'previousId', 'nextId']);
+                return e;
+            }
+            case EventType.IncrementalSnapshot: {
+                switch (e.data.source) {
+                    case IncrementalSource.Mutation: {
+                        e.data.adds.forEach((n) => {
+                            this.replaceIds(n, iframeEl, [
+                                'parentId',
+                                'nextId',
+                                'previousId',
+                            ]);
+                            this.replaceIdOnNode(n.node, iframeEl);
+                            const rootId = this.crossOriginIframeRootIdMap.get(iframeEl);
+                            rootId && this.patchRootIdOnNode(n.node, rootId);
+                        });
+                        e.data.removes.forEach((n) => {
+                            this.replaceIds(n, iframeEl, ['parentId', 'id']);
+                        });
+                        e.data.attributes.forEach((n) => {
+                            this.replaceIds(n, iframeEl, ['id']);
+                        });
+                        e.data.texts.forEach((n) => {
+                            this.replaceIds(n, iframeEl, ['id']);
+                        });
+                        return e;
+                    }
+                    case IncrementalSource.Drag:
+                    case IncrementalSource.TouchMove:
+                    case IncrementalSource.MouseMove: {
+                        e.data.positions.forEach((p) => {
+                            this.replaceIds(p, iframeEl, ['id']);
+                        });
+                        return e;
+                    }
+                    case IncrementalSource.ViewportResize: {
+                        return false;
+                    }
+                    case IncrementalSource.MediaInteraction:
+                    case IncrementalSource.MouseInteraction:
+                    case IncrementalSource.Scroll:
+                    case IncrementalSource.CanvasMutation:
+                    case IncrementalSource.Input: {
+                        this.replaceIds(e.data, iframeEl, ['id']);
+                        return e;
+                    }
+                    case IncrementalSource.StyleSheetRule:
+                    case IncrementalSource.StyleDeclaration: {
+                        this.replaceIds(e.data, iframeEl, ['id']);
+                        this.replaceStyleIds(e.data, iframeEl, ['styleId']);
+                        return e;
+                    }
+                    case IncrementalSource.Font: {
+                        return e;
+                    }
+                    case IncrementalSource.Selection: {
+                        e.data.ranges.forEach((range) => {
+                            this.replaceIds(range, iframeEl, ['start', 'end']);
+                        });
+                        return e;
+                    }
+                    case IncrementalSource.AdoptedStyleSheet: {
+                        this.replaceIds(e.data, iframeEl, ['id']);
+                        this.replaceStyleIds(e.data, iframeEl, ['styleIds']);
+                        (_a = e.data.styles) === null || _a === void 0 ? void 0 : _a.forEach((style) => {
+                            this.replaceStyleIds(style, iframeEl, ['styleId']);
+                        });
+                        return e;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    replace(iframeMirror, obj, iframeEl, keys) {
+        for (const key of keys) {
+            if (!Array.isArray(obj[key]) && typeof obj[key] !== 'number')
+                continue;
+            if (Array.isArray(obj[key])) {
+                obj[key] = iframeMirror.getIds(iframeEl, obj[key]);
+            }
+            else {
+                obj[key] = iframeMirror.getId(iframeEl, obj[key]);
+            }
+        }
+        return obj;
+    }
+    replaceIds(obj, iframeEl, keys) {
+        return this.replace(this.crossOriginIframeMirror, obj, iframeEl, keys);
+    }
+    replaceStyleIds(obj, iframeEl, keys) {
+        return this.replace(this.crossOriginIframeStyleMirror, obj, iframeEl, keys);
+    }
+    replaceIdOnNode(node, iframeEl) {
+        this.replaceIds(node, iframeEl, ['id', 'rootId']);
+        if ('childNodes' in node) {
+            node.childNodes.forEach((child) => {
+                this.replaceIdOnNode(child, iframeEl);
+            });
+        }
+    }
+    patchRootIdOnNode(node, rootId) {
+        if (node.type !== NodeType$2.Document && !node.rootId)
+            node.rootId = rootId;
+        if ('childNodes' in node) {
+            node.childNodes.forEach((child) => {
+                this.patchRootIdOnNode(child, rootId);
+            });
+        }
+    }
+}
+
+class ShadowDomManager {
+    constructor(options) {
+        this.shadowDoms = new WeakSet();
+        this.restoreHandlers = [];
+        this.mutationCb = options.mutationCb;
+        this.scrollCb = options.scrollCb;
+        this.bypassOptions = options.bypassOptions;
+        this.mirror = options.mirror;
+        this.init();
+    }
+    init() {
+        this.reset();
+        this.patchAttachShadow(Element, document);
+    }
+    addShadowRoot(shadowRoot, doc) {
+        if (!isNativeShadowDom(shadowRoot))
+            return;
+        if (this.shadowDoms.has(shadowRoot))
+            return;
+        this.shadowDoms.add(shadowRoot);
+        const observer = initMutationObserver(Object.assign(Object.assign({}, this.bypassOptions), { doc, mutationCb: this.mutationCb, mirror: this.mirror, shadowDomManager: this }), shadowRoot);
+        this.restoreHandlers.push(() => observer.disconnect());
+        this.restoreHandlers.push(initScrollObserver(Object.assign(Object.assign({}, this.bypassOptions), { scrollCb: this.scrollCb, doc: shadowRoot, mirror: this.mirror })));
+        setTimeout(() => {
+            if (shadowRoot.adoptedStyleSheets &&
+                shadowRoot.adoptedStyleSheets.length > 0)
+                this.bypassOptions.stylesheetManager.adoptStyleSheets(shadowRoot.adoptedStyleSheets, this.mirror.getId(shadowRoot.host));
+            this.restoreHandlers.push(initAdoptedStyleSheetObserver({
+                mirror: this.mirror,
+                stylesheetManager: this.bypassOptions.stylesheetManager,
+            }, shadowRoot));
+        }, 0);
+    }
+    observeAttachShadow(iframeElement) {
+        if (!iframeElement.contentWindow || !iframeElement.contentDocument)
+            return;
+        this.patchAttachShadow(iframeElement.contentWindow.Element, iframeElement.contentDocument);
+    }
+    patchAttachShadow(element, doc) {
+        const manager = this;
+        this.restoreHandlers.push(patch(element.prototype, 'attachShadow', function (original) {
+            return function (option) {
+                const shadowRoot = original.call(this, option);
+                if (this.shadowRoot && inDom(this))
+                    manager.addShadowRoot(this.shadowRoot, doc);
+                return shadowRoot;
+            };
+        }));
+    }
+    reset() {
+        this.restoreHandlers.forEach((handler) => {
+            try {
+                handler();
+            }
+            catch (e) {
+            }
+        });
+        this.restoreHandlers = [];
+        this.shadowDoms = new WeakSet();
+    }
+}
+
+/*! *****************************************************************************
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+***************************************************************************** */
+
+function __rest(s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+}
+
+function __awaiter(thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+}
+
+/*
+ * base64-arraybuffer 1.0.1 <https://github.com/niklasvh/base64-arraybuffer>
+ * Copyright (c) 2021 Niklas von Hertzen <https://hertzen.com>
+ * Released under MIT License
+ */
+var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+var lookup = typeof Uint8Array === 'undefined' ? [] : new Uint8Array(256);
+for (var i$2 = 0; i$2 < chars.length; i$2++) {
+    lookup[chars.charCodeAt(i$2)] = i$2;
+}
+var encode = function (arraybuffer) {
+    var bytes = new Uint8Array(arraybuffer), i, len = bytes.length, base64 = '';
+    for (i = 0; i < len; i += 3) {
+        base64 += chars[bytes[i] >> 2];
+        base64 += chars[((bytes[i] & 3) << 4) | (bytes[i + 1] >> 4)];
+        base64 += chars[((bytes[i + 1] & 15) << 2) | (bytes[i + 2] >> 6)];
+        base64 += chars[bytes[i + 2] & 63];
+    }
+    if (len % 3 === 2) {
+        base64 = base64.substring(0, base64.length - 1) + '=';
+    }
+    else if (len % 3 === 1) {
+        base64 = base64.substring(0, base64.length - 2) + '==';
+    }
+    return base64;
+};
+var decode = function (base64) {
+    var bufferLength = base64.length * 0.75, len = base64.length, i, p = 0, encoded1, encoded2, encoded3, encoded4;
+    if (base64[base64.length - 1] === '=') {
+        bufferLength--;
+        if (base64[base64.length - 2] === '=') {
+            bufferLength--;
+        }
+    }
+    var arraybuffer = new ArrayBuffer(bufferLength), bytes = new Uint8Array(arraybuffer);
+    for (i = 0; i < len; i += 4) {
+        encoded1 = lookup[base64.charCodeAt(i)];
+        encoded2 = lookup[base64.charCodeAt(i + 1)];
+        encoded3 = lookup[base64.charCodeAt(i + 2)];
+        encoded4 = lookup[base64.charCodeAt(i + 3)];
+        bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
+        bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
+        bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63);
+    }
+    return arraybuffer;
+};
+
+const canvasVarMap = new Map();
+function variableListFor$1(ctx, ctor) {
+    let contextMap = canvasVarMap.get(ctx);
+    if (!contextMap) {
+        contextMap = new Map();
+        canvasVarMap.set(ctx, contextMap);
+    }
+    if (!contextMap.has(ctor)) {
+        contextMap.set(ctor, []);
+    }
+    return contextMap.get(ctor);
+}
+const saveWebGLVar = (value, win, ctx) => {
+    if (!value ||
+        !(isInstanceOfWebGLObject(value, win) || typeof value === 'object'))
+        return;
+    const name = value.constructor.name;
+    const list = variableListFor$1(ctx, name);
+    let index = list.indexOf(value);
+    if (index === -1) {
+        index = list.length;
+        list.push(value);
+    }
+    return index;
+};
+function serializeArg(value, win, ctx) {
+    if (value instanceof Array) {
+        return value.map((arg) => serializeArg(arg, win, ctx));
+    }
+    else if (value === null) {
+        return value;
+    }
+    else if (value instanceof Float32Array ||
+        value instanceof Float64Array ||
+        value instanceof Int32Array ||
+        value instanceof Uint32Array ||
+        value instanceof Uint8Array ||
+        value instanceof Uint16Array ||
+        value instanceof Int16Array ||
+        value instanceof Int8Array ||
+        value instanceof Uint8ClampedArray) {
+        const name = value.constructor.name;
+        return {
+            rr_type: name,
+            args: [Object.values(value)],
+        };
+    }
+    else if (value instanceof ArrayBuffer) {
+        const name = value.constructor.name;
+        const base64 = encode(value);
+        return {
+            rr_type: name,
+            base64,
+        };
+    }
+    else if (value instanceof DataView) {
+        const name = value.constructor.name;
+        return {
+            rr_type: name,
+            args: [
+                serializeArg(value.buffer, win, ctx),
+                value.byteOffset,
+                value.byteLength,
+            ],
+        };
+    }
+    else if (value instanceof HTMLImageElement) {
+        const name = value.constructor.name;
+        const { src } = value;
+        return {
+            rr_type: name,
+            src,
+        };
+    }
+    else if (value instanceof HTMLCanvasElement) {
+        const name = 'HTMLImageElement';
+        const src = value.toDataURL();
+        return {
+            rr_type: name,
+            src,
+        };
+    }
+    else if (value instanceof ImageData) {
+        const name = value.constructor.name;
+        return {
+            rr_type: name,
+            args: [serializeArg(value.data, win, ctx), value.width, value.height],
+        };
+    }
+    else if (isInstanceOfWebGLObject(value, win) || typeof value === 'object') {
+        const name = value.constructor.name;
+        const index = saveWebGLVar(value, win, ctx);
+        return {
+            rr_type: name,
+            index: index,
+        };
+    }
+    return value;
+}
+const serializeArgs = (args, win, ctx) => {
+    return args.map((arg) => serializeArg(arg, win, ctx));
+};
+const isInstanceOfWebGLObject = (value, win) => {
+    const webGLConstructorNames = [
+        'WebGLActiveInfo',
+        'WebGLBuffer',
+        'WebGLFramebuffer',
+        'WebGLProgram',
+        'WebGLRenderbuffer',
+        'WebGLShader',
+        'WebGLShaderPrecisionFormat',
+        'WebGLTexture',
+        'WebGLUniformLocation',
+        'WebGLVertexArrayObject',
+        'WebGLVertexArrayObjectOES',
+    ];
+    const supportedWebGLConstructorNames = webGLConstructorNames.filter((name) => typeof win[name] === 'function');
+    return Boolean(supportedWebGLConstructorNames.find((name) => value instanceof win[name]));
+};
+
+function initCanvas2DMutationObserver(cb, win, blockClass, blockSelector) {
+    const handlers = [];
+    const props2D = Object.getOwnPropertyNames(win.CanvasRenderingContext2D.prototype);
+    for (const prop of props2D) {
+        try {
+            if (typeof win.CanvasRenderingContext2D.prototype[prop] !== 'function') {
+                continue;
+            }
+            const restoreHandler = patch(win.CanvasRenderingContext2D.prototype, prop, function (original) {
+                return function (...args) {
+                    if (!isBlocked(this.canvas, blockClass, blockSelector, true)) {
+                        setTimeout(() => {
+                            const recordArgs = serializeArgs(args, win, this);
+                            cb(this.canvas, {
+                                type: CanvasContext['2D'],
+                                property: prop,
+                                args: recordArgs,
+                            });
+                        }, 0);
+                    }
+                    return original.apply(this, args);
+                };
+            });
+            handlers.push(restoreHandler);
+        }
+        catch (_a) {
+            const hookHandler = hookSetter(win.CanvasRenderingContext2D.prototype, prop, {
+                set(v) {
+                    cb(this.canvas, {
+                        type: CanvasContext['2D'],
+                        property: prop,
+                        args: [v],
+                        setter: true,
+                    });
+                },
+            });
+            handlers.push(hookHandler);
+        }
+    }
+    return () => {
+        handlers.forEach((h) => h());
+    };
+}
+
+function getNormalizedContextName(contextType) {
+    return contextType === 'experimental-webgl' ? 'webgl' : contextType;
+}
+function initCanvasContextObserver(win, blockClass, blockSelector, setPreserveDrawingBufferToTrue) {
+    const handlers = [];
+    try {
+        const restoreHandler = patch(win.HTMLCanvasElement.prototype, 'getContext', function (original) {
+            return function (contextType, ...args) {
+                if (!isBlocked(this, blockClass, blockSelector, true)) {
+                    const ctxName = getNormalizedContextName(contextType);
+                    if (!('__context' in this))
+                        this.__context = ctxName;
+                    if (setPreserveDrawingBufferToTrue &&
+                        ['webgl', 'webgl2'].includes(ctxName)) {
+                        if (args[0] && typeof args[0] === 'object') {
+                            const contextAttributes = args[0];
+                            if (!contextAttributes.preserveDrawingBuffer) {
+                                contextAttributes.preserveDrawingBuffer = true;
+                            }
+                        }
+                        else {
+                            args.splice(0, 1, {
+                                preserveDrawingBuffer: true,
+                            });
+                        }
+                    }
+                }
+                return original.apply(this, [contextType, ...args]);
+            };
+        });
+        handlers.push(restoreHandler);
+    }
+    catch (_a) {
+        console.error('failed to patch HTMLCanvasElement.prototype.getContext');
+    }
+    return () => {
+        handlers.forEach((h) => h());
+    };
+}
+
+function patchGLPrototype(prototype, type, cb, blockClass, blockSelector, mirror, win) {
+    const handlers = [];
+    const props = Object.getOwnPropertyNames(prototype);
+    for (const prop of props) {
+        if ([
+            'isContextLost',
+            'canvas',
+            'drawingBufferWidth',
+            'drawingBufferHeight',
+        ].includes(prop)) {
+            continue;
+        }
+        try {
+            if (typeof prototype[prop] !== 'function') {
+                continue;
+            }
+            const restoreHandler = patch(prototype, prop, function (original) {
+                return function (...args) {
+                    const result = original.apply(this, args);
+                    saveWebGLVar(result, win, this);
+                    if ('tagName' in this.canvas &&
+                        !isBlocked(this.canvas, blockClass, blockSelector, true)) {
+                        const recordArgs = serializeArgs(args, win, this);
+                        const mutation = {
+                            type,
+                            property: prop,
+                            args: recordArgs,
+                        };
+                        cb(this.canvas, mutation);
+                    }
+                    return result;
+                };
+            });
+            handlers.push(restoreHandler);
+        }
+        catch (_a) {
+            const hookHandler = hookSetter(prototype, prop, {
+                set(v) {
+                    cb(this.canvas, {
+                        type,
+                        property: prop,
+                        args: [v],
+                        setter: true,
+                    });
+                },
+            });
+            handlers.push(hookHandler);
+        }
+    }
+    return handlers;
+}
+function initCanvasWebGLMutationObserver(cb, win, blockClass, blockSelector, mirror) {
+    const handlers = [];
+    handlers.push(...patchGLPrototype(win.WebGLRenderingContext.prototype, CanvasContext.WebGL, cb, blockClass, blockSelector, mirror, win));
+    if (typeof win.WebGL2RenderingContext !== 'undefined') {
+        handlers.push(...patchGLPrototype(win.WebGL2RenderingContext.prototype, CanvasContext.WebGL2, cb, blockClass, blockSelector, mirror, win));
+    }
+    return () => {
+        handlers.forEach((h) => h());
+    };
+}
+
+function funcToSource(fn, sourcemapArg) {
+    var sourcemap = sourcemapArg === undefined ? null : sourcemapArg;
+    var source = fn.toString();
+    var lines = source.split('\n');
+    lines.pop();
+    lines.shift();
+    var blankPrefixLength = lines[0].search(/\S/);
+    var regex = /(['"])__worker_loader_strict__(['"])/g;
+    for (var i = 0, n = lines.length; i < n; ++i) {
+        lines[i] = lines[i].substring(blankPrefixLength).replace(regex, '$1use strict$2') + '\n';
+    }
+    if (sourcemap) {
+        lines.push('\/\/# sourceMappingURL=' + sourcemap + '\n');
+    }
+    return lines;
+}
+
+function createURL(fn, sourcemapArg) {
+    var lines = funcToSource(fn, sourcemapArg);
+    var blob = new Blob(lines, { type: 'application/javascript' });
+    return URL.createObjectURL(blob);
+}
+
+function createInlineWorkerFactory(fn, sourcemapArg) {
+    var url;
+    return function WorkerFactory(options) {
+        url = url || createURL(fn, sourcemapArg);
+        return new Worker(url, options);
+    };
+}
+
+var WorkerFactory = createInlineWorkerFactory(/* rollup-plugin-web-worker-loader */function () {
+(function () {
+    '__worker_loader_strict__';
+
+    /*! *****************************************************************************
+    Copyright (c) Microsoft Corporation.
+
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose with or without fee is hereby granted.
+
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+    REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+    AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+    INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+    LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+    OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+    PERFORMANCE OF THIS SOFTWARE.
+    ***************************************************************************** */
+
+    function __awaiter(thisArg, _arguments, P, generator) {
+        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+        return new (P || (P = Promise))(function (resolve, reject) {
+            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+            step((generator = generator.apply(thisArg, _arguments || [])).next());
+        });
+    }
+
+    /*
+     * base64-arraybuffer 1.0.1 <https://github.com/niklasvh/base64-arraybuffer>
+     * Copyright (c) 2021 Niklas von Hertzen <https://hertzen.com>
+     * Released under MIT License
+     */
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    // Use a lookup table to find the index.
+    var lookup = typeof Uint8Array === 'undefined' ? [] : new Uint8Array(256);
+    for (var i = 0; i < chars.length; i++) {
+        lookup[chars.charCodeAt(i)] = i;
+    }
+    var encode = function (arraybuffer) {
+        var bytes = new Uint8Array(arraybuffer), i, len = bytes.length, base64 = '';
+        for (i = 0; i < len; i += 3) {
+            base64 += chars[bytes[i] >> 2];
+            base64 += chars[((bytes[i] & 3) << 4) | (bytes[i + 1] >> 4)];
+            base64 += chars[((bytes[i + 1] & 15) << 2) | (bytes[i + 2] >> 6)];
+            base64 += chars[bytes[i + 2] & 63];
+        }
+        if (len % 3 === 2) {
+            base64 = base64.substring(0, base64.length - 1) + '=';
+        }
+        else if (len % 3 === 1) {
+            base64 = base64.substring(0, base64.length - 2) + '==';
+        }
+        return base64;
+    };
+
+    const lastBlobMap = new Map();
+    const transparentBlobMap = new Map();
+    function getTransparentBlobFor(width, height, dataURLOptions) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const id = `${width}-${height}`;
+            if ('OffscreenCanvas' in globalThis) {
+                if (transparentBlobMap.has(id))
+                    return transparentBlobMap.get(id);
+                const offscreen = new OffscreenCanvas(width, height);
+                offscreen.getContext('2d');
+                const blob = yield offscreen.convertToBlob(dataURLOptions);
+                const arrayBuffer = yield blob.arrayBuffer();
+                const base64 = encode(arrayBuffer);
+                transparentBlobMap.set(id, base64);
+                return base64;
+            }
+            else {
+                return '';
+            }
+        });
+    }
+    const worker = self;
+    worker.onmessage = function (e) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if ('OffscreenCanvas' in globalThis) {
+                const { id, bitmap, width, height, dataURLOptions } = e.data;
+                const transparentBase64 = getTransparentBlobFor(width, height, dataURLOptions);
+                const offscreen = new OffscreenCanvas(width, height);
+                const ctx = offscreen.getContext('2d');
+                ctx.drawImage(bitmap, 0, 0);
+                bitmap.close();
+                const blob = yield offscreen.convertToBlob(dataURLOptions);
+                const type = blob.type;
+                const arrayBuffer = yield blob.arrayBuffer();
+                const base64 = encode(arrayBuffer);
+                if (!lastBlobMap.has(id) && (yield transparentBase64) === base64) {
+                    lastBlobMap.set(id, base64);
+                    return worker.postMessage({ id });
+                }
+                if (lastBlobMap.get(id) === base64)
+                    return worker.postMessage({ id });
+                worker.postMessage({
+                    id,
+                    type,
+                    base64,
+                    width,
+                    height,
+                });
+                lastBlobMap.set(id, base64);
+            }
+            else {
+                return worker.postMessage({ id: e.data.id });
+            }
+        });
+    };
+
+})();
+}, null);
+/* eslint-enable */
+
+class CanvasManager {
+    reset() {
+        this.pendingCanvasMutations.clear();
+        this.resetObservers && this.resetObservers();
+    }
+    freeze() {
+        this.frozen = true;
+    }
+    unfreeze() {
+        this.frozen = false;
+    }
+    lock() {
+        this.locked = true;
+    }
+    unlock() {
+        this.locked = false;
+    }
+    constructor(options) {
+        this.pendingCanvasMutations = new Map();
+        this.rafStamps = { latestId: 0, invokeId: null };
+        this.frozen = false;
+        this.locked = false;
+        this.processMutation = (target, mutation) => {
+            const newFrame = this.rafStamps.invokeId &&
+                this.rafStamps.latestId !== this.rafStamps.invokeId;
+            if (newFrame || !this.rafStamps.invokeId)
+                this.rafStamps.invokeId = this.rafStamps.latestId;
+            if (!this.pendingCanvasMutations.has(target)) {
+                this.pendingCanvasMutations.set(target, []);
+            }
+            this.pendingCanvasMutations.get(target).push(mutation);
+        };
+        const { sampling = 'all', win, blockClass, blockSelector, recordCanvas, dataURLOptions, } = options;
+        this.mutationCb = options.mutationCb;
+        this.mirror = options.mirror;
+        if (recordCanvas && sampling === 'all')
+            this.initCanvasMutationObserver(win, blockClass, blockSelector);
+        if (recordCanvas && typeof sampling === 'number')
+            this.initCanvasFPSObserver(sampling, win, blockClass, blockSelector, {
+                dataURLOptions,
+            });
+    }
+    initCanvasFPSObserver(fps, win, blockClass, blockSelector, options) {
+        const canvasContextReset = initCanvasContextObserver(win, blockClass, blockSelector, true);
+        const snapshotInProgressMap = new Map();
+        const worker = new WorkerFactory();
+        worker.onmessage = (e) => {
+            const { id } = e.data;
+            snapshotInProgressMap.set(id, false);
+            if (!('base64' in e.data))
+                return;
+            const { base64, type, width, height } = e.data;
+            this.mutationCb({
+                id,
+                type: CanvasContext['2D'],
+                commands: [
+                    {
+                        property: 'clearRect',
+                        args: [0, 0, width, height],
+                    },
+                    {
+                        property: 'drawImage',
+                        args: [
+                            {
+                                rr_type: 'ImageBitmap',
+                                args: [
+                                    {
+                                        rr_type: 'Blob',
+                                        data: [{ rr_type: 'ArrayBuffer', base64 }],
+                                        type,
+                                    },
+                                ],
+                            },
+                            0,
+                            0,
+                        ],
+                    },
+                ],
+            });
+        };
+        const timeBetweenSnapshots = 1000 / fps;
+        let lastSnapshotTime = 0;
+        let rafId;
+        const getCanvas = () => {
+            const matchedCanvas = [];
+            win.document.querySelectorAll('canvas').forEach((canvas) => {
+                if (!isBlocked(canvas, blockClass, blockSelector, true)) {
+                    matchedCanvas.push(canvas);
+                }
+            });
+            return matchedCanvas;
+        };
+        const takeCanvasSnapshots = (timestamp) => {
+            if (lastSnapshotTime &&
+                timestamp - lastSnapshotTime < timeBetweenSnapshots) {
+                rafId = requestAnimationFrame(takeCanvasSnapshots);
+                return;
+            }
+            lastSnapshotTime = timestamp;
+            getCanvas()
+                .forEach((canvas) => __awaiter(this, void 0, void 0, function* () {
+                var _a;
+                const id = this.mirror.getId(canvas);
+                if (snapshotInProgressMap.get(id))
+                    return;
+                if (canvas.width === 0 || canvas.height === 0)
+                    return;
+                snapshotInProgressMap.set(id, true);
+                if (['webgl', 'webgl2'].includes(canvas.__context)) {
+                    const context = canvas.getContext(canvas.__context);
+                    if (((_a = context === null || context === void 0 ? void 0 : context.getContextAttributes()) === null || _a === void 0 ? void 0 : _a.preserveDrawingBuffer) === false) {
+                        context.clear(context.COLOR_BUFFER_BIT);
+                    }
+                }
+                const bitmap = yield createImageBitmap(canvas);
+                worker.postMessage({
+                    id,
+                    bitmap,
+                    width: canvas.width,
+                    height: canvas.height,
+                    dataURLOptions: options.dataURLOptions,
+                }, [bitmap]);
+            }));
+            rafId = requestAnimationFrame(takeCanvasSnapshots);
+        };
+        rafId = requestAnimationFrame(takeCanvasSnapshots);
+        this.resetObservers = () => {
+            canvasContextReset();
+            cancelAnimationFrame(rafId);
+        };
+    }
+    initCanvasMutationObserver(win, blockClass, blockSelector) {
+        this.startRAFTimestamping();
+        this.startPendingCanvasMutationFlusher();
+        const canvasContextReset = initCanvasContextObserver(win, blockClass, blockSelector, false);
+        const canvas2DReset = initCanvas2DMutationObserver(this.processMutation.bind(this), win, blockClass, blockSelector);
+        const canvasWebGL1and2Reset = initCanvasWebGLMutationObserver(this.processMutation.bind(this), win, blockClass, blockSelector, this.mirror);
+        this.resetObservers = () => {
+            canvasContextReset();
+            canvas2DReset();
+            canvasWebGL1and2Reset();
+        };
+    }
+    startPendingCanvasMutationFlusher() {
+        requestAnimationFrame(() => this.flushPendingCanvasMutations());
+    }
+    startRAFTimestamping() {
+        const setLatestRAFTimestamp = (timestamp) => {
+            this.rafStamps.latestId = timestamp;
+            requestAnimationFrame(setLatestRAFTimestamp);
+        };
+        requestAnimationFrame(setLatestRAFTimestamp);
+    }
+    flushPendingCanvasMutations() {
+        this.pendingCanvasMutations.forEach((values, canvas) => {
+            const id = this.mirror.getId(canvas);
+            this.flushPendingCanvasMutationFor(canvas, id);
+        });
+        requestAnimationFrame(() => this.flushPendingCanvasMutations());
+    }
+    flushPendingCanvasMutationFor(canvas, id) {
+        if (this.frozen || this.locked) {
+            return;
+        }
+        const valuesWithType = this.pendingCanvasMutations.get(canvas);
+        if (!valuesWithType || id === -1)
+            return;
+        const values = valuesWithType.map((value) => {
+            const rest = __rest(value, ["type"]);
+            return rest;
+        });
+        const { type } = valuesWithType[0];
+        this.mutationCb({ id, type, commands: values });
+        this.pendingCanvasMutations.delete(canvas);
+    }
+}
+
+class StylesheetManager {
+    constructor(options) {
+        this.trackedLinkElements = new WeakSet();
+        this.styleMirror = new StyleSheetMirror();
+        this.mutationCb = options.mutationCb;
+        this.adoptedStyleSheetCb = options.adoptedStyleSheetCb;
+    }
+    attachLinkElement(linkEl, childSn) {
+        if ('_cssText' in childSn.attributes)
+            this.mutationCb({
+                adds: [],
+                removes: [],
+                texts: [],
+                attributes: [
+                    {
+                        id: childSn.id,
+                        attributes: childSn
+                            .attributes,
+                    },
+                ],
+            });
+        this.trackLinkElement(linkEl);
+    }
+    trackLinkElement(linkEl) {
+        if (this.trackedLinkElements.has(linkEl))
+            return;
+        this.trackedLinkElements.add(linkEl);
+        this.trackStylesheetInLinkElement(linkEl);
+    }
+    adoptStyleSheets(sheets, hostId) {
+        if (sheets.length === 0)
+            return;
+        const adoptedStyleSheetData = {
+            id: hostId,
+            styleIds: [],
+        };
+        const styles = [];
+        for (const sheet of sheets) {
+            let styleId;
+            if (!this.styleMirror.has(sheet)) {
+                styleId = this.styleMirror.add(sheet);
+                styles.push({
+                    styleId,
+                    rules: Array.from(sheet.rules || CSSRule, (r, index) => ({
+                        rule: stringifyRule(r),
+                        index,
+                    })),
+                });
+            }
+            else
+                styleId = this.styleMirror.getId(sheet);
+            adoptedStyleSheetData.styleIds.push(styleId);
+        }
+        if (styles.length > 0)
+            adoptedStyleSheetData.styles = styles;
+        this.adoptedStyleSheetCb(adoptedStyleSheetData);
+    }
+    reset() {
+        this.styleMirror.reset();
+        this.trackedLinkElements = new WeakSet();
+    }
+    trackStylesheetInLinkElement(linkEl) {
+    }
+}
+
+class ProcessedNodeManager {
+    constructor() {
+        this.nodeMap = new WeakMap();
+        this.loop = true;
+        this.periodicallyClear();
+    }
+    periodicallyClear() {
+        requestAnimationFrame(() => {
+            this.clear();
+            if (this.loop)
+                this.periodicallyClear();
+        });
+    }
+    inOtherBuffer(node, thisBuffer) {
+        const buffers = this.nodeMap.get(node);
+        return (buffers && Array.from(buffers).some((buffer) => buffer !== thisBuffer));
+    }
+    add(node, buffer) {
+        this.nodeMap.set(node, (this.nodeMap.get(node) || new Set()).add(buffer));
+    }
+    clear() {
+        this.nodeMap = new WeakMap();
+    }
+    destroy() {
+        this.loop = false;
+    }
+}
+
+function wrapEvent(e) {
+    return Object.assign(Object.assign({}, e), { timestamp: nowTimestamp() });
+}
+let wrappedEmit;
+let takeFullSnapshot;
+let canvasManager;
+let recording = false;
+const mirror = createMirror$2();
+function record(options = {}) {
+    const { emit, checkoutEveryNms, checkoutEveryNth, blockClass = 'rr-block', blockSelector = null, ignoreClass = 'rr-ignore', ignoreSelector = null, maskTextClass = 'rr-mask', maskTextSelector = null, inlineStylesheet = true, maskAllInputs, maskInputOptions: _maskInputOptions, slimDOMOptions: _slimDOMOptions, maskInputFn, maskTextFn, hooks, packFn, sampling = {}, dataURLOptions = {}, mousemoveWait, recordDOM = true, recordCanvas = false, recordCrossOriginIframes = false, recordAfter = options.recordAfter === 'DOMContentLoaded'
+        ? options.recordAfter
+        : 'load', userTriggeredOnInput = false, collectFonts = false, inlineImages = false, plugins, keepIframeSrcFn = () => false, ignoreCSSAttributes = new Set([]), errorHandler, } = options;
+    registerErrorHandler(errorHandler);
+    const inEmittingFrame = recordCrossOriginIframes
+        ? window.parent === window
+        : true;
+    let passEmitsToParent = false;
+    if (!inEmittingFrame) {
+        try {
+            if (window.parent.document) {
+                passEmitsToParent = false;
+            }
+        }
+        catch (e) {
+            passEmitsToParent = true;
+        }
+    }
+    if (inEmittingFrame && !emit) {
+        throw new Error('emit function is required');
+    }
+    if (mousemoveWait !== undefined && sampling.mousemove === undefined) {
+        sampling.mousemove = mousemoveWait;
+    }
+    mirror.reset();
+    const maskInputOptions = maskAllInputs === true
+        ? {
+            color: true,
+            date: true,
+            'datetime-local': true,
+            email: true,
+            month: true,
+            number: true,
+            range: true,
+            search: true,
+            tel: true,
+            text: true,
+            time: true,
+            url: true,
+            week: true,
+            textarea: true,
+            select: true,
+            password: true,
+        }
+        : _maskInputOptions !== undefined
+            ? _maskInputOptions
+            : { password: true };
+    const slimDOMOptions = _slimDOMOptions === true || _slimDOMOptions === 'all'
+        ? {
+            script: true,
+            comment: true,
+            headFavicon: true,
+            headWhitespace: true,
+            headMetaSocial: true,
+            headMetaRobots: true,
+            headMetaHttpEquiv: true,
+            headMetaVerification: true,
+            headMetaAuthorship: _slimDOMOptions === 'all',
+            headMetaDescKeywords: _slimDOMOptions === 'all',
+        }
+        : _slimDOMOptions
+            ? _slimDOMOptions
+            : {};
+    polyfill$1();
+    let lastFullSnapshotEvent;
+    let incrementalSnapshotCount = 0;
+    const eventProcessor = (e) => {
+        for (const plugin of plugins || []) {
+            if (plugin.eventProcessor) {
+                e = plugin.eventProcessor(e);
+            }
+        }
+        if (packFn &&
+            !passEmitsToParent) {
+            e = packFn(e);
+        }
+        return e;
+    };
+    wrappedEmit = (e, isCheckout) => {
+        var _a;
+        if (((_a = mutationBuffers[0]) === null || _a === void 0 ? void 0 : _a.isFrozen()) &&
+            e.type !== EventType.FullSnapshot &&
+            !(e.type === EventType.IncrementalSnapshot &&
+                e.data.source === IncrementalSource.Mutation)) {
+            mutationBuffers.forEach((buf) => buf.unfreeze());
+        }
+        if (inEmittingFrame) {
+            emit === null || emit === void 0 ? void 0 : emit(eventProcessor(e), isCheckout);
+        }
+        else if (passEmitsToParent) {
+            const message = {
+                type: 'rrweb',
+                event: eventProcessor(e),
+                origin: window.location.origin,
+                isCheckout,
+            };
+            window.parent.postMessage(message, '*');
+        }
+        if (e.type === EventType.FullSnapshot) {
+            lastFullSnapshotEvent = e;
+            incrementalSnapshotCount = 0;
+        }
+        else if (e.type === EventType.IncrementalSnapshot) {
+            if (e.data.source === IncrementalSource.Mutation &&
+                e.data.isAttachIframe) {
+                return;
+            }
+            incrementalSnapshotCount++;
+            const exceedCount = checkoutEveryNth && incrementalSnapshotCount >= checkoutEveryNth;
+            const exceedTime = checkoutEveryNms &&
+                e.timestamp - lastFullSnapshotEvent.timestamp > checkoutEveryNms;
+            if (exceedCount || exceedTime) {
+                takeFullSnapshot(true);
+            }
+        }
+    };
+    const wrappedMutationEmit = (m) => {
+        wrappedEmit(wrapEvent({
+            type: EventType.IncrementalSnapshot,
+            data: Object.assign({ source: IncrementalSource.Mutation }, m),
+        }));
+    };
+    const wrappedScrollEmit = (p) => wrappedEmit(wrapEvent({
+        type: EventType.IncrementalSnapshot,
+        data: Object.assign({ source: IncrementalSource.Scroll }, p),
+    }));
+    const wrappedCanvasMutationEmit = (p) => wrappedEmit(wrapEvent({
+        type: EventType.IncrementalSnapshot,
+        data: Object.assign({ source: IncrementalSource.CanvasMutation }, p),
+    }));
+    const wrappedAdoptedStyleSheetEmit = (a) => wrappedEmit(wrapEvent({
+        type: EventType.IncrementalSnapshot,
+        data: Object.assign({ source: IncrementalSource.AdoptedStyleSheet }, a),
+    }));
+    const stylesheetManager = new StylesheetManager({
+        mutationCb: wrappedMutationEmit,
+        adoptedStyleSheetCb: wrappedAdoptedStyleSheetEmit,
+    });
+    const iframeManager = new IframeManager({
+        mirror,
+        mutationCb: wrappedMutationEmit,
+        stylesheetManager: stylesheetManager,
+        recordCrossOriginIframes,
+        wrappedEmit,
+    });
+    for (const plugin of plugins || []) {
+        if (plugin.getMirror)
+            plugin.getMirror({
+                nodeMirror: mirror,
+                crossOriginIframeMirror: iframeManager.crossOriginIframeMirror,
+                crossOriginIframeStyleMirror: iframeManager.crossOriginIframeStyleMirror,
+            });
+    }
+    const processedNodeManager = new ProcessedNodeManager();
+    canvasManager = new CanvasManager({
+        recordCanvas,
+        mutationCb: wrappedCanvasMutationEmit,
+        win: window,
+        blockClass,
+        blockSelector,
+        mirror,
+        sampling: sampling.canvas,
+        dataURLOptions,
+    });
+    const shadowDomManager = new ShadowDomManager({
+        mutationCb: wrappedMutationEmit,
+        scrollCb: wrappedScrollEmit,
+        bypassOptions: {
+            blockClass,
+            blockSelector,
+            maskTextClass,
+            maskTextSelector,
+            inlineStylesheet,
+            maskInputOptions,
+            dataURLOptions,
+            maskTextFn,
+            maskInputFn,
+            recordCanvas,
+            inlineImages,
+            sampling,
+            slimDOMOptions,
+            iframeManager,
+            stylesheetManager,
+            canvasManager,
+            keepIframeSrcFn,
+            processedNodeManager,
+        },
+        mirror,
+    });
+    takeFullSnapshot = (isCheckout = false) => {
+        if (!recordDOM) {
+            return;
+        }
+        wrappedEmit(wrapEvent({
+            type: EventType.Meta,
+            data: {
+                href: window.location.href,
+                width: getWindowWidth(),
+                height: getWindowHeight(),
+            },
+        }), isCheckout);
+        stylesheetManager.reset();
+        shadowDomManager.init();
+        mutationBuffers.forEach((buf) => buf.lock());
+        const node = snapshot(document, {
+            mirror,
+            blockClass,
+            blockSelector,
+            maskTextClass,
+            maskTextSelector,
+            inlineStylesheet,
+            maskAllInputs: maskInputOptions,
+            maskTextFn,
+            slimDOM: slimDOMOptions,
+            dataURLOptions,
+            recordCanvas,
+            inlineImages,
+            onSerialize: (n) => {
+                if (isSerializedIframe(n, mirror)) {
+                    iframeManager.addIframe(n);
+                }
+                if (isSerializedStylesheet(n, mirror)) {
+                    stylesheetManager.trackLinkElement(n);
+                }
+                if (hasShadowRoot(n)) {
+                    shadowDomManager.addShadowRoot(n.shadowRoot, document);
+                }
+            },
+            onIframeLoad: (iframe, childSn) => {
+                iframeManager.attachIframe(iframe, childSn);
+                shadowDomManager.observeAttachShadow(iframe);
+            },
+            onStylesheetLoad: (linkEl, childSn) => {
+                stylesheetManager.attachLinkElement(linkEl, childSn);
+            },
+            keepIframeSrcFn,
+        });
+        if (!node) {
+            return console.warn('Failed to snapshot the document');
+        }
+        wrappedEmit(wrapEvent({
+            type: EventType.FullSnapshot,
+            data: {
+                node,
+                initialOffset: getWindowScroll(window),
+            },
+        }), isCheckout);
+        mutationBuffers.forEach((buf) => buf.unlock());
+        if (document.adoptedStyleSheets && document.adoptedStyleSheets.length > 0)
+            stylesheetManager.adoptStyleSheets(document.adoptedStyleSheets, mirror.getId(document));
+    };
+    try {
+        const handlers = [];
+        const observe = (doc) => {
+            var _a;
+            return callbackWrapper(initObservers)({
+                mutationCb: wrappedMutationEmit,
+                mousemoveCb: (positions, source) => wrappedEmit(wrapEvent({
+                    type: EventType.IncrementalSnapshot,
+                    data: {
+                        source,
+                        positions,
+                    },
+                })),
+                mouseInteractionCb: (d) => wrappedEmit(wrapEvent({
+                    type: EventType.IncrementalSnapshot,
+                    data: Object.assign({ source: IncrementalSource.MouseInteraction }, d),
+                })),
+                scrollCb: wrappedScrollEmit,
+                viewportResizeCb: (d) => wrappedEmit(wrapEvent({
+                    type: EventType.IncrementalSnapshot,
+                    data: Object.assign({ source: IncrementalSource.ViewportResize }, d),
+                })),
+                inputCb: (v) => wrappedEmit(wrapEvent({
+                    type: EventType.IncrementalSnapshot,
+                    data: Object.assign({ source: IncrementalSource.Input }, v),
+                })),
+                mediaInteractionCb: (p) => wrappedEmit(wrapEvent({
+                    type: EventType.IncrementalSnapshot,
+                    data: Object.assign({ source: IncrementalSource.MediaInteraction }, p),
+                })),
+                styleSheetRuleCb: (r) => wrappedEmit(wrapEvent({
+                    type: EventType.IncrementalSnapshot,
+                    data: Object.assign({ source: IncrementalSource.StyleSheetRule }, r),
+                })),
+                styleDeclarationCb: (r) => wrappedEmit(wrapEvent({
+                    type: EventType.IncrementalSnapshot,
+                    data: Object.assign({ source: IncrementalSource.StyleDeclaration }, r),
+                })),
+                canvasMutationCb: wrappedCanvasMutationEmit,
+                fontCb: (p) => wrappedEmit(wrapEvent({
+                    type: EventType.IncrementalSnapshot,
+                    data: Object.assign({ source: IncrementalSource.Font }, p),
+                })),
+                selectionCb: (p) => {
+                    wrappedEmit(wrapEvent({
+                        type: EventType.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource.Selection }, p),
+                    }));
+                },
+                customElementCb: (c) => {
+                    wrappedEmit(wrapEvent({
+                        type: EventType.IncrementalSnapshot,
+                        data: Object.assign({ source: IncrementalSource.CustomElement }, c),
+                    }));
+                },
+                blockClass,
+                ignoreClass,
+                ignoreSelector,
+                maskTextClass,
+                maskTextSelector,
+                maskInputOptions,
+                inlineStylesheet,
+                sampling,
+                recordDOM,
+                recordCanvas,
+                inlineImages,
+                userTriggeredOnInput,
+                collectFonts,
+                doc,
+                maskInputFn,
+                maskTextFn,
+                keepIframeSrcFn,
+                blockSelector,
+                slimDOMOptions,
+                dataURLOptions,
+                mirror,
+                iframeManager,
+                stylesheetManager,
+                shadowDomManager,
+                processedNodeManager,
+                canvasManager,
+                ignoreCSSAttributes,
+                plugins: ((_a = plugins === null || plugins === void 0 ? void 0 : plugins.filter((p) => p.observer)) === null || _a === void 0 ? void 0 : _a.map((p) => ({
+                    observer: p.observer,
+                    options: p.options,
+                    callback: (payload) => wrappedEmit(wrapEvent({
+                        type: EventType.Plugin,
+                        data: {
+                            plugin: p.name,
+                            payload,
+                        },
+                    })),
+                }))) || [],
+            }, hooks);
+        };
+        iframeManager.addLoadListener((iframeEl) => {
+            try {
+                handlers.push(observe(iframeEl.contentDocument));
+            }
+            catch (error) {
+                console.warn(error);
+            }
+        });
+        const init = () => {
+            takeFullSnapshot();
+            handlers.push(observe(document));
+            recording = true;
+        };
+        if (document.readyState === 'interactive' ||
+            document.readyState === 'complete') {
+            init();
+        }
+        else {
+            handlers.push(on('DOMContentLoaded', () => {
+                wrappedEmit(wrapEvent({
+                    type: EventType.DomContentLoaded,
+                    data: {},
+                }));
+                if (recordAfter === 'DOMContentLoaded')
+                    init();
+            }));
+            handlers.push(on('load', () => {
+                wrappedEmit(wrapEvent({
+                    type: EventType.Load,
+                    data: {},
+                }));
+                if (recordAfter === 'load')
+                    init();
+            }, window));
+        }
+        return () => {
+            handlers.forEach((h) => h());
+            processedNodeManager.destroy();
+            recording = false;
+            unregisterErrorHandler();
+        };
+    }
+    catch (error) {
+        console.warn(error);
+    }
+}
+record.addCustomEvent = (tag, payload) => {
+    if (!recording) {
+        throw new Error('please add custom event after start recording');
+    }
+    wrappedEmit(wrapEvent({
+        type: EventType.Custom,
+        data: {
+            tag,
+            payload,
+        },
+    }));
+};
+record.freezePage = () => {
+    mutationBuffers.forEach((buf) => buf.freeze());
+};
+record.takeFullSnapshot = (isCheckout) => {
+    if (!recording) {
+        throw new Error('please take full snapshot after start recording');
+    }
+    takeFullSnapshot(isCheckout);
+};
+record.mirror = mirror;
+
+var NodeType$1;
+(function (NodeType) {
+    NodeType[NodeType["Document"] = 0] = "Document";
+    NodeType[NodeType["DocumentType"] = 1] = "DocumentType";
+    NodeType[NodeType["Element"] = 2] = "Element";
+    NodeType[NodeType["Text"] = 3] = "Text";
+    NodeType[NodeType["CDATA"] = 4] = "CDATA";
+    NodeType[NodeType["Comment"] = 5] = "Comment";
+})(NodeType$1 || (NodeType$1 = {}));
+class Mirror$1 {
+    constructor() {
+        this.idNodeMap = new Map();
+        this.nodeMetaMap = new WeakMap();
+    }
+    getId(n) {
+        var _a;
+        if (!n)
+            return -1;
+        const id = (_a = this.getMeta(n)) === null || _a === void 0 ? void 0 : _a.id;
+        return id !== null && id !== void 0 ? id : -1;
+    }
+    getNode(id) {
+        return this.idNodeMap.get(id) || null;
+    }
+    getIds() {
+        return Array.from(this.idNodeMap.keys());
+    }
+    getMeta(n) {
+        return this.nodeMetaMap.get(n) || null;
+    }
+    removeNodeFromMap(n) {
+        const id = this.getId(n);
+        this.idNodeMap.delete(id);
+        if (n.childNodes) {
+            n.childNodes.forEach((childNode) => this.removeNodeFromMap(childNode));
+        }
+    }
+    has(id) {
+        return this.idNodeMap.has(id);
+    }
+    hasNode(node) {
+        return this.nodeMetaMap.has(node);
+    }
+    add(n, meta) {
+        const id = meta.id;
+        this.idNodeMap.set(id, n);
+        this.nodeMetaMap.set(n, meta);
+    }
+    replace(id, n) {
+        const oldNode = this.getNode(id);
+        if (oldNode) {
+            const meta = this.nodeMetaMap.get(oldNode);
+            if (meta)
+                this.nodeMetaMap.set(n, meta);
+        }
+        this.idNodeMap.set(id, n);
+    }
+    reset() {
+        this.idNodeMap = new Map();
+        this.nodeMetaMap = new WeakMap();
+    }
+}
+function createMirror$1() {
+    return new Mirror$1();
+}
+
+function parseCSSText(cssText) {
+    const res = {};
+    const listDelimiter = /;(?![^(]*\))/g;
+    const propertyDelimiter = /:(.+)/;
+    const comment = /\/\*.*?\*\//g;
+    cssText
+        .replace(comment, '')
+        .split(listDelimiter)
+        .forEach(function (item) {
+        if (item) {
+            const tmp = item.split(propertyDelimiter);
+            tmp.length > 1 && (res[camelize(tmp[0].trim())] = tmp[1].trim());
+        }
+    });
+    return res;
+}
+function toCSSText(style) {
+    const properties = [];
+    for (const name in style) {
+        const value = style[name];
+        if (typeof value !== 'string')
+            continue;
+        const normalizedName = hyphenate(name);
+        properties.push(`${normalizedName}: ${value};`);
+    }
+    return properties.join(' ');
+}
+const camelizeRE = /-([a-z])/g;
+const CUSTOM_PROPERTY_REGEX = /^--[a-zA-Z0-9-]+$/;
+const camelize = (str) => {
+    if (CUSTOM_PROPERTY_REGEX.test(str))
+        return str;
+    return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ''));
+};
+const hyphenateRE = /\B([A-Z])/g;
+const hyphenate = (str) => {
+    return str.replace(hyphenateRE, '-$1').toLowerCase();
+};
+
+class BaseRRNode {
+    constructor(..._args) {
+        this.parentElement = null;
+        this.parentNode = null;
+        this.firstChild = null;
+        this.lastChild = null;
+        this.previousSibling = null;
+        this.nextSibling = null;
+        this.ELEMENT_NODE = NodeType.ELEMENT_NODE;
+        this.TEXT_NODE = NodeType.TEXT_NODE;
+    }
+    get childNodes() {
+        const childNodes = [];
+        let childIterator = this.firstChild;
+        while (childIterator) {
+            childNodes.push(childIterator);
+            childIterator = childIterator.nextSibling;
+        }
+        return childNodes;
+    }
+    contains(node) {
+        if (!(node instanceof BaseRRNode))
+            return false;
+        else if (node.ownerDocument !== this.ownerDocument)
+            return false;
+        else if (node === this)
+            return true;
+        while (node.parentNode) {
+            if (node.parentNode === this)
+                return true;
+            node = node.parentNode;
+        }
+        return false;
+    }
+    appendChild(_newChild) {
+        throw new Error(`RRDomException: Failed to execute 'appendChild' on 'RRNode': This RRNode type does not support this method.`);
+    }
+    insertBefore(_newChild, _refChild) {
+        throw new Error(`RRDomException: Failed to execute 'insertBefore' on 'RRNode': This RRNode type does not support this method.`);
+    }
+    removeChild(_node) {
+        throw new Error(`RRDomException: Failed to execute 'removeChild' on 'RRNode': This RRNode type does not support this method.`);
+    }
+    toString() {
+        return 'RRNode';
+    }
+}
+function BaseRRDocumentImpl(RRNodeClass) {
+    return class BaseRRDocument extends RRNodeClass {
+        constructor(...args) {
+            super(args);
+            this.nodeType = NodeType.DOCUMENT_NODE;
+            this.nodeName = '#document';
+            this.compatMode = 'CSS1Compat';
+            this.RRNodeType = NodeType$1.Document;
+            this.textContent = null;
+            this.ownerDocument = this;
+        }
+        get documentElement() {
+            return (this.childNodes.find((node) => node.RRNodeType === NodeType$1.Element &&
+                node.tagName === 'HTML') || null);
+        }
+        get body() {
+            var _a;
+            return (((_a = this.documentElement) === null || _a === void 0 ? void 0 : _a.childNodes.find((node) => node.RRNodeType === NodeType$1.Element &&
+                node.tagName === 'BODY')) || null);
+        }
+        get head() {
+            var _a;
+            return (((_a = this.documentElement) === null || _a === void 0 ? void 0 : _a.childNodes.find((node) => node.RRNodeType === NodeType$1.Element &&
+                node.tagName === 'HEAD')) || null);
+        }
+        get implementation() {
+            return this;
+        }
+        get firstElementChild() {
+            return this.documentElement;
+        }
+        appendChild(newChild) {
+            const nodeType = newChild.RRNodeType;
+            if (nodeType === NodeType$1.Element ||
+                nodeType === NodeType$1.DocumentType) {
+                if (this.childNodes.some((s) => s.RRNodeType === nodeType)) {
+                    throw new Error(`RRDomException: Failed to execute 'appendChild' on 'RRNode': Only one ${nodeType === NodeType$1.Element ? 'RRElement' : 'RRDoctype'} on RRDocument allowed.`);
+                }
+            }
+            const child = appendChild(this, newChild);
+            child.parentElement = null;
+            return child;
+        }
+        insertBefore(newChild, refChild) {
+            const nodeType = newChild.RRNodeType;
+            if (nodeType === NodeType$1.Element ||
+                nodeType === NodeType$1.DocumentType) {
+                if (this.childNodes.some((s) => s.RRNodeType === nodeType)) {
+                    throw new Error(`RRDomException: Failed to execute 'insertBefore' on 'RRNode': Only one ${nodeType === NodeType$1.Element ? 'RRElement' : 'RRDoctype'} on RRDocument allowed.`);
+                }
+            }
+            const child = insertBefore(this, newChild, refChild);
+            child.parentElement = null;
+            return child;
+        }
+        removeChild(node) {
+            return removeChild(this, node);
+        }
+        open() {
+            this.firstChild = null;
+            this.lastChild = null;
+        }
+        close() {
+        }
+        write(content) {
+            let publicId;
+            if (content ===
+                '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "">')
+                publicId = '-//W3C//DTD XHTML 1.0 Transitional//EN';
+            else if (content ===
+                '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "">')
+                publicId = '-//W3C//DTD HTML 4.0 Transitional//EN';
+            if (publicId) {
+                const doctype = this.createDocumentType('html', publicId, '');
+                this.open();
+                this.appendChild(doctype);
+            }
+        }
+        createDocument(_namespace, _qualifiedName, _doctype) {
+            return new BaseRRDocument();
+        }
+        createDocumentType(qualifiedName, publicId, systemId) {
+            const doctype = new (BaseRRDocumentTypeImpl(BaseRRNode))(qualifiedName, publicId, systemId);
+            doctype.ownerDocument = this;
+            return doctype;
+        }
+        createElement(tagName) {
+            const element = new (BaseRRElementImpl(BaseRRNode))(tagName);
+            element.ownerDocument = this;
+            return element;
+        }
+        createElementNS(_namespaceURI, qualifiedName) {
+            return this.createElement(qualifiedName);
+        }
+        createTextNode(data) {
+            const text = new (BaseRRTextImpl(BaseRRNode))(data);
+            text.ownerDocument = this;
+            return text;
+        }
+        createComment(data) {
+            const comment = new (BaseRRCommentImpl(BaseRRNode))(data);
+            comment.ownerDocument = this;
+            return comment;
+        }
+        createCDATASection(data) {
+            const CDATASection = new (BaseRRCDATASectionImpl(BaseRRNode))(data);
+            CDATASection.ownerDocument = this;
+            return CDATASection;
+        }
+        toString() {
+            return 'RRDocument';
+        }
+    };
+}
+function BaseRRDocumentTypeImpl(RRNodeClass) {
+    return class BaseRRDocumentType extends RRNodeClass {
+        constructor(qualifiedName, publicId, systemId) {
+            super();
+            this.nodeType = NodeType.DOCUMENT_TYPE_NODE;
+            this.RRNodeType = NodeType$1.DocumentType;
+            this.name = qualifiedName;
+            this.publicId = publicId;
+            this.systemId = systemId;
+            this.nodeName = qualifiedName;
+            this.textContent = null;
+        }
+        toString() {
+            return 'RRDocumentType';
+        }
+    };
+}
+function BaseRRElementImpl(RRNodeClass) {
+    return class BaseRRElement extends RRNodeClass {
+        constructor(tagName) {
+            super();
+            this.nodeType = NodeType.ELEMENT_NODE;
+            this.RRNodeType = NodeType$1.Element;
+            this.attributes = {};
+            this.shadowRoot = null;
+            this.tagName = tagName.toUpperCase();
+            this.nodeName = tagName.toUpperCase();
+        }
+        get textContent() {
+            let result = '';
+            this.childNodes.forEach((node) => (result += node.textContent));
+            return result;
+        }
+        set textContent(textContent) {
+            this.firstChild = null;
+            this.lastChild = null;
+            this.appendChild(this.ownerDocument.createTextNode(textContent));
+        }
+        get classList() {
+            return new ClassList(this.attributes.class, (newClassName) => {
+                this.attributes.class = newClassName;
+            });
+        }
+        get id() {
+            return this.attributes.id || '';
+        }
+        get className() {
+            return this.attributes.class || '';
+        }
+        get style() {
+            const style = (this.attributes.style ? parseCSSText(this.attributes.style) : {});
+            const hyphenateRE = /\B([A-Z])/g;
+            style.setProperty = (name, value, priority) => {
+                if (hyphenateRE.test(name))
+                    return;
+                const normalizedName = camelize(name);
+                if (!value)
+                    delete style[normalizedName];
+                else
+                    style[normalizedName] = value;
+                if (priority === 'important')
+                    style[normalizedName] += ' !important';
+                this.attributes.style = toCSSText(style);
+            };
+            style.removeProperty = (name) => {
+                if (hyphenateRE.test(name))
+                    return '';
+                const normalizedName = camelize(name);
+                const value = style[normalizedName] || '';
+                delete style[normalizedName];
+                this.attributes.style = toCSSText(style);
+                return value;
+            };
+            return style;
+        }
+        getAttribute(name) {
+            return this.attributes[name] || null;
+        }
+        setAttribute(name, attribute) {
+            this.attributes[name] = attribute;
+        }
+        setAttributeNS(_namespace, qualifiedName, value) {
+            this.setAttribute(qualifiedName, value);
+        }
+        removeAttribute(name) {
+            delete this.attributes[name];
+        }
+        appendChild(newChild) {
+            return appendChild(this, newChild);
+        }
+        insertBefore(newChild, refChild) {
+            return insertBefore(this, newChild, refChild);
+        }
+        removeChild(node) {
+            return removeChild(this, node);
+        }
+        attachShadow(_init) {
+            const shadowRoot = this.ownerDocument.createElement('SHADOWROOT');
+            this.shadowRoot = shadowRoot;
+            return shadowRoot;
+        }
+        dispatchEvent(_event) {
+            return true;
+        }
+        toString() {
+            let attributeString = '';
+            for (const attribute in this.attributes) {
+                attributeString += `${attribute}="${this.attributes[attribute]}" `;
+            }
+            return `${this.tagName} ${attributeString}`;
+        }
+    };
+}
+function BaseRRMediaElementImpl(RRElementClass) {
+    return class BaseRRMediaElement extends RRElementClass {
+        attachShadow(_init) {
+            throw new Error(`RRDomException: Failed to execute 'attachShadow' on 'RRElement': This RRElement does not support attachShadow`);
+        }
+        play() {
+            this.paused = false;
+        }
+        pause() {
+            this.paused = true;
+        }
+    };
+}
+function BaseRRTextImpl(RRNodeClass) {
+    return class BaseRRText extends RRNodeClass {
+        constructor(data) {
+            super();
+            this.nodeType = NodeType.TEXT_NODE;
+            this.nodeName = '#text';
+            this.RRNodeType = NodeType$1.Text;
+            this.data = data;
+        }
+        get textContent() {
+            return this.data;
+        }
+        set textContent(textContent) {
+            this.data = textContent;
+        }
+        toString() {
+            return `RRText text=${JSON.stringify(this.data)}`;
+        }
+    };
+}
+function BaseRRCommentImpl(RRNodeClass) {
+    return class BaseRRComment extends RRNodeClass {
+        constructor(data) {
+            super();
+            this.nodeType = NodeType.COMMENT_NODE;
+            this.nodeName = '#comment';
+            this.RRNodeType = NodeType$1.Comment;
+            this.data = data;
+        }
+        get textContent() {
+            return this.data;
+        }
+        set textContent(textContent) {
+            this.data = textContent;
+        }
+        toString() {
+            return `RRComment text=${JSON.stringify(this.data)}`;
+        }
+    };
+}
+function BaseRRCDATASectionImpl(RRNodeClass) {
+    return class BaseRRCDATASection extends RRNodeClass {
+        constructor(data) {
+            super();
+            this.nodeName = '#cdata-section';
+            this.nodeType = NodeType.CDATA_SECTION_NODE;
+            this.RRNodeType = NodeType$1.CDATA;
+            this.data = data;
+        }
+        get textContent() {
+            return this.data;
+        }
+        set textContent(textContent) {
+            this.data = textContent;
+        }
+        toString() {
+            return `RRCDATASection data=${JSON.stringify(this.data)}`;
+        }
+    };
+}
+class ClassList {
+    constructor(classText, onChange) {
+        this.classes = [];
+        this.add = (...classNames) => {
+            for (const item of classNames) {
+                const className = String(item);
+                if (this.classes.indexOf(className) >= 0)
+                    continue;
+                this.classes.push(className);
+            }
+            this.onChange && this.onChange(this.classes.join(' '));
+        };
+        this.remove = (...classNames) => {
+            this.classes = this.classes.filter((item) => classNames.indexOf(item) === -1);
+            this.onChange && this.onChange(this.classes.join(' '));
+        };
+        if (classText) {
+            const classes = classText.trim().split(/\s+/);
+            this.classes.push(...classes);
+        }
+        this.onChange = onChange;
+    }
+}
+function appendChild(parent, newChild) {
+    if (newChild.parentNode)
+        newChild.parentNode.removeChild(newChild);
+    if (parent.lastChild) {
+        parent.lastChild.nextSibling = newChild;
+        newChild.previousSibling = parent.lastChild;
+    }
+    else {
+        parent.firstChild = newChild;
+        newChild.previousSibling = null;
+    }
+    parent.lastChild = newChild;
+    newChild.nextSibling = null;
+    newChild.parentNode = parent;
+    newChild.parentElement = parent;
+    newChild.ownerDocument = parent.ownerDocument;
+    return newChild;
+}
+function insertBefore(parent, newChild, refChild) {
+    if (!refChild)
+        return appendChild(parent, newChild);
+    if (refChild.parentNode !== parent)
+        throw new Error("Failed to execute 'insertBefore' on 'RRNode': The RRNode before which the new node is to be inserted is not a child of this RRNode.");
+    if (newChild === refChild)
+        return newChild;
+    if (newChild.parentNode)
+        newChild.parentNode.removeChild(newChild);
+    newChild.previousSibling = refChild.previousSibling;
+    refChild.previousSibling = newChild;
+    newChild.nextSibling = refChild;
+    if (newChild.previousSibling)
+        newChild.previousSibling.nextSibling = newChild;
+    else
+        parent.firstChild = newChild;
+    newChild.parentElement = parent;
+    newChild.parentNode = parent;
+    newChild.ownerDocument = parent.ownerDocument;
+    return newChild;
+}
+function removeChild(parent, child) {
+    if (child.parentNode !== parent)
+        throw new Error("Failed to execute 'removeChild' on 'RRNode': The RRNode to be removed is not a child of this RRNode.");
+    if (child.previousSibling)
+        child.previousSibling.nextSibling = child.nextSibling;
+    else
+        parent.firstChild = child.nextSibling;
+    if (child.nextSibling)
+        child.nextSibling.previousSibling = child.previousSibling;
+    else
+        parent.lastChild = child.previousSibling;
+    child.previousSibling = null;
+    child.nextSibling = null;
+    child.parentElement = null;
+    child.parentNode = null;
+    return child;
+}
+var NodeType;
+(function (NodeType) {
+    NodeType[NodeType["PLACEHOLDER"] = 0] = "PLACEHOLDER";
+    NodeType[NodeType["ELEMENT_NODE"] = 1] = "ELEMENT_NODE";
+    NodeType[NodeType["ATTRIBUTE_NODE"] = 2] = "ATTRIBUTE_NODE";
+    NodeType[NodeType["TEXT_NODE"] = 3] = "TEXT_NODE";
+    NodeType[NodeType["CDATA_SECTION_NODE"] = 4] = "CDATA_SECTION_NODE";
+    NodeType[NodeType["ENTITY_REFERENCE_NODE"] = 5] = "ENTITY_REFERENCE_NODE";
+    NodeType[NodeType["ENTITY_NODE"] = 6] = "ENTITY_NODE";
+    NodeType[NodeType["PROCESSING_INSTRUCTION_NODE"] = 7] = "PROCESSING_INSTRUCTION_NODE";
+    NodeType[NodeType["COMMENT_NODE"] = 8] = "COMMENT_NODE";
+    NodeType[NodeType["DOCUMENT_NODE"] = 9] = "DOCUMENT_NODE";
+    NodeType[NodeType["DOCUMENT_TYPE_NODE"] = 10] = "DOCUMENT_TYPE_NODE";
+    NodeType[NodeType["DOCUMENT_FRAGMENT_NODE"] = 11] = "DOCUMENT_FRAGMENT_NODE";
+})(NodeType || (NodeType = {}));
+
+const NAMESPACES = {
+    svg: 'http://www.w3.org/2000/svg',
+    'xlink:href': 'http://www.w3.org/1999/xlink',
+    xmlns: 'http://www.w3.org/2000/xmlns/',
+};
+const SVGTagMap = {
+    altglyph: 'altGlyph',
+    altglyphdef: 'altGlyphDef',
+    altglyphitem: 'altGlyphItem',
+    animatecolor: 'animateColor',
+    animatemotion: 'animateMotion',
+    animatetransform: 'animateTransform',
+    clippath: 'clipPath',
+    feblend: 'feBlend',
+    fecolormatrix: 'feColorMatrix',
+    fecomponenttransfer: 'feComponentTransfer',
+    fecomposite: 'feComposite',
+    feconvolvematrix: 'feConvolveMatrix',
+    fediffuselighting: 'feDiffuseLighting',
+    fedisplacementmap: 'feDisplacementMap',
+    fedistantlight: 'feDistantLight',
+    fedropshadow: 'feDropShadow',
+    feflood: 'feFlood',
+    fefunca: 'feFuncA',
+    fefuncb: 'feFuncB',
+    fefuncg: 'feFuncG',
+    fefuncr: 'feFuncR',
+    fegaussianblur: 'feGaussianBlur',
+    feimage: 'feImage',
+    femerge: 'feMerge',
+    femergenode: 'feMergeNode',
+    femorphology: 'feMorphology',
+    feoffset: 'feOffset',
+    fepointlight: 'fePointLight',
+    fespecularlighting: 'feSpecularLighting',
+    fespotlight: 'feSpotLight',
+    fetile: 'feTile',
+    feturbulence: 'feTurbulence',
+    foreignobject: 'foreignObject',
+    glyphref: 'glyphRef',
+    lineargradient: 'linearGradient',
+    radialgradient: 'radialGradient',
+};
+let createdNodeSet = null;
+function diff(oldTree, newTree, replayer, rrnodeMirror = newTree.mirror ||
+    newTree.ownerDocument.mirror) {
+    oldTree = diffBeforeUpdatingChildren(oldTree, newTree, replayer, rrnodeMirror);
+    diffChildren(oldTree, newTree, replayer, rrnodeMirror);
+    diffAfterUpdatingChildren(oldTree, newTree, replayer);
+}
+function diffBeforeUpdatingChildren(oldTree, newTree, replayer, rrnodeMirror) {
+    var _a;
+    if (replayer.afterAppend && !createdNodeSet) {
+        createdNodeSet = new WeakSet();
+        setTimeout(() => {
+            createdNodeSet = null;
+        }, 0);
+    }
+    if (!sameNodeType(oldTree, newTree)) {
+        const calibratedOldTree = createOrGetNode(newTree, replayer.mirror, rrnodeMirror);
+        (_a = oldTree.parentNode) === null || _a === void 0 ? void 0 : _a.replaceChild(calibratedOldTree, oldTree);
+        oldTree = calibratedOldTree;
+    }
+    switch (newTree.RRNodeType) {
+        case NodeType$1.Document: {
+            if (!nodeMatching(oldTree, newTree, replayer.mirror, rrnodeMirror)) {
+                const newMeta = rrnodeMirror.getMeta(newTree);
+                if (newMeta) {
+                    replayer.mirror.removeNodeFromMap(oldTree);
+                    oldTree.close();
+                    oldTree.open();
+                    replayer.mirror.add(oldTree, newMeta);
+                    createdNodeSet === null || createdNodeSet === void 0 ? void 0 : createdNodeSet.add(oldTree);
+                }
+            }
+            break;
+        }
+        case NodeType$1.Element: {
+            const oldElement = oldTree;
+            const newRRElement = newTree;
+            switch (newRRElement.tagName) {
+                case 'IFRAME': {
+                    const oldContentDocument = oldTree
+                        .contentDocument;
+                    if (!oldContentDocument)
+                        break;
+                    diff(oldContentDocument, newTree.contentDocument, replayer, rrnodeMirror);
+                    break;
+                }
+            }
+            if (newRRElement.shadowRoot) {
+                if (!oldElement.shadowRoot)
+                    oldElement.attachShadow({ mode: 'open' });
+                diffChildren(oldElement.shadowRoot, newRRElement.shadowRoot, replayer, rrnodeMirror);
+            }
+            diffProps(oldElement, newRRElement, rrnodeMirror);
+            break;
+        }
+    }
+    return oldTree;
+}
+function diffAfterUpdatingChildren(oldTree, newTree, replayer) {
+    var _a;
+    switch (newTree.RRNodeType) {
+        case NodeType$1.Document: {
+            const scrollData = newTree.scrollData;
+            scrollData && replayer.applyScroll(scrollData, true);
+            break;
+        }
+        case NodeType$1.Element: {
+            const oldElement = oldTree;
+            const newRRElement = newTree;
+            newRRElement.scrollData &&
+                replayer.applyScroll(newRRElement.scrollData, true);
+            newRRElement.inputData && replayer.applyInput(newRRElement.inputData);
+            switch (newRRElement.tagName) {
+                case 'AUDIO':
+                case 'VIDEO': {
+                    const oldMediaElement = oldTree;
+                    const newMediaRRElement = newRRElement;
+                    if (newMediaRRElement.paused !== undefined)
+                        newMediaRRElement.paused
+                            ? void oldMediaElement.pause()
+                            : void oldMediaElement.play();
+                    if (newMediaRRElement.muted !== undefined)
+                        oldMediaElement.muted = newMediaRRElement.muted;
+                    if (newMediaRRElement.volume !== undefined)
+                        oldMediaElement.volume = newMediaRRElement.volume;
+                    if (newMediaRRElement.currentTime !== undefined)
+                        oldMediaElement.currentTime = newMediaRRElement.currentTime;
+                    if (newMediaRRElement.playbackRate !== undefined)
+                        oldMediaElement.playbackRate = newMediaRRElement.playbackRate;
+                    if (newMediaRRElement.loop !== undefined)
+                        oldMediaElement.loop = newMediaRRElement.loop;
+                    break;
+                }
+                case 'CANVAS': {
+                    const rrCanvasElement = newTree;
+                    if (rrCanvasElement.rr_dataURL !== null) {
+                        const image = document.createElement('img');
+                        image.onload = () => {
+                            const ctx = oldElement.getContext('2d');
+                            if (ctx) {
+                                ctx.drawImage(image, 0, 0, image.width, image.height);
+                            }
+                        };
+                        image.src = rrCanvasElement.rr_dataURL;
+                    }
+                    rrCanvasElement.canvasMutations.forEach((canvasMutation) => replayer.applyCanvas(canvasMutation.event, canvasMutation.mutation, oldTree));
+                    break;
+                }
+                case 'STYLE': {
+                    const styleSheet = oldElement.sheet;
+                    styleSheet &&
+                        newTree.rules.forEach((data) => replayer.applyStyleSheetMutation(data, styleSheet));
+                    break;
+                }
+            }
+            break;
+        }
+        case NodeType$1.Text:
+        case NodeType$1.Comment:
+        case NodeType$1.CDATA: {
+            if (oldTree.textContent !==
+                newTree.data)
+                oldTree.textContent = newTree.data;
+            break;
+        }
+    }
+    if (createdNodeSet === null || createdNodeSet === void 0 ? void 0 : createdNodeSet.has(oldTree)) {
+        createdNodeSet.delete(oldTree);
+        (_a = replayer.afterAppend) === null || _a === void 0 ? void 0 : _a.call(replayer, oldTree, replayer.mirror.getId(oldTree));
+    }
+}
+function diffProps(oldTree, newTree, rrnodeMirror) {
+    const oldAttributes = oldTree.attributes;
+    const newAttributes = newTree.attributes;
+    for (const name in newAttributes) {
+        const newValue = newAttributes[name];
+        const sn = rrnodeMirror.getMeta(newTree);
+        if ((sn === null || sn === void 0 ? void 0 : sn.isSVG) && NAMESPACES[name])
+            oldTree.setAttributeNS(NAMESPACES[name], name, newValue);
+        else if (newTree.tagName === 'CANVAS' && name === 'rr_dataURL') {
+            const image = document.createElement('img');
+            image.src = newValue;
+            image.onload = () => {
+                const ctx = oldTree.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(image, 0, 0, image.width, image.height);
+                }
+            };
+        }
+        else if (newTree.tagName === 'IFRAME' && name === 'srcdoc')
+            continue;
+        else
+            oldTree.setAttribute(name, newValue);
+    }
+    for (const { name } of Array.from(oldAttributes))
+        if (!(name in newAttributes))
+            oldTree.removeAttribute(name);
+    newTree.scrollLeft && (oldTree.scrollLeft = newTree.scrollLeft);
+    newTree.scrollTop && (oldTree.scrollTop = newTree.scrollTop);
+}
+function diffChildren(oldTree, newTree, replayer, rrnodeMirror) {
+    const oldChildren = Array.from(oldTree.childNodes);
+    const newChildren = newTree.childNodes;
+    if (oldChildren.length === 0 && newChildren.length === 0)
+        return;
+    let oldStartIndex = 0, oldEndIndex = oldChildren.length - 1, newStartIndex = 0, newEndIndex = newChildren.length - 1;
+    let oldStartNode = oldChildren[oldStartIndex], oldEndNode = oldChildren[oldEndIndex], newStartNode = newChildren[newStartIndex], newEndNode = newChildren[newEndIndex];
+    let oldIdToIndex = undefined, indexInOld = undefined;
+    while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
+        if (oldStartNode === undefined) {
+            oldStartNode = oldChildren[++oldStartIndex];
+        }
+        else if (oldEndNode === undefined) {
+            oldEndNode = oldChildren[--oldEndIndex];
+        }
+        else if (nodeMatching(oldStartNode, newStartNode, replayer.mirror, rrnodeMirror)) {
+            oldStartNode = oldChildren[++oldStartIndex];
+            newStartNode = newChildren[++newStartIndex];
+        }
+        else if (nodeMatching(oldEndNode, newEndNode, replayer.mirror, rrnodeMirror)) {
+            oldEndNode = oldChildren[--oldEndIndex];
+            newEndNode = newChildren[--newEndIndex];
+        }
+        else if (nodeMatching(oldStartNode, newEndNode, replayer.mirror, rrnodeMirror)) {
+            try {
+                oldTree.insertBefore(oldStartNode, oldEndNode.nextSibling);
+            }
+            catch (e) {
+                console.warn(e);
+            }
+            oldStartNode = oldChildren[++oldStartIndex];
+            newEndNode = newChildren[--newEndIndex];
+        }
+        else if (nodeMatching(oldEndNode, newStartNode, replayer.mirror, rrnodeMirror)) {
+            try {
+                oldTree.insertBefore(oldEndNode, oldStartNode);
+            }
+            catch (e) {
+                console.warn(e);
+            }
+            oldEndNode = oldChildren[--oldEndIndex];
+            newStartNode = newChildren[++newStartIndex];
+        }
+        else {
+            if (!oldIdToIndex) {
+                oldIdToIndex = {};
+                for (let i = oldStartIndex; i <= oldEndIndex; i++) {
+                    const oldChild = oldChildren[i];
+                    if (oldChild && replayer.mirror.hasNode(oldChild))
+                        oldIdToIndex[replayer.mirror.getId(oldChild)] = i;
+                }
+            }
+            indexInOld = oldIdToIndex[rrnodeMirror.getId(newStartNode)];
+            const nodeToMove = oldChildren[indexInOld];
+            if (indexInOld !== undefined &&
+                nodeToMove &&
+                nodeMatching(nodeToMove, newStartNode, replayer.mirror, rrnodeMirror)) {
+                try {
+                    oldTree.insertBefore(nodeToMove, oldStartNode);
+                }
+                catch (e) {
+                    console.warn(e);
+                }
+                oldChildren[indexInOld] = undefined;
+            }
+            else {
+                const newNode = createOrGetNode(newStartNode, replayer.mirror, rrnodeMirror);
+                if (oldTree.nodeName === '#document' &&
+                    oldStartNode &&
+                    ((newNode.nodeType === newNode.DOCUMENT_TYPE_NODE &&
+                        oldStartNode.nodeType === oldStartNode.DOCUMENT_TYPE_NODE) ||
+                        (newNode.nodeType === newNode.ELEMENT_NODE &&
+                            oldStartNode.nodeType === oldStartNode.ELEMENT_NODE))) {
+                    oldTree.removeChild(oldStartNode);
+                    replayer.mirror.removeNodeFromMap(oldStartNode);
+                    oldStartNode = oldChildren[++oldStartIndex];
+                }
+                try {
+                    oldTree.insertBefore(newNode, oldStartNode || null);
+                }
+                catch (e) {
+                    console.warn(e);
+                }
+            }
+            newStartNode = newChildren[++newStartIndex];
+        }
+    }
+    if (oldStartIndex > oldEndIndex) {
+        const referenceRRNode = newChildren[newEndIndex + 1];
+        let referenceNode = null;
+        if (referenceRRNode)
+            referenceNode = replayer.mirror.getNode(rrnodeMirror.getId(referenceRRNode));
+        for (; newStartIndex <= newEndIndex; ++newStartIndex) {
+            const newNode = createOrGetNode(newChildren[newStartIndex], replayer.mirror, rrnodeMirror);
+            try {
+                oldTree.insertBefore(newNode, referenceNode);
+            }
+            catch (e) {
+                console.warn(e);
+            }
+        }
+    }
+    else if (newStartIndex > newEndIndex) {
+        for (; oldStartIndex <= oldEndIndex; oldStartIndex++) {
+            const node = oldChildren[oldStartIndex];
+            if (!node || node.parentNode !== oldTree)
+                continue;
+            try {
+                oldTree.removeChild(node);
+                replayer.mirror.removeNodeFromMap(node);
+            }
+            catch (e) {
+                console.warn(e);
+            }
+        }
+    }
+    let oldChild = oldTree.firstChild;
+    let newChild = newTree.firstChild;
+    while (oldChild !== null && newChild !== null) {
+        diff(oldChild, newChild, replayer, rrnodeMirror);
+        oldChild = oldChild.nextSibling;
+        newChild = newChild.nextSibling;
+    }
+}
+function createOrGetNode(rrNode, domMirror, rrnodeMirror) {
+    const nodeId = rrnodeMirror.getId(rrNode);
+    const sn = rrnodeMirror.getMeta(rrNode);
+    let node = null;
+    if (nodeId > -1)
+        node = domMirror.getNode(nodeId);
+    if (node !== null && sameNodeType(node, rrNode))
+        return node;
+    switch (rrNode.RRNodeType) {
+        case NodeType$1.Document:
+            node = new Document();
+            break;
+        case NodeType$1.DocumentType:
+            node = document.implementation.createDocumentType(rrNode.name, rrNode.publicId, rrNode.systemId);
+            break;
+        case NodeType$1.Element: {
+            let tagName = rrNode.tagName.toLowerCase();
+            tagName = SVGTagMap[tagName] || tagName;
+            if (sn && 'isSVG' in sn && (sn === null || sn === void 0 ? void 0 : sn.isSVG)) {
+                node = document.createElementNS(NAMESPACES['svg'], tagName);
+            }
+            else
+                node = document.createElement(rrNode.tagName);
+            break;
+        }
+        case NodeType$1.Text:
+            node = document.createTextNode(rrNode.data);
+            break;
+        case NodeType$1.Comment:
+            node = document.createComment(rrNode.data);
+            break;
+        case NodeType$1.CDATA:
+            node = document.createCDATASection(rrNode.data);
+            break;
+    }
+    if (sn)
+        domMirror.add(node, Object.assign({}, sn));
+    try {
+        createdNodeSet === null || createdNodeSet === void 0 ? void 0 : createdNodeSet.add(node);
+    }
+    catch (e) {
+    }
+    return node;
+}
+function sameNodeType(node1, node2) {
+    if (node1.nodeType !== node2.nodeType)
+        return false;
+    return (node1.nodeType !== node1.ELEMENT_NODE ||
+        node1.tagName.toUpperCase() ===
+            node2.tagName);
+}
+function nodeMatching(node1, node2, domMirror, rrdomMirror) {
+    const node1Id = domMirror.getId(node1);
+    const node2Id = rrdomMirror.getId(node2);
+    if (node1Id === -1 || node1Id !== node2Id)
+        return false;
+    return sameNodeType(node1, node2);
+}
+
+class RRDocument extends BaseRRDocumentImpl(BaseRRNode) {
+    get unserializedId() {
+        return this._unserializedId--;
+    }
+    constructor(mirror) {
+        super();
+        this.UNSERIALIZED_STARTING_ID = -2;
+        this._unserializedId = this.UNSERIALIZED_STARTING_ID;
+        this.mirror = createMirror();
+        this.scrollData = null;
+        if (mirror) {
+            this.mirror = mirror;
+        }
+    }
+    createDocument(_namespace, _qualifiedName, _doctype) {
+        return new RRDocument();
+    }
+    createDocumentType(qualifiedName, publicId, systemId) {
+        const documentTypeNode = new RRDocumentType(qualifiedName, publicId, systemId);
+        documentTypeNode.ownerDocument = this;
+        return documentTypeNode;
+    }
+    createElement(tagName) {
+        const upperTagName = tagName.toUpperCase();
+        let element;
+        switch (upperTagName) {
+            case 'AUDIO':
+            case 'VIDEO':
+                element = new RRMediaElement(upperTagName);
+                break;
+            case 'IFRAME':
+                element = new RRIFrameElement(upperTagName, this.mirror);
+                break;
+            case 'CANVAS':
+                element = new RRCanvasElement(upperTagName);
+                break;
+            case 'STYLE':
+                element = new RRStyleElement(upperTagName);
+                break;
+            default:
+                element = new RRElement(upperTagName);
+                break;
+        }
+        element.ownerDocument = this;
+        return element;
+    }
+    createComment(data) {
+        const commentNode = new RRComment(data);
+        commentNode.ownerDocument = this;
+        return commentNode;
+    }
+    createCDATASection(data) {
+        const sectionNode = new RRCDATASection(data);
+        sectionNode.ownerDocument = this;
+        return sectionNode;
+    }
+    createTextNode(data) {
+        const textNode = new RRText(data);
+        textNode.ownerDocument = this;
+        return textNode;
+    }
+    destroyTree() {
+        this.firstChild = null;
+        this.lastChild = null;
+        this.mirror.reset();
+    }
+    open() {
+        super.open();
+        this._unserializedId = this.UNSERIALIZED_STARTING_ID;
+    }
+}
+const RRDocumentType = BaseRRDocumentTypeImpl(BaseRRNode);
+class RRElement extends BaseRRElementImpl(BaseRRNode) {
+    constructor() {
+        super(...arguments);
+        this.inputData = null;
+        this.scrollData = null;
+    }
+}
+class RRMediaElement extends BaseRRMediaElementImpl(RRElement) {
+}
+class RRCanvasElement extends RRElement {
+    constructor() {
+        super(...arguments);
+        this.rr_dataURL = null;
+        this.canvasMutations = [];
+    }
+    getContext() {
+        return null;
+    }
+}
+class RRStyleElement extends RRElement {
+    constructor() {
+        super(...arguments);
+        this.rules = [];
+    }
+}
+class RRIFrameElement extends RRElement {
+    constructor(upperTagName, mirror) {
+        super(upperTagName);
+        this.contentDocument = new RRDocument();
+        this.contentDocument.mirror = mirror;
+    }
+}
+const RRText = BaseRRTextImpl(BaseRRNode);
+const RRComment = BaseRRCommentImpl(BaseRRNode);
+const RRCDATASection = BaseRRCDATASectionImpl(BaseRRNode);
+function getValidTagName(element) {
+    if (element instanceof HTMLFormElement) {
+        return 'FORM';
+    }
+    return element.tagName.toUpperCase();
+}
+function buildFromNode(node, rrdom, domMirror, parentRRNode) {
+    let rrNode;
+    switch (node.nodeType) {
+        case NodeType.DOCUMENT_NODE:
+            if (parentRRNode && parentRRNode.nodeName === 'IFRAME')
+                rrNode = parentRRNode.contentDocument;
+            else {
+                rrNode = rrdom;
+                rrNode.compatMode = node.compatMode;
+            }
+            break;
+        case NodeType.DOCUMENT_TYPE_NODE: {
+            const documentType = node;
+            rrNode = rrdom.createDocumentType(documentType.name, documentType.publicId, documentType.systemId);
+            break;
+        }
+        case NodeType.ELEMENT_NODE: {
+            const elementNode = node;
+            const tagName = getValidTagName(elementNode);
+            rrNode = rrdom.createElement(tagName);
+            const rrElement = rrNode;
+            for (const { name, value } of Array.from(elementNode.attributes)) {
+                rrElement.attributes[name] = value;
+            }
+            elementNode.scrollLeft && (rrElement.scrollLeft = elementNode.scrollLeft);
+            elementNode.scrollTop && (rrElement.scrollTop = elementNode.scrollTop);
+            break;
+        }
+        case NodeType.TEXT_NODE:
+            rrNode = rrdom.createTextNode(node.textContent || '');
+            break;
+        case NodeType.CDATA_SECTION_NODE:
+            rrNode = rrdom.createCDATASection(node.data);
+            break;
+        case NodeType.COMMENT_NODE:
+            rrNode = rrdom.createComment(node.textContent || '');
+            break;
+        case NodeType.DOCUMENT_FRAGMENT_NODE:
+            rrNode = parentRRNode.attachShadow({ mode: 'open' });
+            break;
+        default:
+            return null;
+    }
+    let sn = domMirror.getMeta(node);
+    if (rrdom instanceof RRDocument) {
+        if (!sn) {
+            sn = getDefaultSN(rrNode, rrdom.unserializedId);
+            domMirror.add(node, sn);
+        }
+        rrdom.mirror.add(rrNode, Object.assign({}, sn));
+    }
+    return rrNode;
+}
+function buildFromDom(dom, domMirror = createMirror$1(), rrdom = new RRDocument()) {
+    function walk(node, parentRRNode) {
+        const rrNode = buildFromNode(node, rrdom, domMirror, parentRRNode);
+        if (rrNode === null)
+            return;
+        if ((parentRRNode === null || parentRRNode === void 0 ? void 0 : parentRRNode.nodeName) !== 'IFRAME' &&
+            node.nodeType !== NodeType.DOCUMENT_FRAGMENT_NODE) {
+            parentRRNode === null || parentRRNode === void 0 ? void 0 : parentRRNode.appendChild(rrNode);
+            rrNode.parentNode = parentRRNode;
+            rrNode.parentElement = parentRRNode;
+        }
+        if (node.nodeName === 'IFRAME') {
+            const iframeDoc = node.contentDocument;
+            iframeDoc && walk(iframeDoc, rrNode);
+        }
+        else if (node.nodeType === NodeType.DOCUMENT_NODE ||
+            node.nodeType === NodeType.ELEMENT_NODE ||
+            node.nodeType === NodeType.DOCUMENT_FRAGMENT_NODE) {
+            if (node.nodeType === NodeType.ELEMENT_NODE &&
+                node.shadowRoot)
+                walk(node.shadowRoot, rrNode);
+            node.childNodes.forEach((childNode) => walk(childNode, rrNode));
+        }
+    }
+    walk(dom, null);
+    return rrdom;
+}
+function createMirror() {
+    return new Mirror();
+}
+class Mirror {
+    constructor() {
+        this.idNodeMap = new Map();
+        this.nodeMetaMap = new WeakMap();
+    }
+    getId(n) {
+        var _a;
+        if (!n)
+            return -1;
+        const id = (_a = this.getMeta(n)) === null || _a === void 0 ? void 0 : _a.id;
+        return id !== null && id !== void 0 ? id : -1;
+    }
+    getNode(id) {
+        return this.idNodeMap.get(id) || null;
+    }
+    getIds() {
+        return Array.from(this.idNodeMap.keys());
+    }
+    getMeta(n) {
+        return this.nodeMetaMap.get(n) || null;
+    }
+    removeNodeFromMap(n) {
+        const id = this.getId(n);
+        this.idNodeMap.delete(id);
+        if (n.childNodes) {
+            n.childNodes.forEach((childNode) => this.removeNodeFromMap(childNode));
+        }
+    }
+    has(id) {
+        return this.idNodeMap.has(id);
+    }
+    hasNode(node) {
+        return this.nodeMetaMap.has(node);
+    }
+    add(n, meta) {
+        const id = meta.id;
+        this.idNodeMap.set(id, n);
+        this.nodeMetaMap.set(n, meta);
+    }
+    replace(id, n) {
+        const oldNode = this.getNode(id);
+        if (oldNode) {
+            const meta = this.nodeMetaMap.get(oldNode);
+            if (meta)
+                this.nodeMetaMap.set(n, meta);
+        }
+        this.idNodeMap.set(id, n);
+    }
+    reset() {
+        this.idNodeMap = new Map();
+        this.nodeMetaMap = new WeakMap();
+    }
+}
+function getDefaultSN(node, id) {
+    switch (node.RRNodeType) {
+        case NodeType$1.Document:
+            return {
+                id,
+                type: node.RRNodeType,
+                childNodes: [],
+            };
+        case NodeType$1.DocumentType: {
+            const doctype = node;
+            return {
+                id,
+                type: node.RRNodeType,
+                name: doctype.name,
+                publicId: doctype.publicId,
+                systemId: doctype.systemId,
+            };
+        }
+        case NodeType$1.Element:
+            return {
+                id,
+                type: node.RRNodeType,
+                tagName: node.tagName.toLowerCase(),
+                attributes: {},
+                childNodes: [],
+            };
+        case NodeType$1.Text:
+            return {
+                id,
+                type: node.RRNodeType,
+                textContent: node.textContent || '',
+            };
+        case NodeType$1.Comment:
+            return {
+                id,
+                type: node.RRNodeType,
+                textContent: node.textContent || '',
+            };
+        case NodeType$1.CDATA:
+            return {
+                id,
+                type: node.RRNodeType,
+                textContent: '',
+            };
+    }
+}
+
+function mitt$1(n){return {all:n=n||new Map,on:function(t,e){var i=n.get(t);i?i.push(e):n.set(t,[e]);},off:function(t,e){var i=n.get(t);i&&(e?i.splice(i.indexOf(e)>>>0,1):n.set(t,[]));},emit:function(t,e){var i=n.get(t);i&&i.slice().map(function(n){n(e);}),(i=n.get("*"))&&i.slice().map(function(n){n(t,e);});}}}
+
+var mittProxy = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    'default': mitt$1
+});
+
+function polyfill(w = window, d = document) {
+    if ('scrollBehavior' in d.documentElement.style &&
+        w.__forceSmoothScrollPolyfill__ !== true) {
+        return;
+    }
+    const Element = w.HTMLElement || w.Element;
+    const SCROLL_TIME = 468;
+    const original = {
+        scroll: w.scroll || w.scrollTo,
+        scrollBy: w.scrollBy,
+        elementScroll: Element.prototype.scroll || scrollElement,
+        scrollIntoView: Element.prototype.scrollIntoView,
+    };
+    const now = w.performance && w.performance.now
+        ? w.performance.now.bind(w.performance)
+        : Date.now;
+    function isMicrosoftBrowser(userAgent) {
+        const userAgentPatterns = ['MSIE ', 'Trident/', 'Edge/'];
+        return new RegExp(userAgentPatterns.join('|')).test(userAgent);
+    }
+    const ROUNDING_TOLERANCE = isMicrosoftBrowser(w.navigator.userAgent) ? 1 : 0;
+    function scrollElement(x, y) {
+        this.scrollLeft = x;
+        this.scrollTop = y;
+    }
+    function ease(k) {
+        return 0.5 * (1 - Math.cos(Math.PI * k));
+    }
+    function shouldBailOut(firstArg) {
+        if (firstArg === null ||
+            typeof firstArg !== 'object' ||
+            firstArg.behavior === undefined ||
+            firstArg.behavior === 'auto' ||
+            firstArg.behavior === 'instant') {
+            return true;
+        }
+        if (typeof firstArg === 'object' && firstArg.behavior === 'smooth') {
+            return false;
+        }
+        throw new TypeError('behavior member of ScrollOptions ' +
+            firstArg.behavior +
+            ' is not a valid value for enumeration ScrollBehavior.');
+    }
+    function hasScrollableSpace(el, axis) {
+        if (axis === 'Y') {
+            return el.clientHeight + ROUNDING_TOLERANCE < el.scrollHeight;
+        }
+        if (axis === 'X') {
+            return el.clientWidth + ROUNDING_TOLERANCE < el.scrollWidth;
+        }
+    }
+    function canOverflow(el, axis) {
+        const overflowValue = w.getComputedStyle(el, null)['overflow' + axis];
+        return overflowValue === 'auto' || overflowValue === 'scroll';
+    }
+    function isScrollable(el) {
+        const isScrollableY = hasScrollableSpace(el, 'Y') && canOverflow(el, 'Y');
+        const isScrollableX = hasScrollableSpace(el, 'X') && canOverflow(el, 'X');
+        return isScrollableY || isScrollableX;
+    }
+    function findScrollableParent(el) {
+        while (el !== d.body && isScrollable(el) === false) {
+            el = el.parentNode || el.host;
+        }
+        return el;
+    }
+    function step(context) {
+        const time = now();
+        let value;
+        let currentX;
+        let currentY;
+        let elapsed = (time - context.startTime) / SCROLL_TIME;
+        elapsed = elapsed > 1 ? 1 : elapsed;
+        value = ease(elapsed);
+        currentX = context.startX + (context.x - context.startX) * value;
+        currentY = context.startY + (context.y - context.startY) * value;
+        context.method.call(context.scrollable, currentX, currentY);
+        if (currentX !== context.x || currentY !== context.y) {
+            w.requestAnimationFrame(step.bind(w, context));
+        }
+    }
+    function smoothScroll(el, x, y) {
+        let scrollable;
+        let startX;
+        let startY;
+        let method;
+        const startTime = now();
+        if (el === d.body) {
+            scrollable = w;
+            startX = w.scrollX || w.pageXOffset;
+            startY = w.scrollY || w.pageYOffset;
+            method = original.scroll;
+        }
+        else {
+            scrollable = el;
+            startX = el.scrollLeft;
+            startY = el.scrollTop;
+            method = scrollElement;
+        }
+        step({
+            scrollable: scrollable,
+            method: method,
+            startTime: startTime,
+            startX: startX,
+            startY: startY,
+            x: x,
+            y: y,
+        });
+    }
+    w.scroll = w.scrollTo = function () {
+        if (arguments[0] === undefined) {
+            return;
+        }
+        if (shouldBailOut(arguments[0]) === true) {
+            original.scroll.call(w, arguments[0].left !== undefined
+                ? arguments[0].left
+                : typeof arguments[0] !== 'object'
+                    ? arguments[0]
+                    : w.scrollX || w.pageXOffset, arguments[0].top !== undefined
+                ? arguments[0].top
+                : arguments[1] !== undefined
+                    ? arguments[1]
+                    : w.scrollY || w.pageYOffset);
+            return;
+        }
+        smoothScroll.call(w, d.body, arguments[0].left !== undefined
+            ? ~~arguments[0].left
+            : w.scrollX || w.pageXOffset, arguments[0].top !== undefined
+            ? ~~arguments[0].top
+            : w.scrollY || w.pageYOffset);
+    };
+    w.scrollBy = function () {
+        if (arguments[0] === undefined) {
+            return;
+        }
+        if (shouldBailOut(arguments[0])) {
+            original.scrollBy.call(w, arguments[0].left !== undefined
+                ? arguments[0].left
+                : typeof arguments[0] !== 'object'
+                    ? arguments[0]
+                    : 0, arguments[0].top !== undefined
+                ? arguments[0].top
+                : arguments[1] !== undefined
+                    ? arguments[1]
+                    : 0);
+            return;
+        }
+        smoothScroll.call(w, d.body, ~~arguments[0].left + (w.scrollX || w.pageXOffset), ~~arguments[0].top + (w.scrollY || w.pageYOffset));
+    };
+    Element.prototype.scroll = Element.prototype.scrollTo = function () {
+        if (arguments[0] === undefined) {
+            return;
+        }
+        if (shouldBailOut(arguments[0]) === true) {
+            if (typeof arguments[0] === 'number' && arguments[1] === undefined) {
+                throw new SyntaxError('Value could not be converted');
+            }
+            original.elementScroll.call(this, arguments[0].left !== undefined
+                ? ~~arguments[0].left
+                : typeof arguments[0] !== 'object'
+                    ? ~~arguments[0]
+                    : this.scrollLeft, arguments[0].top !== undefined
+                ? ~~arguments[0].top
+                : arguments[1] !== undefined
+                    ? ~~arguments[1]
+                    : this.scrollTop);
+            return;
+        }
+        const left = arguments[0].left;
+        const top = arguments[0].top;
+        smoothScroll.call(this, this, typeof left === 'undefined' ? this.scrollLeft : ~~left, typeof top === 'undefined' ? this.scrollTop : ~~top);
+    };
+    Element.prototype.scrollBy = function () {
+        if (arguments[0] === undefined) {
+            return;
+        }
+        if (shouldBailOut(arguments[0]) === true) {
+            original.elementScroll.call(this, arguments[0].left !== undefined
+                ? ~~arguments[0].left + this.scrollLeft
+                : ~~arguments[0] + this.scrollLeft, arguments[0].top !== undefined
+                ? ~~arguments[0].top + this.scrollTop
+                : ~~arguments[1] + this.scrollTop);
+            return;
+        }
+        this.scroll({
+            left: ~~arguments[0].left + this.scrollLeft,
+            top: ~~arguments[0].top + this.scrollTop,
+            behavior: arguments[0].behavior,
+        });
+    };
+    Element.prototype.scrollIntoView = function () {
+        if (shouldBailOut(arguments[0]) === true) {
+            original.scrollIntoView.call(this, arguments[0] === undefined ? true : arguments[0]);
+            return;
+        }
+        const scrollableParent = findScrollableParent(this);
+        const parentRects = scrollableParent.getBoundingClientRect();
+        const clientRects = this.getBoundingClientRect();
+        if (scrollableParent !== d.body) {
+            smoothScroll.call(this, scrollableParent, scrollableParent.scrollLeft + clientRects.left - parentRects.left, scrollableParent.scrollTop + clientRects.top - parentRects.top);
+            if (w.getComputedStyle(scrollableParent).position !== 'fixed') {
+                w.scrollBy({
+                    left: parentRects.left,
+                    top: parentRects.top,
+                    behavior: 'smooth',
+                });
+            }
+        }
+        else {
+            w.scrollBy({
+                left: clientRects.left,
+                top: clientRects.top,
+                behavior: 'smooth',
+            });
+        }
+    };
+}
+
+class Timer {
+    constructor(actions = [], config) {
+        this.timeOffset = 0;
+        this.raf = null;
+        this.actions = actions;
+        this.speed = config.speed;
+    }
+    addAction(action) {
+        const rafWasActive = this.raf === true;
+        if (!this.actions.length ||
+            this.actions[this.actions.length - 1].delay <= action.delay) {
+            this.actions.push(action);
+        }
+        else {
+            const index = this.findActionIndex(action);
+            this.actions.splice(index, 0, action);
+        }
+        if (rafWasActive) {
+            this.raf = requestAnimationFrame(this.rafCheck.bind(this));
+        }
+    }
+    start() {
+        this.timeOffset = 0;
+        this.lastTimestamp = performance.now();
+        this.raf = requestAnimationFrame(this.rafCheck.bind(this));
+    }
+    rafCheck() {
+        const time = performance.now();
+        this.timeOffset += (time - this.lastTimestamp) * this.speed;
+        this.lastTimestamp = time;
+        while (this.actions.length) {
+            const action = this.actions[0];
+            if (this.timeOffset >= action.delay) {
+                this.actions.shift();
+                action.doAction();
+            }
+            else {
+                break;
+            }
+        }
+        if (this.actions.length > 0) {
+            this.raf = requestAnimationFrame(this.rafCheck.bind(this));
+        }
+        else {
+            this.raf = true;
+        }
+    }
+    clear() {
+        if (this.raf) {
+            if (this.raf !== true) {
+                cancelAnimationFrame(this.raf);
+            }
+            this.raf = null;
+        }
+        this.actions.length = 0;
+    }
+    setSpeed(speed) {
+        this.speed = speed;
+    }
+    isActive() {
+        return this.raf !== null;
+    }
+    findActionIndex(action) {
+        let start = 0;
+        let end = this.actions.length - 1;
+        while (start <= end) {
+            const mid = Math.floor((start + end) / 2);
+            if (this.actions[mid].delay < action.delay) {
+                start = mid + 1;
+            }
+            else if (this.actions[mid].delay > action.delay) {
+                end = mid - 1;
+            }
+            else {
+                return mid + 1;
+            }
+        }
+        return start;
+    }
+}
+function addDelay(event, baselineTime) {
+    if (event.type === EventType.IncrementalSnapshot &&
+        event.data.source === IncrementalSource.MouseMove &&
+        event.data.positions &&
+        event.data.positions.length) {
+        const firstOffset = event.data.positions[0].timeOffset;
+        const firstTimestamp = event.timestamp + firstOffset;
+        event.delay = firstTimestamp - baselineTime;
+        return firstTimestamp - baselineTime;
+    }
+    event.delay = event.timestamp - baselineTime;
+    return event.delay;
+}
+
+/*! *****************************************************************************
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+***************************************************************************** */
+function t(t,n){var e="function"==typeof Symbol&&t[Symbol.iterator];if(!e)return t;var r,o,i=e.call(t),a=[];try{for(;(void 0===n||n-- >0)&&!(r=i.next()).done;)a.push(r.value);}catch(t){o={error:t};}finally{try{r&&!r.done&&(e=i.return)&&e.call(i);}finally{if(o)throw o.error}}return a}var n;!function(t){t[t.NotStarted=0]="NotStarted",t[t.Running=1]="Running",t[t.Stopped=2]="Stopped";}(n||(n={}));var e={type:"xstate.init"};function r(t){return void 0===t?[]:[].concat(t)}function o(t){return {type:"xstate.assign",assignment:t}}function i$1(t,n){return "string"==typeof(t="string"==typeof t&&n&&n[t]?n[t]:t)?{type:t}:"function"==typeof t?{type:t.name,exec:t}:t}function a(t){return function(n){return t===n}}function u(t){return "string"==typeof t?{type:t}:t}function c(t,n){return {value:t,context:n,actions:[],changed:!1,matches:a(t)}}function f(t,n,e){var r=n,o=!1;return [t.filter((function(t){if("xstate.assign"===t.type){o=!0;var n=Object.assign({},r);return "function"==typeof t.assignment?n=t.assignment(r,e):Object.keys(t.assignment).forEach((function(o){n[o]="function"==typeof t.assignment[o]?t.assignment[o](r,e):t.assignment[o];})),r=n,!1}return !0})),r,o]}function s(n,o){void 0===o&&(o={});var s=t(f(r(n.states[n.initial].entry).map((function(t){return i$1(t,o.actions)})),n.context,e),2),l=s[0],v=s[1],y={config:n,_options:o,initialState:{value:n.initial,actions:l,context:v,matches:a(n.initial)},transition:function(e,o){var s,l,v="string"==typeof e?{value:e,context:n.context}:e,p=v.value,g=v.context,d=u(o),x=n.states[p];if(x.on){var m=r(x.on[d.type]);try{for(var h=function(t){var n="function"==typeof Symbol&&Symbol.iterator,e=n&&t[n],r=0;if(e)return e.call(t);if(t&&"number"==typeof t.length)return {next:function(){return t&&r>=t.length&&(t=void 0),{value:t&&t[r++],done:!t}}};throw new TypeError(n?"Object is not iterable.":"Symbol.iterator is not defined.")}(m),b=h.next();!b.done;b=h.next()){var S=b.value;if(void 0===S)return c(p,g);var w="string"==typeof S?{target:S}:S,j=w.target,E=w.actions,R=void 0===E?[]:E,N=w.cond,O=void 0===N?function(){return !0}:N,_=void 0===j,k=null!=j?j:p,T=n.states[k];if(O(g,d)){var q=t(f((_?r(R):[].concat(x.exit,R,T.entry).filter((function(t){return t}))).map((function(t){return i$1(t,y._options.actions)})),g,d),3),z=q[0],A=q[1],B=q[2],C=null!=j?j:p;return {value:C,context:A,actions:z,changed:j!==p||z.length>0||B,matches:a(C)}}}}catch(t){s={error:t};}finally{try{b&&!b.done&&(l=h.return)&&l.call(h);}finally{if(s)throw s.error}}}return c(p,g)}};return y}var l=function(t,n){return t.actions.forEach((function(e){var r=e.exec;return r&&r(t.context,n)}))};function v(t){var r=t.initialState,o=n.NotStarted,i=new Set,c={_machine:t,send:function(e){o===n.Running&&(r=t.transition(r,e),l(r,u(e)),i.forEach((function(t){return t(r)})));},subscribe:function(t){return i.add(t),t(r),{unsubscribe:function(){return i.delete(t)}}},start:function(i){if(i){var u="object"==typeof i?i:{context:t.config.context,value:i};r={value:u.value,actions:[],context:u.context,matches:a(u.value)};}return o=n.Running,l(r,e),c},stop:function(){return o=n.Stopped,i.clear(),c},get state(){return r},get status(){return o}};return c}
+
+function discardPriorSnapshots(events, baselineTime) {
+    for (let idx = events.length - 1; idx >= 0; idx--) {
+        const event = events[idx];
+        if (event.type === EventType.Meta) {
+            if (event.timestamp <= baselineTime) {
+                return events.slice(idx);
+            }
+        }
+    }
+    return events;
+}
+function createPlayerService(context, { getCastFn, applyEventsSynchronously, emitter }) {
+    const playerMachine = s({
+        id: 'player',
+        context,
+        initial: 'paused',
+        states: {
+            playing: {
+                on: {
+                    PAUSE: {
+                        target: 'paused',
+                        actions: ['pause'],
+                    },
+                    CAST_EVENT: {
+                        target: 'playing',
+                        actions: 'castEvent',
+                    },
+                    END: {
+                        target: 'paused',
+                        actions: ['resetLastPlayedEvent', 'pause'],
+                    },
+                    ADD_EVENT: {
+                        target: 'playing',
+                        actions: ['addEvent'],
+                    },
+                },
+            },
+            paused: {
+                on: {
+                    PLAY: {
+                        target: 'playing',
+                        actions: ['recordTimeOffset', 'play'],
+                    },
+                    CAST_EVENT: {
+                        target: 'paused',
+                        actions: 'castEvent',
+                    },
+                    TO_LIVE: {
+                        target: 'live',
+                        actions: ['startLive'],
+                    },
+                    ADD_EVENT: {
+                        target: 'paused',
+                        actions: ['addEvent'],
+                    },
+                },
+            },
+            live: {
+                on: {
+                    ADD_EVENT: {
+                        target: 'live',
+                        actions: ['addEvent'],
+                    },
+                    CAST_EVENT: {
+                        target: 'live',
+                        actions: ['castEvent'],
+                    },
+                },
+            },
+        },
+    }, {
+        actions: {
+            castEvent: o({
+                lastPlayedEvent: (ctx, event) => {
+                    if (event.type === 'CAST_EVENT') {
+                        return event.payload.event;
+                    }
+                    return ctx.lastPlayedEvent;
+                },
+            }),
+            recordTimeOffset: o((ctx, event) => {
+                let timeOffset = ctx.timeOffset;
+                if ('payload' in event && 'timeOffset' in event.payload) {
+                    timeOffset = event.payload.timeOffset;
+                }
+                return Object.assign(Object.assign({}, ctx), { timeOffset, baselineTime: ctx.events[0].timestamp + timeOffset });
+            }),
+            play(ctx) {
+                var _a;
+                const { timer, events, baselineTime, lastPlayedEvent } = ctx;
+                timer.clear();
+                for (const event of events) {
+                    addDelay(event, baselineTime);
+                }
+                const neededEvents = discardPriorSnapshots(events, baselineTime);
+                let lastPlayedTimestamp = lastPlayedEvent === null || lastPlayedEvent === void 0 ? void 0 : lastPlayedEvent.timestamp;
+                if ((lastPlayedEvent === null || lastPlayedEvent === void 0 ? void 0 : lastPlayedEvent.type) === EventType.IncrementalSnapshot &&
+                    lastPlayedEvent.data.source === IncrementalSource.MouseMove) {
+                    lastPlayedTimestamp =
+                        lastPlayedEvent.timestamp +
+                            ((_a = lastPlayedEvent.data.positions[0]) === null || _a === void 0 ? void 0 : _a.timeOffset);
+                }
+                if (baselineTime < (lastPlayedTimestamp || 0)) {
+                    emitter.emit(ReplayerEvents.PlayBack);
+                }
+                const syncEvents = new Array();
+                for (const event of neededEvents) {
+                    if (lastPlayedTimestamp &&
+                        lastPlayedTimestamp < baselineTime &&
+                        (event.timestamp <= lastPlayedTimestamp ||
+                            event === lastPlayedEvent)) {
+                        continue;
+                    }
+                    if (event.timestamp < baselineTime) {
+                        syncEvents.push(event);
+                    }
+                    else {
+                        const castFn = getCastFn(event, false);
+                        timer.addAction({
+                            doAction: () => {
+                                castFn();
+                            },
+                            delay: event.delay,
+                        });
+                    }
+                }
+                applyEventsSynchronously(syncEvents);
+                emitter.emit(ReplayerEvents.Flush);
+                timer.start();
+            },
+            pause(ctx) {
+                ctx.timer.clear();
+            },
+            resetLastPlayedEvent: o((ctx) => {
+                return Object.assign(Object.assign({}, ctx), { lastPlayedEvent: null });
+            }),
+            startLive: o({
+                baselineTime: (ctx, event) => {
+                    ctx.timer.start();
+                    if (event.type === 'TO_LIVE' && event.payload.baselineTime) {
+                        return event.payload.baselineTime;
+                    }
+                    return Date.now();
+                },
+            }),
+            addEvent: o((ctx, machineEvent) => {
+                const { baselineTime, timer, events } = ctx;
+                if (machineEvent.type === 'ADD_EVENT') {
+                    const { event } = machineEvent.payload;
+                    addDelay(event, baselineTime);
+                    let end = events.length - 1;
+                    if (!events[end] || events[end].timestamp <= event.timestamp) {
+                        events.push(event);
+                    }
+                    else {
+                        let insertionIndex = -1;
+                        let start = 0;
+                        while (start <= end) {
+                            const mid = Math.floor((start + end) / 2);
+                            if (events[mid].timestamp <= event.timestamp) {
+                                start = mid + 1;
+                            }
+                            else {
+                                end = mid - 1;
+                            }
+                        }
+                        if (insertionIndex === -1) {
+                            insertionIndex = start;
+                        }
+                        events.splice(insertionIndex, 0, event);
+                    }
+                    const isSync = event.timestamp < baselineTime;
+                    const castFn = getCastFn(event, isSync);
+                    if (isSync) {
+                        castFn();
+                    }
+                    else if (timer.isActive()) {
+                        timer.addAction({
+                            doAction: () => {
+                                castFn();
+                            },
+                            delay: event.delay,
+                        });
+                    }
+                }
+                return Object.assign(Object.assign({}, ctx), { events });
+            }),
+        },
+    });
+    return v(playerMachine);
+}
+function createSpeedService(context) {
+    const speedMachine = s({
+        id: 'speed',
+        context,
+        initial: 'normal',
+        states: {
+            normal: {
+                on: {
+                    FAST_FORWARD: {
+                        target: 'skipping',
+                        actions: ['recordSpeed', 'setSpeed'],
+                    },
+                    SET_SPEED: {
+                        target: 'normal',
+                        actions: ['setSpeed'],
+                    },
+                },
+            },
+            skipping: {
+                on: {
+                    BACK_TO_NORMAL: {
+                        target: 'normal',
+                        actions: ['restoreSpeed'],
+                    },
+                    SET_SPEED: {
+                        target: 'normal',
+                        actions: ['setSpeed'],
+                    },
+                },
+            },
+        },
+    }, {
+        actions: {
+            setSpeed: (ctx, event) => {
+                if ('payload' in event) {
+                    ctx.timer.setSpeed(event.payload.speed);
+                }
+            },
+            recordSpeed: o({
+                normalSpeed: (ctx) => ctx.timer.speed,
+            }),
+            restoreSpeed: (ctx) => {
+                ctx.timer.setSpeed(ctx.normalSpeed);
+            },
+        },
+    });
+    return v(speedMachine);
+}
+
+const rules = (blockClass) => [
+    `.${blockClass} { background: currentColor }`,
+    'noscript { display: none !important; }',
+];
+
+const webGLVarMap = new Map();
+function variableListFor(ctx, ctor) {
+    let contextMap = webGLVarMap.get(ctx);
+    if (!contextMap) {
+        contextMap = new Map();
+        webGLVarMap.set(ctx, contextMap);
+    }
+    if (!contextMap.has(ctor)) {
+        contextMap.set(ctor, []);
+    }
+    return contextMap.get(ctor);
+}
+function deserializeArg(imageMap, ctx, preload) {
+    return (arg) => __awaiter(this, void 0, void 0, function* () {
+        if (arg && typeof arg === 'object' && 'rr_type' in arg) {
+            if (preload)
+                preload.isUnchanged = false;
+            if (arg.rr_type === 'ImageBitmap' && 'args' in arg) {
+                const args = yield deserializeArg(imageMap, ctx, preload)(arg.args);
+                return yield createImageBitmap.apply(null, args);
+            }
+            else if ('index' in arg) {
+                if (preload || ctx === null)
+                    return arg;
+                const { rr_type: name, index } = arg;
+                return variableListFor(ctx, name)[index];
+            }
+            else if ('args' in arg) {
+                const { rr_type: name, args } = arg;
+                const ctor = window[name];
+                return new ctor(...(yield Promise.all(args.map(deserializeArg(imageMap, ctx, preload)))));
+            }
+            else if ('base64' in arg) {
+                return decode(arg.base64);
+            }
+            else if ('src' in arg) {
+                const image = imageMap.get(arg.src);
+                if (image) {
+                    return image;
+                }
+                else {
+                    const image = new Image();
+                    image.src = arg.src;
+                    imageMap.set(arg.src, image);
+                    return image;
+                }
+            }
+            else if ('data' in arg && arg.rr_type === 'Blob') {
+                const blobContents = yield Promise.all(arg.data.map(deserializeArg(imageMap, ctx, preload)));
+                const blob = new Blob(blobContents, {
+                    type: arg.type,
+                });
+                return blob;
+            }
+        }
+        else if (Array.isArray(arg)) {
+            const result = yield Promise.all(arg.map(deserializeArg(imageMap, ctx, preload)));
+            return result;
+        }
+        return arg;
+    });
+}
+
+function getContext(target, type) {
+    try {
+        if (type === CanvasContext.WebGL) {
+            return (target.getContext('webgl') || target.getContext('experimental-webgl'));
+        }
+        return target.getContext('webgl2');
+    }
+    catch (e) {
+        return null;
+    }
+}
+const WebGLVariableConstructorsNames = [
+    'WebGLActiveInfo',
+    'WebGLBuffer',
+    'WebGLFramebuffer',
+    'WebGLProgram',
+    'WebGLRenderbuffer',
+    'WebGLShader',
+    'WebGLShaderPrecisionFormat',
+    'WebGLTexture',
+    'WebGLUniformLocation',
+    'WebGLVertexArrayObject',
+];
+function saveToWebGLVarMap(ctx, result) {
+    if (!(result === null || result === void 0 ? void 0 : result.constructor))
+        return;
+    const { name } = result.constructor;
+    if (!WebGLVariableConstructorsNames.includes(name))
+        return;
+    const variables = variableListFor(ctx, name);
+    if (!variables.includes(result))
+        variables.push(result);
+}
+function webglMutation({ mutation, target, type, imageMap, errorHandler, }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const ctx = getContext(target, type);
+            if (!ctx)
+                return;
+            if (mutation.setter) {
+                ctx[mutation.property] = mutation.args[0];
+                return;
+            }
+            const original = ctx[mutation.property];
+            const args = yield Promise.all(mutation.args.map(deserializeArg(imageMap, ctx)));
+            const result = original.apply(ctx, args);
+            saveToWebGLVarMap(ctx, result);
+            const debugMode = false;
+            if (debugMode) ;
+        }
+        catch (error) {
+            errorHandler(mutation, error);
+        }
+    });
+}
+
+function canvasMutation$1({ event, mutations, target, imageMap, errorHandler, }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const ctx = target.getContext('2d');
+        if (!ctx) {
+            errorHandler(mutations[0], new Error('Canvas context is null'));
+            return;
+        }
+        const mutationArgsPromises = mutations.map((mutation) => __awaiter(this, void 0, void 0, function* () {
+            return Promise.all(mutation.args.map(deserializeArg(imageMap, ctx)));
+        }));
+        const args = yield Promise.all(mutationArgsPromises);
+        args.forEach((args, index) => {
+            const mutation = mutations[index];
+            try {
+                if (mutation.setter) {
+                    ctx[mutation.property] =
+                        mutation.args[0];
+                    return;
+                }
+                const original = ctx[mutation.property];
+                if (mutation.property === 'drawImage' &&
+                    typeof mutation.args[0] === 'string') {
+                    imageMap.get(event);
+                    original.apply(ctx, mutation.args);
+                }
+                else {
+                    original.apply(ctx, args);
+                }
+            }
+            catch (error) {
+                errorHandler(mutation, error);
+            }
+            return;
+        });
+    });
+}
+
+function canvasMutation({ event, mutation, target, imageMap, canvasEventMap, errorHandler, }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const precomputedMutation = canvasEventMap.get(event) || mutation;
+            const commands = 'commands' in precomputedMutation
+                ? precomputedMutation.commands
+                : [precomputedMutation];
+            if ([CanvasContext.WebGL, CanvasContext.WebGL2].includes(mutation.type)) {
+                for (let i = 0; i < commands.length; i++) {
+                    const command = commands[i];
+                    yield webglMutation({
+                        mutation: command,
+                        type: mutation.type,
+                        target,
+                        imageMap,
+                        errorHandler,
+                    });
+                }
+                return;
+            }
+            yield canvasMutation$1({
+                event,
+                mutations: commands,
+                target,
+                imageMap,
+                errorHandler,
+            });
+        }
+        catch (error) {
+            errorHandler(mutation, error);
+        }
+    });
+}
+
+class MediaManager {
+    constructor(options) {
+        this.mediaMap = new Map();
+        this.metadataCallbackMap = new Map();
+        this.warn = options.warn;
+        this.service = options.service;
+        this.speedService = options.speedService;
+        this.emitter = options.emitter;
+        this.getCurrentTime = options.getCurrentTime;
+        this.emitter.on(ReplayerEvents.Start, this.start.bind(this));
+        this.emitter.on(ReplayerEvents.SkipStart, this.start.bind(this));
+        this.emitter.on(ReplayerEvents.Pause, this.pause.bind(this));
+        this.emitter.on(ReplayerEvents.Finish, this.pause.bind(this));
+        this.speedService.subscribe(() => {
+            this.syncAllMediaElements();
+        });
+    }
+    syncAllMediaElements(options = { pause: false }) {
+        this.mediaMap.forEach((mediaState, target) => {
+            this.syncTargetWithState(target);
+            if (options.pause) {
+                target.pause();
+            }
+        });
+    }
+    start() {
+        this.syncAllMediaElements();
+    }
+    pause() {
+        this.syncAllMediaElements({ pause: true });
+    }
+    seekTo({ time, target, mediaState, }) {
+        if (mediaState.isPlaying) {
+            const differenceBetweenCurrentTimeAndMediaMutationTimestamp = time - mediaState.lastInteractionTimeOffset;
+            const mediaPlaybackOffset = (differenceBetweenCurrentTimeAndMediaMutationTimestamp / 1000) *
+                mediaState.playbackRate;
+            const duration = 'duration' in target && target.duration;
+            if (Number.isNaN(duration)) {
+                this.waitForMetadata(target);
+                return;
+            }
+            let seekToTime = mediaState.currentTimeAtLastInteraction + mediaPlaybackOffset;
+            if (target.loop &&
+                duration !== false) {
+                seekToTime = seekToTime % duration;
+            }
+            target.currentTime = seekToTime;
+        }
+        else {
+            target.pause();
+            target.currentTime = mediaState.currentTimeAtLastInteraction;
+        }
+    }
+    waitForMetadata(target) {
+        if (this.metadataCallbackMap.has(target))
+            return;
+        if (!('addEventListener' in target))
+            return;
+        const onLoadedMetadata = () => {
+            this.metadataCallbackMap.delete(target);
+            const mediaState = this.mediaMap.get(target);
+            if (!mediaState)
+                return;
+            this.seekTo({
+                time: this.getCurrentTime(),
+                target,
+                mediaState,
+            });
+        };
+        this.metadataCallbackMap.set(target, onLoadedMetadata);
+        target.addEventListener('loadedmetadata', onLoadedMetadata, {
+            once: true,
+        });
+    }
+    getMediaStateFromMutation({ target, timeOffset, mutation, }) {
+        var _a, _b, _c, _d, _e;
+        const lastState = this.mediaMap.get(target);
+        const { type, playbackRate, currentTime, muted, volume, loop } = mutation;
+        const isPlaying = type === 0 ||
+            (type !== 1 &&
+                ((lastState === null || lastState === void 0 ? void 0 : lastState.isPlaying) || target.getAttribute('autoplay') !== null));
+        const mediaState = {
+            isPlaying,
+            currentTimeAtLastInteraction: (_a = currentTime !== null && currentTime !== void 0 ? currentTime : lastState === null || lastState === void 0 ? void 0 : lastState.currentTimeAtLastInteraction) !== null && _a !== void 0 ? _a : 0,
+            lastInteractionTimeOffset: timeOffset,
+            playbackRate: (_b = playbackRate !== null && playbackRate !== void 0 ? playbackRate : lastState === null || lastState === void 0 ? void 0 : lastState.playbackRate) !== null && _b !== void 0 ? _b : 1,
+            volume: (_c = volume !== null && volume !== void 0 ? volume : lastState === null || lastState === void 0 ? void 0 : lastState.volume) !== null && _c !== void 0 ? _c : 1,
+            muted: (_d = muted !== null && muted !== void 0 ? muted : lastState === null || lastState === void 0 ? void 0 : lastState.muted) !== null && _d !== void 0 ? _d : target.getAttribute('muted') === null,
+            loop: (_e = loop !== null && loop !== void 0 ? loop : lastState === null || lastState === void 0 ? void 0 : lastState.loop) !== null && _e !== void 0 ? _e : target.getAttribute('loop') === null,
+        };
+        return mediaState;
+    }
+    syncTargetWithState(target) {
+        const mediaState = this.mediaMap.get(target);
+        if (!mediaState)
+            return;
+        const { muted, loop, volume, isPlaying } = mediaState;
+        const playerIsPaused = this.service.state.matches('paused');
+        const playbackRate = mediaState.playbackRate * this.speedService.state.context.timer.speed;
+        try {
+            this.seekTo({
+                time: this.getCurrentTime(),
+                target,
+                mediaState,
+            });
+            if (target.volume !== volume) {
+                target.volume = volume;
+            }
+            target.muted = muted;
+            target.loop = loop;
+            if (target.playbackRate !== playbackRate) {
+                target.playbackRate = playbackRate;
+            }
+            if (isPlaying && !playerIsPaused) {
+                void target.play();
+            }
+            else {
+                target.pause();
+            }
+        }
+        catch (error) {
+            this.warn(`Failed to replay media interactions: ${error.message || error}`);
+        }
+    }
+    addMediaElements(node, timeOffset, mirror) {
+        if (!['AUDIO', 'VIDEO'].includes(node.nodeName))
+            return;
+        const target = node;
+        const serializedNode = mirror.getMeta(target);
+        if (!serializedNode || !('attributes' in serializedNode))
+            return;
+        const playerIsPaused = this.service.state.matches('paused');
+        const mediaAttributes = serializedNode.attributes;
+        let isPlaying = false;
+        if (mediaAttributes.rr_mediaState) {
+            isPlaying = mediaAttributes.rr_mediaState === 'played';
+        }
+        else {
+            isPlaying = target.getAttribute('autoplay') !== null;
+        }
+        if (isPlaying && playerIsPaused)
+            target.pause();
+        let playbackRate = 1;
+        if (typeof mediaAttributes.rr_mediaPlaybackRate === 'number') {
+            playbackRate = mediaAttributes.rr_mediaPlaybackRate;
+        }
+        let muted = false;
+        if (typeof mediaAttributes.rr_mediaMuted === 'boolean') {
+            muted = mediaAttributes.rr_mediaMuted;
+        }
+        else {
+            muted = target.getAttribute('muted') !== null;
+        }
+        let loop = false;
+        if (typeof mediaAttributes.rr_mediaLoop === 'boolean') {
+            loop = mediaAttributes.rr_mediaLoop;
+        }
+        else {
+            loop = target.getAttribute('loop') !== null;
+        }
+        let volume = 1;
+        if (typeof mediaAttributes.rr_mediaVolume === 'number') {
+            volume = mediaAttributes.rr_mediaVolume;
+        }
+        let currentTimeAtLastInteraction = 0;
+        if (typeof mediaAttributes.rr_mediaCurrentTime === 'number') {
+            currentTimeAtLastInteraction = mediaAttributes.rr_mediaCurrentTime;
+        }
+        this.mediaMap.set(target, {
+            isPlaying,
+            currentTimeAtLastInteraction,
+            lastInteractionTimeOffset: timeOffset,
+            playbackRate,
+            volume,
+            muted,
+            loop,
+        });
+        this.syncTargetWithState(target);
+    }
+    mediaMutation({ target, timeOffset, mutation, }) {
+        this.mediaMap.set(target, this.getMediaStateFromMutation({
+            target,
+            timeOffset,
+            mutation,
+        }));
+        this.syncTargetWithState(target);
+    }
+    isSupportedMediaElement(node) {
+        return ['AUDIO', 'VIDEO'].includes(node.nodeName);
+    }
+    reset() {
+        this.mediaMap.clear();
+    }
+}
+
+const SKIP_TIME_INTERVAL = 5 * 1000;
+const mitt = mitt$1 || mittProxy;
+const REPLAY_CONSOLE_PREFIX = '[replayer]';
+const defaultMouseTailConfig = {
+    duration: 500,
+    lineCap: 'round',
+    lineWidth: 3,
+    strokeStyle: 'red',
+};
+function indicatesTouchDevice(e) {
+    return (e.type == EventType.IncrementalSnapshot &&
+        (e.data.source == IncrementalSource.TouchMove ||
+            (e.data.source == IncrementalSource.MouseInteraction &&
+                e.data.type == MouseInteractions.TouchStart)));
+}
+class Replayer {
+    get timer() {
+        return this.service.state.context.timer;
+    }
+    constructor(events, config) {
+        this.usingVirtualDom = false;
+        this.virtualDom = new RRDocument();
+        this.mouseTail = null;
+        this.tailPositions = [];
+        this.emitter = mitt();
+        this.legacy_missingNodeRetryMap = {};
+        this.cache = createCache();
+        this.imageMap = new Map();
+        this.canvasEventMap = new Map();
+        this.mirror = createMirror$2();
+        this.styleMirror = new StyleSheetMirror();
+        this.firstFullSnapshot = null;
+        this.newDocumentQueue = [];
+        this.mousePos = null;
+        this.touchActive = null;
+        this.lastMouseDownEvent = null;
+        this.lastSelectionData = null;
+        this.constructedStyleMutations = [];
+        this.adoptedStyleSheets = [];
+        this.handleResize = (dimension) => {
+            this.iframe.style.display = 'inherit';
+            for (const el of [this.mouseTail, this.iframe]) {
+                if (!el) {
+                    continue;
+                }
+                el.setAttribute('width', String(dimension.width));
+                el.setAttribute('height', String(dimension.height));
+            }
+        };
+        this.applyEventsSynchronously = (events) => {
+            for (const event of events) {
+                switch (event.type) {
+                    case EventType.DomContentLoaded:
+                    case EventType.Load:
+                    case EventType.Custom:
+                        continue;
+                    case EventType.FullSnapshot:
+                    case EventType.Meta:
+                    case EventType.Plugin:
+                    case EventType.IncrementalSnapshot:
+                        break;
+                }
+                const castFn = this.getCastFn(event, true);
+                castFn();
+            }
+        };
+        this.getCastFn = (event, isSync = false) => {
+            let castFn;
+            switch (event.type) {
+                case EventType.DomContentLoaded:
+                case EventType.Load:
+                    break;
+                case EventType.Custom:
+                    castFn = () => {
+                        this.emitter.emit(ReplayerEvents.CustomEvent, event);
+                    };
+                    break;
+                case EventType.Meta:
+                    castFn = () => this.emitter.emit(ReplayerEvents.Resize, {
+                        width: event.data.width,
+                        height: event.data.height,
+                    });
+                    break;
+                case EventType.FullSnapshot:
+                    castFn = () => {
+                        var _a;
+                        if (this.firstFullSnapshot) {
+                            if (this.firstFullSnapshot === event) {
+                                this.firstFullSnapshot = true;
+                                return;
+                            }
+                        }
+                        else {
+                            this.firstFullSnapshot = true;
+                        }
+                        this.mediaManager.reset();
+                        this.styleMirror.reset();
+                        this.rebuildFullSnapshot(event, isSync);
+                        (_a = this.iframe.contentWindow) === null || _a === void 0 ? void 0 : _a.scrollTo(event.data.initialOffset);
+                    };
+                    break;
+                case EventType.IncrementalSnapshot:
+                    castFn = () => {
+                        this.applyIncremental(event, isSync);
+                        if (isSync) {
+                            return;
+                        }
+                        if (event === this.nextUserInteractionEvent) {
+                            this.nextUserInteractionEvent = null;
+                            this.backToNormal();
+                        }
+                        if (this.config.skipInactive && !this.nextUserInteractionEvent) {
+                            for (const _event of this.service.state.context.events) {
+                                if (_event.timestamp <= event.timestamp) {
+                                    continue;
+                                }
+                                if (this.isUserInteraction(_event)) {
+                                    if (_event.delay - event.delay >
+                                        this.config.inactivePeriodThreshold *
+                                            this.speedService.state.context.timer.speed) {
+                                        this.nextUserInteractionEvent = _event;
+                                    }
+                                    break;
+                                }
+                            }
+                            if (this.nextUserInteractionEvent) {
+                                const skipTime = this.nextUserInteractionEvent.delay - event.delay;
+                                const payload = {
+                                    speed: Math.min(Math.round(skipTime / SKIP_TIME_INTERVAL), this.config.maxSpeed),
+                                };
+                                this.speedService.send({ type: 'FAST_FORWARD', payload });
+                                this.emitter.emit(ReplayerEvents.SkipStart, payload);
+                            }
+                        }
+                    };
+                    break;
+            }
+            const wrappedCastFn = () => {
+                if (castFn) {
+                    castFn();
+                }
+                for (const plugin of this.config.plugins || []) {
+                    if (plugin.handler)
+                        plugin.handler(event, isSync, { replayer: this });
+                }
+                this.service.send({ type: 'CAST_EVENT', payload: { event } });
+                const last_index = this.service.state.context.events.length - 1;
+                if (!this.config.liveMode &&
+                    event === this.service.state.context.events[last_index]) {
+                    const finish = () => {
+                        if (last_index < this.service.state.context.events.length - 1) {
+                            return;
+                        }
+                        this.backToNormal();
+                        this.service.send('END');
+                        this.emitter.emit(ReplayerEvents.Finish);
+                    };
+                    let finish_buffer = 50;
+                    if (event.type === EventType.IncrementalSnapshot &&
+                        event.data.source === IncrementalSource.MouseMove &&
+                        event.data.positions.length) {
+                        finish_buffer += Math.max(0, -event.data.positions[0].timeOffset);
+                    }
+                    setTimeout(finish, finish_buffer);
+                }
+                this.emitter.emit(ReplayerEvents.EventCast, event);
+            };
+            return wrappedCastFn;
+        };
+        if (!(config === null || config === void 0 ? void 0 : config.liveMode) && events.length < 2) {
+            throw new Error('Replayer need at least 2 events.');
+        }
+        const defaultConfig = {
+            speed: 1,
+            maxSpeed: 360,
+            root: document.body,
+            loadTimeout: 0,
+            skipInactive: false,
+            inactivePeriodThreshold: 10 * 1000,
+            showWarning: true,
+            showDebug: false,
+            blockClass: 'rr-block',
+            liveMode: false,
+            insertStyleRules: [],
+            triggerFocus: true,
+            UNSAFE_replayCanvas: false,
+            pauseAnimation: true,
+            mouseTail: defaultMouseTailConfig,
+            useVirtualDom: true,
+            logger: console,
+        };
+        this.config = Object.assign({}, defaultConfig, config);
+        this.handleResize = this.handleResize.bind(this);
+        this.getCastFn = this.getCastFn.bind(this);
+        this.applyEventsSynchronously = this.applyEventsSynchronously.bind(this);
+        this.emitter.on(ReplayerEvents.Resize, this.handleResize);
+        this.setupDom();
+        for (const plugin of this.config.plugins || []) {
+            if (plugin.getMirror)
+                plugin.getMirror({ nodeMirror: this.mirror });
+        }
+        this.emitter.on(ReplayerEvents.Flush, () => {
+            if (this.usingVirtualDom) {
+                const replayerHandler = {
+                    mirror: this.mirror,
+                    applyCanvas: (canvasEvent, canvasMutationData, target) => {
+                        void canvasMutation({
+                            event: canvasEvent,
+                            mutation: canvasMutationData,
+                            target,
+                            imageMap: this.imageMap,
+                            canvasEventMap: this.canvasEventMap,
+                            errorHandler: this.warnCanvasMutationFailed.bind(this),
+                        });
+                    },
+                    applyInput: this.applyInput.bind(this),
+                    applyScroll: this.applyScroll.bind(this),
+                    applyStyleSheetMutation: (data, styleSheet) => {
+                        if (data.source === IncrementalSource.StyleSheetRule)
+                            this.applyStyleSheetRule(data, styleSheet);
+                        else if (data.source === IncrementalSource.StyleDeclaration)
+                            this.applyStyleDeclaration(data, styleSheet);
+                    },
+                    afterAppend: (node, id) => {
+                        for (const plugin of this.config.plugins || []) {
+                            if (plugin.onBuild)
+                                plugin.onBuild(node, { id, replayer: this });
+                        }
+                    },
+                };
+                if (this.iframe.contentDocument)
+                    try {
+                        diff(this.iframe.contentDocument, this.virtualDom, replayerHandler, this.virtualDom.mirror);
+                    }
+                    catch (e) {
+                        console.warn(e);
+                    }
+                this.virtualDom.destroyTree();
+                this.usingVirtualDom = false;
+                if (Object.keys(this.legacy_missingNodeRetryMap).length) {
+                    for (const key in this.legacy_missingNodeRetryMap) {
+                        try {
+                            const value = this.legacy_missingNodeRetryMap[key];
+                            const realNode = createOrGetNode(value.node, this.mirror, this.virtualDom.mirror);
+                            diff(realNode, value.node, replayerHandler, this.virtualDom.mirror);
+                            value.node = realNode;
+                        }
+                        catch (error) {
+                            this.warn(error);
+                        }
+                    }
+                }
+                this.constructedStyleMutations.forEach((data) => {
+                    this.applyStyleSheetMutation(data);
+                });
+                this.constructedStyleMutations = [];
+                this.adoptedStyleSheets.forEach((data) => {
+                    this.applyAdoptedStyleSheet(data);
+                });
+                this.adoptedStyleSheets = [];
+            }
+            if (this.mousePos) {
+                this.moveAndHover(this.mousePos.x, this.mousePos.y, this.mousePos.id, true, this.mousePos.debugData);
+                this.mousePos = null;
+            }
+            if (this.touchActive === true) {
+                this.mouse.classList.add('touch-active');
+            }
+            else if (this.touchActive === false) {
+                this.mouse.classList.remove('touch-active');
+            }
+            this.touchActive = null;
+            if (this.lastMouseDownEvent) {
+                const [target, event] = this.lastMouseDownEvent;
+                target.dispatchEvent(event);
+            }
+            this.lastMouseDownEvent = null;
+            if (this.lastSelectionData) {
+                this.applySelection(this.lastSelectionData);
+                this.lastSelectionData = null;
+            }
+        });
+        this.emitter.on(ReplayerEvents.PlayBack, () => {
+            this.firstFullSnapshot = null;
+            this.mirror.reset();
+            this.styleMirror.reset();
+            this.mediaManager.reset();
+        });
+        const timer = new Timer([], {
+            speed: this.config.speed,
+        });
+        this.service = createPlayerService({
+            events: events
+                .map((e) => {
+                if (config && config.unpackFn) {
+                    return config.unpackFn(e);
+                }
+                return e;
+            })
+                .sort((a1, a2) => a1.timestamp - a2.timestamp),
+            timer,
+            timeOffset: 0,
+            baselineTime: 0,
+            lastPlayedEvent: null,
+        }, {
+            getCastFn: this.getCastFn,
+            applyEventsSynchronously: this.applyEventsSynchronously,
+            emitter: this.emitter,
+        });
+        this.service.start();
+        this.service.subscribe((state) => {
+            this.emitter.emit(ReplayerEvents.StateChange, {
+                player: state,
+            });
+        });
+        this.speedService = createSpeedService({
+            normalSpeed: -1,
+            timer,
+        });
+        this.speedService.start();
+        this.speedService.subscribe((state) => {
+            this.emitter.emit(ReplayerEvents.StateChange, {
+                speed: state,
+            });
+        });
+        this.mediaManager = new MediaManager({
+            warn: this.warn.bind(this),
+            service: this.service,
+            speedService: this.speedService,
+            emitter: this.emitter,
+            getCurrentTime: this.getCurrentTime.bind(this),
+        });
+        const firstMeta = this.service.state.context.events.find((e) => e.type === EventType.Meta);
+        const firstFullsnapshot = this.service.state.context.events.find((e) => e.type === EventType.FullSnapshot);
+        if (firstMeta) {
+            const { width, height } = firstMeta.data;
+            setTimeout(() => {
+                this.emitter.emit(ReplayerEvents.Resize, {
+                    width,
+                    height,
+                });
+            }, 0);
+        }
+        if (firstFullsnapshot) {
+            setTimeout(() => {
+                var _a;
+                if (this.firstFullSnapshot) {
+                    return;
+                }
+                this.firstFullSnapshot = firstFullsnapshot;
+                this.rebuildFullSnapshot(firstFullsnapshot);
+                (_a = this.iframe.contentWindow) === null || _a === void 0 ? void 0 : _a.scrollTo(firstFullsnapshot.data.initialOffset);
+            }, 1);
+        }
+        if (this.service.state.context.events.find(indicatesTouchDevice)) {
+            this.mouse.classList.add('touch-device');
+        }
+    }
+    on(event, handler) {
+        this.emitter.on(event, handler);
+        return this;
+    }
+    off(event, handler) {
+        this.emitter.off(event, handler);
+        return this;
+    }
+    setConfig(config) {
+        Object.keys(config).forEach((key) => {
+            config[key];
+            this.config[key] = config[key];
+        });
+        if (!this.config.skipInactive) {
+            this.backToNormal();
+        }
+        if (typeof config.speed !== 'undefined') {
+            this.speedService.send({
+                type: 'SET_SPEED',
+                payload: {
+                    speed: config.speed,
+                },
+            });
+        }
+        if (typeof config.mouseTail !== 'undefined') {
+            if (config.mouseTail === false) {
+                if (this.mouseTail) {
+                    this.mouseTail.style.display = 'none';
+                }
+            }
+            else {
+                if (!this.mouseTail) {
+                    this.mouseTail = document.createElement('canvas');
+                    this.mouseTail.width = Number.parseFloat(this.iframe.width);
+                    this.mouseTail.height = Number.parseFloat(this.iframe.height);
+                    this.mouseTail.classList.add('replayer-mouse-tail');
+                    this.wrapper.insertBefore(this.mouseTail, this.iframe);
+                }
+                this.mouseTail.style.display = 'inherit';
+            }
+        }
+    }
+    getMetaData() {
+        const firstEvent = this.service.state.context.events[0];
+        const lastEvent = this.service.state.context.events[this.service.state.context.events.length - 1];
+        return {
+            startTime: firstEvent.timestamp,
+            endTime: lastEvent.timestamp,
+            totalTime: lastEvent.timestamp - firstEvent.timestamp,
+        };
+    }
+    getCurrentTime() {
+        return this.timer.timeOffset + this.getTimeOffset();
+    }
+    getTimeOffset() {
+        const { baselineTime, events } = this.service.state.context;
+        return baselineTime - events[0].timestamp;
+    }
+    getMirror() {
+        return this.mirror;
+    }
+    play(timeOffset = 0) {
+        var _a, _b;
+        if (this.service.state.matches('paused')) {
+            this.service.send({ type: 'PLAY', payload: { timeOffset } });
+        }
+        else {
+            this.service.send({ type: 'PAUSE' });
+            this.service.send({ type: 'PLAY', payload: { timeOffset } });
+        }
+        (_b = (_a = this.iframe.contentDocument) === null || _a === void 0 ? void 0 : _a.getElementsByTagName('html')[0]) === null || _b === void 0 ? void 0 : _b.classList.remove('rrweb-paused');
+        this.emitter.emit(ReplayerEvents.Start);
+    }
+    pause(timeOffset) {
+        var _a, _b;
+        if (timeOffset === undefined && this.service.state.matches('playing')) {
+            this.service.send({ type: 'PAUSE' });
+        }
+        if (typeof timeOffset === 'number') {
+            this.play(timeOffset);
+            this.service.send({ type: 'PAUSE' });
+        }
+        (_b = (_a = this.iframe.contentDocument) === null || _a === void 0 ? void 0 : _a.getElementsByTagName('html')[0]) === null || _b === void 0 ? void 0 : _b.classList.add('rrweb-paused');
+        this.emitter.emit(ReplayerEvents.Pause);
+    }
+    resume(timeOffset = 0) {
+        this.warn(`The 'resume' was deprecated in 1.0. Please use 'play' method which has the same interface.`);
+        this.play(timeOffset);
+        this.emitter.emit(ReplayerEvents.Resume);
+    }
+    destroy() {
+        this.pause();
+        this.mirror.reset();
+        this.styleMirror.reset();
+        this.mediaManager.reset();
+        this.config.root.removeChild(this.wrapper);
+        this.emitter.emit(ReplayerEvents.Destroy);
+    }
+    startLive(baselineTime) {
+        this.service.send({ type: 'TO_LIVE', payload: { baselineTime } });
+    }
+    addEvent(rawEvent) {
+        const event = this.config.unpackFn
+            ? this.config.unpackFn(rawEvent)
+            : rawEvent;
+        if (indicatesTouchDevice(event)) {
+            this.mouse.classList.add('touch-device');
+        }
+        void Promise.resolve().then(() => this.service.send({ type: 'ADD_EVENT', payload: { event } }));
+    }
+    enableInteract() {
+        this.iframe.setAttribute('scrolling', 'auto');
+        this.iframe.style.pointerEvents = 'auto';
+    }
+    disableInteract() {
+        this.iframe.setAttribute('scrolling', 'no');
+        this.iframe.style.pointerEvents = 'none';
+    }
+    resetCache() {
+        this.cache = createCache();
+    }
+    setupDom() {
+        this.wrapper = document.createElement('div');
+        this.wrapper.classList.add('replayer-wrapper');
+        this.config.root.appendChild(this.wrapper);
+        this.mouse = document.createElement('div');
+        this.mouse.classList.add('replayer-mouse');
+        this.wrapper.appendChild(this.mouse);
+        if (this.config.mouseTail !== false) {
+            this.mouseTail = document.createElement('canvas');
+            this.mouseTail.classList.add('replayer-mouse-tail');
+            this.mouseTail.style.display = 'inherit';
+            this.wrapper.appendChild(this.mouseTail);
+        }
+        this.iframe = document.createElement('iframe');
+        const attributes = ['allow-same-origin'];
+        if (this.config.UNSAFE_replayCanvas) {
+            attributes.push('allow-scripts');
+        }
+        this.iframe.style.display = 'none';
+        this.iframe.setAttribute('sandbox', attributes.join(' '));
+        this.disableInteract();
+        this.wrapper.appendChild(this.iframe);
+        if (this.iframe.contentWindow && this.iframe.contentDocument) {
+            polyfill(this.iframe.contentWindow, this.iframe.contentDocument);
+            polyfill$1(this.iframe.contentWindow);
+        }
+    }
+    rebuildFullSnapshot(event, isSync = false) {
+        if (!this.iframe.contentDocument) {
+            return this.warn('Looks like your replayer has been destroyed.');
+        }
+        if (Object.keys(this.legacy_missingNodeRetryMap).length) {
+            this.warn('Found unresolved missing node map', this.legacy_missingNodeRetryMap);
+        }
+        this.legacy_missingNodeRetryMap = {};
+        const collected = [];
+        const afterAppend = (builtNode, id) => {
+            this.collectIframeAndAttachDocument(collected, builtNode);
+            if (this.mediaManager.isSupportedMediaElement(builtNode)) {
+                const { events } = this.service.state.context;
+                this.mediaManager.addMediaElements(builtNode, event.timestamp - events[0].timestamp, this.mirror);
+            }
+            for (const plugin of this.config.plugins || []) {
+                if (plugin.onBuild)
+                    plugin.onBuild(builtNode, {
+                        id,
+                        replayer: this,
+                    });
+            }
+        };
+        if (this.usingVirtualDom) {
+            this.virtualDom.destroyTree();
+            this.usingVirtualDom = false;
+        }
+        this.mirror.reset();
+        rebuild(event.data.node, {
+            doc: this.iframe.contentDocument,
+            afterAppend,
+            cache: this.cache,
+            mirror: this.mirror,
+        });
+        afterAppend(this.iframe.contentDocument, event.data.node.id);
+        for (const { mutationInQueue, builtNode } of collected) {
+            this.attachDocumentToIframe(mutationInQueue, builtNode);
+            this.newDocumentQueue = this.newDocumentQueue.filter((m) => m !== mutationInQueue);
+        }
+        const { documentElement, head } = this.iframe.contentDocument;
+        this.insertStyleRules(documentElement, head);
+        if (!this.service.state.matches('playing')) {
+            this.iframe.contentDocument
+                .getElementsByTagName('html')[0]
+                .classList.add('rrweb-paused');
+        }
+        this.emitter.emit(ReplayerEvents.FullsnapshotRebuilded, event);
+        if (!isSync) {
+            this.waitForStylesheetLoad();
+        }
+        if (this.config.UNSAFE_replayCanvas) {
+            void this.preloadAllImages();
+        }
+    }
+    insertStyleRules(documentElement, head) {
+        var _a;
+        const injectStylesRules = rules(this.config.blockClass).concat(this.config.insertStyleRules);
+        if (this.config.pauseAnimation) {
+            injectStylesRules.push('html.rrweb-paused *, html.rrweb-paused *:before, html.rrweb-paused *:after { animation-play-state: paused !important; }');
+        }
+        if (this.usingVirtualDom) {
+            const styleEl = this.virtualDom.createElement('style');
+            this.virtualDom.mirror.add(styleEl, getDefaultSN(styleEl, this.virtualDom.unserializedId));
+            documentElement.insertBefore(styleEl, head);
+            styleEl.rules.push({
+                source: IncrementalSource.StyleSheetRule,
+                adds: injectStylesRules.map((cssText, index) => ({
+                    rule: cssText,
+                    index,
+                })),
+            });
+        }
+        else {
+            const styleEl = document.createElement('style');
+            documentElement.insertBefore(styleEl, head);
+            for (let idx = 0; idx < injectStylesRules.length; idx++) {
+                (_a = styleEl.sheet) === null || _a === void 0 ? void 0 : _a.insertRule(injectStylesRules[idx], idx);
+            }
+        }
+    }
+    attachDocumentToIframe(mutation, iframeEl) {
+        const mirror = this.usingVirtualDom
+            ? this.virtualDom.mirror
+            : this.mirror;
+        const collected = [];
+        const afterAppend = (builtNode, id) => {
+            this.collectIframeAndAttachDocument(collected, builtNode);
+            const sn = mirror.getMeta(builtNode);
+            if ((sn === null || sn === void 0 ? void 0 : sn.type) === NodeType$2.Element &&
+                (sn === null || sn === void 0 ? void 0 : sn.tagName.toUpperCase()) === 'HTML') {
+                const { documentElement, head } = iframeEl.contentDocument;
+                this.insertStyleRules(documentElement, head);
+            }
+            if (this.usingVirtualDom)
+                return;
+            for (const plugin of this.config.plugins || []) {
+                if (plugin.onBuild)
+                    plugin.onBuild(builtNode, {
+                        id,
+                        replayer: this,
+                    });
+            }
+        };
+        buildNodeWithSN(mutation.node, {
+            doc: iframeEl.contentDocument,
+            mirror: mirror,
+            hackCss: true,
+            skipChild: false,
+            afterAppend,
+            cache: this.cache,
+        });
+        afterAppend(iframeEl.contentDocument, mutation.node.id);
+        for (const { mutationInQueue, builtNode } of collected) {
+            this.attachDocumentToIframe(mutationInQueue, builtNode);
+            this.newDocumentQueue = this.newDocumentQueue.filter((m) => m !== mutationInQueue);
+        }
+    }
+    collectIframeAndAttachDocument(collected, builtNode) {
+        if (isSerializedIframe(builtNode, this.mirror)) {
+            const mutationInQueue = this.newDocumentQueue.find((m) => m.parentId === this.mirror.getId(builtNode));
+            if (mutationInQueue) {
+                collected.push({
+                    mutationInQueue,
+                    builtNode: builtNode,
+                });
+            }
+        }
+    }
+    waitForStylesheetLoad() {
+        var _a;
+        const head = (_a = this.iframe.contentDocument) === null || _a === void 0 ? void 0 : _a.head;
+        if (head) {
+            const unloadSheets = new Set();
+            let timer;
+            let beforeLoadState = this.service.state;
+            const stateHandler = () => {
+                beforeLoadState = this.service.state;
+            };
+            this.emitter.on(ReplayerEvents.Start, stateHandler);
+            this.emitter.on(ReplayerEvents.Pause, stateHandler);
+            const unsubscribe = () => {
+                this.emitter.off(ReplayerEvents.Start, stateHandler);
+                this.emitter.off(ReplayerEvents.Pause, stateHandler);
+            };
+            head
+                .querySelectorAll('link[rel="stylesheet"]')
+                .forEach((css) => {
+                if (!css.sheet) {
+                    unloadSheets.add(css);
+                    css.addEventListener('load', () => {
+                        unloadSheets.delete(css);
+                        if (unloadSheets.size === 0 && timer !== -1) {
+                            if (beforeLoadState.matches('playing')) {
+                                this.play(this.getCurrentTime());
+                            }
+                            this.emitter.emit(ReplayerEvents.LoadStylesheetEnd);
+                            if (timer) {
+                                clearTimeout(timer);
+                            }
+                            unsubscribe();
+                        }
+                    });
+                }
+            });
+            if (unloadSheets.size > 0) {
+                this.service.send({ type: 'PAUSE' });
+                this.emitter.emit(ReplayerEvents.LoadStylesheetStart);
+                timer = setTimeout(() => {
+                    if (beforeLoadState.matches('playing')) {
+                        this.play(this.getCurrentTime());
+                    }
+                    timer = -1;
+                    unsubscribe();
+                }, this.config.loadTimeout);
+            }
+        }
+    }
+    preloadAllImages() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.service.state;
+            const stateHandler = () => {
+                this.service.state;
+            };
+            this.emitter.on(ReplayerEvents.Start, stateHandler);
+            this.emitter.on(ReplayerEvents.Pause, stateHandler);
+            const promises = [];
+            for (const event of this.service.state.context.events) {
+                if (event.type === EventType.IncrementalSnapshot &&
+                    event.data.source === IncrementalSource.CanvasMutation) {
+                    promises.push(this.deserializeAndPreloadCanvasEvents(event.data, event));
+                    const commands = 'commands' in event.data ? event.data.commands : [event.data];
+                    commands.forEach((c) => {
+                        this.preloadImages(c, event);
+                    });
+                }
+            }
+            return Promise.all(promises);
+        });
+    }
+    preloadImages(data, event) {
+        if (data.property === 'drawImage' &&
+            typeof data.args[0] === 'string' &&
+            !this.imageMap.has(event)) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const imgd = ctx === null || ctx === void 0 ? void 0 : ctx.createImageData(canvas.width, canvas.height);
+            imgd === null || imgd === void 0 ? void 0 : imgd.data;
+            JSON.parse(data.args[0]);
+            ctx === null || ctx === void 0 ? void 0 : ctx.putImageData(imgd, 0, 0);
+        }
+    }
+    deserializeAndPreloadCanvasEvents(data, event) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.canvasEventMap.has(event)) {
+                const status = {
+                    isUnchanged: true,
+                };
+                if ('commands' in data) {
+                    const commands = yield Promise.all(data.commands.map((c) => __awaiter(this, void 0, void 0, function* () {
+                        const args = yield Promise.all(c.args.map(deserializeArg(this.imageMap, null, status)));
+                        return Object.assign(Object.assign({}, c), { args });
+                    })));
+                    if (status.isUnchanged === false)
+                        this.canvasEventMap.set(event, Object.assign(Object.assign({}, data), { commands }));
+                }
+                else {
+                    const args = yield Promise.all(data.args.map(deserializeArg(this.imageMap, null, status)));
+                    if (status.isUnchanged === false)
+                        this.canvasEventMap.set(event, Object.assign(Object.assign({}, data), { args }));
+                }
+            }
+        });
+    }
+    applyIncremental(e, isSync) {
+        var _a, _b, _c;
+        const { data: d } = e;
+        switch (d.source) {
+            case IncrementalSource.Mutation: {
+                try {
+                    this.applyMutation(d, isSync);
+                }
+                catch (error) {
+                    this.warn(`Exception in mutation ${error.message || error}`, d);
+                }
+                break;
+            }
+            case IncrementalSource.Drag:
+            case IncrementalSource.TouchMove:
+            case IncrementalSource.MouseMove:
+                if (isSync) {
+                    const lastPosition = d.positions[d.positions.length - 1];
+                    this.mousePos = {
+                        x: lastPosition.x,
+                        y: lastPosition.y,
+                        id: lastPosition.id,
+                        debugData: d,
+                    };
+                }
+                else {
+                    d.positions.forEach((p) => {
+                        const action = {
+                            doAction: () => {
+                                this.moveAndHover(p.x, p.y, p.id, isSync, d);
+                            },
+                            delay: p.timeOffset +
+                                e.timestamp -
+                                this.service.state.context.baselineTime,
+                        };
+                        this.timer.addAction(action);
+                    });
+                    this.timer.addAction({
+                        doAction() {
+                        },
+                        delay: e.delay - ((_a = d.positions[0]) === null || _a === void 0 ? void 0 : _a.timeOffset),
+                    });
+                }
+                break;
+            case IncrementalSource.MouseInteraction: {
+                if (d.id === -1) {
+                    break;
+                }
+                const event = new Event(toLowerCase(MouseInteractions[d.type]));
+                const target = this.mirror.getNode(d.id);
+                if (!target) {
+                    return this.debugNodeNotFound(d, d.id);
+                }
+                this.emitter.emit(ReplayerEvents.MouseInteraction, {
+                    type: d.type,
+                    target,
+                });
+                const { triggerFocus } = this.config;
+                switch (d.type) {
+                    case MouseInteractions.Blur:
+                        if ('blur' in target) {
+                            target.blur();
+                        }
+                        break;
+                    case MouseInteractions.Focus:
+                        if (triggerFocus && target.focus) {
+                            target.focus({
+                                preventScroll: true,
+                            });
+                        }
+                        break;
+                    case MouseInteractions.Click:
+                    case MouseInteractions.TouchStart:
+                    case MouseInteractions.TouchEnd:
+                    case MouseInteractions.MouseDown:
+                    case MouseInteractions.MouseUp:
+                        if (isSync) {
+                            if (d.type === MouseInteractions.TouchStart) {
+                                this.touchActive = true;
+                            }
+                            else if (d.type === MouseInteractions.TouchEnd) {
+                                this.touchActive = false;
+                            }
+                            if (d.type === MouseInteractions.MouseDown) {
+                                this.lastMouseDownEvent = [target, event];
+                            }
+                            else if (d.type === MouseInteractions.MouseUp) {
+                                this.lastMouseDownEvent = null;
+                            }
+                            this.mousePos = {
+                                x: d.x || 0,
+                                y: d.y || 0,
+                                id: d.id,
+                                debugData: d,
+                            };
+                        }
+                        else {
+                            if (d.type === MouseInteractions.TouchStart) {
+                                this.tailPositions.length = 0;
+                            }
+                            this.moveAndHover(d.x || 0, d.y || 0, d.id, isSync, d);
+                            if (d.type === MouseInteractions.Click) {
+                                this.mouse.classList.remove('active');
+                                void this.mouse.offsetWidth;
+                                this.mouse.classList.add('active');
+                            }
+                            else if (d.type === MouseInteractions.TouchStart) {
+                                void this.mouse.offsetWidth;
+                                this.mouse.classList.add('touch-active');
+                            }
+                            else if (d.type === MouseInteractions.TouchEnd) {
+                                this.mouse.classList.remove('touch-active');
+                            }
+                            else {
+                                target.dispatchEvent(event);
+                            }
+                        }
+                        break;
+                    case MouseInteractions.TouchCancel:
+                        if (isSync) {
+                            this.touchActive = false;
+                        }
+                        else {
+                            this.mouse.classList.remove('touch-active');
+                        }
+                        break;
+                    default:
+                        target.dispatchEvent(event);
+                }
+                break;
+            }
+            case IncrementalSource.Scroll: {
+                if (d.id === -1) {
+                    break;
+                }
+                if (this.usingVirtualDom) {
+                    const target = this.virtualDom.mirror.getNode(d.id);
+                    if (!target) {
+                        return this.debugNodeNotFound(d, d.id);
+                    }
+                    target.scrollData = d;
+                    break;
+                }
+                this.applyScroll(d, isSync);
+                break;
+            }
+            case IncrementalSource.ViewportResize:
+                this.emitter.emit(ReplayerEvents.Resize, {
+                    width: d.width,
+                    height: d.height,
+                });
+                break;
+            case IncrementalSource.Input: {
+                if (d.id === -1) {
+                    break;
+                }
+                if (this.usingVirtualDom) {
+                    const target = this.virtualDom.mirror.getNode(d.id);
+                    if (!target) {
+                        return this.debugNodeNotFound(d, d.id);
+                    }
+                    target.inputData = d;
+                    break;
+                }
+                this.applyInput(d);
+                break;
+            }
+            case IncrementalSource.MediaInteraction: {
+                const target = this.usingVirtualDom
+                    ? this.virtualDom.mirror.getNode(d.id)
+                    : this.mirror.getNode(d.id);
+                if (!target) {
+                    return this.debugNodeNotFound(d, d.id);
+                }
+                const mediaEl = target;
+                const { events } = this.service.state.context;
+                this.mediaManager.mediaMutation({
+                    target: mediaEl,
+                    timeOffset: e.timestamp - events[0].timestamp,
+                    mutation: d,
+                });
+                break;
+            }
+            case IncrementalSource.StyleSheetRule:
+            case IncrementalSource.StyleDeclaration: {
+                if (this.usingVirtualDom) {
+                    if (d.styleId)
+                        this.constructedStyleMutations.push(d);
+                    else if (d.id)
+                        (_b = this.virtualDom.mirror.getNode(d.id)) === null || _b === void 0 ? void 0 : _b.rules.push(d);
+                }
+                else
+                    this.applyStyleSheetMutation(d);
+                break;
+            }
+            case IncrementalSource.CanvasMutation: {
+                if (!this.config.UNSAFE_replayCanvas) {
+                    return;
+                }
+                if (this.usingVirtualDom) {
+                    const target = this.virtualDom.mirror.getNode(d.id);
+                    if (!target) {
+                        return this.debugNodeNotFound(d, d.id);
+                    }
+                    target.canvasMutations.push({
+                        event: e,
+                        mutation: d,
+                    });
+                }
+                else {
+                    const target = this.mirror.getNode(d.id);
+                    if (!target) {
+                        return this.debugNodeNotFound(d, d.id);
+                    }
+                    void canvasMutation({
+                        event: e,
+                        mutation: d,
+                        target: target,
+                        imageMap: this.imageMap,
+                        canvasEventMap: this.canvasEventMap,
+                        errorHandler: this.warnCanvasMutationFailed.bind(this),
+                    });
+                }
+                break;
+            }
+            case IncrementalSource.Font: {
+                try {
+                    const fontFace = new FontFace(d.family, d.buffer
+                        ? new Uint8Array(JSON.parse(d.fontSource))
+                        : d.fontSource, d.descriptors);
+                    (_c = this.iframe.contentDocument) === null || _c === void 0 ? void 0 : _c.fonts.add(fontFace);
+                }
+                catch (error) {
+                    this.warn(error);
+                }
+                break;
+            }
+            case IncrementalSource.Selection: {
+                if (isSync) {
+                    this.lastSelectionData = d;
+                    break;
+                }
+                this.applySelection(d);
+                break;
+            }
+            case IncrementalSource.AdoptedStyleSheet: {
+                if (this.usingVirtualDom)
+                    this.adoptedStyleSheets.push(d);
+                else
+                    this.applyAdoptedStyleSheet(d);
+                break;
+            }
+        }
+    }
+    applyMutation(d, isSync) {
+        if (this.config.useVirtualDom && !this.usingVirtualDom && isSync) {
+            this.usingVirtualDom = true;
+            buildFromDom(this.iframe.contentDocument, this.mirror, this.virtualDom);
+            if (Object.keys(this.legacy_missingNodeRetryMap).length) {
+                for (const key in this.legacy_missingNodeRetryMap) {
+                    try {
+                        const value = this.legacy_missingNodeRetryMap[key];
+                        const virtualNode = buildFromNode(value.node, this.virtualDom, this.mirror);
+                        if (virtualNode)
+                            value.node = virtualNode;
+                    }
+                    catch (error) {
+                        this.warn(error);
+                    }
+                }
+            }
+        }
+        const mirror = this.usingVirtualDom ? this.virtualDom.mirror : this.mirror;
+        d.removes = d.removes.filter((mutation) => {
+            if (!mirror.getNode(mutation.id)) {
+                this.warnNodeNotFound(d, mutation.id);
+                return false;
+            }
+            return true;
+        });
+        d.removes.forEach((mutation) => {
+            var _a;
+            const target = mirror.getNode(mutation.id);
+            if (!target) {
+                return;
+            }
+            let parent = mirror.getNode(mutation.parentId);
+            if (!parent) {
+                return this.warnNodeNotFound(d, mutation.parentId);
+            }
+            if (mutation.isShadow && hasShadowRoot(parent)) {
+                parent = parent.shadowRoot;
+            }
+            mirror.removeNodeFromMap(target);
+            if (parent)
+                try {
+                    parent.removeChild(target);
+                    if (this.usingVirtualDom &&
+                        target.nodeName === '#text' &&
+                        parent.nodeName === 'STYLE' &&
+                        ((_a = parent.rules) === null || _a === void 0 ? void 0 : _a.length) > 0)
+                        parent.rules = [];
+                }
+                catch (error) {
+                    if (error instanceof DOMException) {
+                        this.warn('parent could not remove child in mutation', parent, target, d);
+                    }
+                    else {
+                        throw error;
+                    }
+                }
+        });
+        const legacy_missingNodeMap = Object.assign({}, this.legacy_missingNodeRetryMap);
+        const queue = [];
+        const nextNotInDOM = (mutation) => {
+            let next = null;
+            if (mutation.nextId) {
+                next = mirror.getNode(mutation.nextId);
+            }
+            if (mutation.nextId !== null &&
+                mutation.nextId !== undefined &&
+                mutation.nextId !== -1 &&
+                !next) {
+                return true;
+            }
+            return false;
+        };
+        const appendNode = (mutation) => {
+            var _a, _b;
+            if (!this.iframe.contentDocument) {
+                return this.warn('Looks like your replayer has been destroyed.');
+            }
+            let parent = mirror.getNode(mutation.parentId);
+            if (!parent) {
+                if (mutation.node.type === NodeType$2.Document) {
+                    return this.newDocumentQueue.push(mutation);
+                }
+                return queue.push(mutation);
+            }
+            if (mutation.node.isShadow) {
+                if (!hasShadowRoot(parent)) {
+                    parent.attachShadow({ mode: 'open' });
+                    parent = parent.shadowRoot;
+                }
+                else
+                    parent = parent.shadowRoot;
+            }
+            let previous = null;
+            let next = null;
+            if (mutation.previousId) {
+                previous = mirror.getNode(mutation.previousId);
+            }
+            if (mutation.nextId) {
+                next = mirror.getNode(mutation.nextId);
+            }
+            if (nextNotInDOM(mutation)) {
+                return queue.push(mutation);
+            }
+            if (mutation.node.rootId && !mirror.getNode(mutation.node.rootId)) {
+                return;
+            }
+            const targetDoc = mutation.node.rootId
+                ? mirror.getNode(mutation.node.rootId)
+                : this.usingVirtualDom
+                    ? this.virtualDom
+                    : this.iframe.contentDocument;
+            if (isSerializedIframe(parent, mirror)) {
+                this.attachDocumentToIframe(mutation, parent);
+                return;
+            }
+            const afterAppend = (node, id) => {
+                if (this.usingVirtualDom)
+                    return;
+                for (const plugin of this.config.plugins || []) {
+                    if (plugin.onBuild)
+                        plugin.onBuild(node, { id, replayer: this });
+                }
+            };
+            const target = buildNodeWithSN(mutation.node, {
+                doc: targetDoc,
+                mirror: mirror,
+                skipChild: true,
+                hackCss: true,
+                cache: this.cache,
+                afterAppend,
+            });
+            if (mutation.previousId === -1 || mutation.nextId === -1) {
+                legacy_missingNodeMap[mutation.node.id] = {
+                    node: target,
+                    mutation,
+                };
+                return;
+            }
+            const parentSn = mirror.getMeta(parent);
+            if (parentSn &&
+                parentSn.type === NodeType$2.Element &&
+                parentSn.tagName === 'textarea' &&
+                mutation.node.type === NodeType$2.Text) {
+                const childNodeArray = Array.isArray(parent.childNodes)
+                    ? parent.childNodes
+                    : Array.from(parent.childNodes);
+                for (const c of childNodeArray) {
+                    if (c.nodeType === parent.TEXT_NODE) {
+                        parent.removeChild(c);
+                    }
+                }
+            }
+            else if ((parentSn === null || parentSn === void 0 ? void 0 : parentSn.type) === NodeType$2.Document) {
+                const parentDoc = parent;
+                if (mutation.node.type === NodeType$2.DocumentType &&
+                    ((_a = parentDoc.childNodes[0]) === null || _a === void 0 ? void 0 : _a.nodeType) === Node.DOCUMENT_TYPE_NODE)
+                    parentDoc.removeChild(parentDoc.childNodes[0]);
+                if (target.nodeName === 'HTML' && parentDoc.documentElement)
+                    parentDoc.removeChild(parentDoc.documentElement);
+            }
+            if (previous && previous.nextSibling && previous.nextSibling.parentNode) {
+                parent.insertBefore(target, previous.nextSibling);
+            }
+            else if (next && next.parentNode) {
+                parent.contains(next)
+                    ? parent.insertBefore(target, next)
+                    : parent.insertBefore(target, null);
+            }
+            else {
+                parent.appendChild(target);
+            }
+            afterAppend(target, mutation.node.id);
+            if (this.usingVirtualDom &&
+                target.nodeName === '#text' &&
+                parent.nodeName === 'STYLE' &&
+                ((_b = parent.rules) === null || _b === void 0 ? void 0 : _b.length) > 0)
+                parent.rules = [];
+            if (isSerializedIframe(target, this.mirror)) {
+                const targetId = this.mirror.getId(target);
+                const mutationInQueue = this.newDocumentQueue.find((m) => m.parentId === targetId);
+                if (mutationInQueue) {
+                    this.attachDocumentToIframe(mutationInQueue, target);
+                    this.newDocumentQueue = this.newDocumentQueue.filter((m) => m !== mutationInQueue);
+                }
+            }
+            if (mutation.previousId || mutation.nextId) {
+                this.legacy_resolveMissingNode(legacy_missingNodeMap, parent, target, mutation);
+            }
+        };
+        d.adds.forEach((mutation) => {
+            appendNode(mutation);
+        });
+        const startTime = Date.now();
+        while (queue.length) {
+            const resolveTrees = queueToResolveTrees(queue);
+            queue.length = 0;
+            if (Date.now() - startTime > 500) {
+                this.warn('Timeout in the loop, please check the resolve tree data:', resolveTrees);
+                break;
+            }
+            for (const tree of resolveTrees) {
+                const parent = mirror.getNode(tree.value.parentId);
+                if (!parent) {
+                    this.debug('Drop resolve tree since there is no parent for the root node.', tree);
+                }
+                else {
+                    iterateResolveTree(tree, (mutation) => {
+                        appendNode(mutation);
+                    });
+                }
+            }
+        }
+        if (Object.keys(legacy_missingNodeMap).length) {
+            Object.assign(this.legacy_missingNodeRetryMap, legacy_missingNodeMap);
+        }
+        uniqueTextMutations(d.texts).forEach((mutation) => {
+            var _a;
+            const target = mirror.getNode(mutation.id);
+            if (!target) {
+                if (d.removes.find((r) => r.id === mutation.id)) {
+                    return;
+                }
+                return this.warnNodeNotFound(d, mutation.id);
+            }
+            target.textContent = mutation.value;
+            if (this.usingVirtualDom) {
+                const parent = target.parentNode;
+                if (((_a = parent === null || parent === void 0 ? void 0 : parent.rules) === null || _a === void 0 ? void 0 : _a.length) > 0)
+                    parent.rules = [];
+            }
+        });
+        d.attributes.forEach((mutation) => {
+            var _a;
+            const target = mirror.getNode(mutation.id);
+            if (!target) {
+                if (d.removes.find((r) => r.id === mutation.id)) {
+                    return;
+                }
+                return this.warnNodeNotFound(d, mutation.id);
+            }
+            for (const attributeName in mutation.attributes) {
+                if (typeof attributeName === 'string') {
+                    const value = mutation.attributes[attributeName];
+                    if (value === null) {
+                        target.removeAttribute(attributeName);
+                    }
+                    else if (typeof value === 'string') {
+                        try {
+                            if (attributeName === '_cssText' &&
+                                (target.nodeName === 'LINK' || target.nodeName === 'STYLE')) {
+                                try {
+                                    const newSn = mirror.getMeta(target);
+                                    Object.assign(newSn.attributes, mutation.attributes);
+                                    const newNode = buildNodeWithSN(newSn, {
+                                        doc: target.ownerDocument,
+                                        mirror: mirror,
+                                        skipChild: true,
+                                        hackCss: true,
+                                        cache: this.cache,
+                                    });
+                                    const siblingNode = target.nextSibling;
+                                    const parentNode = target.parentNode;
+                                    if (newNode && parentNode) {
+                                        parentNode.removeChild(target);
+                                        parentNode.insertBefore(newNode, siblingNode);
+                                        mirror.replace(mutation.id, newNode);
+                                        break;
+                                    }
+                                }
+                                catch (e) {
+                                }
+                            }
+                            if (attributeName === 'value' && target.nodeName === 'TEXTAREA') {
+                                const textarea = target;
+                                textarea.childNodes.forEach((c) => textarea.removeChild(c));
+                                const tn = (_a = target.ownerDocument) === null || _a === void 0 ? void 0 : _a.createTextNode(value);
+                                if (tn) {
+                                    textarea.appendChild(tn);
+                                }
+                            }
+                            else {
+                                target.setAttribute(attributeName, value);
+                            }
+                        }
+                        catch (error) {
+                            this.warn('An error occurred may due to the checkout feature.', error);
+                        }
+                    }
+                    else if (attributeName === 'style') {
+                        const styleValues = value;
+                        const targetEl = target;
+                        for (const s in styleValues) {
+                            if (styleValues[s] === false) {
+                                targetEl.style.removeProperty(s);
+                            }
+                            else if (styleValues[s] instanceof Array) {
+                                const svp = styleValues[s];
+                                targetEl.style.setProperty(s, svp[0], svp[1]);
+                            }
+                            else {
+                                const svs = styleValues[s];
+                                targetEl.style.setProperty(s, svs);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    applyScroll(d, isSync) {
+        var _a, _b;
+        const target = this.mirror.getNode(d.id);
+        if (!target) {
+            return this.debugNodeNotFound(d, d.id);
+        }
+        const sn = this.mirror.getMeta(target);
+        if (target === this.iframe.contentDocument) {
+            (_a = this.iframe.contentWindow) === null || _a === void 0 ? void 0 : _a.scrollTo({
+                top: d.y,
+                left: d.x,
+                behavior: isSync ? 'auto' : 'smooth',
+            });
+        }
+        else if ((sn === null || sn === void 0 ? void 0 : sn.type) === NodeType$2.Document) {
+            (_b = target.defaultView) === null || _b === void 0 ? void 0 : _b.scrollTo({
+                top: d.y,
+                left: d.x,
+                behavior: isSync ? 'auto' : 'smooth',
+            });
+        }
+        else {
+            try {
+                target.scrollTo({
+                    top: d.y,
+                    left: d.x,
+                    behavior: isSync ? 'auto' : 'smooth',
+                });
+            }
+            catch (error) {
+            }
+        }
+    }
+    applyInput(d) {
+        const target = this.mirror.getNode(d.id);
+        if (!target) {
+            return this.debugNodeNotFound(d, d.id);
+        }
+        try {
+            target.checked = d.isChecked;
+            target.value = d.text;
+        }
+        catch (error) {
+        }
+    }
+    applySelection(d) {
+        try {
+            const selectionSet = new Set();
+            const ranges = d.ranges.map(({ start, startOffset, end, endOffset }) => {
+                const startContainer = this.mirror.getNode(start);
+                const endContainer = this.mirror.getNode(end);
+                if (!startContainer || !endContainer)
+                    return;
+                const result = new Range();
+                result.setStart(startContainer, startOffset);
+                result.setEnd(endContainer, endOffset);
+                const doc = startContainer.ownerDocument;
+                const selection = doc === null || doc === void 0 ? void 0 : doc.getSelection();
+                selection && selectionSet.add(selection);
+                return {
+                    range: result,
+                    selection,
+                };
+            });
+            selectionSet.forEach((s) => s.removeAllRanges());
+            ranges.forEach((r) => { var _a; return r && ((_a = r.selection) === null || _a === void 0 ? void 0 : _a.addRange(r.range)); });
+        }
+        catch (error) {
+        }
+    }
+    applyStyleSheetMutation(data) {
+        var _a;
+        let styleSheet = null;
+        if (data.styleId)
+            styleSheet = this.styleMirror.getStyle(data.styleId);
+        else if (data.id)
+            styleSheet =
+                ((_a = this.mirror.getNode(data.id)) === null || _a === void 0 ? void 0 : _a.sheet) || null;
+        if (!styleSheet)
+            return;
+        if (data.source === IncrementalSource.StyleSheetRule)
+            this.applyStyleSheetRule(data, styleSheet);
+        else if (data.source === IncrementalSource.StyleDeclaration)
+            this.applyStyleDeclaration(data, styleSheet);
+    }
+    applyStyleSheetRule(data, styleSheet) {
+        var _a, _b, _c, _d;
+        (_a = data.adds) === null || _a === void 0 ? void 0 : _a.forEach(({ rule, index: nestedIndex }) => {
+            try {
+                if (Array.isArray(nestedIndex)) {
+                    const { positions, index } = getPositionsAndIndex(nestedIndex);
+                    const nestedRule = getNestedRule(styleSheet.cssRules, positions);
+                    nestedRule.insertRule(rule, index);
+                }
+                else {
+                    const index = nestedIndex === undefined
+                        ? undefined
+                        : Math.min(nestedIndex, styleSheet.cssRules.length);
+                    styleSheet === null || styleSheet === void 0 ? void 0 : styleSheet.insertRule(rule, index);
+                }
+            }
+            catch (e) {
+            }
+        });
+        (_b = data.removes) === null || _b === void 0 ? void 0 : _b.forEach(({ index: nestedIndex }) => {
+            try {
+                if (Array.isArray(nestedIndex)) {
+                    const { positions, index } = getPositionsAndIndex(nestedIndex);
+                    const nestedRule = getNestedRule(styleSheet.cssRules, positions);
+                    nestedRule.deleteRule(index || 0);
+                }
+                else {
+                    styleSheet === null || styleSheet === void 0 ? void 0 : styleSheet.deleteRule(nestedIndex);
+                }
+            }
+            catch (e) {
+            }
+        });
+        if (data.replace)
+            try {
+                void ((_c = styleSheet.replace) === null || _c === void 0 ? void 0 : _c.call(styleSheet, data.replace));
+            }
+            catch (e) {
+            }
+        if (data.replaceSync)
+            try {
+                (_d = styleSheet.replaceSync) === null || _d === void 0 ? void 0 : _d.call(styleSheet, data.replaceSync);
+            }
+            catch (e) {
+            }
+    }
+    applyStyleDeclaration(data, styleSheet) {
+        if (data.set) {
+            const rule = getNestedRule(styleSheet.rules, data.index);
+            rule.style.setProperty(data.set.property, data.set.value, data.set.priority);
+        }
+        if (data.remove) {
+            const rule = getNestedRule(styleSheet.rules, data.index);
+            rule.style.removeProperty(data.remove.property);
+        }
+    }
+    applyAdoptedStyleSheet(data) {
+        var _a;
+        const targetHost = this.mirror.getNode(data.id);
+        if (!targetHost)
+            return;
+        (_a = data.styles) === null || _a === void 0 ? void 0 : _a.forEach((style) => {
+            var _a;
+            let newStyleSheet = null;
+            let hostWindow = null;
+            if (hasShadowRoot(targetHost))
+                hostWindow = ((_a = targetHost.ownerDocument) === null || _a === void 0 ? void 0 : _a.defaultView) || null;
+            else if (targetHost.nodeName === '#document')
+                hostWindow = targetHost.defaultView;
+            if (!hostWindow)
+                return;
+            try {
+                newStyleSheet = new hostWindow.CSSStyleSheet();
+                this.styleMirror.add(newStyleSheet, style.styleId);
+                this.applyStyleSheetRule({
+                    source: IncrementalSource.StyleSheetRule,
+                    adds: style.rules,
+                }, newStyleSheet);
+            }
+            catch (e) {
+            }
+        });
+        const MAX_RETRY_TIME = 10;
+        let count = 0;
+        const adoptStyleSheets = (targetHost, styleIds) => {
+            const stylesToAdopt = styleIds
+                .map((styleId) => this.styleMirror.getStyle(styleId))
+                .filter((style) => style !== null);
+            if (hasShadowRoot(targetHost))
+                targetHost.shadowRoot.adoptedStyleSheets =
+                    stylesToAdopt;
+            else if (targetHost.nodeName === '#document')
+                targetHost.adoptedStyleSheets = stylesToAdopt;
+            if (stylesToAdopt.length !== styleIds.length && count < MAX_RETRY_TIME) {
+                setTimeout(() => adoptStyleSheets(targetHost, styleIds), 0 + 100 * count);
+                count++;
+            }
+        };
+        adoptStyleSheets(targetHost, data.styleIds);
+    }
+    legacy_resolveMissingNode(map, parent, target, targetMutation) {
+        const { previousId, nextId } = targetMutation;
+        const previousInMap = previousId && map[previousId];
+        const nextInMap = nextId && map[nextId];
+        if (previousInMap) {
+            const { node, mutation } = previousInMap;
+            parent.insertBefore(node, target);
+            delete map[mutation.node.id];
+            delete this.legacy_missingNodeRetryMap[mutation.node.id];
+            if (mutation.previousId || mutation.nextId) {
+                this.legacy_resolveMissingNode(map, parent, node, mutation);
+            }
+        }
+        if (nextInMap) {
+            const { node, mutation } = nextInMap;
+            parent.insertBefore(node, target.nextSibling);
+            delete map[mutation.node.id];
+            delete this.legacy_missingNodeRetryMap[mutation.node.id];
+            if (mutation.previousId || mutation.nextId) {
+                this.legacy_resolveMissingNode(map, parent, node, mutation);
+            }
+        }
+    }
+    moveAndHover(x, y, id, isSync, debugData) {
+        const target = this.mirror.getNode(id);
+        if (!target) {
+            return this.debugNodeNotFound(debugData, id);
+        }
+        const base = getBaseDimension(target, this.iframe);
+        const _x = x * base.absoluteScale + base.x;
+        const _y = y * base.absoluteScale + base.y;
+        this.mouse.style.left = `${_x}px`;
+        this.mouse.style.top = `${_y}px`;
+        if (!isSync) {
+            this.drawMouseTail({ x: _x, y: _y });
+        }
+        this.hoverElements(target);
+    }
+    drawMouseTail(position) {
+        if (!this.mouseTail) {
+            return;
+        }
+        const { lineCap, lineWidth, strokeStyle, duration } = this.config.mouseTail === true
+            ? defaultMouseTailConfig
+            : Object.assign({}, defaultMouseTailConfig, this.config.mouseTail);
+        const draw = () => {
+            if (!this.mouseTail) {
+                return;
+            }
+            const ctx = this.mouseTail.getContext('2d');
+            if (!ctx || !this.tailPositions.length) {
+                return;
+            }
+            ctx.clearRect(0, 0, this.mouseTail.width, this.mouseTail.height);
+            ctx.beginPath();
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = lineCap;
+            ctx.strokeStyle = strokeStyle;
+            ctx.moveTo(this.tailPositions[0].x, this.tailPositions[0].y);
+            this.tailPositions.forEach((p) => ctx.lineTo(p.x, p.y));
+            ctx.stroke();
+        };
+        this.tailPositions.push(position);
+        draw();
+        setTimeout(() => {
+            this.tailPositions = this.tailPositions.filter((p) => p !== position);
+            draw();
+        }, duration / this.speedService.state.context.timer.speed);
+    }
+    hoverElements(el) {
+        var _a;
+        (_a = (this.lastHoveredRootNode || this.iframe.contentDocument)) === null || _a === void 0 ? void 0 : _a.querySelectorAll('.\\:hover').forEach((hoveredEl) => {
+            hoveredEl.classList.remove(':hover');
+        });
+        this.lastHoveredRootNode = el.getRootNode();
+        let currentEl = el;
+        while (currentEl) {
+            if (currentEl.classList) {
+                currentEl.classList.add(':hover');
+            }
+            currentEl = currentEl.parentElement;
+        }
+    }
+    isUserInteraction(event) {
+        if (event.type !== EventType.IncrementalSnapshot) {
+            return false;
+        }
+        return (event.data.source > IncrementalSource.Mutation &&
+            event.data.source <= IncrementalSource.Input);
+    }
+    backToNormal() {
+        this.nextUserInteractionEvent = null;
+        if (this.speedService.state.matches('normal')) {
+            return;
+        }
+        this.speedService.send({ type: 'BACK_TO_NORMAL' });
+        this.emitter.emit(ReplayerEvents.SkipEnd, {
+            speed: this.speedService.state.context.normalSpeed,
+        });
+    }
+    warnNodeNotFound(d, id) {
+        this.warn(`Node with id '${id}' not found. `, d);
+    }
+    warnCanvasMutationFailed(d, error) {
+        this.warn(`Has error on canvas update`, error, 'canvas mutation:', d);
+    }
+    debugNodeNotFound(d, id) {
+        this.debug(`Node with id '${id}' not found. `, d);
+    }
+    warn(...args) {
+        if (!this.config.showWarning) {
+            return;
+        }
+        this.config.logger.warn(REPLAY_CONSOLE_PREFIX, ...args);
+    }
+    debug(...args) {
+        if (!this.config.showDebug) {
+            return;
+        }
+        this.config.logger.log(REPLAY_CONSOLE_PREFIX, ...args);
+    }
+}
+
+const { addCustomEvent } = record;
+const { freezePage } = record;
+
+// DEFLATE is a complex format; to read this code, you should probably check the RFC first:
+
+// aliases for shorter compressed code (most minifers don't do this)
+var u8 = Uint8Array, u16 = Uint16Array, u32 = Uint32Array;
+// fixed length extra bits
+var fleb = new u8([0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, /* unused */ 0, 0, /* impossible */ 0]);
+// fixed distance extra bits
+// see fleb note
+var fdeb = new u8([0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, /* unused */ 0, 0]);
+// code length index map
+var clim = new u8([16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]);
+// get base, reverse index map from extra bits
+var freb = function (eb, start) {
+    var b = new u16(31);
+    for (var i = 0; i < 31; ++i) {
+        b[i] = start += 1 << eb[i - 1];
+    }
+    // numbers here are at max 18 bits
+    var r = new u32(b[30]);
+    for (var i = 1; i < 30; ++i) {
+        for (var j = b[i]; j < b[i + 1]; ++j) {
+            r[j] = ((j - b[i]) << 5) | i;
+        }
+    }
+    return [b, r];
+};
+var _a = freb(fleb, 2), fl = _a[0], revfl = _a[1];
+// we can ignore the fact that the other numbers are wrong; they never happen anyway
+fl[28] = 258, revfl[258] = 28;
+var _b = freb(fdeb, 0), fd = _b[0], revfd = _b[1];
+// map of value to reverse (assuming 16 bits)
+var rev = new u16(32768);
+for (var i = 0; i < 32768; ++i) {
+    // reverse table algorithm from SO
+    var x = ((i & 0xAAAA) >>> 1) | ((i & 0x5555) << 1);
+    x = ((x & 0xCCCC) >>> 2) | ((x & 0x3333) << 2);
+    x = ((x & 0xF0F0) >>> 4) | ((x & 0x0F0F) << 4);
+    rev[i] = (((x & 0xFF00) >>> 8) | ((x & 0x00FF) << 8)) >>> 1;
+}
+// create huffman tree from u8 "map": index -> code length for code index
+// mb (max bits) must be at most 15
+// TODO: optimize/split up?
+var hMap = (function (cd, mb, r) {
+    var s = cd.length;
+    // index
+    var i = 0;
+    // u16 "map": index -> # of codes with bit length = index
+    var l = new u16(mb);
+    // length of cd must be 288 (total # of codes)
+    for (; i < s; ++i)
+        ++l[cd[i] - 1];
+    // u16 "map": index -> minimum code for bit length = index
+    var le = new u16(mb);
+    for (i = 0; i < mb; ++i) {
+        le[i] = (le[i - 1] + l[i - 1]) << 1;
+    }
+    var co;
+    if (r) {
+        // u16 "map": index -> number of actual bits, symbol for code
+        co = new u16(1 << mb);
+        // bits to remove for reverser
+        var rvb = 15 - mb;
+        for (i = 0; i < s; ++i) {
+            // ignore 0 lengths
+            if (cd[i]) {
+                // num encoding both symbol and bits read
+                var sv = (i << 4) | cd[i];
+                // free bits
+                var r_1 = mb - cd[i];
+                // start value
+                var v = le[cd[i] - 1]++ << r_1;
+                // m is end value
+                for (var m = v | ((1 << r_1) - 1); v <= m; ++v) {
+                    // every 16 bit value starting with the code yields the same result
+                    co[rev[v] >>> rvb] = sv;
+                }
+            }
+        }
+    }
+    else {
+        co = new u16(s);
+        for (i = 0; i < s; ++i)
+            co[i] = rev[le[cd[i] - 1]++] >>> (15 - cd[i]);
+    }
+    return co;
+});
+// fixed length tree
+var flt = new u8(288);
+for (var i = 0; i < 144; ++i)
+    flt[i] = 8;
+for (var i = 144; i < 256; ++i)
+    flt[i] = 9;
+for (var i = 256; i < 280; ++i)
+    flt[i] = 7;
+for (var i = 280; i < 288; ++i)
+    flt[i] = 8;
+// fixed distance tree
+var fdt = new u8(32);
+for (var i = 0; i < 32; ++i)
+    fdt[i] = 5;
+// fixed length map
+var flm = /*#__PURE__*/ hMap(flt, 9, 0), flrm = /*#__PURE__*/ hMap(flt, 9, 1);
+// fixed distance map
+var fdm = /*#__PURE__*/ hMap(fdt, 5, 0), fdrm = /*#__PURE__*/ hMap(fdt, 5, 1);
+// find max of array
+var max = function (a) {
+    var m = a[0];
+    for (var i = 1; i < a.length; ++i) {
+        if (a[i] > m)
+            m = a[i];
+    }
+    return m;
+};
+// read d, starting at bit p and mask with m
+var bits = function (d, p, m) {
+    var o = (p / 8) >> 0;
+    return ((d[o] | (d[o + 1] << 8)) >>> (p & 7)) & m;
+};
+// read d, starting at bit p continuing for at least 16 bits
+var bits16 = function (d, p) {
+    var o = (p / 8) >> 0;
+    return ((d[o] | (d[o + 1] << 8) | (d[o + 2] << 16)) >>> (p & 7));
+};
+// get end of byte
+var shft = function (p) { return ((p / 8) >> 0) + (p & 7 && 1); };
+// typed array slice - allows garbage collector to free original reference,
+// while being more compatible than .slice
+var slc = function (v, s, e) {
+    if (s == null || s < 0)
+        s = 0;
+    if (e == null || e > v.length)
+        e = v.length;
+    // can't use .constructor in case user-supplied
+    var n = new (v instanceof u16 ? u16 : v instanceof u32 ? u32 : u8)(e - s);
+    n.set(v.subarray(s, e));
+    return n;
+};
+// expands raw DEFLATE data
+var inflt = function (dat, buf, st) {
+    // source length
+    var sl = dat.length;
+    // have to estimate size
+    var noBuf = !buf || st;
+    // no state
+    var noSt = !st || st.i;
+    if (!st)
+        st = {};
+    // Assumes roughly 33% compression ratio average
+    if (!buf)
+        buf = new u8(sl * 3);
+    // ensure buffer can fit at least l elements
+    var cbuf = function (l) {
+        var bl = buf.length;
+        // need to increase size to fit
+        if (l > bl) {
+            // Double or set to necessary, whichever is greater
+            var nbuf = new u8(Math.max(bl * 2, l));
+            nbuf.set(buf);
+            buf = nbuf;
+        }
+    };
+    //  last chunk         bitpos           bytes
+    var final = st.f || 0, pos = st.p || 0, bt = st.b || 0, lm = st.l, dm = st.d, lbt = st.m, dbt = st.n;
+    // total bits
+    var tbts = sl * 8;
+    do {
+        if (!lm) {
+            // BFINAL - this is only 1 when last chunk is next
+            st.f = final = bits(dat, pos, 1);
+            // type: 0 = no compression, 1 = fixed huffman, 2 = dynamic huffman
+            var type = bits(dat, pos + 1, 3);
+            pos += 3;
+            if (!type) {
+                // go to end of byte boundary
+                var s = shft(pos) + 4, l = dat[s - 4] | (dat[s - 3] << 8), t = s + l;
+                if (t > sl) {
+                    if (noSt)
+                        throw 'unexpected EOF';
+                    break;
+                }
+                // ensure size
+                if (noBuf)
+                    cbuf(bt + l);
+                // Copy over uncompressed data
+                buf.set(dat.subarray(s, t), bt);
+                // Get new bitpos, update byte count
+                st.b = bt += l, st.p = pos = t * 8;
+                continue;
+            }
+            else if (type == 1)
+                lm = flrm, dm = fdrm, lbt = 9, dbt = 5;
+            else if (type == 2) {
+                //  literal                            lengths
+                var hLit = bits(dat, pos, 31) + 257, hcLen = bits(dat, pos + 10, 15) + 4;
+                var tl = hLit + bits(dat, pos + 5, 31) + 1;
+                pos += 14;
+                // length+distance tree
+                var ldt = new u8(tl);
+                // code length tree
+                var clt = new u8(19);
+                for (var i = 0; i < hcLen; ++i) {
+                    // use index map to get real code
+                    clt[clim[i]] = bits(dat, pos + i * 3, 7);
+                }
+                pos += hcLen * 3;
+                // code lengths bits
+                var clb = max(clt), clbmsk = (1 << clb) - 1;
+                if (!noSt && pos + tl * (clb + 7) > tbts)
+                    break;
+                // code lengths map
+                var clm = hMap(clt, clb, 1);
+                for (var i = 0; i < tl;) {
+                    var r = clm[bits(dat, pos, clbmsk)];
+                    // bits read
+                    pos += r & 15;
+                    // symbol
+                    var s = r >>> 4;
+                    // code length to copy
+                    if (s < 16) {
+                        ldt[i++] = s;
+                    }
+                    else {
+                        //  copy   count
+                        var c = 0, n = 0;
+                        if (s == 16)
+                            n = 3 + bits(dat, pos, 3), pos += 2, c = ldt[i - 1];
+                        else if (s == 17)
+                            n = 3 + bits(dat, pos, 7), pos += 3;
+                        else if (s == 18)
+                            n = 11 + bits(dat, pos, 127), pos += 7;
+                        while (n--)
+                            ldt[i++] = c;
+                    }
+                }
+                //    length tree                 distance tree
+                var lt = ldt.subarray(0, hLit), dt = ldt.subarray(hLit);
+                // max length bits
+                lbt = max(lt);
+                // max dist bits
+                dbt = max(dt);
+                lm = hMap(lt, lbt, 1);
+                dm = hMap(dt, dbt, 1);
+            }
+            else
+                throw 'invalid block type';
+            if (pos > tbts)
+                throw 'unexpected EOF';
+        }
+        // Make sure the buffer can hold this + the largest possible addition
+        // Maximum chunk size (practically, theoretically infinite) is 2^17;
+        if (noBuf)
+            cbuf(bt + 131072);
+        var lms = (1 << lbt) - 1, dms = (1 << dbt) - 1;
+        var mxa = lbt + dbt + 18;
+        while (noSt || pos + mxa < tbts) {
+            // bits read, code
+            var c = lm[bits16(dat, pos) & lms], sym = c >>> 4;
+            pos += c & 15;
+            if (pos > tbts)
+                throw 'unexpected EOF';
+            if (!c)
+                throw 'invalid length/literal';
+            if (sym < 256)
+                buf[bt++] = sym;
+            else if (sym == 256) {
+                lm = null;
+                break;
+            }
+            else {
+                var add = sym - 254;
+                // no extra bits needed if less
+                if (sym > 264) {
+                    // index
+                    var i = sym - 257, b = fleb[i];
+                    add = bits(dat, pos, (1 << b) - 1) + fl[i];
+                    pos += b;
+                }
+                // dist
+                var d = dm[bits16(dat, pos) & dms], dsym = d >>> 4;
+                if (!d)
+                    throw 'invalid distance';
+                pos += d & 15;
+                var dt = fd[dsym];
+                if (dsym > 3) {
+                    var b = fdeb[dsym];
+                    dt += bits16(dat, pos) & ((1 << b) - 1), pos += b;
+                }
+                if (pos > tbts)
+                    throw 'unexpected EOF';
+                if (noBuf)
+                    cbuf(bt + 131072);
+                var end = bt + add;
+                for (; bt < end; bt += 4) {
+                    buf[bt] = buf[bt - dt];
+                    buf[bt + 1] = buf[bt + 1 - dt];
+                    buf[bt + 2] = buf[bt + 2 - dt];
+                    buf[bt + 3] = buf[bt + 3 - dt];
+                }
+                bt = end;
+            }
+        }
+        st.l = lm, st.p = pos, st.b = bt;
+        if (lm)
+            final = 1, st.m = lbt, st.d = dm, st.n = dbt;
+    } while (!final);
+    return bt == buf.length ? buf : slc(buf, 0, bt);
+};
+// starting at p, write the minimum number of bits that can hold v to d
+var wbits = function (d, p, v) {
+    v <<= p & 7;
+    var o = (p / 8) >> 0;
+    d[o] |= v;
+    d[o + 1] |= v >>> 8;
+};
+// starting at p, write the minimum number of bits (>8) that can hold v to d
+var wbits16 = function (d, p, v) {
+    v <<= p & 7;
+    var o = (p / 8) >> 0;
+    d[o] |= v;
+    d[o + 1] |= v >>> 8;
+    d[o + 2] |= v >>> 16;
+};
+// creates code lengths from a frequency table
+var hTree = function (d, mb) {
+    // Need extra info to make a tree
+    var t = [];
+    for (var i = 0; i < d.length; ++i) {
+        if (d[i])
+            t.push({ s: i, f: d[i] });
+    }
+    var s = t.length;
+    var t2 = t.slice();
+    if (!s)
+        return [new u8(0), 0];
+    if (s == 1) {
+        var v = new u8(t[0].s + 1);
+        v[t[0].s] = 1;
+        return [v, 1];
+    }
+    t.sort(function (a, b) { return a.f - b.f; });
+    // after i2 reaches last ind, will be stopped
+    // freq must be greater than largest possible number of symbols
+    t.push({ s: -1, f: 25001 });
+    var l = t[0], r = t[1], i0 = 0, i1 = 1, i2 = 2;
+    t[0] = { s: -1, f: l.f + r.f, l: l, r: r };
+    // efficient algorithm from UZIP.js
+    // i0 is lookbehind, i2 is lookahead - after processing two low-freq
+    // symbols that combined have high freq, will start processing i2 (high-freq,
+    // non-composite) symbols instead
+    // see https://reddit.com/r/photopea/comments/ikekht/uzipjs_questions/
+    while (i1 != s - 1) {
+        l = t[t[i0].f < t[i2].f ? i0++ : i2++];
+        r = t[i0 != i1 && t[i0].f < t[i2].f ? i0++ : i2++];
+        t[i1++] = { s: -1, f: l.f + r.f, l: l, r: r };
+    }
+    var maxSym = t2[0].s;
+    for (var i = 1; i < s; ++i) {
+        if (t2[i].s > maxSym)
+            maxSym = t2[i].s;
+    }
+    // code lengths
+    var tr = new u16(maxSym + 1);
+    // max bits in tree
+    var mbt = ln(t[i1 - 1], tr, 0);
+    if (mbt > mb) {
+        // more algorithms from UZIP.js
+        // TODO: find out how this code works (debt)
+        //  ind    debt
+        var i = 0, dt = 0;
+        //    left            cost
+        var lft = mbt - mb, cst = 1 << lft;
+        t2.sort(function (a, b) { return tr[b.s] - tr[a.s] || a.f - b.f; });
+        for (; i < s; ++i) {
+            var i2_1 = t2[i].s;
+            if (tr[i2_1] > mb) {
+                dt += cst - (1 << (mbt - tr[i2_1]));
+                tr[i2_1] = mb;
+            }
+            else
+                break;
+        }
+        dt >>>= lft;
+        while (dt > 0) {
+            var i2_2 = t2[i].s;
+            if (tr[i2_2] < mb)
+                dt -= 1 << (mb - tr[i2_2]++ - 1);
+            else
+                ++i;
+        }
+        for (; i >= 0 && dt; --i) {
+            var i2_3 = t2[i].s;
+            if (tr[i2_3] == mb) {
+                --tr[i2_3];
+                ++dt;
+            }
+        }
+        mbt = mb;
+    }
+    return [new u8(tr), mbt];
+};
+// get the max length and assign length codes
+var ln = function (n, l, d) {
+    return n.s == -1
+        ? Math.max(ln(n.l, l, d + 1), ln(n.r, l, d + 1))
+        : (l[n.s] = d);
+};
+// length codes generation
+var lc = function (c) {
+    var s = c.length;
+    // Note that the semicolon was intentional
+    while (s && !c[--s])
+        ;
+    var cl = new u16(++s);
+    //  ind      num         streak
+    var cli = 0, cln = c[0], cls = 1;
+    var w = function (v) { cl[cli++] = v; };
+    for (var i = 1; i <= s; ++i) {
+        if (c[i] == cln && i != s)
+            ++cls;
+        else {
+            if (!cln && cls > 2) {
+                for (; cls > 138; cls -= 138)
+                    w(32754);
+                if (cls > 2) {
+                    w(cls > 10 ? ((cls - 11) << 5) | 28690 : ((cls - 3) << 5) | 12305);
+                    cls = 0;
+                }
+            }
+            else if (cls > 3) {
+                w(cln), --cls;
+                for (; cls > 6; cls -= 6)
+                    w(8304);
+                if (cls > 2)
+                    w(((cls - 3) << 5) | 8208), cls = 0;
+            }
+            while (cls--)
+                w(cln);
+            cls = 1;
+            cln = c[i];
+        }
+    }
+    return [cl.subarray(0, cli), s];
+};
+// calculate the length of output from tree, code lengths
+var clen = function (cf, cl) {
+    var l = 0;
+    for (var i = 0; i < cl.length; ++i)
+        l += cf[i] * cl[i];
+    return l;
+};
+// writes a fixed block
+// returns the new bit pos
+var wfblk = function (out, pos, dat) {
+    // no need to write 00 as type: TypedArray defaults to 0
+    var s = dat.length;
+    var o = shft(pos + 2);
+    out[o] = s & 255;
+    out[o + 1] = s >>> 8;
+    out[o + 2] = out[o] ^ 255;
+    out[o + 3] = out[o + 1] ^ 255;
+    for (var i = 0; i < s; ++i)
+        out[o + i + 4] = dat[i];
+    return (o + 4 + s) * 8;
+};
+// writes a block
+var wblk = function (dat, out, final, syms, lf, df, eb, li, bs, bl, p) {
+    wbits(out, p++, final);
+    ++lf[256];
+    var _a = hTree(lf, 15), dlt = _a[0], mlb = _a[1];
+    var _b = hTree(df, 15), ddt = _b[0], mdb = _b[1];
+    var _c = lc(dlt), lclt = _c[0], nlc = _c[1];
+    var _d = lc(ddt), lcdt = _d[0], ndc = _d[1];
+    var lcfreq = new u16(19);
+    for (var i = 0; i < lclt.length; ++i)
+        lcfreq[lclt[i] & 31]++;
+    for (var i = 0; i < lcdt.length; ++i)
+        lcfreq[lcdt[i] & 31]++;
+    var _e = hTree(lcfreq, 7), lct = _e[0], mlcb = _e[1];
+    var nlcc = 19;
+    for (; nlcc > 4 && !lct[clim[nlcc - 1]]; --nlcc)
+        ;
+    var flen = (bl + 5) << 3;
+    var ftlen = clen(lf, flt) + clen(df, fdt) + eb;
+    var dtlen = clen(lf, dlt) + clen(df, ddt) + eb + 14 + 3 * nlcc + clen(lcfreq, lct) + (2 * lcfreq[16] + 3 * lcfreq[17] + 7 * lcfreq[18]);
+    if (flen <= ftlen && flen <= dtlen)
+        return wfblk(out, p, dat.subarray(bs, bs + bl));
+    var lm, ll, dm, dl;
+    wbits(out, p, 1 + (dtlen < ftlen)), p += 2;
+    if (dtlen < ftlen) {
+        lm = hMap(dlt, mlb, 0), ll = dlt, dm = hMap(ddt, mdb, 0), dl = ddt;
+        var llm = hMap(lct, mlcb, 0);
+        wbits(out, p, nlc - 257);
+        wbits(out, p + 5, ndc - 1);
+        wbits(out, p + 10, nlcc - 4);
+        p += 14;
+        for (var i = 0; i < nlcc; ++i)
+            wbits(out, p + 3 * i, lct[clim[i]]);
+        p += 3 * nlcc;
+        var lcts = [lclt, lcdt];
+        for (var it = 0; it < 2; ++it) {
+            var clct = lcts[it];
+            for (var i = 0; i < clct.length; ++i) {
+                var len = clct[i] & 31;
+                wbits(out, p, llm[len]), p += lct[len];
+                if (len > 15)
+                    wbits(out, p, (clct[i] >>> 5) & 127), p += clct[i] >>> 12;
+            }
+        }
+    }
+    else {
+        lm = flm, ll = flt, dm = fdm, dl = fdt;
+    }
+    for (var i = 0; i < li; ++i) {
+        if (syms[i] > 255) {
+            var len = (syms[i] >>> 18) & 31;
+            wbits16(out, p, lm[len + 257]), p += ll[len + 257];
+            if (len > 7)
+                wbits(out, p, (syms[i] >>> 23) & 31), p += fleb[len];
+            var dst = syms[i] & 31;
+            wbits16(out, p, dm[dst]), p += dl[dst];
+            if (dst > 3)
+                wbits16(out, p, (syms[i] >>> 5) & 8191), p += fdeb[dst];
+        }
+        else {
+            wbits16(out, p, lm[syms[i]]), p += ll[syms[i]];
+        }
+    }
+    wbits16(out, p, lm[256]);
+    return p + ll[256];
+};
+// deflate options (nice << 13) | chain
+var deo = /*#__PURE__*/ new u32([65540, 131080, 131088, 131104, 262176, 1048704, 1048832, 2114560, 2117632]);
+// empty
+var et = /*#__PURE__*/ new u8(0);
+// compresses data into a raw DEFLATE buffer
+var dflt = function (dat, lvl, plvl, pre, post, lst) {
+    var s = dat.length;
+    var o = new u8(pre + s + 5 * (1 + Math.floor(s / 7000)) + post);
+    // writing to this writes to the output buffer
+    var w = o.subarray(pre, o.length - post);
+    var pos = 0;
+    if (!lvl || s < 8) {
+        for (var i = 0; i <= s; i += 65535) {
+            // end
+            var e = i + 65535;
+            if (e < s) {
+                // write full block
+                pos = wfblk(w, pos, dat.subarray(i, e));
+            }
+            else {
+                // write final block
+                w[i] = lst;
+                pos = wfblk(w, pos, dat.subarray(i, s));
+            }
+        }
+    }
+    else {
+        var opt = deo[lvl - 1];
+        var n = opt >>> 13, c = opt & 8191;
+        var msk_1 = (1 << plvl) - 1;
+        //    prev 2-byte val map    curr 2-byte val map
+        var prev = new u16(32768), head = new u16(msk_1 + 1);
+        var bs1_1 = Math.ceil(plvl / 3), bs2_1 = 2 * bs1_1;
+        var hsh = function (i) { return (dat[i] ^ (dat[i + 1] << bs1_1) ^ (dat[i + 2] << bs2_1)) & msk_1; };
+        // 24576 is an arbitrary number of maximum symbols per block
+        // 424 buffer for last block
+        var syms = new u32(25000);
+        // length/literal freq   distance freq
+        var lf = new u16(288), df = new u16(32);
+        //  l/lcnt  exbits  index  l/lind  waitdx  bitpos
+        var lc_1 = 0, eb = 0, i = 0, li = 0, wi = 0, bs = 0;
+        for (; i < s; ++i) {
+            // hash value
+            var hv = hsh(i);
+            // index mod 32768
+            var imod = i & 32767;
+            // previous index with this value
+            var pimod = head[hv];
+            prev[imod] = pimod;
+            head[hv] = imod;
+            // We always should modify head and prev, but only add symbols if
+            // this data is not yet processed ("wait" for wait index)
+            if (wi <= i) {
+                // bytes remaining
+                var rem = s - i;
+                if ((lc_1 > 7000 || li > 24576) && rem > 423) {
+                    pos = wblk(dat, w, 0, syms, lf, df, eb, li, bs, i - bs, pos);
+                    li = lc_1 = eb = 0, bs = i;
+                    for (var j = 0; j < 286; ++j)
+                        lf[j] = 0;
+                    for (var j = 0; j < 30; ++j)
+                        df[j] = 0;
+                }
+                //  len    dist   chain
+                var l = 2, d = 0, ch_1 = c, dif = (imod - pimod) & 32767;
+                if (rem > 2 && hv == hsh(i - dif)) {
+                    var maxn = Math.min(n, rem) - 1;
+                    var maxd = Math.min(32767, i);
+                    // max possible length
+                    // not capped at dif because decompressors implement "rolling" index population
+                    var ml = Math.min(258, rem);
+                    while (dif <= maxd && --ch_1 && imod != pimod) {
+                        if (dat[i + l] == dat[i + l - dif]) {
+                            var nl = 0;
+                            for (; nl < ml && dat[i + nl] == dat[i + nl - dif]; ++nl)
+                                ;
+                            if (nl > l) {
+                                l = nl, d = dif;
+                                // break out early when we reach "nice" (we are satisfied enough)
+                                if (nl > maxn)
+                                    break;
+                                // now, find the rarest 2-byte sequence within this
+                                // length of literals and search for that instead.
+                                // Much faster than just using the start
+                                var mmd = Math.min(dif, nl - 2);
+                                var md = 0;
+                                for (var j = 0; j < mmd; ++j) {
+                                    var ti = (i - dif + j + 32768) & 32767;
+                                    var pti = prev[ti];
+                                    var cd = (ti - pti + 32768) & 32767;
+                                    if (cd > md)
+                                        md = cd, pimod = ti;
+                                }
+                            }
+                        }
+                        // check the previous match
+                        imod = pimod, pimod = prev[imod];
+                        dif += (imod - pimod + 32768) & 32767;
+                    }
+                }
+                // d will be nonzero only when a match was found
+                if (d) {
+                    // store both dist and len data in one Uint32
+                    // Make sure this is recognized as a len/dist with 28th bit (2^28)
+                    syms[li++] = 268435456 | (revfl[l] << 18) | revfd[d];
+                    var lin = revfl[l] & 31, din = revfd[d] & 31;
+                    eb += fleb[lin] + fdeb[din];
+                    ++lf[257 + lin];
+                    ++df[din];
+                    wi = i + l;
+                    ++lc_1;
+                }
+                else {
+                    syms[li++] = dat[i];
+                    ++lf[dat[i]];
+                }
+            }
+        }
+        pos = wblk(dat, w, lst, syms, lf, df, eb, li, bs, i - bs, pos);
+        // this is the easiest way to avoid needing to maintain state
+        if (!lst)
+            pos = wfblk(w, pos, et);
+    }
+    return slc(o, 0, pre + shft(pos) + post);
+};
+// Alder32
+var adler = function () {
+    var a = 1, b = 0;
+    return {
+        p: function (d) {
+            // closures have awful performance
+            var n = a, m = b;
+            var l = d.length;
+            for (var i = 0; i != l;) {
+                var e = Math.min(i + 5552, l);
+                for (; i < e; ++i)
+                    n += d[i], m += n;
+                n %= 65521, m %= 65521;
+            }
+            a = n, b = m;
+        },
+        d: function () { return ((a >>> 8) << 16 | (b & 255) << 8 | (b >>> 8)) + ((a & 255) << 23) * 2; }
+    };
+};
+// deflate with opts
+var dopt = function (dat, opt, pre, post, st) {
+    return dflt(dat, opt.level == null ? 6 : opt.level, opt.mem == null ? Math.ceil(Math.max(8, Math.min(13, Math.log(dat.length))) * 1.5) : (12 + opt.mem), pre, post, !st);
+};
+// write bytes
+var wbytes = function (d, b, v) {
+    for (; v; ++b)
+        d[b] = v, v >>>= 8;
+};
+// zlib header
+var zlh = function (c, o) {
+    var lv = o.level, fl = lv == 0 ? 0 : lv < 6 ? 1 : lv == 9 ? 3 : 2;
+    c[0] = 120, c[1] = (fl << 6) | (fl ? (32 - 2 * fl) : 1);
+};
+// zlib valid
+var zlv = function (d) {
+    if ((d[0] & 15) != 8 || (d[0] >>> 4) > 7 || ((d[0] << 8 | d[1]) % 31))
+        throw 'invalid zlib data';
+    if (d[1] & 32)
+        throw 'invalid zlib data: preset dictionaries not supported';
+};
+/**
+ * Compress data with Zlib
+ * @param data The data to compress
+ * @param opts The compression options
+ * @returns The zlib-compressed version of the data
+ */
+function zlibSync(data, opts) {
+    if (opts === void 0) { opts = {}; }
+    var a = adler();
+    a.p(data);
+    var d = dopt(data, opts, 2, 4);
+    return zlh(d, opts), wbytes(d, d.length - 4, a.d()), d;
+}
+/**
+ * Expands Zlib data
+ * @param data The data to decompress
+ * @param out Where to write the data. Saves memory if you know the decompressed size and provide an output buffer of that length.
+ * @returns The decompressed version of the data
+ */
+function unzlibSync(data, out) {
+    return inflt((zlv(data), data.subarray(2, -4)), out);
+}
+/**
+ * Converts a string into a Uint8Array for use with compression/decompression methods
+ * @param str The string to encode
+ * @param latin1 Whether or not to interpret the data as Latin-1. This should
+ *               not need to be true unless decoding a binary string.
+ * @returns The string encoded in UTF-8/Latin-1 binary
+ */
+function strToU8(str, latin1) {
+    var l = str.length;
+    if (!latin1 && typeof TextEncoder != 'undefined')
+        return new TextEncoder().encode(str);
+    var ar = new u8(str.length + (str.length >>> 1));
+    var ai = 0;
+    var w = function (v) { ar[ai++] = v; };
+    for (var i = 0; i < l; ++i) {
+        if (ai + 5 > ar.length) {
+            var n = new u8(ai + 8 + ((l - i) << 1));
+            n.set(ar);
+            ar = n;
+        }
+        var c = str.charCodeAt(i);
+        if (c < 128 || latin1)
+            w(c);
+        else if (c < 2048)
+            w(192 | (c >>> 6)), w(128 | (c & 63));
+        else if (c > 55295 && c < 57344)
+            c = 65536 + (c & 1023 << 10) | (str.charCodeAt(++i) & 1023),
+                w(240 | (c >>> 18)), w(128 | ((c >>> 12) & 63)), w(128 | ((c >>> 6) & 63)), w(128 | (c & 63));
+        else
+            w(224 | (c >>> 12)), w(128 | ((c >>> 6) & 63)), w(128 | (c & 63));
+    }
+    return slc(ar, 0, ai);
+}
+/**
+ * Converts a Uint8Array to a string
+ * @param dat The data to decode to string
+ * @param latin1 Whether or not to interpret the data as Latin-1. This should
+ *               not need to be true unless encoding to binary string.
+ * @returns The original UTF-8/Latin-1 string
+ */
+function strFromU8(dat, latin1) {
+    var r = '';
+    if (!latin1 && typeof TextDecoder != 'undefined')
+        return new TextDecoder().decode(dat);
+    for (var i = 0; i < dat.length;) {
+        var c = dat[i++];
+        if (c < 128 || latin1)
+            r += String.fromCharCode(c);
+        else if (c < 224)
+            r += String.fromCharCode((c & 31) << 6 | (dat[i++] & 63));
+        else if (c < 240)
+            r += String.fromCharCode((c & 15) << 12 | (dat[i++] & 63) << 6 | (dat[i++] & 63));
+        else
+            c = ((c & 15) << 18 | (dat[i++] & 63) << 12 | (dat[i++] & 63) << 6 | (dat[i++] & 63)) - 65536,
+                r += String.fromCharCode(55296 | (c >> 10), 56320 | (c & 1023));
+    }
+    return r;
+}
+
+const MARK = 'v1';
+
+const pack = (event) => {
+    const _e = Object.assign(Object.assign({}, event), { v: MARK });
+    return strFromU8(zlibSync(strToU8(JSON.stringify(_e))), true);
+};
+
+const unpack = (raw) => {
+    if (typeof raw !== 'string') {
+        return raw;
+    }
+    try {
+        const e = JSON.parse(raw);
+        if (e.timestamp) {
+            return e;
+        }
+    }
+    catch (error) {
+    }
+    try {
+        const e = JSON.parse(strFromU8(unzlibSync(strToU8(raw, true))));
+        if (e.v === MARK) {
+            return e;
+        }
+        throw new Error(`These events were packed with packer ${e.v} which is incompatible with current packer ${MARK}.`);
+    }
+    catch (error) {
+        console.error(error);
+        throw new Error('Unknown data format.');
+    }
+};
+
+class StackFrame {
+    constructor(obj) {
+        this.fileName = obj.fileName || '';
+        this.functionName = obj.functionName || '';
+        this.lineNumber = obj.lineNumber;
+        this.columnNumber = obj.columnNumber;
+    }
+    toString() {
+        const lineNumber = this.lineNumber || '';
+        const columnNumber = this.columnNumber || '';
+        if (this.functionName)
+            return `${this.functionName} (${this.fileName}:${lineNumber}:${columnNumber})`;
+        return `${this.fileName}:${lineNumber}:${columnNumber}`;
+    }
+}
+const FIREFOX_SAFARI_STACK_REGEXP = /(^|@)\S+:\d+/;
+const CHROME_IE_STACK_REGEXP = /^\s*at .*(\S+:\d+|\(native\))/m;
+const SAFARI_NATIVE_CODE_REGEXP = /^(eval@)?(\[native code])?$/;
+const ErrorStackParser = {
+    parse: function (error) {
+        if (!error) {
+            return [];
+        }
+        if (typeof error.stacktrace !== 'undefined' ||
+            typeof error['opera#sourceloc'] !== 'undefined') {
+            return this.parseOpera(error);
+        }
+        else if (error.stack && error.stack.match(CHROME_IE_STACK_REGEXP)) {
+            return this.parseV8OrIE(error);
+        }
+        else if (error.stack) {
+            return this.parseFFOrSafari(error);
+        }
+        else {
+            console.warn('[console-record-plugin]: Failed to parse error object:', error);
+            return [];
+        }
+    },
+    extractLocation: function (urlLike) {
+        if (urlLike.indexOf(':') === -1) {
+            return [urlLike];
+        }
+        const regExp = /(.+?)(?::(\d+))?(?::(\d+))?$/;
+        const parts = regExp.exec(urlLike.replace(/[()]/g, ''));
+        if (!parts)
+            throw new Error(`Cannot parse given url: ${urlLike}`);
+        return [parts[1], parts[2] || undefined, parts[3] || undefined];
+    },
+    parseV8OrIE: function (error) {
+        const filtered = error.stack.split('\n').filter(function (line) {
+            return !!line.match(CHROME_IE_STACK_REGEXP);
+        }, this);
+        return filtered.map(function (line) {
+            if (line.indexOf('(eval ') > -1) {
+                line = line
+                    .replace(/eval code/g, 'eval')
+                    .replace(/(\(eval at [^()]*)|(\),.*$)/g, '');
+            }
+            let sanitizedLine = line.replace(/^\s+/, '').replace(/\(eval code/g, '(');
+            const location = sanitizedLine.match(/ (\((.+):(\d+):(\d+)\)$)/);
+            sanitizedLine = location
+                ? sanitizedLine.replace(location[0], '')
+                : sanitizedLine;
+            const tokens = sanitizedLine.split(/\s+/).slice(1);
+            const locationParts = this.extractLocation(location ? location[1] : tokens.pop());
+            const functionName = tokens.join(' ') || undefined;
+            const fileName = ['eval', '<anonymous>'].indexOf(locationParts[0]) > -1
+                ? undefined
+                : locationParts[0];
+            return new StackFrame({
+                functionName,
+                fileName,
+                lineNumber: locationParts[1],
+                columnNumber: locationParts[2],
+            });
+        }, this);
+    },
+    parseFFOrSafari: function (error) {
+        const filtered = error.stack.split('\n').filter(function (line) {
+            return !line.match(SAFARI_NATIVE_CODE_REGEXP);
+        }, this);
+        return filtered.map(function (line) {
+            if (line.indexOf(' > eval') > -1) {
+                line = line.replace(/ line (\d+)(?: > eval line \d+)* > eval:\d+:\d+/g, ':$1');
+            }
+            if (line.indexOf('@') === -1 && line.indexOf(':') === -1) {
+                return new StackFrame({
+                    functionName: line,
+                });
+            }
+            else {
+                const functionNameRegex = /((.*".+"[^@]*)?[^@]*)(?:@)/;
+                const matches = line.match(functionNameRegex);
+                const functionName = matches && matches[1] ? matches[1] : undefined;
+                const locationParts = this.extractLocation(line.replace(functionNameRegex, ''));
+                return new StackFrame({
+                    functionName,
+                    fileName: locationParts[0],
+                    lineNumber: locationParts[1],
+                    columnNumber: locationParts[2],
+                });
+            }
+        }, this);
+    },
+    parseOpera: function (e) {
+        if (!e.stacktrace ||
+            (e.message.indexOf('\n') > -1 &&
+                e.message.split('\n').length > e.stacktrace.split('\n').length)) {
+            return this.parseOpera9(e);
+        }
+        else if (!e.stack) {
+            return this.parseOpera10(e);
+        }
+        else {
+            return this.parseOpera11(e);
+        }
+    },
+    parseOpera9: function (e) {
+        const lineRE = /Line (\d+).*script (?:in )?(\S+)/i;
+        const lines = e.message.split('\n');
+        const result = [];
+        for (let i = 2, len = lines.length; i < len; i += 2) {
+            const match = lineRE.exec(lines[i]);
+            if (match) {
+                result.push(new StackFrame({
+                    fileName: match[2],
+                    lineNumber: parseFloat(match[1]),
+                }));
+            }
+        }
+        return result;
+    },
+    parseOpera10: function (e) {
+        const lineRE = /Line (\d+).*script (?:in )?(\S+)(?:: In function (\S+))?$/i;
+        const lines = e.stacktrace.split('\n');
+        const result = [];
+        for (let i = 0, len = lines.length; i < len; i += 2) {
+            const match = lineRE.exec(lines[i]);
+            if (match) {
+                result.push(new StackFrame({
+                    functionName: match[3] || undefined,
+                    fileName: match[2],
+                    lineNumber: parseFloat(match[1]),
+                }));
+            }
+        }
+        return result;
+    },
+    parseOpera11: function (error) {
+        const filtered = error.stack.split('\n').filter(function (line) {
+            return (!!line.match(FIREFOX_SAFARI_STACK_REGEXP) &&
+                !line.match(/^Error created at/));
+        }, this);
+        return filtered.map(function (line) {
+            const tokens = line.split('@');
+            const locationParts = this.extractLocation(tokens.pop());
+            const functionCall = tokens.shift() || '';
+            const functionName = functionCall
+                .replace(/<anonymous function(: (\w+))?>/, '$2')
+                .replace(/\([^)]*\)/g, '') || undefined;
+            return new StackFrame({
+                functionName,
+                fileName: locationParts[0],
+                lineNumber: locationParts[1],
+                columnNumber: locationParts[2],
+            });
+        }, this);
+    },
+};
+
+function pathToSelector(node) {
+    if (!node || !node.outerHTML) {
+        return '';
+    }
+    let path = '';
+    while (node.parentElement) {
+        let name = node.localName;
+        if (!name) {
+            break;
+        }
+        name = name.toLowerCase();
+        const parent = node.parentElement;
+        const domSiblings = [];
+        if (parent.children && parent.children.length > 0) {
+            for (let i = 0; i < parent.children.length; i++) {
+                const sibling = parent.children[i];
+                if (sibling.localName && sibling.localName.toLowerCase) {
+                    if (sibling.localName.toLowerCase() === name) {
+                        domSiblings.push(sibling);
+                    }
+                }
+            }
+        }
+        if (domSiblings.length > 1) {
+            name += `:eq(${domSiblings.indexOf(node)})`;
+        }
+        path = name + (path ? '>' + path : '');
+        node = parent;
+    }
+    return path;
+}
+function isObject(obj) {
+    return Object.prototype.toString.call(obj) === '[object Object]';
+}
+function isObjTooDeep(obj, limit) {
+    if (limit === 0) {
+        return true;
+    }
+    const keys = Object.keys(obj);
+    for (const key of keys) {
+        if (isObject(obj[key]) &&
+            isObjTooDeep(obj[key], limit - 1)) {
+            return true;
+        }
+    }
+    return false;
+}
+function stringify(obj, stringifyOptions) {
+    const options = {
+        numOfKeysLimit: 50,
+        depthOfLimit: 4,
+    };
+    Object.assign(options, stringifyOptions);
+    const stack = [];
+    const keys = [];
+    return JSON.stringify(obj, function (key, value) {
+        if (stack.length > 0) {
+            const thisPos = stack.indexOf(this);
+            ~thisPos ? stack.splice(thisPos + 1) : stack.push(this);
+            ~thisPos ? keys.splice(thisPos, Infinity, key) : keys.push(key);
+            if (~stack.indexOf(value)) {
+                if (stack[0] === value) {
+                    value = '[Circular ~]';
+                }
+                else {
+                    value =
+                        '[Circular ~.' +
+                            keys.slice(0, stack.indexOf(value)).join('.') +
+                            ']';
+                }
+            }
+        }
+        else {
+            stack.push(value);
+        }
+        if (value === null)
+            return value;
+        if (value === undefined)
+            return 'undefined';
+        if (shouldIgnore(value)) {
+            return toString(value);
+        }
+        if (typeof value === 'bigint') {
+            return value.toString() + 'n';
+        }
+        if (value instanceof Event) {
+            const eventResult = {};
+            for (const eventKey in value) {
+                const eventValue = value[eventKey];
+                if (Array.isArray(eventValue)) {
+                    eventResult[eventKey] = pathToSelector((eventValue.length ? eventValue[0] : null));
+                }
+                else {
+                    eventResult[eventKey] = eventValue;
+                }
+            }
+            return eventResult;
+        }
+        else if (value instanceof Node) {
+            if (value instanceof HTMLElement) {
+                return value ? value.outerHTML : '';
+            }
+            return value.nodeName;
+        }
+        else if (value instanceof Error) {
+            return value.stack
+                ? value.stack + '\nEnd of stack for Error object'
+                : value.name + ': ' + value.message;
+        }
+        return value;
+    });
+    function shouldIgnore(_obj) {
+        if (isObject(_obj) && Object.keys(_obj).length > options.numOfKeysLimit) {
+            return true;
+        }
+        if (typeof _obj === 'function') {
+            return true;
+        }
+        if (isObject(_obj) &&
+            isObjTooDeep(_obj, options.depthOfLimit)) {
+            return true;
+        }
+        return false;
+    }
+    function toString(_obj) {
+        let str = _obj.toString();
+        if (options.stringLengthLimit && str.length > options.stringLengthLimit) {
+            str = `${str.slice(0, options.stringLengthLimit)}...`;
+        }
+        return str;
+    }
+}
+
+const defaultLogOptions = {
+    level: [
+        'assert',
+        'clear',
+        'count',
+        'countReset',
+        'debug',
+        'dir',
+        'dirxml',
+        'error',
+        'group',
+        'groupCollapsed',
+        'groupEnd',
+        'info',
+        'log',
+        'table',
+        'time',
+        'timeEnd',
+        'timeLog',
+        'trace',
+        'warn',
+    ],
+    lengthThreshold: 1000,
+    logger: 'console',
+};
+function initLogObserver(cb, win, options) {
+    const logOptions = (options ? Object.assign({}, defaultLogOptions, options) : defaultLogOptions);
+    const loggerType = logOptions.logger;
+    if (!loggerType) {
+        return () => {
+        };
+    }
+    let logger;
+    if (typeof loggerType === 'string') {
+        logger = win[loggerType];
+    }
+    else {
+        logger = loggerType;
+    }
+    let logCount = 0;
+    let inStack = false;
+    const cancelHandlers = [];
+    if (logOptions.level.includes('error')) {
+        const errorHandler = (event) => {
+            const message = event.message, error = event.error;
+            const trace = ErrorStackParser.parse(error).map((stackFrame) => stackFrame.toString());
+            const payload = [stringify(message, logOptions.stringifyOptions)];
+            cb({
+                level: 'error',
+                trace,
+                payload,
+            });
+        };
+        win.addEventListener('error', errorHandler);
+        cancelHandlers.push(() => {
+            win.removeEventListener('error', errorHandler);
+        });
+        const unhandledrejectionHandler = (event) => {
+            let error;
+            let payload;
+            if (event.reason instanceof Error) {
+                error = event.reason;
+                payload = [
+                    stringify(`Uncaught (in promise) ${error.name}: ${error.message}`, logOptions.stringifyOptions),
+                ];
+            }
+            else {
+                error = new Error();
+                payload = [
+                    stringify('Uncaught (in promise)', logOptions.stringifyOptions),
+                    stringify(event.reason, logOptions.stringifyOptions),
+                ];
+            }
+            const trace = ErrorStackParser.parse(error).map((stackFrame) => stackFrame.toString());
+            cb({
+                level: 'error',
+                trace,
+                payload,
+            });
+        };
+        win.addEventListener('unhandledrejection', unhandledrejectionHandler);
+        cancelHandlers.push(() => {
+            win.removeEventListener('unhandledrejection', unhandledrejectionHandler);
+        });
+    }
+    for (const levelType of logOptions.level) {
+        cancelHandlers.push(replace(logger, levelType));
+    }
+    return () => {
+        cancelHandlers.forEach((h) => h());
+    };
+    function replace(_logger, level) {
+        if (!_logger[level]) {
+            return () => {
+            };
+        }
+        return patch(_logger, level, (original) => {
+            return (...args) => {
+                original.apply(this, args);
+                if (inStack) {
+                    return;
+                }
+                inStack = true;
+                try {
+                    const trace = ErrorStackParser.parse(new Error())
+                        .map((stackFrame) => stackFrame.toString())
+                        .splice(1);
+                    const payload = args.map((s) => stringify(s, logOptions.stringifyOptions));
+                    logCount++;
+                    if (logCount < logOptions.lengthThreshold) {
+                        cb({
+                            level,
+                            trace,
+                            payload,
+                        });
+                    }
+                    else if (logCount === logOptions.lengthThreshold) {
+                        cb({
+                            level: 'warn',
+                            trace: [],
+                            payload: [
+                                stringify('The number of log records reached the threshold.'),
+                            ],
+                        });
+                    }
+                }
+                catch (error) {
+                    original('rrweb logger error:', error, ...args);
+                }
+                finally {
+                    inStack = false;
+                }
+            };
+        });
+    }
+}
+const PLUGIN_NAME = 'rrweb/console@1';
+const getRecordConsolePlugin = (options) => ({
+    name: PLUGIN_NAME,
+    observer: initLogObserver,
+    options: options,
+});
+
+const ORIGINAL_ATTRIBUTE_NAME = '__rrweb_original__';
+const defaultLogConfig = {
+    level: [
+        'assert',
+        'clear',
+        'count',
+        'countReset',
+        'debug',
+        'dir',
+        'dirxml',
+        'error',
+        'group',
+        'groupCollapsed',
+        'groupEnd',
+        'info',
+        'log',
+        'table',
+        'time',
+        'timeEnd',
+        'timeLog',
+        'trace',
+        'warn',
+    ],
+    replayLogger: undefined,
+};
+class LogReplayPlugin {
+    constructor(config) {
+        this.config = Object.assign(defaultLogConfig, config);
+    }
+    getConsoleLogger() {
+        const replayLogger = {};
+        for (const level of this.config.level) {
+            if (level === 'trace') {
+                replayLogger[level] = (data) => {
+                    const logger = console.log[ORIGINAL_ATTRIBUTE_NAME]
+                        ? console.log[ORIGINAL_ATTRIBUTE_NAME]
+                        : console.log;
+                    logger(...data.payload.map((s) => JSON.parse(s)), this.formatMessage(data));
+                };
+            }
+            else {
+                replayLogger[level] = (data) => {
+                    const logger = console[level][ORIGINAL_ATTRIBUTE_NAME]
+                        ? console[level][ORIGINAL_ATTRIBUTE_NAME]
+                        : console[level];
+                    logger(...data.payload.map((s) => JSON.parse(s)), this.formatMessage(data));
+                };
+            }
+        }
+        return replayLogger;
+    }
+    formatMessage(data) {
+        if (data.trace.length === 0) {
+            return '';
+        }
+        const stackPrefix = '\n\tat ';
+        let result = stackPrefix;
+        result += data.trace.join(stackPrefix);
+        return result;
+    }
+}
+const getReplayConsolePlugin = (options) => {
+    const replayLogger = (options === null || options === void 0 ? void 0 : options.replayLogger) || new LogReplayPlugin(options).getConsoleLogger();
+    return {
+        handler(event, _isSync, context) {
+            let logData = null;
+            if (event.type === EventType.IncrementalSnapshot &&
+                event.data.source === IncrementalSource.Log) {
+                logData = event.data;
+            }
+            else if (event.type === EventType.Plugin &&
+                event.data.plugin === PLUGIN_NAME) {
+                logData = event.data.payload;
+            }
+            if (logData) {
+                try {
+                    if (typeof replayLogger[logData.level] === 'function') {
+                        replayLogger[logData.level](logData);
+                    }
+                }
+                catch (error) {
+                    if (context.replayer.config.showWarning) {
+                        console.warn(error);
+                    }
+                }
+            }
+        },
+    };
+};
+
+exports.EventType = EventType;
+exports.IncrementalSource = IncrementalSource;
+exports.MouseInteractions = MouseInteractions;
+exports.PLUGIN_NAME = PLUGIN_NAME;
+exports.Replayer = Replayer;
+exports.ReplayerEvents = ReplayerEvents;
+exports.addCustomEvent = addCustomEvent;
+exports.canvasMutation = canvasMutation;
+exports.freezePage = freezePage;
+exports.getRecordConsolePlugin = getRecordConsolePlugin;
+exports.getReplayConsolePlugin = getReplayConsolePlugin;
+exports.pack = pack;
+exports.record = record;
+exports.unpack = unpack;
+exports.utils = utils;
+
+},{}],4:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -155,7 +10974,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":14}],3:[function(require,module,exports){
+},{"./utils":21}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -163,13 +10982,13 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.48.1'
+    LIB_VERSION: '2.58.0'
 };
 
 exports['default'] = Config;
 module.exports = exports['default'];
 
-},{}],4:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -332,7 +11151,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":14}],5:[function(require,module,exports){
+},{"./utils":21}],7:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -361,6 +11180,8 @@ exports.addOptOutCheckMixpanelGroup = addOptOutCheckMixpanelGroup;
 exports.clearOptInOut = clearOptInOut;
 
 var _utils = require('./utils');
+
+var _window = require('./window');
 
 /**
  * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
@@ -553,7 +11374,7 @@ function _hasDoNotTrackFlagOn(options) {
     if (options && options.ignoreDnt) {
         return false;
     }
-    var win = options && options.window || _utils.window;
+    var win = options && options.window || _window.window;
     var nav = win['navigator'] || {};
     var hasDntOn = false;
 
@@ -645,7 +11466,42 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":14}],6:[function(require,module,exports){
+},{"./utils":21,"./window":22}],8:[function(require,module,exports){
+// For loading separate bundles asynchronously via script tag
+// so that we don't load them until they are needed at runtime.
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+exports.loadAsync = loadAsync;
+exports.loadNoop = loadNoop;
+exports.loadThrowError = loadThrowError;
+
+function loadAsync(src, onload) {
+    var scriptEl = document.createElement('script');
+    scriptEl.type = 'text/javascript';
+    scriptEl.async = true;
+    scriptEl.onload = onload;
+    scriptEl.src = src;
+    document.head.appendChild(scriptEl);
+}
+
+// For builds that have everything in one bundle, no extra work.
+
+function loadNoop(_src, onload) {
+    onload();
+}
+
+// For builds that do NOT want any extra bundles (e.g. session recorder)
+// and just the main SDK, throw an error when trying to load a separate bundle.
+// eslint-disable-next-line no-unused-vars
+
+function loadThrowError(src, _onload) {
+    throw new Error('This build of Mixpanel only includes core SDK functionality, could not load ' + src);
+}
+
+},{}],9:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -653,14 +11509,18 @@ Object.defineProperty(exports, '__esModule', {
   value: true
 });
 
-var _mixpanelCore = require('./mixpanel-core');
+require('../recorder');
 
-var mixpanel = (0, _mixpanelCore.init_as_module)();
+var _mixpanelCore = require('../mixpanel-core');
+
+var _bundleLoaders = require('./bundle-loaders');
+
+var mixpanel = (0, _mixpanelCore.init_as_module)(_bundleLoaders.loadNoop);
 
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"./mixpanel-core":7}],7:[function(require,module,exports){
+},{"../mixpanel-core":10,"../recorder":15,"./bundle-loaders":8}],10:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -677,6 +11537,8 @@ var _config = require('./config');
 var _config2 = _interopRequireDefault(_config);
 
 var _utils = require('./utils');
+
+var _window = require('./window');
 
 var _domTrackers = require('./dom-trackers');
 
@@ -718,6 +11580,12 @@ Globals should be all caps
 */
 
 var init_type; // MODULE or SNIPPET loader
+// allow bundlers to specify how extra code (recorder bundle) should be loaded
+// eslint-disable-next-line no-unused-vars
+var load_extra_bundle = function load_extra_bundle(src, _onload) {
+    throw new Error(src + ' not available in this build.');
+};
+
 var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE = 0;
 var INIT_SNIPPET = 1;
@@ -737,7 +11605,7 @@ var NOOP_FUNC = function NOOP_FUNC() {};
  */
 // http://hacks.mozilla.org/2009/07/cross-site-xmlhttprequest-with-cors/
 // https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest#withCredentials
-var USE_XHR = _utils.window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
+var USE_XHR = _window.window.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest();
 var USE_FETCH = !_utils._.isUndefined(fetch) && typeof fetch === 'function';
 
 // IE<10 does not support cross-origin XHR's but script tags
@@ -757,7 +11625,8 @@ if (_utils.navigator['sendBeacon']) {
 var DEFAULT_API_ROUTES = {
     'track': 'track/',
     'engage': 'engage/',
-    'groups': 'groups/'
+    'groups': 'groups/',
+    'record': 'record/'
 };
 
 /*
@@ -779,10 +11648,12 @@ var DEFAULT_CONFIG = {
     'cookie_domain': '',
     'cookie_name': '',
     'loaded': NOOP_FUNC,
+    'mp_loader': null,
     'track_marketing': true,
     'track_pageview': false,
     'skip_first_touch_marketing': false,
     'store_google': true,
+    'stop_utm_persistence': false,
     'save_referrer': true,
     'test': false,
     'verbose': false,
@@ -807,7 +11678,18 @@ var DEFAULT_CONFIG = {
     'batch_flush_interval_ms': 5000,
     'batch_request_timeout_ms': 90000,
     'batch_autostart': true,
-    'hooks': {}
+    'hooks': {},
+    'record_block_class': new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
+    'record_block_selector': 'img, video',
+    'record_canvas': false,
+    'record_collect_fonts': false,
+    'record_idle_timeout_ms': 30 * 60 * 1000, // 30 minutes
+    'record_mask_text_class': new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
+    'record_mask_text_selector': '*',
+    'record_max_ms': _utils.MAX_RECORDING_MS,
+    'record_min_ms': 0,
+    'record_sessions_percent': 0,
+    'recorder_src': 'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
 
 var DOM_LOADED = false;
@@ -969,7 +11851,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
             });
         } else {
             this.init_batchers();
-            if (sendBeacon && _utils.window.addEventListener) {
+            if (sendBeacon && _window.window.addEventListener) {
                 // Before page closes or hides (user tabs away etc), attempt to flush any events
                 // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
                 // events will not be removed from the persistent store; if the site is loaded again,
@@ -986,12 +11868,12 @@ MixpanelLib.prototype._init = function (token, config, name) {
                         this.request_batchers.events.flush({ unloading: true });
                     }
                 }, this);
-                _utils.window.addEventListener('pagehide', function (ev) {
+                _window.window.addEventListener('pagehide', function (ev) {
                     if (ev['persisted']) {
                         flush_on_unload();
                     }
                 });
-                _utils.window.addEventListener('visibilitychange', function () {
+                _window.window.addEventListener('visibilitychange', function () {
                     if (_utils.document['visibilityState'] === 'hidden') {
                         flush_on_unload();
                     }
@@ -1015,9 +11897,71 @@ MixpanelLib.prototype._init = function (token, config, name) {
         }, '');
     }
 
-    if (this.get_config('track_pageview')) {
-        this.track_pageview();
+    var track_pageview_option = this.get_config('track_pageview');
+    if (track_pageview_option) {
+        this._init_url_change_tracking(track_pageview_option);
     }
+
+    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
+        this.start_session_recording();
+    }
+};
+
+MixpanelLib.prototype.start_session_recording = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function () {
+    if (!_window.window['MutationObserver']) {
+        _utils.console.critical('Browser does not support MutationObserver; skipping session recording');
+        return;
+    }
+
+    var handleLoadedRecorder = _utils._.bind(function () {
+        this._recorder = this._recorder || new _window.window['__mp_recorder'](this);
+        this._recorder['startRecording']();
+    }, this);
+
+    if (_utils._.isUndefined(_window.window['__mp_recorder'])) {
+        load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+    } else {
+        handleLoadedRecorder();
+    }
+});
+
+MixpanelLib.prototype.stop_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['stopRecording']();
+    } else {
+        _utils.console.critical('Session recorder module not loaded');
+    }
+};
+
+MixpanelLib.prototype.get_session_recording_properties = function () {
+    var props = {};
+    var replay_id = this._get_session_replay_id();
+    if (replay_id) {
+        props['$mp_replay_id'] = replay_id;
+    }
+    return props;
+};
+
+MixpanelLib.prototype.get_session_replay_url = function () {
+    var replay_url = null;
+    var replay_id = this._get_session_replay_id();
+    if (replay_id) {
+        var query_params = _utils._.HTTPBuildQuery({
+            'replay_id': replay_id,
+            'distinct_id': this.get_distinct_id(),
+            'token': this.get_config('token')
+        });
+        replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
+    }
+    return replay_url;
+};
+
+MixpanelLib.prototype._get_session_replay_id = function () {
+    var replay_id = null;
+    if (this._recorder) {
+        replay_id = this._recorder['replayId'];
+    }
+    return replay_id || null;
 };
 
 // Private methods
@@ -1025,12 +11969,25 @@ MixpanelLib.prototype._init = function (token, config, name) {
 MixpanelLib.prototype._loaded = function () {
     this.get_config('loaded')(this);
     this._set_default_superprops();
+    this['people'].set_once(this['persistence'].get_referrer_info());
+
+    // `store_google` is now deprecated and previously stored UTM parameters are cleared
+    // from persistence by default.
+    if (this.get_config('store_google') && this.get_config('stop_utm_persistence')) {
+        var utm_params = _utils._.info.campaignParams(null);
+        _utils._.each(utm_params, (function (_utm_value, utm_key) {
+            // We need to unregister persisted UTM parameters so old values
+            // are not mixed with the new UTM parameters
+            this.unregister(utm_key);
+        }).bind(this));
+    }
 };
 
 // update persistence with info on referrer, UTM params, etc
 MixpanelLib.prototype._set_default_superprops = function () {
     this['persistence'].update_search_keyword(_utils.document.referrer);
-    if (this.get_config('store_google')) {
+    // Registering super properties for UTM persistence by 'store_google' is deprecated.
+    if (this.get_config('store_google') && !this.get_config('stop_utm_persistence')) {
         this.register(_utils._.info.campaignParams());
     }
     if (this.get_config('save_referrer')) {
@@ -1066,6 +12023,55 @@ MixpanelLib.prototype._track_dom = function (DomClass, args) {
 
     var dt = new DomClass().init(this);
     return dt.track.apply(dt, args);
+};
+
+MixpanelLib.prototype._init_url_change_tracking = function (track_pageview_option) {
+    var previous_tracked_url = '';
+    var tracked = this.track_pageview();
+    if (tracked) {
+        previous_tracked_url = _utils._.info.currentUrl();
+    }
+
+    if (_utils._.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
+        _window.window.addEventListener('popstate', function () {
+            _window.window.dispatchEvent(new Event('mp_locationchange'));
+        });
+        _window.window.addEventListener('hashchange', function () {
+            _window.window.dispatchEvent(new Event('mp_locationchange'));
+        });
+        var nativePushState = _window.window.history.pushState;
+        if (typeof nativePushState === 'function') {
+            _window.window.history.pushState = function (state, unused, url) {
+                nativePushState.call(_window.window.history, state, unused, url);
+                _window.window.dispatchEvent(new Event('mp_locationchange'));
+            };
+        }
+        var nativeReplaceState = _window.window.history.replaceState;
+        if (typeof nativeReplaceState === 'function') {
+            _window.window.history.replaceState = function (state, unused, url) {
+                nativeReplaceState.call(_window.window.history, state, unused, url);
+                _window.window.dispatchEvent(new Event('mp_locationchange'));
+            };
+        }
+        _window.window.addEventListener('mp_locationchange', (function () {
+            var current_url = _utils._.info.currentUrl();
+            var should_track = false;
+            if (track_pageview_option === 'full-url') {
+                should_track = current_url !== previous_tracked_url;
+            } else if (track_pageview_option === 'url-with-path-and-query-string') {
+                should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
+            } else if (track_pageview_option === 'url-with-path') {
+                should_track = current_url.split('#')[0].split('?')[0] !== previous_tracked_url.split('#')[0].split('?')[0];
+            }
+
+            if (should_track) {
+                var tracked = this.track_pageview();
+                if (tracked) {
+                    previous_tracked_url = current_url;
+                }
+            }
+        }).bind(this));
+    }
 };
 
 /**
@@ -1237,7 +12243,8 @@ MixpanelLib.prototype._send_request = function (url, data, options, callback) {
                         lib.report_error(error);
                         if (callback) {
                             if (verbose_mode) {
-                                callback({ status: 0, error: error, xhr_req: req });
+                                var response_headers = req['responseHeaders'] || {};
+                                callback({ status: 0, httpStatusCode: req['status'], error: error, retryAfter: response_headers['Retry-After'] });
                             } else {
                                 callback(0);
                             }
@@ -1393,14 +12400,15 @@ MixpanelLib.prototype.init_batchers = function () {
         var batcher_for = _utils._.bind(function (attrs) {
             return new _requestBatcher.RequestBatcher(attrs.queue_key, {
                 libConfig: this['config'],
+                errorReporter: this.get_config('error_reporter'),
                 sendRequestFunc: _utils._.bind(function (data, options, cb) {
                     this._send_request(this.get_config('api_host') + attrs.endpoint, this._encode_data_for_request(data), options, this._prepare_callback(cb, data));
                 }, this),
                 beforeSendHook: _utils._.bind(function (item) {
                     return this._run_hook('before_send_' + attrs.type, item);
                 }, this),
-                errorReporter: this.get_config('error_reporter'),
-                stopAllBatchingFunc: _utils._.bind(this.stop_batch_senders, this)
+                stopAllBatchingFunc: _utils._.bind(this.stop_batch_senders, this),
+                usePersistence: true
             });
         }, this);
         var batcher_configs = this.get_batcher_configs();
@@ -1500,7 +12508,7 @@ MixpanelLib.prototype._track_or_batch = function (options, callback) {
     }, this);
 
     if (this._batch_requests && !should_send_immediately) {
-        batcher.enqueue(truncated_data, function (succeeded) {
+        batcher.enqueue(truncated_data).then(function (succeeded) {
             if (succeeded) {
                 callback(1, truncated_data);
             } else {
@@ -1582,7 +12590,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     // properties object by passing in a new object
 
     // update properties with pageview info and super-properties
-    properties = _utils._.extend({}, _utils._.info.properties(), marketing_properties, this['persistence'].properties(), this.unpersisted_superprops, properties);
+    properties = _utils._.extend({}, _utils._.info.properties({ 'mp_loader': this.get_config('mp_loader') }), marketing_properties, this['persistence'].properties(), this.unpersisted_superprops, this.get_session_recording_properties(), properties);
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_utils._.isArray(property_blacklist)) {
@@ -1741,10 +12749,9 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
 
 /**
  * Track a default Mixpanel page view event, which includes extra default event properties to
- * improve page view data. The `config.track_pageview` option for <a href="#mixpanelinit">mixpanel.init()</a>
- * may be turned on for tracking page loads automatically.
+ * improve page view data.
  *
- * ### Usage
+ * ### Usage:
  *
  *     // track a default $mp_web_page_view event
  *     mixpanel.track_pageview();
@@ -1760,6 +12767,23 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
  *     // individual pages on the same site or product. Use cases for custom event_name may be page
  *     // views on different products or internal applications that are considered completely separate
  *     mixpanel.track_pageview({'page': 'customer-search'}, {'event_name': '[internal] Admin Page View'});
+ *
+ * ### Notes:
+ *
+ * The `config.track_pageview` option for <a href="#mixpanelinit">mixpanel.init()</a>
+ * may be turned on for tracking page loads automatically.
+ *
+ *     // track only page loads
+ *     mixpanel.init(PROJECT_TOKEN, {track_pageview: true});
+ *
+ *     // track when the URL changes in any manner
+ *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'full-url'});
+ *
+ *     // track when the URL changes, ignoring any changes in the hash part
+ *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path-and-query-string'});
+ *
+ *     // track when the path changes, ignoring any query parameter or hash changes
+ *     mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path'});
  *
  * @param {Object} [properties] An optional set of additional properties to send with the page view event
  * @param {Object} [options] Page view tracking options
@@ -2507,7 +13531,7 @@ MixpanelLib.prototype._gdpr_call_func = function (func, options) {
 /**
  * Opt the user in to data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage
+ * ### Usage:
  *
  *     // opt user in
  *     mixpanel.opt_in_tracking();
@@ -2547,7 +13571,7 @@ MixpanelLib.prototype.opt_in_tracking = function (options) {
 /**
  * Opt the user out of data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage
+ * ### Usage:
  *
  *     // opt user out
  *     mixpanel.opt_out_tracking();
@@ -2588,7 +13612,7 @@ MixpanelLib.prototype.opt_out_tracking = function (options) {
 /**
  * Check whether the user has opted in to data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage
+ * ### Usage:
  *
  *     var has_opted_in = mixpanel.has_opted_in_tracking();
  *     // use has_opted_in value
@@ -2605,7 +13629,7 @@ MixpanelLib.prototype.has_opted_in_tracking = function (options) {
 /**
  * Check whether the user has opted out of data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage
+ * ### Usage:
  *
  *     var has_opted_out = mixpanel.has_opted_out_tracking();
  *     // use has_opted_out value
@@ -2622,7 +13646,7 @@ MixpanelLib.prototype.has_opted_out_tracking = function (options) {
 /**
  * Clear the user's opt in/out status of data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage
+ * ### Usage:
  *
  *     // clear user's opt-in/out status
  *     mixpanel.clear_opt_in_out_tracking();
@@ -2699,6 +13723,10 @@ MixpanelLib.prototype['remove_group'] = MixpanelLib.prototype.remove_group;
 MixpanelLib.prototype['track_with_groups'] = MixpanelLib.prototype.track_with_groups;
 MixpanelLib.prototype['start_batch_senders'] = MixpanelLib.prototype.start_batch_senders;
 MixpanelLib.prototype['stop_batch_senders'] = MixpanelLib.prototype.stop_batch_senders;
+MixpanelLib.prototype['start_session_recording'] = MixpanelLib.prototype.start_session_recording;
+MixpanelLib.prototype['stop_session_recording'] = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['get_session_recording_properties'] = MixpanelLib.prototype.get_session_recording_properties;
+MixpanelLib.prototype['get_session_replay_url'] = MixpanelLib.prototype.get_session_replay_url;
 MixpanelLib.prototype['DEFAULT_API_ROUTES'] = DEFAULT_API_ROUTES;
 
 // MixpanelPersistence Exports
@@ -2747,7 +13775,7 @@ var override_mp_init_func = function override_mp_init_func() {
 
             mixpanel_master = instance;
             if (init_type === INIT_SNIPPET) {
-                _utils.window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
+                _window.window[PRIMARY_INSTANCE_NAME] = mixpanel_master;
             }
             extend_mp();
         }
@@ -2799,7 +13827,7 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
         // check to make sure we arn't in a frame
         var toplevel = false;
         try {
-            toplevel = _utils.window.frameElement === null;
+            toplevel = _window.window.frameElement === null;
         } catch (e) {
             // noop
         }
@@ -2810,12 +13838,13 @@ var add_dom_loaded_handler = function add_dom_loaded_handler() {
     }
 
     // fallback handler, always will work
-    _utils._.register_event(_utils.window, 'load', dom_loaded_handler, true);
+    _utils._.register_event(_window.window, 'load', dom_loaded_handler, true);
 };
 
-function init_from_snippet() {
+function init_from_snippet(bundle_loader) {
+    load_extra_bundle = bundle_loader;
     init_type = INIT_SNIPPET;
-    mixpanel_master = _utils.window[PRIMARY_INSTANCE_NAME];
+    mixpanel_master = _window.window[PRIMARY_INSTANCE_NAME];
 
     // Initialization
     if (_utils._.isUndefined(mixpanel_master)) {
@@ -2853,7 +13882,8 @@ function init_from_snippet() {
     add_dom_loaded_handler();
 }
 
-function init_as_module() {
+function init_as_module(bundle_loader) {
+    load_extra_bundle = bundle_loader;
     init_type = INIT_MODULE;
     mixpanel_master = new MixpanelLib();
 
@@ -2864,7 +13894,7 @@ function init_as_module() {
     return mixpanel_master;
 }
 
-},{"./config":3,"./dom-trackers":4,"./gdpr-utils":5,"./mixpanel-group":8,"./mixpanel-people":9,"./mixpanel-persistence":10,"./request-batcher":11,"./utils":14}],8:[function(require,module,exports){
+},{"./config":5,"./dom-trackers":6,"./gdpr-utils":7,"./mixpanel-group":11,"./mixpanel-people":12,"./mixpanel-persistence":13,"./request-batcher":17,"./utils":21,"./window":22}],11:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -3048,7 +14078,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":2,"./gdpr-utils":5,"./utils":14}],9:[function(require,module,exports){
+},{"./api-actions":4,"./gdpr-utils":7,"./utils":21}],12:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -3104,7 +14134,7 @@ MixpanelPeople.prototype.set = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(func
     }
 
     // update $set object with default people properties
-    data[_apiActions.SET_ACTION] = _utils._.extend({}, _utils._.info.people_properties(), this._mixpanel['persistence'].get_referrer_info(), data[_apiActions.SET_ACTION]);
+    data[_apiActions.SET_ACTION] = _utils._.extend({}, _utils._.info.people_properties(), data[_apiActions.SET_ACTION]);
     return this._send_request(data, callback);
 });
 
@@ -3528,7 +14558,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":2,"./gdpr-utils":5,"./utils":14}],10:[function(require,module,exports){
+},{"./api-actions":4,"./gdpr-utils":7,"./utils":21}],13:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -3585,7 +14615,7 @@ var MixpanelPersistence = function MixpanelPersistence(config) {
 
     this.load();
     this.update_config(config);
-    this.upgrade(config);
+    this.upgrade();
     this.save();
 };
 
@@ -3615,45 +14645,11 @@ MixpanelPersistence.prototype.load = function () {
     }
 };
 
-MixpanelPersistence.prototype.upgrade = function (config) {
-    var upgrade_from_old_lib = config['upgrade'],
-        old_cookie_name,
-        old_cookie;
+MixpanelPersistence.prototype.upgrade = function () {
+    var old_cookie, old_localstorage;
 
-    if (upgrade_from_old_lib) {
-        old_cookie_name = 'mp_super_properties';
-        // Case where they had a custom cookie name before.
-        if (typeof upgrade_from_old_lib === 'string') {
-            old_cookie_name = upgrade_from_old_lib;
-        }
-
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        // remove the cookie
-        this.storage.remove(old_cookie_name);
-        this.storage.remove(old_cookie_name, true);
-
-        if (old_cookie) {
-            this['props'] = _utils._.extend(this['props'], old_cookie['all'], old_cookie['events']);
-        }
-    }
-
-    if (!config['cookie_name'] && config['name'] !== 'mixpanel') {
-        // special case to handle people with cookies of the form
-        // mp_TOKEN_INSTANCENAME from the first release of this library
-        old_cookie_name = 'mp_' + config['token'] + '_' + config['name'];
-        old_cookie = this.storage.parse(old_cookie_name);
-
-        if (old_cookie) {
-            this.storage.remove(old_cookie_name);
-            this.storage.remove(old_cookie_name, true);
-
-            // Save the prop values that were in the cookie from before -
-            // this should only happen once as we delete the old one.
-            this.register_once(old_cookie);
-        }
-    }
-
+    // if transferring from cookie to localStorage or vice-versa, copy existing
+    // super properties over to new storage mode
     if (this.storage === _utils._.localStorage) {
         old_cookie = _utils._.cookie.parse(this.name);
 
@@ -3662,6 +14658,14 @@ MixpanelPersistence.prototype.upgrade = function (config) {
 
         if (old_cookie) {
             this.register_once(old_cookie);
+        }
+    } else if (this.storage === _utils._.cookie) {
+        old_localstorage = _utils._.localStorage.parse(this.name);
+
+        _utils._.localStorage.remove(this.name);
+
+        if (old_localstorage) {
+            this.register_once(old_localstorage);
         }
     }
 };
@@ -3984,7 +14988,786 @@ exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":2,"./utils":14}],11:[function(require,module,exports){
+},{"./api-actions":4,"./utils":21}],14:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _window = require('./window');
+
+/**
+ * Promise polyfill sourced from https://github.com/getify/native-promise-only.
+ * Modified to
+ *  - remove UMD wrapper and export as an object, so that we don't globally polyfill Promise.
+ *  - rename access notation for dynamically referenced props to avoid minification, e.g. this.__NPO__ -> this['__NPO__']
+*/
+
+/*! Native Promise Only
+    v0.8.1 (c) Kyle Simpson
+    MIT License: http://getify.mit-license.org
+*/
+
+/*jshint validthis:true */
+'use strict';
+
+var setImmediate = _window.window['setImmediate'];
+var builtInProp,
+    cycle,
+    schedulingQueue,
+    ToString = Object.prototype.toString,
+    timer = typeof setImmediate !== 'undefined' ? function timer(fn) {
+    return setImmediate(fn);
+} : setTimeout;
+
+// dammit, IE8.
+try {
+    Object.defineProperty({}, 'x', {});
+    builtInProp = function builtInProp(obj, name, val, config) {
+        return Object.defineProperty(obj, name, {
+            value: val,
+            writable: true,
+            configurable: config !== false
+        });
+    };
+} catch (err) {
+    builtInProp = function builtInProp(obj, name, val) {
+        obj[name] = val;
+        return obj;
+    };
+}
+
+// Note: using a queue instead of array for efficiency
+schedulingQueue = (function Queue() {
+    var first, last, item;
+
+    function Item(fn, self) {
+        this.fn = fn;
+        this.self = self;
+        this.next = void 0;
+    }
+
+    return {
+        add: function add(fn, self) {
+            item = new Item(fn, self);
+            if (last) {
+                last.next = item;
+            } else {
+                first = item;
+            }
+            last = item;
+            item = void 0;
+        },
+        drain: function drain() {
+            var f = first;
+            first = last = cycle = void 0;
+
+            while (f) {
+                f.fn.call(f.self);
+                f = f.next;
+            }
+        }
+    };
+})();
+
+function schedule(fn, self) {
+    schedulingQueue.add(fn, self);
+    if (!cycle) {
+        cycle = timer(schedulingQueue.drain);
+    }
+}
+
+// promise duck typing
+function isThenable(o) {
+    var _then,
+        oType = typeof o;
+
+    if (o !== null && (oType === 'object' || oType === 'function')) {
+        _then = o.then;
+    }
+    return typeof _then === 'function' ? _then : false;
+}
+
+function notify() {
+    for (var i = 0; i < this.chain.length; i++) {
+        notifyIsolated(this, this.state === 1 ? this.chain[i].success : this.chain[i].failure, this.chain[i]);
+    }
+    this.chain.length = 0;
+}
+
+// NOTE: This is a separate function to isolate
+// the `try..catch` so that other code can be
+// optimized better
+function notifyIsolated(self, cb, chain) {
+    var ret, _then;
+    try {
+        if (cb === false) {
+            chain.reject(self.msg);
+        } else {
+            if (cb === true) {
+                ret = self.msg;
+            } else {
+                ret = cb.call(void 0, self.msg);
+            }
+
+            if (ret === chain.promise) {
+                chain.reject(TypeError('Promise-chain cycle'));
+            }
+            // eslint-disable-next-line no-cond-assign
+            else if (_then = isThenable(ret)) {
+                    _then.call(ret, chain.resolve, chain.reject);
+                } else {
+                    chain.resolve(ret);
+                }
+        }
+    } catch (err) {
+        chain.reject(err);
+    }
+}
+
+function resolve(msg) {
+    var _then,
+        self = this;
+
+    // already triggered?
+    if (self.triggered) {
+        return;
+    }
+
+    self.triggered = true;
+
+    // unwrap
+    if (self.def) {
+        self = self.def;
+    }
+
+    try {
+        // eslint-disable-next-line no-cond-assign
+        if (_then = isThenable(msg)) {
+            schedule(function () {
+                var defWrapper = new MakeDefWrapper(self);
+                try {
+                    _then.call(msg, function $resolve$() {
+                        resolve.apply(defWrapper, arguments);
+                    }, function $reject$() {
+                        reject.apply(defWrapper, arguments);
+                    });
+                } catch (err) {
+                    reject.call(defWrapper, err);
+                }
+            });
+        } else {
+            self.msg = msg;
+            self.state = 1;
+            if (self.chain.length > 0) {
+                schedule(notify, self);
+            }
+        }
+    } catch (err) {
+        reject.call(new MakeDefWrapper(self), err);
+    }
+}
+
+function reject(msg) {
+    var self = this;
+
+    // already triggered?
+    if (self.triggered) {
+        return;
+    }
+
+    self.triggered = true;
+
+    // unwrap
+    if (self.def) {
+        self = self.def;
+    }
+
+    self.msg = msg;
+    self.state = 2;
+    if (self.chain.length > 0) {
+        schedule(notify, self);
+    }
+}
+
+function iteratePromises(Constructor, arr, resolver, rejecter) {
+    for (var idx = 0; idx < arr.length; idx++) {
+        (function IIFE(idx) {
+            Constructor.resolve(arr[idx]).then(function $resolver$(msg) {
+                resolver(idx, msg);
+            }, rejecter);
+        })(idx);
+    }
+}
+
+function MakeDefWrapper(self) {
+    this.def = self;
+    this.triggered = false;
+}
+
+function MakeDef(self) {
+    this.promise = self;
+    this.state = 0;
+    this.triggered = false;
+    this.chain = [];
+    this.msg = void 0;
+}
+
+function NpoPromise(executor) {
+    if (typeof executor !== 'function') {
+        throw TypeError('Not a function');
+    }
+
+    if (this['__NPO__'] !== 0) {
+        throw TypeError('Not a promise');
+    }
+
+    // instance shadowing the inherited "brand"
+    // to signal an already "initialized" promise
+    this['__NPO__'] = 1;
+
+    var def = new MakeDef(this);
+
+    this['then'] = function then(success, failure) {
+        var o = {
+            success: typeof success === 'function' ? success : true,
+            failure: typeof failure === 'function' ? failure : false
+        };
+        // Note: `then(..)` itself can be borrowed to be used against
+        // a different promise constructor for making the chained promise,
+        // by substituting a different `this` binding.
+        o.promise = new this.constructor(function extractChain(resolve, reject) {
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            o.resolve = resolve;
+            o.reject = reject;
+        });
+        def.chain.push(o);
+
+        if (def.state !== 0) {
+            schedule(notify, def);
+        }
+
+        return o.promise;
+    };
+    this['catch'] = function $catch$(failure) {
+        return this.then(void 0, failure);
+    };
+
+    try {
+        executor.call(void 0, function publicResolve(msg) {
+            resolve.call(def, msg);
+        }, function publicReject(msg) {
+            reject.call(def, msg);
+        });
+    } catch (err) {
+        reject.call(def, err);
+    }
+}
+
+var PromisePrototype = builtInProp({}, 'constructor', NpoPromise,
+/*configurable=*/false);
+
+// Note: Android 4 cannot use `Object.defineProperty(..)` here
+NpoPromise.prototype = PromisePrototype;
+
+// built-in "brand" to signal an "uninitialized" promise
+builtInProp(PromisePrototype, '__NPO__', 0,
+/*configurable=*/false);
+
+builtInProp(NpoPromise, 'resolve', function Promise$resolve(msg) {
+    var Constructor = this;
+
+    // spec mandated checks
+    // note: best "isPromise" check that's practical for now
+    if (msg && typeof msg === 'object' && msg['__NPO__'] === 1) {
+        return msg;
+    }
+
+    return new Constructor(function executor(resolve, reject) {
+        if (typeof resolve !== 'function' || typeof reject !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        resolve(msg);
+    });
+});
+
+builtInProp(NpoPromise, 'reject', function Promise$reject(msg) {
+    return new this(function executor(resolve, reject) {
+        if (typeof resolve !== 'function' || typeof reject !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        reject(msg);
+    });
+});
+
+builtInProp(NpoPromise, 'all', function Promise$all(arr) {
+    var Constructor = this;
+
+    // spec mandated checks
+    if (ToString.call(arr) !== '[object Array]') {
+        return Constructor.reject(TypeError('Not an array'));
+    }
+    if (arr.length === 0) {
+        return Constructor.resolve([]);
+    }
+
+    return new Constructor(function executor(resolve, reject) {
+        if (typeof resolve !== 'function' || typeof reject !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        var len = arr.length,
+            msgs = Array(len),
+            count = 0;
+
+        iteratePromises(Constructor, arr, function resolver(idx, msg) {
+            msgs[idx] = msg;
+            if (++count === len) {
+                resolve(msgs);
+            }
+        }, reject);
+    });
+});
+
+builtInProp(NpoPromise, 'race', function Promise$race(arr) {
+    var Constructor = this;
+
+    // spec mandated checks
+    if (ToString.call(arr) !== '[object Array]') {
+        return Constructor.reject(TypeError('Not an array'));
+    }
+
+    return new Constructor(function executor(resolve, reject) {
+        if (typeof resolve !== 'function' || typeof reject !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        iteratePromises(Constructor, arr, function resolver(idx, msg) {
+            resolve(msg);
+        }, reject);
+    });
+});
+
+var PromisePolyfill;
+if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
+    exports.Promise = PromisePolyfill = Promise;
+} else {
+    exports.Promise = PromisePolyfill = NpoPromise;
+}
+
+exports.Promise = PromisePolyfill;
+exports.NpoPromise = NpoPromise;
+
+},{"./window":22}],15:[function(require,module,exports){
+'use strict';
+
+var _rrweb = require('rrweb');
+
+var _sessionRecording = require('./session-recording');
+
+var _utils = require('../utils');
+
+// eslint-disable-line camelcase
+
+var _window = require('../window');
+
+var logger = (0, _utils.console_with_prefix)('recorder');
+
+/**
+ * Recorder API: manages recordings and exposes methods public to the core Mixpanel library.
+ * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
+ */
+var MixpanelRecorder = function MixpanelRecorder(mixpanelInstance) {
+    this._mixpanel = mixpanelInstance;
+    this.activeRecording = null;
+};
+
+MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
+    if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
+        logger.log('Recording already in progress, skipping startRecording.');
+        return;
+    }
+
+    var onIdleTimeout = _utils._.bind(function () {
+        logger.log('Idle timeout reached, restarting recording.');
+        this.resetRecording();
+    }, this);
+
+    var onMaxLengthReached = _utils._.bind(function () {
+        logger.log('Max recording length reached, stopping recording.');
+        this.resetRecording();
+    }, this);
+
+    this.activeRecording = new _sessionRecording.SessionRecording({
+        mixpanelInstance: this._mixpanel,
+        onIdleTimeout: onIdleTimeout,
+        onMaxLengthReached: onMaxLengthReached,
+        replayId: _utils._.UUID(),
+        rrwebRecord: _rrweb.record
+    });
+
+    this.activeRecording.startRecording(shouldStopBatcher);
+};
+
+MixpanelRecorder.prototype.stopRecording = function () {
+    if (this.activeRecording) {
+        this.activeRecording.stopRecording();
+        this.activeRecording = null;
+    }
+};
+
+MixpanelRecorder.prototype.resetRecording = function () {
+    this.stopRecording();
+    this.startRecording(true);
+};
+
+MixpanelRecorder.prototype.getActiveReplayId = function () {
+    if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
+        return this.activeRecording.replayId;
+    } else {
+        return null;
+    }
+};
+
+// getter so that older mixpanel-core versions can still retrieve the replay ID
+// when pulling the latest recorder bundle from the CDN
+Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
+    get: function get() {
+        return this.getActiveReplayId();
+    }
+});
+
+_window.window['__mp_recorder'] = MixpanelRecorder;
+
+},{"../utils":21,"../window":22,"./session-recording":16,"rrweb":3}],16:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _rrwebTypes = require('@rrweb/types');
+
+var _utils = require('../utils');
+
+// eslint-disable-line camelcase
+
+var _window = require('../window');
+
+var _gdprUtils = require('../gdpr-utils');
+
+var _requestBatcher = require('../request-batcher');
+
+var _config = require('../config');
+
+var _config2 = _interopRequireDefault(_config);
+
+var logger = (0, _utils.console_with_prefix)('recorder');
+var CompressionStream = _window.window['CompressionStream'];
+
+var RECORDER_BATCHER_LIB_CONFIG = {
+    'batch_size': 1000,
+    'batch_flush_interval_ms': 10 * 1000,
+    'batch_request_timeout_ms': 90 * 1000,
+    'batch_autostart': true
+};
+
+var ACTIVE_SOURCES = new Set([_rrwebTypes.IncrementalSource.MouseMove, _rrwebTypes.IncrementalSource.MouseInteraction, _rrwebTypes.IncrementalSource.Scroll, _rrwebTypes.IncrementalSource.ViewportResize, _rrwebTypes.IncrementalSource.Input, _rrwebTypes.IncrementalSource.TouchMove, _rrwebTypes.IncrementalSource.MediaInteraction, _rrwebTypes.IncrementalSource.Drag, _rrwebTypes.IncrementalSource.Selection]);
+
+function isUserEvent(ev) {
+    return ev.type === _rrwebTypes.EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.data.source);
+}
+
+/**
+ * This class encapsulates a single session recording and its lifecycle.
+ * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
+ * @param {String} [options.replayId] - unique uuid for a single replay
+ * @param {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
+ * @param {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
+ * @param {Function} [options.rrwebRecord] - rrweb's `record` function
+ */
+var SessionRecording = function SessionRecording(options) {
+    this._mixpanel = options.mixpanelInstance;
+    this._onIdleTimeout = options.onIdleTimeout;
+    this._onMaxLengthReached = options.onMaxLengthReached;
+    this._rrwebRecord = options.rrwebRecord;
+
+    this.replayId = options.replayId;
+
+    // internal rrweb stopRecording function
+    this._stopRecording = null;
+
+    this.seqNo = 0;
+    this.replayStartTime = null;
+    this.replayStartUrl = null;
+    this.batchStartUrl = null;
+
+    this.idleTimeoutId = null;
+    this.maxTimeoutId = null;
+
+    this.recordMaxMs = _utils.MAX_RECORDING_MS;
+    this.recordMinMs = 0;
+
+    // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
+    // this will be important when persistence is introduced
+    var batcherKey = '__mprec_' + this.getConfig('token') + '_' + this.replayId;
+    this.batcher = new _requestBatcher.RequestBatcher(batcherKey, {
+        errorReporter: _utils._.bind(this.reportError, this),
+        flushOnlyOnInterval: true,
+        libConfig: RECORDER_BATCHER_LIB_CONFIG,
+        sendRequestFunc: _utils._.bind(this.flushEventsWithOptOut, this),
+        usePersistence: false
+    });
+};
+
+SessionRecording.prototype.getConfig = function (configVar) {
+    return this._mixpanel.get_config(configVar);
+};
+
+// Alias for getConfig, used by the common addOptOutCheckMixpanelLib function which
+// reaches into this class instance and expects the snake case version of the function.
+// eslint-disable-next-line camelcase
+SessionRecording.prototype.get_config = function (configVar) {
+    return this.getConfig(configVar);
+};
+
+SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
+    if (this._stopRecording !== null) {
+        logger.log('Recording already in progress, skipping startRecording.');
+        return;
+    }
+
+    this.recordMaxMs = this.getConfig('record_max_ms');
+    if (this.recordMaxMs > _utils.MAX_RECORDING_MS) {
+        this.recordMaxMs = _utils.MAX_RECORDING_MS;
+        logger.critical('record_max_ms cannot be greater than ' + _utils.MAX_RECORDING_MS + 'ms. Capping value.');
+    }
+
+    this.recordMinMs = this.getConfig('record_min_ms');
+    if (this.recordMinMs > _utils.MAX_VALUE_FOR_MIN_RECORDING_MS) {
+        this.recordMinMs = _utils.MAX_VALUE_FOR_MIN_RECORDING_MS;
+        logger.critical('record_min_ms cannot be greater than ' + _utils.MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+    }
+
+    this.replayStartTime = new Date().getTime();
+    this.batchStartUrl = _utils._.info.currentUrl();
+    this.replayStartUrl = _utils._.info.currentUrl();
+
+    if (shouldStopBatcher || this.recordMinMs > 0) {
+        // the primary case for shouldStopBatcher is when we're starting recording after a reset
+        // and don't want to send anything over the network until there's
+        // actual user activity
+        // this also applies if the minimum recording length has not been hit yet
+        // so that we don't send data until we know the recording will be long enough
+        this.batcher.stop();
+    } else {
+        this.batcher.start();
+    }
+
+    var resetIdleTimeout = _utils._.bind(function () {
+        clearTimeout(this.idleTimeoutId);
+        this.idleTimeoutId = setTimeout(this._onIdleTimeout, this.getConfig('record_idle_timeout_ms'));
+    }, this);
+
+    var blockSelector = this.getConfig('record_block_selector');
+    if (blockSelector === '' || blockSelector === null) {
+        blockSelector = undefined;
+    }
+
+    this._stopRecording = this._rrwebRecord({
+        'emit': _utils._.bind(function (ev) {
+            this.batcher.enqueue(ev);
+            if (isUserEvent(ev)) {
+                if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
+                    // start flushing again after user activity
+                    this.batcher.start();
+                }
+                resetIdleTimeout();
+            }
+        }, this),
+        'blockClass': this.getConfig('record_block_class'),
+        'blockSelector': blockSelector,
+        'collectFonts': this.getConfig('record_collect_fonts'),
+        'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
+            'type': 'image/webp',
+            'quality': 0.6
+        },
+        'maskAllInputs': true,
+        'maskTextClass': this.getConfig('record_mask_text_class'),
+        'maskTextSelector': this.getConfig('record_mask_text_selector'),
+        'recordCanvas': this.getConfig('record_canvas'),
+        'sampling': {
+            'canvas': 15
+        }
+    });
+
+    if (typeof this._stopRecording !== 'function') {
+        this.reportError('rrweb failed to start, skipping this recording.');
+        this._stopRecording = null;
+        this.stopRecording(); // stop batcher looping and any timeouts
+        return;
+    }
+
+    resetIdleTimeout();
+
+    this.maxTimeoutId = setTimeout(_utils._.bind(this._onMaxLengthReached, this), this.recordMaxMs);
+};
+
+SessionRecording.prototype.stopRecording = function () {
+    if (!this.isRrwebStopped()) {
+        try {
+            this._stopRecording();
+        } catch (err) {
+            this.reportError('Error with rrweb stopRecording', err);
+        }
+        this._stopRecording = null;
+    }
+
+    if (this.batcher.stopped) {
+        // never got user activity to flush after reset, so just clear the batcher
+        this.batcher.clear();
+    } else {
+        // flush any remaining events from running batcher
+        this.batcher.flush();
+        this.batcher.stop();
+    }
+
+    clearTimeout(this.idleTimeoutId);
+    clearTimeout(this.maxTimeoutId);
+};
+
+SessionRecording.prototype.isRrwebStopped = function () {
+    return this._stopRecording === null;
+};
+
+/**
+ * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
+ * we stop recording and dump any queued events if the user has opted out.
+ */
+SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
+    this._flushEvents(data, options, cb, _utils._.bind(this._onOptOut, this));
+};
+
+SessionRecording.prototype._onOptOut = function (code) {
+    // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
+    if (code === 0) {
+        this.stopRecording();
+    }
+};
+
+SessionRecording.prototype._sendRequest = function (currentReplayId, reqParams, reqBody, callback) {
+    var onSuccess = _utils._.bind(function (response, responseBody) {
+        // Update batch specific props only if the request was successful to guarantee ordering.
+        // RequestBatcher will always flush the next batch after the previous one succeeds.
+        // extra check to see if the replay ID has changed so that we don't increment the seqNo on the wrong replay
+        if (response.status === 200 && this.replayId === currentReplayId) {
+            this.seqNo++;
+            this.batchStartUrl = _utils._.info.currentUrl();
+        }
+        callback({
+            status: 0,
+            httpStatusCode: response.status,
+            responseBody: responseBody,
+            retryAfter: response.headers.get('Retry-After')
+        });
+    }, this);
+
+    _window.window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+        'method': 'POST',
+        'headers': {
+            'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
+            'Content-Type': 'application/octet-stream'
+        },
+        'body': reqBody
+    }).then(function (response) {
+        response.json().then(function (responseBody) {
+            onSuccess(response, responseBody);
+        })['catch'](function (error) {
+            callback({ error: error });
+        });
+    })['catch'](function (error) {
+        callback({ error: error, httpStatusCode: 0 });
+    });
+};
+
+SessionRecording.prototype._flushEvents = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function (data, options, callback) {
+    var numEvents = data.length;
+
+    if (numEvents > 0) {
+        var replayId = this.replayId;
+        // each rrweb event has a timestamp - leverage those to get time properties
+        var batchStartTime = data[0].timestamp;
+        if (this.seqNo === 0 || !this.replayStartTime) {
+            // extra safety net so that we don't send a null replay start time
+            if (this.seqNo !== 0) {
+                this.reportError('Replay start time not set but seqNo is not 0. Using current batch start time as a fallback.');
+            }
+
+            this.replayStartTime = batchStartTime;
+        }
+        var replayLengthMs = data[numEvents - 1].timestamp - this.replayStartTime;
+
+        var reqParams = {
+            '$current_url': this.batchStartUrl,
+            '$lib_version': _config2['default'].LIB_VERSION,
+            'batch_start_time': batchStartTime / 1000,
+            'distinct_id': String(this._mixpanel.get_distinct_id()),
+            'mp_lib': 'web',
+            'replay_id': replayId,
+            'replay_length_ms': replayLengthMs,
+            'replay_start_time': this.replayStartTime / 1000,
+            'replay_start_url': this.replayStartUrl,
+            'seq': this.seqNo
+        };
+        var eventsJson = _utils._.JSONEncode(data);
+
+        // send ID management props if they exist
+        var deviceId = this._mixpanel.get_property('$device_id');
+        if (deviceId) {
+            reqParams['$device_id'] = deviceId;
+        }
+        var userId = this._mixpanel.get_property('$user_id');
+        if (userId) {
+            reqParams['$user_id'] = userId;
+        }
+
+        if (CompressionStream) {
+            var jsonStream = new Blob([eventsJson], { type: 'application/json' }).stream();
+            var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
+            new Response(gzipStream).blob().then(_utils._.bind(function (compressedBlob) {
+                reqParams['format'] = 'gzip';
+                this._sendRequest(replayId, reqParams, compressedBlob, callback);
+            }, this));
+        } else {
+            reqParams['format'] = 'body';
+            this._sendRequest(replayId, reqParams, eventsJson, callback);
+        }
+    }
+});
+
+SessionRecording.prototype.reportError = function (msg, err) {
+    logger.error.apply(logger.error, arguments);
+    try {
+        if (!err && !(msg instanceof Error)) {
+            msg = new Error(msg);
+        }
+        this.getConfig('error_reporter')(msg, err);
+    } catch (err) {
+        logger.error(err);
+    }
+};
+
+exports.SessionRecording = SessionRecording;
+
+},{"../config":5,"../gdpr-utils":7,"../request-batcher":17,"../utils":21,"../window":22,"@rrweb/types":2}],17:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -3996,6 +15779,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'd
 var _config = require('./config');
 
 var _config2 = _interopRequireDefault(_config);
+
+var _promisePolyfill = require('./promise-polyfill');
 
 var _requestQueue = require('./request-queue');
 
@@ -4018,7 +15803,9 @@ var RequestBatcher = function RequestBatcher(storageKey, options) {
     this.errorReporter = options.errorReporter;
     this.queue = new _requestQueue.RequestQueue(storageKey, {
         errorReporter: _utils._.bind(this.reportError, this),
-        storage: options.storage
+        queueStorage: options.queueStorage,
+        sharedLockStorage: options.sharedLockStorage,
+        usePersistence: options.usePersistence
     });
 
     this.libConfig = options.libConfig;
@@ -4035,13 +15822,18 @@ var RequestBatcher = function RequestBatcher(storageKey, options) {
 
     // extra client-side dedupe
     this.itemIdsSentSuccessfully = {};
+
+    // Make the flush occur at the interval specified by flushIntervalMs, default behavior will attempt consecutive flushes
+    // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
+    // in a request loop and get ratelimited by the server.
+    this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
 };
 
 /**
  * Add one item to queue.
  */
-RequestBatcher.prototype.enqueue = function (item, cb) {
-    this.queue.enqueue(item, this.flushInterval, cb);
+RequestBatcher.prototype.enqueue = function (item) {
+    return this.queue.enqueue(item, this.flushInterval);
 };
 
 /**
@@ -4051,7 +15843,7 @@ RequestBatcher.prototype.enqueue = function (item, cb) {
 RequestBatcher.prototype.start = function () {
     this.stopped = false;
     this.consecutiveRemovalFailures = 0;
-    this.flush();
+    return this.flush();
 };
 
 /**
@@ -4069,7 +15861,7 @@ RequestBatcher.prototype.stop = function () {
  * Clear out queue.
  */
 RequestBatcher.prototype.clear = function () {
-    this.queue.clear();
+    return this.queue.clear();
 };
 
 /**
@@ -4093,8 +15885,22 @@ RequestBatcher.prototype.scheduleFlush = function (flushMS) {
     this.flushInterval = flushMS;
     if (!this.stopped) {
         // don't schedule anymore if batching has been stopped
-        this.timeoutID = setTimeout(_utils._.bind(this.flush, this), this.flushInterval);
+        this.timeoutID = setTimeout(_utils._.bind(function () {
+            if (!this.stopped) {
+                this.flush();
+            }
+        }, this), this.flushInterval);
     }
+};
+
+/**
+ * Send a request using the sendRequest callback, but promisified.
+ * TODO: sendRequest should be promisified in the first place.
+ */
+RequestBatcher.prototype.sendRequestPromise = function (data, options) {
+    return new _promisePolyfill.Promise(_utils._.bind(function (resolve) {
+        this.sendRequest(data, options, resolve);
+    }, this));
 };
 
 /**
@@ -4108,18 +15914,23 @@ RequestBatcher.prototype.scheduleFlush = function (flushMS) {
  * sendBeacon offers no callbacks or status indications)
  */
 RequestBatcher.prototype.flush = function (options) {
-    try {
+    if (this.requestInProgress) {
+        logger.log('Flush: Request already in progress');
+        return _promisePolyfill.Promise.resolve();
+    }
 
-        if (this.requestInProgress) {
-            logger.log('Flush: Request already in progress');
-            return;
-        }
+    this.requestInProgress = true;
 
-        options = options || {};
-        var timeoutMS = this.libConfig['batch_request_timeout_ms'];
-        var startTime = new Date().getTime();
-        var currentBatchSize = this.batchSize;
-        var batch = this.queue.fillBatch(currentBatchSize);
+    options = options || {};
+    var timeoutMS = this.libConfig['batch_request_timeout_ms'];
+    var startTime = new Date().getTime();
+    var currentBatchSize = this.batchSize;
+
+    return this.queue.fillBatch(currentBatchSize).then(_utils._.bind(function (batch) {
+
+        // if there's more items in the queue than the batch size, attempt
+        // to flush again after the current batch is done.
+        var attemptSecondaryFlush = batch.length === currentBatchSize;
         var dataForRequest = [];
         var transformedItems = {};
         _utils._.each(batch, function (item) {
@@ -4155,12 +15966,54 @@ RequestBatcher.prototype.flush = function (options) {
             }
             transformedItems[item['id']] = payload;
         }, this);
+
         if (dataForRequest.length < 1) {
+            this.requestInProgress = false;
             this.resetFlush();
-            return; // nothing to do
+            return _promisePolyfill.Promise.resolve(); // nothing to do
         }
 
-        this.requestInProgress = true;
+        var removeItemsFromQueue = _utils._.bind(function () {
+            return this.queue.removeItemsByID(_utils._.map(batch, function (item) {
+                return item['id'];
+            })).then(_utils._.bind(function (succeeded) {
+                // client-side dedupe
+                _utils._.each(batch, _utils._.bind(function (item) {
+                    var itemId = item['id'];
+                    if (itemId) {
+                        this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
+                        this.itemIdsSentSuccessfully[itemId]++;
+                        if (this.itemIdsSentSuccessfully[itemId] > 5) {
+                            this.reportError('[dupe] item ID sent too many times', {
+                                item: item,
+                                batchSize: batch.length,
+                                timesSent: this.itemIdsSentSuccessfully[itemId]
+                            });
+                        }
+                    } else {
+                        this.reportError('[dupe] found item with no ID while removing', { item: item });
+                    }
+                }, this));
+
+                if (succeeded) {
+                    this.consecutiveRemovalFailures = 0;
+                    if (this.flushOnlyOnInterval && !attemptSecondaryFlush) {
+                        this.resetFlush(); // schedule next batch with a delay
+                        return _promisePolyfill.Promise.resolve();
+                    } else {
+                        return this.flush(); // handle next batch if the queue isn't empty
+                    }
+                } else {
+                        if (++this.consecutiveRemovalFailures > 5) {
+                            this.reportError('Too many queue failures; disabling batching system.');
+                            this.stopAllBatching();
+                        } else {
+                            this.resetFlush();
+                        }
+                        return _promisePolyfill.Promise.resolve();
+                    }
+            }, this));
+        }, this);
 
         var batchSendCallback = _utils._.bind(function (res) {
             this.requestInProgress = false;
@@ -4170,79 +16023,39 @@ RequestBatcher.prototype.flush = function (options) {
                 // handle API response in a try-catch to make sure we can reset the
                 // flush operation if something goes wrong
 
-                var removeItemsFromQueue = false;
                 if (options.unloading) {
                     // update persisted data to include hook transformations
-                    this.queue.updatePayloads(transformedItems);
+                    return this.queue.updatePayloads(transformedItems);
                 } else if (_utils._.isObject(res) && res.error === 'timeout' && new Date().getTime() - startTime >= timeoutMS) {
                     this.reportError('Network timeout; retrying');
-                    this.flush();
-                } else if (_utils._.isObject(res) && res.xhr_req && (res.xhr_req['status'] >= 500 || res.xhr_req['status'] === 429 || res.error === 'timeout')) {
+                    return this.flush();
+                } else if (_utils._.isObject(res) && (res.httpStatusCode >= 500 || res.httpStatusCode === 429 || res.httpStatusCode <= 0 && !(0, _utils.isOnline)() || res.error === 'timeout')) {
                     // network or API error, or 429 Too Many Requests, retry
                     var retryMS = this.flushInterval * 2;
-                    var headers = res.xhr_req['responseHeaders'];
-                    if (headers) {
-                        var retryAfter = headers['Retry-After'];
-                        if (retryAfter) {
-                            retryMS = parseInt(retryAfter, 10) * 1000 || retryMS;
-                        }
+                    if (res.retryAfter) {
+                        retryMS = parseInt(res.retryAfter, 10) * 1000 || retryMS;
                     }
                     retryMS = Math.min(MAX_RETRY_INTERVAL_MS, retryMS);
                     this.reportError('Error; retry in ' + retryMS + ' ms');
                     this.scheduleFlush(retryMS);
-                } else if (_utils._.isObject(res) && res.xhr_req && res.xhr_req['status'] === 413) {
+                    return _promisePolyfill.Promise.resolve();
+                } else if (_utils._.isObject(res) && res.httpStatusCode === 413) {
                     // 413 Payload Too Large
                     if (batch.length > 1) {
                         var halvedBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
                         this.batchSize = Math.min(this.batchSize, halvedBatchSize, batch.length - 1);
                         this.reportError('413 response; reducing batch size to ' + this.batchSize);
                         this.resetFlush();
+                        return _promisePolyfill.Promise.resolve();
                     } else {
                         this.reportError('Single-event request too large; dropping', batch);
                         this.resetBatchSize();
-                        removeItemsFromQueue = true;
+                        return removeItemsFromQueue();
                     }
                 } else {
                     // successful network request+response; remove each item in batch from queue
                     // (even if it was e.g. a 400, in which case retrying won't help)
-                    removeItemsFromQueue = true;
-                }
-
-                if (removeItemsFromQueue) {
-                    this.queue.removeItemsByID(_utils._.map(batch, function (item) {
-                        return item['id'];
-                    }), _utils._.bind(function (succeeded) {
-                        if (succeeded) {
-                            this.consecutiveRemovalFailures = 0;
-                            this.flush(); // handle next batch if the queue isn't empty
-                        } else {
-                                this.reportError('Failed to remove items from queue');
-                                if (++this.consecutiveRemovalFailures > 5) {
-                                    this.reportError('Too many queue failures; disabling batching system.');
-                                    this.stopAllBatching();
-                                } else {
-                                    this.resetFlush();
-                                }
-                            }
-                    }, this));
-
-                    // client-side dedupe
-                    _utils._.each(batch, _utils._.bind(function (item) {
-                        var itemId = item['id'];
-                        if (itemId) {
-                            this.itemIdsSentSuccessfully[itemId] = this.itemIdsSentSuccessfully[itemId] || 0;
-                            this.itemIdsSentSuccessfully[itemId]++;
-                            if (this.itemIdsSentSuccessfully[itemId] > 5) {
-                                this.reportError('[dupe] item ID sent too many times', {
-                                    item: item,
-                                    batchSize: batch.length,
-                                    timesSent: this.itemIdsSentSuccessfully[itemId]
-                                });
-                            }
-                        } else {
-                            this.reportError('[dupe] found item with no ID while removing', { item: item });
-                        }
-                    }, this));
+                    return removeItemsFromQueue();
                 }
             } catch (err) {
                 this.reportError('Error handling API response', err);
@@ -4259,11 +16072,11 @@ RequestBatcher.prototype.flush = function (options) {
             requestOptions.transport = 'sendBeacon';
         }
         logger.log('MIXPANEL REQUEST:', dataForRequest);
-        this.sendRequest(dataForRequest, requestOptions, batchSendCallback);
-    } catch (err) {
+        return this.sendRequestPromise(dataForRequest, requestOptions).then(batchSendCallback);
+    }, this))['catch'](_utils._.bind(function (err) {
         this.reportError('Error flushing request queue', err);
         this.resetFlush();
-    }
+    }, this));
 };
 
 /**
@@ -4285,7 +16098,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./config":3,"./request-queue":12,"./utils":14}],12:[function(require,module,exports){
+},{"./config":5,"./promise-polyfill":14,"./request-queue":18,"./utils":21}],18:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -4297,6 +16110,10 @@ var _sharedLock = require('./shared-lock');
 var _utils = require('./utils');
 
 // eslint-disable-line camelcase
+
+var _storageLocalStorage = require('./storage/local-storage');
+
+var _promisePolyfill = require('./promise-polyfill');
 
 var logger = (0, _utils.console_with_prefix)('batch');
 
@@ -4319,13 +16136,32 @@ var logger = (0, _utils.console_with_prefix)('batch');
 var RequestQueue = function RequestQueue(storageKey, options) {
     options = options || {};
     this.storageKey = storageKey;
-    this.storage = options.storage || window.localStorage;
+    this.usePersistence = options.usePersistence;
+    if (this.usePersistence) {
+        this.queueStorage = options.queueStorage || new _storageLocalStorage.LocalStorageWrapper();
+        this.lock = new _sharedLock.SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
+        this.queueStorage.init();
+    }
     this.reportError = options.errorReporter || _utils._.bind(logger.error, logger);
-    this.lock = new _sharedLock.SharedLock(storageKey, { storage: this.storage });
 
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
     this.memQueue = [];
+    this.initialized = false;
+};
+
+RequestQueue.prototype.ensureInit = function () {
+    if (this.initialized) {
+        return _promisePolyfill.Promise.resolve();
+    }
+
+    return this.queueStorage.init().then(_utils._.bind(function () {
+        this.initialized = true;
+    }, this))['catch'](_utils._.bind(function (err) {
+        this.reportError('Error initializing queue persistence. Disabling persistence', err);
+        this.initialized = true;
+        this.usePersistence = false;
+    }, this));
 };
 
 /**
@@ -4340,36 +16176,41 @@ var RequestQueue = function RequestQueue(storageKey, options) {
  * failure of the enqueue operation; it is asynchronous because the localStorage
  * lock is asynchronous.
  */
-RequestQueue.prototype.enqueue = function (item, flushInterval, cb) {
+RequestQueue.prototype.enqueue = function (item, flushInterval) {
     var queueEntry = {
         'id': (0, _utils.cheap_guid)(),
         'flushAfter': new Date().getTime() + flushInterval * 2,
         'payload': item
     };
 
-    this.lock.withLock(_utils._.bind(function lockAcquired() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue.push(queueEntry);
-            succeeded = this.saveToStorage(storedQueue);
-            if (succeeded) {
+    if (!this.usePersistence) {
+        this.memQueue.push(queueEntry);
+        return _promisePolyfill.Promise.resolve(true);
+    } else {
+
+        var enqueueItem = _utils._.bind(function () {
+            return this.ensureInit().then(_utils._.bind(function () {
+                return this.readFromStorage();
+            }, this)).then(_utils._.bind(function (storedQueue) {
+                storedQueue.push(queueEntry);
+                return this.saveToStorage(storedQueue);
+            }, this)).then(_utils._.bind(function (succeeded) {
                 // only add to in-memory queue when storage succeeds
-                this.memQueue.push(queueEntry);
-            }
-        } catch (err) {
-            this.reportError('Error enqueueing item', item);
-            succeeded = false;
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), _utils._.bind(function lockFailure(err) {
-        this.reportError('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this), this.pid);
+                if (succeeded) {
+                    this.memQueue.push(queueEntry);
+                }
+                return succeeded;
+            }, this))['catch'](_utils._.bind(function (err) {
+                this.reportError('Error enqueueing item', err, item);
+                return false;
+            }, this));
+        }, this);
+
+        return this.lock.withLock(enqueueItem, this.pid)['catch'](_utils._.bind(function (err) {
+            this.reportError('Error acquiring storage lock', err);
+            return false;
+        }, this));
+    }
 };
 
 /**
@@ -4380,31 +16221,37 @@ RequestQueue.prototype.enqueue = function (item, flushInterval, cb) {
  */
 RequestQueue.prototype.fillBatch = function (batchSize) {
     var batch = this.memQueue.slice(0, batchSize);
-    if (batch.length < batchSize) {
+    if (this.usePersistence && batch.length < batchSize) {
         // don't need lock just to read events; localStorage is thread-safe
         // and the worst that could happen is a duplicate send of some
         // orphaned events, which will be deduplicated on the server side
-        var storedQueue = this.readFromStorage();
-        if (storedQueue.length) {
-            // item IDs already in batch; don't duplicate out of storage
-            var idsInBatch = {}; // poor man's Set
-            _utils._.each(batch, function (item) {
-                idsInBatch[item['id']] = true;
-            });
+        return this.ensureInit().then(_utils._.bind(function () {
+            return this.readFromStorage();
+        }, this)).then(_utils._.bind(function (storedQueue) {
+            if (storedQueue.length) {
+                // item IDs already in batch; don't duplicate out of storage
+                var idsInBatch = {}; // poor man's Set
+                _utils._.each(batch, function (item) {
+                    idsInBatch[item['id']] = true;
+                });
 
-            for (var i = 0; i < storedQueue.length; i++) {
-                var item = storedQueue[i];
-                if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
-                    item.orphaned = true;
-                    batch.push(item);
-                    if (batch.length >= batchSize) {
-                        break;
+                for (var i = 0; i < storedQueue.length; i++) {
+                    var item = storedQueue[i];
+                    if (new Date().getTime() > item['flushAfter'] && !idsInBatch[item['id']]) {
+                        item.orphaned = true;
+                        batch.push(item);
+                        if (batch.length >= batchSize) {
+                            break;
+                        }
                     }
                 }
             }
-        }
+
+            return batch;
+        }, this));
+    } else {
+        return _promisePolyfill.Promise.resolve(batch);
     }
-    return batch;
 };
 
 /**
@@ -4426,68 +16273,65 @@ var filterOutIDsAndInvalid = function filterOutIDsAndInvalid(items, idSet) {
  * Remove items with matching IDs from both in-memory queue
  * and persisted queue
  */
-RequestQueue.prototype.removeItemsByID = function (ids, cb) {
+RequestQueue.prototype.removeItemsByID = function (ids) {
     var idSet = {}; // poor man's Set
     _utils._.each(ids, function (id) {
         idSet[id] = true;
     });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-
-    var removeFromStorage = _utils._.bind(function () {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
-            succeeded = this.saveToStorage(storedQueue);
-
-            // an extra check: did storage report success but somehow
-            // the items are still there?
-            if (succeeded) {
-                storedQueue = this.readFromStorage();
+    if (!this.usePersistence) {
+        return _promisePolyfill.Promise.resolve(true);
+    } else {
+        var removeFromStorage = _utils._.bind(function () {
+            return this.ensureInit().then(_utils._.bind(function () {
+                return this.readFromStorage();
+            }, this)).then(_utils._.bind(function (storedQueue) {
+                storedQueue = filterOutIDsAndInvalid(storedQueue, idSet);
+                return this.saveToStorage(storedQueue);
+            }, this)).then(_utils._.bind(function () {
+                return this.readFromStorage();
+            }, this)).then(_utils._.bind(function (storedQueue) {
+                // an extra check: did storage report success but somehow
+                // the items are still there?
                 for (var i = 0; i < storedQueue.length; i++) {
                     var item = storedQueue[i];
                     if (item['id'] && !!idSet[item['id']]) {
-                        this.reportError('Item not removed from storage');
-                        return false;
+                        throw new Error('Item not removed from storage');
                     }
                 }
-            }
-        } catch (err) {
-            this.reportError('Error removing items', ids);
-            succeeded = false;
-        }
-        return succeeded;
-    }, this);
+                return true;
+            }, this))['catch'](_utils._.bind(function (err) {
+                this.reportError('Error removing items', err, ids);
+                return false;
+            }, this));
+        }, this);
 
-    this.lock.withLock(function lockAcquired() {
-        var succeeded = removeFromStorage();
-        if (cb) {
-            cb(succeeded);
-        }
-    }, _utils._.bind(function lockFailure(err) {
-        var succeeded = false;
-        this.reportError('Error acquiring storage lock', err);
-        if (!(0, _utils.localStorageSupported)(this.storage, true)) {
-            // Looks like localStorage writes have stopped working sometime after
-            // initialization (probably full), and so nobody can acquire locks
-            // anymore. Consider it temporarily safe to remove items without the
-            // lock, since nobody's writing successfully anyway.
-            succeeded = removeFromStorage();
-            if (!succeeded) {
-                // OK, we couldn't even write out the smaller queue. Try clearing it
-                // entirely.
-                try {
-                    this.storage.removeItem(this.storageKey);
-                } catch (err) {
+        return this.lock.withLock(removeFromStorage, this.pid)['catch'](_utils._.bind(function (err) {
+            this.reportError('Error acquiring storage lock', err);
+            if (!(0, _utils.localStorageSupported)(this.queueStorage.storage, true)) {
+                // Looks like localStorage writes have stopped working sometime after
+                // initialization (probably full), and so nobody can acquire locks
+                // anymore. Consider it temporarily safe to remove items without the
+                // lock, since nobody's writing successfully anyway.
+                return removeFromStorage().then(_utils._.bind(function (success) {
+                    if (!success) {
+                        // OK, we couldn't even write out the smaller queue. Try clearing it
+                        // entirely.
+                        return this.queueStorage.removeItem(this.storageKey).then(function () {
+                            return success;
+                        });
+                    }
+                    return success;
+                }, this))['catch'](_utils._.bind(function (err) {
                     this.reportError('Error clearing queue', err);
-                }
+                    return false;
+                }, this));
+            } else {
+                return false;
             }
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), this.pid);
+        }, this));
+    }
 };
 
 // internal helper for RequestQueue.updatePayloads
@@ -4513,27 +16357,26 @@ var updatePayloads = function updatePayloads(existingItems, itemsToUpdate) {
  * Update payloads of given items in both in-memory queue and
  * persisted queue. Items set to null are removed from queues.
  */
-RequestQueue.prototype.updatePayloads = function (itemsToUpdate, cb) {
+RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
     this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
-    this.lock.withLock(_utils._.bind(function lockAcquired() {
-        var succeeded;
-        try {
-            var storedQueue = this.readFromStorage();
-            storedQueue = updatePayloads(storedQueue, itemsToUpdate);
-            succeeded = this.saveToStorage(storedQueue);
-        } catch (err) {
-            this.reportError('Error updating items', itemsToUpdate);
-            succeeded = false;
-        }
-        if (cb) {
-            cb(succeeded);
-        }
-    }, this), _utils._.bind(function lockFailure(err) {
-        this.reportError('Error acquiring storage lock', err);
-        if (cb) {
-            cb(false);
-        }
-    }, this), this.pid);
+    if (!this.usePersistence) {
+        return _promisePolyfill.Promise.resolve(true);
+    } else {
+        return this.lock.withLock(_utils._.bind(function lockAcquired() {
+            return this.ensureInit().then(_utils._.bind(function () {
+                return this.readFromStorage();
+            }, this)).then(_utils._.bind(function (storedQueue) {
+                storedQueue = updatePayloads(storedQueue, itemsToUpdate);
+                return this.saveToStorage(storedQueue);
+            }, this))['catch'](_utils._.bind(function (err) {
+                this.reportError('Error updating items', itemsToUpdate, err);
+                return false;
+            }, this));
+        }, this), this.pid)['catch'](_utils._.bind(function (err) {
+            this.reportError('Error acquiring storage lock', err);
+            return false;
+        }, this));
+    }
 };
 
 /**
@@ -4541,9 +16384,9 @@ RequestQueue.prototype.updatePayloads = function (itemsToUpdate, cb) {
  * malformed/missing data if necessary.
  */
 RequestQueue.prototype.readFromStorage = function () {
-    var storageEntry;
-    try {
-        storageEntry = this.storage.getItem(this.storageKey);
+    return this.ensureInit().then(_utils._.bind(function () {
+        return this.queueStorage.getItem(this.storageKey);
+    }, this)).then(_utils._.bind(function (storageEntry) {
         if (storageEntry) {
             storageEntry = (0, _utils.JSONParse)(storageEntry);
             if (!_utils._.isArray(storageEntry)) {
@@ -4551,11 +16394,11 @@ RequestQueue.prototype.readFromStorage = function () {
                 storageEntry = null;
             }
         }
-    } catch (err) {
+        return storageEntry || [];
+    }, this))['catch'](_utils._.bind(function (err) {
         this.reportError('Error retrieving queue', err);
-        storageEntry = null;
-    }
-    return storageEntry || [];
+        return [];
+    }, this));
 };
 
 /**
@@ -4563,12 +16406,20 @@ RequestQueue.prototype.readFromStorage = function () {
  */
 RequestQueue.prototype.saveToStorage = function (queue) {
     try {
-        this.storage.setItem(this.storageKey, (0, _utils.JSONStringify)(queue));
-        return true;
+        var serialized = (0, _utils.JSONStringify)(queue);
     } catch (err) {
+        this.reportError('Error serializing queue', err);
+        return _promisePolyfill.Promise.resolve(false);
+    }
+
+    return this.ensureInit().then(_utils._.bind(function () {
+        return this.queueStorage.setItem(this.storageKey, serialized);
+    }, this)).then(function () {
+        return true;
+    })['catch'](_utils._.bind(function (err) {
         this.reportError('Error saving queue', err);
         return false;
-    }
+    }, this));
 };
 
 /**
@@ -4576,17 +16427,26 @@ RequestQueue.prototype.saveToStorage = function (queue) {
  */
 RequestQueue.prototype.clear = function () {
     this.memQueue = [];
-    this.storage.removeItem(this.storageKey);
+
+    if (this.usePersistence) {
+        return this.ensureInit().then(_utils._.bind(function () {
+            return this.queueStorage.removeItem(this.storageKey);
+        }, this));
+    } else {
+        return _promisePolyfill.Promise.resolve();
+    }
 };
 
 exports.RequestQueue = RequestQueue;
 
-},{"./shared-lock":13,"./utils":14}],13:[function(require,module,exports){
+},{"./promise-polyfill":14,"./shared-lock":19,"./storage/local-storage":20,"./utils":21}],19:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
     value: true
 });
+
+var _promisePolyfill = require('./promise-polyfill');
 
 var _utils = require('./utils');
 
@@ -4621,127 +16481,194 @@ var SharedLock = function SharedLock(key, options) {
     this.storage = options.storage || window.localStorage;
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
+
+    // dependency-inject promise implementation for testing purposes
+    this.promiseImpl = options.promiseImpl || _promisePolyfill.Promise;
 };
 
 // pass in a specific pid to test contention scenarios; otherwise
 // it is chosen randomly for each acquisition attempt
-SharedLock.prototype.withLock = function (lockedCB, errorCB, pid) {
-    if (!pid && typeof errorCB !== 'function') {
-        pid = errorCB;
-        errorCB = null;
-    }
+SharedLock.prototype.withLock = function (lockedCB, pid) {
+    var Promise = this.promiseImpl;
+    return new Promise(_utils._.bind(function (resolve, reject) {
+        var i = pid || new Date().getTime() + '|' + Math.random();
+        var startTime = new Date().getTime();
 
-    var i = pid || new Date().getTime() + '|' + Math.random();
-    var startTime = new Date().getTime();
+        var key = this.storageKey;
+        var pollIntervalMS = this.pollIntervalMS;
+        var timeoutMS = this.timeoutMS;
+        var storage = this.storage;
 
-    var key = this.storageKey;
-    var pollIntervalMS = this.pollIntervalMS;
-    var timeoutMS = this.timeoutMS;
-    var storage = this.storage;
+        var keyX = key + ':X';
+        var keyY = key + ':Y';
+        var keyZ = key + ':Z';
 
-    var keyX = key + ':X';
-    var keyY = key + ':Y';
-    var keyZ = key + ':Z';
-
-    var reportError = function reportError(err) {
-        errorCB && errorCB(err);
-    };
-
-    var delay = function delay(cb) {
-        if (new Date().getTime() - startTime > timeoutMS) {
-            logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
-            storage.removeItem(keyZ);
-            storage.removeItem(keyY);
-            loop();
-            return;
-        }
-        setTimeout(function () {
-            try {
-                cb();
-            } catch (err) {
-                reportError(err);
-            }
-        }, pollIntervalMS * (Math.random() + 0.1));
-    };
-
-    var waitFor = function waitFor(predicate, cb) {
-        if (predicate()) {
-            cb();
-        } else {
-            delay(function () {
-                waitFor(predicate, cb);
-            });
-        }
-    };
-
-    var getSetY = function getSetY() {
-        var valY = storage.getItem(keyY);
-        if (valY && valY !== i) {
-            // if Y == i then this process already has the lock (useful for test cases)
-            return false;
-        } else {
-            storage.setItem(keyY, i);
-            if (storage.getItem(keyY) === i) {
-                return true;
-            } else {
-                if (!(0, _utils.localStorageSupported)(storage, true)) {
-                    throw new Error('localStorage support dropped while acquiring lock');
-                }
-                return false;
-            }
-        }
-    };
-
-    var loop = function loop() {
-        storage.setItem(keyX, i);
-
-        waitFor(getSetY, function () {
-            if (storage.getItem(keyX) === i) {
-                criticalSection();
+        var delay = function delay(cb) {
+            if (new Date().getTime() - startTime > timeoutMS) {
+                logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                storage.removeItem(keyZ);
+                storage.removeItem(keyY);
+                loop();
                 return;
             }
+            setTimeout(function () {
+                try {
+                    cb();
+                } catch (err) {
+                    reject(err);
+                }
+            }, pollIntervalMS * (Math.random() + 0.1));
+        };
 
-            delay(function () {
-                if (storage.getItem(keyY) !== i) {
-                    loop();
+        var waitFor = function waitFor(predicate, cb) {
+            if (predicate()) {
+                cb();
+            } else {
+                delay(function () {
+                    waitFor(predicate, cb);
+                });
+            }
+        };
+
+        var getSetY = function getSetY() {
+            var valY = storage.getItem(keyY);
+            if (valY && valY !== i) {
+                // if Y == i then this process already has the lock (useful for test cases)
+                return false;
+            } else {
+                storage.setItem(keyY, i);
+                if (storage.getItem(keyY) === i) {
+                    return true;
+                } else {
+                    if (!(0, _utils.localStorageSupported)(storage, true)) {
+                        reject(new Error('localStorage support dropped while acquiring lock'));
+                    }
+                    return false;
+                }
+            }
+        };
+
+        var loop = function loop() {
+            storage.setItem(keyX, i);
+
+            waitFor(getSetY, function () {
+                if (storage.getItem(keyX) === i) {
+                    criticalSection();
                     return;
                 }
-                waitFor(function () {
-                    return !storage.getItem(keyZ);
-                }, criticalSection);
+
+                delay(function () {
+                    if (storage.getItem(keyY) !== i) {
+                        loop();
+                        return;
+                    }
+                    waitFor(function () {
+                        return !storage.getItem(keyZ);
+                    }, criticalSection);
+                });
             });
-        });
-    };
+        };
 
-    var criticalSection = function criticalSection() {
-        storage.setItem(keyZ, '1');
+        var criticalSection = function criticalSection() {
+            storage.setItem(keyZ, '1');
+            var removeLock = function removeLock() {
+                storage.removeItem(keyZ);
+                if (storage.getItem(keyY) === i) {
+                    storage.removeItem(keyY);
+                }
+                if (storage.getItem(keyX) === i) {
+                    storage.removeItem(keyX);
+                }
+            };
+
+            lockedCB().then(function (ret) {
+                removeLock();
+                resolve(ret);
+            })['catch'](function (err) {
+                removeLock();
+                reject(err);
+            });
+        };
+
         try {
-            lockedCB();
-        } finally {
-            storage.removeItem(keyZ);
-            if (storage.getItem(keyY) === i) {
-                storage.removeItem(keyY);
+            if ((0, _utils.localStorageSupported)(storage, true)) {
+                loop();
+            } else {
+                throw new Error('localStorage support check failed');
             }
-            if (storage.getItem(keyX) === i) {
-                storage.removeItem(keyX);
-            }
+        } catch (err) {
+            reject(err);
         }
-    };
-
-    try {
-        if ((0, _utils.localStorageSupported)(storage, true)) {
-            loop();
-        } else {
-            throw new Error('localStorage support check failed');
-        }
-    } catch (err) {
-        reportError(err);
-    }
+    }, this));
 };
 
 exports.SharedLock = SharedLock;
 
-},{"./utils":14}],14:[function(require,module,exports){
+},{"./promise-polyfill":14,"./utils":21}],20:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _promisePolyfill = require('../promise-polyfill');
+
+var _utils = require('../utils');
+
+// eslint-disable-line camelcase
+
+/**
+ * @typedef {import('./wrapper').StorageWrapper}
+ */
+
+/**
+ * @type {StorageWrapper}
+ */
+var LocalStorageWrapper = function LocalStorageWrapper(storageOverride) {
+    this.storage = storageOverride || localStorage;
+};
+
+LocalStorageWrapper.prototype.init = function () {
+    return _promisePolyfill.Promise.resolve();
+};
+
+LocalStorageWrapper.prototype.setItem = function (key, value) {
+    return new _promisePolyfill.Promise(_utils._.bind(function (resolve, reject) {
+        try {
+            this.storage.setItem(key, value);
+        } catch (e) {
+            reject(e);
+        }
+        resolve();
+    }, this));
+};
+
+LocalStorageWrapper.prototype.getItem = function (key) {
+    return new _promisePolyfill.Promise(_utils._.bind(function (resolve, reject) {
+        var item;
+        try {
+            item = this.storage.getItem(key);
+        } catch (e) {
+            reject(e);
+        }
+        resolve(item);
+    }, this));
+};
+
+LocalStorageWrapper.prototype.removeItem = function (key) {
+    return new _promisePolyfill.Promise(_utils._.bind(function (resolve, reject) {
+        try {
+            this.storage.removeItem(key);
+        } catch (e) {
+            reject(e);
+        }
+        resolve();
+    }, this));
+};
+
+exports.LocalStorageWrapper = LocalStorageWrapper;
+
+},{"../promise-polyfill":14,"../utils":21}],21:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -4755,24 +16682,14 @@ var _config = require('./config');
 
 var _config2 = _interopRequireDefault(_config);
 
-// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
-var win;
-if (typeof window === 'undefined') {
-    var loc = {
-        hostname: ''
-    };
-    exports.window = win = {
-        navigator: { userAgent: '' },
-        document: {
-            location: loc,
-            referrer: ''
-        },
-        screen: { width: 0, height: 0 },
-        location: loc
-    };
-} else {
-    exports.window = win = window;
-}
+var _promisePolyfill = require('./promise-polyfill');
+
+var _window = require('./window');
+
+// Maximum allowed session recording length
+var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Maximum allowed value for minimum session recording length
+var MAX_VALUE_FOR_MIN_RECORDING_MS = 8 * 1000; // 8 seconds
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -4785,11 +16702,11 @@ var ArrayProto = Array.prototype,
     slice = ArrayProto.slice,
     toString = ObjProto.toString,
     hasOwnProperty = ObjProto.hasOwnProperty,
-    windowConsole = win.console,
-    navigator = win.navigator,
-    document = win.document,
-    windowOpera = win.opera,
-    screen = win.screen,
+    windowConsole = _window.window.console,
+    navigator = _window.window.navigator,
+    document = _window.window.document,
+    windowOpera = _window.window.opera,
+    screen = _window.window.screen,
     userAgent = navigator.userAgent;
 
 var nativeBind = FuncProto.bind,
@@ -5584,8 +17501,8 @@ _.UUID = (function () {
     var T = function T() {
         var time = 1 * new Date(); // cross-browser version of Date.now()
         var ticks;
-        if (win.performance && win.performance.now) {
-            ticks = win.performance.now();
+        if (_window.window.performance && _window.window.performance.now) {
+            ticks = _window.window.performance.now();
         } else {
             // fall back to busy loop
             ticks = 0;
@@ -5650,7 +17567,7 @@ _.UUID = (function () {
 // _.isBlockedUA()
 // This is to block various web spiders from executing our JS and
 // sending false tracking data
-var BLOCKED_UA_STRS = ['ahrefsbot', 'baiduspider', 'bingbot', 'bingpreview', 'chrome-lighthouse', 'facebookexternal', 'petalbot', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandexbot',
+var BLOCKED_UA_STRS = ['ahrefsbot', 'ahrefssiteaudit', 'baiduspider', 'bingbot', 'bingpreview', 'chrome-lighthouse', 'facebookexternal', 'petalbot', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandexbot',
 
 // a whole bunch of goog-specific crawlers
 // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers
@@ -5691,7 +17608,7 @@ _.HTTPBuildQuery = function (formdata, arg_separator) {
 _.getQueryParam = function (url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+    param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);
@@ -5809,7 +17726,7 @@ var localStorageSupported = function localStorageSupported(storage, forceCheck) 
 
     var supported = true;
     try {
-        storage = storage || window.localStorage;
+        storage = storage || _window.window.localStorage;
         var key = '__mplss_' + cheap_guid(8),
             val = 'xyz';
         storage.setItem(key, val);
@@ -5841,7 +17758,7 @@ _.localStorage = {
 
     get: function get(name) {
         try {
-            return window.localStorage.getItem(name);
+            return _window.window.localStorage.getItem(name);
         } catch (err) {
             _.localStorage.error(err);
         }
@@ -5859,7 +17776,7 @@ _.localStorage = {
 
     set: function set(name, value) {
         try {
-            window.localStorage.setItem(name, value);
+            _window.window.localStorage.setItem(name, value);
         } catch (err) {
             _.localStorage.error(err);
         }
@@ -5867,7 +17784,7 @@ _.localStorage = {
 
     remove: function remove(name) {
         try {
-            window.localStorage.removeItem(name);
+            _window.window.localStorage.removeItem(name);
         } catch (err) {
             _.localStorage.error(err);
         }
@@ -5906,7 +17823,7 @@ _.register_event = (function () {
 
     function makeHandler(element, new_handler, old_handlers) {
         var handler = function handler(event) {
-            event = event || fixEvent(window.event);
+            event = event || fixEvent(_window.window.event);
 
             // this basically happens in firefox whenever another script
             // overwrites the onload callback and doesn't pass the event
@@ -6147,8 +18064,8 @@ _.dom_query = (function () {
     };
 })();
 
-var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
-var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'];
+var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'utm_source_platform', 'utm_campaign_id', 'utm_creative_format', 'utm_marketing_tactic'];
+var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'sccid', 'ttclid', 'twclid', 'wbraid'];
 
 _.info = {
     campaignParams: function campaignParams(default_value) {
@@ -6351,7 +18268,14 @@ _.info = {
         return '';
     },
 
-    properties: function properties() {
+    currentUrl: function currentUrl() {
+        return _window.window.location.href;
+    },
+
+    properties: function properties(extra_props) {
+        if (typeof extra_props !== 'object') {
+            extra_props = {};
+        }
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
             '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
@@ -6359,7 +18283,7 @@ _.info = {
             '$referring_domain': _.info.referringDomain(document.referrer),
             '$device': _.info.device(userAgent)
         }), {
-            '$current_url': win.location.href,
+            '$current_url': _.info.currentUrl(),
             '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
             '$screen_height': screen.height,
             '$screen_width': screen.width,
@@ -6367,7 +18291,7 @@ _.info = {
             '$lib_version': _config2['default'].LIB_VERSION,
             '$insert_id': cheap_guid(),
             'time': _.timestamp() / 1000 // epoch time in seconds
-        });
+        }, _.strip_empty_properties(extra_props));
     },
 
     people_properties: function people_properties() {
@@ -6382,10 +18306,10 @@ _.info = {
     mpPageViewProperties: function mpPageViewProperties() {
         return _.strip_empty_properties({
             'current_page_title': document.title,
-            'current_domain': win.location.hostname,
-            'current_url_path': win.location.pathname,
-            'current_url_protocol': win.location.protocol,
-            'current_url_search': win.location.search
+            'current_domain': _window.window.location.hostname,
+            'current_url_path': _window.window.location.pathname,
+            'current_url_protocol': _window.window.location.protocol,
+            'current_url_search': _window.window.location.search
         });
     }
 };
@@ -6423,6 +18347,15 @@ var extract_domain = function extract_domain(hostname) {
     return matches ? matches[0] : '';
 };
 
+/**
+ * Check whether we have network connection. default to true for browsers that don't support navigator.onLine (IE)
+ * @returns {boolean}
+ */
+var isOnline = function isOnline() {
+    var onLine = _window.window.navigator['onLine'];
+    return _.isUndefined(onLine) || onLine;
+};
+
 var JSONStringify = null,
     JSONParse = null;
 if (typeof JSON !== 'undefined') {
@@ -6444,19 +18377,49 @@ _['info']['device'] = _.info.device;
 _['info']['browser'] = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties'] = _.info.properties;
+_['NPO'] = _promisePolyfill.NpoPromise;
 
 exports._ = _;
-exports.userAgent = userAgent;
-exports.console = console;
-exports.window = win;
-exports.document = document;
-exports.navigator = navigator;
 exports.cheap_guid = cheap_guid;
 exports.console_with_prefix = console_with_prefix;
+exports.console = console;
+exports.document = document;
 exports.extract_domain = extract_domain;
-exports.localStorageSupported = localStorageSupported;
-exports.JSONStringify = JSONStringify;
 exports.JSONParse = JSONParse;
+exports.JSONStringify = JSONStringify;
+exports.isOnline = isOnline;
+exports.localStorageSupported = localStorageSupported;
+exports.MAX_RECORDING_MS = MAX_RECORDING_MS;
+exports.MAX_VALUE_FOR_MIN_RECORDING_MS = MAX_VALUE_FOR_MIN_RECORDING_MS;
+exports.navigator = navigator;
 exports.slice = slice;
+exports.userAgent = userAgent;
 
-},{"./config":3}]},{},[1]);
+},{"./config":5,"./promise-polyfill":14,"./window":22}],22:[function(require,module,exports){
+// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+var win;
+if (typeof window === 'undefined') {
+    var loc = {
+        hostname: ''
+    };
+    exports.window = win = {
+        navigator: { userAgent: '', onLine: true },
+        document: {
+            location: loc,
+            referrer: ''
+        },
+        screen: { width: 0, height: 0 },
+        location: loc
+    };
+} else {
+    exports.window = win = window;
+}
+
+exports.window = win;
+
+},{}]},{},[1]);

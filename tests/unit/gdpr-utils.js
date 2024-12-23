@@ -36,12 +36,12 @@ function assertPersistenceValue(persistenceType, token, value, persistencePrefix
 describe(`GDPR utils`, function() {
   // these imports must be re-required before each test
   // so that they reference the correct jsdom document
-  let _, gdpr;
+  let _window, _, gdpr;
 
   jsdomSetup({
-    reImportModules: [`../../src/utils`, `../../src/gdpr-utils`],
+    reImportModules: [`../../src/window`, `../../src/utils`, `../../src/gdpr-utils`],
     beforeCallback: modules => {
-      [_, gdpr] = modules;
+      [_window, _, gdpr] = modules;
       window.localStorage.clear();
     },
   });

@@ -1,6 +1,5 @@
 var mixpanel = require('../build/mixpanel.cjs');
 
-$('#qunit-tests').addClass('hidepass');
 mixpanel.init("MIXPANEL_TOKEN", {
     cookie_name: "test",
     reset_cookie: true,

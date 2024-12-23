@@ -1,24 +1,12 @@
 /* eslint camelcase: "off", eqeqeq: "off" */
 import Config from './config';
+import { NpoPromise } from './promise-polyfill';
+import { window } from './window';
 
-// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
-var win;
-if (typeof(window) === 'undefined') {
-    var loc = {
-        hostname: ''
-    };
-    win = {
-        navigator: { userAgent: '' },
-        document: {
-            location: loc,
-            referrer: ''
-        },
-        screen: { width: 0, height: 0 },
-        location: loc
-    };
-} else {
-    win = window;
-}
+// Maximum allowed session recording length
+var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Maximum allowed value for minimum session recording length
+var MAX_VALUE_FOR_MIN_RECORDING_MS = 8 * 1000; // 8 seconds
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -31,11 +19,11 @@ var ArrayProto = Array.prototype,
     slice = ArrayProto.slice,
     toString = ObjProto.toString,
     hasOwnProperty = ObjProto.hasOwnProperty,
-    windowConsole = win.console,
-    navigator = win.navigator,
-    document = win.document,
-    windowOpera = win.opera,
-    screen = win.screen,
+    windowConsole = window.console,
+    navigator = window.navigator,
+    document = window.document,
+    windowOpera = window.opera,
+    screen = window.screen,
     userAgent = navigator.userAgent;
 
 var nativeBind = FuncProto.bind,
@@ -834,8 +822,8 @@ _.UUID = (function() {
     var T = function() {
         var time = 1 * new Date(); // cross-browser version of Date.now()
         var ticks;
-        if (win.performance && win.performance.now) {
-            ticks = win.performance.now();
+        if (window.performance && window.performance.now) {
+            ticks = window.performance.now();
         } else {
             // fall back to busy loop
             ticks = 0;
@@ -899,6 +887,7 @@ _.UUID = (function() {
 // sending false tracking data
 var BLOCKED_UA_STRS = [
     'ahrefsbot',
+    'ahrefssiteaudit',
     'baiduspider',
     'bingbot',
     'bingpreview',
@@ -958,7 +947,7 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+    param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);
@@ -1415,8 +1404,8 @@ _.dom_query = (function() {
     };
 })();
 
-var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
-var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'ttclid', 'twclid', 'wbraid'];
+var CAMPAIGN_KEYWORDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'utm_source_platform','utm_campaign_id', 'utm_creative_format', 'utm_marketing_tactic'];
+var CLICK_IDS = ['dclid', 'fbclid', 'gclid', 'ko_click_id', 'li_fat_id', 'msclkid', 'sccid', 'ttclid', 'twclid', 'wbraid'];
 
 _.info = {
     campaignParams: function(default_value) {
@@ -1619,7 +1608,14 @@ _.info = {
         return '';
     },
 
-    properties: function() {
+    currentUrl: function() {
+        return window.location.href;
+    },
+
+    properties: function(extra_props) {
+        if (typeof extra_props !== 'object') {
+            extra_props = {};
+        }
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
             '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
@@ -1627,7 +1623,7 @@ _.info = {
             '$referring_domain': _.info.referringDomain(document.referrer),
             '$device': _.info.device(userAgent)
         }), {
-            '$current_url': win.location.href,
+            '$current_url': _.info.currentUrl(),
             '$browser_version': _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
             '$screen_height': screen.height,
             '$screen_width': screen.width,
@@ -1635,7 +1631,7 @@ _.info = {
             '$lib_version': Config.LIB_VERSION,
             '$insert_id': cheap_guid(),
             'time': _.timestamp() / 1000 // epoch time in seconds
-        });
+        }, _.strip_empty_properties(extra_props));
     },
 
     people_properties: function() {
@@ -1650,10 +1646,10 @@ _.info = {
     mpPageViewProperties: function() {
         return _.strip_empty_properties({
             'current_page_title': document.title,
-            'current_domain': win.location.hostname,
-            'current_url_path': win.location.pathname,
-            'current_url_protocol': win.location.protocol,
-            'current_url_search': win.location.search
+            'current_domain': window.location.hostname,
+            'current_url_path': window.location.pathname,
+            'current_url_protocol': window.location.protocol,
+            'current_url_search': window.location.search
         });
     }
 };
@@ -1691,6 +1687,15 @@ var extract_domain = function(hostname) {
     return matches ? matches[0] : '';
 };
 
+/**
+ * Check whether we have network connection. default to true for browsers that don't support navigator.onLine (IE)
+ * @returns {boolean}
+ */
+var isOnline = function() {
+    var onLine = window.navigator['onLine'];
+    return _.isUndefined(onLine) || onLine;
+};
+
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -1711,19 +1716,22 @@ _['info']['device']         = _.info.device;
 _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
 _['info']['properties']     = _.info.properties;
+_['NPO']                    = NpoPromise;
 
 export {
     _,
-    userAgent,
-    console,
-    win as window,
-    document,
-    navigator,
     cheap_guid,
     console_with_prefix,
+    console,
+    document,
     extract_domain,
-    localStorageSupported,
-    JSONStringify,
     JSONParse,
-    slice
+    JSONStringify,
+    isOnline,
+    localStorageSupported,
+    MAX_RECORDING_MS,
+    MAX_VALUE_FOR_MIN_RECORDING_MS,
+    navigator,
+    slice,
+    userAgent,
 };

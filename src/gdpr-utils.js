@@ -11,7 +11,8 @@
  * These functions are used internally by the SDK and are not intended to be publicly exposed.
  */
 
-import { _, console, window } from './utils';
+import { _, console } from './utils';
+import { window } from './window';
 
 /**
  * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
