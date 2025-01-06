@@ -85,7 +85,7 @@ var SessionRecording = function(options) {
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     // this will be important when persistence is introduced
-    this.batcherKey = '__mprec_' + this.getConfig('token') + '_' + this.replayId;
+    this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
     this.queueStorage = new IDBStorageWrapper(RECORDING_EVENTS_STORE_NAME);
     this.batcher = new RequestBatcher(this.batcherKey, {
         errorReporter: _.bind(this.reportError, this),
@@ -99,10 +99,7 @@ var SessionRecording = function(options) {
 
 SessionRecording.prototype.unloadPersistedData = function () {
     return this.batcher.flush()
-        .then(_.bind(function (success) {
-            if (!success) {
-                this.reportError('Failed to flush batch for recording ' + this.replayId);
-            }
+        .then(_.bind(function () {
             return this.queueStorage.removeItem(this.batcherKey);
         }, this));
 };

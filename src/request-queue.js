@@ -1,5 +1,6 @@
 import { SharedLock } from './shared-lock';
 import { cheap_guid, console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
+import { window } from './window';
 import { LocalStorageWrapper } from './storage/local-storage';
 import { Promise } from './promise-polyfill';
 
@@ -78,7 +79,6 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
         this.memQueue.push(queueEntry);
         return Promise.resolve(true);
     } else {
-
         var enqueueItem = _.bind(function () {
             return this.ensureInit()
                 .then(_.bind(function () {

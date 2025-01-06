@@ -13,7 +13,6 @@ var RecordingRegistry = function (options) {
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
 
-    this.idb.init();
     this.flushInactiveRecordings();
 
     this._hasTabLock = null;
@@ -21,12 +20,20 @@ var RecordingRegistry = function (options) {
     this.activeReplayIdKey = 'mp_active_replay_id_' + this.mixpanelInstance.get_config('token');
 };
 
+RecordingRegistry.prototype.handleIdbError = function (err) {
+    this.errorReporter('IndexedDB error: ', err);
+};
+
 /**
  * @param {import('./recorder/session-recording').SerializedRecording} recording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
     window.sessionStorage.setItem(this.activeReplayIdKey, serializedRecording['replayId']);
-    return this.idb.setItem(serializedRecording['replayId'], serializedRecording);
+    return this.idb.init()
+        .then(_.bind(function () {
+            return this.idb.setItem(serializedRecording['replayId'], serializedRecording);
+        }, this))
+        .catch(_.bind(this.handleIdbError, this));
 };
 
 /**
@@ -37,14 +44,18 @@ RecordingRegistry.prototype.getActiveRecording = function () {
     var replayId = this._getActiveReplayId();
     var activeRecordingPromise;
     if (replayId) {
-        activeRecordingPromise = this.idb.getItem(replayId)
+        activeRecordingPromise = this.idb.init()
+            .then(_.bind(function () {
+                return this.idb.getItem(replayId);
+            }, this))
             .then(_.bind(function (serializedRecording) {
                 if (serializedRecording && this._isExpired(serializedRecording)) {
                     return null;
                 } else {
                     return serializedRecording;
                 }
-            }, this));
+            }, this))
+            .catch(_.bind(this.handleIdbError, this));
     } else {
         activeRecordingPromise = Promise.resolve(null);
     }
@@ -99,7 +110,8 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
                     return this.idb.removeItem(serializedRecording['replayId']);
                 }, this))
             );
-        }, this));
+        }, this))
+        .catch(_.bind(this.handleIdbError, this));
 };
 
 /**
@@ -119,7 +131,7 @@ RecordingRegistry.prototype._getTabLock = function () {
                 }, this));
             }
         } catch (err) {
-            this.reportError('checking tab lock failed', err);
+            this.errorReporter('checking tab lock failed', err);
             this._hasTabLock = false;
         }
     }

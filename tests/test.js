@@ -5826,7 +5826,7 @@
                     this.randomStub = sinon.stub(Math, 'random');
                     this.fetchStub = sinon.stub(window, 'fetch');
 
-                    // realistic successful responsse
+                    // realistic successful response
                     this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({code: 200, status: 'OK'}), {
                         status: 200,
                         headers: {
@@ -5869,6 +5869,40 @@
                         }, this)
                     };
 
+                    // waits for the async enqueue operation to complete, otherwise fake timers may advance while it's still in progress
+                    this.waitForQueueLength = function (expectedLength) {
+                        var queueKey = '__mprec_' + this.token + '_' + mixpanel.recordertest.get_session_recording_properties()['$mp_replay_id'];
+                        return new Promise(_.bind(function (resolve, reject) {
+                            var checkQueueLengthTimeout = realSetTimeout(function() {
+                                realClearInterval(checkQueueLengthInterval);
+                                realClearTimeout(checkQueueLengthTimeout);
+                                reject('timed out waiting for queue length to be ' + expectedLength);
+                            }, 50000);
+                            var checkQueueLengthInterval = realSetInterval(_.bind(function () {
+                                // var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
+                                // openRequest.onsuccess = function () {
+                                //     var db = openRequest.result;
+                                //     var transaction = db.transaction(allStores, 'readwrite');
+                                //     var store = transaction.objectStore('mixpanelReplayEvents');
+                                //     var req = store.get(queueKey);
+    
+                                //     transaction.oncomplete = function () {
+                                //         console.log(req.result && req.result.length);
+                                //         if (req.result && req.result.length === expectedLength) {
+                                //             realClearInterval(checkQueueLengthInterval);
+                                //             realClearTimeout(checkQueueLengthTimeout)
+                                //             resolve();
+                                //         }
+                                //     };
+                                // }
+                                realSetTimeout(resolve, 1000);
+
+                                // advance clock so that SharedLock timers can run
+                                this.clock.tick(2000);
+                            }, this), 20);
+                        }, this));
+                    }
+
                     this.assertRecorderScript(false);
 
                     if (IS_RECORDER_BUNDLED) {
@@ -5878,13 +5912,48 @@
                             });
                         }
                     } else {
-                        this.waitForRecorderLoad = function () {
-                            return new Promise(_.bind(function (resolve) {
-                                this.getRecorderScript().addEventListener('load', function() {
-                                    resolve();
-                                });
-                            }, this));
+                        this.waitForRecorderLoad = function (extraConfig) {
+                            if (!mixpanel.recordertest) {
+                                this.initMixpanelRecorder(extraConfig);
+                            }
+
+                            return untilDonePromise(_.bind(function () {
+                                // the sdk will check IDB if it needs to resume, so we can't synchronously check that the script is there
+                                return Boolean(document.querySelector('script[src="' + recorderSrc + '"]'))
+                            }, this))
+                                .then(_.bind(function () {
+                                    this.assertRecorderScript(true);
+                                    return new Promise(_.bind(function (resolve) {
+                                        this.randomStub.restore();
+                                        this.getRecorderScript().addEventListener('load', function() {
+                                            resolve();
+                                        });
+                                    }, this))
+                                }, this))
                         };
+                    }
+
+                    stop();
+                    if (window.indexedDB) {
+                        var allStores = ['mixpanelReplayEvents', 'mixpanelRecordingRegistry'];
+                        // need to increment that version number as our schema changes, maybe set up some consts
+                        var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
+                        openRequest.onsuccess = function () {
+                            var db = openRequest.result;
+                            var transaction = db.transaction(allStores, 'readwrite');
+                            transaction.oncomplete = function () {
+                                start();
+                            }
+
+                            for (var i = 0; i < allStores.length; i++) {
+                                var store = transaction.objectStore(allStores[i]);
+                                store.clear();
+                            }
+                        }
+
+                        openRequest.onupgradeneeded = function () {
+                            start(); // idb doesn't exist yet, the sdk will make it
+                        }
                     }
                 },
                 teardown: function () {
@@ -5926,9 +5995,11 @@
             if (!IS_RECORDER_BUNDLED) {
                 asyncTest('adds script tag when sampled', 2, function () {
                     this.randomStub.returns(0.02);
-                    this.initMixpanelRecorder({record_sessions_percent: 2});
-                    this.assertRecorderScript(true);
-                    this.waitForRecorderLoad()
+                    this.waitForRecorderLoad({record_sessions_percent: 2})
+                        .then(_.bind(function () {
+                            // initial two rrweb captured events: meta and full snapshots
+                            return this.waitForQueueLength(2);
+                        }, this))
                         .then(function() {
                             mixpanel.recordertest.stop_session_recording();
                         })
@@ -5939,10 +6010,14 @@
                         })
                 });
     
-                test('does not add script tag when not sampled', 2, function () {
+                asyncTest('does not add script tag when not sampled', 2, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 1});
-                    this.assertRecorderScript(false);
+
+                    realSetTimeout(_.bind(function () {
+                        this.assertRecorderScript(false);
+                        start();
+                    }, this), 100)
                 });
             }
 
@@ -5950,13 +6025,13 @@
                 // set hash to test $current_url logic without reloading test page
                 window.location.hash = 'my-url-1';
                 this.randomStub.returns(0.02);
-                this.initMixpanelRecorder({record_sessions_percent: 10});
-                this.assertRecorderScript(true);
-
-                this.waitForRecorderLoad()
+                this.waitForRecorderLoad({record_sessions_percent: 10})
                     .then(_.bind(function () {
-                        simulateMouseClick(document.body);
                         window.location.hash = 'my-url-2';
+                        simulateMouseClick(document.body);
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
@@ -5974,6 +6049,9 @@
                         same(urlParams1.get("mp_lib"), "web");
 
                         simulateMouseClick(document.body);
+                        return this.waitForQueueLength(1);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(2))
@@ -5994,13 +6072,16 @@
                     }, this));
             });
 
-            asyncTest('can get replay properties when recording is active', 3, function () {
+            asyncTest('can get replay properties when recording is active', 4, function () {
                 this.randomStub.restore();
                 this.initMixpanelRecorder();
                 same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
-
                 mixpanel.recordertest.start_session_recording();
+
                 this.waitForRecorderLoad()
+                    .then(_.bind(function () {
+                        return this.waitForQueueLength(2);
+                    }, this))
                     .then(_.bind(function () {
                         ok(Boolean(mixpanel.recordertest.get_session_recording_properties()["$mp_replay_id"]), 'replay id is populated in recording properties')
                         mixpanel.recordertest.stop_session_recording();
@@ -6010,13 +6091,16 @@
                     .then(start)
             });
 
-            asyncTest('can get replay link when recording is active', 7, function () {
+            asyncTest('can get replay link when recording is active', 8, function () {
                 this.randomStub.restore();
                 this.initMixpanelRecorder();
                 same(mixpanel.recordertest.get_session_replay_url(), null, 'no recording is taking place')
 
                 mixpanel.recordertest.start_session_recording();
                 this.waitForRecorderLoad()
+                    .then(_.bind(function () {
+                        return this.waitForQueueLength(2);
+                    }, this))
                     .then(_.bind(function () {
                         var replay_url = new URL(mixpanel.recordertest.get_session_replay_url());
                         same(replay_url.hostname, 'mixpanel.com');
@@ -6031,7 +6115,7 @@
                     .then(start)
             });
 
-            asyncTest('can manually start a session recording', 5, function () {
+            asyncTest('can manually start a session recording', 6, function () {
                 this.randomStub.returns(0.02);
                 this.initMixpanelRecorder({record_sessions_percent: 1});
                 this.assertRecorderScript(false);
@@ -6044,6 +6128,9 @@
                     }, this))
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
@@ -6056,12 +6143,14 @@
 
             asyncTest('can manually stop a session recording', function () {
                 this.randomStub.returns(0.02);
-                this.initMixpanelRecorder({record_sessions_percent: 10});
-                this.assertRecorderScript(true);
-
-                this.waitForRecorderLoad()
+                this.waitForRecorderLoad({record_sessions_percent: 10})
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
@@ -6072,6 +6161,9 @@
 
                         simulateMouseClick(document.body);
                         return this.clock.tickAsync(2 * 1000);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.waitForQueueLength(1);
                     }, this))
                     .then(_.bind(function () {
                         mixpanel.recordertest.stop_session_recording();
@@ -6115,12 +6207,12 @@
 
             asyncTest('respects tracking opt-out after recording started', 5, function () {
                 this.randomStub.returns(0.02);
-                this.initMixpanelRecorder({record_sessions_percent: 10});
-                this.assertRecorderScript(true);
-
-                this.waitForRecorderLoad()
+                this.waitForRecorderLoad({record_sessions_percent: 10})
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000)
                     }, this))
                     .then(this.waitForFetchCalls(1))
@@ -6137,6 +6229,11 @@
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(_.bind(function () {
+                        return untilDonePromise(function () {
+                            return Object.keys(mixpanel.recordertest.get_session_recording_properties()).length === 0;
+                        });
+                    }, this))
+                    .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 1, 'no /record calls made after user has opted out.');
                         same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
                         mixpanel.recordertest.stop_session_recording();
@@ -6146,7 +6243,6 @@
             asyncTest('retries record request after a 500', 17, function () {
                 this.randomStub.returns(0.02);
                 this.initMixpanelRecorder({record_sessions_percent: 10});
-                this.assertRecorderScript(true)
                 
                 // fake the fetch / response promises since we're testing callback logic
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
@@ -6159,6 +6255,9 @@
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000)
                     }, this))
                     .then(this.waitForFetchCalls(1))
@@ -6167,7 +6266,10 @@
                         var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
                         same(urlParams.get("seq"), "0", "sends first sequence");
                         simulateMouseClick(document.body);
-                        return this.clock.tickAsync(10 * 1000);
+                        return this.waitForQueueLength(1);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000)
                     }, this))
                     .then(this.waitForFetchCalls(2))
                     .then(_.bind(function () {
@@ -6194,7 +6296,6 @@
                 
                 this.randomStub.returns(0.02);
                 this.initMixpanelRecorder({record_sessions_percent: 10});
-                this.assertRecorderScript(true);
                 
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
@@ -6211,7 +6312,10 @@
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
-                        return this.clock.tickAsync(10 * 1000);
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000)
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
@@ -6239,10 +6343,7 @@
 
             asyncTest('halves batch size and retries record request after a 413', 25, function () {
                 this.randomStub.returns(0.02);
-                this.initMixpanelRecorder({record_sessions_percent: 10});
-                this.assertRecorderScript(true)
                 
-                this.randomStub.restore(); // restore the random stub after script is loaded for batcher uuid dedupe
                 this.blobConstructorSpy = sinon.spy(window, 'Blob')
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
@@ -6256,10 +6357,13 @@
                     .onCall(3)
                     .returns(makeFakeFetchResponse(200))
 
-                this.waitForRecorderLoad()
+                this.waitForRecorderLoad({record_sessions_percent: 10})
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
-                        return this.clock.tickAsync(10 * 1000);
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000)
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
@@ -6270,7 +6374,10 @@
                         for  (var _i = 0; _i < 1000; _i++) {
                             simulateMouseClick(document.body);
                         }
-                        return this.clock.tickAsync(10 * 1000);
+                        return this.waitForQueueLength(1000);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000)
                     }, this))
                     .then(this.waitForFetchCalls(2))
                     .then(_.bind(function () {

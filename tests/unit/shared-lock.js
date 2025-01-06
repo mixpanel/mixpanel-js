@@ -75,6 +75,34 @@ describe(`SharedLock`, function() {
       await firstLockPromise;
     });
 
+    it(`mutex works at scale when the lockedCB has delay`, async function() {
+      const results = [];
+      const numProcesses = 50;
+      localStorage.setItem(`arr`, JSON.stringify([]));
+
+      const promises = [];
+      for (let i = 0; i < numProcesses; i++) {
+        var p = sharedLock.withLock(async function() {
+          var arr = JSON.parse(localStorage.getItem(`arr`));
+          arr.push(i);
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve();
+            }, 10);
+          });
+
+          localStorage.setItem(`arr`, JSON.stringify(arr));
+        });
+        promises.push(p);
+      }
+
+      await clock.tickAsync(5000);
+      await Promise.all(promises);
+      const len = JSON.parse(localStorage.getItem(`arr`)).length;
+      results.push(len);
+      expect(len).to.equal(numProcesses);
+    });
+
     it(`clears the lock when one caller does not release it`, async function() {
       acquireLockForPid(sharedLock, `foobar`);
 

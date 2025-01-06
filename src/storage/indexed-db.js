@@ -1,5 +1,7 @@
 import { Promise } from '../promise-polyfill';
 import { window } from '../window';
+import { _ } from '../utils';
+
 var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
 
 var RECORDING_EVENTS_STORE_NAME = 'mixpanelReplayEvents';
@@ -26,25 +28,27 @@ IDBStorageWrapper.prototype.init = function () {
     }
 
     var self = this;
-    this.dbPromise = new Promise(function (resolve, reject) {
-        var openRequest = indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
-        openRequest.onerror = function () {
-            reject(openRequest.error);
-        };
+    if (!this.dbPromise) {
+        this.dbPromise = new Promise(_.bind(function (resolve, reject) {
+            var openRequest = indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+            openRequest.onerror = function () {
+                reject(openRequest.error);
+            };
 
-        openRequest.onsuccess = function () {
-            self._db = openRequest.result;
-            resolve(openRequest.result);
-        };
+            openRequest.onsuccess = function () {
+                self._db = openRequest.result;
+                resolve(openRequest.result);
+            };
 
-        openRequest.onupgradeneeded = function (event) {
-            var db = event.target.result;
+            openRequest.onupgradeneeded = function (event) {
+                var db = event.target.result;
 
-            OBJECT_STORES.forEach(function (storeName) {
-                db.createObjectStore(storeName);
-            });
-        };
-    });
+                OBJECT_STORES.forEach(function (storeName) {
+                    db.createObjectStore(storeName);
+                });
+            };
+        }, this));
+    }
 
     return this.dbPromise
         .then(function (dbOrError) {
