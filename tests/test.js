@@ -3827,6 +3827,28 @@
 
                 window.location.href = window.location.href.split('#')[0] + '#anotheranchor'
                 same(this.requests.length, 2, "init with track_pageview='url-with-path-and-query-string' should not fire additional request on hash change");
+
+                // TODO do this in clearLibInstance for each test
+                mixpanel.pageviews_pathandquery.disable();
+            });
+        }
+
+        if (USE_XHR) {
+            mpmodule("autocapture tests", startRecordingXhrRequests, stopRecordingXhrRequests);
+
+            test("autocapture tracks pageviews with explicit config", 2, function() {
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                window.history.pushState({ path: next_url }, '', next_url);
+
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: true
+                    },
+                    batch_requests: false
+                }, 'acpageviews');
+                same(this.requests.length, 1, "autocapture init with pageview=true should fire request on load");
+                var last_event = getRequestData(this.requests[0]);
+                same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
             });
         }
 
