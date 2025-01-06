@@ -99,7 +99,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
 
 Autocapture.prototype.pageviewTrackingConfig = function() {
     // supports both autocapture config and old track_pageview config
-    if (_.isObject(this.mp.get_config(AUTOCAPTURE_CONFIG_KEY))) {
+    if (this.mp.get_config(AUTOCAPTURE_CONFIG_KEY)) {
         return this.getConfig(CONFIG_TRACK_PAGEVIEW);
     } else {
         return this.mp.get_config(LEGACY_PAGEVIEW_CONFIG_KEY);
