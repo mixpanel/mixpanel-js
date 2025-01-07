@@ -59,7 +59,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
                 // only clear the lock when it's a different tab that is holding it (likely closed)
                 // if the current tab is holding the lock then we might clear it while the callback is still running, violating mutex
                 var valY = storage.getItem(keyY);
-                if (valY.indexOf('|' + SDK_INSTANCE_ID) === -1) {
+                if (valY && valY.indexOf('|' + SDK_INSTANCE_ID) === -1) {
                     logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                     storage.removeItem(keyZ);
                     storage.removeItem(keyY);

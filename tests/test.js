@@ -5816,6 +5816,10 @@
                 });
             }
 
+            var recorderSrc = window.MIXPANEL_CUSTOM_LIB_URL === '../build/mixpanel.js' ?
+                '../build/mixpanel-recorder.js' :
+                '../build/mixpanel-recorder.min.js';
+
             module('recorder', {
                 setup: function () {
                     this.token = `RECORDER_TEST_TOKEN`;
@@ -5833,10 +5837,6 @@
                             'Content-type': 'application/json'
                         }
                     })));
-
-                    var recorderSrc = window.MIXPANEL_CUSTOM_LIB_URL === '../build/mixpanel.js' ?
-                        '../build/mixpanel-recorder.js' :
-                        '../build/mixpanel-recorder.min.js';
 
                     this.initMixpanelRecorder = function (extraConfig) {
                         const config = Object.assign({
@@ -5871,7 +5871,6 @@
 
                     // waits for the async enqueue operation to complete, otherwise fake timers may advance while it's still in progress
                     this.waitForQueueLength = function (expectedLength) {
-                        var queueKey = '__mprec_' + this.token + '_' + mixpanel.recordertest.get_session_recording_properties()['$mp_replay_id'];
                         return new Promise(_.bind(function (resolve, reject) {
                             var checkQueueLengthTimeout = realSetTimeout(function() {
                                 realClearInterval(checkQueueLengthInterval);
@@ -5879,32 +5878,33 @@
                                 reject('timed out waiting for queue length to be ' + expectedLength);
                             }, 50000);
                             var checkQueueLengthInterval = realSetInterval(_.bind(function () {
-                                // var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
-                                // openRequest.onsuccess = function () {
-                                //     var db = openRequest.result;
-                                //     var transaction = db.transaction(allStores, 'readwrite');
-                                //     var store = transaction.objectStore('mixpanelReplayEvents');
-                                //     var req = store.get(queueKey);
+                                var queueKey = '__mprec_recordertest_' + this.token + '_' + mixpanel.recordertest.get_session_recording_properties()['$mp_replay_id'];
+                                var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
+                                openRequest.onsuccess = function () {
+                                    var db = openRequest.result;
+                                    var transaction = db.transaction(allStores, 'readwrite');
+                                    var store = transaction.objectStore('mixpanelReplayEvents');
+                                    var req = store.get(queueKey);
     
-                                //     transaction.oncomplete = function () {
-                                //         console.log(req.result && req.result.length);
-                                //         if (req.result && req.result.length === expectedLength) {
-                                //             realClearInterval(checkQueueLengthInterval);
-                                //             realClearTimeout(checkQueueLengthTimeout)
-                                //             resolve();
-                                //         }
-                                //     };
-                                // }
-                                realSetTimeout(resolve, 1000);
+                                    transaction.oncomplete = function () {
+                                        console.log(req.result);
+                                        if (req.result && req.result.length === expectedLength) {
+                                            realClearInterval(checkQueueLengthInterval);
+                                            realClearTimeout(checkQueueLengthTimeout)
+                                            resolve();
+                                        }
+                                    };
+                                }
+                                // realSetTimeout(resolve, 1000);
 
                                 // advance clock so that SharedLock timers can run
-                                this.clock.tick(2000);
+                                this.clock.tick(100);
                             }, this), 20);
                         }, this));
                     }
 
                     this.assertRecorderScript(false);
-
+                    
                     if (IS_RECORDER_BUNDLED) {
                         this.waitForRecorderLoad = function () {
                             return new Promise(function(resolve) {
@@ -5932,7 +5932,7 @@
                                 }, this))
                         };
                     }
-
+                    window.sessionStorage.clear();
                     stop();
                     if (window.indexedDB) {
                         var allStores = ['mixpanelReplayEvents', 'mixpanelRecordingRegistry'];
@@ -5954,6 +5954,8 @@
                         openRequest.onupgradeneeded = function () {
                             start(); // idb doesn't exist yet, the sdk will make it
                         }
+                    } else {
+                        start()
                     }
                 },
                 teardown: function () {
@@ -6416,12 +6418,13 @@
 
             asyncTest('respects minimum session length setting', function () {
                 this.randomStub.returns(0.02);
-                this.initMixpanelRecorder({record_sessions_percent: 10, record_min_ms: 8000});
-                this.assertRecorderScript(true)
 
-                this.waitForRecorderLoad()
+                this.waitForRecorderLoad({record_sessions_percent: 10, record_min_ms: 8000})
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(5 * 1000);
                     }, this))
                     .then(_.bind(function () {
@@ -6437,6 +6440,69 @@
                             same(this.fetchStub.getCalls().length, 0, 'no fetch requests after recording is stopped');
                             start();
                         }, this), 2);
+                    }, this));
+            });
+
+            asyncTest('continues recording across SDK loads', 15, function () {
+                this.randomStub.returns(0.02);
+
+                var replayId;
+                this.waitForRecorderLoad({record_sessions_percent: 10})
+                    .then(_.bind(function () {
+                        mixpanel.recordertest.identify('guy');
+                        simulateMouseClick(document.body);
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(this.waitForFetchCalls(1))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds')
+                        var fetchCall1 = this.fetchStub.getCall(0);
+                        var callArgs = fetchCall1.args;
+                        var body = callArgs[1].body;
+                        same(body.constructor, Blob, 'request body is a Blob');
+
+                        var urlParams1 = validateAndGetUrlParams(fetchCall1)
+                        same(urlParams1.get("seq"), "0")
+                        replayId = urlParams1.get("replay_id")
+
+                        // queue up an event that should be flushed on the next load
+                        simulateMouseClick(document.body);
+
+                        // simulate a page load: pause recording (it remains as active recording) and clear the SDK
+                        mixpanel.recordertest.pause_session_recording();
+                        delete mixpanel['recordertest'];
+                        delete window['__mp_recorder'];
+                        window.sessionStorage.removeItem('mp_recording_tab_lock_RECORDER_TEST_TOKEN');
+                        document.head.removeChild(document.querySelector('script[src="' + recorderSrc + '"]'))
+
+                        // some time passes like a page load
+                        return this.clock.tickAsync(500);
+                    }, this))
+                    .then(_.bind(function () {
+                        // don't enable SR this time, it should continue the previous replay
+                        return this.waitForRecorderLoad();
+                    }, this))
+                    .then(_.bind(function () {
+                        // previous mouse click + 2 rrweb initial events
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(this.waitForFetchCalls(2))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
+                        var fetchCall2 = this.fetchStub.getCall(1);
+                        
+                        var urlParams2 = validateAndGetUrlParams(fetchCall2)
+                        same(urlParams2.get("seq"), "1")
+                        same(replayId, urlParams2.get("replay_id"))
+
+                        mixpanel.recordertest.stop_session_recording();
+                        start();
                     }, this));
             });
 
@@ -6457,6 +6523,9 @@
                 var replayId1 = null;
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
+                        return this.waitForQueueLength(2);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
@@ -6467,16 +6536,23 @@
                         same(urlParams.get('seq'), '0', 'sends first sequence');
                         replayId1 = urlParams.get('replay_id');
 
+                        // long enough to reset due to idle timeout
                         return this.clock.tickAsync(61 * 1000);
                     }, this))
                     .then(_.bind(function () {
                         // simulate a mutation event to ensure we don't try sending it until there's a user event
                         document.body.appendChild(document.createElement('div'));
+                        return this.waitForQueueLength(3);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 1, 'still just the one fetch request, mutation is ignored');
                         simulateMouseClick(document.body);
+                        return this.waitForQueueLength(4);
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(2))

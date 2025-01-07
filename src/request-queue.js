@@ -56,6 +56,12 @@ RequestQueue.prototype.ensureInit = function () {
         }, this));
 };
 
+RequestQueue.prototype.enqueue = function (item, flushInterval) {
+    return this.enqueueMany([item], flushInterval);
+};
+
+var lockTimes = [];
+
 /**
  * Add one item to queues (memory and localStorage). The queued entry includes
  * the given item along with an auto-generated ID and a "flush-after" timestamp.
@@ -68,35 +74,45 @@ RequestQueue.prototype.ensureInit = function () {
  * failure of the enqueue operation; it is asynchronous because the localStorage
  * lock is asynchronous.
  */
-RequestQueue.prototype.enqueue = function (item, flushInterval) {
-    var queueEntry = {
-        'id': cheap_guid(),
-        'flushAfter': new Date().getTime() + flushInterval * 2,
-        'payload': item
-    };
+RequestQueue.prototype.enqueueMany = function (items, flushInterval) {
+    var queueEntries = [];
+    _.each(items, function (item) {
+        queueEntries.push({
+            'id': cheap_guid(),
+            'flushAfter': new Date().getTime() + flushInterval * 2,
+            'payload': item
+        });
+    });
 
     if (!this.usePersistence) {
-        this.memQueue.push(queueEntry);
+        this.memQueue = this.memQueue.concat(queueEntries);
         return Promise.resolve(true);
     } else {
+        var now = performance.now();
         var enqueueItem = _.bind(function () {
+            var enqueueNow = performance.now();
             return this.ensureInit()
                 .then(_.bind(function () {
                     return this.readFromStorage();
                 }, this))
                 .then(_.bind(function (storedQueue) {
-                    storedQueue.push(queueEntry);
-                    return this.saveToStorage(storedQueue);
+                    return this.saveToStorage(storedQueue.concat(queueEntries));
                 }, this))
                 .then(_.bind(function (succeeded) {
                     // only add to in-memory queue when storage succeeds
                     if (succeeded) {
-                        this.memQueue.push(queueEntry);
+                        this.memQueue = this.memQueue.concat(queueEntries);
                     }
+
+                    // console.log('enqueue time:', performance.now() - enqueueNow);
+                    // lockTimes.push(performance.now() - enqueueNow);
+                    // console.log('enqueue time with lock:', performance.now() - now);
+                    // console.log('avg lock times', lockTimes.reduce((a, b) => a + b, 0) / lockTimes.length);
+                    // console.log('median lock times', lockTimes[Math.floor(lockTimes.length / 2)]);
                     return succeeded;
                 }, this))
                 .catch(_.bind(function (err) {
-                    this.reportError('Error enqueueing item', err, item);
+                    this.reportError('Error enqueueing items', err, items);
                     return false;
                 }, this));
         }, this);

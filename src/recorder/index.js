@@ -64,6 +64,12 @@ MixpanelRecorder.prototype.stopRecording = function() {
     }
 };
 
+MixpanelRecorder.prototype.pauseRecording = function() {
+    if (this.activeRecording) {
+        this.activeRecording.stopRecording();
+    }
+};
+
 MixpanelRecorder.prototype.resetRecording = function () {
     this.stopRecording();
     this.startRecording({shouldStopBatcher: true});

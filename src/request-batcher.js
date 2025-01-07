@@ -52,6 +52,14 @@ RequestBatcher.prototype.enqueue = function(item) {
 };
 
 /**
+ * Add many items to queue.
+ */
+RequestBatcher.prototype.enqueueMany = function(items) {
+    return this.queue.enqueueMany(items, this.flushInterval);
+};
+
+
+/**
  * Start flushing batches at the configured time interval. Must call
  * this method upon SDK init in order to send anything over the network.
  */

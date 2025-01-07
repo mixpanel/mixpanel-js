@@ -370,58 +370,75 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.autocapture = new Autocapture(this);
     this.autocapture.init();
 
-    this._start_recording_if_enabled();
+    this._check_and_start_session_recording();
 };
 
-MixpanelLib.prototype._start_recording_if_enabled = function() {
+MixpanelLib.prototype._check_and_start_session_recording = function(force_start) {
+    var start_recording = _.bind(function(active_serialized_recording) {
+        if (!window['MutationObserver']) {
+            console.critical('Browser does not support MutationObserver; skipping session recording');
+            return;
+        }
+
+        var handleLoadedRecorder = _.bind(function() {
+            this._recorder = this._recorder || new window['__mp_recorder']({
+                'mixpanelInstance': this,
+                'recordingRegistry': this._get_recording_registry(),
+            });
+            this._recorder['startRecording']({'activeSerializedRecording': active_serialized_recording});
+        }, this);
+
+        if (_.isUndefined(window['__mp_recorder'])) {
+            load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+        } else {
+            handleLoadedRecorder();
+        }
+    }, this);
+
+
+    var sample_and_record = _.bind(function() {
+        if (force_start || (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent'))) {
+            start_recording();
+        }
+    }, this);
+
+    // always check the registry first to see if a recording needs to be resumed in case mixpanel.start_session_recording() is called on page load
     this._get_recording_registry()
         .getActiveRecording()
         .then(_.bind(function(serialized_recording) {
             if (serialized_recording) {
-                this.start_session_recording(serialized_recording);
-            } else if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
-                this.start_session_recording();
+                start_recording(serialized_recording);
+            } else {
+                sample_and_record();
             }
-        }, this));
+        }, this))
+        .catch(sample_and_record);
 };
 
 MixpanelLib.prototype._get_recording_registry = function () {
-    if (!this.recordingRegistry) {
-        this.recordingRegistry = new RecordingRegistry({
+    if (!this.recording_registry) {
+        this.recording_registry = new RecordingRegistry({
             'errorReporter': this.get_config('error_reporter'),
             'token': this.get_config('token'),
             'mixpanelInstance': this,
         });
     }
-    return this.recordingRegistry;
+    return this.recording_registry;
 };
 
-MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function (active_serialized_recording) {
-    if (!window['MutationObserver']) {
-        console.critical('Browser does not support MutationObserver; skipping session recording');
-        return;
-    }
-
-    var handleLoadedRecorder = _.bind(function() {
-        this._recorder = this._recorder || new window['__mp_recorder']({
-            'mixpanelInstance': this,
-            'recordingRegistry': this._get_recording_registry(),
-        });
-        this._recorder['startRecording']({'activeSerializedRecording': active_serialized_recording});
-    }, this);
-
-    if (_.isUndefined(window['__mp_recorder'])) {
-        load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
-    } else {
-        handleLoadedRecorder();
-    }
+MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function () {
+    this._check_and_start_session_recording(true);
 });
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
         this._recorder['stopRecording']();
-    } else {
-        console.critical('Session recorder module not loaded');
+    }
+};
+
+MixpanelLib.prototype.pause_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['pauseRecording']();
     }
 };
 
