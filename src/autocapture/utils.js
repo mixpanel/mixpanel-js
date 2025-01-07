@@ -183,7 +183,14 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 target = guessRealClickTarget(ev);
             }
             if (target) {
-                props['$target'] = getPropertiesFromElement(target);
+                var targetProps = getPropertiesFromElement(target);
+                props['$target'] = targetProps;
+                // pull up more props onto main event props
+                props['$el_classes'] = targetProps['$classes'];
+                _.extend(props, _.strip_empty_properties({
+                    '$el_id': targetProps['$id'],
+                    '$el_tag_name': targetProps['$tag_name']
+                }));
             }
         }
     }
