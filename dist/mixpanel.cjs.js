@@ -4509,7 +4509,7 @@ var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0-ac-alpha-3'
+    LIB_VERSION: '2.59.0-ac-alpha-4'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -8691,7 +8691,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
 
 Autocapture.prototype.pageviewTrackingConfig = function() {
     // supports both autocapture config and old track_pageview config
-    if (_.isObject(this.mp.get_config(AUTOCAPTURE_CONFIG_KEY))) {
+    if (this.mp.get_config(AUTOCAPTURE_CONFIG_KEY)) {
         return this.getConfig(CONFIG_TRACK_PAGEVIEW);
     } else {
         return this.mp.get_config(LEGACY_PAGEVIEW_CONFIG_KEY);

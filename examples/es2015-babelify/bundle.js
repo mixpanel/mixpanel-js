@@ -11080,7 +11080,7 @@ Autocapture.prototype.currentUrlBlocked = function () {
 
 Autocapture.prototype.pageviewTrackingConfig = function () {
     // supports both autocapture config and old track_pageview config
-    if (_utils._.isObject(this.mp.get_config(AUTOCAPTURE_CONFIG_KEY))) {
+    if (this.mp.get_config(AUTOCAPTURE_CONFIG_KEY)) {
         return this.getConfig(CONFIG_TRACK_PAGEVIEW);
     } else {
         return this.mp.get_config(LEGACY_PAGEVIEW_CONFIG_KEY);
@@ -11649,7 +11649,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0-ac-alpha-3'
+    LIB_VERSION: '2.59.0-ac-alpha-4'
 };
 
 exports['default'] = Config;
