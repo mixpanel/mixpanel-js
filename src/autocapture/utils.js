@@ -232,7 +232,7 @@ export function getSafeText(el) {
 
 function guessRealClickTarget(ev) {
     var target = ev.target;
-    var composedPath = ev.composedPath();
+    var composedPath = ev['composedPath']();
     for (var i = 0; i < composedPath.length; i++) {
         var node = composedPath[i];
         var tagName = node.tagName && node.tagName.toLowerCase();

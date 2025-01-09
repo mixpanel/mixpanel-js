@@ -11399,7 +11399,9 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 '$host': _window.window.location.host,
                 '$pathname': _window.window.location.pathname,
                 '$elements': elementsJson,
-                '$el_attr__href': href
+                '$el_attr__href': href,
+                '$innerHeight': _window.window['innerHeight'],
+                '$innerWidth': _window.window['innerWidth']
             };
 
             if (captureTextContent) {
@@ -11418,7 +11420,14 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 target = guessRealClickTarget(ev);
             }
             if (target) {
-                props['$target'] = getPropertiesFromElement(target);
+                var targetProps = getPropertiesFromElement(target);
+                props['$target'] = targetProps;
+                // pull up more props onto main event props
+                props['$el_classes'] = targetProps['$classes'];
+                _utils._.extend(props, _utils._.strip_empty_properties({
+                    '$el_id': targetProps['$id'],
+                    '$el_tag_name': targetProps['$tag_name']
+                }));
             }
         }
     }
@@ -11458,7 +11467,7 @@ function getSafeText(el) {
 
 function guessRealClickTarget(ev) {
     var target = ev.target;
-    var composedPath = ev.composedPath();
+    var composedPath = ev['composedPath']();
     for (var i = 0; i < composedPath.length; i++) {
         var node = composedPath[i];
         var tagName = node.tagName && node.tagName.toLowerCase();
@@ -11649,7 +11658,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0-ac-alpha-4'
+    LIB_VERSION: '2.59.0-ac-alpha-5'
 };
 
 exports['default'] = Config;

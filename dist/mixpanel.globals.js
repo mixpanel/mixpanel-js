@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.59.0-ac-alpha-4'
+        LIB_VERSION: '2.59.0-ac-alpha-5'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2290,7 +2290,9 @@
                     '$host': win.location.host,
                     '$pathname': win.location.pathname,
                     '$elements':  elementsJson,
-                    '$el_attr__href': href
+                    '$el_attr__href': href,
+                    '$innerHeight': win['innerHeight'],
+                    '$innerWidth': win['innerWidth']
                 };
 
                 if (captureTextContent) {
@@ -2309,7 +2311,14 @@
                     target = guessRealClickTarget(ev);
                 }
                 if (target) {
-                    props['$target'] = getPropertiesFromElement(target);
+                    var targetProps = getPropertiesFromElement(target);
+                    props['$target'] = targetProps;
+                    // pull up more props onto main event props
+                    props['$el_classes'] = targetProps['$classes'];
+                    _.extend(props, _.strip_empty_properties({
+                        '$el_id': targetProps['$id'],
+                        '$el_tag_name': targetProps['$tag_name']
+                    }));
                 }
             }
         }
@@ -2349,7 +2358,7 @@
 
     function guessRealClickTarget(ev) {
         var target = ev.target;
-        var composedPath = ev.composedPath();
+        var composedPath = ev['composedPath']();
         for (var i = 0; i < composedPath.length; i++) {
             var node = composedPath[i];
             var tagName = node.tagName && node.tagName.toLowerCase();
