@@ -3885,6 +3885,54 @@
                 }, 'acpageviews');
                 same(this.requests.length, 0, "autocapture init with pageview=false should not fire request on load");
             });
+
+            test("autocapture tracks click events", 4, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+                same(this.requests.length, 0, "should not fire any requests on init");
+
+                var e1 = ele_with_class();
+                var originalHandlerCalled = false;
+                e1.e.onclick = function() {
+                    originalHandlerCalled = true;
+                    return false;
+                }
+
+                simulateMouseClick(e1.e);
+                same(this.requests.length, 1, "click event should fire request");
+                var last_event = getRequestData(this.requests[0]);
+                same(last_event.event, "$mp_click", "last request should be $mp_click event");
+                ok(originalHandlerCalled, "original click handler should also have been called");
+            });
+
+            test("autocapture click events include relevant properties", 7, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should fire request");
+                var last_event = getRequestData(this.requests[0]);
+                same(last_event.event, "$mp_click", "last request should be $mp_click event");
+                var props = last_event.properties;
+                same(props.$el_tag_name, "a", "click event should include tag name");
+                same(props.$el_classes, [anchor.name], "click event should include classes");
+                ok(props.$innerHeight > 0, "click event should include viewport height");
+                ok(props.$innerWidth > 0, "click event should include viewport width");
+                notOk('$el_id' in props, "click event should not include id when not present");
+            });
         }
 
         if (USE_XHR && window.localStorage) {
