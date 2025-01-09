@@ -156,6 +156,7 @@
             throw "Cannot clear main lib instance";
         }
 
+        instance.set_config({autocapture: false});
         instance.persistence.clear();
         instance.stop_batch_senders();
 
@@ -3834,7 +3835,14 @@
         }
 
         if (USE_XHR) {
-            mpmodule("autocapture tests", startRecordingXhrRequests, stopRecordingXhrRequests);
+            var origHref;
+            mpmodule("autocapture tests", function() {
+                origHref = window.location.href;
+                startRecordingXhrRequests.call(this);
+            }, function() {
+                stopRecordingXhrRequests.call(this);
+                window.history.replaceState(null, null, origHref);
+            });
 
             test("autocapture tracks pageviews with explicit config", 2, function() {
                 var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
@@ -3862,6 +3870,20 @@
                 same(this.requests.length, 1, "autocapture init with autocapture=true should fire request on load");
                 var last_event = getRequestData(this.requests[0]);
                 same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+            });
+
+            test("autocapture pageview config takes precedence over legacy track_pageview config", 1, function() {
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                window.history.pushState({ path: next_url }, '', next_url);
+
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false
+                    },
+                    track_pageview: true,
+                    batch_requests: false
+                }, 'acpageviews');
+                same(this.requests.length, 0, "autocapture init with pageview=false should not fire request on load");
             });
         }
 
