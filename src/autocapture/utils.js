@@ -164,7 +164,9 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 '$host': window.location.host,
                 '$pathname': window.location.pathname,
                 '$elements':  elementsJson,
-                '$el_attr__href': href
+                '$el_attr__href': href,
+                '$innerHeight': window['innerHeight'],
+                '$innerWidth': window['innerWidth']
             };
 
             if (captureTextContent) {
