@@ -132,6 +132,9 @@ Autocapture.prototype.initClickTracking = function() {
     logger.log('Initializing click tracking');
 
     this.listenerClick = window.addEventListener(EV_CLICK, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_CLICK);
     }.bind(this));
 };
@@ -145,6 +148,9 @@ Autocapture.prototype.initInputTracking = function() {
     logger.log('Initializing input tracking');
 
     this.listenerChange = window.addEventListener(EV_CHANGE, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_INPUT)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_INPUT);
     }.bind(this));
 };
@@ -215,6 +221,9 @@ Autocapture.prototype.initScrollTracking = function() {
     logger.log('Initializing scroll tracking');
 
     this.listenerScroll = window.addEventListener(EV_SCROLL, safewrap(function() {
+        if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
+            return;
+        }
         if (this.currentUrlBlocked()) {
             return;
         }
@@ -242,6 +251,9 @@ Autocapture.prototype.initSubmitTracking = function() {
     logger.log('Initializing submit tracking');
 
     this.listenerSubmit = window.addEventListener(EV_SUBMIT, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_SUBMIT);
     }.bind(this));
 };
