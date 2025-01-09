@@ -189,10 +189,10 @@
         return $(a).appendTo('#qunit-fixture');
     };
 
-    var ele_with_class = function() {
+    var ele_with_class = function(elText) {
         var name = rand_name();
         var class_name = "." + name;
-        var a = $("<a></a>").attr("class", name).attr("href", "#");
+        var a = $("<a>" + (elText || "") + "</a>").attr("class", name).attr("href", "#");
         append_fixture(a);
         return {
             e: a.get(0),
@@ -3932,6 +3932,62 @@
                 ok(props.$innerHeight > 0, "click event should include viewport height");
                 ok(props.$innerWidth > 0, "click event should include viewport width");
                 notOk('$el_id' in props, "click event should not include id when not present");
+            });
+
+            test("autocapture click events do not capture text by default", 2, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class("some link text");
+                anchor.e.onclick = function() { return false; }
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should fire request");
+                var last_event = getRequestData(this.requests[0]);
+                var props = last_event.properties;
+                notOk('$el_text' in props, "click event should not include text content");
+            });
+
+            test("autocapture click events capture text when configured to", 2, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        capture_text_content: true
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class("some link text");
+                anchor.e.onclick = function() { return false; }
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should fire request");
+                var last_event = getRequestData(this.requests[0]);
+                var props = last_event.properties;
+                same(props.$el_text, "some link text", "click event should include text content");
+            });
+
+            test("autocapture should not track click events on elements with default opt-out classes", 1, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+                anchor.e.className = "mp-no-track";
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
             });
         }
 
