@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0-ac-alpha-5'
+    LIB_VERSION: '2.59.0-ac-alpha-6'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2271,7 +2271,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 // programmatically prevent tracking of elements that match CSS selectors
                 _.each(blockSelectors, function(sel) {
                     try {
-                        if (el.matches(sel)) {
+                        if (el['matches'](sel)) {
                             explicitNoTrack = true;
                         }
                     } catch (err) {
@@ -2665,6 +2665,9 @@ Autocapture.prototype.initClickTracking = function() {
     logger$3.log('Initializing click tracking');
 
     this.listenerClick = win.addEventListener(EV_CLICK, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_CLICK);
     }.bind(this));
 };
@@ -2678,6 +2681,9 @@ Autocapture.prototype.initInputTracking = function() {
     logger$3.log('Initializing input tracking');
 
     this.listenerChange = win.addEventListener(EV_CHANGE, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_INPUT)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_INPUT);
     }.bind(this));
 };
@@ -2748,6 +2754,9 @@ Autocapture.prototype.initScrollTracking = function() {
     logger$3.log('Initializing scroll tracking');
 
     this.listenerScroll = win.addEventListener(EV_SCROLL, safewrap(function() {
+        if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
+            return;
+        }
         if (this.currentUrlBlocked()) {
             return;
         }
@@ -2775,6 +2784,9 @@ Autocapture.prototype.initSubmitTracking = function() {
     logger$3.log('Initializing submit tracking');
 
     this.listenerSubmit = win.addEventListener(EV_SUBMIT, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_SUBMIT);
     }.bind(this));
 };

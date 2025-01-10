@@ -11109,6 +11109,9 @@ Autocapture.prototype.initClickTracking = function () {
     _utils2.logger.log('Initializing click tracking');
 
     this.listenerClick = _window.window.addEventListener(_utils2.EV_CLICK, (function (ev) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_CLICK);
     }).bind(this));
 };
@@ -11122,6 +11125,9 @@ Autocapture.prototype.initInputTracking = function () {
     _utils2.logger.log('Initializing input tracking');
 
     this.listenerChange = _window.window.addEventListener(_utils2.EV_CHANGE, (function (ev) {
+        if (!this.getConfig(CONFIG_TRACK_INPUT)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_INPUT);
     }).bind(this));
 };
@@ -11192,6 +11198,9 @@ Autocapture.prototype.initScrollTracking = function () {
     _utils2.logger.log('Initializing scroll tracking');
 
     this.listenerScroll = _window.window.addEventListener(_utils2.EV_SCROLL, (0, _utils.safewrap)((function () {
+        if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
+            return;
+        }
         if (this.currentUrlBlocked()) {
             return;
         }
@@ -11219,6 +11228,9 @@ Autocapture.prototype.initSubmitTracking = function () {
     _utils2.logger.log('Initializing submit tracking');
 
     this.listenerSubmit = _window.window.addEventListener(_utils2.EV_SUBMIT, (function (ev) {
+        if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
+            return;
+        }
         this.trackDomEvent(ev, MP_EV_SUBMIT);
     }).bind(this));
 };
@@ -11381,7 +11393,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 // programmatically prevent tracking of elements that match CSS selectors
                 _utils._.each(blockSelectors, function (sel) {
                     try {
-                        if (el.matches(sel)) {
+                        if (el['matches'](sel)) {
                             explicitNoTrack = true;
                         }
                     } catch (err) {
@@ -11658,7 +11670,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0-ac-alpha-5'
+    LIB_VERSION: '2.59.0-ac-alpha-6'
 };
 
 exports['default'] = Config;
