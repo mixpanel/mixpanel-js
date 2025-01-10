@@ -146,7 +146,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 // programmatically prevent tracking of elements that match CSS selectors
                 _.each(blockSelectors, function(sel) {
                     try {
-                        if (el.matches(sel)) {
+                        if (el['matches'](sel)) {
                             explicitNoTrack = true;
                         }
                     } catch (err) {
