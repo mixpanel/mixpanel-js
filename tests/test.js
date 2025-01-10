@@ -3770,7 +3770,7 @@
             });
 
             test("init with track_pageview=true fires page view event", 2, function() {
-                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);
 
                 mixpanel.init("track_pageview_test_token", {
@@ -3783,7 +3783,7 @@
             });
 
             test("init with track_pageview='url-with-path' tracks page views correctly", 5, function() {
-                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);
 
                 mixpanel.init("track_pageview_test_token", {
@@ -3806,7 +3806,7 @@
             });
 
             test("init with track_pageview='url-with-path-and-query-string' tracks page views correctly", 6, function() {
-                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);
 
                 mixpanel.init("track_pageview_test_token", {
@@ -3845,7 +3845,7 @@
             });
 
             test("autocapture tracks pageviews with explicit config", 2, function() {
-                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);
 
                 mixpanel.init("autocapture_test_token", {
@@ -3860,7 +3860,7 @@
             });
 
             test("autocapture tracks pageviews with default config", 2, function() {
-                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);
 
                 mixpanel.init("autocapture_test_token", {
@@ -3873,7 +3873,7 @@
             });
 
             test("autocapture pageview config takes precedence over legacy track_pageview config", 1, function() {
-                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);
 
                 mixpanel.init("autocapture_test_token", {
@@ -3973,7 +3973,7 @@
                 same(props.$el_text, "some link text", "click event should include text content");
             });
 
-            test("autocapture should not track click events on elements with default opt-out classes", 1, function() {
+            test("autocapture does not track elements with default opt-out classes", 3, function() {
                 mixpanel.init("autocapture_test_token", {
                     autocapture: {
                         pageview: false,
@@ -3988,6 +3988,99 @@
 
                 simulateMouseClick(anchor.e);
                 same(this.requests.length, 0, "click event should not have fired request");
+
+                var anchor2 = ele_with_class();
+                anchor2.e.onclick = function() { return false; }
+
+                simulateMouseClick(anchor2.e);
+                same(this.requests.length, 1, "click event on trackable element should have fired request");
+                same(getRequestData(this.requests[0]).event, "$mp_click", "last request should be $mp_click event");
+            });
+
+            test("autocapture does not track elements with configured opt-out classes", 3, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        block_selectors: ["a.custom-non-tracking"]
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+                anchor.e.className = "custom-non-tracking";
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+
+                var anchor2 = ele_with_class();
+                anchor2.e.onclick = function() { return false; }
+
+                simulateMouseClick(anchor2.e);
+                same(this.requests.length, 1, "click event on trackable element should have fired request");
+                same(getRequestData(this.requests[0]).event, "$mp_click", "last request should be $mp_click event");
+            });
+
+            test("autocapture supports default opt-out classes and configured opt-out classes together", 2, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        block_selectors: ["a.custom-non-tracking"]
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+                anchor.e.className = "custom-non-tracking";
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+
+                var anchor2 = ele_with_class();
+                anchor2.e.onclick = function() { return false; }
+                anchor2.e.className = "mp-no-track";
+
+                simulateMouseClick(anchor2.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+            });
+
+            test("autocapture does not track elements on pages blocked by URL regex config", 4, function() {
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.pushState({ path: next_url }, '', next_url);
+
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        block_url_regexes: [/\/foopage\/?$/, /#barhash$/]
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                // start on an unblocked page
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should have fired request");
+
+                // add blocked hash fragment
+                window.location.hash = "barhash";
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should not have fired request");
+
+                // change to blocked path
+                window.history.replaceState(null, null, next_url + "/foopage");
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should not have fired request");
+
+                // back to unblocked path
+                window.history.replaceState(null, null, next_url);
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 2, "click event should have fired request");
             });
         }
 
