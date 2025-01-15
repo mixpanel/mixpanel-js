@@ -171,7 +171,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
             };
 
             if (captureTextContent) {
-                var elementText = getSafeText(target);
+                elementText = getSafeText(target);
                 if (elementText && elementText.length) {
                     props['$el_text'] = elementText;
                 }
@@ -219,7 +219,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
  * @param {Element} el - element to get the text of
  * @returns {string} the element's direct text content
  */
-export function getSafeText(el) {
+function getSafeText(el) {
     var elText = '';
 
     if (shouldTrackElement(el) && el.childNodes && el.childNodes.length) {
@@ -424,8 +424,10 @@ function shouldTrackValue(value) {
 
 export {
     getPropsForDOMEvent,
+    getSafeText,
     logger,
     minDOMApisSupported,
+    shouldTrackDomEvent, shouldTrackElement, shouldTrackValue,
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,
     EV_SCROLLEND, EV_SUBMIT
 };
