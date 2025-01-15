@@ -184,6 +184,14 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 });
                 target = guessRealClickTarget(ev);
             }
+            // prioritize text content from "real" click target if different from original target
+            if (captureTextContent) {
+                var elementText = getSafeText(target);
+                if (elementText && elementText.length) {
+                    props['$el_text'] = elementText;
+                }
+            }
+
             if (target) {
                 var targetProps = getPropertiesFromElement(target);
                 props['$target'] = targetProps;
