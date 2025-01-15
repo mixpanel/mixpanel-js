@@ -295,7 +295,7 @@ function minDOMApisSupported() {
 }
 
 /*
- * Check whether a DOM event should be "tracked" or if it may contain sentitive data
+ * Check whether a DOM event should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
  * @param {Element} el - element to check
  * @param {Event} ev - event to check
@@ -324,7 +324,7 @@ function shouldTrackDomEvent(el, ev) {
 }
 
 /*
- * Check whether a DOM element should be "tracked" or if it may contain sentitive data
+ * Check whether a DOM element should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
  * @param {Element} el - element to check
  * @returns {boolean} whether the element should be tracked
@@ -384,7 +384,7 @@ function shouldTrackElement(el) {
 
 
 /*
- * Check whether a string value should be "tracked" or if it may contain sentitive data
+ * Check whether a string value should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
  * @param {string} value - string value to check
  * @returns {boolean} whether the element should be tracked
