@@ -166,7 +166,10 @@ Autocapture.prototype.initPageviewTracking = function() {
     logger.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
-    var tracked = this.mp.track_pageview(DEFAULT_PROPS);
+    var tracked = false;
+    if (!this.currentUrlBlocked()) {
+        tracked = this.mp.track_pageview(DEFAULT_PROPS);
+    }
     if (tracked) {
         previousTrackedUrl = _.info.currentUrl();
     }
@@ -192,6 +195,10 @@ Autocapture.prototype.initPageviewTracking = function() {
         };
     }
     this.listenerLocationchange = window.addEventListener(EV_MP_LOCATION_CHANGE, safewrap(function() {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
         var currentUrl = _.info.currentUrl();
         var shouldTrack = false;
         var trackPageviewOption = this.pageviewTrackingConfig();

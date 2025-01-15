@@ -4082,6 +4082,36 @@
                 simulateMouseClick(anchor.e);
                 same(this.requests.length, 2, "click event should have fired request");
             });
+
+            test("autocapture does not track pageviews on pages blocked by URL regex config", 6, function() {
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.pushState({ path: next_url }, '', next_url);
+
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        block_url_regexes: [/\/foopage\/?$/, /#barhash$/]
+                    },
+                    batch_requests: false
+                }, 'acpageviews');
+
+                // start on an unblocked page
+                same(this.requests.length, 1, "autocapture init should fire request on load");
+                var last_event = getRequestData(this.requests[0]);
+                same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+
+                // add blocked hash fragment
+                window.location.hash = "barhash";
+                same(this.requests.length, 1, "URL change should not have fired request");
+
+                // change to blocked path
+                window.history.replaceState(null, null, next_url + "/foopage");
+                same(this.requests.length, 1, "URL change should not have fired request");
+
+                // back to unblocked path
+                window.history.replaceState(null, null, next_url + "/unblockedpath");
+                same(this.requests.length, 2, "URL change should have fired request");
+                same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+            });
         }
 
         if (USE_XHR && window.localStorage) {
