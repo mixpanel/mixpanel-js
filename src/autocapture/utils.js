@@ -235,12 +235,11 @@ function guessRealClickTarget(ev) {
     var composedPath = ev['composedPath']();
     for (var i = 0; i < composedPath.length; i++) {
         var node = composedPath[i];
-        var tagName = node.tagName && node.tagName.toLowerCase();
         if (
-            tagName === 'a' ||
-            tagName === 'button' ||
-            tagName === 'input' ||
-            tagName === 'select' ||
+            isTag(node, 'a') ||
+            isTag(node, 'button') ||
+            isTag(node, 'input') ||
+            isTag(node, 'select') ||
             (node.getAttribute && node.getAttribute('role') === 'button')
         ) {
             target = node;
