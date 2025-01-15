@@ -4509,7 +4509,7 @@ var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0-ac-alpha-6'
+    LIB_VERSION: '2.59.0-rc1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -5806,6 +5806,7 @@ _.UUID = (function() {
 var BLOCKED_UA_STRS = [
     'ahrefsbot',
     'ahrefssiteaudit',
+    'amazonbot',
     'baiduspider',
     'bingbot',
     'bingpreview',
