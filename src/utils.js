@@ -911,6 +911,7 @@ _.UUID = (function() {
 var BLOCKED_UA_STRS = [
     'ahrefsbot',
     'ahrefssiteaudit',
+    'amazonbot',
     'baiduspider',
     'bingbot',
     'bingpreview',
