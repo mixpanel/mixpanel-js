@@ -261,12 +261,12 @@ function guessRealClickTarget(ev) {
 }
 
 /*
- * Check whether an element has nodeType Node.ELEMENT_NODE
- * @param {Element} el - element to check
- * @returns {boolean} whether el is of the correct nodeType
+ * Check whether a DOM node has nodeType Node.ELEMENT_NODE
+ * @param {Node} node - node to check
+ * @returns {boolean} whether node is of the correct nodeType
  */
-function isElementNode(el) {
-    return el && el.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
+function isElementNode(node) {
+    return node && node.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
 }
 
 /*
@@ -284,12 +284,12 @@ function isTag(el, tag) {
 }
 
 /*
- * Check whether an element has nodeType Node.TEXT_NODE
- * @param {Element} el - element to check
- * @returns {boolean} whether el is of the correct nodeType
+ * Check whether a DOM node is a TEXT_NODE
+ * @param {Node} node - node to check
+ * @returns {boolean} whether node is of type Node.TEXT_NODE
  */
-function isTextNode(el) {
-    return el && el.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
+function isTextNode(node) {
+    return node && node.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
 }
 
 function minDOMApisSupported() {
