@@ -156,7 +156,7 @@
             throw "Cannot clear main lib instance";
         }
 
-        instance.set_config({autocapture: false});
+        instance.set_config({autocapture: false, track_pageview: false});
         instance.persistence.clear();
         instance.stop_batch_senders();
 
