@@ -9,7 +9,8 @@ var EV_CLICK = 'click';
 var EV_HASHCHANGE = 'hashchange';
 var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
 var EV_POPSTATE = 'popstate';
-var EV_SCROLL = 'scrollend';
+// TODO scrollend isn't available in Safari: document or polyfill?
+var EV_SCROLLEND = 'scrollend';
 var EV_SUBMIT = 'submit';
 
 var CLICK_EVENT_PROPS = [
@@ -426,5 +427,5 @@ export {
     logger,
     minDOMApisSupported,
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,
-    EV_SCROLL, EV_SUBMIT
+    EV_SCROLLEND, EV_SUBMIT
 };

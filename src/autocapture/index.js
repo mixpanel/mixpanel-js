@@ -3,7 +3,7 @@ import { window } from '../window';
 import {
     getPropsForDOMEvent, logger, minDOMApisSupported,
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,
-    EV_SCROLL, EV_SUBMIT
+    EV_SCROLLEND, EV_SUBMIT
 } from './utils';
 
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
@@ -213,14 +213,14 @@ Autocapture.prototype.initPageviewTracking = function() {
 };
 
 Autocapture.prototype.initScrollTracking = function() {
-    window.removeEventListener(EV_SCROLL, this.listenerScroll);
+    window.removeEventListener(EV_SCROLLEND, this.listenerScroll);
 
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
     }
     logger.log('Initializing scroll tracking');
 
-    this.listenerScroll = window.addEventListener(EV_SCROLL, safewrap(function() {
+    this.listenerScroll = window.addEventListener(EV_SCROLLEND, safewrap(function() {
         if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
             return;
         }
