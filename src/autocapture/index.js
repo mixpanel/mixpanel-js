@@ -265,6 +265,7 @@ Autocapture.prototype.initSubmitTracking = function() {
     }.bind(this));
 };
 
+// TODO integrate error_reporter from mixpanel instance
 safewrapClass(Autocapture);
 
 export { Autocapture };
