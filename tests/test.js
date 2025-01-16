@@ -1171,7 +1171,7 @@
         });
 
         test("init accepts mp_loader config", 1, function() {
-            mixpanel.init('mp-loader-test-token', {mp_loader: 'gtm-wrapper'}, 'mp_loader_test');
+            mixpanel.init('mp-loader-test-token', {mp_loader: 'gtm-wrapper', batch_requests: false}, 'mp_loader_test');
 
             var event = mixpanel.mp_loader_test.track("check current url (loader)", {});
             var props = event.properties;
