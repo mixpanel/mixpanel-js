@@ -8204,7 +8204,8 @@ var EV_CLICK = 'click';
 var EV_HASHCHANGE = 'hashchange';
 var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
 var EV_POPSTATE = 'popstate';
-var EV_SCROLL = 'scrollend';
+// TODO scrollend isn't available in Safari: document or polyfill?
+var EV_SCROLLEND = 'scrollend';
 var EV_SUBMIT = 'submit';
 
 var CLICK_EVENT_PROPS = [
@@ -8365,7 +8366,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
             };
 
             if (captureTextContent) {
-                var elementText = getSafeText(target);
+                elementText = getSafeText(target);
                 if (elementText && elementText.length) {
                     props['$el_text'] = elementText;
                 }
@@ -8379,6 +8380,14 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 });
                 target = guessRealClickTarget(ev);
             }
+            // prioritize text content from "real" click target if different from original target
+            if (captureTextContent) {
+                var elementText = getSafeText(target);
+                if (elementText && elementText.length) {
+                    props['$el_text'] = elementText;
+                }
+            }
+
             if (target) {
                 var targetProps = getPropertiesFromElement(target);
                 props['$target'] = targetProps;
@@ -8430,12 +8439,11 @@ function guessRealClickTarget(ev) {
     var composedPath = ev['composedPath']();
     for (var i = 0; i < composedPath.length; i++) {
         var node = composedPath[i];
-        var tagName = node.tagName && node.tagName.toLowerCase();
         if (
-            tagName === 'a' ||
-            tagName === 'button' ||
-            tagName === 'input' ||
-            tagName === 'select' ||
+            isTag(node, 'a') ||
+            isTag(node, 'button') ||
+            isTag(node, 'input') ||
+            isTag(node, 'select') ||
             (node.getAttribute && node.getAttribute('role') === 'button')
         ) {
             target = node;
@@ -8449,12 +8457,12 @@ function guessRealClickTarget(ev) {
 }
 
 /*
- * Check whether an element has nodeType Node.ELEMENT_NODE
- * @param {Element} el - element to check
- * @returns {boolean} whether el is of the correct nodeType
+ * Check whether a DOM node has nodeType Node.ELEMENT_NODE
+ * @param {Node} node - node to check
+ * @returns {boolean} whether node is of the correct nodeType
  */
-function isElementNode(el) {
-    return el && el.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
+function isElementNode(node) {
+    return node && node.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
 }
 
 /*
@@ -8472,12 +8480,12 @@ function isTag(el, tag) {
 }
 
 /*
- * Check whether an element has nodeType Node.TEXT_NODE
- * @param {Element} el - element to check
- * @returns {boolean} whether el is of the correct nodeType
+ * Check whether a DOM node is a TEXT_NODE
+ * @param {Node} node - node to check
+ * @returns {boolean} whether node is of type Node.TEXT_NODE
  */
-function isTextNode(el) {
-    return el && el.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
+function isTextNode(node) {
+    return node && node.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
 }
 
 function minDOMApisSupported() {
@@ -8490,7 +8498,7 @@ function minDOMApisSupported() {
 }
 
 /*
- * Check whether a DOM event should be "tracked" or if it may contain sentitive data
+ * Check whether a DOM event should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
  * @param {Element} el - element to check
  * @param {Event} ev - event to check
@@ -8519,7 +8527,7 @@ function shouldTrackDomEvent(el, ev) {
 }
 
 /*
- * Check whether a DOM element should be "tracked" or if it may contain sentitive data
+ * Check whether a DOM element should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
  * @param {Element} el - element to check
  * @returns {boolean} whether the element should be tracked
@@ -8579,7 +8587,7 @@ function shouldTrackElement(el) {
 
 
 /*
- * Check whether a string value should be "tracked" or if it may contain sentitive data
+ * Check whether a string value should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
  * @param {string} value - string value to check
  * @returns {boolean} whether the element should be tracked
@@ -8769,7 +8777,10 @@ Autocapture.prototype.initPageviewTracking = function() {
     logger.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
-    var tracked = this.mp.track_pageview(DEFAULT_PROPS);
+    var tracked = false;
+    if (!this.currentUrlBlocked()) {
+        tracked = this.mp.track_pageview(DEFAULT_PROPS);
+    }
     if (tracked) {
         previousTrackedUrl = _.info.currentUrl();
     }
@@ -8795,6 +8806,10 @@ Autocapture.prototype.initPageviewTracking = function() {
         };
     }
     this.listenerLocationchange = win.addEventListener(EV_MP_LOCATION_CHANGE, safewrap(function() {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
         var currentUrl = _.info.currentUrl();
         var shouldTrack = false;
         var trackPageviewOption = this.pageviewTrackingConfig();
@@ -8816,14 +8831,14 @@ Autocapture.prototype.initPageviewTracking = function() {
 };
 
 Autocapture.prototype.initScrollTracking = function() {
-    win.removeEventListener(EV_SCROLL, this.listenerScroll);
+    win.removeEventListener(EV_SCROLLEND, this.listenerScroll);
 
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
     }
     logger.log('Initializing scroll tracking');
 
-    this.listenerScroll = win.addEventListener(EV_SCROLL, safewrap(function() {
+    this.listenerScroll = win.addEventListener(EV_SCROLLEND, safewrap(function() {
         if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
             return;
         }
@@ -8861,6 +8876,7 @@ Autocapture.prototype.initSubmitTracking = function() {
     }.bind(this));
 };
 
+// TODO integrate error_reporter from mixpanel instance
 safewrapClass(Autocapture);
 
 /* eslint camelcase: "off" */
@@ -11925,6 +11941,10 @@ MixpanelLib.prototype.set_config = function(config) {
             this['persistence'].update_config(this['config']);
         }
         Config.DEBUG = Config.DEBUG || this.get_config('debug');
+
+        if ('autocapture' in config && this.autocapture) {
+            this.autocapture.init();
+        }
     }
 };
 
