@@ -1749,6 +1749,10 @@ MixpanelLib.prototype.set_config = function(config) {
             this['persistence'].update_config(this['config']);
         }
         Config.DEBUG = Config.DEBUG || this.get_config('debug');
+
+        if ('autocapture' in config && this.autocapture) {
+            this.autocapture.init();
+        }
     }
 };
 

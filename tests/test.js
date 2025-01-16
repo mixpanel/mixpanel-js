@@ -4112,6 +4112,37 @@
                 same(this.requests.length, 2, "URL change should have fired request");
                 same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
             });
+
+            test("autocapture can be turned on and off with set_config ", 6, function() {
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.pushState({ path: next_url }, '', next_url);
+
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: false,
+                    batch_requests: false
+                }, 'acconfig');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+
+                mixpanel.acconfig.set_config({autocapture: true});
+
+                same(this.requests.length, 1, "autocapture init should fire request");
+                var last_event = getRequestData(this.requests[0]);
+                same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 2, "click event should have fired request");
+                same(getRequestData(this.requests[1]).event, "$mp_click", "last request should be $mp_click event");
+
+                mixpanel.acconfig.set_config({autocapture: false});
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 2, "click event should not have fired request");
+            });
         }
 
         if (USE_XHR && window.localStorage) {
