@@ -233,6 +233,7 @@ describe('_.isBlockedUA', function() {
     'Screaming Frog SEO Spider/12.3',
     'Mozilla/5.0 (Linux; Android 7.0; Moto G (4)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4695.0 Mobile Safari/537.36 Chrome-Lighthouse',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.2.5 (KHTML\, like Gecko) Version/8.0.2 Safari/600.2.5 (Amazonbot/0.1; +https://developer.amazon.com/support/amazonbot)',
+    'Mozilla/5.0 (compatible; YandexRenderResourcesBot/1.0; +http://yandex.com/bots)',
   ].forEach((ua) => {
     it(`should block bot user agent: ${ua}`, () => {
       expect(_.isBlockedUA(ua)).to.be.true;
