@@ -3929,8 +3929,8 @@
                 var props = last_event.properties;
                 same(props.$el_tag_name, "a", "click event should include tag name");
                 same(props.$el_classes, [anchor.name], "click event should include classes");
-                ok(props.$innerHeight > 0, "click event should include viewport height");
-                ok(props.$innerWidth > 0, "click event should include viewport width");
+                ok(props.$viewportHeight > 0, "click event should include viewport height");
+                ok(props.$viewportWidth > 0, "click event should include viewport width");
                 notOk('$el_id' in props, "click event should not include id when not present");
             });
 
