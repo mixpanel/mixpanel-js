@@ -160,14 +160,15 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
         }, this);
 
         if (!explicitNoTrack) {
+            var docElement = document['documentElement'];
             props = {
                 '$event_type': ev.type,
                 '$host': window.location.host,
                 '$pathname': window.location.pathname,
                 '$elements':  elementsJson,
                 '$el_attr__href': href,
-                '$innerHeight': window['innerHeight'],
-                '$innerWidth': window['innerWidth']
+                '$viewportHeight': Math.max(docElement['clientHeight'], window['innerHeight'] || 0),
+                '$viewportWidth': Math.max(docElement['clientWidth'], window['innerWidth'] || 0)
             };
 
             if (captureTextContent) {
