@@ -4509,7 +4509,7 @@ var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0-rc1'
+    LIB_VERSION: '2.59.0-rc2'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -5816,7 +5816,7 @@ var BLOCKED_UA_STRS = [
     'pinterest',
     'screaming frog',
     'yahoo! slurp',
-    'yandexbot',
+    'yandex',
 
     // a whole bunch of goog-specific crawlers
     // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers
@@ -8354,14 +8354,15 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
         }, this);
 
         if (!explicitNoTrack) {
+            var docElement = document$1['documentElement'];
             props = {
                 '$event_type': ev.type,
                 '$host': win.location.host,
                 '$pathname': win.location.pathname,
                 '$elements':  elementsJson,
                 '$el_attr__href': href,
-                '$innerHeight': win['innerHeight'],
-                '$innerWidth': win['innerWidth']
+                '$viewportHeight': Math.max(docElement['clientHeight'], win['innerHeight'] || 0),
+                '$viewportWidth': Math.max(docElement['clientWidth'], win['innerWidth'] || 0)
             };
 
             if (captureTextContent) {

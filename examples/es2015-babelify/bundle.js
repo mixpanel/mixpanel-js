@@ -11414,14 +11414,15 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
         }, this);
 
         if (!explicitNoTrack) {
+            var docElement = _utils.document['documentElement'];
             props = {
                 '$event_type': ev.type,
                 '$host': _window.window.location.host,
                 '$pathname': _window.window.location.pathname,
                 '$elements': elementsJson,
                 '$el_attr__href': href,
-                '$innerHeight': _window.window['innerHeight'],
-                '$innerWidth': _window.window['innerWidth']
+                '$viewportHeight': Math.max(docElement['clientHeight'], _window.window['innerHeight'] || 0),
+                '$viewportWidth': Math.max(docElement['clientWidth'], _window.window['innerWidth'] || 0)
             };
 
             if (captureTextContent) {
@@ -11688,7 +11689,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0-rc1'
+    LIB_VERSION: '2.59.0-rc2'
 };
 
 exports['default'] = Config;
@@ -18185,7 +18186,7 @@ _.UUID = (function () {
 // _.isBlockedUA()
 // This is to block various web spiders from executing our JS and
 // sending false tracking data
-var BLOCKED_UA_STRS = ['ahrefsbot', 'ahrefssiteaudit', 'amazonbot', 'baiduspider', 'bingbot', 'bingpreview', 'chrome-lighthouse', 'facebookexternal', 'petalbot', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandexbot',
+var BLOCKED_UA_STRS = ['ahrefsbot', 'ahrefssiteaudit', 'amazonbot', 'baiduspider', 'bingbot', 'bingpreview', 'chrome-lighthouse', 'facebookexternal', 'petalbot', 'pinterest', 'screaming frog', 'yahoo! slurp', 'yandex',
 
 // a whole bunch of goog-specific crawlers
 // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers
