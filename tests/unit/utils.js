@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 
 import { extract_domain, _, document } from '../../src/utils';
 import { window } from '../../src/window';
@@ -238,5 +239,99 @@ describe('_.isBlockedUA', function() {
     it(`should block bot user agent: ${ua}`, () => {
       expect(_.isBlockedUA(ua)).to.be.true;
     });
+  });
+});
+
+
+describe('_.batchedThrottle', function () {
+  let clock = null;
+
+  beforeEach(function() {
+    if (clock) {
+      clock.restore();
+    }
+    clock = sinon.useFakeTimers();
+  });
+
+  afterEach(function() {
+    if (clock) {
+      clock.restore();
+    }
+    clock = null;
+  });
+
+  it(`throttles invocations and executes callback with throttled arguments`, async function () {
+    const callback = sinon.spy();
+    const throttledCallback = _.batchedThrottle(callback, 100);
+
+    throttledCallback(1);
+    throttledCallback(2);
+    throttledCallback(3);
+
+    await clock.tickAsync(50);
+    expect(callback.callCount).to.equal(0);
+    await clock.tickAsync(51);
+
+    expect(callback.callCount).to.equal(1);
+    expect(callback.args[0][0]).to.deep.equal([1, 2, 3]);
+  });
+
+
+  it(`throttled fn returns a promise that resolves to the return value of the callback`, async function () {
+    const callback = sinon.spy((args) => {
+      return `resolved ${args.join(',')}`;
+    });
+    const throttledCallback = _.batchedThrottle(callback, 100);
+
+    var firstCbPromise = throttledCallback(1).then((ret) => {
+      expect(callback.callCount).to.equal(1);
+      expect(callback.args[0][0]).to.deep.equal([1, 2, 3]);
+      expect(ret).to.equal(`resolved 1,2,3`);
+      return ret;
+    });
+    throttledCallback(2);
+    throttledCallback(3);
+
+    clock.tick(100);
+    var returnVal = await firstCbPromise;
+    expect(returnVal).to.equal(`resolved 1,2,3`);
+  });
+
+  it(`supports a callback that returns a promise`, async function () {
+    const callback = sinon.spy((args) => {
+      return Promise.resolve(`resolved ${args.join(',')}`);
+    });
+    const throttledCallback = _.batchedThrottle(callback, 100);
+
+    var firstCbPromise = throttledCallback(1).then((ret) => {
+      expect(callback.callCount).to.equal(1);
+      expect(callback.args[0][0]).to.deep.equal([1, 2, 3]);
+      return ret;
+    });
+    throttledCallback(2);
+    throttledCallback(3);
+
+    clock.tick(100);
+    var returnVal = await firstCbPromise;
+    expect(returnVal).to.equal(`resolved 1,2,3`);
+  });
+
+  it(`can chain a callback that returns a rejected promise`, async function () {
+    const callback = sinon.spy((args) => {
+      return Promise.reject(`rejected ${args.join(',')}`);
+    });
+    const throttledCallback = _.batchedThrottle(callback, 100);
+
+    var firstCbPromise = throttledCallback(1).catch((ret) => {
+      expect(callback.callCount).to.equal(1);
+      expect(callback.args[0][0]).to.deep.equal([1, 2, 3]);
+      return ret;
+    });
+    throttledCallback(2);
+    throttledCallback(3);
+
+    clock.tick(100);
+    var returnVal = await firstCbPromise;
+    expect(returnVal).to.equal(`rejected 1,2,3`);
   });
 });

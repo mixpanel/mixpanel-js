@@ -824,7 +824,8 @@ MixpanelLib.prototype.init_batchers = function() {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
-                    usePersistence: true
+                    usePersistence: true,
+                    enqueueThrottleMs: 10,
                 }
             );
         }, this);

@@ -20,7 +20,8 @@ var RequestBatcher = function(storageKey, options) {
         errorReporter: _.bind(this.reportError, this),
         queueStorage: options.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
-        usePersistence: options.usePersistence
+        usePersistence: options.usePersistence,
+        enqueueThrottleMs: options.enqueueThrottleMs
     });
 
     this.libConfig = options.libConfig;
@@ -50,14 +51,6 @@ var RequestBatcher = function(storageKey, options) {
 RequestBatcher.prototype.enqueue = function(item) {
     return this.queue.enqueue(item, this.flushInterval);
 };
-
-/**
- * Add many items to queue.
- */
-RequestBatcher.prototype.enqueueMany = function(items) {
-    return this.queue.enqueueMany(items, this.flushInterval);
-};
-
 
 /**
  * Start flushing batches at the configured time interval. Must call

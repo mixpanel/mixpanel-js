@@ -99,6 +99,7 @@ var SessionRecording = function(options) {
         sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
         queueStorage: this.queueStorage,
         usePersistence: true,
+        enqueueThrottleMs: 10,
     });
 };
 
@@ -173,35 +174,17 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         blockSelector = undefined;
     }
 
-    // create a throttled emit function to batch enqueue events happening in rapid succession
-    // rrweb can emit mutation events at a high rate, and trying to enqueue them all individually will
-    // lead to some lock contention and therefore increased latency (and potential data loss)
-    // TODO(jakub): leaky abstraction - should be able to build this into request queue / batcher?
-    var emitTimer = null;
-    var throttledEvents = [];
-    var throttledEmit = _.bind(function (ev) {
-        if (isUserEvent(ev)) {
-            if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
-                // start flushing again after user activity
-                this.batcher.start();
-            }
-            resetIdleTimeout();
-        }
-
-        throttledEvents.push(ev);
-        if (emitTimer) {
-            return;
-        }
-
-        emitTimer = setTimeout(_.bind(function () {
-            this.batcher.enqueueMany(throttledEvents);
-            throttledEvents = [];
-            emitTimer = null;
-        }, this), 10);
-    }, this);
-
     this._stopRecording = this._rrwebRecord({
-        'emit': throttledEmit,
+        'emit': _.bind(function (ev) {
+            if (isUserEvent(ev)) {
+                if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
+                    // start flushing again after user activity
+                    this.batcher.start();
+                }
+                resetIdleTimeout();
+            }
+            this.batcher.enqueue(ev);
+        }, this),
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.getConfig('record_collect_fonts'),

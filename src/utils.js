@@ -1,6 +1,6 @@
 /* eslint camelcase: "off", eqeqeq: "off" */
 import Config from './config';
-import { NpoPromise } from './promise-polyfill';
+import { NpoPromise, Promise } from './promise-polyfill';
 import { window } from './window';
 
 // Maximum allowed session recording length
@@ -1678,6 +1678,31 @@ _.info = {
     }
 };
 
+/**
+ * Returns a throttled function that will only run at most every `waitMs` and returns a promise that resolves with the next invocation.
+ * Throttled calls will build up a batch of args and invoke the callback with all args since the last invocation.
+ */
+_.batchedThrottle = function (fn, waitMs) {
+    var timeoutPromise = null;
+    var throttledItems = [];
+    return function (item) {
+        var self = this;
+        throttledItems.push(item);
+
+        if (!timeoutPromise) {
+            timeoutPromise = new Promise(function (resolve) {
+                setTimeout(function () {
+                    var returnValue = fn.apply(self, [throttledItems]);
+                    timeoutPromise = null;
+                    throttledItems = [];
+                    resolve(returnValue);
+                }, waitMs);
+            });
+        }
+        return timeoutPromise;
+    };
+};
+
 var cheap_guid = function(maxlen) {
     var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
     return maxlen ? guid.substring(0, maxlen) : guid;
@@ -1729,17 +1754,18 @@ JSONStringify = JSONStringify || _.JSONEncode;
 JSONParse = JSONParse || _.JSONDecode;
 
 // EXPORTS (for closure compiler)
-_['toArray']                = _.toArray;
-_['isObject']               = _.isObject;
-_['JSONEncode']             = _.JSONEncode;
-_['JSONDecode']             = _.JSONDecode;
-_['isBlockedUA']            = _.isBlockedUA;
-_['isEmptyObject']          = _.isEmptyObject;
+_['batchedThrottle']        = _.batchedThrottle;
 _['info']                   = _.info;
-_['info']['device']         = _.info.device;
 _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
+_['info']['device']         = _.info.device;
 _['info']['properties']     = _.info.properties;
+_['isBlockedUA']            = _.isBlockedUA;
+_['isEmptyObject']          = _.isEmptyObject;
+_['isObject']               = _.isObject;
+_['JSONDecode']             = _.JSONDecode;
+_['JSONEncode']             = _.JSONEncode;
+_['toArray']                = _.toArray;
 _['NPO']                    = NpoPromise;
 
 export {

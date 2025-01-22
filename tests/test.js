@@ -4411,6 +4411,7 @@
                     same(data.event, 'callback test 1', "should have passed enqueued data to callback");
                     start();
                 });
+                this.clock.tickAsync(10);
             });
 
             asyncTest('failure to enqueue in localStorage causes immediate track request', 3, function() {
