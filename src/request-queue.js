@@ -60,8 +60,6 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
     return this.enqueueMany([item], flushInterval);
 };
 
-var lockTimes = [];
-
 /**
  * Add one item to queues (memory and localStorage). The queued entry includes
  * the given item along with an auto-generated ID and a "flush-after" timestamp.

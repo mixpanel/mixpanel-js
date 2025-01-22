@@ -1,6 +1,8 @@
-import {record} from 'rrweb';
-
+import { record } from 'rrweb';
+import { Promise } from '../promise-polyfill';
 import { SessionRecording } from './session-recording';
+import { RecordingRegistry } from './registry';
+
 import { console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
 
@@ -9,15 +11,14 @@ var logger = console_with_prefix('recorder');
 /**
  * Recorder API: bundles rrweb and and exposes methods to start and stop recordings.
  * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
- * @param {import('../recording-registry').RecordingRegistry} [options.recordingRegistry] - reference to the recording registry
 */
-var MixpanelRecorder = function(options) {
-    this.mixpanelInstance = options.mixpanelInstance;
+var MixpanelRecorder = function(mixpanelInstance) {
+    this.mixpanelInstance = mixpanelInstance;
 
     /**
-     * @type {import('../recording-registry').RecordingRegistry}
+     * @member {import('./registry').RecordingRegistry}
      */
-    this.recordingRegistry = options.recordingRegistry;
+    this.recordingRegistry = new RecordingRegistry({mixpanelInstance: this.mixpanelInstance, errorReporter: logger.error});
     this.activeRecording = null;
 };
 
@@ -42,18 +43,26 @@ MixpanelRecorder.prototype.startRecording = function(options) {
         this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
     }, this);
 
-    this.activeRecording = new SessionRecording({
+    /**
+     * @type {import('./session-recording').SessionRecordingOptions}
+     */
+    var sessionRecordingOptions = {
         mixpanelInstance: this.mixpanelInstance,
         onBatchSent: onBatchSent,
         onIdleTimeout: onIdleTimeout,
         onMaxLengthReached: onMaxLengthReached,
         replayId: _.UUID(),
         rrwebRecord: record,
-        serializedRecording: options.activeSerializedRecording
-    });
+    };
+
+    if (options.activeSerializedRecording) {
+        this.activeRecording = SessionRecording.deserialize(options.activeSerializedRecording, sessionRecordingOptions);
+    } else {
+        this.activeRecording = new SessionRecording(sessionRecordingOptions);
+    }
 
     this.activeRecording.startRecording(options.shouldStopBatcher);
-    this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
+    return this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
@@ -69,6 +78,26 @@ MixpanelRecorder.prototype.pauseRecording = function() {
         this.activeRecording.stopRecording();
     }
 };
+
+MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
+    if (this.activeRecording && this.activeRecording.isRrwebStopped()) {
+        this.activeRecording.startRecording(false);
+        return Promise.resolve(null);
+    }
+
+    return this.recordingRegistry.getActiveRecording()
+        .then(_.bind(function (activeSerializedRecording) {
+            if (activeSerializedRecording) {
+                return this.startRecording({activeSerializedRecording: activeSerializedRecording});
+            } else if (startNewIfInactive) {
+                this.startRecording({shouldStopBatcher: false});
+            } else {
+                logger.info('No resumable recording found.');
+                return null;
+            }
+        }, this));
+};
+
 
 MixpanelRecorder.prototype.resetRecording = function () {
     this.stopRecording();

@@ -23,8 +23,8 @@ describe(`RequestBatcher`, function() {
   let fakeSendRequest = null;
 
   function configureBatchSize(batchSize) {
-      libConfig.batch_size = batchSize;
-      batcher.resetBatchSize();
+    libConfig.batch_size = batchSize;
+    batcher.resetBatchSize();
   }
 
   function getLocalStorageItems() {

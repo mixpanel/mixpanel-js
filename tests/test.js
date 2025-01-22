@@ -6412,6 +6412,7 @@
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 4, 'all events are flushed, no more requests are made');
                         mixpanel.recordertest.stop_session_recording();
+                        this.blobConstructorSpy.restore();
                         start();
                     }, this));
             });
@@ -6475,7 +6476,7 @@
                         mixpanel.recordertest.pause_session_recording();
                         delete mixpanel['recordertest'];
                         delete window['__mp_recorder'];
-                        window.sessionStorage.removeItem('mp_recording_tab_lock_RECORDER_TEST_TOKEN');
+                        window.sessionStorage.removeItem('mp_tab_lock_recordertest_RECORDER_TEST_TOKEN');
                         document.head.removeChild(document.querySelector('script[src="' + recorderSrc + '"]'))
 
                         // some time passes like a page load
@@ -6510,7 +6511,6 @@
                 this.randomStub.restore();
                 this.initMixpanelRecorder({record_idle_timeout_ms: 60 * 1000});
                 mixpanel.recordertest.start_session_recording();
-                this.assertRecorderScript(true);
                 
                 // fake the fetch / response promises since we're testing callback logic
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
@@ -6549,10 +6549,8 @@
                     }, this))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 1, 'still just the one fetch request, mutation is ignored');
+                        // mouse click should start flushing a new recording
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(4);
-                    }, this))
-                    .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(2))
