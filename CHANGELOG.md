@@ -1,3 +1,7 @@
+**2.59.0** (21 Jan 2025)
+- Initial Autocapture support
+- Block more crawlers (AmazonBot, more Yandex bots)
+
 **2.58.0** (16 Dec 2024)
 - Added canvas recording option
 - Session Replay checkpoint events now include a starting URL
