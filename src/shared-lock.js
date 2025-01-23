@@ -1,9 +1,7 @@
 import { Promise } from './promise-polyfill';
-import { console_with_prefix, localStorageSupported, _, cheap_guid } from './utils'; // eslint-disable-line camelcase
-import { window } from './window';
+import { console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
-var SDK_INSTANCE_ID = cheap_guid();
 
 /**
  * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
@@ -42,7 +40,7 @@ var SharedLock = function(key, options) {
 SharedLock.prototype.withLock = function(lockedCB, pid) {
     var Promise = this.promiseImpl;
     return new Promise(_.bind(function (resolve, reject) {
-        var i = pid || (new Date().getTime() + '|' + Math.random() + '|' + SDK_INSTANCE_ID);
+        var i = pid || (new Date().getTime() + '|' + Math.random());
         var startTime = new Date().getTime();
 
         var key = this.storageKey;
@@ -56,16 +54,11 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
 
         var delay = function(cb) {
             if (new Date().getTime() - startTime > timeoutMS) {
-                // only clear the lock when it's a different tab that is holding it (likely closed)
-                // if the current tab is holding the lock then we might clear it while the callback is still running, violating mutex
-                var valY = storage.getItem(keyY);
-                if (valY && valY.indexOf('|' + SDK_INSTANCE_ID) === -1) {
-                    logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
-                    storage.removeItem(keyZ);
-                    storage.removeItem(keyY);
-                    loop();
-                    return;
-                }
+                logger.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                storage.removeItem(keyZ);
+                storage.removeItem(keyY);
+                loop();
+                return;
             }
             setTimeout(function() {
                 try {
