@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, sessionStorageSupported, slice } from './utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
 import { FormTracker, LinkTracker } from './dom-trackers';
@@ -377,8 +377,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
  * Assigns a unique ID to this tab by leveraging sessionStorage.
  */
 MixpanelLib.prototype._init_tab_id = function() {
-    // TODO(jakub): more thorough check if we can use sessionStorage, there's something in utils for localStorage
-    if (window.sessionStorage) {
+    if (sessionStorageSupported(window.sessionStorage)) {
         var key_suffix = this.get_config('name') + '_' + this.get_config('token');
         var tab_id_key = 'mp_tab_id_' + key_suffix;
         var tab_lock_key = 'mp_tab_lock_' + key_suffix;
@@ -398,7 +397,7 @@ MixpanelLib.prototype._init_tab_id = function() {
 };
 
 MixpanelLib.prototype.get_tab_id = function () {
-    return this.tab_id;
+    return this.tab_id || null;
 };
 
 MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpanelLib(function(force_start) {
@@ -410,9 +409,8 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
     // optimistic check to see if this tab was previously recording.
     // if so, we can load the recording bundle which will determine if it should actually resume the recording.
     var tab_had_active_recording = false;
-    var active_recording_key = 'mp_record_tab_id_' + this.tab_id;
-    // TODO(jakub): more thorough check if we can use sessionStorage, there's something in utils for localStorage
-    if (window.sessionStorage && this.tab_id) {
+    var active_recording_key = this._get_active_recording_key();
+    if (sessionStorageSupported(window.sessionStorage) && active_recording_key) {
         tab_had_active_recording = !!window.sessionStorage.getItem(active_recording_key);
     }
 
@@ -427,7 +425,10 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
             } else {
                 this._recorder['startRecording']();
             }
-            window.sessionStorage.setItem(active_recording_key, '1');
+
+            if (sessionStorageSupported(window.sessionStorage) && active_recording_key) {
+                window.sessionStorage.setItem(active_recording_key, '1');
+            }
         }, this);
 
         if (_.isUndefined(window['__mp_recorder'])) {
@@ -445,8 +446,8 @@ MixpanelLib.prototype.start_session_recording = function () {
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
         this._recorder['stopRecording']();
-        var active_recording_key = 'mp_record_tab_id_' + this.tab_id;
-        if (window.sessionStorage) {
+        var active_recording_key = this._get_active_recording_key();
+        if (sessionStorageSupported(window.sessionStorage) && active_recording_key) {
             window.sessionStorage.removeItem(active_recording_key);
         }
     }
@@ -492,6 +493,15 @@ MixpanelLib.prototype._get_session_replay_id = function () {
 // private method surfaced for testing purposes, don't try to use
 MixpanelLib.prototype.__rec_enqueue_promise = function () {
     return this._recorder['activeRecording']['__lastEnqueuePromise'];
+};
+
+MixpanelLib.prototype._get_active_recording_key = function () {
+    var key = null;
+    var tab_id = this.get_tab_id();
+    if (tab_id) {
+        key = 'mp_record_tab_id_' + tab_id;
+    }
+    return key;
 };
 
 // Private methods

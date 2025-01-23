@@ -1080,15 +1080,9 @@ _.cookie = {
     }
 };
 
-var _localStorageSupported = null;
-var localStorageSupported = function(storage, forceCheck) {
-    if (_localStorageSupported !== null && !forceCheck) {
-        return _localStorageSupported;
-    }
-
+var _testStorage = function (storage) {
     var supported = true;
     try {
-        storage = storage || window.localStorage;
         var key = '__mplss_' + cheap_guid(8),
             val = 'xyz';
         storage.setItem(key, val);
@@ -1099,9 +1093,23 @@ var localStorageSupported = function(storage, forceCheck) {
     } catch (err) {
         supported = false;
     }
-
-    _localStorageSupported = supported;
     return supported;
+};
+
+var _localStorageSupported = null;
+var localStorageSupported = function(storage, forceCheck) {
+    if (_localStorageSupported !== null && !forceCheck) {
+        return _localStorageSupported;
+    }
+    return _localStorageSupported = _testStorage(storage || window.localStorage);
+};
+
+var _sessionStorageSupported = null;
+var sessionStorageSupported = function(storage, forceCheck) {
+    if (_sessionStorageSupported !== null && !forceCheck) {
+        return _sessionStorageSupported;
+    }
+    return _sessionStorageSupported = _testStorage(storage || window.sessionStorage);
 };
 
 // _.localStorage
@@ -1784,6 +1792,7 @@ export {
     navigator,
     safewrap,
     safewrapClass,
+    sessionStorageSupported,
     slice,
     userAgent,
 };
