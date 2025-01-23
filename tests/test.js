@@ -5870,39 +5870,19 @@
                         }, this)
                     };
 
-                    // waits for the async enqueue operation to complete, otherwise fake timers may advance while it's still in progress
-                    this.waitForQueueLength = function (expectedLength) {
-                        return new Promise(_.bind(function (resolve, reject) {
-                            var checkQueueLengthTimeout = realSetTimeout(function() {
-                                realClearInterval(checkQueueLengthInterval);
-                                realClearTimeout(checkQueueLengthTimeout);
-                                reject('timed out waiting for queue length to be ' + expectedLength);
-                            }, 50000);
-                            var checkQueueLengthInterval = realSetInterval(_.bind(function () {
-                                var queueKey = '__mprec_recordertest_' + this.token + '_' + mixpanel.recordertest.get_session_recording_properties()['$mp_replay_id'];
-                                var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
-                                openRequest.onsuccess = function () {
-                                    var db = openRequest.result;
-                                    var transaction = db.transaction(allStores, 'readwrite');
-                                    var store = transaction.objectStore('mixpanelReplayEvents');
-                                    var req = store.get(queueKey);
-    
-                                    transaction.oncomplete = function () {
-                                        console.log(req.result);
-                                        if (req.result && req.result.length === expectedLength) {
-                                            realClearInterval(checkQueueLengthInterval);
-                                            realClearTimeout(checkQueueLengthTimeout)
-                                            resolve();
-                                        }
-                                    };
-                                }
-                                // realSetTimeout(resolve, 1000);
+                    this.waitForRecorderEnqueue = function () {
+                        // tick to advance the throttle
+                        this.clock.tick(10);
+                        // we need to reach in for the __rec_enqueue_promise() instead of using tickAsync because the enqeueue operation depends on 
+                        // IndexedDB transactions, so it's not guaranteed to be finished when the fake timer is advanced.
+                        return mixpanel.recordertest.__rec_enqueue_promise();
+                    };
 
-                                // advance clock so that SharedLock timers can run
-                                this.clock.tick(100);
-                            }, this), 20);
+                    this.waitForRecordingStarted = function () {
+                        return untilDonePromise(_.bind(function () {
+                            return Object.keys(mixpanel.recordertest.get_session_recording_properties()).length > 0;
                         }, this));
-                    }
+                    };
 
                     this.assertRecorderScript(false);
                     
@@ -6001,7 +5981,7 @@
                     this.waitForRecorderLoad({record_sessions_percent: 2})
                         .then(_.bind(function () {
                             // initial two rrweb captured events: meta and full snapshots
-                            return this.waitForQueueLength(2);
+                            return this.waitForRecorderEnqueue();
                         }, this))
                         .then(function() {
                             mixpanel.recordertest.stop_session_recording();
@@ -6032,7 +6012,7 @@
                     .then(_.bind(function () {
                         window.location.hash = 'my-url-2';
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
@@ -6052,7 +6032,7 @@
                         same(urlParams1.get("mp_lib"), "web");
 
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(1);
+                        return this.waitForRecorderEnqueue(1);
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
@@ -6083,7 +6063,7 @@
 
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
-                        return this.waitForQueueLength(2);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         ok(Boolean(mixpanel.recordertest.get_session_recording_properties()["$mp_replay_id"]), 'replay id is populated in recording properties')
@@ -6102,7 +6082,7 @@
                 mixpanel.recordertest.start_session_recording();
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
-                        return this.waitForQueueLength(2);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         var replay_url = new URL(mixpanel.recordertest.get_session_replay_url());
@@ -6131,7 +6111,7 @@
                     }, this))
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
@@ -6151,7 +6131,7 @@
                         simulateMouseClick(document.body);
                     }, this))
                     .then(_.bind(function () {
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
@@ -6166,7 +6146,7 @@
                         return this.clock.tickAsync(2 * 1000);
                     }, this))
                     .then(_.bind(function () {
-                        return this.waitForQueueLength(1);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         mixpanel.recordertest.stop_session_recording();
@@ -6213,7 +6193,7 @@
                 this.waitForRecorderLoad({record_sessions_percent: 10})
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000)
@@ -6258,7 +6238,7 @@
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000)
@@ -6269,7 +6249,7 @@
                         var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
                         same(urlParams.get("seq"), "0", "sends first sequence");
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(1);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000)
@@ -6315,7 +6295,7 @@
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000)
@@ -6363,7 +6343,7 @@
                 this.waitForRecorderLoad({record_sessions_percent: 10})
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000)
@@ -6377,7 +6357,7 @@
                         for  (var _i = 0; _i < 1000; _i++) {
                             simulateMouseClick(document.body);
                         }
-                        return this.waitForQueueLength(1000);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000)
@@ -6424,7 +6404,7 @@
                 this.waitForRecorderLoad({record_sessions_percent: 10, record_min_ms: 8000})
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(5 * 1000);
@@ -6453,7 +6433,7 @@
                     .then(_.bind(function () {
                         mixpanel.recordertest.identify('guy');
                         simulateMouseClick(document.body);
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
@@ -6488,8 +6468,11 @@
                         return this.waitForRecorderLoad();
                     }, this))
                     .then(_.bind(function () {
-                        // previous mouse click + 2 rrweb initial events
-                        return this.waitForQueueLength(3);
+                        // we have to wait for the recording registry to get the active recording from IDB
+                        return this.waitForRecordingStarted();
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
@@ -6524,7 +6507,7 @@
                 var replayId1 = null;
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
-                        return this.waitForQueueLength(2);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
@@ -6543,7 +6526,7 @@
                     .then(_.bind(function () {
                         // simulate a mutation event to ensure we don't try sending it until there's a user event
                         document.body.appendChild(document.createElement('div'));
-                        return this.waitForQueueLength(3);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
@@ -6579,7 +6562,6 @@
                 this.randomStub.returns(0.02);
 
                 this.initMixpanelRecorder({record_sessions_percent: 10});
-                this.assertRecorderScript(true);
                 this.randomStub.restore(); // restore the random stub after script is loaded for batcher uuid dedupe
 
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
@@ -6591,6 +6573,9 @@
 
                 var replayId1;
                 this.waitForRecorderLoad()
+                    .then(_.bind(function () {
+                        return this.waitForRecorderEnqueue();
+                    }, this))
                     .then(_.bind(function () {
                         mixpanel.recordertest.stop_session_recording();
                     }, this))
@@ -6612,6 +6597,9 @@
                         // start recording again while the first replay's request is in flight
                         mixpanel.recordertest.start_session_recording();
                         simulateMouseClick(document.body);
+                        return this.waitForRecorderEnqueue();
+                    }, this))
+                    .then(_.bind(function () {
                         return this.clock.tickAsync(15 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(2))
@@ -6620,7 +6608,8 @@
                         same(urlParams.get('seq'), '0', 'new replay uses the first sequence');
 
                         if (!IS_RECORDER_BUNDLED) {
-                            same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
+                            var expectedStartTimeMs = this.startTime + 10; // we waited for the first recording to enqueue (10ms throttle) before starting the second one
+                            same(urlParams.get('replay_start_time'), (expectedStartTimeMs / 1000).toString(), 'sends the right start time');
                         } else {
                             ok(true, 'cannot test replay_start_time when recorder is bundled, rrweb stores a reference to Date.now at the global level so stubs / fake timers will not work.');
                         }

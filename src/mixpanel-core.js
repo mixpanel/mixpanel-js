@@ -445,6 +445,10 @@ MixpanelLib.prototype.start_session_recording = function () {
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
         this._recorder['stopRecording']();
+        var active_recording_key = 'mp_record_tab_id_' + this.tab_id;
+        if (window.sessionStorage) {
+            window.sessionStorage.removeItem(active_recording_key);
+        }
     }
 };
 
@@ -483,6 +487,11 @@ MixpanelLib.prototype._get_session_replay_id = function () {
         replay_id = this._recorder['replayId'];
     }
     return replay_id || null;
+};
+
+// private method surfaced for testing purposes, don't try to use
+MixpanelLib.prototype.__rec_enqueue_promise = function () {
+    return this._recorder['activeRecording']['__lastEnqueuePromise'];
 };
 
 // Private methods
@@ -2170,12 +2179,16 @@ MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.protot
 MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
+// Test util exports
+MixpanelLib.prototype['__rec_enqueue_promise']              = MixpanelLib.prototype.__rec_enqueue_promise;
+
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
 MixpanelPersistence.prototype['update_search_keyword'] = MixpanelPersistence.prototype.update_search_keyword;
 MixpanelPersistence.prototype['update_referrer_info']  = MixpanelPersistence.prototype.update_referrer_info;
 MixpanelPersistence.prototype['get_cross_subdomain']   = MixpanelPersistence.prototype.get_cross_subdomain;
 MixpanelPersistence.prototype['clear']                 = MixpanelPersistence.prototype.clear;
+
 
 
 var instances = {};
