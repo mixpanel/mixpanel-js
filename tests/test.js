@@ -58,6 +58,10 @@
                     window.localStorage.clear();
                 }
 
+                if (window.sessionStorage) {
+                    window.sessionStorage.clear();
+                }
+
                 if (extra_teardown) {
                     extra_teardown.call(this);
                 }
@@ -307,6 +311,7 @@
             var interval;
             var timeout = realSetTimeout(function() {
                 realClearInterval(interval);
+                ok('false', 'untilDonePromise timed out');
                 reject('untilDonePromise timed out');
             }, 5000);
             interval = realSetInterval(function() {
@@ -4911,7 +4916,7 @@
 
         if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
 
-            mpmodule('GDPR', null, function() {
+            mpmodule('GDPR record', null, function() {
                 // module teardown: clean up lib in case there was an exception before individual test cleanup code
                 if (mixpanel.gdpr) {
                     clearLibInstance(mixpanel.gdpr);
@@ -5866,16 +5871,23 @@
                         return _.bind(function () {
                             return untilDonePromise(_.bind(function () {
                                 return this.fetchStub.getCalls().length === numCalls;
-                            }, this));
+                            }, this))
+                                .then(function () {
+                                    // waits for flush to complete (removing items from the queue after response)
+                                    return mixpanel.recordertest.__get_recorder().__flushPromise;
+                                });
                         }, this)
                     };
 
                     this.waitForRecorderEnqueue = function () {
                         // tick to advance the throttle
-                        this.clock.tick(10);
-                        // we need to reach in for the __rec_enqueue_promise() instead of using tickAsync because the enqeueue operation depends on 
-                        // IndexedDB transactions, so it's not guaranteed to be finished when the fake timer is advanced.
-                        return mixpanel.recordertest.__rec_enqueue_promise();
+                        window.__clock = this.clock
+                        return this.clock.tickAsync(10)
+                            .then(function () {
+                                // we need to reach in for the __enqueuePromise() instead of just using tickAsync because the enqeueue operation depends on IDB
+                                // IndexedDB transactions, so it's not guaranteed to be finished when the fake timer is advanced.
+                                return window.__recp = mixpanel.recordertest.__get_recorder().activeRecording.__enqueuePromise;
+                            });
                     };
 
                     this.waitForRecordingStarted = function () {
@@ -5913,7 +5925,9 @@
                                 }, this))
                         };
                     }
-                    window.sessionStorage.clear();
+                    window.sessionStorage.clear()
+                    window.localStorage.clear();
+                    clearAllLibInstances();
                     stop();
                     if (window.indexedDB) {
                         var allStores = ['mixpanelReplayEvents', 'mixpanelRecordingRegistry'];

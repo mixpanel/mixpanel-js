@@ -41,6 +41,7 @@ MixpanelRecorder.prototype.startRecording = function(options) {
 
     var onBatchSent = _.bind(function () {
         this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
+        this['__flushPromise'] = this.activeRecording.batcher._flushPromise;
     }, this);
 
     /**

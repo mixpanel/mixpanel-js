@@ -33,11 +33,6 @@ import {
  * Released under the MIT License.
  */
 
-// ==ClosureCompiler==
-// @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.8.min.js
-// ==/ClosureCompiler==
-
 /*
 SIMPLE STYLE GUIDE:
 
@@ -459,6 +454,12 @@ MixpanelLib.prototype.pause_session_recording = function () {
     }
 };
 
+MixpanelLib.prototype.resume_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['resumeRecording']();
+    }
+};
+
 MixpanelLib.prototype.get_session_recording_properties = function () {
     var props = {};
     var replay_id = this._get_session_replay_id();
@@ -490,11 +491,6 @@ MixpanelLib.prototype._get_session_replay_id = function () {
     return replay_id || null;
 };
 
-// private method surfaced for testing purposes, don't try to use
-MixpanelLib.prototype.__rec_enqueue_promise = function () {
-    return this._recorder['activeRecording']['__lastEnqueuePromise'];
-};
-
 MixpanelLib.prototype._get_active_recording_key = function () {
     var key = null;
     var tab_id = this.get_tab_id();
@@ -502,6 +498,11 @@ MixpanelLib.prototype._get_active_recording_key = function () {
         key = 'mp_record_tab_id_' + tab_id;
     }
     return key;
+};
+
+// "private" public method to reach into the recorder in test cases
+MixpanelLib.prototype.__get_recorder = function () {
+    return this._recorder;
 };
 
 // Private methods
@@ -2185,12 +2186,15 @@ MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.protot
 MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
 MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['pause_session_recording']            = MixpanelLib.prototype.pause_session_recording;
+MixpanelLib.prototype['resume_session_recording']           = MixpanelLib.prototype.resume_session_recording;
 MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
 MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
+MixpanelLib.prototype['get_tab_id']                         = MixpanelLib.prototype.get_tab_id;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
-// Test util exports
-MixpanelLib.prototype['__rec_enqueue_promise']              = MixpanelLib.prototype.__rec_enqueue_promise;
+// Exports intended only for testing
+MixpanelLib.prototype['__get_recorder']                     = MixpanelLib.prototype.__get_recorder;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;

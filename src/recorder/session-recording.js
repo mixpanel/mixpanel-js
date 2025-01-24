@@ -185,7 +185,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
             }
 
             // promise only used to await during tests
-            this.__lastEnqueuePromise = this.batcher.enqueue(ev);
+            this.__enqueuePromise = this.batcher.enqueue(ev);
         }, this),
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
