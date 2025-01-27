@@ -55,6 +55,7 @@ var NOOP = function () {};
  * @property {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
  * @property {Function} [options.rrwebRecord] - rrweb's `record` function
  * @property {Function} [options.onBatchSent] - callback when a batch of events is sent to the server
+ * @property {Storage} [options.sharedLockStorage] - optional storage for shared lock, used for test dependency injection
  */
 
 
@@ -98,6 +99,7 @@ var SessionRecording = function(options) {
         libConfig: RECORDER_BATCHER_LIB_CONFIG,
         sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
         queueStorage: this.queueStorage,
+        sharedLockStorage: options.sharedLockStorage,
         usePersistence: true,
         enqueueThrottleMs: 10,
     });

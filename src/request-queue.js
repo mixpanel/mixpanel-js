@@ -29,7 +29,6 @@ var RequestQueue = function (storageKey, options) {
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
         this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
-        this.queueStorage.init();
     }
     this.reportError = options.errorReporter || _.bind(logger.error, logger);
 
@@ -140,7 +139,7 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
             }, this))
             .then(_.bind(function (storedQueue) {
                 if (storedQueue.length) {
-                // item IDs already in batch; don't duplicate out of storage
+                    // item IDs already in batch; don't duplicate out of storage
                     var idsInBatch = {}; // poor man's Set
                     _.each(batch, function (item) {
                         idsInBatch[item['id']] = true;

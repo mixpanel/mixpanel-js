@@ -30,7 +30,7 @@ IDBStorageWrapper.prototype.init = function () {
     var self = this;
     if (!this.dbPromise) {
         this.dbPromise = new Promise(_.bind(function (resolve, reject) {
-            var openRequest = indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+            var openRequest = window.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
             openRequest.onerror = function () {
                 reject(openRequest.error);
             };
@@ -52,7 +52,7 @@ IDBStorageWrapper.prototype.init = function () {
 
     return this.dbPromise
         .then(function (dbOrError) {
-            if (dbOrError instanceof IDBDatabase) {
+            if (dbOrError instanceof window.IDBDatabase) {
                 return Promise.resolve();
             } else {
                 return Promise.reject(dbOrError);
