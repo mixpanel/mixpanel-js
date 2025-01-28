@@ -70,7 +70,7 @@ function getPreviousElementSibling(el) {
     }
 }
 
-function getPropertiesFromElement(el, blockAttrsSet) {
+function getPropertiesFromElement(el, blockAttrsSet, extraAttrs) {
     var props = {
         '$classes': getClassName(el).split(' '),
         '$tag_name': el.tagName.toLowerCase()
@@ -81,7 +81,7 @@ function getPropertiesFromElement(el, blockAttrsSet) {
     }
 
     if (shouldTrackElement(el)) {
-        _.each(TRACKED_ATTRS, function(attr) {
+        _.each(TRACKED_ATTRS.concat(extraAttrs), function(attr) {
             if (el.hasAttribute(attr) && !blockAttrsSet[attr]) {
                 var attrVal = el.getAttribute(attr);
                 if (shouldTrackValue(attrVal)) {
@@ -110,6 +110,7 @@ function getPropsForDOMEvent(ev, config) {
     var blockAttrs = config.blockAttrs || [];
     var blockSelectors = config.blockSelectors || [];
     var captureTextContent = config.captureTextContent || false;
+    var captureExtraAttrs = config.captureExtraAttrs || [];
 
     // convert array to set every time, as the config may have changed
     var blockAttrsSet = {};
@@ -165,7 +166,7 @@ function getPropsForDOMEvent(ev, config) {
                 });
             }
 
-            elementsJson.push(getPropertiesFromElement(el, blockAttrsSet));
+            elementsJson.push(getPropertiesFromElement(el, blockAttrsSet, captureExtraAttrs));
         }, this);
 
         if (!explicitNoTrack) {
@@ -179,6 +180,14 @@ function getPropsForDOMEvent(ev, config) {
                 '$viewportHeight': Math.max(docElement['clientHeight'], window['innerHeight'] || 0),
                 '$viewportWidth': Math.max(docElement['clientWidth'], window['innerWidth'] || 0)
             };
+            _.each(captureExtraAttrs, function(attr) {
+                if (!blockAttrsSet[attr] && target.hasAttribute(attr)) {
+                    var attrVal = target.getAttribute(attr);
+                    if (shouldTrackValue(attrVal)) {
+                        props['$el_attr__' + attr] = attrVal;
+                    }
+                }
+            });
 
             if (captureTextContent) {
                 elementText = getSafeText(target);
@@ -204,7 +213,7 @@ function getPropsForDOMEvent(ev, config) {
             }
 
             if (target) {
-                var targetProps = getPropertiesFromElement(target, blockAttrsSet);
+                var targetProps = getPropertiesFromElement(target, blockAttrsSet, captureExtraAttrs);
                 props['$target'] = targetProps;
                 // pull up more props onto main event props
                 props['$el_classes'] = targetProps['$classes'];

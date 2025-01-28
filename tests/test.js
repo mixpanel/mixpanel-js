@@ -4073,6 +4073,55 @@
                 ok("$attr-title" in props.$target, "click event target prop should include title attribute");
             });
 
+            test("autocapture captures attrs specified by capture_extra_attrs config", 5, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        block_attrs: ['href'],
+                        capture_extra_attrs: ['data-foo-bar']
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class("some link text");
+                anchor.e.onclick = function() { return false; }
+                anchor.e.setAttribute('href', '#foo');
+                anchor.e.setAttribute('data-foo-bar', 'baz');
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should fire request");
+                var last_event = getRequestData(this.requests[0]);
+                var props = last_event.properties;
+                notOk("$el_attr__href" in props, "click event should not include href attribute");
+                notOk("$attr-href" in props.$target, "click event target prop should not include href attribute");
+                same(props["$el_attr__data-foo-bar"], "baz", "click event should include data-foo-bar attribute");
+                same(props.$target["$attr-data-foo-bar"], "baz", "click event target prop should include data-foo-bar attribute");
+            });
+
+            test("autocapture block_attrs config takes precedence over capture_extra_attrs", 3, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        block_attrs: ['data-foo-bar'],
+                        capture_extra_attrs: ['data-foo-bar']
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class("some link text");
+                anchor.e.onclick = function() { return false; }
+                anchor.e.setAttribute('data-foo-bar', 'baz');
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should fire request");
+                var last_event = getRequestData(this.requests[0]);
+                var props = last_event.properties;
+                notOk("$el_attr__data-foo-bar" in props, "click event should not include data-foo-bar attribute");
+                notOk("$attr-data-foo-bar" in props.$target, "click event target prop should not include data-foo-bar attribute");
+            });
+
             test("autocapture does not track elements on pages blocked by URL regex config", 4, function() {
                 var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);
