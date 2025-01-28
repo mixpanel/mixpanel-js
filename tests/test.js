@@ -4047,6 +4047,32 @@
                 same(this.requests.length, 0, "click event should not have fired request");
             });
 
+            test("autocapture does not capture attrs blocked by config", 5, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        block_attrs: ['href', 'aria-label']
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class("some link text");
+                anchor.e.onclick = function() { return false; }
+                anchor.e.setAttribute('href', '#foo');
+                anchor.e.setAttribute('aria-label', 'bar');
+                anchor.e.setAttribute('title', 'baz');
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should fire request");
+                var last_event = getRequestData(this.requests[0]);
+                var props = last_event.properties;
+                notOk("$el_attr__href" in props, "click event should not include href attribute");
+                notOk("$attr-href" in props.$target, "click event target prop should not include href attribute");
+                notOk("$attr-aria-label" in props.$target, "click event target prop should not include aria-label attribute");
+                ok("$attr-title" in props.$target, "click event target prop should include title attribute");
+            });
+
             test("autocapture does not track elements on pages blocked by URL regex config", 4, function() {
                 var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);

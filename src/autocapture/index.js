@@ -13,6 +13,7 @@ var PAGEVIEW_OPTION_FULL_URL = 'full-url';
 var PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING = 'url-with-path-and-query-string';
 var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
 
+var CONFIG_BLOCK_ATTRS = 'block_attrs';
 var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
 var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
@@ -112,11 +113,11 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
-    var props = getPropsForDOMEvent(
-        ev,
-        this.getConfig(CONFIG_BLOCK_SELECTORS),
-        this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
-    );
+    var props = getPropsForDOMEvent(ev, {
+        blockAttrs: this.getConfig(CONFIG_BLOCK_ATTRS),
+        blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
+        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+    });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);

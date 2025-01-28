@@ -70,7 +70,7 @@ function getPreviousElementSibling(el) {
     }
 }
 
-function getPropertiesFromElement(el) {
+function getPropertiesFromElement(el, blockAttrsSet) {
     var props = {
         '$classes': getClassName(el).split(' '),
         '$tag_name': el.tagName.toLowerCase()
@@ -82,7 +82,7 @@ function getPropertiesFromElement(el) {
 
     if (shouldTrackElement(el)) {
         _.each(TRACKED_ATTRS, function(attr) {
-            if (el.hasAttribute(attr)) {
+            if (el.hasAttribute(attr) && !blockAttrsSet[attr]) {
                 var attrVal = el.getAttribute(attr);
                 if (shouldTrackValue(attrVal)) {
                     props['$attr-' + attr] = attrVal;
@@ -106,8 +106,17 @@ function getPropertiesFromElement(el) {
     return props;
 }
 
-function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
-    blockSelectors = blockSelectors || [];
+function getPropsForDOMEvent(ev, config) {
+    var blockAttrs = config.blockAttrs || [];
+    var blockSelectors = config.blockSelectors || [];
+    var captureTextContent = config.captureTextContent || false;
+
+    // convert array to set every time, as the config may have changed
+    var blockAttrsSet = {};
+    _.each(blockAttrs, function(attr) {
+        blockAttrsSet[attr] = true;
+    });
+
     var props = null;
 
     var target = typeof ev.target === 'undefined' ? ev.srcElement : ev.target;
@@ -130,7 +139,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
 
             // if the element or a parent element is an anchor tag
             // include the href as a property
-            if (el.tagName.toLowerCase() === 'a') {
+            if (!blockAttrsSet['href'] && el.tagName.toLowerCase() === 'a') {
                 href = el.getAttribute('href');
                 href = shouldTrackEl && shouldTrackValue(href) && href;
             }
@@ -156,7 +165,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 });
             }
 
-            elementsJson.push(getPropertiesFromElement(el));
+            elementsJson.push(getPropertiesFromElement(el, blockAttrsSet));
         }, this);
 
         if (!explicitNoTrack) {
@@ -195,7 +204,7 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
             }
 
             if (target) {
-                var targetProps = getPropertiesFromElement(target);
+                var targetProps = getPropertiesFromElement(target, blockAttrsSet);
                 props['$target'] = targetProps;
                 // pull up more props onto main event props
                 props['$el_classes'] = targetProps['$classes'];
