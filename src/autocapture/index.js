@@ -18,6 +18,8 @@ var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
 var CONFIG_CAPTURE_EXTRA_ATTRS = 'capture_extra_attrs';
 var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
+var CONFIG_SCROLL_CAPTURE_ALL = 'scroll_capture_all';
+var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
@@ -28,6 +30,8 @@ var CONFIG_DEFAULTS = {};
 CONFIG_DEFAULTS[CONFIG_BLOCK_ATTRS] = [];
 CONFIG_DEFAULTS[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
 CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
+CONFIG_DEFAULTS[CONFIG_SCROLL_CAPTURE_ALL] = false;
+CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
@@ -206,19 +210,24 @@ Autocapture.prototype.initPageviewTracking = function() {
 
         var currentUrl = _.info.currentUrl();
         var shouldTrack = false;
+        var didPathChange = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
         var trackPageviewOption = this.pageviewTrackingConfig();
         if (trackPageviewOption === PAGEVIEW_OPTION_FULL_URL) {
             shouldTrack = currentUrl !== previousTrackedUrl;
         } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING) {
             shouldTrack = currentUrl.split('#')[0] !== previousTrackedUrl.split('#')[0];
         } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH) {
-            shouldTrack = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
+            shouldTrack = didPathChange;
         }
 
         if (shouldTrack) {
             var tracked = this.mp.track_pageview(DEFAULT_PROPS);
             if (tracked) {
                 previousTrackedUrl = currentUrl;
+            }
+            if (didPathChange) {
+                this.lastScrollCheckpoint = 0;
+                logger.log('Path change: re-initializing scroll depth checkpoints');
             }
         }
     }.bind(this)));
@@ -231,6 +240,7 @@ Autocapture.prototype.initScrollTracking = function() {
         return;
     }
     logger.log('Initializing scroll tracking');
+    this.lastScrollCheckpoint = 0;
 
     this.listenerScroll = window.addEventListener(EV_SCROLLEND, safewrap(function() {
         if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
@@ -240,6 +250,11 @@ Autocapture.prototype.initScrollTracking = function() {
             return;
         }
 
+        var shouldTrack = this.getConfig(CONFIG_SCROLL_CAPTURE_ALL);
+        var scrollCheckpoints = (this.getConfig(CONFIG_SCROLL_CHECKPOINTS) || [])
+            .slice()
+            .sort(function(a, b) { return a - b; });
+
         var scrollTop = window.scrollY;
         var props = _.extend({'$scroll_top': scrollTop}, DEFAULT_PROPS);
         try {
@@ -247,10 +262,25 @@ Autocapture.prototype.initScrollTracking = function() {
             var scrollPercentage = Math.round((scrollTop / (scrollHeight - window.innerHeight)) * 100);
             props['$scroll_height'] = scrollHeight;
             props['$scroll_percentage'] = scrollPercentage;
+            if (scrollPercentage > this.lastScrollCheckpoint) {
+                for (var i = 0; i < scrollCheckpoints.length; i++) {
+                    var checkpoint = scrollCheckpoints[i];
+                    if (
+                        scrollPercentage >= checkpoint &&
+                        this.lastScrollCheckpoint < checkpoint
+                    ) {
+                        props['$scroll_checkpoint'] = checkpoint;
+                        this.lastScrollCheckpoint = checkpoint;
+                        shouldTrack = true;
+                    }
+                }
+            }
         } catch (err) {
             logger.critical('Error while calculating scroll percentage', err);
         }
-        this.mp.track(MP_EV_SCROLL, props);
+        if (shouldTrack) {
+            this.mp.track(MP_EV_SCROLL, props);
+        }
     }.bind(this)));
 };
 
