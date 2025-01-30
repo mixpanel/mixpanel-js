@@ -4047,6 +4047,52 @@
                 same(this.requests.length, 0, "click event should not have fired request");
             });
 
+            test("autocapture does not track elements blocked by block_element_callback", 3, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        block_element_callback: function(el, ev) {
+                            var href = el.getAttribute('href');
+                            // block just click tracking on /user/ links
+                            return ev.type === "click" && !!href && href.startsWith('/user/');
+                        }
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                anchor.e.setAttribute("href", "/user/123");
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+
+                anchor.e.setAttribute("href", "/foobar");
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event on trackable element should have fired request");
+                same(getRequestData(this.requests[0]).event, "$mp_click", "last request should be $mp_click event");
+            });
+
+            test("autocapture does not track elements when block_element_callback throws an error", 1, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        block_element_callback: function() {
+                            kaboom();
+                        }
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+            });
+
             test("autocapture supports allowlist of tracked element selectors", 4, function() {
                 mixpanel.init("autocapture_test_token", {
                     autocapture: {

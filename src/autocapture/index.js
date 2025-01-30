@@ -16,6 +16,7 @@ var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
 var CONFIG_ALLOW_SELECTORS = 'allow_selectors';
 var CONFIG_ALLOW_URL_REGEXES = 'allow_url_regexes';
 var CONFIG_BLOCK_ATTRS = 'block_attrs';
+var CONFIG_BLOCK_ELEMENT_CALLBACK = 'block_element_callback';
 var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
 var CONFIG_CAPTURE_EXTRA_ATTRS = 'capture_extra_attrs';
@@ -32,6 +33,7 @@ var CONFIG_DEFAULTS = {};
 CONFIG_DEFAULTS[CONFIG_ALLOW_SELECTORS] = [];
 CONFIG_DEFAULTS[CONFIG_ALLOW_URL_REGEXES] = [];
 CONFIG_DEFAULTS[CONFIG_BLOCK_ATTRS] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_ELEMENT_CALLBACK] = null;
 CONFIG_DEFAULTS[CONFIG_BLOCK_SELECTORS] = [];
 CONFIG_DEFAULTS[CONFIG_BLOCK_URL_REGEXES] = [];
 CONFIG_DEFAULTS[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
@@ -153,6 +155,7 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
     var props = getPropsForDOMEvent(ev, {
         allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
         blockAttrs: this.getConfig(CONFIG_BLOCK_ATTRS),
+        blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
         captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)

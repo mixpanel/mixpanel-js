@@ -109,6 +109,7 @@ function getPropertiesFromElement(el, blockAttrsSet, extraAttrs, allowSelectors)
 function getPropsForDOMEvent(ev, config) {
     var allowSelectors = config.allowSelectors || [];
     var blockAttrs = config.blockAttrs || [];
+    var blockElementCallback = config.blockElementCallback;
     var blockSelectors = config.blockSelectors || [];
     var captureTextContent = config.captureTextContent || false;
     var captureExtraAttrs = config.captureExtraAttrs || [];
@@ -154,7 +155,17 @@ function getPropsForDOMEvent(ev, config) {
                 }
             });
 
-            if (!explicitNoTrack && blockSelectors.length) {
+            if (blockElementCallback) {
+                try {
+                    if (blockElementCallback(el, ev)) {
+                        explicitNoTrack = true;
+                    }
+                } catch (err) {
+                    explicitNoTrack = true;
+                    logger.critical('Error while checking element in blockElementCallback', err);
+                }
+            }
+            if (!explicitNoTrack) {
                 // programmatically prevent tracking of elements that match CSS selectors
                 _.each(blockSelectors, function(sel) {
                     try {
