@@ -4217,6 +4217,36 @@
                 same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
             });
 
+            test("autocapture does not track pageviews on pages not on URL regex allowlist when present", 6, function() {
+                var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.pushState({ path: next_url }, '', next_url);
+
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        allow_url_regexes: [/\/foopage\/?$/, /#barhash$/]
+                    },
+                    batch_requests: false
+                }, 'acpageviews');
+
+                // start on a blocked page
+                same(this.requests.length, 0, "autocapture init should not have fired request on load");
+
+                // add allowed hash fragment
+                window.location.hash = "barhash";
+                same(this.requests.length, 1, "URL change should have fired request");
+                var last_event = getRequestData(this.requests[0]);
+                same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+
+                // change to blocked path
+                window.history.replaceState(null, null, next_url + "/lalala");
+                same(this.requests.length, 1, "URL change should not have fired request");
+
+                // back to unblocked path
+                window.history.replaceState(null, null, next_url + "/foopage");
+                same(this.requests.length, 2, "URL change should have fired request");
+                same(last_event.event, "$mp_web_page_view", "last request should be $mp_web_page_view event");
+            });
+
             test("autocapture can be turned on and off with set_config ", 6, function() {
                 var next_url = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.pushState({ path: next_url }, '', next_url);
