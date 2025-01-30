@@ -5,7 +5,7 @@ import { _ } from '../../src/utils';
 import {
     getSafeText,
     shouldTrackDomEvent,
-    shouldTrackElement,
+    shouldTrackElementDetails,
     shouldTrackValue,
 } from '../../src/autocapture/utils';
 
@@ -19,14 +19,14 @@ describe(`Autotrack utility functions`, function() {
       const el = document.createElement(`div`);
 
       el.innerHTML = `  Why  hello  there  `;
-      expect(getSafeText(el)).to.equal(`Why hello there`);
+      expect(getSafeText(el, [])).to.equal(`Why hello there`);
 
       el.innerHTML = `
           Why
           hello
           there
       `;
-      expect(getSafeText(el)).to.equal(`Why hello there`);
+      expect(getSafeText(el, [])).to.equal(`Why hello there`);
 
       el.innerHTML = `
           Why
@@ -35,7 +35,7 @@ describe(`Autotrack utility functions`, function() {
           <p>not</p>
           there
       `;
-      expect(getSafeText(el)).to.equal(`Whyhellothere`);
+      expect(getSafeText(el, [])).to.equal(`Whyhellothere`);
     });
 
     it(`shouldn't collect text from element children`, function() {
@@ -43,7 +43,7 @@ describe(`Autotrack utility functions`, function() {
       let safeText;
 
       el.innerHTML = `<div>sensitive</div>`;
-      safeText = getSafeText(el);
+      safeText = getSafeText(el, []);
       expect(safeText).to.not.contain(`sensitive`);
       expect(safeText).to.equal(``);
 
@@ -54,7 +54,7 @@ describe(`Autotrack utility functions`, function() {
           <p>sensitive</p>
           there
       `;
-      safeText = getSafeText(el);
+      safeText = getSafeText(el, []);
       expect(safeText).to.not.contain(`sensitive`);
       expect(safeText).to.equal(`Whyhellothere`);
     });
@@ -64,39 +64,51 @@ describe(`Autotrack utility functions`, function() {
 
       el = document.createElement(`input`);
       el.innerHTML = `Why hello there`;
-      expect(getSafeText(el)).to.equal(``);
+      expect(getSafeText(el, [])).to.equal(``);
 
       el = document.createElement(`textarea`);
       el.innerHTML = `Why hello there`;
-      expect(getSafeText(el)).to.equal(``);
+      expect(getSafeText(el, [])).to.equal(``);
 
       el = document.createElement(`select`);
       el.innerHTML = `Why hello there`;
-      expect(getSafeText(el)).to.equal(``);
+      expect(getSafeText(el, [])).to.equal(``);
 
       el = document.createElement(`div`);
       el.setAttribute(`contenteditable`, `true`);
       el.innerHTML = `Why hello there`;
-      expect(getSafeText(el)).to.equal(``);
+      expect(getSafeText(el, [])).to.equal(``);
     });
 
     it(`shouldn't collect sensitive values`, function() {
       const el = document.createElement(`div`);
 
       el.innerHTML = `Why 123-58-1321 hello there`;
-      expect(getSafeText(el)).to.equal(`Why hello there`);
+      expect(getSafeText(el, [])).to.equal(`Why hello there`);
 
       el.innerHTML = `
         4111111111111111
         Why hello there
       `;
-      expect(getSafeText(el)).to.equal(`Why hello there`);
+      expect(getSafeText(el, [])).to.equal(`Why hello there`);
 
       el.innerHTML = `
         Why hello there
         5105-1051-0510-5100
       `;
-      expect(getSafeText(el)).to.equal(`Why hello there`);
+      expect(getSafeText(el, [])).to.equal(`Why hello there`);
+    });
+
+    it(`supports a selector allowlist`, function() {
+      const el = document.createElement(`div`);
+      el.innerHTML = `Benign text`;
+      expect(getSafeText(el, [])).to.equal(`Benign text`);
+      expect(getSafeText(el, [`.foobar`])).to.equal(``);
+
+      el.className = `foobar`;
+      expect(getSafeText(el, [])).to.equal(`Benign text`);
+      expect(getSafeText(el, [`.foobar`])).to.equal(`Benign text`);
+      expect(getSafeText(el, [`.baz`])).to.equal(``);
     });
   });
 
@@ -163,7 +175,7 @@ describe(`Autotrack utility functions`, function() {
     });
   });
 
-  describe(`shouldTrackElement`, function() {
+  describe(`shouldTrackElementDetails`, function() {
     let el, input, parent1, parent2;
 
     beforeEach(function() {
@@ -178,15 +190,15 @@ describe(`Autotrack utility functions`, function() {
     });
 
     it(`should not include input elements`, function() {
-      expect(shouldTrackElement(document.createElement(`input`))).to.equal(false);
+      expect(shouldTrackElementDetails(document.createElement(`input`), [])).to.equal(false);
     });
 
     it(`should not include select elements`, function() {
-      expect(shouldTrackElement(document.createElement(`select`))).to.equal(false);
+      expect(shouldTrackElementDetails(document.createElement(`select`), [])).to.equal(false);
     });
 
     it(`should not include textarea elements`, function() {
-      expect(shouldTrackElement(document.createElement(`textarea`))).to.equal(false);
+      expect(shouldTrackElementDetails(document.createElement(`textarea`), [])).to.equal(false);
     });
 
     it(`should not include elements where contenteditable="true"`, function() {
@@ -196,39 +208,39 @@ describe(`Autotrack utility functions`, function() {
       editable.setAttribute(`contenteditable`, `true`);
       noneditable.setAttribute(`contenteditable`, `false`);
 
-      expect(shouldTrackElement(editable)).to.equal(false);
-      expect(shouldTrackElement(noneditable)).to.equal(true);
+      expect(shouldTrackElementDetails(editable, [])).to.equal(false);
+      expect(shouldTrackElementDetails(noneditable, [])).to.equal(true);
     });
 
     it(`should include sensitive elements with class "mp-include"`, function() {
       el.className = `test1 mp-include test2`;
-      expect(shouldTrackElement(el)).to.equal(true);
+      expect(shouldTrackElementDetails(el, [])).to.equal(true);
     });
 
     it(`should never include inputs with class "mp-sensitive"`, function() {
       el.className = `test1 mp-include mp-sensitive test2`;
-      expect(shouldTrackElement(el)).to.equal(false);
+      expect(shouldTrackElementDetails(el, [])).to.equal(false);
     });
 
     it(`should not include elements with class "mp-no-track" as properties`, function() {
       el.className = `test1 mp-no-track test2`;
-      expect(shouldTrackElement(el)).to.equal(false);
+      expect(shouldTrackElementDetails(el, [])).to.equal(false);
     });
 
     it(`should not include elements with a parent that have class "mp-no-track" as properties`, function() {
       parent2.className = `mp-no-track`;
       el.type = `text`;
-      expect(shouldTrackElement(el)).to.equal(false);
+      expect(shouldTrackElementDetails(el, [])).to.equal(false);
     });
 
     it(`should not include hidden fields`, function() {
       input.type = `hidden`;
-      expect(shouldTrackElement(input)).to.equal(false);
+      expect(shouldTrackElementDetails(input, [])).to.equal(false);
     });
 
     it(`should not include password fields`, function() {
       input.type = `password`;
-      expect(shouldTrackElement(input)).to.equal(false);
+      expect(shouldTrackElementDetails(input, [])).to.equal(false);
     });
 
     it(`should not include fields with sensitive names`, function() {
@@ -253,8 +265,18 @@ describe(`Autotrack utility functions`, function() {
       ];
       sensitiveNames.forEach(name => {
         el.name = name;
-        expect(shouldTrackElement(el)).to.equal(false);
+        expect(shouldTrackElementDetails(el, [])).to.equal(false);
       });
+    });
+
+    it(`supports a selector allowlist`, function() {
+      expect(shouldTrackElementDetails(el, [])).to.equal(true);
+      expect(shouldTrackElementDetails(el, [`.foobar`])).to.equal(false);
+
+      el.className = `foobar`;
+      expect(shouldTrackElementDetails(el, [])).to.equal(true);
+      expect(shouldTrackElementDetails(el, [`.foobar`])).to.equal(true);
+      expect(shouldTrackElementDetails(el, [`.baz`])).to.equal(false);
     });
 
     // See https://github.com/mixpanel/mixpanel-js/issues/165
@@ -266,17 +288,17 @@ describe(`Autotrack utility functions`, function() {
 
       // test
       parent1.name = el;
-      shouldTrackElement(parent1); // previously this would cause el.replace to be called
+      shouldTrackElementDetails(parent1, []); // previously this would cause el.replace to be called
       expect(el.replace.called).to.equal(false);
       parent1.name = undefined;
 
       parent1.id = el;
-      shouldTrackElement(parent2); // previously this would cause el.replace to be called
+      shouldTrackElementDetails(parent2, []); // previously this would cause el.replace to be called
       expect(el.replace.called).to.equal(false);
       parent1.id = undefined;
 
       parent1.type = el;
-      shouldTrackElement(parent2); // previously this would cause el.replace to be called
+      shouldTrackElementDetails(parent2, []); // previously this would cause el.replace to be called
       expect(el.replace.called).to.equal(false);
       parent1.type = undefined;
 

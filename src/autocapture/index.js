@@ -13,6 +13,7 @@ var PAGEVIEW_OPTION_FULL_URL = 'full-url';
 var PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING = 'url-with-path-and-query-string';
 var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
 
+var CONFIG_ALLOW_SELECTORS = 'allow_selectors';
 var CONFIG_BLOCK_ATTRS = 'block_attrs';
 var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
@@ -27,7 +28,10 @@ var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
 var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_ALLOW_SELECTORS] = [];
 CONFIG_DEFAULTS[CONFIG_BLOCK_ATTRS] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_SELECTORS] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_URL_REGEXES] = [];
 CONFIG_DEFAULTS[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
 CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
 CONFIG_DEFAULTS[CONFIG_SCROLL_CAPTURE_ALL] = false;
@@ -121,6 +125,7 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
     }
 
     var props = getPropsForDOMEvent(ev, {
+        allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
         blockAttrs: this.getConfig(CONFIG_BLOCK_ATTRS),
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),

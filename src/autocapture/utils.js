@@ -70,7 +70,7 @@ function getPreviousElementSibling(el) {
     }
 }
 
-function getPropertiesFromElement(el, blockAttrsSet, extraAttrs) {
+function getPropertiesFromElement(el, blockAttrsSet, extraAttrs, allowSelectors) {
     var props = {
         '$classes': getClassName(el).split(' '),
         '$tag_name': el.tagName.toLowerCase()
@@ -80,7 +80,7 @@ function getPropertiesFromElement(el, blockAttrsSet, extraAttrs) {
         props['$id'] = elId;
     }
 
-    if (shouldTrackElement(el)) {
+    if (shouldTrackElementDetails(el, allowSelectors)) {
         _.each(TRACKED_ATTRS.concat(extraAttrs), function(attr) {
             if (el.hasAttribute(attr) && !blockAttrsSet[attr]) {
                 var attrVal = el.getAttribute(attr);
@@ -107,6 +107,7 @@ function getPropertiesFromElement(el, blockAttrsSet, extraAttrs) {
 }
 
 function getPropsForDOMEvent(ev, config) {
+    var allowSelectors = config.allowSelectors || [];
     var blockAttrs = config.blockAttrs || [];
     var blockSelectors = config.blockSelectors || [];
     var captureTextContent = config.captureTextContent || false;
@@ -125,7 +126,7 @@ function getPropsForDOMEvent(ev, config) {
         target = target.parentNode;
     }
 
-    if (shouldTrackDomEvent(target, ev)) {
+    if (shouldTrackDomEvent(target, ev) && isElementOnAllowlist(target, allowSelectors)) {
         var targetElementList = [target];
         var curEl = target;
         while (curEl.parentNode && !isTag(curEl, 'body')) {
@@ -136,13 +137,13 @@ function getPropsForDOMEvent(ev, config) {
         var elementsJson = [];
         var href, explicitNoTrack = false;
         _.each(targetElementList, function(el) {
-            var shouldTrackEl = shouldTrackElement(el);
+            var shouldTrackDetails = shouldTrackElementDetails(el, allowSelectors);
 
             // if the element or a parent element is an anchor tag
             // include the href as a property
             if (!blockAttrsSet['href'] && el.tagName.toLowerCase() === 'a') {
                 href = el.getAttribute('href');
-                href = shouldTrackEl && shouldTrackValue(href) && href;
+                href = shouldTrackDetails && shouldTrackValue(href) && href;
             }
 
             // allow users to programmatically prevent tracking of elements by adding classes such as 'mp-no-track'
@@ -153,7 +154,7 @@ function getPropsForDOMEvent(ev, config) {
                 }
             });
 
-            if (!explicitNoTrack) {
+            if (!explicitNoTrack && blockSelectors.length) {
                 // programmatically prevent tracking of elements that match CSS selectors
                 _.each(blockSelectors, function(sel) {
                     try {
@@ -166,7 +167,7 @@ function getPropsForDOMEvent(ev, config) {
                 });
             }
 
-            elementsJson.push(getPropertiesFromElement(el, blockAttrsSet, captureExtraAttrs));
+            elementsJson.push(getPropertiesFromElement(el, blockAttrsSet, captureExtraAttrs, allowSelectors));
         }, this);
 
         if (!explicitNoTrack) {
@@ -190,7 +191,7 @@ function getPropsForDOMEvent(ev, config) {
             });
 
             if (captureTextContent) {
-                elementText = getSafeText(target);
+                elementText = getSafeText(target, allowSelectors);
                 if (elementText && elementText.length) {
                     props['$el_text'] = elementText;
                 }
@@ -206,14 +207,19 @@ function getPropsForDOMEvent(ev, config) {
             }
             // prioritize text content from "real" click target if different from original target
             if (captureTextContent) {
-                var elementText = getSafeText(target);
+                var elementText = getSafeText(target, allowSelectors);
                 if (elementText && elementText.length) {
                     props['$el_text'] = elementText;
                 }
             }
 
             if (target) {
-                var targetProps = getPropertiesFromElement(target, blockAttrsSet, captureExtraAttrs);
+                // target may have been recalculated; check allowlist again
+                if (!isElementOnAllowlist(target, allowSelectors)) {
+                    return null;
+                }
+
+                var targetProps = getPropertiesFromElement(target, blockAttrsSet, captureExtraAttrs, allowSelectors);
                 props['$target'] = targetProps;
                 // pull up more props onto main event props
                 props['$el_classes'] = targetProps['$classes'];
@@ -229,19 +235,20 @@ function getPropsForDOMEvent(ev, config) {
 }
 
 
-/*
+/**
  * Get the direct text content of an element, protecting against sensitive data collection.
  * Concats textContent of each of the element's text node children; this avoids potential
  * collection of sensitive data that could happen if we used element.textContent and the
  * element had sensitive child elements, since element.textContent includes child content.
  * Scrubs values that look like they could be sensitive (i.e. cc or ssn number).
  * @param {Element} el - element to get the text of
+ * @param {Array<string>} allowSelectors - CSS selectors for elements that should be included
  * @returns {string} the element's direct text content
  */
-function getSafeText(el) {
+function getSafeText(el, allowSelectors) {
     var elText = '';
 
-    if (shouldTrackElement(el) && el.childNodes && el.childNodes.length) {
+    if (shouldTrackElementDetails(el, allowSelectors) && el.childNodes && el.childNodes.length) {
         _.each(el.childNodes, function(child) {
             if (isTextNode(child) && child.textContent) {
                 elText += _.trim(child.textContent)
@@ -287,6 +294,25 @@ function guessRealClickTarget(ev) {
  */
 function isElementNode(node) {
     return node && node.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
+}
+
+function isElementOnAllowlist(el, allowSelectors) {
+    if (!allowSelectors.length) {
+        // no allowlist; all elements are fair game
+        return true;
+    }
+
+    for (var i = 0; i < allowSelectors.length; i++) {
+        var sel = allowSelectors[i];
+        try {
+            if (el['matches'](sel)) {
+                return true;
+            }
+        } catch (err) {
+            logger.critical('Error while checking selector: ' + sel, err);
+        }
+    }
+    return false;
 }
 
 /*
@@ -354,10 +380,15 @@ function shouldTrackDomEvent(el, ev) {
  * Check whether a DOM element should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
  * @param {Element} el - element to check
+ * @param {Array<string>} allowSelectors - CSS selectors for elements that should be included
  * @returns {boolean} whether the element should be tracked
  */
-function shouldTrackElement(el) {
+function shouldTrackElementDetails(el, allowSelectors) {
     var i;
+
+    if (!isElementOnAllowlist(el, allowSelectors)) {
+        return false;
+    }
 
     for (var curEl = el; curEl.parentNode && !isTag(curEl, 'body'); curEl = curEl.parentNode) {
         var classes = getClasses(curEl);
@@ -446,7 +477,7 @@ export {
     getSafeText,
     logger,
     minDOMApisSupported,
-    shouldTrackDomEvent, shouldTrackElement, shouldTrackValue,
+    shouldTrackDomEvent, shouldTrackElementDetails, shouldTrackValue,
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,
     EV_SCROLLEND, EV_SUBMIT
 };
