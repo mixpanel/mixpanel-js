@@ -70,7 +70,7 @@ function getPreviousElementSibling(el) {
     }
 }
 
-function getPropertiesFromElement(el, blockAttrsSet, extraAttrs, allowSelectors) {
+function getPropertiesFromElement(el, ev, blockAttrsSet, extraAttrs, allowElementCallback, allowSelectors) {
     var props = {
         '$classes': getClassName(el).split(' '),
         '$tag_name': el.tagName.toLowerCase()
@@ -80,7 +80,7 @@ function getPropertiesFromElement(el, blockAttrsSet, extraAttrs, allowSelectors)
         props['$id'] = elId;
     }
 
-    if (shouldTrackElementDetails(el, allowSelectors)) {
+    if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors)) {
         _.each(TRACKED_ATTRS.concat(extraAttrs), function(attr) {
             if (el.hasAttribute(attr) && !blockAttrsSet[attr]) {
                 var attrVal = el.getAttribute(attr);
@@ -107,6 +107,7 @@ function getPropertiesFromElement(el, blockAttrsSet, extraAttrs, allowSelectors)
 }
 
 function getPropsForDOMEvent(ev, config) {
+    var allowElementCallback = config.allowElementCallback;
     var allowSelectors = config.allowSelectors || [];
     var blockAttrs = config.blockAttrs || [];
     var blockElementCallback = config.blockElementCallback;
@@ -127,7 +128,11 @@ function getPropsForDOMEvent(ev, config) {
         target = target.parentNode;
     }
 
-    if (shouldTrackDomEvent(target, ev) && isElementOnAllowlist(target, allowSelectors)) {
+    if (
+        shouldTrackDomEvent(target, ev) &&
+        isElementAllowed(target, ev, allowElementCallback, allowSelectors) &&
+        !isElementBlocked(target, ev, blockElementCallback, blockSelectors)
+    ) {
         var targetElementList = [target];
         var curEl = target;
         while (curEl.parentNode && !isTag(curEl, 'body')) {
@@ -138,7 +143,7 @@ function getPropsForDOMEvent(ev, config) {
         var elementsJson = [];
         var href, explicitNoTrack = false;
         _.each(targetElementList, function(el) {
-            var shouldTrackDetails = shouldTrackElementDetails(el, allowSelectors);
+            var shouldTrackDetails = shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors);
 
             // if the element or a parent element is an anchor tag
             // include the href as a property
@@ -147,38 +152,11 @@ function getPropsForDOMEvent(ev, config) {
                 href = shouldTrackDetails && shouldTrackValue(href) && href;
             }
 
-            // allow users to programmatically prevent tracking of elements by adding classes such as 'mp-no-track'
-            var classes = getClasses(el);
-            _.each(OPT_OUT_CLASSES, function(cls) {
-                if (classes[cls]) {
-                    explicitNoTrack = true;
-                }
-            });
-
-            if (blockElementCallback) {
-                try {
-                    if (blockElementCallback(el, ev)) {
-                        explicitNoTrack = true;
-                    }
-                } catch (err) {
-                    explicitNoTrack = true;
-                    logger.critical('Error while checking element in blockElementCallback', err);
-                }
-            }
-            if (!explicitNoTrack) {
-                // programmatically prevent tracking of elements that match CSS selectors
-                _.each(blockSelectors, function(sel) {
-                    try {
-                        if (el['matches'](sel)) {
-                            explicitNoTrack = true;
-                        }
-                    } catch (err) {
-                        logger.critical('Error while checking selector: ' + sel, err);
-                    }
-                });
+            if (isElementBlocked(el, ev, blockElementCallback, blockSelectors)) {
+                explicitNoTrack = true;
             }
 
-            elementsJson.push(getPropertiesFromElement(el, blockAttrsSet, captureExtraAttrs, allowSelectors));
+            elementsJson.push(getPropertiesFromElement(el, ev, blockAttrsSet, captureExtraAttrs, allowElementCallback, allowSelectors));
         }, this);
 
         if (!explicitNoTrack) {
@@ -202,7 +180,7 @@ function getPropsForDOMEvent(ev, config) {
             });
 
             if (captureTextContent) {
-                elementText = getSafeText(target, allowSelectors);
+                elementText = getSafeText(target, ev, allowElementCallback, allowSelectors);
                 if (elementText && elementText.length) {
                     props['$el_text'] = elementText;
                 }
@@ -218,19 +196,22 @@ function getPropsForDOMEvent(ev, config) {
             }
             // prioritize text content from "real" click target if different from original target
             if (captureTextContent) {
-                var elementText = getSafeText(target, allowSelectors);
+                var elementText = getSafeText(target, ev, allowElementCallback, allowSelectors);
                 if (elementText && elementText.length) {
                     props['$el_text'] = elementText;
                 }
             }
 
             if (target) {
-                // target may have been recalculated; check allowlist again
-                if (!isElementOnAllowlist(target, allowSelectors)) {
+                // target may have been recalculated; check allowlists and blocklists again
+                if (
+                    !isElementAllowed(target, ev, allowElementCallback, allowSelectors) ||
+                    isElementBlocked(target, ev, blockElementCallback, blockSelectors)
+                ) {
                     return null;
                 }
 
-                var targetProps = getPropertiesFromElement(target, blockAttrsSet, captureExtraAttrs, allowSelectors);
+                var targetProps = getPropertiesFromElement(target, ev, blockAttrsSet, captureExtraAttrs, allowElementCallback, allowSelectors);
                 props['$target'] = targetProps;
                 // pull up more props onto main event props
                 props['$el_classes'] = targetProps['$classes'];
@@ -256,10 +237,10 @@ function getPropsForDOMEvent(ev, config) {
  * @param {Array<string>} allowSelectors - CSS selectors for elements that should be included
  * @returns {string} the element's direct text content
  */
-function getSafeText(el, allowSelectors) {
+function getSafeText(el, ev, allowElementCallback, allowSelectors) {
     var elText = '';
 
-    if (shouldTrackElementDetails(el, allowSelectors) && el.childNodes && el.childNodes.length) {
+    if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) && el.childNodes && el.childNodes.length) {
         _.each(el.childNodes, function(child) {
             if (isTextNode(child) && child.textContent) {
                 elText += _.trim(child.textContent)
@@ -298,16 +279,18 @@ function guessRealClickTarget(ev) {
     return target;
 }
 
-/*
- * Check whether a DOM node has nodeType Node.ELEMENT_NODE
- * @param {Node} node - node to check
- * @returns {boolean} whether node is of the correct nodeType
- */
-function isElementNode(node) {
-    return node && node.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
-}
+function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
+    if (allowElementCallback) {
+        try {
+            if (!allowElementCallback(el, ev)) {
+                return false;
+            }
+        } catch (err) {
+            logger.critical('Error while checking element in allowElementCallback', err);
+            return false;
+        }
+    }
 
-function isElementOnAllowlist(el, allowSelectors) {
     if (!allowSelectors.length) {
         // no allowlist; all elements are fair game
         return true;
@@ -324,6 +307,54 @@ function isElementOnAllowlist(el, allowSelectors) {
         }
     }
     return false;
+}
+
+function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
+    var i;
+
+    if (blockElementCallback) {
+        try {
+            if (blockElementCallback(el, ev)) {
+                return true;
+            }
+        } catch (err) {
+            logger.critical('Error while checking element in blockElementCallback', err);
+            return true;
+        }
+    }
+
+    if (blockSelectors && blockSelectors.length) {
+        // programmatically prevent tracking of elements that match CSS selectors
+        for (i = 0; i < blockSelectors.length; i++) {
+            var sel = blockSelectors[i];
+            try {
+                if (el['matches'](sel)) {
+                    return true;
+                }
+            } catch (err) {
+                logger.critical('Error while checking selector: ' + sel, err);
+            }
+        }
+    }
+
+    // allow users to programmatically prevent tracking of elements by adding default classes such as 'mp-no-track'
+    var classes = getClasses(el);
+    for (i = 0; i < OPT_OUT_CLASSES.length; i++) {
+        if (classes[OPT_OUT_CLASSES[i]]) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/*
+ * Check whether a DOM node has nodeType Node.ELEMENT_NODE
+ * @param {Node} node - node to check
+ * @returns {boolean} whether node is of the correct nodeType
+ */
+function isElementNode(node) {
+    return node && node.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
 }
 
 /*
@@ -394,10 +425,10 @@ function shouldTrackDomEvent(el, ev) {
  * @param {Array<string>} allowSelectors - CSS selectors for elements that should be included
  * @returns {boolean} whether the element should be tracked
  */
-function shouldTrackElementDetails(el, allowSelectors) {
+function shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) {
     var i;
 
-    if (!isElementOnAllowlist(el, allowSelectors)) {
+    if (!isElementAllowed(el, ev, allowElementCallback, allowSelectors)) {
         return false;
     }
 

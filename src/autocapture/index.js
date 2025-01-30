@@ -13,6 +13,7 @@ var PAGEVIEW_OPTION_FULL_URL = 'full-url';
 var PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING = 'url-with-path-and-query-string';
 var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
 
+var CONFIG_ALLOW_ELEMENT_CALLBACK = 'allow_element_callback';
 var CONFIG_ALLOW_SELECTORS = 'allow_selectors';
 var CONFIG_ALLOW_URL_REGEXES = 'allow_url_regexes';
 var CONFIG_BLOCK_ATTRS = 'block_attrs';
@@ -153,6 +154,7 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
     }
 
     var props = getPropsForDOMEvent(ev, {
+        allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
         allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
         blockAttrs: this.getConfig(CONFIG_BLOCK_ATTRS),
         blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
