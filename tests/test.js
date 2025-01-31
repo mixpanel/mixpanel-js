@@ -4149,6 +4149,92 @@
                 same(getRequestData(this.requests[0]).event, "$mp_click", "last request should be $mp_click event");
             });
 
+            test("autocapture requires all allow-checks to pass when provided", 4, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        allow_element_callback: function(el) {
+                            var href = el.getAttribute('href');
+                            // only track elements with /foobar/ links
+                            return !!href && href.startsWith('/foobar');
+                        },
+                        allow_selectors: [".track-only-me"]
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                anchor.e.setAttribute("href", "/user/123");
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+
+                // make it pass the allow_element_callback, but not the allow_selectors list
+                anchor.e.setAttribute("href", "/foobar");
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+
+                // make it should pass all checks
+                anchor.e.className = "foo track-only-me";
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event on trackable element should have fired request");
+                same(getRequestData(this.requests[0]).event, "$mp_click", "last request should be $mp_click event");
+            });
+
+            test("autocapture gives precedence to block-checks over allow-checks when both are provided", 7, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        allow_element_callback: function(el) {
+                            var href = el.getAttribute('href');
+                            // only track elements with /foobar/ links
+                            return !!href && href.startsWith('/foobar');
+                        },
+                        block_element_callback: function(el) {
+                            // block elements with more than 2 classes
+                            return el.classList.length > 2;
+                        },
+                        allow_selectors: [".track-only-me"],
+                        block_selectors: [".foo"]
+                    },
+                    batch_requests: false
+                }, 'acclicks');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                // shouldn't pass allow_element_callback
+                anchor.e.setAttribute("href", "/user/123");
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 0, "click event should not have fired request");
+
+                // make it pass the allow checks
+                anchor.e.setAttribute("href", "/foobar");
+                anchor.e.className = "track-only-me";
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event on trackable element should have fired request");
+                same(getRequestData(this.requests[0]).event, "$mp_click", "last request should be $mp_click event");
+
+                // keep it passing allow checks, but not block_selectors
+                anchor.e.className = "foo track-only-me";
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should not have fired request");
+
+                // now make it pass block_selectors but not block_element_callback
+                anchor.e.className = "class1 class2 class3 track-only-me";
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 1, "click event should not have fired request");
+
+                // now make it pass everything again
+                anchor.e.className = "class1 track-only-me";
+                simulateMouseClick(anchor.e);
+                same(this.requests.length, 2, "click event on trackable element should have fired request");
+                same(getRequestData(this.requests[1]).event, "$mp_click", "last request should be $mp_click event");
+            });
+
             test("autocapture does not capture attrs blocked by config", 5, function() {
                 mixpanel.init("autocapture_test_token", {
                     autocapture: {
