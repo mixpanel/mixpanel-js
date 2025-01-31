@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.59.0'
+    LIB_VERSION: '2.60.0-rc1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2196,7 +2196,7 @@ function getPreviousElementSibling(el) {
     }
 }
 
-function getPropertiesFromElement(el) {
+function getPropertiesFromElement(el, ev, blockAttrsSet, extraAttrs, allowElementCallback, allowSelectors) {
     var props = {
         '$classes': getClassName(el).split(' '),
         '$tag_name': el.tagName.toLowerCase()
@@ -2206,9 +2206,9 @@ function getPropertiesFromElement(el) {
         props['$id'] = elId;
     }
 
-    if (shouldTrackElement(el)) {
-        _.each(TRACKED_ATTRS, function(attr) {
-            if (el.hasAttribute(attr)) {
+    if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors)) {
+        _.each(TRACKED_ATTRS.concat(extraAttrs), function(attr) {
+            if (el.hasAttribute(attr) && !blockAttrsSet[attr]) {
                 var attrVal = el.getAttribute(attr);
                 if (shouldTrackValue(attrVal)) {
                     props['$attr-' + attr] = attrVal;
@@ -2232,8 +2232,21 @@ function getPropertiesFromElement(el) {
     return props;
 }
 
-function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
-    blockSelectors = blockSelectors || [];
+function getPropsForDOMEvent(ev, config) {
+    var allowElementCallback = config.allowElementCallback;
+    var allowSelectors = config.allowSelectors || [];
+    var blockAttrs = config.blockAttrs || [];
+    var blockElementCallback = config.blockElementCallback;
+    var blockSelectors = config.blockSelectors || [];
+    var captureTextContent = config.captureTextContent || false;
+    var captureExtraAttrs = config.captureExtraAttrs || [];
+
+    // convert array to set every time, as the config may have changed
+    var blockAttrsSet = {};
+    _.each(blockAttrs, function(attr) {
+        blockAttrsSet[attr] = true;
+    });
+
     var props = null;
 
     var target = typeof ev.target === 'undefined' ? ev.srcElement : ev.target;
@@ -2241,7 +2254,11 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
         target = target.parentNode;
     }
 
-    if (shouldTrackDomEvent(target, ev)) {
+    if (
+        shouldTrackDomEvent(target, ev) &&
+        isElementAllowed(target, ev, allowElementCallback, allowSelectors) &&
+        !isElementBlocked(target, ev, blockElementCallback, blockSelectors)
+    ) {
         var targetElementList = [target];
         var curEl = target;
         while (curEl.parentNode && !isTag(curEl, 'body')) {
@@ -2252,37 +2269,20 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
         var elementsJson = [];
         var href, explicitNoTrack = false;
         _.each(targetElementList, function(el) {
-            var shouldTrackEl = shouldTrackElement(el);
+            var shouldTrackDetails = shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors);
 
             // if the element or a parent element is an anchor tag
             // include the href as a property
-            if (el.tagName.toLowerCase() === 'a') {
+            if (!blockAttrsSet['href'] && el.tagName.toLowerCase() === 'a') {
                 href = el.getAttribute('href');
-                href = shouldTrackEl && shouldTrackValue(href) && href;
+                href = shouldTrackDetails && shouldTrackValue(href) && href;
             }
 
-            // allow users to programmatically prevent tracking of elements by adding classes such as 'mp-no-track'
-            var classes = getClasses(el);
-            _.each(OPT_OUT_CLASSES, function(cls) {
-                if (classes[cls]) {
-                    explicitNoTrack = true;
-                }
-            });
-
-            if (!explicitNoTrack) {
-                // programmatically prevent tracking of elements that match CSS selectors
-                _.each(blockSelectors, function(sel) {
-                    try {
-                        if (el['matches'](sel)) {
-                            explicitNoTrack = true;
-                        }
-                    } catch (err) {
-                        logger$3.critical('Error while checking selector: ' + sel, err);
-                    }
-                });
+            if (isElementBlocked(el, ev, blockElementCallback, blockSelectors)) {
+                explicitNoTrack = true;
             }
 
-            elementsJson.push(getPropertiesFromElement(el));
+            elementsJson.push(getPropertiesFromElement(el, ev, blockAttrsSet, captureExtraAttrs, allowElementCallback, allowSelectors));
         }, this);
 
         if (!explicitNoTrack) {
@@ -2296,9 +2296,17 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
                 '$viewportHeight': Math.max(docElement['clientHeight'], win['innerHeight'] || 0),
                 '$viewportWidth': Math.max(docElement['clientWidth'], win['innerWidth'] || 0)
             };
+            _.each(captureExtraAttrs, function(attr) {
+                if (!blockAttrsSet[attr] && target.hasAttribute(attr)) {
+                    var attrVal = target.getAttribute(attr);
+                    if (shouldTrackValue(attrVal)) {
+                        props['$el_attr__' + attr] = attrVal;
+                    }
+                }
+            });
 
             if (captureTextContent) {
-                elementText = getSafeText(target);
+                elementText = getSafeText(target, ev, allowElementCallback, allowSelectors);
                 if (elementText && elementText.length) {
                     props['$el_text'] = elementText;
                 }
@@ -2314,14 +2322,22 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
             }
             // prioritize text content from "real" click target if different from original target
             if (captureTextContent) {
-                var elementText = getSafeText(target);
+                var elementText = getSafeText(target, ev, allowElementCallback, allowSelectors);
                 if (elementText && elementText.length) {
                     props['$el_text'] = elementText;
                 }
             }
 
             if (target) {
-                var targetProps = getPropertiesFromElement(target);
+                // target may have been recalculated; check allowlists and blocklists again
+                if (
+                    !isElementAllowed(target, ev, allowElementCallback, allowSelectors) ||
+                    isElementBlocked(target, ev, blockElementCallback, blockSelectors)
+                ) {
+                    return null;
+                }
+
+                var targetProps = getPropertiesFromElement(target, ev, blockAttrsSet, captureExtraAttrs, allowElementCallback, allowSelectors);
                 props['$target'] = targetProps;
                 // pull up more props onto main event props
                 props['$el_classes'] = targetProps['$classes'];
@@ -2337,19 +2353,20 @@ function getPropsForDOMEvent(ev, blockSelectors, captureTextContent) {
 }
 
 
-/*
+/**
  * Get the direct text content of an element, protecting against sensitive data collection.
  * Concats textContent of each of the element's text node children; this avoids potential
  * collection of sensitive data that could happen if we used element.textContent and the
  * element had sensitive child elements, since element.textContent includes child content.
  * Scrubs values that look like they could be sensitive (i.e. cc or ssn number).
  * @param {Element} el - element to get the text of
+ * @param {Array<string>} allowSelectors - CSS selectors for elements that should be included
  * @returns {string} the element's direct text content
  */
-function getSafeText(el) {
+function getSafeText(el, ev, allowElementCallback, allowSelectors) {
     var elText = '';
 
-    if (shouldTrackElement(el) && el.childNodes && el.childNodes.length) {
+    if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) && el.childNodes && el.childNodes.length) {
         _.each(el.childNodes, function(child) {
             if (isTextNode(child) && child.textContent) {
                 elText += _.trim(child.textContent)
@@ -2386,6 +2403,75 @@ function guessRealClickTarget(ev) {
         }
     }
     return target;
+}
+
+function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
+    if (allowElementCallback) {
+        try {
+            if (!allowElementCallback(el, ev)) {
+                return false;
+            }
+        } catch (err) {
+            logger$3.critical('Error while checking element in allowElementCallback', err);
+            return false;
+        }
+    }
+
+    if (!allowSelectors.length) {
+        // no allowlist; all elements are fair game
+        return true;
+    }
+
+    for (var i = 0; i < allowSelectors.length; i++) {
+        var sel = allowSelectors[i];
+        try {
+            if (el['matches'](sel)) {
+                return true;
+            }
+        } catch (err) {
+            logger$3.critical('Error while checking selector: ' + sel, err);
+        }
+    }
+    return false;
+}
+
+function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
+    var i;
+
+    if (blockElementCallback) {
+        try {
+            if (blockElementCallback(el, ev)) {
+                return true;
+            }
+        } catch (err) {
+            logger$3.critical('Error while checking element in blockElementCallback', err);
+            return true;
+        }
+    }
+
+    if (blockSelectors && blockSelectors.length) {
+        // programmatically prevent tracking of elements that match CSS selectors
+        for (i = 0; i < blockSelectors.length; i++) {
+            var sel = blockSelectors[i];
+            try {
+                if (el['matches'](sel)) {
+                    return true;
+                }
+            } catch (err) {
+                logger$3.critical('Error while checking selector: ' + sel, err);
+            }
+        }
+    }
+
+    // allow users to programmatically prevent tracking of elements by adding default classes such as 'mp-no-track'
+    var classes = getClasses(el);
+    for (i = 0; i < OPT_OUT_CLASSES.length; i++) {
+        if (classes[OPT_OUT_CLASSES[i]]) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /*
@@ -2462,10 +2548,15 @@ function shouldTrackDomEvent(el, ev) {
  * Check whether a DOM element should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
  * @param {Element} el - element to check
+ * @param {Array<string>} allowSelectors - CSS selectors for elements that should be included
  * @returns {boolean} whether the element should be tracked
  */
-function shouldTrackElement(el) {
+function shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) {
     var i;
+
+    if (!isElementAllowed(el, ev, allowElementCallback, allowSelectors)) {
+        return false;
+    }
 
     for (var curEl = el; curEl.parentNode && !isTag(curEl, 'body'); curEl = curEl.parentNode) {
         var classes = getClasses(curEl);
@@ -2556,9 +2647,17 @@ var PAGEVIEW_OPTION_FULL_URL = 'full-url';
 var PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING = 'url-with-path-and-query-string';
 var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
 
+var CONFIG_ALLOW_ELEMENT_CALLBACK = 'allow_element_callback';
+var CONFIG_ALLOW_SELECTORS = 'allow_selectors';
+var CONFIG_ALLOW_URL_REGEXES = 'allow_url_regexes';
+var CONFIG_BLOCK_ATTRS = 'block_attrs';
+var CONFIG_BLOCK_ELEMENT_CALLBACK = 'block_element_callback';
 var CONFIG_BLOCK_SELECTORS = 'block_selectors';
 var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
+var CONFIG_CAPTURE_EXTRA_ATTRS = 'capture_extra_attrs';
 var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
+var CONFIG_SCROLL_CAPTURE_ALL = 'scroll_capture_all';
+var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
@@ -2566,7 +2665,16 @@ var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
 var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_ALLOW_SELECTORS] = [];
+CONFIG_DEFAULTS[CONFIG_ALLOW_URL_REGEXES] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_ATTRS] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_ELEMENT_CALLBACK] = null;
+CONFIG_DEFAULTS[CONFIG_BLOCK_SELECTORS] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_URL_REGEXES] = [];
+CONFIG_DEFAULTS[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
 CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
+CONFIG_DEFAULTS[CONFIG_SCROLL_CAPTURE_ALL] = false;
+CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
@@ -2621,13 +2729,37 @@ Autocapture.prototype.getConfig = function(key) {
 };
 
 Autocapture.prototype.currentUrlBlocked = function() {
+    var i;
+    var currentUrl = _.info.currentUrl();
+
+    var allowUrlRegexes = this.getConfig(CONFIG_ALLOW_URL_REGEXES) || [];
+    if (allowUrlRegexes.length) {
+        // we're using an allowlist, only track if current URL matches
+        var allowed = false;
+        for (i = 0; i < allowUrlRegexes.length; i++) {
+            var allowRegex = allowUrlRegexes[i];
+            try {
+                if (currentUrl.match(allowRegex)) {
+                    allowed = true;
+                    break;
+                }
+            } catch (err) {
+                logger$3.critical('Error while checking block URL regex: ' + allowRegex, err);
+                return true;
+            }
+        }
+        if (!allowed) {
+            // wasn't allowed by any regex
+            return true;
+        }
+    }
+
     var blockUrlRegexes = this.getConfig(CONFIG_BLOCK_URL_REGEXES) || [];
     if (!blockUrlRegexes || !blockUrlRegexes.length) {
         return false;
     }
 
-    var currentUrl = _.info.currentUrl();
-    for (var i = 0; i < blockUrlRegexes.length; i++) {
+    for (i = 0; i < blockUrlRegexes.length; i++) {
         try {
             if (currentUrl.match(blockUrlRegexes[i])) {
                 return true;
@@ -2655,11 +2787,15 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
-    var props = getPropsForDOMEvent(
-        ev,
-        this.getConfig(CONFIG_BLOCK_SELECTORS),
-        this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
-    );
+    var props = getPropsForDOMEvent(ev, {
+        allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
+        allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
+        blockAttrs: this.getConfig(CONFIG_BLOCK_ATTRS),
+        blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
+        blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
+        captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
+        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+    });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);
@@ -2744,19 +2880,24 @@ Autocapture.prototype.initPageviewTracking = function() {
 
         var currentUrl = _.info.currentUrl();
         var shouldTrack = false;
+        var didPathChange = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
         var trackPageviewOption = this.pageviewTrackingConfig();
         if (trackPageviewOption === PAGEVIEW_OPTION_FULL_URL) {
             shouldTrack = currentUrl !== previousTrackedUrl;
         } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING) {
             shouldTrack = currentUrl.split('#')[0] !== previousTrackedUrl.split('#')[0];
         } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH) {
-            shouldTrack = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
+            shouldTrack = didPathChange;
         }
 
         if (shouldTrack) {
             var tracked = this.mp.track_pageview(DEFAULT_PROPS);
             if (tracked) {
                 previousTrackedUrl = currentUrl;
+            }
+            if (didPathChange) {
+                this.lastScrollCheckpoint = 0;
+                logger$3.log('Path change: re-initializing scroll depth checkpoints');
             }
         }
     }.bind(this)));
@@ -2769,6 +2910,7 @@ Autocapture.prototype.initScrollTracking = function() {
         return;
     }
     logger$3.log('Initializing scroll tracking');
+    this.lastScrollCheckpoint = 0;
 
     this.listenerScroll = win.addEventListener(EV_SCROLLEND, safewrap(function() {
         if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
@@ -2778,6 +2920,11 @@ Autocapture.prototype.initScrollTracking = function() {
             return;
         }
 
+        var shouldTrack = this.getConfig(CONFIG_SCROLL_CAPTURE_ALL);
+        var scrollCheckpoints = (this.getConfig(CONFIG_SCROLL_CHECKPOINTS) || [])
+            .slice()
+            .sort(function(a, b) { return a - b; });
+
         var scrollTop = win.scrollY;
         var props = _.extend({'$scroll_top': scrollTop}, DEFAULT_PROPS);
         try {
@@ -2785,10 +2932,25 @@ Autocapture.prototype.initScrollTracking = function() {
             var scrollPercentage = Math.round((scrollTop / (scrollHeight - win.innerHeight)) * 100);
             props['$scroll_height'] = scrollHeight;
             props['$scroll_percentage'] = scrollPercentage;
+            if (scrollPercentage > this.lastScrollCheckpoint) {
+                for (var i = 0; i < scrollCheckpoints.length; i++) {
+                    var checkpoint = scrollCheckpoints[i];
+                    if (
+                        scrollPercentage >= checkpoint &&
+                        this.lastScrollCheckpoint < checkpoint
+                    ) {
+                        props['$scroll_checkpoint'] = checkpoint;
+                        this.lastScrollCheckpoint = checkpoint;
+                        shouldTrack = true;
+                    }
+                }
+            }
         } catch (err) {
             logger$3.critical('Error while calculating scroll percentage', err);
         }
-        this.mp.track(MP_EV_SCROLL, props);
+        if (shouldTrack) {
+            this.mp.track(MP_EV_SCROLL, props);
+        }
     }.bind(this)));
 };
 
@@ -5240,8 +5402,12 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
                 if (!(k in union_q)) {
                     union_q[k] = [];
                 }
-                // We may send duplicates, the server will dedup them.
-                union_q[k] = union_q[k].concat(v);
+                // Prevent duplicate values
+                _.each(v, function(item) {
+                    if (!_.include(union_q[k], item)) {
+                        union_q[k].push(item);
+                    }
+                });
             }
         });
         this._pop_from_people_queue(UNSET_ACTION, q_data);
