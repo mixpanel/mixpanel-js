@@ -1,3 +1,7 @@
+**2.60.0** (31 Jan 2025)
+- Expanded Autocapture configs
+- Prevent duplicate values in persistence when using people.union (thanks @chrisdeely)
+
 **2.59.0** (21 Jan 2025)
 - Initial Autocapture support
 - Block more crawlers (AmazonBot, more Yandex bots)
@@ -7,7 +11,7 @@
 - Session Replay checkpoint events now include a starting URL
 
 **2.57.1** (12 Dec 2024)
-- Asynchronous abstractions (primarily Promise support) introduced in internal refactor of batch/queue/retry system.
+- Asynchronous abstractions (primarily Promise support) introduced in internal refactor of batch/queue/retry system
 
 **2.57.0** (Dec 2024)
 REDACTED
