@@ -4914,6 +4914,58 @@
                 });
         }
 
+        if (window.sessionStorage) {
+            mpmodule("get_tab_id");
+
+            test("get_tab_id returns a string uuid", 2, function() {
+                var tab_id = mixpanel.test.get_tab_id();
+                ok(typeof(tab_id) === "string", "tab id is a string");
+                ok(tab_id.length > 0, "tab id is not empty");
+            });
+
+            test("different SDK instances have different tab IDs", 3, function () {
+                mixpanel.init('difftoken', {}, `difftest`);
+                ok(typeof(mixpanel.test.get_tab_id()) === "string", "tab id is a string");
+                ok(typeof(mixpanel.difftest.get_tab_id()) === "string", "tab id is a string");
+
+                ok(mixpanel.test.get_tab_id() !== mixpanel.difftest.get_tab_id(), "tab IDs are different");
+            });
+
+            test("retrieves and reuses previous tab ID from sessionStorage", 3, function () {
+                var tab_id = mixpanel.test.get_tab_id();
+
+                window.dispatchEvent(new CustomEvent("beforeunload"));
+                clearLibInstance(mixpanel.test);
+
+                mixpanel.init(this.token, {
+                    batch_requests: false,
+                    debug: true
+                }, "test");
+
+                ok(typeof(mixpanel.test.get_tab_id()) === "string", "tab id is a string");
+                ok(tab_id === mixpanel.test.get_tab_id(), "tab ID is reused for the same tab and sdk instance");
+
+                var manual_tab_id = "asdf-tab-id";
+                window.sessionStorage.setItem("mp_tab_id_difftest_difftoken", manual_tab_id);
+                mixpanel.init('difftoken', {}, `difftest`);
+                ok(mixpanel.difftest.get_tab_id() === manual_tab_id, "manually set tab ID is used");
+            });
+
+            test("issues a new tab ID when the tab is locked (when sessionStorage is duplicated)", 3, function () {
+                var tab_id = mixpanel.test.get_tab_id();
+                clearLibInstance(mixpanel.test);
+
+                mixpanel.init(this.token, {
+                    batch_requests: false,
+                    debug: true
+                }, "test");
+
+                ok(typeof(mixpanel.test.get_tab_id()) === "string", "tab id is a string");
+                ok(typeof(tab_id) === "string", "tab id is a string");
+                ok(tab_id !== mixpanel.test.get_tab_id(), "tab ID is reused for the same tab and sdk instance");
+            });
+        }
+
         if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
 
             mpmodule('GDPR record', null, function() {
