@@ -5930,10 +5930,17 @@
                     clearAllLibInstances();
                     stop();
                     if (window.indexedDB) {
-                        var allStores = ['mixpanelReplayEvents', 'mixpanelRecordingRegistry'];
+                        var allStores = ['mixpanelRecordingEvents', 'mixpanelRecordingRegistry'];
                         // need to increment that version number as our schema changes, maybe set up some consts
                         var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
+
+                        var isFresh = false;
                         openRequest.onsuccess = function () {
+                            if (isFresh) {
+                                start();
+                                return;
+                            }
+
                             var db = openRequest.result;
                             var transaction = db.transaction(allStores, 'readwrite');
                             transaction.oncomplete = function () {
@@ -5947,7 +5954,7 @@
                         }
 
                         openRequest.onupgradeneeded = function () {
-                            start(); // idb doesn't exist yet, the sdk will make it
+                            isFresh = true; // idb doesn't exist yet, the sdk will make it
                         }
                     } else {
                         start()

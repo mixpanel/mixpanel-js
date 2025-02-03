@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import localStorage from 'localStorage';
 import sinon from 'sinon';
 
-import { acquireLockForPid } from './lock-test-utils';
+import { acquireLockForPid } from './test-utils/lock';
 import { SharedLock } from '../../src/shared-lock';
 import { NpoPromise } from '../../src/promise-polyfill';
 

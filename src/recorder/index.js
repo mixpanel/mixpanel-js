@@ -1,7 +1,7 @@
 import { record } from 'rrweb';
 import { Promise } from '../promise-polyfill';
 import { SessionRecording } from './session-recording';
-import { RecordingRegistry } from './registry';
+import { RecordingRegistry } from './recording-registry';
 
 import { console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
@@ -19,6 +19,7 @@ var MixpanelRecorder = function(mixpanelInstance) {
      * @member {import('./registry').RecordingRegistry}
      */
     this.recordingRegistry = new RecordingRegistry({mixpanelInstance: this.mixpanelInstance, errorReporter: logger.error});
+    this.recordingRegistry.flushInactiveRecordings();
     this.activeRecording = null;
 };
 

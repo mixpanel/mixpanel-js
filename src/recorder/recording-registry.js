@@ -11,23 +11,22 @@ var RecordingRegistry = function (options) {
     this.idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
-
-    this.flushInactiveRecordings();
+    this.sharedLockStorage = options.sharedLockStorage;
 };
 
-RecordingRegistry.prototype.handleIdbError = function (err) {
+RecordingRegistry.prototype.handleError = function (err) {
     this.errorReporter('IndexedDB error: ', err);
 };
 
 /**
- * @param {import('./session-recording').SerializedRecording} recording
+ * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
     return this.idb.init()
         .then(_.bind(function () {
             return this.idb.setItem(this.mixpanelInstance.get_tab_id(), serializedRecording);
         }, this))
-        .catch(_.bind(this.handleIdbError, this));
+        .catch(_.bind(this.handleError, this));
 };
 
 /**
@@ -45,7 +44,7 @@ RecordingRegistry.prototype.getActiveRecording = function () {
                 return serializedRecording;
             }
         }, this))
-        .catch(_.bind(this.handleIdbError, this));
+        .catch(_.bind(this.handleError, this));
 };
 
 RecordingRegistry.prototype.clearActiveRecording = function () {
@@ -57,13 +56,13 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
                 serializedRecording['maxExpires'] = 0;
                 return this.setActiveRecording(serializedRecording);
             }
-        }, this));
+        }, this))
+        .catch(_.bind(this.handleError, this));
 };
 
 /**
  * Flush any inactive recordings from the registry to minimize data loss.
  * The main idea here is that we can flush remaining rrweb events on the next page load if a tab is closed mid-batch.
- * TODO(jakub): is it enough to flush the expired ones and let tab continuation handle the rest?
  */
 RecordingRegistry.prototype.flushInactiveRecordings = function () {
     var inactiveRecordings = [];
@@ -79,7 +78,10 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
 
             return Promise.all(
                 inactiveRecordings.map(_.bind(function (serializedRecording) {
-                    var sessionRecording = SessionRecording.deserialize(serializedRecording, {mixpanelInstance: this.mixpanelInstance});
+                    var sessionRecording = SessionRecording.deserialize(serializedRecording, {
+                        mixpanelInstance: this.mixpanelInstance,
+                        sharedLockStorage: this.sharedLockStorage
+                    });
                     return sessionRecording.unloadPersistedData();
                 }, this))
             );
@@ -92,7 +94,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
                 }, this))
             );
         }, this))
-        .catch(_.bind(this.handleIdbError, this));
+        .catch(_.bind(this.handleError, this));
 };
 
 /**

@@ -54,6 +54,10 @@ export default function jsdomSetup(options={}) {
 
   let teardown;
 
+  // for some reason jsdom replaces node's default btoa, and doesn't clean up after teardown
+  // possible node / jsdom version mismatch?
+  let btoaRef = btoa;
+
   beforeEach(function() {
     this.timeout(5000);
     teardown = jsdom(options.html, jsdomOptions);
@@ -68,5 +72,6 @@ export default function jsdomSetup(options={}) {
     if (typeof(options.afterCallback) === `function`) {
       options.afterCallback();
     }
+    globalThis.btoa = btoaRef;
   });
 }

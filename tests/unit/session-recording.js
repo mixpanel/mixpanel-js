@@ -8,8 +8,8 @@ import { IncrementalSource, EventType } from '@rrweb/types';
 
 import sinon from 'sinon';
 import { window } from '../../src/window';
-import { IDBFactory, IDBDatabase} from 'fake-indexeddb';
 import localStorage from 'localStorage';
+import { setupFakeIDB, idbGetItem, idbSetItem, idbCreateDatabase } from './test-utils/indexed-db';
 
 describe(`SessionRecording`, function() {
   let replayId,
@@ -26,10 +26,10 @@ describe(`SessionRecording`, function() {
 
   const NOW_MS = 1737999877508;
 
-  beforeEach(function() {
-    window.indexedDB = new IDBFactory();
-    window.IDBDatabase = IDBDatabase;
+  setupFakeIDB(this);
 
+  beforeEach(function() {
+    localStorage.clear();
     clock = sinon.useFakeTimers({now: NOW_MS, toFake: [`Date`, `setTimeout`, `clearTimeout`, `setInterval`, `clearInterval`]});
 
     // TODO: common mock MixpanelLib
@@ -78,8 +78,6 @@ describe(`SessionRecording`, function() {
   });
 
   afterEach(function () {
-    delete window.indexedDB;
-    delete window.IDBDatabase;
     delete window.fetch;
     clock.restore();
     sinon.restore();
@@ -94,46 +92,6 @@ describe(`SessionRecording`, function() {
 
     const ev = {type, timestamp: clock.now, data};
     rrwebOptions.emit(ev);
-  };
-
-  // TODO: common indexeddb helpers
-  const idbCreateDatabase = (dbName, version, stores) => {
-    return new Promise((resolve) => {
-      const openRequest = window.indexedDB.open(dbName, version);
-      openRequest.onsuccess = function () {
-        resolve(openRequest.result);
-      };
-
-      openRequest.onupgradeneeded = function (event) {
-        const db = event.target.result;
-        stores.forEach(function (storeName) {
-          db.createObjectStore(storeName);
-        });
-      };
-    });
-  };
-
-  const idbTransaction = (storeName, cb) => {
-    return new Promise((resolve) => {
-      const openRequest = window.indexedDB.open(`mixpanelBrowserDb`, 1);
-      openRequest.onsuccess = function () {
-        const db = openRequest.result;
-        const transaction = db.transaction([storeName], `readwrite`);
-        const req = cb(transaction.objectStore(storeName));
-
-        transaction.oncomplete = function () {
-          resolve(req.result);
-        };
-      };
-    });
-  };
-
-  const idbGetItem = (storeName, key) => {
-    return idbTransaction(storeName, (store) => store.get(key));
-  };
-
-  const idbSetItem = (storeName, key, value) => {
-    return idbTransaction(storeName, (store) => store.put(value, key));
   };
 
   it(`can start and stop recording`, async function() {
@@ -192,7 +150,7 @@ describe(`SessionRecording`, function() {
     await sessionRecording.__enqueuePromise;
 
     // this isn't really what we're testing, but we should make sure that the queue is persisted in indexeddb
-    const queue = await idbGetItem(`mixpanelReplayEvents`, batcherKey);
+    const queue = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
     expect(queue.length).to.equal(4, `queued rrweb events are persisted in indexeddb`);
 
     await clock.tickAsync(10 * 1000);
@@ -221,7 +179,7 @@ describe(`SessionRecording`, function() {
       {type: EventType.IncrementalSnapshot, timestamp: NOW_MS + 15, data: {source: IncrementalSource.MouseMove}},
     ]);
 
-    const queueAfterFlush = await idbGetItem(`mixpanelReplayEvents`, batcherKey);
+    const queueAfterFlush = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
     expect(queueAfterFlush.length).to.equal(0, `queue is emptied after successful request`);
   });
 
@@ -258,7 +216,7 @@ describe(`SessionRecording`, function() {
   });
 
   it(`can unload persisted rrweb data and clean up indexeddb`, async function() {
-    await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelReplayEvents`]);
+    await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingEvents`]);
     const startTime = 1737870254055;
 
     const recordingToUnload = SessionRecording.deserialize({
@@ -272,18 +230,17 @@ describe(`SessionRecording`, function() {
       tabId: `test-some-other-tab-id`,
     }, {mixpanelInstance: mockMixpanelInstance});
 
-    var wrapQueueItem = (id, payload) => ({
-      id,
-      payload,
-      flushAfter: startTime,
-    });
     const persistedEvents = [
       {type: EventType.IncrementalSnapshot, timestamp: startTime + 10, data: {source: IncrementalSource.MouseInteraction}},
       {type: EventType.IncrementalSnapshot, timestamp: startTime + 15, data: {source: IncrementalSource.MouseMove}},
       {type: EventType.IncrementalSnapshot, timestamp: startTime + 50, data: {source: IncrementalSource.Mutation}},
       {type: EventType.IncrementalSnapshot, timestamp: startTime + 60000, data: {source: IncrementalSource.Mutation}},
     ];
-    await idbSetItem(`mixpanelReplayEvents`, `__mprec_mp_test_test-token_some-other-replay-id`, persistedEvents.map((ev, idx) => wrapQueueItem(idx, ev)));
+    await idbSetItem(`mixpanelRecordingEvents`, `__mprec_mp_test_test-token_some-other-replay-id`, persistedEvents.map((ev, idx) => ({
+      id: idx,
+      payload: ev,
+      flushAfter: startTime,
+    })));
 
     await recordingToUnload.unloadPersistedData();
     expect(fetchStub.calledOnce).to.be.true;
@@ -307,7 +264,7 @@ describe(`SessionRecording`, function() {
     const body = JSON.parse(fetchCall.args[1].body);
     expect(body).to.deep.equal(persistedEvents);
 
-    const queueAfterFlush = await idbGetItem(`mixpanelReplayEvents`, batcherKey);
+    const queueAfterFlush = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
     expect(queueAfterFlush).to.not.be.ok;
   });
 });

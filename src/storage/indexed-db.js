@@ -4,7 +4,7 @@ import { _ } from '../utils';
 
 var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
 
-var RECORDING_EVENTS_STORE_NAME = 'mixpanelReplayEvents';
+var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
 var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
 
 // note: increment the version number when adding new object stores
