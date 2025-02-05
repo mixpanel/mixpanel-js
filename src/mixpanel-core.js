@@ -370,7 +370,8 @@ MixpanelLib.prototype._init = function(token, config, name) {
 };
 
 /**
- * Assigns a unique ID to this tab by leveraging sessionStorage.
+ * Assigns a unique UUID to this tab / window by leveraging sessionStorage.
+ * This is primarily used for session recording, where data must be isolated to the current tab.
  */
 MixpanelLib.prototype._init_tab_id = function() {
     if (sessionStorageSupported(window.sessionStorage)) {
@@ -379,7 +380,8 @@ MixpanelLib.prototype._init_tab_id = function() {
             var tab_id_key = 'mp_tab_id_' + key_suffix;
             var tab_lock_key = 'mp_tab_lock_' + key_suffix;
 
-            // if there's a lock on this tab already, it must have come from a duplicated tab (in which case session storage is copied over)
+            // A tab "lock" is used to determine if sessionStorage is copied over and we need to assign a new ID.
+            // This enforces a unique ID in the cases like duplicated tab, window.open(...)
             if (window.sessionStorage.getItem(tab_lock_key) || !window.sessionStorage.getItem(tab_id_key)) {
                 window.sessionStorage.setItem(tab_id_key, _.UUID());
             }
@@ -387,6 +389,9 @@ MixpanelLib.prototype._init_tab_id = function() {
             window.sessionStorage.setItem(tab_lock_key, '1');
             this.tab_id = window.sessionStorage.getItem(tab_id_key);
 
+            // Remove the lock when the tab is unloaded. This event is not reliable to detect all page unloads,
+            // but reliable in cases where the user remains in the tab e.g. a refresh or href navigation.
+            // A missing tab lock will indicate to the next SDK instance that we can reuse the stored tab_id.
             window.addEventListener('beforeunload', function () {
                 window.sessionStorage.removeItem(tab_lock_key);
             });
@@ -2213,7 +2218,6 @@ MixpanelPersistence.prototype['update_search_keyword'] = MixpanelPersistence.pro
 MixpanelPersistence.prototype['update_referrer_info']  = MixpanelPersistence.prototype.update_referrer_info;
 MixpanelPersistence.prototype['get_cross_subdomain']   = MixpanelPersistence.prototype.get_cross_subdomain;
 MixpanelPersistence.prototype['clear']                 = MixpanelPersistence.prototype.clear;
-
 
 
 var instances = {};
