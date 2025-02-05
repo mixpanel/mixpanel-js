@@ -413,7 +413,7 @@ MixpanelLib.prototype._should_load_recorder = function () {
             return idb.getAll();
         })
         .then(function (recordings) {
-            for (let i = 0; i < recordings.length; i++) {
+            for (var i = 0; i < recordings.length; i++) {
                 // if there's expired recordings in the registry, we should load the recorder to flush them
                 // if there's a recording for this tab id, we should load the recorder to continue the recording
                 if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {

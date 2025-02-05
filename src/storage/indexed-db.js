@@ -52,7 +52,7 @@ IDBStorageWrapper.prototype.init = function () {
 
     return this.dbPromise
         .then(function (dbOrError) {
-            if (dbOrError instanceof window.IDBDatabase) {
+            if (dbOrError instanceof window['IDBDatabase']) {
                 return Promise.resolve();
             } else {
                 return Promise.reject(dbOrError);
