@@ -2,13 +2,13 @@ import { IDBFactory, IDBDatabase} from 'fake-indexeddb';
 
 import { window } from '../../../src/window';
 
-export function setupFakeIDB(mochaSuite) {
-  mochaSuite.beforeEach(() => {
+export function setupFakeIDB() {
+  beforeEach(function () {
     window.indexedDB = new IDBFactory();
     window.IDBDatabase = IDBDatabase;
   });
 
-  mochaSuite.afterEach(() => {
+  afterEach(function () {
     delete window.indexedDB;
     delete window.IDBDatabase;
   });

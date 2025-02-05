@@ -10,15 +10,16 @@ import sinon from 'sinon';
 import { window } from '../../src/window';
 import localStorage from 'localStorage';
 import { setupFakeIDB, idbGetItem, idbSetItem, idbCreateDatabase } from './test-utils/indexed-db';
+import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
+import { setupRrwebMock } from './test-utils/mock-rrweb';
 
 describe(`SessionRecording`, function() {
   let replayId,
     onIdleTimeoutSpy,
     onMaxLengthReachedSpy,
-    rrwebStopSy,
-    rrwebRecordStub,
     sessionRecording,
     flushSpy,
+    mockRrweb,
     fetchStub,
     clock,
     batcherKey,
@@ -26,49 +27,27 @@ describe(`SessionRecording`, function() {
 
   const NOW_MS = 1737999877508;
 
-  setupFakeIDB(this);
+  setupFakeIDB();
 
   beforeEach(function() {
     localStorage.clear();
     clock = sinon.useFakeTimers({now: NOW_MS, toFake: [`Date`, `setTimeout`, `clearTimeout`, `setInterval`, `clearInterval`]});
 
-    // TODO: common mock MixpanelLib
-    mockMixpanelInstance = {
-      'get_distinct_id': () => `test-distinct-id`,
-      'get_config': (configVar) => ({
-        token: `test-token`,
-        'record_sessions_percent': 100,
-        'record_min_ms': 0,
-        'record_max_ms': 24 * 60 * 60 * 1000,
-        'record_idle_timeout_ms': 30 * 60 * 1000,
-        'name': `mp_test`,
-        'api_host': `https://api.mixpanel.com`,
-        'api_routes': {
-          'record': `record`,
-        },
-      }[configVar]),
-      'get_property': (propName) => ({
-        '$device_id': `test-device-id`,
-        '$user_id': `test-user-id`,
-      }[propName]),
-      'get_tab_id': () => `test-tab-id`,
-    };
+    mockMixpanelInstance = new MockMixpanelLib();
     replayId = `test-replay-id`;
     batcherKey = `__mprec_mp_test_test-token_${replayId}`;
 
     onIdleTimeoutSpy = sinon.spy();
     onMaxLengthReachedSpy = sinon.spy();
 
-    rrwebStopSy = sinon.spy();
-    rrwebRecordStub = sinon.stub();
-    rrwebRecordStub.returns(rrwebStopSy);
+    mockRrweb = setupRrwebMock();
 
     sessionRecording = new SessionRecording({
       mixpanelInstance: mockMixpanelInstance,
       replayId: replayId,
       onIdleTimeout: onIdleTimeoutSpy,
       onMaxLengthReached: onMaxLengthReachedSpy,
-      rrwebRecord: rrwebRecordStub,
+      rrwebRecord: mockRrweb.recordStub,
       sharedLockStorage: localStorage,
     });
     flushSpy = sinon.spy(sessionRecording.batcher, `flush`);
@@ -77,30 +56,20 @@ describe(`SessionRecording`, function() {
     window.fetch = fetchStub;
   });
 
-  afterEach(function () {
-    delete window.fetch;
+  afterEach(async function () {
+    sessionRecording.stopRecording();
     clock.restore();
+    delete window.fetch;
     sinon.restore();
   });
 
-  const rrwebEmit = async (type, source = null) => {
-    const rrwebOptions = rrwebRecordStub.getCall(0).args[0];
-    const data = {};
-    if (source) {
-      data.source = source;
-    }
-
-    const ev = {type, timestamp: clock.now, data};
-    rrwebOptions.emit(ev);
-  };
-
   it(`can start and stop recording`, async function() {
     sessionRecording.startRecording();
-    expect(rrwebRecordStub.calledOnce).to.be.true;
+    expect(mockRrweb.recordStub.calledOnce).to.be.true;
     expect(sessionRecording.isRrwebStopped()).to.be.false;
 
     sessionRecording.stopRecording();
-    expect(rrwebStopSy.calledOnce).to.be.true;
+    expect(mockRrweb.stopSpy.calledOnce).to.be.true;
     expect(sessionRecording.isRrwebStopped()).to.be.true;
   });
 
@@ -113,7 +82,7 @@ describe(`SessionRecording`, function() {
   });
 
   it(`still flushes the batcher when stopRecording throws an error`, function() {
-    rrwebRecordStub.returns(function () {
+    mockRrweb.recordStub.returns(function () {
       throw new Error(`test error`);
     });
 
@@ -125,7 +94,7 @@ describe(`SessionRecording`, function() {
   });
 
   it(`does not start batcher and timeouts when rrweb silently fails (returns undefined)`, function() {
-    rrwebRecordStub.returns(undefined);
+    mockRrweb.recordStub.returns(undefined);
     sessionRecording.startRecording();
 
     expect(flushSpy.calledOnce).to.be.false;
@@ -134,18 +103,17 @@ describe(`SessionRecording`, function() {
     expect(sessionRecording.maxTimeoutId).to.be.null;
   });
 
-
   it(`queues rrweb events and flushes them after 10 seconds`, async function() {
     sessionRecording.startRecording();
 
-    rrwebEmit(EventType.Meta);
-    rrwebEmit(EventType.FullSnapshot);
+    mockRrweb.emit(EventType.Meta);
+    mockRrweb.emit(EventType.FullSnapshot);
     clock.tick(10); // tick for 10ms throttle
     await sessionRecording.__enqueuePromise;
 
-    rrwebEmit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
     clock.tick(5);
-    rrwebEmit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
     clock.tick(5);
     await sessionRecording.__enqueuePromise;
 

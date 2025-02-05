@@ -4,7 +4,6 @@ import { SessionRecording } from './session-recording';
 import { RecordingRegistry } from './recording-registry';
 
 import { console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
-import { window } from '../window';
 
 var logger = console_with_prefix('recorder');
 
@@ -12,14 +11,17 @@ var logger = console_with_prefix('recorder');
  * Recorder API: bundles rrweb and and exposes methods to start and stop recordings.
  * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
 */
-var MixpanelRecorder = function(mixpanelInstance) {
+var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage) {
     this.mixpanelInstance = mixpanelInstance;
+    this.rrwebRecord = rrwebRecord || record;
+    this.sharedLockStorage = sharedLockStorage;
 
     /**
      * @member {import('./registry').RecordingRegistry}
      */
     this.recordingRegistry = new RecordingRegistry({mixpanelInstance: this.mixpanelInstance, errorReporter: logger.error});
-    this.recordingRegistry.flushInactiveRecordings();
+    this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
+
     this.activeRecording = null;
 };
 
@@ -54,7 +56,8 @@ MixpanelRecorder.prototype.startRecording = function(options) {
         onIdleTimeout: onIdleTimeout,
         onMaxLengthReached: onMaxLengthReached,
         replayId: _.UUID(),
-        rrwebRecord: record,
+        rrwebRecord: this.rrwebRecord,
+        sharedLockStorage: this.sharedLockStorage
     };
 
     if (options.activeSerializedRecording) {
@@ -73,6 +76,7 @@ MixpanelRecorder.prototype.stopRecording = function() {
         this.recordingRegistry.clearActiveRecording();
         this.activeRecording = null;
     }
+    return Promise.resolve();
 };
 
 MixpanelRecorder.prototype.pauseRecording = function() {
@@ -92,9 +96,9 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
             if (activeSerializedRecording) {
                 return this.startRecording({activeSerializedRecording: activeSerializedRecording});
             } else if (startNewIfInactive) {
-                this.startRecording({shouldStopBatcher: false});
+                return this.startRecording({shouldStopBatcher: false});
             } else {
-                logger.info('No resumable recording found.');
+                logger.log('No resumable recording found.');
                 return null;
             }
         }, this));
@@ -122,4 +126,5 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
     }
 });
 
-window['__mp_recorder'] = MixpanelRecorder;
+
+export { MixpanelRecorder };

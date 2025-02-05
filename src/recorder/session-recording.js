@@ -106,6 +106,7 @@ var SessionRecording = function(options) {
 };
 
 SessionRecording.prototype.unloadPersistedData = function () {
+    this.batcher.stop();
     return this.batcher.flush()
         .then(_.bind(function () {
             return this.queueStorage.removeItem(this.batcherKey);

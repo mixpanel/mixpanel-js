@@ -1,7 +1,3 @@
-/*
- * Unit tests for the SessionRecording module, excluding the rrweb dependency.
- */
-
 import { expect } from 'chai';
 
 import sinon from 'sinon';
@@ -9,6 +5,7 @@ import { window } from '../../src/window';
 import localStorage from 'localStorage';
 import { setupFakeIDB, idbGetItem, idbSetItem, idbCreateDatabase } from './test-utils/indexed-db';
 import { RecordingRegistry } from '../../src/recorder/recording-registry';
+import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 
 describe(`RecordingRegistry`, function() {
   /**
@@ -30,33 +27,13 @@ describe(`RecordingRegistry`, function() {
   };
   const BATCHER_PREFIX = `__mprec_mp_test_test-token_`;
 
-  setupFakeIDB(this);
+  setupFakeIDB();
 
   beforeEach(async function() {
     localStorage.clear();
     clock = sinon.useFakeTimers({now: NOW_MS, toFake: [`Date`, `setTimeout`, `clearTimeout`, `setInterval`, `clearInterval`]});
 
-    // TODO: common mock MixpanelLib
-    mockMixpanelInstance = {
-      'get_distinct_id': () => `test-distinct-id`,
-      'get_config': (configVar) => ({
-        token: `test-token`,
-        'record_sessions_percent': 100,
-        'record_min_ms': 0,
-        'record_max_ms': 24 * 60 * 60 * 1000,
-        'record_idle_timeout_ms': 30 * 60 * 1000,
-        'name': `mp_test`,
-        'api_host': `https://api.mixpanel.com`,
-        'api_routes': {
-          'record': `record`,
-        },
-      }[configVar]),
-      'get_property': (propName) => ({
-        '$device_id': `test-device-id`,
-        '$user_id': `test-user-id`,
-      }[propName]),
-      'get_tab_id': () => `test-tab-id`,
-    };
+    mockMixpanelInstance = new MockMixpanelLib();
 
     recordingRegistry = new RecordingRegistry({
       mixpanelInstance: mockMixpanelInstance,
