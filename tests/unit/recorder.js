@@ -4,7 +4,7 @@ import sinon from 'sinon';
 import { window } from '../../src/window';
 import localStorage from 'localStorage';
 import { setupFakeIDB, idbGetItem, idbSetItem } from './test-utils/indexed-db';
-import { MixpanelRecorder } from '../../src/recorder/api';
+import { MixpanelRecorder } from '../../src/recorder/recorder';
 import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 import { setupRrwebMock } from './test-utils/mock-rrweb';
 
