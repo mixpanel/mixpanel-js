@@ -5975,6 +5975,9 @@
                                         });
                                     }, this))
                                 }, this))
+                                .then(_.bind(function () {
+                                    return this.waitForRecordingStarted();
+                                }, this));
                         };
                     }
                     window.sessionStorage.clear()
@@ -6669,6 +6672,9 @@
 
                         // start recording again while the first replay's request is in flight
                         mixpanel.recordertest.start_session_recording();
+                        return this.waitForRecordingStarted();
+                    }, this))
+                    .then(_.bind(function () {
                         simulateMouseClick(document.body);
                         return this.waitForRecorderEnqueue();
                     }, this))

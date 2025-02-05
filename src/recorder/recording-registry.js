@@ -1,7 +1,7 @@
 import { Promise } from '../promise-polyfill';
 import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from '../storage/indexed-db';
 import { SessionRecording } from './session-recording';
-import { _ } from '../utils';
+import { _, isRecordingExpired } from '../utils';
 
 /**
  * Module for handling the storage and retrieval of recording metadata as well as any active recordings.
@@ -38,7 +38,7 @@ RecordingRegistry.prototype.getActiveRecording = function () {
             return this.idb.getItem(this.mixpanelInstance.get_tab_id());
         }, this))
         .then(_.bind(function (serializedRecording) {
-            if (serializedRecording && this._isExpired(serializedRecording)) {
+            if (serializedRecording && isRecordingExpired(serializedRecording)) {
                 return null;
             } else {
                 return serializedRecording;
@@ -73,7 +73,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
         .then(_.bind(function (serializedRecordings) {
             // clean up any expired recordings from the registry, non-expired ones may be active in other tabs
             inactiveRecordings = serializedRecordings.filter(_.bind(function (serializedRecording) {
-                return this._isExpired(serializedRecording);
+                return isRecordingExpired(serializedRecording);
             }, this));
 
             return Promise.all(
@@ -95,15 +95,6 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
             );
         }, this))
         .catch(_.bind(this.handleError, this));
-};
-
-/**
- * @param {import('./session-recording').SerializedRecording} serializedRecording
- * @returns {boolean}
- */
-RecordingRegistry.prototype._isExpired = function (serializedRecording) {
-    var now = new Date().getTime();
-    return now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
 };
 
 export { RecordingRegistry };

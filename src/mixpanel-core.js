@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, sessionStorageSupported, slice } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, sessionStorageSupported, slice, isRecordingExpired } from './utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
 import { FormTracker, LinkTracker } from './dom-trackers';
@@ -20,6 +20,7 @@ import {
     clearOptInOut,
     addOptOutCheckMixpanelLib
 } from './gdpr-utils';
+import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from './storage/indexed-db';
 
 /*
  * Mixpanel JS Library
@@ -373,26 +374,52 @@ MixpanelLib.prototype._init = function(token, config, name) {
  */
 MixpanelLib.prototype._init_tab_id = function() {
     if (sessionStorageSupported(window.sessionStorage)) {
-        var key_suffix = this.get_config('name') + '_' + this.get_config('token');
-        var tab_id_key = 'mp_tab_id_' + key_suffix;
-        var tab_lock_key = 'mp_tab_lock_' + key_suffix;
+        try {
+            var key_suffix = this.get_config('name') + '_' + this.get_config('token');
+            var tab_id_key = 'mp_tab_id_' + key_suffix;
+            var tab_lock_key = 'mp_tab_lock_' + key_suffix;
 
-        // if there's a lock on this tab already, it must have come from a duplicated tab (in which case session storage is copied over)
-        if (window.sessionStorage.getItem(tab_lock_key) || !window.sessionStorage.getItem(tab_id_key)) {
-            window.sessionStorage.setItem(tab_id_key, _.UUID());
+            // if there's a lock on this tab already, it must have come from a duplicated tab (in which case session storage is copied over)
+            if (window.sessionStorage.getItem(tab_lock_key) || !window.sessionStorage.getItem(tab_id_key)) {
+                window.sessionStorage.setItem(tab_id_key, _.UUID());
+            }
+
+            window.sessionStorage.setItem(tab_lock_key, '1');
+            this.tab_id = window.sessionStorage.getItem(tab_id_key);
+
+            window.addEventListener('beforeunload', function () {
+                window.sessionStorage.removeItem(tab_lock_key);
+            });
+        } catch(err) {
+            this.report_error('Error initializing tab id', err);
         }
-
-        window.sessionStorage.setItem(tab_lock_key, '1');
-        this.tab_id = window.sessionStorage.getItem(tab_id_key);
-
-        window.addEventListener('beforeunload', function () {
-            window.sessionStorage.removeItem(tab_lock_key);
-        });
     }
 };
 
 MixpanelLib.prototype.get_tab_id = function () {
     return this.tab_id || null;
+};
+
+MixpanelLib.prototype._should_load_recorder = function () {
+    var idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    var tab_id = this.get_tab_id();
+    return idb.init()
+        .then(function () {
+            return idb.getAll();
+        })
+        .then(function (recordings) {
+            for (let i = 0; i < recordings.length; i++) {
+                // if there's expired recordings in the registry, we should load the recorder to flush them
+                // if there's a recording for this tab id, we should load the recorder to continue the recording
+                if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {
+                    return true;
+                }
+            }
+            return false;
+        })
+        .catch(_.bind(function (err) {
+            this.report_error('Error checking recording registry', err);
+        }, this));
 };
 
 MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpanelLib(function(force_start) {
@@ -401,29 +428,10 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
         return;
     }
 
-    // optimistic check to see if this tab was previously recording.
-    // if so, we can load the recording bundle which will determine if it should actually resume the recording.
-    var tab_had_active_recording = false;
-    var active_recording_key = this._get_active_recording_key();
-    if (sessionStorageSupported(window.sessionStorage) && active_recording_key) {
-        tab_had_active_recording = !!window.sessionStorage.getItem(active_recording_key);
-    }
-
-    var is_sampled = this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent');
-    if (force_start || tab_had_active_recording || is_sampled) {
+    var loadRecorder = _.bind(function(startNewIfInactive) {
         var handleLoadedRecorder = _.bind(function() {
             this._recorder = this._recorder || new window['__mp_recorder'](this);
-            if (tab_had_active_recording) {
-                // try to resume the recording that was previously active in this tab.
-                // if the user fell into the sample or we manually called start_session_recording, then start a new recording as a fallback.
-                this._recorder['resumeRecording'](force_start || is_sampled);
-            } else {
-                this._recorder['startRecording']();
-            }
-
-            if (sessionStorageSupported(window.sessionStorage) && active_recording_key) {
-                window.sessionStorage.setItem(active_recording_key, '1');
-            }
+            this._recorder['resumeRecording'](startNewIfInactive);
         }, this);
 
         if (_.isUndefined(window['__mp_recorder'])) {
@@ -431,6 +439,22 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
         } else {
             handleLoadedRecorder();
         }
+    }, this);
+
+    /**
+     * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
+     * Otherwise, if the recording registry has any records then it's likely there's a recording in progress or orphaned data that needs to be flushed.
+     */
+    var is_sampled = this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent');
+    if (force_start || is_sampled) {
+        loadRecorder(true);
+    } else {
+        this._should_load_recorder()
+            .then(function (shouldLoad) {
+                if (shouldLoad) {
+                    loadRecorder(false);
+                }
+            });
     }
 });
 
@@ -441,10 +465,6 @@ MixpanelLib.prototype.start_session_recording = function () {
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
         this._recorder['stopRecording']();
-        var active_recording_key = this._get_active_recording_key();
-        if (sessionStorageSupported(window.sessionStorage) && active_recording_key) {
-            window.sessionStorage.removeItem(active_recording_key);
-        }
     }
 };
 
@@ -489,15 +509,6 @@ MixpanelLib.prototype._get_session_replay_id = function () {
         replay_id = this._recorder['replayId'];
     }
     return replay_id || null;
-};
-
-MixpanelLib.prototype._get_active_recording_key = function () {
-    var key = null;
-    var tab_id = this.get_tab_id();
-    if (tab_id) {
-        key = 'mp_record_tab_id_' + tab_id;
-    }
-    return key;
 };
 
 // "private" public method to reach into the recorder in test cases
