@@ -19,7 +19,7 @@ You can then import the lib:
 ```javascript
 import mixpanel from 'mixpanel-browser';
 
-mixpanel.init("YOUR_TOKEN");
+mixpanel.init("YOUR_TOKEN", {autocapture: true});
 mixpanel.track("An event");
 ```
 
@@ -56,7 +56,7 @@ Then you are free to import `mixpanel-browser` in your javascript modules.
 // main.js
 import mixpanel from 'mixpanel-browser';
 
-mixpanel.init('YOUR_TOKEN', {debug: true, track_pageview: true, persistence: 'localStorage'});
+mixpanel.init('YOUR_TOKEN', {autocapture: true, debug: true, persistence: 'localStorage'});
 ```
 
 ## Building bundles for release
