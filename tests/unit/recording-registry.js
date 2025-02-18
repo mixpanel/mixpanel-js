@@ -70,7 +70,7 @@ describe(`RecordingRegistry`, function() {
       expect(storedRecording).to.deep.equal(SERIALIZED_RECORDING);
     });
 
-    it(`returns null when the current tabs recording is expired`, async function() {
+    it(`returns null when the current tab's recording is expired`, async function() {
       const expiredRecording = Object.assign({}, SERIALIZED_RECORDING, {maxExpires: NOW_MS - 1000});
 
       await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingRegistry`]);

@@ -21,8 +21,8 @@ export const idbCreateDatabase = (dbName, version, stores) => {
       resolve(openRequest.result);
     };
 
-    openRequest.onupgradeneeded = function (event) {
-      const db = event.target.result;
+    openRequest.onupgradeneeded = function (ev) {
+      const db = ev.target.result;
       stores.forEach(function (storeName) {
         db.createObjectStore(storeName);
       });
