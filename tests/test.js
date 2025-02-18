@@ -5956,11 +5956,7 @@
                             });
                         }
                     } else {
-                        this.waitForRecorderLoad = function (extraConfig) {
-                            if (!mixpanel.recordertest) {
-                                this.initMixpanelRecorder(extraConfig);
-                            }
-
+                        this.waitForRecorderLoad = function () {
                             return untilDonePromise(_.bind(function () {
                                 // the sdk will check IDB if it needs to resume, so we can't synchronously check that the script is there
                                 return Boolean(document.querySelector('script[src="' + recorderSrc + '"]'))
@@ -6054,7 +6050,8 @@
             if (!IS_RECORDER_BUNDLED) {
                 asyncTest('adds script tag when sampled', 2, function () {
                     this.randomStub.returns(0.02);
-                    this.waitForRecorderLoad({record_sessions_percent: 2})
+                    this.initMixpanelRecorder({record_sessions_percent: 2});
+                    this.waitForRecorderLoad()
                         .then(_.bind(function () {
                             // initial two rrweb captured events: meta and full snapshots
                             return this.waitForRecorderEnqueue();
@@ -6084,7 +6081,9 @@
                 // set hash to test $current_url logic without reloading test page
                 window.location.hash = 'my-url-1';
                 this.randomStub.returns(0.02);
-                this.waitForRecorderLoad({record_sessions_percent: 10})
+                this.initMixpanelRecorder({record_sessions_percent: 10});
+
+                this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         window.location.hash = 'my-url-2';
                         simulateMouseClick(document.body);
@@ -6202,7 +6201,8 @@
 
             asyncTest('can manually stop a session recording', function () {
                 this.randomStub.returns(0.02);
-                this.waitForRecorderLoad({record_sessions_percent: 10})
+                this.initMixpanelRecorder({record_sessions_percent: 10});
+                this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
                     }, this))
@@ -6266,7 +6266,9 @@
 
             asyncTest('respects tracking opt-out after recording started', 5, function () {
                 this.randomStub.returns(0.02);
-                this.waitForRecorderLoad({record_sessions_percent: 10})
+                this.initMixpanelRecorder({record_sessions_percent: 10});
+
+                this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
                         return this.waitForRecorderEnqueue();
@@ -6415,8 +6417,10 @@
                     .returns(makeFakeFetchResponse(200))
                     .onCall(3)
                     .returns(makeFakeFetchResponse(200))
+                
+                this.initMixpanelRecorder({record_sessions_percent: 10});
 
-                this.waitForRecorderLoad({record_sessions_percent: 10})
+                this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
                         return this.waitForRecorderEnqueue();
@@ -6476,8 +6480,9 @@
 
             asyncTest('respects minimum session length setting', function () {
                 this.randomStub.returns(0.02);
+                this.initMixpanelRecorder({record_sessions_percent: 10, record_min_ms: 8000});
 
-                this.waitForRecorderLoad({record_sessions_percent: 10, record_min_ms: 8000})
+                this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
                         return this.waitForRecorderEnqueue();
@@ -6503,9 +6508,10 @@
 
             asyncTest('continues recording across SDK loads', 15, function () {
                 this.randomStub.returns(0.02);
+                this.initMixpanelRecorder({record_sessions_percent: 10});
 
                 var replayId;
-                this.waitForRecorderLoad({record_sessions_percent: 10})
+                this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         mixpanel.recordertest.identify('guy');
                         simulateMouseClick(document.body);
@@ -6540,6 +6546,7 @@
                         return this.clock.tickAsync(500);
                     }, this))
                     .then(_.bind(function () {
+                        this.initMixpanelRecorder();
                         // don't enable SR this time, it should continue the previous replay
                         return this.waitForRecorderLoad();
                     }, this))
