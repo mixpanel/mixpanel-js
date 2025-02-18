@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { EventType } from '@rrweb/types';
 
 import sinon from 'sinon';
 import { window } from '../../src/window';
@@ -63,9 +64,9 @@ describe(`Recorder`, function() {
 
     expect(mockRrweb.recordStub.callCount).to.equal(1);
 
-    mockRrweb.emit(4);
-    mockRrweb.emit(2);
-    mockRrweb.emit(3);
+    mockRrweb.emit(EventType.Meta);
+    mockRrweb.emit(EventType.FullSnapshot);
+    mockRrweb.emit(EventType.IncrementalSnapshot);
     await clock.tickAsync(10);
     await recorder.activeRecording.__enqueuePromise;
 
@@ -92,7 +93,7 @@ describe(`Recorder`, function() {
     const replayId = serializedRecording.replayId;
     const timedOutRecording = recorder.activeRecording;
 
-    mockRrweb.emit(4);
+    mockRrweb.emit(EventType.Meta);
     clock.tick(10);
     await timedOutRecording.__enqueuePromise;
     await clock.tickAsync(30 * 60 * 1000);
@@ -124,10 +125,10 @@ describe(`Recorder`, function() {
       tabId: `test-tab-id`,
     };
 
-    async function testResumed() {
+    async function verifyRecordingIsResumed() {
       expect(mockRrweb.recordStub.callCount).to.equal(1);
 
-      mockRrweb.emit(4);
+      mockRrweb.emit(EventType.Meta);
       clock.tick(10);
       await recorder.activeRecording.__enqueuePromise;
       await clock.tickAsync(10 * 1000);
@@ -141,13 +142,13 @@ describe(`Recorder`, function() {
     it(`can resume an active recording in the registry`, async function () {
       await idbSetItem(`mixpanelRecordingRegistry`, `test-tab-id`, SERIALIZED_RECORDING);
       await recorder.resumeRecording();
-      await testResumed();
+      await verifyRecordingIsResumed();
     });
 
     it(`resumes an active recording in the registry when startNewIfInactive=true`, async function () {
       await idbSetItem(`mixpanelRecordingRegistry`, `test-tab-id`, SERIALIZED_RECORDING);
       await recorder.resumeRecording(true);
-      await testResumed();
+      await verifyRecordingIsResumed();
     });
 
     it(`does nothing if the recording in the registry is expired`, async function () {
@@ -173,9 +174,9 @@ describe(`Recorder`, function() {
       // tab1 starts recording and queues some events
       await recorder.startRecording();
       expect(mockRrweb.recordStub.callCount).to.equal(1);
-      mockRrweb.emit(4);
-      mockRrweb.emit(2);
-      mockRrweb.emit(3);
+      mockRrweb.emit(EventType.Meta);
+      mockRrweb.emit(EventType.FullSnapshot);
+      mockRrweb.emit(EventType.IncrementalSnapshot);
       await clock.tickAsync(10);
       await recorder.activeRecording.__enqueuePromise;
       const tab1ReplayId = recorder.getActiveReplayId();
@@ -217,18 +218,18 @@ describe(`Recorder`, function() {
     });
 
     /**
-     * naming is hard, but basically:
-     *  1. tabA was recording and is now in the background and hits idle timeout (but handler is not fired)
-     *  2. tabB is opened and initialized, and flushes tabA's recording data because it sees it was expired
-     *  3. tabA is refocused and the idleTimeout handler is fired - it should start a new recording
+     * tests the following scenario:
+     *  1. tab1 was recording and is now in the background and hits idle timeout (but handler is not fired)
+     *  2. tab2 is opened and initialized, and flushes tab1's recording data because it sees it was expired
+     *  3. tab1 is refocused and the idleTimeout handler is fired - it should start a new recording
      */
     it(`a recorder can reset a recording, even if a different tab flushed its data`, async function () {
       // tab1 starts recording and queues some events
       await recorder.startRecording();
       expect(mockRrweb.recordStub.callCount).to.equal(1);
-      mockRrweb.emit(4);
-      mockRrweb.emit(2);
-      mockRrweb.emit(3);
+      mockRrweb.emit(EventType.Meta);
+      mockRrweb.emit(EventType.FullSnapshot);
+      mockRrweb.emit(EventType.IncrementalSnapshot);
       await clock.tickAsync(10);
       await recorder.activeRecording.__enqueuePromise;
       const tab1ReplayId = recorder.getActiveReplayId();
@@ -249,11 +250,11 @@ describe(`Recorder`, function() {
       sinon.stub(tab2MixpanelLib, `get_tab_id`).returns(`test-tab-id-2`);
       const tab2Recording = new MixpanelRecorder(tab2MixpanelLib, tab2Rrweb.recordStub, localStorage);
 
-      // tab 2 flushed tab 1's data because it's expired
+      // tab2 flushed tab1's data because it's expired
       await tab2Recording._flushInactivePromise;
       expect(fetchStub.callCount).to.equal(1);
 
-      // tab 1 hit idle timeout, it should reset and start a new recording
+      // tab1 hit idle timeout, it should reset and start a new recording
       recorder.resetRecording();
       await clock.tickAsync(10 * 10000);
       expect(recorder.getActiveReplayId()).to.not.equal(tab1ReplayId);
