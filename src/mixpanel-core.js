@@ -408,15 +408,15 @@ MixpanelLib.prototype.get_tab_id = function () {
 };
 
 MixpanelLib.prototype._should_load_recorder = function () {
-    var idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     var tab_id = this.get_tab_id();
-    return idb.init()
+    return recording_registry_idb.init()
         .then(function () {
-            return idb.getAll();
+            return recording_registry_idb.getAll();
         })
         .then(function (recordings) {
             for (var i = 0; i < recordings.length; i++) {
-                // if there's expired recordings in the registry, we should load the recorder to flush them
+                // if there are expired recordings in the registry, we should load the recorder to flush them
                 // if there's a recording for this tab id, we should load the recorder to continue the recording
                 if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {
                     return true;
