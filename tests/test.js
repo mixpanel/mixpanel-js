@@ -311,7 +311,7 @@
             var interval;
             var timeout = realSetTimeout(function() {
                 realClearInterval(interval);
-                ok('false', 'untilDonePromise timed out');
+                ok(false, 'untilDonePromise timed out');
                 reject('untilDonePromise timed out');
             }, 5000);
             interval = realSetInterval(function() {
@@ -5933,12 +5933,11 @@
 
                     this.waitForRecorderEnqueue = function () {
                         // tick to advance the throttle
-                        window.__clock = this.clock
                         return this.clock.tickAsync(10)
                             .then(function () {
-                                // we need to reach in for the __enqueuePromise() instead of just using tickAsync because the enqeueue operation depends on IDB
+                                // we need to reach in for the __enqueuePromise() instead of just using tickAsync because the enqeueue operation depends on
                                 // IndexedDB transactions, so it's not guaranteed to be finished when the fake timer is advanced.
-                                return window.__recp = mixpanel.recordertest.__get_recorder().activeRecording.__enqueuePromise;
+                                return mixpanel.recordertest.__get_recorder().activeRecording.__enqueuePromise;
                             });
                     };
 
@@ -6012,7 +6011,7 @@
                             isFresh = true; // idb doesn't exist yet, the sdk will make it
                         }
                     } else {
-                        start()
+                        start();
                     }
                 },
                 teardown: function () {
@@ -6036,6 +6035,7 @@
                     if (!IS_RECORDER_BUNDLED) {
                         delete window['__mp_recorder'];
                     }
+                    window.location.hash = '';
                 }
             });
 
@@ -6168,7 +6168,7 @@
                         ok(replay_url.searchParams.get('replay_id'))
                         ok(replay_url.searchParams.get('distinct_id'))
                         mixpanel.recordertest.stop_session_recording();
-                        return this.clock.tickAsync(10 * 1000)
+                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(start)
@@ -6272,7 +6272,7 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        return this.clock.tickAsync(10 * 1000)
+                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
@@ -6317,7 +6317,7 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        return this.clock.tickAsync(10 * 1000)
+                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
@@ -6328,7 +6328,7 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        return this.clock.tickAsync(10 * 1000)
+                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(2))
                     .then(_.bind(function () {
@@ -6374,7 +6374,7 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        return this.clock.tickAsync(10 * 1000)
+                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
@@ -6422,7 +6422,7 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        return this.clock.tickAsync(10 * 1000)
+                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
@@ -6436,7 +6436,7 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        return this.clock.tickAsync(10 * 1000)
+                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(2))
                     .then(_.bind(function () {
@@ -6522,9 +6522,9 @@
                         var body = callArgs[1].body;
                         same(body.constructor, Blob, 'request body is a Blob');
 
-                        var urlParams1 = validateAndGetUrlParams(fetchCall1)
-                        same(urlParams1.get("seq"), "0")
-                        replayId = urlParams1.get("replay_id")
+                        var urlParams1 = validateAndGetUrlParams(fetchCall1);
+                        same(urlParams1.get("seq"), "0");
+                        replayId = urlParams1.get("replay_id");
 
                         // queue up an event that should be flushed on the next load
                         simulateMouseClick(document.body);
@@ -6558,9 +6558,9 @@
                         same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
                         var fetchCall2 = this.fetchStub.getCall(1);
                         
-                        var urlParams2 = validateAndGetUrlParams(fetchCall2)
-                        same(urlParams2.get("seq"), "1")
-                        same(replayId, urlParams2.get("replay_id"))
+                        var urlParams2 = validateAndGetUrlParams(fetchCall2);
+                        same(urlParams2.get("seq"), "1");
+                        same(replayId, urlParams2.get("replay_id"));
 
                         mixpanel.recordertest.stop_session_recording();
                         start();
