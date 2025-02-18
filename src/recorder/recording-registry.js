@@ -67,34 +67,30 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
  * The main idea here is that we can flush remaining rrweb events on the next page load if a tab is closed mid-batch.
  */
 RecordingRegistry.prototype.flushInactiveRecordings = function () {
-    var inactiveRecordings = [];
     return this.idb.init()
         .then(_.bind(function() {
             return this.idb.getAll();
         }, this))
         .then(_.bind(function (serializedRecordings) {
             // clean up any expired recordings from the registry, non-expired ones may be active in other tabs
-            inactiveRecordings = serializedRecordings.filter(function (serializedRecording) {
-                return isRecordingExpired(serializedRecording);
-            });
-
-            return Promise.all(
-                inactiveRecordings.map(_.bind(function (serializedRecording) {
+            var unloadPromises = serializedRecordings
+                .filter(function (serializedRecording) {
+                    return isRecordingExpired(serializedRecording);
+                })
+                .map(_.bind(function (serializedRecording) {
                     var sessionRecording = SessionRecording.deserialize(serializedRecording, {
                         mixpanelInstance: this.mixpanelInstance,
                         sharedLockStorage: this.sharedLockStorage
                     });
-                    return sessionRecording.unloadPersistedData();
-                }, this))
-            );
-        }, this))
-        .then(_.bind(function() {
-            // expired recordings were successfully flushed, we can clean them up from the registry
-            return Promise.all(
-                inactiveRecordings.map(_.bind(function (serializedRecording) {
-                    return this.idb.removeItem(serializedRecording['tabId']);
-                }, this))
-            );
+                    return sessionRecording.unloadPersistedData()
+                        .then(_.bind(function () {
+                            // expired recording was successfully flushed, we can clean it up from the registry
+                            return this.idb.removeItem(serializedRecording['tabId']);
+                        }, this))
+                        .catch(_.bind(this.handleError, this));
+                }, this));
+
+            return Promise.all(unloadPromises);
         }, this))
         .catch(_.bind(this.handleError, this));
 };
