@@ -1759,6 +1759,8 @@ var isRecordingExpired = function(serializedRecording) {
     return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
 };
 
+var NOOP_FUNC = function () {};
+
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -1797,6 +1799,7 @@ export {
     MAX_RECORDING_MS,
     MAX_VALUE_FOR_MIN_RECORDING_MS,
     navigator,
+    NOOP_FUNC,
     safewrap,
     safewrapClass,
     sessionStorageSupported,

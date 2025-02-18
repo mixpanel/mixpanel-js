@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, isRecordingExpired } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, isRecordingExpired, NOOP_FUNC } from './utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
 import { FormTracker, LinkTracker } from './dom-trackers';
@@ -56,7 +56,6 @@ var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
 
 var IDENTITY_FUNC = function(x) {return x;};
-var NOOP_FUNC = function() {};
 
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';

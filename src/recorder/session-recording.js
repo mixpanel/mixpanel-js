@@ -1,6 +1,6 @@
 import { window } from '../window';
 import { IncrementalSource, EventType } from '@rrweb/types';
-import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, _} from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _} from '../utils'; // eslint-disable-line camelcase
 import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
@@ -31,8 +31,6 @@ var ACTIVE_SOURCES = new Set([
 function isUserEvent(ev) {
     return ev.type === EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.data.source);
 }
-
-var NOOP = function () {};
 
 /**
  * @typedef {Object} SerializedRecording
@@ -65,9 +63,9 @@ var NOOP = function () {};
  */
 var SessionRecording = function(options) {
     this._mixpanel = options.mixpanelInstance;
-    this._onIdleTimeout = options.onIdleTimeout || NOOP;
-    this._onMaxLengthReached = options.onMaxLengthReached || NOOP;
-    this._onBatchSent = options.onBatchSent || NOOP;
+    this._onIdleTimeout = options.onIdleTimeout || NOOP_FUNC;
+    this._onMaxLengthReached = options.onMaxLengthReached || NOOP_FUNC;
+    this._onBatchSent = options.onBatchSent || NOOP_FUNC;
     this._rrwebRecord = options.rrwebRecord || null;
 
     // internal rrweb stopRecording function
