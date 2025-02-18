@@ -183,6 +183,37 @@ describe(`SessionRecording`, function() {
     expect(deserializedRecording.seqNo).to.equal(0);
   });
 
+  it(`deserialized recording still resets after reaching maxExpires`, function () {
+    const serializedRecording = {
+      replayId,
+      seqNo: 0,
+      replayStartTime: NOW_MS,
+      batchStartUrl: undefined,
+      replayStartUrl: undefined,
+      idleExpires: NOW_MS + 30 * 60 * 1000,
+      maxExpires: NOW_MS + 30 * 1000,
+      tabId: `test-tab-id`,
+    };
+
+    // clock time should not affect deserialized times
+    clock.tick(10 * 1000);
+
+    var onMaxLengthReachedSpy = sinon.spy();
+
+    const deserializedRecording = SessionRecording.deserialize(serializedRecording, {
+      mixpanelInstance: mockMixpanelInstance,
+      onMaxLengthReached: onMaxLengthReachedSpy,
+      rrwebRecord: mockRrweb.recordStub
+    });
+    deserializedRecording.startRecording();
+
+    clock.tick(10 * 1000);
+    expect(onMaxLengthReachedSpy.calledOnce).to.be.false;
+    clock.tick(11 * 1000);
+    expect(onMaxLengthReachedSpy.calledOnce).to.be.true;
+    deserializedRecording.stopRecording();
+  });
+
   it(`can unload persisted rrweb data and clean up indexeddb`, async function() {
     await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingEvents`]);
     const startTime = 1737870254055;

@@ -44,7 +44,6 @@ function isUserEvent(ev) {
  * @property {string} replayStartUrl
  */
 
-
 /**
  * @typedef {Object} SessionRecordingOptions
  * @property {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
@@ -54,6 +53,13 @@ function isUserEvent(ev) {
  * @property {Function} [options.rrwebRecord] - rrweb's `record` function
  * @property {Function} [options.onBatchSent] - callback when a batch of events is sent to the server
  * @property {Storage} [options.sharedLockStorage] - optional storage for shared lock, used for test dependency injection
+ * optional properties for deserialization:
+ * @property {number} idleExpires
+ * @property {number} maxExpires
+ * @property {number} replayStartTime
+ * @property {number} seqNo
+ * @property {string} batchStartUrl
+ * @property {string} replayStartUrl
  */
 
 
@@ -70,22 +76,20 @@ var SessionRecording = function(options) {
 
     // internal rrweb stopRecording function
     this._stopRecording = null;
-
-    this.batchStartUrl = null;
-    this.replayStartUrl = null;
-    this.idleExpires = null;
-    this.maxExpires = null;
     this.replayId = options.replayId;
-    this.replayStartTime = null;
-    this.seqNo = 0;
+
+    this.batchStartUrl = options.batchStartUrl || null;
+    this.replayStartUrl = options.replayStartUrl || null;
+    this.idleExpires = options.idleExpires || null;
+    this.maxExpires = options.maxExpires || null;
+    this.replayStartTime = options.replayStartTime || null;
+    this.seqNo = options.seqNo || 0;
 
     this.idleTimeoutId = null;
     this.maxTimeoutId = null;
 
     this.recordMaxMs = MAX_RECORDING_MS;
     this.recordMinMs = 0;
-
-    this.deserialized = false;
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     // this will be important when persistence is introduced
@@ -138,7 +142,10 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.recordMaxMs = MAX_RECORDING_MS;
         logger.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
     }
-    this.maxExpires = new Date().getTime() + this.recordMaxMs;
+
+    if (!this.maxExpires) {
+        this.maxExpires = new Date().getTime() + this.recordMaxMs;
+    }
 
     this.recordMinMs = this.getConfig('record_min_ms');
     if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
@@ -213,7 +220,8 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
     resetIdleTimeout();
 
-    this.maxTimeoutId = setTimeout(_.bind(this._onMaxLengthReached, this), this.recordMaxMs);
+    var maxTimeoutMs = this.maxExpires - new Date().getTime();
+    this.maxTimeoutId = setTimeout(_.bind(this._onMaxLengthReached, this), maxTimeoutMs);
 };
 
 SessionRecording.prototype.stopRecording = function () {
@@ -277,15 +285,13 @@ SessionRecording.prototype.serialize = function () {
 SessionRecording.deserialize = function (serializedRecording, options) {
     var recording = new SessionRecording(_.extend({}, options, {
         replayId: serializedRecording['replayId'],
+        batchStartUrl: serializedRecording['batchStartUrl'],
+        replayStartUrl: serializedRecording['replayStartUrl'],
+        idleExpires: serializedRecording['idleExpires'],
+        maxExpires: serializedRecording['maxExpires'],
+        replayStartTime: serializedRecording['replayStartTime'],
+        seqNo: serializedRecording['seqNo'],
     }));
-
-    recording.batchStartUrl = serializedRecording['batchStartUrl'];
-    recording.replayStartUrl = serializedRecording['replayStartUrl'];
-    recording.idleExpires = serializedRecording['idleExpires'];
-    recording.maxExpires = serializedRecording['maxExpires'];
-    recording.replayId = serializedRecording['replayId'];
-    recording.replayStartTime = serializedRecording['replayStartTime'];
-    recording.seqNo = serializedRecording['seqNo'];
 
     return recording;
 };
