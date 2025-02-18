@@ -378,22 +378,22 @@ MixpanelLib.prototype._init_tab_id = function() {
         try {
             var key_suffix = this.get_config('name') + '_' + this.get_config('token');
             var tab_id_key = 'mp_tab_id_' + key_suffix;
-            var tab_lock_key = 'mp_tab_lock_' + key_suffix;
 
-            // A tab "lock" is used to determine if sessionStorage is copied over and we need to assign a new ID.
+            // A flag is used to determine if sessionStorage is copied over and we need to generate a new tab ID.
             // This enforces a unique ID in the cases like duplicated tab, window.open(...)
-            if (_.sessionStorage.get(tab_lock_key) || !_.sessionStorage.get(tab_id_key)) {
-                _.sessionStorage.set(tab_id_key, _.UUID());
+            var should_generate_new_tab_id_key = 'mp_gen_new_tab_id_' + key_suffix;
+            if (_.sessionStorage.get(should_generate_new_tab_id_key) || !_.sessionStorage.get(tab_id_key)) {
+                _.sessionStorage.set(tab_id_key, '$tab-' + _.UUID());
             }
 
-            _.sessionStorage.set(tab_lock_key, '1');
+            _.sessionStorage.set(should_generate_new_tab_id_key, '1');
             this.tab_id = _.sessionStorage.get(tab_id_key);
 
-            // Remove the lock when the tab is unloaded. This event is not reliable to detect all page unloads,
+            // Remove the flag when the tab is unloaded to indicate the stored tab ID can be reused. This event is not reliable to detect all page unloads,
             // but reliable in cases where the user remains in the tab e.g. a refresh or href navigation.
             // A missing tab lock will indicate to the next SDK instance that we can reuse the stored tab_id.
             window.addEventListener('beforeunload', function () {
-                _.sessionStorage.remove(tab_lock_key);
+                _.sessionStorage.remove(should_generate_new_tab_id_key);
             });
         } catch(err) {
             this.report_error('Error initializing tab id', err);

@@ -6533,7 +6533,7 @@
                         mixpanel.recordertest.pause_session_recording();
                         delete mixpanel['recordertest'];
                         delete window['__mp_recorder'];
-                        window.sessionStorage.removeItem('mp_tab_lock_recordertest_RECORDER_TEST_TOKEN');
+                        window.sessionStorage.removeItem('mp_gen_new_tab_id_recordertest_RECORDER_TEST_TOKEN');
                         document.head.removeChild(document.querySelector('script[src="' + recorderSrc + '"]'))
 
                         // some time passes like a page load
