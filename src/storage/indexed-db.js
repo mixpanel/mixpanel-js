@@ -29,25 +29,25 @@ IDBStorageWrapper.prototype.init = function () {
 
     var self = this;
     if (!this.dbPromise) {
-        this.dbPromise = new Promise(_.bind(function (resolve, reject) {
+        this.dbPromise = new Promise(function (resolve, reject) {
             var openRequest = window.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
-            openRequest.onerror = function () {
+            openRequest['onerror'] = function () {
                 reject(openRequest.error);
             };
 
-            openRequest.onsuccess = function () {
+            openRequest['onsuccess'] = function () {
                 self._db = openRequest.result;
                 resolve(openRequest.result);
             };
 
-            openRequest.onupgradeneeded = function (event) {
-                var db = event.target.result;
+            openRequest['onupgradeneeded'] = function (ev) {
+                var db = ev.target.result;
 
                 OBJECT_STORES.forEach(function (storeName) {
                     db.createObjectStore(storeName);
                 });
             };
-        }, this));
+        });
     }
 
     return this.dbPromise
