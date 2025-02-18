@@ -1756,7 +1756,7 @@ var isOnline = function() {
  */
 var isRecordingExpired = function(serializedRecording) {
     var now = Date.now();
-    return now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
+    return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
 };
 
 var JSONStringify = null, JSONParse = null;

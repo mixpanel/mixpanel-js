@@ -44,11 +44,7 @@ RecordingRegistry.prototype.getActiveRecording = function () {
             return this.idb.getItem(this.mixpanelInstance.get_tab_id());
         }, this))
         .then(_.bind(function (serializedRecording) {
-            if (serializedRecording && isRecordingExpired(serializedRecording)) {
-                return null;
-            } else {
-                return serializedRecording;
-            }
+            return isRecordingExpired(serializedRecording) ? null : serializedRecording;
         }, this))
         .catch(_.bind(this.handleError, this));
 };
