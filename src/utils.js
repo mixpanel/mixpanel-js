@@ -1080,7 +1080,7 @@ _.cookie = {
     }
 };
 
-var _testStorage = function (storage) {
+var _testStorageSupported = function (storage) {
     var supported = true;
     try {
         var key = '__mplss_' + cheap_guid(8),
@@ -1101,7 +1101,7 @@ var localStorageSupported = function(storage, forceCheck) {
     if (_localStorageSupported !== null && !forceCheck) {
         return _localStorageSupported;
     }
-    return _localStorageSupported = _testStorage(storage || window.localStorage);
+    return _localStorageSupported = _testStorageSupported(storage || window.localStorage);
 };
 
 var _sessionStorageSupported = null;
@@ -1109,57 +1109,54 @@ var sessionStorageSupported = function(storage, forceCheck) {
     if (_sessionStorageSupported !== null && !forceCheck) {
         return _sessionStorageSupported;
     }
-    return _sessionStorageSupported = _testStorage(storage || window.sessionStorage);
+    return _sessionStorageSupported = _testStorageSupported(storage || window.sessionStorage);
 };
 
-// _.localStorage
-_.localStorage = {
-    is_supported: function(force_check) {
-        var supported = localStorageSupported(null, force_check);
-        if (!supported) {
-            console.error('localStorage unsupported; falling back to cookie store');
-        }
-        return supported;
-    },
+function _storageWrapper(storage, name, is_supported_fn) {
+    var log_error = function(msg) {
+        console.error(name + ' error: ' + msg);
+    };
 
-    error: function(msg) {
-        console.error('localStorage error: ' + msg);
-    },
-
-    get: function(name) {
-        try {
-            return window.localStorage.getItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
+    return {
+        is_supported: function(forceCheck) {
+            return is_supported_fn(storage, forceCheck);
+        },
+        error: log_error,
+        get: function(key) {
+            try {
+                return storage.getItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+            return null;
+        },
+        parse: function(key) {
+            try {
+                return _.JSONDecode(storage.getItem(key)) || {};
+            } catch (err) {
+                // noop
+            }
+            return null;
+        },
+        set: function(key, value) {
+            try {
+                storage.setItem(key, value);
+            } catch (err) {
+                log_error(err);
+            }
+        },
+        remove: function(key) {
+            try {
+                storage.removeItem(key);
+            } catch (err) {
+                log_error(err);
+            }
         }
-        return null;
-    },
+    };
+}
 
-    parse: function(name) {
-        try {
-            return _.JSONDecode(_.localStorage.get(name)) || {};
-        } catch (err) {
-            // noop
-        }
-        return null;
-    },
-
-    set: function(name, value) {
-        try {
-            window.localStorage.setItem(name, value);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-    },
-
-    remove: function(name) {
-        try {
-            window.localStorage.removeItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-    }
-};
+_.localStorage = _storageWrapper(window.localStorage, 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(window.sessionStorage, 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function() {
     // written by Dean Edwards, 2005

@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, sessionStorageSupported, slice, isRecordingExpired } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, isRecordingExpired } from './utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
 import { FormTracker, LinkTracker } from './dom-trackers';
@@ -374,7 +374,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
  * This is primarily used for session recording, where data must be isolated to the current tab.
  */
 MixpanelLib.prototype._init_tab_id = function() {
-    if (sessionStorageSupported(window.sessionStorage)) {
+    if (_.sessionStorage.is_supported()) {
         try {
             var key_suffix = this.get_config('name') + '_' + this.get_config('token');
             var tab_id_key = 'mp_tab_id_' + key_suffix;
@@ -382,22 +382,24 @@ MixpanelLib.prototype._init_tab_id = function() {
 
             // A tab "lock" is used to determine if sessionStorage is copied over and we need to assign a new ID.
             // This enforces a unique ID in the cases like duplicated tab, window.open(...)
-            if (window.sessionStorage.getItem(tab_lock_key) || !window.sessionStorage.getItem(tab_id_key)) {
-                window.sessionStorage.setItem(tab_id_key, _.UUID());
+            if (_.sessionStorage.get(tab_lock_key) || !_.sessionStorage.get(tab_id_key)) {
+                _.sessionStorage.set(tab_id_key, _.UUID());
             }
 
-            window.sessionStorage.setItem(tab_lock_key, '1');
-            this.tab_id = window.sessionStorage.getItem(tab_id_key);
+            _.sessionStorage.set(tab_lock_key, '1');
+            this.tab_id = _.sessionStorage.get(tab_id_key);
 
             // Remove the lock when the tab is unloaded. This event is not reliable to detect all page unloads,
             // but reliable in cases where the user remains in the tab e.g. a refresh or href navigation.
             // A missing tab lock will indicate to the next SDK instance that we can reuse the stored tab_id.
             window.addEventListener('beforeunload', function () {
-                window.sessionStorage.removeItem(tab_lock_key);
+                _.sessionStorage.remove(tab_lock_key);
             });
         } catch(err) {
             this.report_error('Error initializing tab id', err);
         }
+    } else {
+        this.report_error('Session storage is not supported, cannot keep track of unique tab ID.');
     }
 };
 
@@ -1987,6 +1989,7 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
 
     // check if localStorage can be used for recording opt out status, fall back to cookie if not
     if (!_.localStorage.is_supported()) {
+        console.error('localStorage unsupported; falling back to cookie store');
         options['persistence_type'] = 'cookie';
     }
 

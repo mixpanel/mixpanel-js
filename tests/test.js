@@ -4968,7 +4968,7 @@
 
         if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
 
-            mpmodule('GDPR record', null, function() {
+            mpmodule('GDPR', null, function() {
                 // module teardown: clean up lib in case there was an exception before individual test cleanup code
                 if (mixpanel.gdpr) {
                     clearLibInstance(mixpanel.gdpr);
