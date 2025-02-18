@@ -22,9 +22,15 @@ RecordingRegistry.prototype.handleError = function (err) {
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
+    var tabId = this.mixpanelInstance.get_tab_id();
+    if (!tabId) {
+        console.warn('No tab ID is set, cannot persist recording metadata.');
+        return Promise.resolve();
+    }
+
     return this.idb.init()
         .then(_.bind(function () {
-            return this.idb.setItem(this.mixpanelInstance.get_tab_id(), serializedRecording);
+            return this.idb.setItem(tabId, serializedRecording);
         }, this))
         .catch(_.bind(this.handleError, this));
 };
