@@ -74,9 +74,9 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
         }, this))
         .then(_.bind(function (serializedRecordings) {
             // clean up any expired recordings from the registry, non-expired ones may be active in other tabs
-            inactiveRecordings = serializedRecordings.filter(_.bind(function (serializedRecording) {
+            inactiveRecordings = serializedRecordings.filter(function (serializedRecording) {
                 return isRecordingExpired(serializedRecording);
-            }, this));
+            });
 
             return Promise.all(
                 inactiveRecordings.map(_.bind(function (serializedRecording) {
