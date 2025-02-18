@@ -1687,7 +1687,7 @@ _.info = {
  * Returns a throttled function that will only run at most every `waitMs` and returns a promise that resolves with the next invocation.
  * Throttled calls will build up a batch of args and invoke the callback with all args since the last invocation.
  */
-_.batchedThrottle = function (fn, waitMs) {
+var batchedThrottle = function (fn, waitMs) {
     var timeoutPromise = null;
     var throttledItems = [];
     return function (item) {
@@ -1760,8 +1760,7 @@ if (typeof JSON !== 'undefined') {
 JSONStringify = JSONStringify || _.JSONEncode;
 JSONParse = JSONParse || _.JSONDecode;
 
-// EXPORTS (for closure compiler)
-_['batchedThrottle']        = _.batchedThrottle;
+// UNMINIFIED EXPORTS (for closure compiler)
 _['info']                   = _.info;
 _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
@@ -1777,6 +1776,7 @@ _['NPO']                    = NpoPromise;
 
 export {
     _,
+    batchedThrottle,
     cheap_guid,
     console_with_prefix,
     console,

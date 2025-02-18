@@ -1,5 +1,5 @@
 import { SharedLock } from './shared-lock';
-import { cheap_guid, console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
+import { batchedThrottle, cheap_guid, console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
 import { window } from './window';
 import { LocalStorageWrapper } from './storage/local-storage';
 import { Promise } from './promise-polyfill';
@@ -38,7 +38,7 @@ var RequestQueue = function (storageKey, options) {
     this.initialized = false;
 
     if (options.enqueueThrottleMs) {
-        this.enqueuePersisted = _.batchedThrottle(_.bind(this._enqueuePersisted, this), options.enqueueThrottleMs);
+        this.enqueuePersisted = batchedThrottle(_.bind(this._enqueuePersisted, this), options.enqueueThrottleMs);
     } else {
         this.enqueuePersisted = _.bind(function (queueEntry) {
             return this._enqueuePersisted([queueEntry]);

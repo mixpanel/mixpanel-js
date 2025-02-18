@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 
-import { extract_domain, _, document } from '../../src/utils';
+import { batchedThrottle, extract_domain, _, document } from '../../src/utils';
 import { window } from '../../src/window';
 
 describe(`extract_domain`, function() {
@@ -243,7 +243,7 @@ describe('_.isBlockedUA', function() {
 });
 
 
-describe('_.batchedThrottle', function () {
+describe('batchedThrottle', function () {
   let clock = null;
 
   beforeEach(function() {
@@ -262,7 +262,7 @@ describe('_.batchedThrottle', function () {
 
   it(`throttles invocations and executes callback with throttled arguments`, async function () {
     const callback = sinon.spy();
-    const throttledCallback = _.batchedThrottle(callback, 100);
+    const throttledCallback = batchedThrottle(callback, 100);
 
     throttledCallback(1);
     throttledCallback(2);
@@ -281,7 +281,7 @@ describe('_.batchedThrottle', function () {
     const callback = sinon.spy((args) => {
       return `resolved ${args.join(',')}`;
     });
-    const throttledCallback = _.batchedThrottle(callback, 100);
+    const throttledCallback = batchedThrottle(callback, 100);
 
     var firstCbPromise = throttledCallback(1).then((ret) => {
       expect(callback.callCount).to.equal(1);
@@ -301,7 +301,7 @@ describe('_.batchedThrottle', function () {
     const callback = sinon.spy((args) => {
       return Promise.resolve(`resolved ${args.join(',')}`);
     });
-    const throttledCallback = _.batchedThrottle(callback, 100);
+    const throttledCallback = batchedThrottle(callback, 100);
 
     var firstCbPromise = throttledCallback(1).then((ret) => {
       expect(callback.callCount).to.equal(1);
@@ -320,7 +320,7 @@ describe('_.batchedThrottle', function () {
     const callback = sinon.spy((args) => {
       return Promise.reject(`rejected ${args.join(',')}`);
     });
-    const throttledCallback = _.batchedThrottle(callback, 100);
+    const throttledCallback = batchedThrottle(callback, 100);
 
     var firstCbPromise = throttledCallback(1).catch((ret) => {
       expect(callback.callCount).to.equal(1);
