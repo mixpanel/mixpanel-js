@@ -1,6 +1,7 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, isRecordingExpired, NOOP_FUNC } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC } from './utils';
+import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
 import { FormTracker, LinkTracker } from './dom-trackers';

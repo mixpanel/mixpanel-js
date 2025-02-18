@@ -1750,15 +1750,6 @@ var isOnline = function() {
     return _.isUndefined(onLine) || onLine;
 };
 
-/**
- * @param {import('./recorder/session-recording').SerializedRecording} serializedRecording
- * @returns {boolean}
- */
-var isRecordingExpired = function(serializedRecording) {
-    var now = Date.now();
-    return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
-};
-
 var NOOP_FUNC = function () {};
 
 var JSONStringify = null, JSONParse = null;
@@ -1794,7 +1785,6 @@ export {
     JSONParse,
     JSONStringify,
     isOnline,
-    isRecordingExpired,
     localStorageSupported,
     MAX_RECORDING_MS,
     MAX_VALUE_FOR_MIN_RECORDING_MS,

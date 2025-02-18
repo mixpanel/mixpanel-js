@@ -1,6 +1,5 @@
 import { Promise } from '../promise-polyfill';
 import { window } from '../window';
-import { _ } from '../utils';
 
 var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
 
