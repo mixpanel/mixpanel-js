@@ -4951,7 +4951,7 @@
                 ok(mixpanel.difftest.get_tab_id() === manual_tab_id, "manually set tab ID is used");
             });
 
-            test("issues a new tab ID when the tab is locked (when sessionStorage is duplicated)", 3, function () {
+            test("issues a new tab ID when the flag is present (when sessionStorage is duplicated)", 3, function () {
                 var tab_id = mixpanel.test.get_tab_id();
                 clearLibInstance(mixpanel.test);
 
