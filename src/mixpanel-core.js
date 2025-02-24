@@ -391,7 +391,7 @@ MixpanelLib.prototype._init_tab_id = function() {
 
             // Remove the flag when the tab is unloaded to indicate the stored tab ID can be reused. This event is not reliable to detect all page unloads,
             // but reliable in cases where the user remains in the tab e.g. a refresh or href navigation.
-            // A missing tab lock will indicate to the next SDK instance that we can reuse the stored tab_id.
+            // If the flag is absent, this indicates to the next SDK instance that we can reuse the stored tab_id.
             window.addEventListener('beforeunload', function () {
                 _.sessionStorage.remove(should_generate_new_tab_id_key);
             });
