@@ -1119,7 +1119,11 @@ function _storageWrapper(storage, name, is_supported_fn) {
 
     return {
         is_supported: function(forceCheck) {
-            return is_supported_fn(storage, forceCheck);
+            var supported = is_supported_fn(storage, forceCheck);
+            if (!supported) {
+                console.error(name + ' unsupported');
+            }
+            return supported;
         },
         error: log_error,
         get: function(key) {

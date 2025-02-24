@@ -1989,7 +1989,6 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
 
     // check if localStorage can be used for recording opt out status, fall back to cookie if not
     if (!_.localStorage.is_supported()) {
-        console.error('localStorage unsupported; falling back to cookie store');
         options['persistence_type'] = 'cookie';
     }
 
