@@ -13,6 +13,8 @@ mixpanel.init("MIXPANEL_NONBATCHING_TOKEN", {
 
 testMixpanel(mixpanel);
 
+QUnit.module('window test');
+
 test('mixpanel object is not attached to window', 1, () => {
     ok(_.isUndefined(window.mixpanel), "window.mixpanel should be undefined");
 });

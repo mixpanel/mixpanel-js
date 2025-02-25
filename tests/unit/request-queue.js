@@ -5,7 +5,7 @@ import map from 'lodash/map';
 import uniq from 'lodash/uniq';
 import sinon from 'sinon';
 
-import { acquireLockForPid } from './lock-test-utils';
+import { acquireLockForPid } from './test-utils/lock';
 import { RequestQueue } from '../../src/request-queue';
 import { LocalStorageWrapper } from '../../src/storage/local-storage';
 

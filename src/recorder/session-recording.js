@@ -1,7 +1,7 @@
-import { IncrementalSource, EventType } from '@rrweb/types';
-
-import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, _} from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
+import { IncrementalSource, EventType } from '@rrweb/types';
+import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _} from '../utils'; // eslint-disable-line camelcase
+import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 import Config from '../config';
@@ -33,28 +33,57 @@ function isUserEvent(ev) {
 }
 
 /**
+ * @typedef {Object} SerializedRecording
+ * @property {number} idleExpires
+ * @property {number} maxExpires
+ * @property {number} replayStartTime
+ * @property {number} seqNo
+ * @property {string} batchStartUrl
+ * @property {string} replayId
+ * @property {string} tabId
+ * @property {string} replayStartUrl
+ */
+
+/**
+ * @typedef {Object} SessionRecordingOptions
+ * @property {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
+ * @property {String} [options.replayId] - unique uuid for a single replay
+ * @property {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
+ * @property {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
+ * @property {Function} [options.rrwebRecord] - rrweb's `record` function
+ * @property {Function} [options.onBatchSent] - callback when a batch of events is sent to the server
+ * @property {Storage} [options.sharedLockStorage] - optional storage for shared lock, used for test dependency injection
+ * optional properties for deserialization:
+ * @property {number} idleExpires
+ * @property {number} maxExpires
+ * @property {number} replayStartTime
+ * @property {number} seqNo
+ * @property {string} batchStartUrl
+ * @property {string} replayStartUrl
+ */
+
+
+/**
  * This class encapsulates a single session recording and its lifecycle.
- * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
- * @param {String} [options.replayId] - unique uuid for a single replay
- * @param {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
- * @param {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
- * @param {Function} [options.rrwebRecord] - rrweb's `record` function
+ * @param {SessionRecordingOptions} options
  */
 var SessionRecording = function(options) {
     this._mixpanel = options.mixpanelInstance;
-    this._onIdleTimeout = options.onIdleTimeout;
-    this._onMaxLengthReached = options.onMaxLengthReached;
-    this._rrwebRecord = options.rrwebRecord;
-
-    this.replayId = options.replayId;
+    this._onIdleTimeout = options.onIdleTimeout || NOOP_FUNC;
+    this._onMaxLengthReached = options.onMaxLengthReached || NOOP_FUNC;
+    this._onBatchSent = options.onBatchSent || NOOP_FUNC;
+    this._rrwebRecord = options.rrwebRecord || null;
 
     // internal rrweb stopRecording function
     this._stopRecording = null;
+    this.replayId = options.replayId;
 
-    this.seqNo = 0;
-    this.replayStartTime = null;
-    this.replayStartUrl = null;
-    this.batchStartUrl = null;
+    this.batchStartUrl = options.batchStartUrl || null;
+    this.replayStartUrl = options.replayStartUrl || null;
+    this.idleExpires = options.idleExpires || null;
+    this.maxExpires = options.maxExpires || null;
+    this.replayStartTime = options.replayStartTime || null;
+    this.seqNo = options.seqNo || 0;
 
     this.idleTimeoutId = null;
     this.maxTimeoutId = null;
@@ -64,14 +93,26 @@ var SessionRecording = function(options) {
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     // this will be important when persistence is introduced
-    var batcherKey = '__mprec_' + this.getConfig('token') + '_' + this.replayId;
-    this.batcher = new RequestBatcher(batcherKey, {
-        errorReporter: _.bind(this.reportError, this),
+    this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
+    this.queueStorage = new IDBStorageWrapper(RECORDING_EVENTS_STORE_NAME);
+    this.batcher = new RequestBatcher(this.batcherKey, {
+        errorReporter: this.reportError.bind(this),
         flushOnlyOnInterval: true,
         libConfig: RECORDER_BATCHER_LIB_CONFIG,
-        sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
-        usePersistence: false
+        sendRequestFunc: this.flushEventsWithOptOut.bind(this),
+        queueStorage: this.queueStorage,
+        sharedLockStorage: options.sharedLockStorage,
+        usePersistence: true,
+        enqueueThrottleMs: 10,
     });
+};
+
+SessionRecording.prototype.unloadPersistedData = function () {
+    this.batcher.stop();
+    return this.batcher.flush()
+        .then(function () {
+            return this.queueStorage.removeItem(this.batcherKey);
+        }.bind(this));
 };
 
 SessionRecording.prototype.getConfig = function(configVar) {
@@ -86,6 +127,11 @@ SessionRecording.prototype.get_config = function(configVar) {
 };
 
 SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
+    if (this._rrwebRecord === null) {
+        this.reportError('rrweb record function not provided. ');
+        return;
+    }
+
     if (this._stopRecording !== null) {
         logger.log('Recording already in progress, skipping startRecording.');
         return;
@@ -97,15 +143,21 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         logger.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
     }
 
+    if (!this.maxExpires) {
+        this.maxExpires = new Date().getTime() + this.recordMaxMs;
+    }
+
     this.recordMinMs = this.getConfig('record_min_ms');
     if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
         this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
         logger.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
     }
 
-    this.replayStartTime = new Date().getTime();
-    this.batchStartUrl = _.info.currentUrl();
-    this.replayStartUrl = _.info.currentUrl();
+    if (!this.replayStartTime) {
+        this.replayStartTime = new Date().getTime();
+        this.batchStartUrl = _.info.currentUrl();
+        this.replayStartUrl = _.info.currentUrl();
+    }
 
     if (shouldStopBatcher || this.recordMinMs > 0) {
         // the primary case for shouldStopBatcher is when we're starting recording after a reset
@@ -118,10 +170,12 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.batcher.start();
     }
 
-    var resetIdleTimeout = _.bind(function () {
+    var resetIdleTimeout = function () {
         clearTimeout(this.idleTimeoutId);
-        this.idleTimeoutId = setTimeout(this._onIdleTimeout, this.getConfig('record_idle_timeout_ms'));
-    }, this);
+        var idleTimeoutMs = this.getConfig('record_idle_timeout_ms');
+        this.idleTimeoutId = setTimeout(this._onIdleTimeout, idleTimeoutMs);
+        this.idleExpires = new Date().getTime() + idleTimeoutMs;
+    }.bind(this);
 
     var blockSelector = this.getConfig('record_block_selector');
     if (blockSelector === '' || blockSelector === null) {
@@ -129,8 +183,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     this._stopRecording = this._rrwebRecord({
-        'emit': _.bind(function (ev) {
-            this.batcher.enqueue(ev);
+        'emit': function (ev) {
             if (isUserEvent(ev)) {
                 if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
                     // start flushing again after user activity
@@ -138,7 +191,10 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                 }
                 resetIdleTimeout();
             }
-        }, this),
+
+            // promise only used to await during tests
+            this.__enqueuePromise = this.batcher.enqueue(ev);
+        }.bind(this),
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.getConfig('record_collect_fonts'),
@@ -164,10 +220,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
     resetIdleTimeout();
 
-    this.maxTimeoutId = setTimeout(_.bind(this._onMaxLengthReached, this), this.recordMaxMs);
+    var maxTimeoutMs = this.maxExpires - new Date().getTime();
+    this.maxTimeoutId = setTimeout(this._onMaxLengthReached.bind(this), maxTimeoutMs);
 };
 
-SessionRecording.prototype.stopRecording = function () {
+SessionRecording.prototype.stopRecording = function (skipFlush) {
     if (!this.isRrwebStopped()) {
         try {
             this._stopRecording();
@@ -177,17 +234,19 @@ SessionRecording.prototype.stopRecording = function () {
         this._stopRecording = null;
     }
 
+    var flushPromise;
     if (this.batcher.stopped) {
         // never got user activity to flush after reset, so just clear the batcher
-        this.batcher.clear();
-    } else {
+        flushPromise = this.batcher.clear();
+    } else if (!skipFlush) {
         // flush any remaining events from running batcher
-        this.batcher.flush();
-        this.batcher.stop();
+        flushPromise = this.batcher.flush();
     }
+    this.batcher.stop();
 
     clearTimeout(this.idleTimeoutId);
     clearTimeout(this.maxTimeoutId);
+    return flushPromise;
 };
 
 SessionRecording.prototype.isRrwebStopped = function () {
@@ -199,7 +258,44 @@ SessionRecording.prototype.isRrwebStopped = function () {
  * we stop recording and dump any queued events if the user has opted out.
  */
 SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
-    this._flushEvents(data, options, cb, _.bind(this._onOptOut, this));
+    this._flushEvents(data, options, cb, this._onOptOut.bind(this));
+};
+
+/**
+ * @returns {SerializedRecording}
+ */
+SessionRecording.prototype.serialize = function () {
+    return {
+        'replayId': this.replayId,
+        'seqNo': this.seqNo,
+        'replayStartTime': this.replayStartTime,
+        'batchStartUrl': this.batchStartUrl,
+        'replayStartUrl': this.replayStartUrl,
+        'idleExpires': this.idleExpires,
+        'maxExpires': this.maxExpires,
+        'tabId': this._mixpanel.get_tab_id(),
+    };
+};
+
+
+/**
+ * @static
+ * @param {SerializedRecording} serializedRecording
+ * @param {SessionRecordingOptions} options
+ * @returns {SessionRecording}
+ */
+SessionRecording.deserialize = function (serializedRecording, options) {
+    var recording = new SessionRecording(_.extend({}, options, {
+        replayId: serializedRecording['replayId'],
+        batchStartUrl: serializedRecording['batchStartUrl'],
+        replayStartUrl: serializedRecording['replayStartUrl'],
+        idleExpires: serializedRecording['idleExpires'],
+        maxExpires: serializedRecording['maxExpires'],
+        replayStartTime: serializedRecording['replayStartTime'],
+        seqNo: serializedRecording['seqNo'],
+    }));
+
+    return recording;
 };
 
 SessionRecording.prototype._onOptOut = function (code) {
@@ -210,7 +306,7 @@ SessionRecording.prototype._onOptOut = function (code) {
 };
 
 SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
-    var onSuccess = _.bind(function (response, responseBody) {
+    var onSuccess = function (response, responseBody) {
         // Update batch specific props only if the request was successful to guarantee ordering.
         // RequestBatcher will always flush the next batch after the previous one succeeds.
         // extra check to see if the replay ID has changed so that we don't increment the seqNo on the wrong replay
@@ -218,13 +314,15 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
             this.seqNo++;
             this.batchStartUrl = _.info.currentUrl();
         }
+
+        this._onBatchSent();
         callback({
             status: 0,
             httpStatusCode: response.status,
             responseBody: responseBody,
             retryAfter: response.headers.get('Retry-After')
         });
-    }, this);
+    }.bind(this);
 
     window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
@@ -245,7 +343,7 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
 };
 
 SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (data, options, callback) {
-    const numEvents = data.length;
+    var numEvents = data.length;
 
     if (numEvents > 0) {
         var replayId = this.replayId;
@@ -290,10 +388,10 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
             new Response(gzipStream)
                 .blob()
-                .then(_.bind(function(compressedBlob) {
+                .then(function(compressedBlob) {
                     reqParams['format'] = 'gzip';
                     this._sendRequest(replayId, reqParams, compressedBlob, callback);
-                }, this));
+                }.bind(this));
         } else {
             reqParams['format'] = 'body';
             this._sendRequest(replayId, reqParams, eventsJson, callback);

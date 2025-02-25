@@ -23,8 +23,8 @@ describe(`RequestBatcher`, function() {
   let fakeSendRequest = null;
 
   function configureBatchSize(batchSize) {
-      libConfig.batch_size = batchSize;
-      batcher.resetBatchSize();
+    libConfig.batch_size = batchSize;
+    batcher.resetBatchSize();
   }
 
   function getLocalStorageItems() {
@@ -102,6 +102,29 @@ describe(`RequestBatcher`, function() {
       expect(queuedEntry.flushAfter).to.be.greaterThan(START_TIME + 5000);
       expect(queuedEntry.flushAfter).to.be.lessThan(START_TIME + 15000);
       expect(queuedEntry.payload).to.deep.equal({foo: `bar`});
+    });
+
+    it(`throttles consecutive enqueue operations when enqueueThrottleMs is set`, async function() {
+      initBatcher({enqueueThrottleMs: 100});
+      var succeededPromise = batcher.enqueue({ev: `queued event 1`});
+      clock.tick(50);
+      batcher.enqueue({ev: `queued event 2`});
+      expect(batcher.queue.memQueue).to.have.lengthOf(0);
+      clock.tick(49);
+      expect(batcher.queue.memQueue).to.have.lengthOf(0);
+      clock.tick(2);
+      
+      const succeeded = await succeededPromise;
+      expect(succeeded).to.be.ok;
+      expect(batcher.queue.memQueue).to.have.lengthOf(2);
+
+      for (const queuedEntry of batcher.queue.memQueue) {
+        expect(queuedEntry.flushAfter).to.be.greaterThan(START_TIME + 5000);
+        expect(queuedEntry.flushAfter).to.be.lessThan(START_TIME + 15000);
+      }
+
+      expect(batcher.queue.memQueue[0].payload).to.deep.equal({ev: `queued event 1`});
+      expect(batcher.queue.memQueue[1].payload).to.deep.equal({ev: `queued event 2`});
     });
   });
 
