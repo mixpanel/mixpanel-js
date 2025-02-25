@@ -2,7 +2,6 @@ import { Promise } from '../promise-polyfill';
 import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from '../storage/indexed-db';
 import { SessionRecording } from './session-recording';
 import { isRecordingExpired } from './utils';
-import { _ } from '../utils';
 
 /**
  * Module for handling the storage and retrieval of recording metadata as well as any active recordings.
@@ -30,10 +29,10 @@ RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) 
     }
 
     return this.idb.init()
-        .then(_.bind(function () {
+        .then(function () {
             return this.idb.setItem(tabId, serializedRecording);
-        }, this))
-        .catch(_.bind(this.handleError, this));
+        }.bind(this))
+        .catch(this.handleError.bind(this));
 };
 
 /**
@@ -41,26 +40,26 @@ RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) 
  */
 RecordingRegistry.prototype.getActiveRecording = function () {
     return this.idb.init()
-        .then(_.bind(function () {
+        .then(function () {
             return this.idb.getItem(this.mixpanelInstance.get_tab_id());
-        }, this))
-        .then(_.bind(function (serializedRecording) {
+        }.bind(this))
+        .then(function (serializedRecording) {
             return isRecordingExpired(serializedRecording) ? null : serializedRecording;
-        }, this))
-        .catch(_.bind(this.handleError, this));
+        }.bind(this))
+        .catch(this.handleError.bind(this));
 };
 
 RecordingRegistry.prototype.clearActiveRecording = function () {
     // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
     // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
     return this.getActiveRecording()
-        .then(_.bind(function (serializedRecording) {
+        .then(function (serializedRecording) {
             if (serializedRecording) {
                 serializedRecording['maxExpires'] = 0;
                 return this.setActiveRecording(serializedRecording);
             }
-        }, this))
-        .catch(_.bind(this.handleError, this));
+        }.bind(this))
+        .catch(this.handleError.bind(this));
 };
 
 /**
@@ -69,31 +68,31 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
  */
 RecordingRegistry.prototype.flushInactiveRecordings = function () {
     return this.idb.init()
-        .then(_.bind(function() {
+        .then(function() {
             return this.idb.getAll();
-        }, this))
-        .then(_.bind(function (serializedRecordings) {
+        }.bind(this))
+        .then(function (serializedRecordings) {
             // clean up any expired recordings from the registry, non-expired ones may be active in other tabs
             var unloadPromises = serializedRecordings
                 .filter(function (serializedRecording) {
                     return isRecordingExpired(serializedRecording);
                 })
-                .map(_.bind(function (serializedRecording) {
+                .map(function (serializedRecording) {
                     var sessionRecording = SessionRecording.deserialize(serializedRecording, {
                         mixpanelInstance: this.mixpanelInstance,
                         sharedLockStorage: this.sharedLockStorage
                     });
                     return sessionRecording.unloadPersistedData()
-                        .then(_.bind(function () {
+                        .then(function () {
                             // expired recording was successfully flushed, we can clean it up from the registry
                             return this.idb.removeItem(serializedRecording['tabId']);
-                        }, this))
-                        .catch(_.bind(this.handleError, this));
-                }, this));
+                        }.bind(this))
+                        .catch(this.handleError.bind(this));
+                }.bind(this));
 
             return Promise.all(unloadPromises);
-        }, this))
-        .catch(_.bind(this.handleError, this));
+        }.bind(this))
+        .catch(this.handleError.bind(this));
 };
 
 export { RecordingRegistry };

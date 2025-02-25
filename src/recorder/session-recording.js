@@ -96,10 +96,10 @@ var SessionRecording = function(options) {
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
     this.queueStorage = new IDBStorageWrapper(RECORDING_EVENTS_STORE_NAME);
     this.batcher = new RequestBatcher(this.batcherKey, {
-        errorReporter: _.bind(this.reportError, this),
+        errorReporter: this.reportError.bind(this),
         flushOnlyOnInterval: true,
         libConfig: RECORDER_BATCHER_LIB_CONFIG,
-        sendRequestFunc: _.bind(this.flushEventsWithOptOut, this),
+        sendRequestFunc: this.flushEventsWithOptOut.bind(this),
         queueStorage: this.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
         usePersistence: true,
@@ -110,9 +110,9 @@ var SessionRecording = function(options) {
 SessionRecording.prototype.unloadPersistedData = function () {
     this.batcher.stop();
     return this.batcher.flush()
-        .then(_.bind(function () {
+        .then(function () {
             return this.queueStorage.removeItem(this.batcherKey);
-        }, this));
+        }.bind(this));
 };
 
 SessionRecording.prototype.getConfig = function(configVar) {
@@ -170,12 +170,12 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.batcher.start();
     }
 
-    var resetIdleTimeout = _.bind(function () {
+    var resetIdleTimeout = function () {
         clearTimeout(this.idleTimeoutId);
         var idleTimeoutMs = this.getConfig('record_idle_timeout_ms');
         this.idleTimeoutId = setTimeout(this._onIdleTimeout, idleTimeoutMs);
         this.idleExpires = new Date().getTime() + idleTimeoutMs;
-    }, this);
+    }.bind(this);
 
     var blockSelector = this.getConfig('record_block_selector');
     if (blockSelector === '' || blockSelector === null) {
@@ -183,7 +183,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     this._stopRecording = this._rrwebRecord({
-        'emit': _.bind(function (ev) {
+        'emit': function (ev) {
             if (isUserEvent(ev)) {
                 if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
                     // start flushing again after user activity
@@ -194,7 +194,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
             // promise only used to await during tests
             this.__enqueuePromise = this.batcher.enqueue(ev);
-        }, this),
+        }.bind(this),
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.getConfig('record_collect_fonts'),
@@ -221,7 +221,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     resetIdleTimeout();
 
     var maxTimeoutMs = this.maxExpires - new Date().getTime();
-    this.maxTimeoutId = setTimeout(_.bind(this._onMaxLengthReached, this), maxTimeoutMs);
+    this.maxTimeoutId = setTimeout(this._onMaxLengthReached.bind(this), maxTimeoutMs);
 };
 
 SessionRecording.prototype.stopRecording = function (skipFlush) {
@@ -258,7 +258,7 @@ SessionRecording.prototype.isRrwebStopped = function () {
  * we stop recording and dump any queued events if the user has opted out.
  */
 SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
-    this._flushEvents(data, options, cb, _.bind(this._onOptOut, this));
+    this._flushEvents(data, options, cb, this._onOptOut.bind(this));
 };
 
 /**
@@ -306,7 +306,7 @@ SessionRecording.prototype._onOptOut = function (code) {
 };
 
 SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
-    var onSuccess = _.bind(function (response, responseBody) {
+    var onSuccess = function (response, responseBody) {
         // Update batch specific props only if the request was successful to guarantee ordering.
         // RequestBatcher will always flush the next batch after the previous one succeeds.
         // extra check to see if the replay ID has changed so that we don't increment the seqNo on the wrong replay
@@ -322,7 +322,7 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
             responseBody: responseBody,
             retryAfter: response.headers.get('Retry-After')
         });
-    }, this);
+    }.bind(this);
 
     window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
@@ -388,10 +388,10 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
             new Response(gzipStream)
                 .blob()
-                .then(_.bind(function(compressedBlob) {
+                .then(function(compressedBlob) {
                     reqParams['format'] = 'gzip';
                     this._sendRequest(replayId, reqParams, compressedBlob, callback);
-                }, this));
+                }.bind(this));
         } else {
             reqParams['format'] = 'body';
             this._sendRequest(replayId, reqParams, eventsJson, callback);

@@ -32,20 +32,20 @@ MixpanelRecorder.prototype.startRecording = function(options) {
         return;
     }
 
-    var onIdleTimeout = _.bind(function () {
+    var onIdleTimeout = function () {
         logger.log('Idle timeout reached, restarting recording.');
         this.resetRecording();
-    }, this);
+    }.bind(this);
 
-    var onMaxLengthReached = _.bind(function () {
+    var onMaxLengthReached = function () {
         logger.log('Max recording length reached, stopping recording.');
         this.resetRecording();
-    }, this);
+    }.bind(this);
 
-    var onBatchSent = _.bind(function () {
+    var onBatchSent = function () {
         this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
         this['__flushPromise'] = this.activeRecording.batcher._flushPromise;
-    }, this);
+    }.bind(this);
 
     /**
      * @type {import('./session-recording').SessionRecordingOptions}
@@ -95,7 +95,7 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
     }
 
     return this.recordingRegistry.getActiveRecording()
-        .then(_.bind(function (activeSerializedRecording) {
+        .then(function (activeSerializedRecording) {
             if (activeSerializedRecording) {
                 return this.startRecording({activeSerializedRecording: activeSerializedRecording});
             } else if (startNewIfInactive) {
@@ -104,7 +104,7 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
                 logger.log('No resumable recording found.');
                 return null;
             }
-        }, this));
+        }.bind(this));
 };
 
 
