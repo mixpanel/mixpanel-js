@@ -71,7 +71,7 @@ MixpanelRecorder.prototype.startRecording = function(options) {
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
-    var stopPromise = this._stopCurrentRecording();
+    var stopPromise = this._stopCurrentRecording(false);
     this.recordingRegistry.clearActiveRecording();
     this.activeRecording = null;
     return stopPromise;
