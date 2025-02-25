@@ -78,7 +78,7 @@ MixpanelRecorder.prototype.stopRecording = function() {
 };
 
 MixpanelRecorder.prototype.pauseRecording = function() {
-    return this._stopCurrentRecording();
+    return this._stopCurrentRecording(false);
 };
 
 MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush) {
