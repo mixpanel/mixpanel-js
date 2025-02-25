@@ -71,18 +71,21 @@ MixpanelRecorder.prototype.startRecording = function(options) {
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
-    if (this.activeRecording) {
-        this.activeRecording.stopRecording();
-        this.recordingRegistry.clearActiveRecording();
-        this.activeRecording = null;
-    }
-    return Promise.resolve();
+    var stopPromise = this._stopCurrentRecording();
+    this.recordingRegistry.clearActiveRecording();
+    this.activeRecording = null;
+    return stopPromise;
 };
 
 MixpanelRecorder.prototype.pauseRecording = function() {
+    return this._stopCurrentRecording();
+};
+
+MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush) {
     if (this.activeRecording) {
-        this.activeRecording.stopRecording();
+        return this.activeRecording.stopRecording(skipFlush);
     }
+    return Promise.resolve();
 };
 
 MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {

@@ -224,7 +224,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     this.maxTimeoutId = setTimeout(_.bind(this._onMaxLengthReached, this), maxTimeoutMs);
 };
 
-SessionRecording.prototype.stopRecording = function () {
+SessionRecording.prototype.stopRecording = function (skipFlush) {
     if (!this.isRrwebStopped()) {
         try {
             this._stopRecording();
@@ -234,17 +234,19 @@ SessionRecording.prototype.stopRecording = function () {
         this._stopRecording = null;
     }
 
+    var flushPromise;
     if (this.batcher.stopped) {
         // never got user activity to flush after reset, so just clear the batcher
-        this.batcher.clear();
-    } else {
+        flushPromise = this.batcher.clear();
+    } else if (!skipFlush) {
         // flush any remaining events from running batcher
-        this.batcher.flush();
-        this.batcher.stop();
+        flushPromise = this.batcher.flush();
     }
+    this.batcher.stop();
 
     clearTimeout(this.idleTimeoutId);
     clearTimeout(this.maxTimeoutId);
+    return flushPromise;
 };
 
 SessionRecording.prototype.isRrwebStopped = function () {

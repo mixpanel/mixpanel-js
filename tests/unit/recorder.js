@@ -125,7 +125,42 @@ describe(`Recorder`, function() {
       tabId: `test-tab-id`,
     };
 
-    async function verifyRecordingIsResumed() {
+    it(`can resume a paused recording`, async function () {
+      await recorder.startRecording();
+      const replayId = recorder.getActiveReplayId();
+
+      mockRrweb.emit(EventType.Meta);
+      await clock.tickAsync(10);
+      await recorder.activeRecording.__enqueuePromise;
+      await recorder.pauseRecording();
+
+      expect(fetchStub.calledOnce).to.be.true;
+      let url = new URL(fetchStub.getCall(0).args[0]);
+      expect(url.searchParams.get(`seq`)).to.equal(`0`);
+      expect(url.searchParams.get(`replay_id`)).to.equal(replayId);
+
+      // this shouldn't do anything, recording is paused
+      mockRrweb.emit(EventType.FullSnapshot);
+      clock.tick(10);
+      await recorder.activeRecording.__enqueuePromise;
+      await clock.tickAsync(100 * 1000);
+      expect(fetchStub.calledOnce).to.be.true;
+
+      await recorder.resumeRecording();
+      mockRrweb.emit(EventType.IncrementalSnapshot);
+      clock.tick(10);
+      await recorder.activeRecording.__enqueuePromise;
+      await clock.tickAsync(10 * 1000);
+      await recorder.activeRecording.batcher._flushPromise;
+
+      expect(fetchStub.calledTwice).to.be.true;
+      url = new URL(fetchStub.getCall(1).args[0]);
+      expect(url.searchParams.get(`seq`)).to.equal(`1`);
+      expect(url.searchParams.get(`replay_id`)).to.equal(replayId);
+      recorder.stopRecording();
+    });
+
+    async function verifyRegistryRecordingIsResumed() {
       expect(mockRrweb.recordStub.callCount).to.equal(1);
 
       mockRrweb.emit(EventType.Meta);
@@ -142,13 +177,13 @@ describe(`Recorder`, function() {
     it(`can resume an active recording in the registry`, async function () {
       await idbSetItem(`mixpanelRecordingRegistry`, `test-tab-id`, SERIALIZED_RECORDING);
       await recorder.resumeRecording();
-      await verifyRecordingIsResumed();
+      await verifyRegistryRecordingIsResumed();
     });
 
     it(`resumes an active recording in the registry when startNewIfInactive=true`, async function () {
       await idbSetItem(`mixpanelRecordingRegistry`, `test-tab-id`, SERIALIZED_RECORDING);
       await recorder.resumeRecording(true);
-      await verifyRecordingIsResumed();
+      await verifyRegistryRecordingIsResumed();
     });
 
     it(`does nothing if the recording in the registry is expired`, async function () {
@@ -183,9 +218,8 @@ describe(`Recorder`, function() {
 
       // simulate tab1 disconnecting, stop the batcher and clear timeouts
       // no flush should occur after this
-      recorder.activeRecording.batcher.stop();
-      clearTimeout(recorder.activeRecording.idleTimeoutId);
-      clearTimeout(recorder.activeRecording.maxTimeoutId);
+      recorder._stopCurrentRecording(true);
+
       await clock.tickAsync(30 * 60 * 1000);
       await recorder.activeRecording.batcher._flushPromise;
       expect(fetchStub.callCount).to.equal(0);
@@ -235,9 +269,7 @@ describe(`Recorder`, function() {
       const tab1ReplayId = recorder.getActiveReplayId();
 
       // tab1 is now in the background, pretend the JS execution was suspended
-      recorder.activeRecording.batcher.stop();
-      clearTimeout(recorder.activeRecording.idleTimeoutId);
-      clearTimeout(recorder.activeRecording.maxTimeoutId);
+      recorder._stopCurrentRecording(true);
 
       await clock.tickAsync(30 * 60 * 1000);
 
