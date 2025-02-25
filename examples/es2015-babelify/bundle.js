@@ -10974,7 +10974,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":23}],5:[function(require,module,exports){
+},{"./utils":27}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -11319,7 +11319,7 @@ Autocapture.prototype.initSubmitTracking = function () {
 
 exports.Autocapture = Autocapture;
 
-},{"../utils":23,"../window":24,"./utils":6}],6:[function(require,module,exports){
+},{"../utils":27,"../window":28,"./utils":6}],6:[function(require,module,exports){
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
 
@@ -11837,7 +11837,7 @@ exports.EV_POPSTATE = EV_POPSTATE;
 exports.EV_SCROLLEND = EV_SCROLLEND;
 exports.EV_SUBMIT = EV_SUBMIT;
 
-},{"../utils":23,"../window":24}],7:[function(require,module,exports){
+},{"../utils":27,"../window":28}],7:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -11845,7 +11845,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.60.0'
+    LIB_VERSION: '2.61.0-rc1'
 };
 
 exports['default'] = Config;
@@ -12014,7 +12014,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":23}],9:[function(require,module,exports){
+},{"./utils":27}],9:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -12329,7 +12329,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":23,"./window":24}],10:[function(require,module,exports){
+},{"./utils":27,"./window":28}],10:[function(require,module,exports){
 // For loading separate bundles asynchronously via script tag
 // so that we don't load them until they are needed at runtime.
 'use strict';
@@ -12401,6 +12401,8 @@ var _config2 = _interopRequireDefault(_config);
 
 var _utils = require('./utils');
 
+var _recorderUtils = require('./recorder/utils');
+
 var _window = require('./window');
 
 var _autocapture = require('./autocapture');
@@ -12417,6 +12419,8 @@ var _mixpanelPersistence = require('./mixpanel-persistence');
 
 var _gdprUtils = require('./gdpr-utils');
 
+var _storageIndexedDb = require('./storage/indexed-db');
+
 /*
  * Mixpanel JS Library
  *
@@ -12428,11 +12432,6 @@ var _gdprUtils = require('./gdpr-utils');
  * (c) 2011 Jeremy Ashkenas, DocumentCloud Inc.
  * Released under the MIT License.
  */
-
-// ==ClosureCompiler==
-// @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.8.min.js
-// ==/ClosureCompiler==
 
 /*
 SIMPLE STYLE GUIDE:
@@ -12458,7 +12457,6 @@ var INIT_SNIPPET = 1;
 var IDENTITY_FUNC = function IDENTITY_FUNC(x) {
     return x;
 };
-var NOOP_FUNC = function NOOP_FUNC() {};
 
 /** @const */var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */var PAYLOAD_TYPE_BASE64 = 'base64';
@@ -12507,12 +12505,12 @@ var DEFAULT_CONFIG = {
     'cdn': 'https://cdn.mxpnl.com',
     'cross_site_cookie': false,
     'cross_subdomain_cookie': true,
-    'error_reporter': NOOP_FUNC,
+    'error_reporter': _utils.NOOP_FUNC,
     'persistence': 'cookie',
     'persistence_name': '',
     'cookie_domain': '',
     'cookie_name': '',
-    'loaded': NOOP_FUNC,
+    'loaded': _utils.NOOP_FUNC,
     'mp_loader': null,
     'track_marketing': true,
     'track_pageview': false,
@@ -12693,7 +12691,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
         'callback_fn': (name === PRIMARY_INSTANCE_NAME ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
     }));
 
-    this['_jsc'] = NOOP_FUNC;
+    this['_jsc'] = _utils.NOOP_FUNC;
 
     this.__dom_loaded_queue = [];
     this.__request_queue = [];
@@ -12765,34 +12763,121 @@ MixpanelLib.prototype._init = function (token, config, name) {
     this.autocapture = new _autocapture.Autocapture(this);
     this.autocapture.init();
 
-    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
-        this.start_session_recording();
+    this._init_tab_id();
+    this._check_and_start_session_recording();
+};
+
+/**
+ * Assigns a unique UUID to this tab / window by leveraging sessionStorage.
+ * This is primarily used for session recording, where data must be isolated to the current tab.
+ */
+MixpanelLib.prototype._init_tab_id = function () {
+    if (_utils._.sessionStorage.is_supported()) {
+        try {
+            var key_suffix = this.get_config('name') + '_' + this.get_config('token');
+            var tab_id_key = 'mp_tab_id_' + key_suffix;
+
+            // A flag is used to determine if sessionStorage is copied over and we need to generate a new tab ID.
+            // This enforces a unique ID in the cases like duplicated tab, window.open(...)
+            var should_generate_new_tab_id_key = 'mp_gen_new_tab_id_' + key_suffix;
+            if (_utils._.sessionStorage.get(should_generate_new_tab_id_key) || !_utils._.sessionStorage.get(tab_id_key)) {
+                _utils._.sessionStorage.set(tab_id_key, '$tab-' + _utils._.UUID());
+            }
+
+            _utils._.sessionStorage.set(should_generate_new_tab_id_key, '1');
+            this.tab_id = _utils._.sessionStorage.get(tab_id_key);
+
+            // Remove the flag when the tab is unloaded to indicate the stored tab ID can be reused. This event is not reliable to detect all page unloads,
+            // but reliable in cases where the user remains in the tab e.g. a refresh or href navigation.
+            // If the flag is absent, this indicates to the next SDK instance that we can reuse the stored tab_id.
+            _window.window.addEventListener('beforeunload', function () {
+                _utils._.sessionStorage.remove(should_generate_new_tab_id_key);
+            });
+        } catch (err) {
+            this.report_error('Error initializing tab id', err);
+        }
+    } else {
+        this.report_error('Session storage is not supported, cannot keep track of unique tab ID.');
     }
 };
 
-MixpanelLib.prototype.start_session_recording = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function () {
+MixpanelLib.prototype.get_tab_id = function () {
+    return this.tab_id || null;
+};
+
+MixpanelLib.prototype._should_load_recorder = function () {
+    var recording_registry_idb = new _storageIndexedDb.IDBStorageWrapper(_storageIndexedDb.RECORDING_REGISTRY_STORE_NAME);
+    var tab_id = this.get_tab_id();
+    return recording_registry_idb.init().then(function () {
+        return recording_registry_idb.getAll();
+    }).then(function (recordings) {
+        for (var i = 0; i < recordings.length; i++) {
+            // if there are expired recordings in the registry, we should load the recorder to flush them
+            // if there's a recording for this tab id, we should load the recorder to continue the recording
+            if ((0, _recorderUtils.isRecordingExpired)(recordings[i]) || recordings[i]['tabId'] === tab_id) {
+                return true;
+            }
+        }
+        return false;
+    })['catch'](_utils._.bind(function (err) {
+        this.report_error('Error checking recording registry', err);
+    }, this));
+};
+
+MixpanelLib.prototype._check_and_start_session_recording = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function (force_start) {
     if (!_window.window['MutationObserver']) {
         _utils.console.critical('Browser does not support MutationObserver; skipping session recording');
         return;
     }
 
-    var handleLoadedRecorder = _utils._.bind(function () {
-        this._recorder = this._recorder || new _window.window['__mp_recorder'](this);
-        this._recorder['startRecording']();
+    var loadRecorder = _utils._.bind(function (startNewIfInactive) {
+        var handleLoadedRecorder = _utils._.bind(function () {
+            this._recorder = this._recorder || new _window.window['__mp_recorder'](this);
+            this._recorder['resumeRecording'](startNewIfInactive);
+        }, this);
+
+        if (_utils._.isUndefined(_window.window['__mp_recorder'])) {
+            load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+        } else {
+            handleLoadedRecorder();
+        }
     }, this);
 
-    if (_utils._.isUndefined(_window.window['__mp_recorder'])) {
-        load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+    /**
+     * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
+     * Otherwise, if the recording registry has any records then it's likely there's a recording in progress or orphaned data that needs to be flushed.
+     */
+    var is_sampled = this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent');
+    if (force_start || is_sampled) {
+        loadRecorder(true);
     } else {
-        handleLoadedRecorder();
+        this._should_load_recorder().then(function (shouldLoad) {
+            if (shouldLoad) {
+                loadRecorder(false);
+            }
+        });
     }
 });
+
+MixpanelLib.prototype.start_session_recording = function () {
+    this._check_and_start_session_recording(true);
+};
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
         this._recorder['stopRecording']();
-    } else {
-        _utils.console.critical('Session recorder module not loaded');
+    }
+};
+
+MixpanelLib.prototype.pause_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['pauseRecording']();
+    }
+};
+
+MixpanelLib.prototype.resume_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['resumeRecording']();
     }
 };
 
@@ -12825,6 +12910,11 @@ MixpanelLib.prototype._get_session_replay_id = function () {
         replay_id = this._recorder['replayId'];
     }
     return replay_id || null;
+};
+
+// "private" public method to reach into the recorder in test cases
+MixpanelLib.prototype.__get_recorder = function () {
+    return this._recorder;
 };
 
 // Private methods
@@ -13167,7 +13257,8 @@ MixpanelLib.prototype.init_batchers = function () {
                     return this._run_hook('before_send_' + attrs.type, item);
                 }, this),
                 stopAllBatchingFunc: _utils._.bind(this.stop_batch_senders, this),
-                usePersistence: true
+                usePersistence: true,
+                enqueueThrottleMs: 10
             });
         }, this);
         var batcher_configs = this.get_batcher_configs();
@@ -13250,7 +13341,7 @@ MixpanelLib.prototype._track_or_batch = function (options, callback) {
     var batcher = options.batcher;
     var should_send_immediately = options.should_send_immediately;
     var send_request_options = options.send_request_options || {};
-    callback = callback || NOOP_FUNC;
+    callback = callback || _utils.NOOP_FUNC;
 
     var request_enqueued_or_initiated = true;
     var send_request_immediately = _utils._.bind(function () {
@@ -13316,7 +13407,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     }
     var should_send_immediately = options['send_immediately'];
     if (typeof callback !== 'function') {
-        callback = NOOP_FUNC;
+        callback = _utils.NOOP_FUNC;
     }
 
     if (_utils._.isUndefined(event_name)) {
@@ -14478,9 +14569,15 @@ MixpanelLib.prototype['start_batch_senders'] = MixpanelLib.prototype.start_batch
 MixpanelLib.prototype['stop_batch_senders'] = MixpanelLib.prototype.stop_batch_senders;
 MixpanelLib.prototype['start_session_recording'] = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording'] = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['pause_session_recording'] = MixpanelLib.prototype.pause_session_recording;
+MixpanelLib.prototype['resume_session_recording'] = MixpanelLib.prototype.resume_session_recording;
 MixpanelLib.prototype['get_session_recording_properties'] = MixpanelLib.prototype.get_session_recording_properties;
 MixpanelLib.prototype['get_session_replay_url'] = MixpanelLib.prototype.get_session_replay_url;
+MixpanelLib.prototype['get_tab_id'] = MixpanelLib.prototype.get_tab_id;
 MixpanelLib.prototype['DEFAULT_API_ROUTES'] = DEFAULT_API_ROUTES;
+
+// Exports intended only for testing
+MixpanelLib.prototype['__get_recorder'] = MixpanelLib.prototype.__get_recorder;
 
 // MixpanelPersistence Exports
 _mixpanelPersistence.MixpanelPersistence.prototype['properties'] = _mixpanelPersistence.MixpanelPersistence.prototype.properties;
@@ -14647,7 +14744,7 @@ function init_as_module(bundle_loader) {
     return mixpanel_master;
 }
 
-},{"./autocapture":5,"./config":7,"./dom-trackers":8,"./gdpr-utils":9,"./mixpanel-group":13,"./mixpanel-people":14,"./mixpanel-persistence":15,"./request-batcher":19,"./utils":23,"./window":24}],13:[function(require,module,exports){
+},{"./autocapture":5,"./config":7,"./dom-trackers":8,"./gdpr-utils":9,"./mixpanel-group":13,"./mixpanel-people":14,"./mixpanel-persistence":15,"./recorder/utils":21,"./request-batcher":22,"./storage/indexed-db":25,"./utils":27,"./window":28}],13:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -14831,7 +14928,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":4,"./gdpr-utils":9,"./utils":23}],14:[function(require,module,exports){
+},{"./api-actions":4,"./gdpr-utils":9,"./utils":27}],14:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -15311,7 +15408,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":4,"./gdpr-utils":9,"./utils":23}],15:[function(require,module,exports){
+},{"./api-actions":4,"./gdpr-utils":9,"./utils":27}],15:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -15745,7 +15842,7 @@ exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":4,"./utils":23}],16:[function(require,module,exports){
+},{"./api-actions":4,"./utils":27}],16:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16121,67 +16218,138 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 exports.Promise = PromisePolyfill;
 exports.NpoPromise = NpoPromise;
 
-},{"./window":24}],17:[function(require,module,exports){
+},{"./window":28}],17:[function(require,module,exports){
 'use strict';
+
+var _window = require('../window');
+
+var _recorder = require('./recorder');
+
+_window.window['__mp_recorder'] = _recorder.MixpanelRecorder;
+
+},{"../window":28,"./recorder":18}],18:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
 
 var _rrweb = require('rrweb');
 
+var _promisePolyfill = require('../promise-polyfill');
+
 var _sessionRecording = require('./session-recording');
+
+var _recordingRegistry = require('./recording-registry');
 
 var _utils = require('../utils');
 
 // eslint-disable-line camelcase
 
-var _window = require('../window');
-
 var logger = (0, _utils.console_with_prefix)('recorder');
 
 /**
- * Recorder API: manages recordings and exposes methods public to the core Mixpanel library.
+ * Recorder API: bundles rrweb and and exposes methods to start and stop recordings.
  * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
- */
-var MixpanelRecorder = function MixpanelRecorder(mixpanelInstance) {
-    this._mixpanel = mixpanelInstance;
+*/
+var MixpanelRecorder = function MixpanelRecorder(mixpanelInstance, rrwebRecord, sharedLockStorage) {
+    this.mixpanelInstance = mixpanelInstance;
+    this.rrwebRecord = rrwebRecord || _rrweb.record;
+    this.sharedLockStorage = sharedLockStorage;
+
+    /**
+     * @member {import('./registry').RecordingRegistry}
+     */
+    this.recordingRegistry = new _recordingRegistry.RecordingRegistry({ mixpanelInstance: this.mixpanelInstance, errorReporter: logger.error });
+    this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
+
     this.activeRecording = null;
 };
 
-MixpanelRecorder.prototype.startRecording = function (shouldStopBatcher) {
+MixpanelRecorder.prototype.startRecording = function (options) {
+    options = options || {};
     if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
         logger.log('Recording already in progress, skipping startRecording.');
         return;
     }
 
-    var onIdleTimeout = _utils._.bind(function () {
+    var onIdleTimeout = (function () {
         logger.log('Idle timeout reached, restarting recording.');
         this.resetRecording();
-    }, this);
+    }).bind(this);
 
-    var onMaxLengthReached = _utils._.bind(function () {
+    var onMaxLengthReached = (function () {
         logger.log('Max recording length reached, stopping recording.');
         this.resetRecording();
-    }, this);
+    }).bind(this);
 
-    this.activeRecording = new _sessionRecording.SessionRecording({
-        mixpanelInstance: this._mixpanel,
+    var onBatchSent = (function () {
+        this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
+        this['__flushPromise'] = this.activeRecording.batcher._flushPromise;
+    }).bind(this);
+
+    /**
+     * @type {import('./session-recording').SessionRecordingOptions}
+     */
+    var sessionRecordingOptions = {
+        mixpanelInstance: this.mixpanelInstance,
+        onBatchSent: onBatchSent,
         onIdleTimeout: onIdleTimeout,
         onMaxLengthReached: onMaxLengthReached,
         replayId: _utils._.UUID(),
-        rrwebRecord: _rrweb.record
-    });
+        rrwebRecord: this.rrwebRecord,
+        sharedLockStorage: this.sharedLockStorage
+    };
 
-    this.activeRecording.startRecording(shouldStopBatcher);
+    if (options.activeSerializedRecording) {
+        this.activeRecording = _sessionRecording.SessionRecording.deserialize(options.activeSerializedRecording, sessionRecordingOptions);
+    } else {
+        this.activeRecording = new _sessionRecording.SessionRecording(sessionRecordingOptions);
+    }
+
+    this.activeRecording.startRecording(options.shouldStopBatcher);
+    return this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
 };
 
 MixpanelRecorder.prototype.stopRecording = function () {
+    var stopPromise = this._stopCurrentRecording(false);
+    this.recordingRegistry.clearActiveRecording();
+    this.activeRecording = null;
+    return stopPromise;
+};
+
+MixpanelRecorder.prototype.pauseRecording = function () {
+    return this._stopCurrentRecording(false);
+};
+
+MixpanelRecorder.prototype._stopCurrentRecording = function (skipFlush) {
     if (this.activeRecording) {
-        this.activeRecording.stopRecording();
-        this.activeRecording = null;
+        return this.activeRecording.stopRecording(skipFlush);
     }
+    return _promisePolyfill.Promise.resolve();
+};
+
+MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
+    if (this.activeRecording && this.activeRecording.isRrwebStopped()) {
+        this.activeRecording.startRecording(false);
+        return _promisePolyfill.Promise.resolve(null);
+    }
+
+    return this.recordingRegistry.getActiveRecording().then((function (activeSerializedRecording) {
+        if (activeSerializedRecording) {
+            return this.startRecording({ activeSerializedRecording: activeSerializedRecording });
+        } else if (startNewIfInactive) {
+            return this.startRecording({ shouldStopBatcher: false });
+        } else {
+            logger.log('No resumable recording found.');
+            return null;
+        }
+    }).bind(this));
 };
 
 MixpanelRecorder.prototype.resetRecording = function () {
     this.stopRecording();
-    this.startRecording(true);
+    this.startRecording({ shouldStopBatcher: true });
 };
 
 MixpanelRecorder.prototype.getActiveReplayId = function () {
@@ -16200,9 +16368,104 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
     }
 });
 
-_window.window['__mp_recorder'] = MixpanelRecorder;
+exports.MixpanelRecorder = MixpanelRecorder;
 
-},{"../utils":23,"../window":24,"./session-recording":18,"rrweb":3}],18:[function(require,module,exports){
+},{"../promise-polyfill":16,"../utils":27,"./recording-registry":19,"./session-recording":20,"rrweb":3}],19:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _promisePolyfill = require('../promise-polyfill');
+
+var _storageIndexedDb = require('../storage/indexed-db');
+
+var _sessionRecording = require('./session-recording');
+
+var _utils = require('./utils');
+
+/**
+ * Module for handling the storage and retrieval of recording metadata as well as any active recordings.
+ * Makes sure that only one tab can be recording at a time.
+ */
+var RecordingRegistry = function RecordingRegistry(options) {
+    this.idb = new _storageIndexedDb.IDBStorageWrapper(_storageIndexedDb.RECORDING_REGISTRY_STORE_NAME);
+    this.errorReporter = options.errorReporter;
+    this.mixpanelInstance = options.mixpanelInstance;
+    this.sharedLockStorage = options.sharedLockStorage;
+};
+
+RecordingRegistry.prototype.handleError = function (err) {
+    this.errorReporter('IndexedDB error: ', err);
+};
+
+/**
+ * @param {import('./session-recording').SerializedRecording} serializedRecording
+ */
+RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
+    var tabId = this.mixpanelInstance.get_tab_id();
+    if (!tabId) {
+        console.warn('No tab ID is set, cannot persist recording metadata.');
+        return _promisePolyfill.Promise.resolve();
+    }
+
+    return this.idb.init().then((function () {
+        return this.idb.setItem(tabId, serializedRecording);
+    }).bind(this))['catch'](this.handleError.bind(this));
+};
+
+/**
+ * @returns {Promise<import('./session-recording').SerializedRecording>}
+ */
+RecordingRegistry.prototype.getActiveRecording = function () {
+    return this.idb.init().then((function () {
+        return this.idb.getItem(this.mixpanelInstance.get_tab_id());
+    }).bind(this)).then((function (serializedRecording) {
+        return (0, _utils.isRecordingExpired)(serializedRecording) ? null : serializedRecording;
+    }).bind(this))['catch'](this.handleError.bind(this));
+};
+
+RecordingRegistry.prototype.clearActiveRecording = function () {
+    // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
+    // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+    return this.getActiveRecording().then((function (serializedRecording) {
+        if (serializedRecording) {
+            serializedRecording['maxExpires'] = 0;
+            return this.setActiveRecording(serializedRecording);
+        }
+    }).bind(this))['catch'](this.handleError.bind(this));
+};
+
+/**
+ * Flush any inactive recordings from the registry to minimize data loss.
+ * The main idea here is that we can flush remaining rrweb events on the next page load if a tab is closed mid-batch.
+ */
+RecordingRegistry.prototype.flushInactiveRecordings = function () {
+    return this.idb.init().then((function () {
+        return this.idb.getAll();
+    }).bind(this)).then((function (serializedRecordings) {
+        // clean up any expired recordings from the registry, non-expired ones may be active in other tabs
+        var unloadPromises = serializedRecordings.filter(function (serializedRecording) {
+            return (0, _utils.isRecordingExpired)(serializedRecording);
+        }).map((function (serializedRecording) {
+            var sessionRecording = _sessionRecording.SessionRecording.deserialize(serializedRecording, {
+                mixpanelInstance: this.mixpanelInstance,
+                sharedLockStorage: this.sharedLockStorage
+            });
+            return sessionRecording.unloadPersistedData().then((function () {
+                // expired recording was successfully flushed, we can clean it up from the registry
+                return this.idb.removeItem(serializedRecording['tabId']);
+            }).bind(this))['catch'](this.handleError.bind(this));
+        }).bind(this));
+
+        return _promisePolyfill.Promise.all(unloadPromises);
+    }).bind(this))['catch'](this.handleError.bind(this));
+};
+
+exports.RecordingRegistry = RecordingRegistry;
+
+},{"../promise-polyfill":16,"../storage/indexed-db":25,"./session-recording":20,"./utils":21}],20:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16211,13 +16474,15 @@ Object.defineProperty(exports, '__esModule', {
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
+var _window = require('../window');
+
 var _rrwebTypes = require('@rrweb/types');
 
 var _utils = require('../utils');
 
 // eslint-disable-line camelcase
 
-var _window = require('../window');
+var _storageIndexedDb = require('../storage/indexed-db');
 
 var _gdprUtils = require('../gdpr-utils');
 
@@ -16244,28 +16509,56 @@ function isUserEvent(ev) {
 }
 
 /**
+ * @typedef {Object} SerializedRecording
+ * @property {number} idleExpires
+ * @property {number} maxExpires
+ * @property {number} replayStartTime
+ * @property {number} seqNo
+ * @property {string} batchStartUrl
+ * @property {string} replayId
+ * @property {string} tabId
+ * @property {string} replayStartUrl
+ */
+
+/**
+ * @typedef {Object} SessionRecordingOptions
+ * @property {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
+ * @property {String} [options.replayId] - unique uuid for a single replay
+ * @property {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
+ * @property {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
+ * @property {Function} [options.rrwebRecord] - rrweb's `record` function
+ * @property {Function} [options.onBatchSent] - callback when a batch of events is sent to the server
+ * @property {Storage} [options.sharedLockStorage] - optional storage for shared lock, used for test dependency injection
+ * optional properties for deserialization:
+ * @property {number} idleExpires
+ * @property {number} maxExpires
+ * @property {number} replayStartTime
+ * @property {number} seqNo
+ * @property {string} batchStartUrl
+ * @property {string} replayStartUrl
+ */
+
+/**
  * This class encapsulates a single session recording and its lifecycle.
- * @param {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
- * @param {String} [options.replayId] - unique uuid for a single replay
- * @param {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
- * @param {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
- * @param {Function} [options.rrwebRecord] - rrweb's `record` function
+ * @param {SessionRecordingOptions} options
  */
 var SessionRecording = function SessionRecording(options) {
     this._mixpanel = options.mixpanelInstance;
-    this._onIdleTimeout = options.onIdleTimeout;
-    this._onMaxLengthReached = options.onMaxLengthReached;
-    this._rrwebRecord = options.rrwebRecord;
-
-    this.replayId = options.replayId;
+    this._onIdleTimeout = options.onIdleTimeout || _utils.NOOP_FUNC;
+    this._onMaxLengthReached = options.onMaxLengthReached || _utils.NOOP_FUNC;
+    this._onBatchSent = options.onBatchSent || _utils.NOOP_FUNC;
+    this._rrwebRecord = options.rrwebRecord || null;
 
     // internal rrweb stopRecording function
     this._stopRecording = null;
+    this.replayId = options.replayId;
 
-    this.seqNo = 0;
-    this.replayStartTime = null;
-    this.replayStartUrl = null;
-    this.batchStartUrl = null;
+    this.batchStartUrl = options.batchStartUrl || null;
+    this.replayStartUrl = options.replayStartUrl || null;
+    this.idleExpires = options.idleExpires || null;
+    this.maxExpires = options.maxExpires || null;
+    this.replayStartTime = options.replayStartTime || null;
+    this.seqNo = options.seqNo || 0;
 
     this.idleTimeoutId = null;
     this.maxTimeoutId = null;
@@ -16275,14 +16568,25 @@ var SessionRecording = function SessionRecording(options) {
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     // this will be important when persistence is introduced
-    var batcherKey = '__mprec_' + this.getConfig('token') + '_' + this.replayId;
-    this.batcher = new _requestBatcher.RequestBatcher(batcherKey, {
-        errorReporter: _utils._.bind(this.reportError, this),
+    this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
+    this.queueStorage = new _storageIndexedDb.IDBStorageWrapper(_storageIndexedDb.RECORDING_EVENTS_STORE_NAME);
+    this.batcher = new _requestBatcher.RequestBatcher(this.batcherKey, {
+        errorReporter: this.reportError.bind(this),
         flushOnlyOnInterval: true,
         libConfig: RECORDER_BATCHER_LIB_CONFIG,
-        sendRequestFunc: _utils._.bind(this.flushEventsWithOptOut, this),
-        usePersistence: false
+        sendRequestFunc: this.flushEventsWithOptOut.bind(this),
+        queueStorage: this.queueStorage,
+        sharedLockStorage: options.sharedLockStorage,
+        usePersistence: true,
+        enqueueThrottleMs: 10
     });
+};
+
+SessionRecording.prototype.unloadPersistedData = function () {
+    this.batcher.stop();
+    return this.batcher.flush().then((function () {
+        return this.queueStorage.removeItem(this.batcherKey);
+    }).bind(this));
 };
 
 SessionRecording.prototype.getConfig = function (configVar) {
@@ -16297,6 +16601,11 @@ SessionRecording.prototype.get_config = function (configVar) {
 };
 
 SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
+    if (this._rrwebRecord === null) {
+        this.reportError('rrweb record function not provided. ');
+        return;
+    }
+
     if (this._stopRecording !== null) {
         logger.log('Recording already in progress, skipping startRecording.');
         return;
@@ -16308,15 +16617,21 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         logger.critical('record_max_ms cannot be greater than ' + _utils.MAX_RECORDING_MS + 'ms. Capping value.');
     }
 
+    if (!this.maxExpires) {
+        this.maxExpires = new Date().getTime() + this.recordMaxMs;
+    }
+
     this.recordMinMs = this.getConfig('record_min_ms');
     if (this.recordMinMs > _utils.MAX_VALUE_FOR_MIN_RECORDING_MS) {
         this.recordMinMs = _utils.MAX_VALUE_FOR_MIN_RECORDING_MS;
         logger.critical('record_min_ms cannot be greater than ' + _utils.MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
     }
 
-    this.replayStartTime = new Date().getTime();
-    this.batchStartUrl = _utils._.info.currentUrl();
-    this.replayStartUrl = _utils._.info.currentUrl();
+    if (!this.replayStartTime) {
+        this.replayStartTime = new Date().getTime();
+        this.batchStartUrl = _utils._.info.currentUrl();
+        this.replayStartUrl = _utils._.info.currentUrl();
+    }
 
     if (shouldStopBatcher || this.recordMinMs > 0) {
         // the primary case for shouldStopBatcher is when we're starting recording after a reset
@@ -16329,10 +16644,12 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.batcher.start();
     }
 
-    var resetIdleTimeout = _utils._.bind(function () {
+    var resetIdleTimeout = (function () {
         clearTimeout(this.idleTimeoutId);
-        this.idleTimeoutId = setTimeout(this._onIdleTimeout, this.getConfig('record_idle_timeout_ms'));
-    }, this);
+        var idleTimeoutMs = this.getConfig('record_idle_timeout_ms');
+        this.idleTimeoutId = setTimeout(this._onIdleTimeout, idleTimeoutMs);
+        this.idleExpires = new Date().getTime() + idleTimeoutMs;
+    }).bind(this);
 
     var blockSelector = this.getConfig('record_block_selector');
     if (blockSelector === '' || blockSelector === null) {
@@ -16340,8 +16657,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     this._stopRecording = this._rrwebRecord({
-        'emit': _utils._.bind(function (ev) {
-            this.batcher.enqueue(ev);
+        'emit': (function (ev) {
             if (isUserEvent(ev)) {
                 if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
                     // start flushing again after user activity
@@ -16349,7 +16665,10 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                 }
                 resetIdleTimeout();
             }
-        }, this),
+
+            // promise only used to await during tests
+            this.__enqueuePromise = this.batcher.enqueue(ev);
+        }).bind(this),
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.getConfig('record_collect_fonts'),
@@ -16375,10 +16694,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
     resetIdleTimeout();
 
-    this.maxTimeoutId = setTimeout(_utils._.bind(this._onMaxLengthReached, this), this.recordMaxMs);
+    var maxTimeoutMs = this.maxExpires - new Date().getTime();
+    this.maxTimeoutId = setTimeout(this._onMaxLengthReached.bind(this), maxTimeoutMs);
 };
 
-SessionRecording.prototype.stopRecording = function () {
+SessionRecording.prototype.stopRecording = function (skipFlush) {
     if (!this.isRrwebStopped()) {
         try {
             this._stopRecording();
@@ -16388,17 +16708,19 @@ SessionRecording.prototype.stopRecording = function () {
         this._stopRecording = null;
     }
 
+    var flushPromise;
     if (this.batcher.stopped) {
         // never got user activity to flush after reset, so just clear the batcher
-        this.batcher.clear();
-    } else {
+        flushPromise = this.batcher.clear();
+    } else if (!skipFlush) {
         // flush any remaining events from running batcher
-        this.batcher.flush();
-        this.batcher.stop();
+        flushPromise = this.batcher.flush();
     }
+    this.batcher.stop();
 
     clearTimeout(this.idleTimeoutId);
     clearTimeout(this.maxTimeoutId);
+    return flushPromise;
 };
 
 SessionRecording.prototype.isRrwebStopped = function () {
@@ -16410,7 +16732,43 @@ SessionRecording.prototype.isRrwebStopped = function () {
  * we stop recording and dump any queued events if the user has opted out.
  */
 SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
-    this._flushEvents(data, options, cb, _utils._.bind(this._onOptOut, this));
+    this._flushEvents(data, options, cb, this._onOptOut.bind(this));
+};
+
+/**
+ * @returns {SerializedRecording}
+ */
+SessionRecording.prototype.serialize = function () {
+    return {
+        'replayId': this.replayId,
+        'seqNo': this.seqNo,
+        'replayStartTime': this.replayStartTime,
+        'batchStartUrl': this.batchStartUrl,
+        'replayStartUrl': this.replayStartUrl,
+        'idleExpires': this.idleExpires,
+        'maxExpires': this.maxExpires,
+        'tabId': this._mixpanel.get_tab_id()
+    };
+};
+
+/**
+ * @static
+ * @param {SerializedRecording} serializedRecording
+ * @param {SessionRecordingOptions} options
+ * @returns {SessionRecording}
+ */
+SessionRecording.deserialize = function (serializedRecording, options) {
+    var recording = new SessionRecording(_utils._.extend({}, options, {
+        replayId: serializedRecording['replayId'],
+        batchStartUrl: serializedRecording['batchStartUrl'],
+        replayStartUrl: serializedRecording['replayStartUrl'],
+        idleExpires: serializedRecording['idleExpires'],
+        maxExpires: serializedRecording['maxExpires'],
+        replayStartTime: serializedRecording['replayStartTime'],
+        seqNo: serializedRecording['seqNo']
+    }));
+
+    return recording;
 };
 
 SessionRecording.prototype._onOptOut = function (code) {
@@ -16421,7 +16779,7 @@ SessionRecording.prototype._onOptOut = function (code) {
 };
 
 SessionRecording.prototype._sendRequest = function (currentReplayId, reqParams, reqBody, callback) {
-    var onSuccess = _utils._.bind(function (response, responseBody) {
+    var onSuccess = (function (response, responseBody) {
         // Update batch specific props only if the request was successful to guarantee ordering.
         // RequestBatcher will always flush the next batch after the previous one succeeds.
         // extra check to see if the replay ID has changed so that we don't increment the seqNo on the wrong replay
@@ -16429,13 +16787,15 @@ SessionRecording.prototype._sendRequest = function (currentReplayId, reqParams, 
             this.seqNo++;
             this.batchStartUrl = _utils._.info.currentUrl();
         }
+
+        this._onBatchSent();
         callback({
             status: 0,
             httpStatusCode: response.status,
             responseBody: responseBody,
             retryAfter: response.headers.get('Retry-After')
         });
-    }, this);
+    }).bind(this);
 
     _window.window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
@@ -16499,10 +16859,10 @@ SessionRecording.prototype._flushEvents = (0, _gdprUtils.addOptOutCheckMixpanelL
         if (CompressionStream) {
             var jsonStream = new Blob([eventsJson], { type: 'application/json' }).stream();
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
-            new Response(gzipStream).blob().then(_utils._.bind(function (compressedBlob) {
+            new Response(gzipStream).blob().then((function (compressedBlob) {
                 reqParams['format'] = 'gzip';
                 this._sendRequest(replayId, reqParams, compressedBlob, callback);
-            }, this));
+            }).bind(this));
         } else {
             reqParams['format'] = 'body';
             this._sendRequest(replayId, reqParams, eventsJson, callback);
@@ -16524,7 +16884,24 @@ SessionRecording.prototype.reportError = function (msg, err) {
 
 exports.SessionRecording = SessionRecording;
 
-},{"../config":7,"../gdpr-utils":9,"../request-batcher":19,"../utils":23,"../window":24,"@rrweb/types":2}],19:[function(require,module,exports){
+},{"../config":7,"../gdpr-utils":9,"../request-batcher":22,"../storage/indexed-db":25,"../utils":27,"../window":28,"@rrweb/types":2}],21:[function(require,module,exports){
+/**
+ * @param {import('./session-recording').SerializedRecording} serializedRecording
+ * @returns {boolean}
+ */
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+var isRecordingExpired = function isRecordingExpired(serializedRecording) {
+  var now = Date.now();
+  return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
+};
+
+exports.isRecordingExpired = isRecordingExpired;
+
+},{}],22:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16562,7 +16939,8 @@ var RequestBatcher = function RequestBatcher(storageKey, options) {
         errorReporter: _utils._.bind(this.reportError, this),
         queueStorage: options.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
-        usePersistence: options.usePersistence
+        usePersistence: options.usePersistence,
+        enqueueThrottleMs: options.enqueueThrottleMs
     });
 
     this.libConfig = options.libConfig;
@@ -16584,6 +16962,8 @@ var RequestBatcher = function RequestBatcher(storageKey, options) {
     // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
     // in a request loop and get ratelimited by the server.
     this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
+
+    this._flushPromise = null;
 };
 
 /**
@@ -16644,7 +17024,7 @@ RequestBatcher.prototype.scheduleFlush = function (flushMS) {
         // don't schedule anymore if batching has been stopped
         this.timeoutID = setTimeout(_utils._.bind(function () {
             if (!this.stopped) {
-                this.flush();
+                this._flushPromise = this.flush();
             }
         }, this), this.flushInterval);
     }
@@ -16855,7 +17235,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./config":7,"./promise-polyfill":16,"./request-queue":20,"./utils":23}],20:[function(require,module,exports){
+},{"./config":7,"./promise-polyfill":16,"./request-queue":23,"./utils":27}],23:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16867,6 +17247,8 @@ var _sharedLock = require('./shared-lock');
 var _utils = require('./utils');
 
 // eslint-disable-line camelcase
+
+var _window = require('./window');
 
 var _storageLocalStorage = require('./storage/local-storage');
 
@@ -16896,8 +17278,7 @@ var RequestQueue = function RequestQueue(storageKey, options) {
     this.usePersistence = options.usePersistence;
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new _storageLocalStorage.LocalStorageWrapper();
-        this.lock = new _sharedLock.SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
-        this.queueStorage.init();
+        this.lock = new _sharedLock.SharedLock(storageKey, { storage: options.sharedLockStorage || _window.window.localStorage });
     }
     this.reportError = options.errorReporter || _utils._.bind(logger.error, logger);
 
@@ -16905,6 +17286,14 @@ var RequestQueue = function RequestQueue(storageKey, options) {
 
     this.memQueue = [];
     this.initialized = false;
+
+    if (options.enqueueThrottleMs) {
+        this.enqueuePersisted = (0, _utils.batchedThrottle)(_utils._.bind(this._enqueuePersisted, this), options.enqueueThrottleMs);
+    } else {
+        this.enqueuePersisted = _utils._.bind(function (queueEntry) {
+            return this._enqueuePersisted([queueEntry]);
+        }, this);
+    }
 };
 
 RequestQueue.prototype.ensureInit = function () {
@@ -16944,30 +17333,33 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
         this.memQueue.push(queueEntry);
         return _promisePolyfill.Promise.resolve(true);
     } else {
+        return this.enqueuePersisted(queueEntry);
+    }
+};
 
-        var enqueueItem = _utils._.bind(function () {
-            return this.ensureInit().then(_utils._.bind(function () {
-                return this.readFromStorage();
-            }, this)).then(_utils._.bind(function (storedQueue) {
-                storedQueue.push(queueEntry);
-                return this.saveToStorage(storedQueue);
-            }, this)).then(_utils._.bind(function (succeeded) {
-                // only add to in-memory queue when storage succeeds
-                if (succeeded) {
-                    this.memQueue.push(queueEntry);
-                }
-                return succeeded;
-            }, this))['catch'](_utils._.bind(function (err) {
-                this.reportError('Error enqueueing item', err, item);
-                return false;
-            }, this));
-        }, this);
+RequestQueue.prototype._enqueuePersisted = function (queueEntries) {
+    var enqueueItem = _utils._.bind(function () {
+        return this.ensureInit().then(_utils._.bind(function () {
+            return this.readFromStorage();
+        }, this)).then(_utils._.bind(function (storedQueue) {
+            return this.saveToStorage(storedQueue.concat(queueEntries));
+        }, this)).then(_utils._.bind(function (succeeded) {
+            // only add to in-memory queue when storage succeeds
+            if (succeeded) {
+                this.memQueue = this.memQueue.concat(queueEntries);
+            }
 
-        return this.lock.withLock(enqueueItem, this.pid)['catch'](_utils._.bind(function (err) {
-            this.reportError('Error acquiring storage lock', err);
+            return succeeded;
+        }, this))['catch'](_utils._.bind(function (err) {
+            this.reportError('Error enqueueing items', err, queueEntries);
             return false;
         }, this));
-    }
+    }, this);
+
+    return this.lock.withLock(enqueueItem, this.pid)['catch'](_utils._.bind(function (err) {
+        this.reportError('Error acquiring storage lock', err);
+        return false;
+    }, this));
 };
 
 /**
@@ -17145,7 +17537,6 @@ RequestQueue.prototype.readFromStorage = function () {
         return this.queueStorage.getItem(this.storageKey);
     }, this)).then(_utils._.bind(function (storageEntry) {
         if (storageEntry) {
-            storageEntry = (0, _utils.JSONParse)(storageEntry);
             if (!_utils._.isArray(storageEntry)) {
                 this.reportError('Invalid storage entry:', storageEntry);
                 storageEntry = null;
@@ -17162,15 +17553,8 @@ RequestQueue.prototype.readFromStorage = function () {
  * Serialize the given items array to localStorage.
  */
 RequestQueue.prototype.saveToStorage = function (queue) {
-    try {
-        var serialized = (0, _utils.JSONStringify)(queue);
-    } catch (err) {
-        this.reportError('Error serializing queue', err);
-        return _promisePolyfill.Promise.resolve(false);
-    }
-
     return this.ensureInit().then(_utils._.bind(function () {
-        return this.queueStorage.setItem(this.storageKey, serialized);
+        return this.queueStorage.setItem(this.storageKey, queue);
     }, this)).then(function () {
         return true;
     })['catch'](_utils._.bind(function (err) {
@@ -17196,7 +17580,7 @@ RequestQueue.prototype.clear = function () {
 
 exports.RequestQueue = RequestQueue;
 
-},{"./promise-polyfill":16,"./shared-lock":21,"./storage/local-storage":22,"./utils":23}],21:[function(require,module,exports){
+},{"./promise-polyfill":16,"./shared-lock":24,"./storage/local-storage":26,"./utils":27,"./window":28}],24:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -17208,6 +17592,8 @@ var _promisePolyfill = require('./promise-polyfill');
 var _utils = require('./utils');
 
 // eslint-disable-line camelcase
+
+var _window = require('./window');
 
 var logger = (0, _utils.console_with_prefix)('lock');
 
@@ -17235,7 +17621,7 @@ var SharedLock = function SharedLock(key, options) {
     options = options || {};
 
     this.storageKey = key;
-    this.storage = options.storage || window.localStorage;
+    this.storage = options.storage || _window.window.localStorage;
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
 
@@ -17250,7 +17636,6 @@ SharedLock.prototype.withLock = function (lockedCB, pid) {
     return new Promise(_utils._.bind(function (resolve, reject) {
         var i = pid || new Date().getTime() + '|' + Math.random();
         var startTime = new Date().getTime();
-
         var key = this.storageKey;
         var pollIntervalMS = this.pollIntervalMS;
         var timeoutMS = this.timeoutMS;
@@ -17361,7 +17746,130 @@ SharedLock.prototype.withLock = function (lockedCB, pid) {
 
 exports.SharedLock = SharedLock;
 
-},{"./promise-polyfill":16,"./utils":23}],22:[function(require,module,exports){
+},{"./promise-polyfill":16,"./utils":27,"./window":28}],25:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _promisePolyfill = require('../promise-polyfill');
+
+var _window = require('../window');
+
+var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
+
+var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
+var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
+
+// note: increment the version number when adding new object stores
+var DB_VERSION = 1;
+var OBJECT_STORES = [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME];
+
+/**
+ * @type {import('./wrapper').StorageWrapper}
+ */
+var IDBStorageWrapper = function IDBStorageWrapper(storeName) {
+    /**
+     * @type {Promise<IDBDatabase>|null}
+     */
+    this.dbPromise = null;
+    this.storeName = storeName;
+};
+
+IDBStorageWrapper.prototype.init = function () {
+    if (!_window.window.indexedDB) {
+        return _promisePolyfill.Promise.reject('indexedDB is not supported in this browser');
+    }
+
+    var self = this;
+    if (!this.dbPromise) {
+        this.dbPromise = new _promisePolyfill.Promise(function (resolve, reject) {
+            var openRequest = _window.window.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+            openRequest['onerror'] = function () {
+                reject(openRequest.error);
+            };
+
+            openRequest['onsuccess'] = function () {
+                self._db = openRequest.result;
+                resolve(openRequest.result);
+            };
+
+            openRequest['onupgradeneeded'] = function (ev) {
+                var db = ev.target.result;
+
+                OBJECT_STORES.forEach(function (storeName) {
+                    db.createObjectStore(storeName);
+                });
+            };
+        });
+    }
+
+    return this.dbPromise.then(function (dbOrError) {
+        if (dbOrError instanceof _window.window['IDBDatabase']) {
+            return _promisePolyfill.Promise.resolve();
+        } else {
+            return _promisePolyfill.Promise.reject(dbOrError);
+        }
+    });
+};
+
+/**
+ * @param {IDBTransactionMode} mode
+ * @param {function(IDBObjectStore): void} storeCb
+ */
+IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
+    var self = this;
+    return this.dbPromise.then(function (db) {
+        return new _promisePolyfill.Promise(function (resolve, reject) {
+            var transaction = db.transaction(self.storeName, mode);
+            transaction.oncomplete = function () {
+                resolve(transaction);
+            };
+            transaction.onabort = transaction.onerror = function () {
+                reject(transaction.error);
+            };
+
+            storeCb(transaction.objectStore(self.storeName));
+        });
+    });
+};
+
+IDBStorageWrapper.prototype.setItem = function (key, value) {
+    return this.makeTransaction('readwrite', function (objectStore) {
+        objectStore.put(value, key);
+    });
+};
+
+IDBStorageWrapper.prototype.getItem = function (key) {
+    var req;
+    return this.makeTransaction('readonly', function (objectStore) {
+        req = objectStore.get(key);
+    }).then(function () {
+        return req.result;
+    });
+};
+
+IDBStorageWrapper.prototype.removeItem = function (key) {
+    return this.makeTransaction('readwrite', function (objectStore) {
+        objectStore['delete'](key);
+    });
+};
+
+IDBStorageWrapper.prototype.getAll = function () {
+    var req;
+    return this.makeTransaction('readonly', function (objectStore) {
+        req = objectStore.getAll();
+    }).then(function () {
+        return req.result;
+    });
+};
+
+exports.IDBStorageWrapper = IDBStorageWrapper;
+exports.RECORDING_EVENTS_STORE_NAME = RECORDING_EVENTS_STORE_NAME;
+exports.RECORDING_REGISTRY_STORE_NAME = RECORDING_REGISTRY_STORE_NAME;
+
+},{"../promise-polyfill":16,"../window":28}],26:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -17375,11 +17883,7 @@ var _utils = require('../utils');
 // eslint-disable-line camelcase
 
 /**
- * @typedef {import('./wrapper').StorageWrapper}
- */
-
-/**
- * @type {StorageWrapper}
+ * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function LocalStorageWrapper(storageOverride) {
     this.storage = storageOverride || localStorage;
@@ -17392,7 +17896,7 @@ LocalStorageWrapper.prototype.init = function () {
 LocalStorageWrapper.prototype.setItem = function (key, value) {
     return new _promisePolyfill.Promise(_utils._.bind(function (resolve, reject) {
         try {
-            this.storage.setItem(key, value);
+            this.storage.setItem(key, (0, _utils.JSONStringify)(value));
         } catch (e) {
             reject(e);
         }
@@ -17404,7 +17908,7 @@ LocalStorageWrapper.prototype.getItem = function (key) {
     return new _promisePolyfill.Promise(_utils._.bind(function (resolve, reject) {
         var item;
         try {
-            item = this.storage.getItem(key);
+            item = (0, _utils.JSONParse)(this.storage.getItem(key));
         } catch (e) {
             reject(e);
         }
@@ -17425,7 +17929,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
 
 exports.LocalStorageWrapper = LocalStorageWrapper;
 
-},{"../promise-polyfill":16,"../utils":23}],23:[function(require,module,exports){
+},{"../promise-polyfill":16,"../utils":27}],27:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -18497,15 +19001,9 @@ _.cookie = {
     }
 };
 
-var _localStorageSupported = null;
-var localStorageSupported = function localStorageSupported(storage, forceCheck) {
-    if (_localStorageSupported !== null && !forceCheck) {
-        return _localStorageSupported;
-    }
-
+var _testStorageSupported = function _testStorageSupported(storage) {
     var supported = true;
     try {
-        storage = storage || _window.window.localStorage;
         var key = '__mplss_' + cheap_guid(8),
             val = 'xyz';
         storage.setItem(key, val);
@@ -18516,59 +19014,74 @@ var localStorageSupported = function localStorageSupported(storage, forceCheck) 
     } catch (err) {
         supported = false;
     }
-
-    _localStorageSupported = supported;
     return supported;
 };
 
-// _.localStorage
-_.localStorage = {
-    is_supported: function is_supported(force_check) {
-        var supported = localStorageSupported(null, force_check);
-        if (!supported) {
-            console.error('localStorage unsupported; falling back to cookie store');
-        }
-        return supported;
-    },
-
-    error: function error(msg) {
-        console.error('localStorage error: ' + msg);
-    },
-
-    get: function get(name) {
-        try {
-            return _window.window.localStorage.getItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-        return null;
-    },
-
-    parse: function parse(name) {
-        try {
-            return _.JSONDecode(_.localStorage.get(name)) || {};
-        } catch (err) {
-            // noop
-        }
-        return null;
-    },
-
-    set: function set(name, value) {
-        try {
-            _window.window.localStorage.setItem(name, value);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-    },
-
-    remove: function remove(name) {
-        try {
-            _window.window.localStorage.removeItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
+var _localStorageSupported = null;
+var localStorageSupported = function localStorageSupported(storage, forceCheck) {
+    if (_localStorageSupported !== null && !forceCheck) {
+        return _localStorageSupported;
     }
+    return _localStorageSupported = _testStorageSupported(storage || _window.window.localStorage);
 };
+
+var _sessionStorageSupported = null;
+var sessionStorageSupported = function sessionStorageSupported(storage, forceCheck) {
+    if (_sessionStorageSupported !== null && !forceCheck) {
+        return _sessionStorageSupported;
+    }
+    return _sessionStorageSupported = _testStorageSupported(storage || _window.window.sessionStorage);
+};
+
+function _storageWrapper(storage, name, is_supported_fn) {
+    var log_error = function log_error(msg) {
+        console.error(name + ' error: ' + msg);
+    };
+
+    return {
+        is_supported: function is_supported(forceCheck) {
+            var supported = is_supported_fn(storage, forceCheck);
+            if (!supported) {
+                console.error(name + ' unsupported');
+            }
+            return supported;
+        },
+        error: log_error,
+        get: function get(key) {
+            try {
+                return storage.getItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+            return null;
+        },
+        parse: function parse(key) {
+            try {
+                return _.JSONDecode(storage.getItem(key)) || {};
+            } catch (err) {
+                // noop
+            }
+            return null;
+        },
+        set: function set(key, value) {
+            try {
+                storage.setItem(key, value);
+            } catch (err) {
+                log_error(err);
+            }
+        },
+        remove: function remove(key) {
+            try {
+                storage.removeItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+        }
+    };
+}
+
+_.localStorage = _storageWrapper(_window.window.localStorage, 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(_window.window.sessionStorage, 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function () {
     // written by Dean Edwards, 2005
@@ -19093,6 +19606,31 @@ _.info = {
     }
 };
 
+/**
+ * Returns a throttled function that will only run at most every `waitMs` and returns a promise that resolves with the next invocation.
+ * Throttled calls will build up a batch of args and invoke the callback with all args since the last invocation.
+ */
+var batchedThrottle = function batchedThrottle(fn, waitMs) {
+    var timeoutPromise = null;
+    var throttledItems = [];
+    return function (item) {
+        var self = this;
+        throttledItems.push(item);
+
+        if (!timeoutPromise) {
+            timeoutPromise = new _promisePolyfill.Promise(function (resolve) {
+                setTimeout(function () {
+                    var returnValue = fn.apply(self, [throttledItems]);
+                    timeoutPromise = null;
+                    throttledItems = [];
+                    resolve(returnValue);
+                }, waitMs);
+            });
+        }
+        return timeoutPromise;
+    };
+};
+
 var cheap_guid = function cheap_guid(maxlen) {
     var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
     return maxlen ? guid.substring(0, maxlen) : guid;
@@ -19135,6 +19673,8 @@ var isOnline = function isOnline() {
     return _.isUndefined(onLine) || onLine;
 };
 
+var NOOP_FUNC = function NOOP_FUNC() {};
+
 var JSONStringify = null,
     JSONParse = null;
 if (typeof JSON !== 'undefined') {
@@ -19144,21 +19684,22 @@ if (typeof JSON !== 'undefined') {
 exports.JSONStringify = JSONStringify = JSONStringify || _.JSONEncode;
 exports.JSONParse = JSONParse = JSONParse || _.JSONDecode;
 
-// EXPORTS (for closure compiler)
-_['toArray'] = _.toArray;
-_['isObject'] = _.isObject;
-_['JSONEncode'] = _.JSONEncode;
-_['JSONDecode'] = _.JSONDecode;
-_['isBlockedUA'] = _.isBlockedUA;
-_['isEmptyObject'] = _.isEmptyObject;
+// UNMINIFIED EXPORTS (for closure compiler)
 _['info'] = _.info;
-_['info']['device'] = _.info.device;
 _['info']['browser'] = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
+_['info']['device'] = _.info.device;
 _['info']['properties'] = _.info.properties;
+_['isBlockedUA'] = _.isBlockedUA;
+_['isEmptyObject'] = _.isEmptyObject;
+_['isObject'] = _.isObject;
+_['JSONDecode'] = _.JSONDecode;
+_['JSONEncode'] = _.JSONEncode;
+_['toArray'] = _.toArray;
 _['NPO'] = _promisePolyfill.NpoPromise;
 
 exports._ = _;
+exports.batchedThrottle = batchedThrottle;
 exports.cheap_guid = cheap_guid;
 exports.console_with_prefix = console_with_prefix;
 exports.console = console;
@@ -19171,12 +19712,13 @@ exports.localStorageSupported = localStorageSupported;
 exports.MAX_RECORDING_MS = MAX_RECORDING_MS;
 exports.MAX_VALUE_FOR_MIN_RECORDING_MS = MAX_VALUE_FOR_MIN_RECORDING_MS;
 exports.navigator = navigator;
+exports.NOOP_FUNC = NOOP_FUNC;
 exports.safewrap = safewrap;
 exports.safewrapClass = safewrapClass;
 exports.slice = slice;
 exports.userAgent = userAgent;
 
-},{"./config":7,"./promise-polyfill":16,"./window":24}],24:[function(require,module,exports){
+},{"./config":7,"./promise-polyfill":16,"./window":28}],28:[function(require,module,exports){
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 'use strict';
 
