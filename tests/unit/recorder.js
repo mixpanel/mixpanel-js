@@ -293,7 +293,7 @@ describe(`Recorder`, function() {
     });
   });
 
-  describe.only(`scenarios where storage is not available`, function () {
+  describe(`scenarios where storage is not available`, function () {
     async function verifyBasicRecording() {
       await recorder.startRecording();
       expect(mockRrweb.recordStub.callCount).to.equal(1);
