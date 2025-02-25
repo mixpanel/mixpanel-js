@@ -18,6 +18,8 @@ export class MockMixpanelLib {
       'api_routes': {
         'record': `record`,
       },
+      // helpful for some debugging, commented out for noise
+      // 'error_reporter': console.error
     }[configVar];
   }
 

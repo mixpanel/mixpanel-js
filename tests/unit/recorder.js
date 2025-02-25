@@ -8,6 +8,7 @@ import { setupFakeIDB, idbGetItem, idbSetItem } from './test-utils/indexed-db';
 import { MixpanelRecorder } from '../../src/recorder/recorder';
 import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 import { setupRrwebMock } from './test-utils/mock-rrweb';
+import { IDBStorageWrapper } from '../../src/storage/indexed-db';
 
 describe(`Recorder`, function() {
   /**
@@ -82,7 +83,6 @@ describe(`Recorder`, function() {
     expect(serializedRecording.seqNo).to.equal(1);
     expect(serializedRecording.maxExpires).to.equal(expectedMaxExpires);
     expect(serializedRecording.idleExpires).to.equal(expectedIdleExpires);
-
   });
 
   it(`starts a new recording upon idle timeout`, async function () {
@@ -290,6 +290,47 @@ describe(`Recorder`, function() {
       recorder.resetRecording();
       await clock.tickAsync(10 * 10000);
       expect(recorder.getActiveReplayId()).to.not.equal(tab1ReplayId);
+    });
+  });
+
+  describe.only(`scenarios where storage is not available`, function () {
+    async function verifyBasicRecording() {
+      await recorder.startRecording();
+      expect(mockRrweb.recordStub.callCount).to.equal(1);
+
+      mockRrweb.emit(EventType.Meta);
+      mockRrweb.emit(EventType.FullSnapshot);
+      mockRrweb.emit(EventType.IncrementalSnapshot);
+      await clock.tickAsync(10);
+      await recorder.activeRecording.__enqueuePromise;
+
+      await clock.tickAsync(10 * 1000);
+      await recorder.activeRecording.batcher._flushPromise;
+
+      const url = new URL(fetchStub.getCall(0).args[0]);
+      expect(fetchStub.calledOnce).to.be.true;
+      const eventTypes = JSON.parse(fetchStub.getCall(0).args[1].body).map(e => e.type);
+      expect(eventTypes).to.deep.equal([4, 2, 3]);
+
+      expect(url.searchParams.get(`seq`)).to.equal(`0`);
+      expect(url.searchParams.get(`replay_id`)).to.equal(recorder.getActiveReplayId());
+      expect(url.searchParams.get(`replay_start_time`)).to.equal((NOW_MS / 1000).toString());
+    }
+
+    it(`can still record when indexedDB is not available`, async function () {
+      delete window.indexedDB;
+      delete window.IDBDatabase;
+      await verifyBasicRecording();
+    });
+
+    it(`can still record when indexedDB fails to initialize`, async function () {
+      sinon.stub(IDBStorageWrapper.prototype, `init`).rejects(`test error`);
+      await verifyBasicRecording();
+    });
+
+    it(`can still record when tab ID is unavailable (sessionStorage failed)`, async function () {
+      sinon.stub(mockMixpanelInstance, `get_tab_id`).returns(null);
+      await verifyBasicRecording();
     });
   });
 });

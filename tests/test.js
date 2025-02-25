@@ -4962,7 +4962,7 @@
 
                 ok(typeof(mixpanel.test.get_tab_id()) === "string", "tab id is a string");
                 ok(typeof(tab_id) === "string", "tab id is a string");
-                ok(tab_id !== mixpanel.test.get_tab_id(), "tab ID is reused for the same tab and sdk instance");
+                ok(tab_id !== mixpanel.test.get_tab_id(), "tab ID has changed since the flag to generate a new tab ID was set");
             });
         }
 
@@ -5874,9 +5874,12 @@
                 });
             }
 
-            var recorderSrc = window.MIXPANEL_CUSTOM_LIB_URL === '../build/mixpanel.js' ?
-                '../build/mixpanel-recorder.js' :
-                '../build/mixpanel-recorder.min.js';
+            var recorderSrc = null;
+            if (!IS_RECORDER_BUNDLED) {
+                recorderSrc = window.MIXPANEL_CUSTOM_LIB_URL.endsWith('.min.js') ?
+                    '../build/mixpanel-recorder.min.js':
+                    '../build/mixpanel-recorder.js';
+            }
 
             module('recorder', {
                 setup: function () {
@@ -5951,9 +5954,9 @@
                     
                     if (IS_RECORDER_BUNDLED) {
                         this.waitForRecorderLoad = function () {
-                            return new Promise(function(resolve) {
-                                resolve();
-                            });
+                            this.randomStub.restore();
+                            ok(true, 'empty assertion');
+                            return this.waitForRecordingStarted();
                         }
                     } else {
                         this.waitForRecorderLoad = function () {
@@ -5978,37 +5981,41 @@
                     window.sessionStorage.clear()
                     window.localStorage.clear();
                     clearAllLibInstances();
-                    stop();
                     if (window.indexedDB) {
-                        var allStores = ['mixpanelRecordingEvents', 'mixpanelRecordingRegistry'];
-                        // need to increment that version number as our schema changes, maybe set up some consts
-                        var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
+                        this.clearIDB = function () {
+                            stop();
+                            var allStores = ['mixpanelRecordingEvents', 'mixpanelRecordingRegistry'];
+                            // need to increment that version number as our schema changes, maybe set up some consts
+                            var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
+    
+                            var isFresh = false;
+                            openRequest.onsuccess = function () {
+                                if (isFresh) {
+                                    start();
+                                    return;
+                                }
 
-                        var isFresh = false;
-                        openRequest.onsuccess = function () {
-                            if (isFresh) {
-                                start();
-                                return;
+                                var db = openRequest.result;
+                                var transaction = db.transaction(allStores, 'readwrite');
+                                transaction.oncomplete = function () {
+                                    start();
+                                }
+
+                                for (var i = 0; i < allStores.length; i++) {
+                                    var store = transaction.objectStore(allStores[i]);
+                                    store.clear();
+                                }
                             }
 
-                            var db = openRequest.result;
-                            var transaction = db.transaction(allStores, 'readwrite');
-                            transaction.oncomplete = function () {
-                                start();
+                            openRequest.onupgradeneeded = function () {
+                                isFresh = true; // idb doesn't exist yet, the sdk will make it
                             }
-
-                            for (var i = 0; i < allStores.length; i++) {
-                                var store = transaction.objectStore(allStores[i]);
-                                store.clear();
-                            }
-                        }
-
-                        openRequest.onupgradeneeded = function () {
-                            isFresh = true; // idb doesn't exist yet, the sdk will make it
-                        }
+                        };
                     } else {
-                        start();
+                        this.clearIDB = function () {};
                     }
+
+                    this.clearIDB();
                 },
                 teardown: function () {
                     if (mixpanel.recordertest) {
@@ -6016,6 +6023,7 @@
                         clearLibInstance(mixpanel.recordertest);
                     }
 
+                    this.clearIDB();
                     this.clock.restore();
                     this.randomStub.restore();
                     this.fetchStub.restore();
@@ -6538,9 +6546,12 @@
                         // simulate a page load: pause recording (it remains as active recording) and clear the SDK
                         mixpanel.recordertest.pause_session_recording();
                         delete mixpanel['recordertest'];
-                        delete window['__mp_recorder'];
                         window.sessionStorage.removeItem('mp_gen_new_tab_id_recordertest_RECORDER_TEST_TOKEN');
-                        document.head.removeChild(document.querySelector('script[src="' + recorderSrc + '"]'))
+
+                        if (!IS_RECORDER_BUNDLED) {
+                            delete window['__mp_recorder'];
+                            document.head.removeChild(document.querySelector('script[src="' + recorderSrc + '"]'))
+                        }
 
                         // some time passes like a page load
                         return this.clock.tickAsync(500);
@@ -6605,6 +6616,10 @@
 
                         // long enough to reset due to idle timeout
                         return this.clock.tickAsync(61 * 1000);
+                    }, this))
+                    .then(_.bind(function () {
+                        // a new recording will start after timeout, wait for the first events to enqueue so the next mutation can have the lock
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         // simulate a mutation event to ensure we don't try sending it until there's a user event
