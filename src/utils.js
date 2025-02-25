@@ -1792,7 +1792,6 @@ export {
     NOOP_FUNC,
     safewrap,
     safewrapClass,
-    sessionStorageSupported,
     slice,
     userAgent,
 };
