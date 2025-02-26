@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import {randomUUID} from 'crypto';
 import sinon from 'sinon';
 
 import { batchedThrottle, extract_domain, _, document } from '../../src/utils';
@@ -242,7 +243,6 @@ describe('_.isBlockedUA', function() {
   });
 });
 
-
 describe('batchedThrottle', function () {
   let clock = null;
 
@@ -333,5 +333,31 @@ describe('batchedThrottle', function () {
     clock.tick(100);
     var returnVal = await firstCbPromise;
     expect(returnVal).to.equal(`rejected 1,2,3`);
+  });
+});
+
+describe(`_.UUID`, function() {
+  context(`when the environment supports the crypto API`, function() {
+    beforeEach(function() {
+      sinon.stub(window.crypto, `randomUUID`).callsFake(randomUUID);
+    });
+
+    afterEach(function() {
+      sinon.restore();
+    });
+
+    it(`generates a 36-char UUIDv4`, function() {
+      for (let i = 0; i < 100; i++) {
+        expect(_.UUID()).to.match(/^[a-f0-9\-]{36}$/);
+      }
+    });
+  });
+
+  context(`when the environment does not support the crypto API`, function() {
+    it(`generates a 36-char UUID`, function() {
+      for (let i = 0; i < 100; i++) {
+        expect(_.UUID()).to.match(/^[a-f0-9\-]{36}$/);
+      }
+    });
   });
 });

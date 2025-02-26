@@ -5,6 +5,7 @@ if (typeof(window) === 'undefined') {
         hostname: ''
     };
     win = {
+        crypto: {randomUUID: function() {throw Error('unsupported');}},
         navigator: { userAgent: '', onLine: true },
         document: {
             createElement: function() { return {}; },
