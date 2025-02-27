@@ -293,6 +293,7 @@ SessionRecording.deserialize = function (serializedRecording, options) {
         maxExpires: serializedRecording['maxExpires'],
         replayStartTime: serializedRecording['replayStartTime'],
         seqNo: serializedRecording['seqNo'],
+        sharedLockStorage: options.sharedLockStorage,
     }));
 
     return recording;

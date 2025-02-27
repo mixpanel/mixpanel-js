@@ -19,7 +19,11 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
     /**
      * @member {import('./registry').RecordingRegistry}
      */
-    this.recordingRegistry = new RecordingRegistry({mixpanelInstance: this.mixpanelInstance, errorReporter: logger.error});
+    this.recordingRegistry = new RecordingRegistry({
+        mixpanelInstance: this.mixpanelInstance,
+        errorReporter: logger.error,
+        sharedLockStorage: sharedLockStorage
+    });
     this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
 
     this.activeRecording = null;
