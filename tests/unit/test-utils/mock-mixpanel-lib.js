@@ -19,7 +19,7 @@ export class MockMixpanelLib {
         'record': `record`,
       },
       // helpful for some debugging, commented out for noise
-      // 'error_reporter': console.error
+      'error_reporter': console.error
     }[configVar];
   }
 

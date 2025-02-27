@@ -21,32 +21,34 @@ var IDBStorageWrapper = function (storeName) {
     this.storeName = storeName;
 };
 
+IDBStorageWrapper.prototype._openDb = function () {
+    return new Promise(function (resolve, reject) {
+        var openRequest = window.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+        openRequest['onerror'] = function () {
+            reject(openRequest.error);
+        };
+
+        openRequest['onsuccess'] = function () {
+            resolve(openRequest.result);
+        };
+
+        openRequest['onupgradeneeded'] = function (ev) {
+            var db = ev.target.result;
+
+            OBJECT_STORES.forEach(function (storeName) {
+                db.createObjectStore(storeName);
+            });
+        };
+    });
+};
+
 IDBStorageWrapper.prototype.init = function () {
     if (!window.indexedDB) {
         return Promise.reject('indexedDB is not supported in this browser');
     }
 
-    var self = this;
     if (!this.dbPromise) {
-        this.dbPromise = new Promise(function (resolve, reject) {
-            var openRequest = window.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
-            openRequest['onerror'] = function () {
-                reject(openRequest.error);
-            };
-
-            openRequest['onsuccess'] = function () {
-                self._db = openRequest.result;
-                resolve(openRequest.result);
-            };
-
-            openRequest['onupgradeneeded'] = function (ev) {
-                var db = ev.target.result;
-
-                OBJECT_STORES.forEach(function (storeName) {
-                    db.createObjectStore(storeName);
-                });
-            };
-        });
+        this.dbPromise = this._openDb();
     }
 
     return this.dbPromise
@@ -64,10 +66,10 @@ IDBStorageWrapper.prototype.init = function () {
  * @param {function(IDBObjectStore): void} storeCb
  */
 IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
-    var self = this;
-    return this.dbPromise.then(function (db) {
+    var storeName = this.storeName;
+    var doTransaction = function (db) {
         return new Promise(function (resolve, reject) {
-            var transaction = db.transaction(self.storeName, mode);
+            var transaction = db.transaction(storeName, mode);
             transaction.oncomplete = function () {
                 resolve(transaction);
             };
@@ -75,9 +77,21 @@ IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
                 reject(transaction.error);
             };
 
-            storeCb(transaction.objectStore(self.storeName));
+            storeCb(transaction.objectStore(storeName));
         });
-    });
+    };
+
+    return this.dbPromise
+        .then(doTransaction)
+        .catch(function (err) {
+            if (err['name'] === 'InvalidStateError') {
+                // try reopening the DB if the connection is closed
+                this.dbPromise = this._openDb();
+                return this.dbPromise.then(doTransaction);
+            } else {
+                return Promise.reject(err);
+            }
+        }.bind(this));
 };
 
 IDBStorageWrapper.prototype.setItem = function (key, value) {

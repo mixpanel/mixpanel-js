@@ -307,8 +307,8 @@ describe(`Recorder`, function() {
       await clock.tickAsync(10 * 1000);
       await recorder.activeRecording.batcher._flushPromise;
 
-      const url = new URL(fetchStub.getCall(0).args[0]);
       expect(fetchStub.calledOnce).to.be.true;
+      const url = new URL(fetchStub.getCall(0).args[0]);
       const eventTypes = JSON.parse(fetchStub.getCall(0).args[1].body).map(e => e.type);
       expect(eventTypes).to.deep.equal([4, 2, 3]);
 
@@ -330,6 +330,17 @@ describe(`Recorder`, function() {
 
     it(`can still record when tab ID is unavailable (sessionStorage failed)`, async function () {
       sinon.stub(mockMixpanelInstance, `get_tab_id`).returns(null);
+      await verifyBasicRecording();
+    });
+
+    it(`will retry a closed IDB connection error to continue recording`, async function () {
+      const transactionStub = sinon.stub(window.IDBDatabase.prototype, `transaction`)
+        .onCall(0).throws(`InvalidStateError`)
+        .onCall(1).throws(`InvalidStateError`)
+        .onCall(2).throws(`InvalidStateError`)
+        .onCall(3).throws(`InvalidStateError`)
+        .onCall(4).throws(`InvalidStateError`);
+      transactionStub.callThrough();
       await verifyBasicRecording();
     });
   });
