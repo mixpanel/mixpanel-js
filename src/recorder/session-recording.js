@@ -272,6 +272,15 @@ SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) 
  * @returns {SerializedRecording}
  */
 SessionRecording.prototype.serialize = function () {
+    // don't break if mixpanel instance was destroyed at some point
+    var tabId;
+    try {
+        tabId = this._mixpanel.get_tab_id();
+    } catch (e) {
+        this.reportError('Error getting tab ID for serialization ', e);
+        tabId = null;
+    }
+
     return {
         'replayId': this.replayId,
         'seqNo': this.seqNo,
@@ -280,7 +289,7 @@ SessionRecording.prototype.serialize = function () {
         'replayStartUrl': this.replayStartUrl,
         'idleExpires': this.idleExpires,
         'maxExpires': this.maxExpires,
-        'tabId': this._mixpanel.get_tab_id(),
+        'tabId': tabId,
     };
 };
 
