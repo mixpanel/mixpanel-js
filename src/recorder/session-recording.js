@@ -104,6 +104,7 @@ var SessionRecording = function(options) {
         queueStorage: this.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
         usePersistence: true,
+        stopAllBatchingFunc: this.stopRecording.bind(this),
 
         // increased throttle and shared lock timeout because recording events are very high frequency.
         // this will minimize the amount of lock contention between enqueued events.
