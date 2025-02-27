@@ -20,7 +20,7 @@ var RequestBatcher = function(storageKey, options) {
         errorReporter: _.bind(this.reportError, this),
         queueStorage: options.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
-        sharedLockTimeoutMs: options.sharedLockTimeoutMs,
+        sharedLockTimeoutMS: options.sharedLockTimeoutMS,
         usePersistence: options.usePersistence,
         enqueueThrottleMs: options.enqueueThrottleMs
     });

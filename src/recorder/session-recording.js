@@ -110,7 +110,7 @@ var SessionRecording = function(options) {
         // this will minimize the amount of lock contention between enqueued events.
         // for session recordings there is a lock for each tab anyway, so there's no risk of deadlock between tabs.
         enqueueThrottleMs: RECORD_ENQUEUE_THROTTLE_MS,
-        sharedLockTimeoutMs: 10 * 1000,
+        sharedLockTimeoutMS: 10 * 1000,
     });
 };
 
