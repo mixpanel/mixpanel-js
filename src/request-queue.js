@@ -28,7 +28,10 @@ var RequestQueue = function (storageKey, options) {
     this.usePersistence = options.usePersistence;
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
-        this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
+        this.lock = new SharedLock(storageKey, {
+            storage: options.sharedLockStorage || window.localStorage,
+            timeoutMs: options.sharedLockTimeoutMs,
+        });
     }
     this.reportError = options.errorReporter || _.bind(logger.error, logger);
 

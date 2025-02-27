@@ -5,6 +5,7 @@ import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/index
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 import Config from '../config';
+import { RECORD_ENQUEUE_THROTTLE_MS } from './utils';
 
 var logger = console_with_prefix('recorder');
 var CompressionStream = window['CompressionStream'];
@@ -103,7 +104,12 @@ var SessionRecording = function(options) {
         queueStorage: this.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
         usePersistence: true,
-        enqueueThrottleMs: 10,
+
+        // increased throttle and shared lock timeout because recording events are very high frequency.
+        // this will minimize the amount of lock contention between enqueued events.
+        // for session recordings there is a lock for each tab anyway, so there's no risk of deadlock between tabs.
+        enqueueThrottleMs: RECORD_ENQUEUE_THROTTLE_MS,
+        sharedLockTimeoutMs: 10 * 1000,
     });
 };
 
