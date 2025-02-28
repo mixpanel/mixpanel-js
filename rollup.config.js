@@ -1,4 +1,7 @@
 import nodeResolve from '@rollup/plugin-node-resolve';
+import babel from '@rollup/plugin-babel';
+
+const useBabel = process.env.USE_BABEL === 'true';
 
 export default {
     plugins: [
@@ -6,6 +9,7 @@ export default {
             browser: true,
             main: true,
             jsnext: true,
-        })
+        }),
+        ...(useBabel ? [babel({ babelHelpers: 'bundled', presets: ['@babel/preset-env'] })] : []),
     ]
 };

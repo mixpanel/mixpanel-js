@@ -25,12 +25,12 @@ if [ ! -z "$FULL" ]; then
     java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel-js-wrapper.js --js_output_file build/mixpanel-js-wrapper.min.js --compilation_level ADVANCED_OPTIMIZATIONS
 
     echo 'Building module bundles'
-    npx rollup -i src/loaders/loader-module.js -f amd -o build/mixpanel.amd.js -c rollup.config.js
-    npx rollup -i src/loaders/loader-module.js -f cjs -o build/mixpanel.cjs.js -c rollup.config.js
-    npx rollup -i src/loaders/loader-module.js -f es -o build/mixpanel.module.js -c rollup.config.js
+    USE_BABEL=true npx rollup -i src/loaders/loader-module.js -f amd -o build/mixpanel.amd.js -c rollup.config.js
+    USE_BABEL=true npx rollup -i src/loaders/loader-module.js -f cjs -o build/mixpanel.cjs.js -c rollup.config.js
+    USE_BABEL=true npx rollup -i src/loaders/loader-module.js -f es -o build/mixpanel.module.js -c rollup.config.js
+    USE_BABEL=true npx rollup -i src/loaders/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel -c rollup.config.js
     npx rollup -i src/loaders/loader-module-core.js -f cjs -o build/mixpanel-core.cjs.js -c rollup.config.js
     npx rollup -i src/loaders/loader-module-with-async-recorder.js -f cjs -o build/mixpanel-with-async-recorder.cjs.js -c rollup.config.js
-    npx rollup -i src/loaders/loader-module.js -f umd -o build/mixpanel.umd.js -n mixpanel -c rollup.config.js
 
     echo 'Bundling module-loader test runners'
     npx webpack tests/module-cjs.js tests/module-cjs.bundle.js

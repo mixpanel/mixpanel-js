@@ -1,5 +1,6 @@
 import esbuild from 'rollup-plugin-esbuild';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
+import babel from '@rollup/plugin-babel';
 
 export default {
     input: 'index.js',
@@ -16,5 +17,8 @@ export default {
             sourcemap: true,
         }
     ],
-    plugins: [nodeResolve({browser: true})],
+    plugins: [
+        nodeResolve({browser: true}),
+        babel({ babelHelpers: 'bundled', presets: ['@babel/preset-env'] }),
+    ],
 };

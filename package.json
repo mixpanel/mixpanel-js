@@ -33,6 +33,8 @@
   },
   "homepage": "https://github.com/mixpanel/mixpanel-js",
   "devDependencies": {
+    "@babel/preset-env": "7.26.9",
+    "@rollup/plugin-babel": "6.0.4",
     "@rollup/plugin-node-resolve": "15.2.3",
     "babel": "6.5.2",
     "babel-core": "6.7.2",
@@ -61,6 +63,6 @@
     "webpack": "1.12.2"
   },
   "dependencies": {
-    "rrweb": "2.0.0-alpha.13"
+    "rrweb": "2.0.0-alpha.18"
   }
 }
