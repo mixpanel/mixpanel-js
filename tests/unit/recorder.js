@@ -345,7 +345,7 @@ describe(`Recorder`, function() {
       await verifyBasicRecording();
     });
 
-    it(`will record without persistence when localStorage fails`, async function () {
+    it(`records without persistence when localStorage fails`, async function () {
       var idbOpenStub = sinon.spy(window.indexedDB, `open`);
       sinon.stub(localStorage, `setItem`).throws(`test error`);
       await verifyBasicRecording();
