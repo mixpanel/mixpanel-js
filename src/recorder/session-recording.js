@@ -1,6 +1,6 @@
 import { window } from '../window';
 import { IncrementalSource, EventType } from '@rrweb/types';
-import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _} from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _, localStorageSupported} from '../utils'; // eslint-disable-line camelcase
 import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
@@ -92,6 +92,10 @@ var SessionRecording = function(options) {
     this.recordMaxMs = MAX_RECORDING_MS;
     this.recordMinMs = 0;
 
+    // disable persistence if localStorage is not supported
+    // request-queue will automatically disable persistence if indexedDB fails to initialize
+    var usePersistence = localStorageSupported(options.sharedLockStorage, true);
+
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     // this will be important when persistence is introduced
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
@@ -103,7 +107,7 @@ var SessionRecording = function(options) {
         sendRequestFunc: this.flushEventsWithOptOut.bind(this),
         queueStorage: this.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
-        usePersistence: true,
+        usePersistence: usePersistence,
         stopAllBatchingFunc: this.stopRecording.bind(this),
 
         // increased throttle and shared lock timeout because recording events are very high frequency.
@@ -190,7 +194,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     this._stopRecording = this._rrwebRecord({
-        'emit': function (ev) {
+        'emit': addOptOutCheckMixpanelLib(function (ev) {
             if (isUserEvent(ev)) {
                 if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
                     // start flushing again after user activity
@@ -201,7 +205,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
             // promise only used to await during tests
             this.__enqueuePromise = this.batcher.enqueue(ev);
-        }.bind(this),
+        }.bind(this)),
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.getConfig('record_collect_fonts'),

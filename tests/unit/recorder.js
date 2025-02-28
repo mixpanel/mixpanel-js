@@ -344,5 +344,12 @@ describe(`Recorder`, function() {
       transactionStub.callThrough();
       await verifyBasicRecording();
     });
+
+    it(`will record without persistence when localStorage fails`, async function () {
+      var idbOpenStub = sinon.spy(window.indexedDB, `open`);
+      sinon.stub(localStorage, `setItem`).throws(`test error`);
+      await verifyBasicRecording();
+      expect(idbOpenStub.callCount).to.equal(0);
+    });
   });
 });

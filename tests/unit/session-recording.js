@@ -228,7 +228,7 @@ describe(`SessionRecording`, function() {
       idleExpires: startTime + 30 * 60 * 1000,
       maxExpires: startTime + 24 * 60 * 60 * 1000,
       tabId: `test-some-other-tab-id`,
-    }, {mixpanelInstance: mockMixpanelInstance});
+    }, {mixpanelInstance: mockMixpanelInstance, sharedLockStorage: localStorage});
 
     const persistedEvents = [
       {type: EventType.IncrementalSnapshot, timestamp: startTime + 10, data: {source: IncrementalSource.MouseInteraction}},
