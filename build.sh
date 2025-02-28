@@ -9,6 +9,7 @@ fi
 
 echo 'Building main bundles'
 npx rollup -i src/loaders/loader-globals.js -f iife -o build/mixpanel.globals.js -n mixpanel -c rollup.config.js
+USE_BABEL=true npx rollup -i src/loaders/loader-globals-with-recorder.js -f iife -o build/mixpanel-with-recorder.js -n mixpanel -c rollup.config.js
 npx rollup -i src/recorder/index.js -f iife -n mixpanel -c src/recorder/rollup.config.js
 ln -sf mixpanel.globals.js build/mixpanel.js
 
@@ -17,6 +18,9 @@ if [ ! -z "$FULL" ]; then
     java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel.js --language_in ECMASCRIPT5 --externs src/externs.js --js_output_file build/mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
 %output%
 })();"
+    # we use esbuild to minify the recorder because that's what rrweb uses
+    USE_BABEL=true USE_ESBUILD=true npx rollup -i src/loaders/loader-globals-with-recorder.js -f iife -o build/mixpanel-with-recorder.min.js -n mixpanel -c rollup.config.js
+
     java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --language_in ECMASCRIPT5 --js_output_file build/mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
     java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --language_in ECMASCRIPT5 --js_output_file build/mixpanel-jslib-snippet.min.test.js --compilation_level ADVANCED_OPTIMIZATIONS --define='MIXPANEL_LIB_URL="../build/mixpanel.min.js"'
 
