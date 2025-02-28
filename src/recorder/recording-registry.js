@@ -22,14 +22,15 @@ RecordingRegistry.prototype.handleError = function (err) {
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
-    if (!serializedRecording['tabId']) {
+    var tabId = serializedRecording['tabId'];
+    if (!tabId) {
         console.warn('No tab ID is set, cannot persist recording metadata.');
         return Promise.resolve();
     }
 
     return this.idb.init()
         .then(function () {
-            return this.idb.setItem(serializedRecording['tabId'], serializedRecording);
+            return this.idb.setItem(tabId, serializedRecording);
         }.bind(this))
         .catch(this.handleError.bind(this));
 };

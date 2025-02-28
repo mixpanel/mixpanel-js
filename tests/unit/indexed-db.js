@@ -5,7 +5,7 @@ import { window } from '../../src/window';
 import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from '../../src/storage/indexed-db';
 import { setupFakeIDB } from './test-utils/indexed-db';
 
-describe(`Recorder`, function() {
+describe(`IDBStorageWrapper`, function() {
   /**
    * @type {IDBStorageWrapper}
    */
