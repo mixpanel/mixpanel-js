@@ -138,7 +138,7 @@ describe(`SessionRecording`, function() {
     expect(params.get(`$device_id`)).to.equal(`test-device-id`);
     expect(params.get(`$user_id`)).to.equal(`test-user-id`);
     expect(params.get(`replay_start_time`)).to.equal((NOW_MS / 1000).toString());
-    expect(params.get(`replay_length_ms`)).to.equal(`150`);
+    expect(params.get(`replay_length_ms`)).to.equal(`375`);
 
     const body = JSON.parse(fetchCall.args[1].body);
     expect(body).to.deep.equal([
