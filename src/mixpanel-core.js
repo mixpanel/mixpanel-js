@@ -1964,6 +1964,7 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
 
     if (disabled) {
         this.stop_batch_senders();
+        this.stop_session_recording();
     } else {
         // only start batchers after opt-in if they have previously been started
         // in order to avoid unintentionally starting up batching for the first time

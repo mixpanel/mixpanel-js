@@ -6229,7 +6229,7 @@
 
                     this.waitForRecorderEnqueue = function () {
                         // tick to advance the throttle
-                        return this.clock.tickAsync(10)
+                        return this.clock.tickAsync(250)
                             .then(function () {
                                 // we need to reach in for the __enqueuePromise() instead of just using tickAsync because the enqeueue operation depends on
                                 // IndexedDB transactions, so it's not guaranteed to be finished when the fake timer is advanced.
@@ -7002,7 +7002,7 @@
                         same(urlParams.get('seq'), '0', 'new replay uses the first sequence');
 
                         if (!IS_RECORDER_BUNDLED) {
-                            var expectedStartTimeMs = this.startTime + 10; // we waited for the first recording to enqueue (10ms throttle) before starting the second one
+                            var expectedStartTimeMs = this.startTime + 250; // we waited for the first recording to enqueue (250ms throttle) before starting the second one
                             same(urlParams.get('replay_start_time'), (expectedStartTimeMs / 1000).toString(), 'sends the right start time');
                         } else {
                             ok(true, 'cannot test replay_start_time when recorder is bundled, rrweb stores a reference to Date.now at the global level so stubs / fake timers will not work.');

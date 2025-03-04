@@ -9,6 +9,7 @@ import { MixpanelRecorder } from '../../src/recorder/recorder';
 import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 import { setupRrwebMock } from './test-utils/mock-rrweb';
 import { IDBStorageWrapper } from '../../src/storage/indexed-db';
+import { RECORD_ENQUEUE_THROTTLE_MS } from '../../src/recorder/utils';
 
 describe(`Recorder`, function() {
   /**
@@ -68,7 +69,7 @@ describe(`Recorder`, function() {
     mockRrweb.emit(EventType.Meta);
     mockRrweb.emit(EventType.FullSnapshot);
     mockRrweb.emit(EventType.IncrementalSnapshot);
-    await clock.tickAsync(10);
+    await clock.tickAsync(RECORD_ENQUEUE_THROTTLE_MS);
     await recorder.activeRecording.__enqueuePromise;
 
     await clock.tickAsync(10 * 1000);
@@ -94,7 +95,7 @@ describe(`Recorder`, function() {
     const timedOutRecording = recorder.activeRecording;
 
     mockRrweb.emit(EventType.Meta);
-    clock.tick(10);
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
     await timedOutRecording.__enqueuePromise;
     await clock.tickAsync(30 * 60 * 1000);
     await timedOutRecording.batcher._flushPromise;
@@ -130,7 +131,7 @@ describe(`Recorder`, function() {
       const replayId = recorder.getActiveReplayId();
 
       mockRrweb.emit(EventType.Meta);
-      await clock.tickAsync(10);
+      await clock.tickAsync(RECORD_ENQUEUE_THROTTLE_MS);
       await recorder.activeRecording.__enqueuePromise;
       await recorder.pauseRecording();
 
@@ -141,14 +142,14 @@ describe(`Recorder`, function() {
 
       // this shouldn't do anything, recording is paused
       mockRrweb.emit(EventType.FullSnapshot);
-      clock.tick(10);
+      clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
       await recorder.activeRecording.__enqueuePromise;
       await clock.tickAsync(100 * 1000);
       expect(fetchStub.calledOnce).to.be.true;
 
       await recorder.resumeRecording();
       mockRrweb.emit(EventType.IncrementalSnapshot);
-      clock.tick(10);
+      clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
       await recorder.activeRecording.__enqueuePromise;
       await clock.tickAsync(10 * 1000);
       await recorder.activeRecording.batcher._flushPromise;
@@ -164,7 +165,7 @@ describe(`Recorder`, function() {
       expect(mockRrweb.recordStub.callCount).to.equal(1);
 
       mockRrweb.emit(EventType.Meta);
-      clock.tick(10);
+      clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
       await recorder.activeRecording.__enqueuePromise;
       await clock.tickAsync(10 * 1000);
       await recorder.activeRecording.batcher._flushPromise;
@@ -212,7 +213,7 @@ describe(`Recorder`, function() {
       mockRrweb.emit(EventType.Meta);
       mockRrweb.emit(EventType.FullSnapshot);
       mockRrweb.emit(EventType.IncrementalSnapshot);
-      await clock.tickAsync(10);
+      await clock.tickAsync(RECORD_ENQUEUE_THROTTLE_MS);
       await recorder.activeRecording.__enqueuePromise;
       const tab1ReplayId = recorder.getActiveReplayId();
 
@@ -240,7 +241,7 @@ describe(`Recorder`, function() {
       const tab2ReplayId = tab2Recording.getActiveReplayId();
       expect(tab2ReplayId).to.not.equal(tab1ReplayId);
       tab2Rrweb.emit(4);
-      clock.tick(10);
+      clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
       await tab2Recording.activeRecording.__enqueuePromise;
       await clock.tickAsync(10 * 1000);
 
@@ -264,7 +265,7 @@ describe(`Recorder`, function() {
       mockRrweb.emit(EventType.Meta);
       mockRrweb.emit(EventType.FullSnapshot);
       mockRrweb.emit(EventType.IncrementalSnapshot);
-      await clock.tickAsync(10);
+      await clock.tickAsync(RECORD_ENQUEUE_THROTTLE_MS);
       await recorder.activeRecording.__enqueuePromise;
       const tab1ReplayId = recorder.getActiveReplayId();
 
@@ -301,14 +302,14 @@ describe(`Recorder`, function() {
       mockRrweb.emit(EventType.Meta);
       mockRrweb.emit(EventType.FullSnapshot);
       mockRrweb.emit(EventType.IncrementalSnapshot);
-      await clock.tickAsync(10);
+      await clock.tickAsync(RECORD_ENQUEUE_THROTTLE_MS);
       await recorder.activeRecording.__enqueuePromise;
 
       await clock.tickAsync(10 * 1000);
       await recorder.activeRecording.batcher._flushPromise;
 
-      const url = new URL(fetchStub.getCall(0).args[0]);
       expect(fetchStub.calledOnce).to.be.true;
+      const url = new URL(fetchStub.getCall(0).args[0]);
       const eventTypes = JSON.parse(fetchStub.getCall(0).args[1].body).map(e => e.type);
       expect(eventTypes).to.deep.equal([4, 2, 3]);
 
@@ -331,6 +332,24 @@ describe(`Recorder`, function() {
     it(`can still record when tab ID is unavailable (sessionStorage failed)`, async function () {
       sinon.stub(mockMixpanelInstance, `get_tab_id`).returns(null);
       await verifyBasicRecording();
+    });
+
+    it(`will retry a closed IDB connection error to continue recording`, async function () {
+      const transactionStub = sinon.stub(window.IDBDatabase.prototype, `transaction`)
+        .onCall(0).throws(`InvalidStateError`)
+        .onCall(1).throws(`InvalidStateError`)
+        .onCall(2).throws(`InvalidStateError`)
+        .onCall(3).throws(`InvalidStateError`)
+        .onCall(4).throws(`InvalidStateError`);
+      transactionStub.callThrough();
+      await verifyBasicRecording();
+    });
+
+    it(`records without persistence when localStorage fails`, async function () {
+      var idbOpenStub = sinon.spy(window.indexedDB, `open`);
+      sinon.stub(localStorage, `setItem`).throws(`test error`);
+      await verifyBasicRecording();
+      expect(idbOpenStub.callCount).to.equal(0);
     });
   });
 });

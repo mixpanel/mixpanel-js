@@ -12,6 +12,7 @@ import localStorage from 'localStorage';
 import { setupFakeIDB, idbGetItem, idbSetItem, idbCreateDatabase } from './test-utils/indexed-db';
 import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 import { setupRrwebMock } from './test-utils/mock-rrweb';
+import { RECORD_ENQUEUE_THROTTLE_MS } from '../../src/recorder/utils';
 
 describe(`SessionRecording`, function() {
   let replayId,
@@ -108,13 +109,13 @@ describe(`SessionRecording`, function() {
 
     mockRrweb.emit(EventType.Meta);
     mockRrweb.emit(EventType.FullSnapshot);
-    clock.tick(10); // tick for 10ms throttle
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS); // tick for 10ms throttle
     await sessionRecording.__enqueuePromise;
 
     mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
-    clock.tick(5);
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS / 2);
     mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
-    clock.tick(5);
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS / 2);
     await sessionRecording.__enqueuePromise;
 
     // this isn't really what we're testing, but we should make sure that the queue is persisted in indexeddb
@@ -137,14 +138,14 @@ describe(`SessionRecording`, function() {
     expect(params.get(`$device_id`)).to.equal(`test-device-id`);
     expect(params.get(`$user_id`)).to.equal(`test-user-id`);
     expect(params.get(`replay_start_time`)).to.equal((NOW_MS / 1000).toString());
-    expect(params.get(`replay_length_ms`)).to.equal(`15`);
+    expect(params.get(`replay_length_ms`)).to.equal(`375`);
 
     const body = JSON.parse(fetchCall.args[1].body);
     expect(body).to.deep.equal([
       {type: EventType.Meta, timestamp: NOW_MS, data: {}},
       {type: EventType.FullSnapshot, timestamp: NOW_MS, data: {}},
-      {type: EventType.IncrementalSnapshot, timestamp: NOW_MS + 10, data: {source: IncrementalSource.MouseInteraction}},
-      {type: EventType.IncrementalSnapshot, timestamp: NOW_MS + 15, data: {source: IncrementalSource.MouseMove}},
+      {type: EventType.IncrementalSnapshot, timestamp: NOW_MS + RECORD_ENQUEUE_THROTTLE_MS, data: {source: IncrementalSource.MouseInteraction}},
+      {type: EventType.IncrementalSnapshot, timestamp: NOW_MS + 1.5 * RECORD_ENQUEUE_THROTTLE_MS, data: {source: IncrementalSource.MouseMove}},
     ]);
 
     const queueAfterFlush = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
@@ -227,7 +228,7 @@ describe(`SessionRecording`, function() {
       idleExpires: startTime + 30 * 60 * 1000,
       maxExpires: startTime + 24 * 60 * 60 * 1000,
       tabId: `test-some-other-tab-id`,
-    }, {mixpanelInstance: mockMixpanelInstance});
+    }, {mixpanelInstance: mockMixpanelInstance, sharedLockStorage: localStorage});
 
     const persistedEvents = [
       {type: EventType.IncrementalSnapshot, timestamp: startTime + 10, data: {source: IncrementalSource.MouseInteraction}},

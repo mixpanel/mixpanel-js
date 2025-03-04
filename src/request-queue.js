@@ -28,7 +28,10 @@ var RequestQueue = function (storageKey, options) {
     this.usePersistence = options.usePersistence;
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
-        this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
+        this.lock = new SharedLock(storageKey, {
+            storage: options.sharedLockStorage || window.localStorage,
+            timeoutMS: options.sharedLockTimeoutMS,
+        });
     }
     this.reportError = options.errorReporter || _.bind(logger.error, logger);
 
@@ -226,7 +229,7 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
             .withLock(removeFromStorage, this.pid)
             .catch(_.bind(function (err) {
                 this.reportError('Error acquiring storage lock', err);
-                if (!localStorageSupported(this.queueStorage.storage, true)) {
+                if (!localStorageSupported(this.lock.storage, true)) {
                     // Looks like localStorage writes have stopped working sometime after
                     // initialization (probably full), and so nobody can acquire locks
                     // anymore. Consider it temporarily safe to remove items without the
