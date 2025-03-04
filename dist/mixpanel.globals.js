@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.61.0-rc1'
+        LIB_VERSION: '2.61.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -3389,7 +3389,10 @@
         this.usePersistence = options.usePersistence;
         if (this.usePersistence) {
             this.queueStorage = options.queueStorage || new LocalStorageWrapper();
-            this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || win.localStorage });
+            this.lock = new SharedLock(storageKey, {
+                storage: options.sharedLockStorage || win.localStorage,
+                timeoutMS: options.sharedLockTimeoutMS,
+            });
         }
         this.reportError = options.errorReporter || _.bind(logger$1.error, logger$1);
 
@@ -3587,7 +3590,7 @@
                 .withLock(removeFromStorage, this.pid)
                 .catch(_.bind(function (err) {
                     this.reportError('Error acquiring storage lock', err);
-                    if (!localStorageSupported(this.queueStorage.storage, true)) {
+                    if (!localStorageSupported(this.lock.storage, true)) {
                         // Looks like localStorage writes have stopped working sometime after
                         // initialization (probably full), and so nobody can acquire locks
                         // anymore. Consider it temporarily safe to remove items without the
@@ -3738,6 +3741,7 @@
             errorReporter: _.bind(this.reportError, this),
             queueStorage: options.queueStorage,
             sharedLockStorage: options.sharedLockStorage,
+            sharedLockTimeoutMS: options.sharedLockTimeoutMS,
             usePersistence: options.usePersistence,
             enqueueThrottleMs: options.enqueueThrottleMs
         });
@@ -5558,32 +5562,34 @@
         this.storeName = storeName;
     };
 
+    IDBStorageWrapper.prototype._openDb = function () {
+        return new PromisePolyfill(function (resolve, reject) {
+            var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+            openRequest['onerror'] = function () {
+                reject(openRequest.error);
+            };
+
+            openRequest['onsuccess'] = function () {
+                resolve(openRequest.result);
+            };
+
+            openRequest['onupgradeneeded'] = function (ev) {
+                var db = ev.target.result;
+
+                OBJECT_STORES.forEach(function (storeName) {
+                    db.createObjectStore(storeName);
+                });
+            };
+        });
+    };
+
     IDBStorageWrapper.prototype.init = function () {
         if (!win.indexedDB) {
             return PromisePolyfill.reject('indexedDB is not supported in this browser');
         }
 
-        var self = this;
         if (!this.dbPromise) {
-            this.dbPromise = new PromisePolyfill(function (resolve, reject) {
-                var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
-                openRequest['onerror'] = function () {
-                    reject(openRequest.error);
-                };
-
-                openRequest['onsuccess'] = function () {
-                    self._db = openRequest.result;
-                    resolve(openRequest.result);
-                };
-
-                openRequest['onupgradeneeded'] = function (ev) {
-                    var db = ev.target.result;
-
-                    OBJECT_STORES.forEach(function (storeName) {
-                        db.createObjectStore(storeName);
-                    });
-                };
-            });
+            this.dbPromise = this._openDb();
         }
 
         return this.dbPromise
@@ -5601,10 +5607,10 @@
      * @param {function(IDBObjectStore): void} storeCb
      */
     IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
-        var self = this;
-        return this.dbPromise.then(function (db) {
+        var storeName = this.storeName;
+        var doTransaction = function (db) {
             return new PromisePolyfill(function (resolve, reject) {
-                var transaction = db.transaction(self.storeName, mode);
+                var transaction = db.transaction(storeName, mode);
                 transaction.oncomplete = function () {
                     resolve(transaction);
                 };
@@ -5612,9 +5618,21 @@
                     reject(transaction.error);
                 };
 
-                storeCb(transaction.objectStore(self.storeName));
+                storeCb(transaction.objectStore(storeName));
             });
-        });
+        };
+
+        return this.dbPromise
+            .then(doTransaction)
+            .catch(function (err) {
+                if (err['name'] === 'InvalidStateError') {
+                    // try reopening the DB if the connection is closed
+                    this.dbPromise = this._openDb();
+                    return this.dbPromise.then(doTransaction);
+                } else {
+                    return PromisePolyfill.reject(err);
+                }
+            }.bind(this));
     };
 
     IDBStorageWrapper.prototype.setItem = function (key, value) {
@@ -7590,6 +7608,7 @@
 
         if (disabled) {
             this.stop_batch_senders();
+            this.stop_session_recording();
         } else {
             // only start batchers after opt-in if they have previously been started
             // in order to avoid unintentionally starting up batching for the first time

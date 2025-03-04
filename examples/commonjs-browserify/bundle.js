@@ -4894,7 +4894,7 @@ var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.61.0-rc1'
+    LIB_VERSION: '2.61.0'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -6694,32 +6694,34 @@ var IDBStorageWrapper = function (storeName) {
     this.storeName = storeName;
 };
 
+IDBStorageWrapper.prototype._openDb = function () {
+    return new PromisePolyfill(function (resolve, reject) {
+        var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+        openRequest['onerror'] = function () {
+            reject(openRequest.error);
+        };
+
+        openRequest['onsuccess'] = function () {
+            resolve(openRequest.result);
+        };
+
+        openRequest['onupgradeneeded'] = function (ev) {
+            var db = ev.target.result;
+
+            OBJECT_STORES.forEach(function (storeName) {
+                db.createObjectStore(storeName);
+            });
+        };
+    });
+};
+
 IDBStorageWrapper.prototype.init = function () {
     if (!win.indexedDB) {
         return PromisePolyfill.reject('indexedDB is not supported in this browser');
     }
 
-    var self = this;
     if (!this.dbPromise) {
-        this.dbPromise = new PromisePolyfill(function (resolve, reject) {
-            var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
-            openRequest['onerror'] = function () {
-                reject(openRequest.error);
-            };
-
-            openRequest['onsuccess'] = function () {
-                self._db = openRequest.result;
-                resolve(openRequest.result);
-            };
-
-            openRequest['onupgradeneeded'] = function (ev) {
-                var db = ev.target.result;
-
-                OBJECT_STORES.forEach(function (storeName) {
-                    db.createObjectStore(storeName);
-                });
-            };
-        });
+        this.dbPromise = this._openDb();
     }
 
     return this.dbPromise
@@ -6737,10 +6739,10 @@ IDBStorageWrapper.prototype.init = function () {
  * @param {function(IDBObjectStore): void} storeCb
  */
 IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
-    var self = this;
-    return this.dbPromise.then(function (db) {
+    var storeName = this.storeName;
+    var doTransaction = function (db) {
         return new PromisePolyfill(function (resolve, reject) {
-            var transaction = db.transaction(self.storeName, mode);
+            var transaction = db.transaction(storeName, mode);
             transaction.oncomplete = function () {
                 resolve(transaction);
             };
@@ -6748,9 +6750,21 @@ IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
                 reject(transaction.error);
             };
 
-            storeCb(transaction.objectStore(self.storeName));
+            storeCb(transaction.objectStore(storeName));
         });
-    });
+    };
+
+    return this.dbPromise
+        .then(doTransaction)
+        .catch(function (err) {
+            if (err['name'] === 'InvalidStateError') {
+                // try reopening the DB if the connection is closed
+                this.dbPromise = this._openDb();
+                return this.dbPromise.then(doTransaction);
+            } else {
+                return PromisePolyfill.reject(err);
+            }
+        }.bind(this));
 };
 
 IDBStorageWrapper.prototype.setItem = function (key, value) {
@@ -7301,7 +7315,10 @@ var RequestQueue = function (storageKey, options) {
     this.usePersistence = options.usePersistence;
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
-        this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || win.localStorage });
+        this.lock = new SharedLock(storageKey, {
+            storage: options.sharedLockStorage || win.localStorage,
+            timeoutMS: options.sharedLockTimeoutMS,
+        });
     }
     this.reportError = options.errorReporter || _.bind(logger$4.error, logger$4);
 
@@ -7499,7 +7516,7 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
             .withLock(removeFromStorage, this.pid)
             .catch(_.bind(function (err) {
                 this.reportError('Error acquiring storage lock', err);
-                if (!localStorageSupported(this.queueStorage.storage, true)) {
+                if (!localStorageSupported(this.lock.storage, true)) {
                     // Looks like localStorage writes have stopped working sometime after
                     // initialization (probably full), and so nobody can acquire locks
                     // anymore. Consider it temporarily safe to remove items without the
@@ -7650,6 +7667,7 @@ var RequestBatcher = function(storageKey, options) {
         errorReporter: _.bind(this.reportError, this),
         queueStorage: options.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
+        sharedLockTimeoutMS: options.sharedLockTimeoutMS,
         usePersistence: options.usePersistence,
         enqueueThrottleMs: options.enqueueThrottleMs
     });
@@ -7966,6 +7984,17 @@ RequestBatcher.prototype.reportError = function(msg, err) {
     }
 };
 
+/**
+ * @param {import('./session-recording').SerializedRecording} serializedRecording
+ * @returns {boolean}
+ */
+var isRecordingExpired = function(serializedRecording) {
+    var now = Date.now();
+    return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
+};
+
+var RECORD_ENQUEUE_THROTTLE_MS = 250;
+
 var logger$2 = console_with_prefix('recorder');
 var CompressionStream = win['CompressionStream'];
 
@@ -8051,6 +8080,10 @@ var SessionRecording = function(options) {
     this.recordMaxMs = MAX_RECORDING_MS;
     this.recordMinMs = 0;
 
+    // disable persistence if localStorage is not supported
+    // request-queue will automatically disable persistence if indexedDB fails to initialize
+    var usePersistence = localStorageSupported(options.sharedLockStorage, true);
+
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     // this will be important when persistence is introduced
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
@@ -8062,8 +8095,14 @@ var SessionRecording = function(options) {
         sendRequestFunc: this.flushEventsWithOptOut.bind(this),
         queueStorage: this.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
-        usePersistence: true,
-        enqueueThrottleMs: 10,
+        usePersistence: usePersistence,
+        stopAllBatchingFunc: this.stopRecording.bind(this),
+
+        // increased throttle and shared lock timeout because recording events are very high frequency.
+        // this will minimize the amount of lock contention between enqueued events.
+        // for session recordings there is a lock for each tab anyway, so there's no risk of deadlock between tabs.
+        enqueueThrottleMs: RECORD_ENQUEUE_THROTTLE_MS,
+        sharedLockTimeoutMS: 10 * 1000,
     });
 };
 
@@ -8143,7 +8182,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     this._stopRecording = this._rrwebRecord({
-        'emit': function (ev) {
+        'emit': addOptOutCheckMixpanelLib(function (ev) {
             if (isUserEvent(ev)) {
                 if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
                     // start flushing again after user activity
@@ -8154,7 +8193,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
             // promise only used to await during tests
             this.__enqueuePromise = this.batcher.enqueue(ev);
-        }.bind(this),
+        }.bind(this)),
         'blockClass': this.getConfig('record_block_class'),
         'blockSelector': blockSelector,
         'collectFonts': this.getConfig('record_collect_fonts'),
@@ -8225,6 +8264,15 @@ SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) 
  * @returns {SerializedRecording}
  */
 SessionRecording.prototype.serialize = function () {
+    // don't break if mixpanel instance was destroyed at some point
+    var tabId;
+    try {
+        tabId = this._mixpanel.get_tab_id();
+    } catch (e) {
+        this.reportError('Error getting tab ID for serialization ', e);
+        tabId = null;
+    }
+
     return {
         'replayId': this.replayId,
         'seqNo': this.seqNo,
@@ -8233,7 +8281,7 @@ SessionRecording.prototype.serialize = function () {
         'replayStartUrl': this.replayStartUrl,
         'idleExpires': this.idleExpires,
         'maxExpires': this.maxExpires,
-        'tabId': this._mixpanel.get_tab_id(),
+        'tabId': tabId,
     };
 };
 
@@ -8253,6 +8301,7 @@ SessionRecording.deserialize = function (serializedRecording, options) {
         maxExpires: serializedRecording['maxExpires'],
         replayStartTime: serializedRecording['replayStartTime'],
         seqNo: serializedRecording['seqNo'],
+        sharedLockStorage: options.sharedLockStorage,
     }));
 
     return recording;
@@ -8373,15 +8422,6 @@ SessionRecording.prototype.reportError = function(msg, err) {
 };
 
 /**
- * @param {import('./session-recording').SerializedRecording} serializedRecording
- * @returns {boolean}
- */
-var isRecordingExpired = function(serializedRecording) {
-    var now = Date.now();
-    return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
-};
-
-/**
  * Module for handling the storage and retrieval of recording metadata as well as any active recordings.
  * Makes sure that only one tab can be recording at a time.
  */
@@ -8400,7 +8440,7 @@ RecordingRegistry.prototype.handleError = function (err) {
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
-    var tabId = this.mixpanelInstance.get_tab_id();
+    var tabId = serializedRecording['tabId'];
     if (!tabId) {
         console.warn('No tab ID is set, cannot persist recording metadata.');
         return PromisePolyfill.resolve();
@@ -8487,7 +8527,11 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
     /**
      * @member {import('./registry').RecordingRegistry}
      */
-    this.recordingRegistry = new RecordingRegistry({mixpanelInstance: this.mixpanelInstance, errorReporter: logger$1.error});
+    this.recordingRegistry = new RecordingRegistry({
+        mixpanelInstance: this.mixpanelInstance,
+        errorReporter: logger$1.error,
+        sharedLockStorage: sharedLockStorage
+    });
     this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
 
     this.activeRecording = null;
@@ -12723,6 +12767,7 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
 
     if (disabled) {
         this.stop_batch_senders();
+        this.stop_session_recording();
     } else {
         // only start batchers after opt-in if they have previously been started
         // in order to avoid unintentionally starting up batching for the first time
