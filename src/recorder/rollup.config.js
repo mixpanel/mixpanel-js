@@ -19,6 +19,22 @@ export default {
     ],
     plugins: [
         nodeResolve({browser: true}),
-        babel({ babelHelpers: 'bundled', presets: ['@babel/preset-env'] }),
+        babel({
+            babelHelpers: 'bundled',
+            presets: [
+                [
+                    '@babel/preset-env',
+                    {
+                        'targets': {
+                            'chrome': '55',
+                            'ie': '11'
+                        },
+                        'useBuiltIns': 'usage',
+                        'debug': true
+                    }
+                ]
+            ],
+            include: 'node_modules/**',
+        })
     ],
 };

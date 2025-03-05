@@ -18,7 +18,9 @@ if [ ! -z "$FULL" ]; then
     java -jar vendor/closure-compiler/compiler.jar --js build/mixpanel.js --language_in ECMASCRIPT5 --externs src/externs.js --js_output_file build/mixpanel.min.js --compilation_level ADVANCED_OPTIMIZATIONS --output_wrapper "(function() {
 %output%
 })();"
-    # we use esbuild to minify the recorder because that's what rrweb uses
+    
+    # we use esbuild to minify a bundle with the recorder because that's what rrweb uses
+    # this build is gated by flags because we still want to use the closure compiler for the core build since it has the best optimizations
     USE_BABEL=true USE_ESBUILD=true npx rollup -i src/loaders/loader-globals-with-recorder.js -f iife -o build/mixpanel-with-recorder.min.js -n mixpanel -c rollup.config.js
 
     java -jar vendor/closure-compiler/compiler.jar --js src/loaders/mixpanel-jslib-snippet.js --language_in ECMASCRIPT5 --js_output_file build/mixpanel-jslib-snippet.min.js --compilation_level ADVANCED_OPTIMIZATIONS
