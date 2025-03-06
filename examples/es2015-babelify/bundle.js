@@ -17,7 +17,7 @@ _srcLoadersLoaderModule2['default'].init("FAKE_TOKEN", {
 
 _srcLoadersLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loaders/loader-module":16}],2:[function(require,module,exports){
+},{"../../src/loaders/loader-module":15}],2:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -1975,142 +1975,6 @@ process.chdir = function (dir) {
 process.umask = function() { return 0; };
 
 },{}],7:[function(require,module,exports){
-(function (g, f) {
-    if ("object" == typeof exports && "object" == typeof module) {
-      module.exports = f();
-    } else if ("function" == typeof define && define.amd) {
-      define("rrwebTypes", [], f);
-    } else if ("object" == typeof exports) {
-      exports["rrwebTypes"] = f();
-    } else {
-      g["rrwebTypes"] = f();
-    }
-  }(this, () => {
-var exports = {};
-var module = { exports };
-"use strict";
-Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-var EventType = /* @__PURE__ */ ((EventType2) => {
-  EventType2[EventType2["DomContentLoaded"] = 0] = "DomContentLoaded";
-  EventType2[EventType2["Load"] = 1] = "Load";
-  EventType2[EventType2["FullSnapshot"] = 2] = "FullSnapshot";
-  EventType2[EventType2["IncrementalSnapshot"] = 3] = "IncrementalSnapshot";
-  EventType2[EventType2["Meta"] = 4] = "Meta";
-  EventType2[EventType2["Custom"] = 5] = "Custom";
-  EventType2[EventType2["Plugin"] = 6] = "Plugin";
-  return EventType2;
-})(EventType || {});
-var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
-  IncrementalSource2[IncrementalSource2["Mutation"] = 0] = "Mutation";
-  IncrementalSource2[IncrementalSource2["MouseMove"] = 1] = "MouseMove";
-  IncrementalSource2[IncrementalSource2["MouseInteraction"] = 2] = "MouseInteraction";
-  IncrementalSource2[IncrementalSource2["Scroll"] = 3] = "Scroll";
-  IncrementalSource2[IncrementalSource2["ViewportResize"] = 4] = "ViewportResize";
-  IncrementalSource2[IncrementalSource2["Input"] = 5] = "Input";
-  IncrementalSource2[IncrementalSource2["TouchMove"] = 6] = "TouchMove";
-  IncrementalSource2[IncrementalSource2["MediaInteraction"] = 7] = "MediaInteraction";
-  IncrementalSource2[IncrementalSource2["StyleSheetRule"] = 8] = "StyleSheetRule";
-  IncrementalSource2[IncrementalSource2["CanvasMutation"] = 9] = "CanvasMutation";
-  IncrementalSource2[IncrementalSource2["Font"] = 10] = "Font";
-  IncrementalSource2[IncrementalSource2["Log"] = 11] = "Log";
-  IncrementalSource2[IncrementalSource2["Drag"] = 12] = "Drag";
-  IncrementalSource2[IncrementalSource2["StyleDeclaration"] = 13] = "StyleDeclaration";
-  IncrementalSource2[IncrementalSource2["Selection"] = 14] = "Selection";
-  IncrementalSource2[IncrementalSource2["AdoptedStyleSheet"] = 15] = "AdoptedStyleSheet";
-  IncrementalSource2[IncrementalSource2["CustomElement"] = 16] = "CustomElement";
-  return IncrementalSource2;
-})(IncrementalSource || {});
-var MouseInteractions = /* @__PURE__ */ ((MouseInteractions2) => {
-  MouseInteractions2[MouseInteractions2["MouseUp"] = 0] = "MouseUp";
-  MouseInteractions2[MouseInteractions2["MouseDown"] = 1] = "MouseDown";
-  MouseInteractions2[MouseInteractions2["Click"] = 2] = "Click";
-  MouseInteractions2[MouseInteractions2["ContextMenu"] = 3] = "ContextMenu";
-  MouseInteractions2[MouseInteractions2["DblClick"] = 4] = "DblClick";
-  MouseInteractions2[MouseInteractions2["Focus"] = 5] = "Focus";
-  MouseInteractions2[MouseInteractions2["Blur"] = 6] = "Blur";
-  MouseInteractions2[MouseInteractions2["TouchStart"] = 7] = "TouchStart";
-  MouseInteractions2[MouseInteractions2["TouchMove_Departed"] = 8] = "TouchMove_Departed";
-  MouseInteractions2[MouseInteractions2["TouchEnd"] = 9] = "TouchEnd";
-  MouseInteractions2[MouseInteractions2["TouchCancel"] = 10] = "TouchCancel";
-  return MouseInteractions2;
-})(MouseInteractions || {});
-var PointerTypes = /* @__PURE__ */ ((PointerTypes2) => {
-  PointerTypes2[PointerTypes2["Mouse"] = 0] = "Mouse";
-  PointerTypes2[PointerTypes2["Pen"] = 1] = "Pen";
-  PointerTypes2[PointerTypes2["Touch"] = 2] = "Touch";
-  return PointerTypes2;
-})(PointerTypes || {});
-var CanvasContext = /* @__PURE__ */ ((CanvasContext2) => {
-  CanvasContext2[CanvasContext2["2D"] = 0] = "2D";
-  CanvasContext2[CanvasContext2["WebGL"] = 1] = "WebGL";
-  CanvasContext2[CanvasContext2["WebGL2"] = 2] = "WebGL2";
-  return CanvasContext2;
-})(CanvasContext || {});
-var MediaInteractions = /* @__PURE__ */ ((MediaInteractions2) => {
-  MediaInteractions2[MediaInteractions2["Play"] = 0] = "Play";
-  MediaInteractions2[MediaInteractions2["Pause"] = 1] = "Pause";
-  MediaInteractions2[MediaInteractions2["Seeked"] = 2] = "Seeked";
-  MediaInteractions2[MediaInteractions2["VolumeChange"] = 3] = "VolumeChange";
-  MediaInteractions2[MediaInteractions2["RateChange"] = 4] = "RateChange";
-  return MediaInteractions2;
-})(MediaInteractions || {});
-var ReplayerEvents = /* @__PURE__ */ ((ReplayerEvents2) => {
-  ReplayerEvents2["Start"] = "start";
-  ReplayerEvents2["Pause"] = "pause";
-  ReplayerEvents2["Resume"] = "resume";
-  ReplayerEvents2["Resize"] = "resize";
-  ReplayerEvents2["Finish"] = "finish";
-  ReplayerEvents2["FullsnapshotRebuilded"] = "fullsnapshot-rebuilded";
-  ReplayerEvents2["LoadStylesheetStart"] = "load-stylesheet-start";
-  ReplayerEvents2["LoadStylesheetEnd"] = "load-stylesheet-end";
-  ReplayerEvents2["SkipStart"] = "skip-start";
-  ReplayerEvents2["SkipEnd"] = "skip-end";
-  ReplayerEvents2["MouseInteraction"] = "mouse-interaction";
-  ReplayerEvents2["EventCast"] = "event-cast";
-  ReplayerEvents2["CustomEvent"] = "custom-event";
-  ReplayerEvents2["Flush"] = "flush";
-  ReplayerEvents2["StateChange"] = "state-change";
-  ReplayerEvents2["PlayBack"] = "play-back";
-  ReplayerEvents2["Destroy"] = "destroy";
-  return ReplayerEvents2;
-})(ReplayerEvents || {});
-var NodeType = /* @__PURE__ */ ((NodeType2) => {
-  NodeType2[NodeType2["Document"] = 0] = "Document";
-  NodeType2[NodeType2["DocumentType"] = 1] = "DocumentType";
-  NodeType2[NodeType2["Element"] = 2] = "Element";
-  NodeType2[NodeType2["Text"] = 3] = "Text";
-  NodeType2[NodeType2["CDATA"] = 4] = "CDATA";
-  NodeType2[NodeType2["Comment"] = 5] = "Comment";
-  return NodeType2;
-})(NodeType || {});
-exports.CanvasContext = CanvasContext;
-exports.EventType = EventType;
-exports.IncrementalSource = IncrementalSource;
-exports.MediaInteractions = MediaInteractions;
-exports.MouseInteractions = MouseInteractions;
-exports.NodeType = NodeType;
-exports.PointerTypes = PointerTypes;
-exports.ReplayerEvents = ReplayerEvents;
-if (typeof module.exports == "object" && typeof exports == "object") {
-  var __cp = (to, from, except, desc) => {
-    if ((from && typeof from === "object") || typeof from === "function") {
-      for (let key of Object.getOwnPropertyNames(from)) {
-        if (!Object.prototype.hasOwnProperty.call(to, key) && key !== except)
-        Object.defineProperty(to, key, {
-          get: () => from[key],
-          enumerable: !(desc = Object.getOwnPropertyDescriptor(from, key)) || desc.enumerable,
-        });
-      }
-    }
-    return to;
-  };
-  module.exports = __cp(module.exports, exports);
-}
-return module.exports;
-}))
-
-
-},{}],8:[function(require,module,exports){
 (function (process,Buffer){
 (function (g, f) {
     if ("object" == typeof exports && "object" == typeof module) {
@@ -19074,7 +18938,7 @@ return module.exports;
 
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"_process":6,"buffer":3}],9:[function(require,module,exports){
+},{"_process":6,"buffer":3}],8:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -19212,7 +19076,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":32}],10:[function(require,module,exports){
+},{"./utils":31}],9:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -19557,7 +19421,7 @@ Autocapture.prototype.initSubmitTracking = function () {
 
 exports.Autocapture = Autocapture;
 
-},{"../utils":32,"../window":33,"./utils":11}],11:[function(require,module,exports){
+},{"../utils":31,"../window":32,"./utils":10}],10:[function(require,module,exports){
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
 
@@ -20075,7 +19939,7 @@ exports.EV_POPSTATE = EV_POPSTATE;
 exports.EV_SCROLLEND = EV_SCROLLEND;
 exports.EV_SUBMIT = EV_SUBMIT;
 
-},{"../utils":32,"../window":33}],12:[function(require,module,exports){
+},{"../utils":31,"../window":32}],11:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -20089,7 +19953,7 @@ var Config = {
 exports['default'] = Config;
 module.exports = exports['default'];
 
-},{}],13:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -20252,7 +20116,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":32}],14:[function(require,module,exports){
+},{"./utils":31}],13:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -20567,7 +20431,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":32,"./window":33}],15:[function(require,module,exports){
+},{"./utils":31,"./window":32}],14:[function(require,module,exports){
 // For loading separate bundles asynchronously via script tag
 // so that we don't load them until they are needed at runtime.
 'use strict';
@@ -20602,7 +20466,7 @@ function loadThrowError(src, _onload) {
     throw new Error('This build of Mixpanel only includes core SDK functionality, could not load ' + src);
 }
 
-},{}],16:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -20621,7 +20485,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)(_bundleLoaders.loadNoop);
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"../mixpanel-core":17,"../recorder":22,"./bundle-loaders":15}],17:[function(require,module,exports){
+},{"../mixpanel-core":16,"../recorder":21,"./bundle-loaders":14}],16:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -22982,7 +22846,7 @@ function init_as_module(bundle_loader) {
     return mixpanel_master;
 }
 
-},{"./autocapture":10,"./config":12,"./dom-trackers":13,"./gdpr-utils":14,"./mixpanel-group":18,"./mixpanel-people":19,"./mixpanel-persistence":20,"./recorder/utils":26,"./request-batcher":27,"./storage/indexed-db":30,"./utils":32,"./window":33}],18:[function(require,module,exports){
+},{"./autocapture":9,"./config":11,"./dom-trackers":12,"./gdpr-utils":13,"./mixpanel-group":17,"./mixpanel-people":18,"./mixpanel-persistence":19,"./recorder/utils":25,"./request-batcher":26,"./storage/indexed-db":29,"./utils":31,"./window":32}],17:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -23166,7 +23030,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":9,"./gdpr-utils":14,"./utils":32}],19:[function(require,module,exports){
+},{"./api-actions":8,"./gdpr-utils":13,"./utils":31}],18:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -23646,7 +23510,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":9,"./gdpr-utils":14,"./utils":32}],20:[function(require,module,exports){
+},{"./api-actions":8,"./gdpr-utils":13,"./utils":31}],19:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -24080,7 +23944,7 @@ exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":9,"./utils":32}],21:[function(require,module,exports){
+},{"./api-actions":8,"./utils":31}],20:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24456,7 +24320,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 exports.Promise = PromisePolyfill;
 exports.NpoPromise = NpoPromise;
 
-},{"./window":33}],22:[function(require,module,exports){
+},{"./window":32}],21:[function(require,module,exports){
 'use strict';
 
 var _window = require('../window');
@@ -24465,7 +24329,7 @@ var _recorder = require('./recorder');
 
 _window.window['__mp_recorder'] = _recorder.MixpanelRecorder;
 
-},{"../window":33,"./recorder":23}],23:[function(require,module,exports){
+},{"../window":32,"./recorder":22}],22:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24612,7 +24476,7 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
 
 exports.MixpanelRecorder = MixpanelRecorder;
 
-},{"../promise-polyfill":21,"../utils":32,"./recording-registry":24,"./session-recording":25,"rrweb":8}],24:[function(require,module,exports){
+},{"../promise-polyfill":20,"../utils":31,"./recording-registry":23,"./session-recording":24,"rrweb":7}],23:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24707,7 +24571,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
 
 exports.RecordingRegistry = RecordingRegistry;
 
-},{"../promise-polyfill":21,"../storage/indexed-db":30,"./session-recording":25,"./utils":26}],25:[function(require,module,exports){
+},{"../promise-polyfill":20,"../storage/indexed-db":29,"./session-recording":24,"./utils":25}],24:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24718,7 +24582,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'd
 
 var _window = require('../window');
 
-var _rrwebTypes = require('@rrweb/types');
+var _rrweb = require('rrweb');
 
 var _utils = require('../utils');
 
@@ -24746,10 +24610,10 @@ var RECORDER_BATCHER_LIB_CONFIG = {
     'batch_autostart': true
 };
 
-var ACTIVE_SOURCES = new Set([_rrwebTypes.IncrementalSource.MouseMove, _rrwebTypes.IncrementalSource.MouseInteraction, _rrwebTypes.IncrementalSource.Scroll, _rrwebTypes.IncrementalSource.ViewportResize, _rrwebTypes.IncrementalSource.Input, _rrwebTypes.IncrementalSource.TouchMove, _rrwebTypes.IncrementalSource.MediaInteraction, _rrwebTypes.IncrementalSource.Drag, _rrwebTypes.IncrementalSource.Selection]);
+var ACTIVE_SOURCES = new Set([_rrweb.IncrementalSource.MouseMove, _rrweb.IncrementalSource.MouseInteraction, _rrweb.IncrementalSource.Scroll, _rrweb.IncrementalSource.ViewportResize, _rrweb.IncrementalSource.Input, _rrweb.IncrementalSource.TouchMove, _rrweb.IncrementalSource.MediaInteraction, _rrweb.IncrementalSource.Drag, _rrweb.IncrementalSource.Selection]);
 
 function isUserEvent(ev) {
-    return ev.type === _rrwebTypes.EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.data.source);
+    return ev.type === _rrweb.EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.data.source);
 }
 
 /**
@@ -25171,10 +25035,14 @@ SessionRecording.prototype.reportError = function (msg, err) {
 exports.SessionRecording = SessionRecording;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../config":7,"../gdpr-utils":9,"../request-batcher":22,"../storage/indexed-db":25,"../utils":27,"../window":28,"./utils":21,"@rrweb/types":2}],21:[function(require,module,exports){
 =======
 },{"../config":12,"../gdpr-utils":14,"../request-batcher":27,"../storage/indexed-db":30,"../utils":32,"../window":33,"./utils":26,"@rrweb/types":7}],26:[function(require,module,exports){
 >>>>>>> 3b85641 (working build)
+=======
+},{"../config":11,"../gdpr-utils":13,"../request-batcher":26,"../storage/indexed-db":29,"../utils":31,"../window":32,"./utils":25,"rrweb":7}],25:[function(require,module,exports){
+>>>>>>> 216e2df (build)
 /**
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  * @returns {boolean}
@@ -25201,7 +25069,7 @@ var RECORD_ENQUEUE_THROTTLE_MS = 100;
 exports.isRecordingExpired = isRecordingExpired;
 exports.RECORD_ENQUEUE_THROTTLE_MS = RECORD_ENQUEUE_THROTTLE_MS;
 
-},{}],27:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25536,7 +25404,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./config":12,"./promise-polyfill":21,"./request-queue":28,"./utils":32}],28:[function(require,module,exports){
+},{"./config":11,"./promise-polyfill":20,"./request-queue":27,"./utils":31}],27:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25884,7 +25752,7 @@ RequestQueue.prototype.clear = function () {
 
 exports.RequestQueue = RequestQueue;
 
-},{"./promise-polyfill":21,"./shared-lock":29,"./storage/local-storage":31,"./utils":32,"./window":33}],29:[function(require,module,exports){
+},{"./promise-polyfill":20,"./shared-lock":28,"./storage/local-storage":30,"./utils":31,"./window":32}],28:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26050,7 +25918,7 @@ SharedLock.prototype.withLock = function (lockedCB, pid) {
 
 exports.SharedLock = SharedLock;
 
-},{"./promise-polyfill":21,"./utils":32,"./window":33}],30:[function(require,module,exports){
+},{"./promise-polyfill":20,"./utils":31,"./window":32}],29:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26185,7 +26053,7 @@ exports.IDBStorageWrapper = IDBStorageWrapper;
 exports.RECORDING_EVENTS_STORE_NAME = RECORDING_EVENTS_STORE_NAME;
 exports.RECORDING_REGISTRY_STORE_NAME = RECORDING_REGISTRY_STORE_NAME;
 
-},{"../promise-polyfill":21,"../window":33}],31:[function(require,module,exports){
+},{"../promise-polyfill":20,"../window":32}],30:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26245,7 +26113,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
 
 exports.LocalStorageWrapper = LocalStorageWrapper;
 
-},{"../promise-polyfill":21,"../utils":32}],32:[function(require,module,exports){
+},{"../promise-polyfill":20,"../utils":31}],31:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -27987,7 +27855,7 @@ exports.safewrapClass = safewrapClass;
 exports.slice = slice;
 exports.userAgent = userAgent;
 
-},{"./config":12,"./promise-polyfill":21,"./window":33}],33:[function(require,module,exports){
+},{"./config":11,"./promise-polyfill":20,"./window":32}],32:[function(require,module,exports){
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 'use strict';
 

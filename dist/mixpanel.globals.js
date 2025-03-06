@@ -2132,6 +2132,8 @@
     };
 
     // stateless utils
+    // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
+
 
     var EV_CHANGE = 'change';
     var EV_CLICK = 'click';
@@ -2977,6 +2979,7 @@
     safewrapClass(Autocapture);
 
     /* eslint camelcase: "off" */
+
 
     /**
      * DomTracker Object
@@ -4028,6 +4031,7 @@
      * These functions are used internally by the SDK and are not intended to be publicly exposed.
      */
 
+
     /**
      * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
      * @callback trackFunction
@@ -4315,6 +4319,7 @@
     }
 
     /* eslint camelcase: "off" */
+
 
     /** @const */ var SET_ACTION      = '$set';
     /** @const */ var SET_ONCE_ACTION = '$set_once';
@@ -5074,6 +5079,7 @@
     MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
     /* eslint camelcase: "off" */
+
 
     /*
      * Constants
