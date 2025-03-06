@@ -17000,11 +17000,7 @@ var isRecordingExpired = function(serializedRecording) {
     return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
 };
 
-<<<<<<< HEAD
 var RECORD_ENQUEUE_THROTTLE_MS = 250;
-=======
-var RECORD_ENQUEUE_THROTTLE_MS = 100;
->>>>>>> 216e2df (build)
 
 var logger$2 = console_with_prefix('recorder');
 var CompressionStream = win['CompressionStream'];

@@ -25034,15 +25034,7 @@ SessionRecording.prototype.reportError = function (msg, err) {
 
 exports.SessionRecording = SessionRecording;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-},{"../config":7,"../gdpr-utils":9,"../request-batcher":22,"../storage/indexed-db":25,"../utils":27,"../window":28,"./utils":21,"@rrweb/types":2}],21:[function(require,module,exports){
-=======
-},{"../config":12,"../gdpr-utils":14,"../request-batcher":27,"../storage/indexed-db":30,"../utils":32,"../window":33,"./utils":26,"@rrweb/types":7}],26:[function(require,module,exports){
->>>>>>> 3b85641 (working build)
-=======
 },{"../config":11,"../gdpr-utils":13,"../request-batcher":26,"../storage/indexed-db":29,"../utils":31,"../window":32,"./utils":25,"rrweb":7}],25:[function(require,module,exports){
->>>>>>> 216e2df (build)
 /**
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  * @returns {boolean}
@@ -25057,14 +25049,7 @@ var isRecordingExpired = function isRecordingExpired(serializedRecording) {
   return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
 };
 
-<<<<<<< HEAD
 var RECORD_ENQUEUE_THROTTLE_MS = 250;
-
-exports.isRecordingExpired = isRecordingExpired;
-exports.RECORD_ENQUEUE_THROTTLE_MS = RECORD_ENQUEUE_THROTTLE_MS;
-=======
-var RECORD_ENQUEUE_THROTTLE_MS = 100;
->>>>>>> 3b85641 (working build)
 
 exports.isRecordingExpired = isRecordingExpired;
 exports.RECORD_ENQUEUE_THROTTLE_MS = RECORD_ENQUEUE_THROTTLE_MS;

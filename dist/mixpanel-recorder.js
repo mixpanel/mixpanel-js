@@ -13945,6 +13945,7 @@
 
     var Config = {
 <<<<<<< HEAD
+<<<<<<< HEAD
         DEBUG: false,
 <<<<<<< HEAD
         LIB_VERSION: '2.62.0'
@@ -13957,7 +13958,13 @@
         LIB_VERSION: '2.61.0-rc1'
 >>>>>>> 216e2df (build)
 >>>>>>> 259768c (build)
+<<<<<<< HEAD
 >>>>>>> ca689ef (build)
+=======
+=======
+        LIB_VERSION: '2.61.0'
+>>>>>>> dc80372 (build after rebase)
+>>>>>>> 2c1cd86 (build after rebase)
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -16829,11 +16836,7 @@
         return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
     };
 
-<<<<<<< HEAD
     var RECORD_ENQUEUE_THROTTLE_MS = 250;
-=======
-    var RECORD_ENQUEUE_THROTTLE_MS = 100;
->>>>>>> 216e2df (build)
 
     var logger$1 = console_with_prefix('recorder');
     var CompressionStream = win['CompressionStream'];
