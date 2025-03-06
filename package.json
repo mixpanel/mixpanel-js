@@ -33,9 +33,10 @@
   },
   "homepage": "https://github.com/mixpanel/mixpanel-js",
   "devDependencies": {
-    "@babel/preset-env": "7.26.9",
-    "@rollup/plugin-babel": "6.0.4",
+    "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-node-resolve": "15.2.3",
+    "@rollup/plugin-swc": "^0.4.0",
+    "@swc/core": "^1.11.7",
     "babel": "6.5.2",
     "babel-core": "6.7.2",
     "babel-preset-es2015": "6.6.0",
@@ -57,8 +58,8 @@
     "morgan": "1.9.1",
     "rdme": "7.5.0",
     "request": "2.88.0",
-    "rollup": "2.79.1",
-    "rollup-plugin-esbuild": "4.10.3",
+    "rollup": "^4.34.9",
+    "rollup-plugin-esbuild": "^6.2.1",
     "sinon": "8.1.1",
     "sinon-chai": "3.5.0",
     "webpack": "1.12.2"
