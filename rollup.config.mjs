@@ -1,7 +1,6 @@
 import nodeResolve from '@rollup/plugin-node-resolve';
 import swc from '@rollup/plugin-swc';
 import esbuild from 'rollup-plugin-esbuild';
-// import replace from '@rollup/plugin-replace';
 import alias from '@rollup/plugin-alias';
 
 const COMPILED_RRWEB_PATH = 'build/rrweb-compiled.js';
