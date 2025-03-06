@@ -1,5 +1,6 @@
 import { SharedLock } from './shared-lock';
-import { cheap_guid, console_with_prefix, localStorageSupported, JSONParse, JSONStringify, _ } from './utils'; // eslint-disable-line camelcase
+import { batchedThrottle, cheap_guid, console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
+import { window } from './window';
 import { LocalStorageWrapper } from './storage/local-storage';
 import { Promise } from './promise-polyfill';
 
@@ -27,8 +28,10 @@ var RequestQueue = function (storageKey, options) {
     this.usePersistence = options.usePersistence;
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
-        this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
-        this.queueStorage.init();
+        this.lock = new SharedLock(storageKey, {
+            storage: options.sharedLockStorage || window.localStorage,
+            timeoutMS: options.sharedLockTimeoutMS,
+        });
     }
     this.reportError = options.errorReporter || _.bind(logger.error, logger);
 
@@ -36,6 +39,14 @@ var RequestQueue = function (storageKey, options) {
 
     this.memQueue = [];
     this.initialized = false;
+
+    if (options.enqueueThrottleMs) {
+        this.enqueuePersisted = batchedThrottle(_.bind(this._enqueuePersisted, this), options.enqueueThrottleMs);
+    } else {
+        this.enqueuePersisted = _.bind(function (queueEntry) {
+            return this._enqueuePersisted([queueEntry]);
+        }, this);
+    }
 };
 
 RequestQueue.prototype.ensureInit = function () {
@@ -78,36 +89,39 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
         this.memQueue.push(queueEntry);
         return Promise.resolve(true);
     } else {
+        return this.enqueuePersisted(queueEntry);
+    }
+};
 
-        var enqueueItem = _.bind(function () {
-            return this.ensureInit()
-                .then(_.bind(function () {
-                    return this.readFromStorage();
-                }, this))
-                .then(_.bind(function (storedQueue) {
-                    storedQueue.push(queueEntry);
-                    return this.saveToStorage(storedQueue);
-                }, this))
-                .then(_.bind(function (succeeded) {
-                    // only add to in-memory queue when storage succeeds
-                    if (succeeded) {
-                        this.memQueue.push(queueEntry);
-                    }
-                    return succeeded;
-                }, this))
-                .catch(_.bind(function (err) {
-                    this.reportError('Error enqueueing item', err, item);
-                    return false;
-                }, this));
-        }, this);
+RequestQueue.prototype._enqueuePersisted = function (queueEntries) {
+    var enqueueItem = _.bind(function () {
+        return this.ensureInit()
+            .then(_.bind(function () {
+                return this.readFromStorage();
+            }, this))
+            .then(_.bind(function (storedQueue) {
+                return this.saveToStorage(storedQueue.concat(queueEntries));
+            }, this))
+            .then(_.bind(function (succeeded) {
+                // only add to in-memory queue when storage succeeds
+                if (succeeded) {
+                    this.memQueue = this.memQueue.concat(queueEntries);
+                }
 
-        return this.lock
-            .withLock(enqueueItem, this.pid)
+                return succeeded;
+            }, this))
             .catch(_.bind(function (err) {
-                this.reportError('Error acquiring storage lock', err);
+                this.reportError('Error enqueueing items', err, queueEntries);
                 return false;
             }, this));
-    }
+    }, this);
+
+    return this.lock
+        .withLock(enqueueItem, this.pid)
+        .catch(_.bind(function (err) {
+            this.reportError('Error acquiring storage lock', err);
+            return false;
+        }, this));
 };
 
 /**
@@ -128,7 +142,7 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
             }, this))
             .then(_.bind(function (storedQueue) {
                 if (storedQueue.length) {
-                // item IDs already in batch; don't duplicate out of storage
+                    // item IDs already in batch; don't duplicate out of storage
                     var idsInBatch = {}; // poor man's Set
                     _.each(batch, function (item) {
                         idsInBatch[item['id']] = true;
@@ -215,7 +229,7 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
             .withLock(removeFromStorage, this.pid)
             .catch(_.bind(function (err) {
                 this.reportError('Error acquiring storage lock', err);
-                if (!localStorageSupported(this.queueStorage.storage, true)) {
+                if (!localStorageSupported(this.lock.storage, true)) {
                     // Looks like localStorage writes have stopped working sometime after
                     // initialization (probably full), and so nobody can acquire locks
                     // anymore. Consider it temporarily safe to remove items without the
@@ -303,7 +317,6 @@ RequestQueue.prototype.readFromStorage = function () {
         }, this))
         .then(_.bind(function (storageEntry) {
             if (storageEntry) {
-                storageEntry = JSONParse(storageEntry);
                 if (!_.isArray(storageEntry)) {
                     this.reportError('Invalid storage entry:', storageEntry);
                     storageEntry = null;
@@ -321,16 +334,9 @@ RequestQueue.prototype.readFromStorage = function () {
  * Serialize the given items array to localStorage.
  */
 RequestQueue.prototype.saveToStorage = function (queue) {
-    try {
-        var serialized = JSONStringify(queue);
-    } catch (err) {
-        this.reportError('Error serializing queue', err);
-        return Promise.resolve(false);
-    }
-
     return this.ensureInit()
         .then(_.bind(function () {
-            return this.queueStorage.setItem(this.storageKey, serialized);
+            return this.queueStorage.setItem(this.storageKey, queue);
         }, this))
         .then(function () {
             return true;

@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.60.0'
+    LIB_VERSION: '2.61.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1466,15 +1466,9 @@ _.cookie = {
     }
 };
 
-var _localStorageSupported = null;
-var localStorageSupported = function(storage, forceCheck) {
-    if (_localStorageSupported !== null && !forceCheck) {
-        return _localStorageSupported;
-    }
-
+var _testStorageSupported = function (storage) {
     var supported = true;
     try {
-        storage = storage || win.localStorage;
         var key = '__mplss_' + cheap_guid(8),
             val = 'xyz';
         storage.setItem(key, val);
@@ -1485,59 +1479,74 @@ var localStorageSupported = function(storage, forceCheck) {
     } catch (err) {
         supported = false;
     }
-
-    _localStorageSupported = supported;
     return supported;
 };
 
-// _.localStorage
-_.localStorage = {
-    is_supported: function(force_check) {
-        var supported = localStorageSupported(null, force_check);
-        if (!supported) {
-            console.error('localStorage unsupported; falling back to cookie store');
-        }
-        return supported;
-    },
-
-    error: function(msg) {
-        console.error('localStorage error: ' + msg);
-    },
-
-    get: function(name) {
-        try {
-            return win.localStorage.getItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-        return null;
-    },
-
-    parse: function(name) {
-        try {
-            return _.JSONDecode(_.localStorage.get(name)) || {};
-        } catch (err) {
-            // noop
-        }
-        return null;
-    },
-
-    set: function(name, value) {
-        try {
-            win.localStorage.setItem(name, value);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-    },
-
-    remove: function(name) {
-        try {
-            win.localStorage.removeItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
+var _localStorageSupported = null;
+var localStorageSupported = function(storage, forceCheck) {
+    if (_localStorageSupported !== null && !forceCheck) {
+        return _localStorageSupported;
     }
+    return _localStorageSupported = _testStorageSupported(storage || win.localStorage);
 };
+
+var _sessionStorageSupported = null;
+var sessionStorageSupported = function(storage, forceCheck) {
+    if (_sessionStorageSupported !== null && !forceCheck) {
+        return _sessionStorageSupported;
+    }
+    return _sessionStorageSupported = _testStorageSupported(storage || win.sessionStorage);
+};
+
+function _storageWrapper(storage, name, is_supported_fn) {
+    var log_error = function(msg) {
+        console.error(name + ' error: ' + msg);
+    };
+
+    return {
+        is_supported: function(forceCheck) {
+            var supported = is_supported_fn(storage, forceCheck);
+            if (!supported) {
+                console.error(name + ' unsupported');
+            }
+            return supported;
+        },
+        error: log_error,
+        get: function(key) {
+            try {
+                return storage.getItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+            return null;
+        },
+        parse: function(key) {
+            try {
+                return _.JSONDecode(storage.getItem(key)) || {};
+            } catch (err) {
+                // noop
+            }
+            return null;
+        },
+        set: function(key, value) {
+            try {
+                storage.setItem(key, value);
+            } catch (err) {
+                log_error(err);
+            }
+        },
+        remove: function(key) {
+            try {
+                storage.removeItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+        }
+    };
+}
+
+_.localStorage = _storageWrapper(win.localStorage, 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(win.sessionStorage, 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function() {
     // written by Dean Edwards, 2005
@@ -2064,6 +2073,31 @@ _.info = {
     }
 };
 
+/**
+ * Returns a throttled function that will only run at most every `waitMs` and returns a promise that resolves with the next invocation.
+ * Throttled calls will build up a batch of args and invoke the callback with all args since the last invocation.
+ */
+var batchedThrottle = function (fn, waitMs) {
+    var timeoutPromise = null;
+    var throttledItems = [];
+    return function (item) {
+        var self = this;
+        throttledItems.push(item);
+
+        if (!timeoutPromise) {
+            timeoutPromise = new PromisePolyfill(function (resolve) {
+                setTimeout(function () {
+                    var returnValue = fn.apply(self, [throttledItems]);
+                    timeoutPromise = null;
+                    throttledItems = [];
+                    resolve(returnValue);
+                }, waitMs);
+            });
+        }
+        return timeoutPromise;
+    };
+};
+
 var cheap_guid = function(maxlen) {
     var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
     return maxlen ? guid.substring(0, maxlen) : guid;
@@ -2106,6 +2140,8 @@ var isOnline = function() {
     return _.isUndefined(onLine) || onLine;
 };
 
+var NOOP_FUNC = function () {};
+
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -2114,19 +2150,28 @@ if (typeof JSON !== 'undefined') {
 JSONStringify = JSONStringify || _.JSONEncode;
 JSONParse = JSONParse || _.JSONDecode;
 
-// EXPORTS (for closure compiler)
-_['toArray']                = _.toArray;
-_['isObject']               = _.isObject;
-_['JSONEncode']             = _.JSONEncode;
-_['JSONDecode']             = _.JSONDecode;
-_['isBlockedUA']            = _.isBlockedUA;
-_['isEmptyObject']          = _.isEmptyObject;
+// UNMINIFIED EXPORTS (for closure compiler)
 _['info']                   = _.info;
-_['info']['device']         = _.info.device;
 _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
+_['info']['device']         = _.info.device;
 _['info']['properties']     = _.info.properties;
+_['isBlockedUA']            = _.isBlockedUA;
+_['isEmptyObject']          = _.isEmptyObject;
+_['isObject']               = _.isObject;
+_['JSONDecode']             = _.JSONDecode;
+_['JSONEncode']             = _.JSONEncode;
+_['toArray']                = _.toArray;
 _['NPO']                    = NpoPromise;
+
+/**
+ * @param {import('./session-recording').SerializedRecording} serializedRecording
+ * @returns {boolean}
+ */
+var isRecordingExpired = function(serializedRecording) {
+    var now = Date.now();
+    return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
+};
 
 // stateless utils
 
@@ -3150,7 +3195,7 @@ var SharedLock = function(key, options) {
     options = options || {};
 
     this.storageKey = key;
-    this.storage = options.storage || window.localStorage;
+    this.storage = options.storage || win.localStorage;
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
 
@@ -3165,7 +3210,6 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     return new Promise(_.bind(function (resolve, reject) {
         var i = pid || (new Date().getTime() + '|' + Math.random());
         var startTime = new Date().getTime();
-
         var key = this.storageKey;
         var pollIntervalMS = this.pollIntervalMS;
         var timeoutMS = this.timeoutMS;
@@ -3276,11 +3320,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
 };
 
 /**
- * @typedef {import('./wrapper').StorageWrapper}
- */
-
-/**
- * @type {StorageWrapper}
+ * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function (storageOverride) {
     this.storage = storageOverride || localStorage;
@@ -3293,7 +3333,7 @@ LocalStorageWrapper.prototype.init = function () {
 LocalStorageWrapper.prototype.setItem = function (key, value) {
     return new PromisePolyfill(_.bind(function (resolve, reject) {
         try {
-            this.storage.setItem(key, value);
+            this.storage.setItem(key, JSONStringify(value));
         } catch (e) {
             reject(e);
         }
@@ -3305,7 +3345,7 @@ LocalStorageWrapper.prototype.getItem = function (key) {
     return new PromisePolyfill(_.bind(function (resolve, reject) {
         var item;
         try {
-            item = this.storage.getItem(key);
+            item = JSONParse(this.storage.getItem(key));
         } catch (e) {
             reject(e);
         }
@@ -3348,8 +3388,10 @@ var RequestQueue = function (storageKey, options) {
     this.usePersistence = options.usePersistence;
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
-        this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
-        this.queueStorage.init();
+        this.lock = new SharedLock(storageKey, {
+            storage: options.sharedLockStorage || win.localStorage,
+            timeoutMS: options.sharedLockTimeoutMS,
+        });
     }
     this.reportError = options.errorReporter || _.bind(logger$1.error, logger$1);
 
@@ -3357,6 +3399,14 @@ var RequestQueue = function (storageKey, options) {
 
     this.memQueue = [];
     this.initialized = false;
+
+    if (options.enqueueThrottleMs) {
+        this.enqueuePersisted = batchedThrottle(_.bind(this._enqueuePersisted, this), options.enqueueThrottleMs);
+    } else {
+        this.enqueuePersisted = _.bind(function (queueEntry) {
+            return this._enqueuePersisted([queueEntry]);
+        }, this);
+    }
 };
 
 RequestQueue.prototype.ensureInit = function () {
@@ -3399,36 +3449,39 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
         this.memQueue.push(queueEntry);
         return PromisePolyfill.resolve(true);
     } else {
+        return this.enqueuePersisted(queueEntry);
+    }
+};
 
-        var enqueueItem = _.bind(function () {
-            return this.ensureInit()
-                .then(_.bind(function () {
-                    return this.readFromStorage();
-                }, this))
-                .then(_.bind(function (storedQueue) {
-                    storedQueue.push(queueEntry);
-                    return this.saveToStorage(storedQueue);
-                }, this))
-                .then(_.bind(function (succeeded) {
-                    // only add to in-memory queue when storage succeeds
-                    if (succeeded) {
-                        this.memQueue.push(queueEntry);
-                    }
-                    return succeeded;
-                }, this))
-                .catch(_.bind(function (err) {
-                    this.reportError('Error enqueueing item', err, item);
-                    return false;
-                }, this));
-        }, this);
+RequestQueue.prototype._enqueuePersisted = function (queueEntries) {
+    var enqueueItem = _.bind(function () {
+        return this.ensureInit()
+            .then(_.bind(function () {
+                return this.readFromStorage();
+            }, this))
+            .then(_.bind(function (storedQueue) {
+                return this.saveToStorage(storedQueue.concat(queueEntries));
+            }, this))
+            .then(_.bind(function (succeeded) {
+                // only add to in-memory queue when storage succeeds
+                if (succeeded) {
+                    this.memQueue = this.memQueue.concat(queueEntries);
+                }
 
-        return this.lock
-            .withLock(enqueueItem, this.pid)
+                return succeeded;
+            }, this))
             .catch(_.bind(function (err) {
-                this.reportError('Error acquiring storage lock', err);
+                this.reportError('Error enqueueing items', err, queueEntries);
                 return false;
             }, this));
-    }
+    }, this);
+
+    return this.lock
+        .withLock(enqueueItem, this.pid)
+        .catch(_.bind(function (err) {
+            this.reportError('Error acquiring storage lock', err);
+            return false;
+        }, this));
 };
 
 /**
@@ -3449,7 +3502,7 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
             }, this))
             .then(_.bind(function (storedQueue) {
                 if (storedQueue.length) {
-                // item IDs already in batch; don't duplicate out of storage
+                    // item IDs already in batch; don't duplicate out of storage
                     var idsInBatch = {}; // poor man's Set
                     _.each(batch, function (item) {
                         idsInBatch[item['id']] = true;
@@ -3536,7 +3589,7 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
             .withLock(removeFromStorage, this.pid)
             .catch(_.bind(function (err) {
                 this.reportError('Error acquiring storage lock', err);
-                if (!localStorageSupported(this.queueStorage.storage, true)) {
+                if (!localStorageSupported(this.lock.storage, true)) {
                     // Looks like localStorage writes have stopped working sometime after
                     // initialization (probably full), and so nobody can acquire locks
                     // anymore. Consider it temporarily safe to remove items without the
@@ -3624,7 +3677,6 @@ RequestQueue.prototype.readFromStorage = function () {
         }, this))
         .then(_.bind(function (storageEntry) {
             if (storageEntry) {
-                storageEntry = JSONParse(storageEntry);
                 if (!_.isArray(storageEntry)) {
                     this.reportError('Invalid storage entry:', storageEntry);
                     storageEntry = null;
@@ -3642,16 +3694,9 @@ RequestQueue.prototype.readFromStorage = function () {
  * Serialize the given items array to localStorage.
  */
 RequestQueue.prototype.saveToStorage = function (queue) {
-    try {
-        var serialized = JSONStringify(queue);
-    } catch (err) {
-        this.reportError('Error serializing queue', err);
-        return PromisePolyfill.resolve(false);
-    }
-
     return this.ensureInit()
         .then(_.bind(function () {
-            return this.queueStorage.setItem(this.storageKey, serialized);
+            return this.queueStorage.setItem(this.storageKey, queue);
         }, this))
         .then(function () {
             return true;
@@ -3695,7 +3740,9 @@ var RequestBatcher = function(storageKey, options) {
         errorReporter: _.bind(this.reportError, this),
         queueStorage: options.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
-        usePersistence: options.usePersistence
+        sharedLockTimeoutMS: options.sharedLockTimeoutMS,
+        usePersistence: options.usePersistence,
+        enqueueThrottleMs: options.enqueueThrottleMs
     });
 
     this.libConfig = options.libConfig;
@@ -3717,6 +3764,8 @@ var RequestBatcher = function(storageKey, options) {
     // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
     // in a request loop and get ratelimited by the server.
     this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
+
+    this._flushPromise = null;
 };
 
 /**
@@ -3776,7 +3825,7 @@ RequestBatcher.prototype.scheduleFlush = function(flushMS) {
     if (!this.stopped) { // don't schedule anymore if batching has been stopped
         this.timeoutID = setTimeout(_.bind(function() {
             if (!this.stopped) {
-                this.flush();
+                this._flushPromise = this.flush();
             }
         }, this), this.flushInterval);
     }
@@ -5492,6 +5541,129 @@ MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
     return timestamp;
 };
 
+var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
+
+var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
+var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
+
+// note: increment the version number when adding new object stores
+var DB_VERSION = 1;
+var OBJECT_STORES = [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME];
+
+/**
+ * @type {import('./wrapper').StorageWrapper}
+ */
+var IDBStorageWrapper = function (storeName) {
+    /**
+     * @type {Promise<IDBDatabase>|null}
+     */
+    this.dbPromise = null;
+    this.storeName = storeName;
+};
+
+IDBStorageWrapper.prototype._openDb = function () {
+    return new PromisePolyfill(function (resolve, reject) {
+        var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+        openRequest['onerror'] = function () {
+            reject(openRequest.error);
+        };
+
+        openRequest['onsuccess'] = function () {
+            resolve(openRequest.result);
+        };
+
+        openRequest['onupgradeneeded'] = function (ev) {
+            var db = ev.target.result;
+
+            OBJECT_STORES.forEach(function (storeName) {
+                db.createObjectStore(storeName);
+            });
+        };
+    });
+};
+
+IDBStorageWrapper.prototype.init = function () {
+    if (!win.indexedDB) {
+        return PromisePolyfill.reject('indexedDB is not supported in this browser');
+    }
+
+    if (!this.dbPromise) {
+        this.dbPromise = this._openDb();
+    }
+
+    return this.dbPromise
+        .then(function (dbOrError) {
+            if (dbOrError instanceof win['IDBDatabase']) {
+                return PromisePolyfill.resolve();
+            } else {
+                return PromisePolyfill.reject(dbOrError);
+            }
+        });
+};
+
+/**
+ * @param {IDBTransactionMode} mode
+ * @param {function(IDBObjectStore): void} storeCb
+ */
+IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
+    var storeName = this.storeName;
+    var doTransaction = function (db) {
+        return new PromisePolyfill(function (resolve, reject) {
+            var transaction = db.transaction(storeName, mode);
+            transaction.oncomplete = function () {
+                resolve(transaction);
+            };
+            transaction.onabort = transaction.onerror = function () {
+                reject(transaction.error);
+            };
+
+            storeCb(transaction.objectStore(storeName));
+        });
+    };
+
+    return this.dbPromise
+        .then(doTransaction)
+        .catch(function (err) {
+            if (err['name'] === 'InvalidStateError') {
+                // try reopening the DB if the connection is closed
+                this.dbPromise = this._openDb();
+                return this.dbPromise.then(doTransaction);
+            } else {
+                return PromisePolyfill.reject(err);
+            }
+        }.bind(this));
+};
+
+IDBStorageWrapper.prototype.setItem = function (key, value) {
+    return this.makeTransaction('readwrite', function (objectStore) {
+        objectStore.put(value, key);
+    });
+};
+
+IDBStorageWrapper.prototype.getItem = function (key) {
+    var req;
+    return this.makeTransaction('readonly', function (objectStore) {
+        req = objectStore.get(key);
+    }).then(function () {
+        return req.result;
+    });
+};
+
+IDBStorageWrapper.prototype.removeItem = function (key) {
+    return this.makeTransaction('readwrite', function (objectStore) {
+        objectStore.delete(key);
+    });
+};
+
+IDBStorageWrapper.prototype.getAll = function () {
+    var req;
+    return this.makeTransaction('readonly', function (objectStore) {
+        req = objectStore.getAll();
+    }).then(function () {
+        return req.result;
+    });
+};
+
 /* eslint camelcase: "off" */
 
 /*
@@ -5505,11 +5677,6 @@ MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
  * (c) 2011 Jeremy Ashkenas, DocumentCloud Inc.
  * Released under the MIT License.
  */
-
-// ==ClosureCompiler==
-// @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.8.min.js
-// ==/ClosureCompiler==
 
 /*
 SIMPLE STYLE GUIDE:
@@ -5533,7 +5700,6 @@ var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
 
 var IDENTITY_FUNC = function(x) {return x;};
-var NOOP_FUNC = function() {};
 
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
@@ -5842,34 +6008,125 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.autocapture = new Autocapture(this);
     this.autocapture.init();
 
-    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
-        this.start_session_recording();
+    this._init_tab_id();
+    this._check_and_start_session_recording();
+};
+
+/**
+ * Assigns a unique UUID to this tab / window by leveraging sessionStorage.
+ * This is primarily used for session recording, where data must be isolated to the current tab.
+ */
+MixpanelLib.prototype._init_tab_id = function() {
+    if (_.sessionStorage.is_supported()) {
+        try {
+            var key_suffix = this.get_config('name') + '_' + this.get_config('token');
+            var tab_id_key = 'mp_tab_id_' + key_suffix;
+
+            // A flag is used to determine if sessionStorage is copied over and we need to generate a new tab ID.
+            // This enforces a unique ID in the cases like duplicated tab, window.open(...)
+            var should_generate_new_tab_id_key = 'mp_gen_new_tab_id_' + key_suffix;
+            if (_.sessionStorage.get(should_generate_new_tab_id_key) || !_.sessionStorage.get(tab_id_key)) {
+                _.sessionStorage.set(tab_id_key, '$tab-' + _.UUID());
+            }
+
+            _.sessionStorage.set(should_generate_new_tab_id_key, '1');
+            this.tab_id = _.sessionStorage.get(tab_id_key);
+
+            // Remove the flag when the tab is unloaded to indicate the stored tab ID can be reused. This event is not reliable to detect all page unloads,
+            // but reliable in cases where the user remains in the tab e.g. a refresh or href navigation.
+            // If the flag is absent, this indicates to the next SDK instance that we can reuse the stored tab_id.
+            win.addEventListener('beforeunload', function () {
+                _.sessionStorage.remove(should_generate_new_tab_id_key);
+            });
+        } catch(err) {
+            this.report_error('Error initializing tab id', err);
+        }
+    } else {
+        this.report_error('Session storage is not supported, cannot keep track of unique tab ID.');
     }
 };
 
-MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function () {
+MixpanelLib.prototype.get_tab_id = function () {
+    return this.tab_id || null;
+};
+
+MixpanelLib.prototype._should_load_recorder = function () {
+    var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    var tab_id = this.get_tab_id();
+    return recording_registry_idb.init()
+        .then(function () {
+            return recording_registry_idb.getAll();
+        })
+        .then(function (recordings) {
+            for (var i = 0; i < recordings.length; i++) {
+                // if there are expired recordings in the registry, we should load the recorder to flush them
+                // if there's a recording for this tab id, we should load the recorder to continue the recording
+                if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {
+                    return true;
+                }
+            }
+            return false;
+        })
+        .catch(_.bind(function (err) {
+            this.report_error('Error checking recording registry', err);
+        }, this));
+};
+
+MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpanelLib(function(force_start) {
     if (!win['MutationObserver']) {
         console.critical('Browser does not support MutationObserver; skipping session recording');
         return;
     }
 
-    var handleLoadedRecorder = _.bind(function() {
-        this._recorder = this._recorder || new win['__mp_recorder'](this);
-        this._recorder['startRecording']();
+    var loadRecorder = _.bind(function(startNewIfInactive) {
+        var handleLoadedRecorder = _.bind(function() {
+            this._recorder = this._recorder || new win['__mp_recorder'](this);
+            this._recorder['resumeRecording'](startNewIfInactive);
+        }, this);
+
+        if (_.isUndefined(win['__mp_recorder'])) {
+            load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+        } else {
+            handleLoadedRecorder();
+        }
     }, this);
 
-    if (_.isUndefined(win['__mp_recorder'])) {
-        load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+    /**
+     * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
+     * Otherwise, if the recording registry has any records then it's likely there's a recording in progress or orphaned data that needs to be flushed.
+     */
+    var is_sampled = this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent');
+    if (force_start || is_sampled) {
+        loadRecorder(true);
     } else {
-        handleLoadedRecorder();
+        this._should_load_recorder()
+            .then(function (shouldLoad) {
+                if (shouldLoad) {
+                    loadRecorder(false);
+                }
+            });
     }
 });
+
+MixpanelLib.prototype.start_session_recording = function () {
+    this._check_and_start_session_recording(true);
+};
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
         this._recorder['stopRecording']();
-    } else {
-        console.critical('Session recorder module not loaded');
+    }
+};
+
+MixpanelLib.prototype.pause_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['pauseRecording']();
+    }
+};
+
+MixpanelLib.prototype.resume_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['resumeRecording']();
     }
 };
 
@@ -5902,6 +6159,11 @@ MixpanelLib.prototype._get_session_replay_id = function () {
         replay_id = this._recorder['replayId'];
     }
     return replay_id || null;
+};
+
+// "private" public method to reach into the recorder in test cases
+MixpanelLib.prototype.__get_recorder = function () {
+    return this._recorder;
 };
 
 // Private methods
@@ -6243,7 +6505,8 @@ MixpanelLib.prototype.init_batchers = function() {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
-                    usePersistence: true
+                    usePersistence: true,
+                    enqueueThrottleMs: 10,
                 }
             );
         }, this);
@@ -7344,6 +7607,7 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
 
     if (disabled) {
         this.stop_batch_senders();
+        this.stop_session_recording();
     } else {
         // only start batchers after opt-in if they have previously been started
         // in order to avoid unintentionally starting up batching for the first time
@@ -7584,9 +7848,15 @@ MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.protot
 MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
 MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['pause_session_recording']            = MixpanelLib.prototype.pause_session_recording;
+MixpanelLib.prototype['resume_session_recording']           = MixpanelLib.prototype.resume_session_recording;
 MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
 MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
+MixpanelLib.prototype['get_tab_id']                         = MixpanelLib.prototype.get_tab_id;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
+
+// Exports intended only for testing
+MixpanelLib.prototype['__get_recorder']                     = MixpanelLib.prototype.__get_recorder;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;

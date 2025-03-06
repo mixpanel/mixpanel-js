@@ -1,12 +1,8 @@
 import { Promise } from '../promise-polyfill';
-import { _ } from '../utils'; // eslint-disable-line camelcase
+import { _, JSONParse, JSONStringify } from '../utils'; // eslint-disable-line camelcase
 
 /**
- * @typedef {import('./wrapper').StorageWrapper}
- */
-
-/**
- * @type {StorageWrapper}
+ * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function (storageOverride) {
     this.storage = storageOverride || localStorage;
@@ -19,7 +15,7 @@ LocalStorageWrapper.prototype.init = function () {
 LocalStorageWrapper.prototype.setItem = function (key, value) {
     return new Promise(_.bind(function (resolve, reject) {
         try {
-            this.storage.setItem(key, value);
+            this.storage.setItem(key, JSONStringify(value));
         } catch (e) {
             reject(e);
         }
@@ -31,7 +27,7 @@ LocalStorageWrapper.prototype.getItem = function (key) {
     return new Promise(_.bind(function (resolve, reject) {
         var item;
         try {
-            item = this.storage.getItem(key);
+            item = JSONParse(this.storage.getItem(key));
         } catch (e) {
             reject(e);
         }
