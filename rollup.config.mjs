@@ -73,6 +73,32 @@ export default [
         ],
     },
 
+    // IIFE mixpanel core with bundled recorder
+    {
+        input: 'src/loaders/loader-globals-with-recorder.js',
+        output: [
+            {
+                file: 'build/mixpanel-with-recorder.js',
+                name: 'mixpanel',
+                format: 'iife',
+            },
+            {
+                file: 'build/mixpanel-with-recorder.min.js',
+                name: 'mixpanel',
+                format: 'iife',
+                plugins: [esbuild({target: 'es5', minify: true, sourceMap: true})],
+            },
+        ],
+        plugins: [
+            aliasRrweb(),
+            nodeResolve({
+                browser: true,
+                main: true,
+                jsnext: true,
+            })
+        ],
+    },
+
 
     // Modules builds that are bundled with the recorder
     {
