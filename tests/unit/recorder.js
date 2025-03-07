@@ -95,6 +95,7 @@ describe(`Recorder`, function() {
     const timedOutRecording = recorder.activeRecording;
 
     mockRrweb.emit(EventType.Meta);
+    mockRrweb.emit(EventType.FullSnapshot);
     clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
     await timedOutRecording.__enqueuePromise;
     await clock.tickAsync(30 * 60 * 1000);
@@ -131,6 +132,8 @@ describe(`Recorder`, function() {
       const replayId = recorder.getActiveReplayId();
 
       mockRrweb.emit(EventType.Meta);
+      mockRrweb.emit(EventType.FullSnapshot);
+
       await clock.tickAsync(RECORD_ENQUEUE_THROTTLE_MS);
       await recorder.activeRecording.__enqueuePromise;
       await recorder.pauseRecording();
@@ -240,7 +243,8 @@ describe(`Recorder`, function() {
       await tab2Recording.startRecording();
       const tab2ReplayId = tab2Recording.getActiveReplayId();
       expect(tab2ReplayId).to.not.equal(tab1ReplayId);
-      tab2Rrweb.emit(4);
+      tab2Rrweb.emit(EventType.Meta);
+      tab2Rrweb.emit(EventType.FullSnapshot);
       clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
       await tab2Recording.activeRecording.__enqueuePromise;
       await clock.tickAsync(10 * 1000);
@@ -249,7 +253,7 @@ describe(`Recorder`, function() {
       expect(fetchStub.callCount).to.equal(2);
       expect(fetchStub.getCall(1).args[0]).to.contain(`replay_id=${tab2ReplayId}`);
       const tab2EventTypes = JSON.parse(fetchStub.getCall(1).args[1].body).map(e => e.type);
-      expect(tab2EventTypes).to.deep.equal([4]);
+      expect(tab2EventTypes).to.deep.equal([EventType.Meta, EventType.FullSnapshot]);
     });
 
     /**

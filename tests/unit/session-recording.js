@@ -53,7 +53,7 @@ describe(`SessionRecording`, function() {
     });
     flushSpy = sinon.spy(sessionRecording.batcher, `flush`);
 
-    fetchStub = sinon.stub().returns(Promise.resolve());
+    fetchStub = sinon.stub().returns(Promise.resolve(new Response(JSON.stringify({code: 200, status: `OK`}))));
     window.fetch = fetchStub;
   });
 
@@ -266,5 +266,69 @@ describe(`SessionRecording`, function() {
 
     const queueAfterFlush = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
     expect(queueAfterFlush).to.not.be.ok;
+  });
+
+  it(`aborts recording and doesn't flush if there is no full snapshot on the first sequence`, async function() {
+    sessionRecording.startRecording();
+
+    mockRrweb.emit(EventType.Meta);
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
+    await sessionRecording.__enqueuePromise;
+    clock.tick(10 * 1000);
+    await sessionRecording.batcher._flushPromise;
+
+    expect(flushSpy.calledOnce).to.be.false;
+    expect(mockRrweb.stopSpy.calledOnce).to.be.true;
+    expect(sessionRecording.isRrwebStopped()).to.be.true;
+  });
+
+  it(`sends the right timestamps if events arrive in the queue out of order`, async function () {
+    sessionRecording.startRecording();
+
+    mockRrweb.emit(EventType.Meta);
+    clock.tick(1000);
+    await sessionRecording.__enqueuePromise;
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+    mockRrweb.emit(EventType.FullSnapshot, null, NOW_MS); // out of order
+
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
+    await sessionRecording.__enqueuePromise;
+    clock.tick(10 * 1000);
+    await sessionRecording.batcher._flushPromise;
+
+    expect(flushSpy.calledTwice).to.be.true;
+    expect(fetchStub.calledOnce).to.be.true;
+
+    const fetchCall = fetchStub.getCall(0);
+    const calledURL = fetchCall.args[0];
+    expect(calledURL.startsWith(`https://api.mixpanel.com/record`)).to.be.true;
+
+    const paramsStr = calledURL.split(`?`)[1];
+    const params = new URLSearchParams(paramsStr);
+    expect(params.get(`replay_start_time`)).to.equal((NOW_MS / 1000).toString());
+    expect(params.get(`replay_length_ms`)).to.equal(`1000`);
+    expect(params.get(`batch_start_time`)).to.equal((NOW_MS / 1000).toString());
+
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction, NOW_MS + 1000); // out of order
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
+    await sessionRecording.__enqueuePromise;
+    clock.tick(10 * 1000);
+    await sessionRecording.batcher._flushPromise;
+
+    expect(flushSpy.calledThrice).to.be.true;
+    expect(fetchStub.calledTwice).to.be.true;
+
+    const fetchCall2 = fetchStub.getCall(1);
+    const calledURL2 = fetchCall2.args[0];
+    expect(calledURL2.startsWith(`https://api.mixpanel.com/record`)).to.be.true;
+
+    const paramsStr2 = calledURL2.split(`?`)[1];
+    const params2 = new URLSearchParams(paramsStr2);
+    expect(params2.get(`replay_start_time`)).to.equal((NOW_MS / 1000).toString());
+    expect(params2.get(`replay_length_ms`)).to.equal((11 * 1000 + RECORD_ENQUEUE_THROTTLE_MS).toString());
+
+    expect(params2.get(`batch_start_time`)).to.equal(((NOW_MS + 1000) / 1000).toString());
   });
 });

@@ -368,17 +368,32 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
 
     if (numEvents > 0) {
         var replayId = this.replayId;
-        // each rrweb event has a timestamp - leverage those to get time properties
-        var batchStartTime = data[0].timestamp;
-        if (this.seqNo === 0 || !this.replayStartTime) {
-            // extra safety net so that we don't send a null replay start time
-            if (this.seqNo !== 0) {
-                this.reportError('Replay start time not set but seqNo is not 0. Using current batch start time as a fallback.');
-            }
 
+        // each rrweb event has a timestamp - leverage those to get time properties
+        var batchStartTime = Infinity;
+        var batchEndTime = -Infinity;
+        var hasFullSnapshot = false;
+        for (var i = 0; i < numEvents; i++) {
+            batchStartTime = Math.min(batchStartTime, data[i].timestamp);
+            batchEndTime = Math.max(batchEndTime, data[i].timestamp);
+            if (data[i].type === EventType.FullSnapshot) {
+                hasFullSnapshot = true;
+            }
+        }
+
+        if (this.seqNo === 0) {
+            if (!hasFullSnapshot) {
+                callback({error: 'First batch does not contain a full snapshot. Aborting recording.'});
+                this.stopRecording(true);
+                return;
+            }
+            this.replayStartTime = batchStartTime;
+        } else if (!this.replayStartTime) {
+            this.reportError('Replay start time not set but seqNo is not 0. Using current batch start time as a fallback.');
             this.replayStartTime = batchStartTime;
         }
-        var replayLengthMs = data[numEvents - 1].timestamp - this.replayStartTime;
+
+        var replayLengthMs = batchEndTime - this.replayStartTime;
 
         var reqParams = {
             '$current_url': this.batchStartUrl,
