@@ -193,34 +193,37 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         blockSelector = undefined;
     }
 
-    this._stopRecording = this._rrwebRecord({
-        'emit': addOptOutCheckMixpanelLib(function (ev) {
-            if (isUserEvent(ev)) {
-                if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
-                    // start flushing again after user activity
-                    this.batcher.start();
+    try {
+        this._stopRecording = this._rrwebRecord({
+            'emit': function (ev) {
+                if (isUserEvent(ev)) {
+                    if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
+                        // start flushing again after user activity
+                        this.batcher.start();
+                    }
+                    resetIdleTimeout();
                 }
-                resetIdleTimeout();
+                // promise only used to await during tests
+                this.__enqueuePromise = this.batcher.enqueue(ev);
+            }.bind(this),
+            'blockClass': this.getConfig('record_block_class'),
+            'blockSelector': blockSelector,
+            'collectFonts': this.getConfig('record_collect_fonts'),
+            'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
+                'type': 'image/webp',
+                'quality': 0.6
+            },
+            'maskAllInputs': true,
+            'maskTextClass': this.getConfig('record_mask_text_class'),
+            'maskTextSelector': this.getConfig('record_mask_text_selector'),
+            'recordCanvas': this.getConfig('record_canvas'),
+            'sampling': {
+                'canvas': 15
             }
-
-            // promise only used to await during tests
-            this.__enqueuePromise = this.batcher.enqueue(ev);
-        }.bind(this)),
-        'blockClass': this.getConfig('record_block_class'),
-        'blockSelector': blockSelector,
-        'collectFonts': this.getConfig('record_collect_fonts'),
-        'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
-            'type': 'image/webp',
-            'quality': 0.6
-        },
-        'maskAllInputs': true,
-        'maskTextClass': this.getConfig('record_mask_text_class'),
-        'maskTextSelector': this.getConfig('record_mask_text_selector'),
-        'recordCanvas': this.getConfig('record_canvas'),
-        'sampling': {
-            'canvas': 15
-        }
-    });
+        });
+    } catch (err) {
+        this.reportError('Unexpected error when starting rrweb recording.', err);
+    }
 
     if (typeof this._stopRecording !== 'function') {
         this.reportError('rrweb failed to start, skipping this recording.');
