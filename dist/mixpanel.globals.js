@@ -5625,7 +5625,7 @@
         return this.dbPromise
             .then(doTransaction)
             .catch(function (err) {
-                if (err['name'] === 'InvalidStateError') {
+                if (err && err['name'] === 'InvalidStateError') {
                     // try reopening the DB if the connection is closed
                     this.dbPromise = this._openDb();
                     return this.dbPromise.then(doTransaction);
