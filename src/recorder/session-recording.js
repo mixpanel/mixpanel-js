@@ -267,12 +267,21 @@ SessionRecording.prototype.isRrwebStopped = function () {
     return this._stopRecording === null;
 };
 
+
 /**
  * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
  * we stop recording and dump any queued events if the user has opted out.
  */
 SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
-    this._flushEvents(data, options, cb, this._onOptOut.bind(this));
+    var onOptOut = function (code) {
+        // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
+        if (code === 0) {
+            this.stopRecording();
+            cb({error: 'Tracking has been opted out, stopping recording.'});
+        }
+    }.bind(this);
+
+    this._flushEvents(data, options, cb, onOptOut);
 };
 
 /**
@@ -320,13 +329,6 @@ SessionRecording.deserialize = function (serializedRecording, options) {
     }));
 
     return recording;
-};
-
-SessionRecording.prototype._onOptOut = function (code) {
-    // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
-    if (code === 0) {
-        this.stopRecording();
-    }
 };
 
 SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
