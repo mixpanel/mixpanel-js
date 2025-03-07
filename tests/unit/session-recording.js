@@ -360,5 +360,8 @@ describe(`SessionRecording`, function() {
     expect(fetchStub.calledOnce).to.be.false;
     expect(mockRrweb.stopSpy.calledOnce).to.be.true;
     expect(sessionRecording.isRrwebStopped()).to.be.true;
+
+    const queue = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
+    expect(queue.length).to.equal(0, `batcher should have removed the items from IDB`);
   });
 });
