@@ -18,6 +18,7 @@ export class MockMixpanelLib {
       'api_routes': {
         'record': `record`,
       },
+      'opt_out_tracking_persistence_type': `localStorage`,
       // helpful for some debugging, commented out for noise
       // 'error_reporter': console.error
     }[configVar];
