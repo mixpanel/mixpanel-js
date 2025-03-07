@@ -195,7 +195,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
     try {
         this._stopRecording = this._rrwebRecord({
-            'emit': _.bind(function (ev) {
+            'emit': function (ev) {
                 if (isUserEvent(ev)) {
                     if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
                         // start flushing again after user activity
@@ -205,7 +205,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                 }
                 // promise only used to await during tests
                 this.__enqueuePromise = this.batcher.enqueue(ev);
-            }, this),
+            }.bind(this),
             'blockClass': this.getConfig('record_block_class'),
             'blockSelector': blockSelector,
             'collectFonts': this.getConfig('record_collect_fonts'),
