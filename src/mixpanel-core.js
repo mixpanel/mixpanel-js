@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify } from './utils';
 import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
@@ -933,7 +933,7 @@ MixpanelLib.prototype.disable = function(events) {
 };
 
 MixpanelLib.prototype._encode_data_for_request = function(data) {
-    var encoded_data = _.JSONEncode(data);
+    var encoded_data = JSONStringify(data);
     if (this.get_config('api_payload_format') === PAYLOAD_TYPE_BASE64) {
         encoded_data = _.base64Encode(encoded_data);
     }
