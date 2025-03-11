@@ -4893,7 +4893,7 @@ define((function () { 'use strict';
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.61.1-rc1'
+        LIB_VERSION: '2.61.1'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
