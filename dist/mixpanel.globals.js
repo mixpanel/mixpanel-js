@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.61.1'
+        LIB_VERSION: '2.61.2-rc1'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -6507,7 +6507,6 @@
                         }, this),
                         stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
                         usePersistence: true,
-                        enqueueThrottleMs: 10,
                     }
                 );
             }, this);

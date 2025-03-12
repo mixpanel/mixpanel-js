@@ -11845,7 +11845,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.61.1'
+    LIB_VERSION: '2.61.2-rc1'
 };
 
 exports['default'] = Config;
@@ -13257,8 +13257,7 @@ MixpanelLib.prototype.init_batchers = function () {
                     return this._run_hook('before_send_' + attrs.type, item);
                 }, this),
                 stopAllBatchingFunc: _utils._.bind(this.stop_batch_senders, this),
-                usePersistence: true,
-                enqueueThrottleMs: 10
+                usePersistence: true
             });
         }, this);
         var batcher_configs = this.get_batcher_configs();

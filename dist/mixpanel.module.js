@@ -4891,7 +4891,7 @@ var IncrementalSource = /* @__PURE__ */ ((IncrementalSource2) => {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.61.1'
+    LIB_VERSION: '2.61.2-rc1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -11683,7 +11683,6 @@ MixpanelLib.prototype.init_batchers = function() {
                     }, this),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
                     usePersistence: true,
-                    enqueueThrottleMs: 10,
                 }
             );
         }, this);
