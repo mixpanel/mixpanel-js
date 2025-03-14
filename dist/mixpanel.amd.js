@@ -16257,7 +16257,7 @@ define((function () { 'use strict';
      * @type {import('./wrapper').StorageWrapper}
      */
     var LocalStorageWrapper = function (storageOverride) {
-        this.storage = storageOverride || localStorage;
+        this.storage = storageOverride || window.localStorage;
     };
 
     LocalStorageWrapper.prototype.init = function () {

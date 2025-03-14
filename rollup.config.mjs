@@ -2,6 +2,7 @@ import nodeResolve from '@rollup/plugin-node-resolve';
 import swc from '@rollup/plugin-swc';
 import esbuild from 'rollup-plugin-esbuild';
 import alias from '@rollup/plugin-alias';
+import closureCompiler from '@ampproject/rollup-plugin-closure-compiler';
 
 const COMPILED_RRWEB_PATH = 'build/rrweb-compiled.js';
 
@@ -10,6 +11,12 @@ const aliasRrweb = () => alias({
         { find: 'rrweb', replacement: COMPILED_RRWEB_PATH },
     ]
 });
+
+const COMMON_CLOSURE_FLAGS = {
+    compilation_level: 'ADVANCED_OPTIMIZATIONS',
+    language_in: 'ECMASCRIPT5',
+    externs: ['src/externs.js'],
+};
 
 export default [
     // compile rrweb first to es5 with swc, we'll replace the import later on
@@ -53,6 +60,11 @@ export default [
                 name: 'mixpanel',
                 format: 'iife',
             },
+            {
+                file: 'build/mixpanel.min.js',
+                format: 'iife',
+                plugins: [closureCompiler(COMMON_CLOSURE_FLAGS)],
+            },
         ],
         plugins: [
             nodeResolve({
@@ -63,13 +75,32 @@ export default [
         ]
     },
 
-    // IIFE mixpanel snippet loader (minified later by closure)
+    // Minified snippets for loading mixpanel
+    {
+        input: 'src/loaders/mixpanel-jslib-snippet.js',
+        output: [
+            {
+                file: 'build/mixpanel-jslib-snippet.min.js',
+                plugins: [closureCompiler(COMMON_CLOSURE_FLAGS)]
+            },
+            {
+                file: 'build/mixpanel-jslib-snippet.min.test.js',
+                plugins: [closureCompiler({...COMMON_CLOSURE_FLAGS, define: 'MIXPANEL_LIB_URL="../build/mixpanel.min.js"'})],
+            }
+        ],
+    },
+
+    // IIFE mixpanel snippet loader
     {
         input: 'src/loaders/mixpanel-js-wrapper.js',
         output: [
             {
                 file: 'build/mixpanel-js-wrapper.js',
             },
+            {
+                file: 'build/mixpanel-js-wrapper.min.js',
+                plugins: [closureCompiler(COMMON_CLOSURE_FLAGS)],
+            }
         ],
     },
 

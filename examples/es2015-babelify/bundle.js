@@ -26055,7 +26055,7 @@ var _utils = require('../utils');
  * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function LocalStorageWrapper(storageOverride) {
-    this.storage = storageOverride || localStorage;
+    this.storage = storageOverride || window.localStorage;
 };
 
 LocalStorageWrapper.prototype.init = function () {
