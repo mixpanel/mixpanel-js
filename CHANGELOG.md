@@ -1,3 +1,6 @@
+**2.61.2** (14 Mar 2025)
+- Revert 10ms throttle on enqueueing events to improve tracking reliability on page unload
+
 **2.61.1** (11 Mar 2025)
 - Session recording stops if initial DOM snapshot fails
 - Errors triggered by rrweb's record function are now caught
