@@ -18,7 +18,8 @@ const COMMON_CLOSURE_FLAGS = {
     externs: ['src/externs.js'],
 };
 
-export default [
+// Main builds used to develop / iterate quickly
+const MAIN_BUILDS = [
     // compile rrweb first to es5 with swc, we'll replace the import later on
     {
         'input': 'rrweb',
@@ -51,7 +52,7 @@ export default [
         plugins: [aliasRrweb()],
     },
 
-    // IIFE main mixpanel build (minified later by closure)
+    // IIFE main mixpanel build
     {
         input: 'src/loaders/loader-globals.js',
         output: [
@@ -74,7 +75,10 @@ export default [
             })
         ]
     },
+]
 
+const ALL_BUILDS = [
+    ...MAIN_BUILDS,
     // Minified snippets for loading mixpanel
     {
         input: 'src/loaders/mixpanel-jslib-snippet.js',
@@ -205,3 +209,5 @@ export default [
         ],
     }
 ];
+
+export default process.env.FULL ? ALL_BUILDS : MAIN_BUILDS;
