@@ -4,6 +4,7 @@ import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NO
 import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
+import { FeatureFlagManager } from './flags';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -86,10 +87,11 @@ if (navigator['sendBeacon']) {
 }
 
 var DEFAULT_API_ROUTES = {
-    'track': 'track/',
+    'track':  'track/',
     'engage': 'engage/',
     'groups': 'groups/',
-    'record': 'record/'
+    'record': 'record/',
+    'flags':  'flags/'
 };
 
 /*
@@ -107,6 +109,7 @@ var DEFAULT_CONFIG = {
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
     'error_reporter':                    NOOP_FUNC,
+    'flags':                             false,
     'persistence':                       'cookie',
     'persistence_name':                  '',
     'cookie_domain':                     '',
@@ -361,6 +364,13 @@ MixpanelLib.prototype._init = function(token, config, name) {
             '$device_id': uuid
         }, '');
     }
+
+    this.flags = new FeatureFlagManager({
+        get_config_func: _.bind(this.get_config, this),
+        get_distinct_id_func: _.bind(this.get_distinct_id, this)
+    });
+    this.flags.init();
+    this['flags'] = this.flags;
 
     this.autocapture = new Autocapture(this);
     this.autocapture.init();
