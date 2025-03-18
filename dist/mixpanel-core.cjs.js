@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.58.0'
+    LIB_VERSION: '2.61.2'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -14,11 +14,14 @@ if (typeof(window) === 'undefined') {
     win = {
         navigator: { userAgent: '', onLine: true },
         document: {
+            createElement: function() { return {}; },
             location: loc,
             referrer: ''
         },
         screen: { width: 0, height: 0 },
-        location: loc
+        location: loc,
+        addEventListener: function() {},
+        removeEventListener: function() {}
     };
 } else {
     win = window;
@@ -490,6 +493,29 @@ var console_with_prefix = function(prefix) {
         error: log_func_with_prefix(console.error, prefix),
         critical: log_func_with_prefix(console.critical, prefix)
     };
+};
+
+
+var safewrap = function(f) {
+    return function() {
+        try {
+            return f.apply(this, arguments);
+        } catch (e) {
+            console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
+            if (Config.DEBUG){
+                console.critical(e);
+            }
+        }
+    };
+};
+
+var safewrapClass = function(klass) {
+    var proto = klass.prototype;
+    for (var func in proto) {
+        if (typeof(proto[func]) === 'function') {
+            proto[func] = safewrap(proto[func]);
+        }
+    }
 };
 
 
@@ -1271,6 +1297,7 @@ _.UUID = (function() {
 var BLOCKED_UA_STRS = [
     'ahrefsbot',
     'ahrefssiteaudit',
+    'amazonbot',
     'baiduspider',
     'bingbot',
     'bingpreview',
@@ -1280,7 +1307,7 @@ var BLOCKED_UA_STRS = [
     'pinterest',
     'screaming frog',
     'yahoo! slurp',
-    'yandexbot',
+    'yandex',
 
     // a whole bunch of goog-specific crawlers
     // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers
@@ -1439,15 +1466,9 @@ _.cookie = {
     }
 };
 
-var _localStorageSupported = null;
-var localStorageSupported = function(storage, forceCheck) {
-    if (_localStorageSupported !== null && !forceCheck) {
-        return _localStorageSupported;
-    }
-
+var _testStorageSupported = function (storage) {
     var supported = true;
     try {
-        storage = storage || win.localStorage;
         var key = '__mplss_' + cheap_guid(8),
             val = 'xyz';
         storage.setItem(key, val);
@@ -1458,59 +1479,74 @@ var localStorageSupported = function(storage, forceCheck) {
     } catch (err) {
         supported = false;
     }
-
-    _localStorageSupported = supported;
     return supported;
 };
 
-// _.localStorage
-_.localStorage = {
-    is_supported: function(force_check) {
-        var supported = localStorageSupported(null, force_check);
-        if (!supported) {
-            console.error('localStorage unsupported; falling back to cookie store');
-        }
-        return supported;
-    },
-
-    error: function(msg) {
-        console.error('localStorage error: ' + msg);
-    },
-
-    get: function(name) {
-        try {
-            return win.localStorage.getItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-        return null;
-    },
-
-    parse: function(name) {
-        try {
-            return _.JSONDecode(_.localStorage.get(name)) || {};
-        } catch (err) {
-            // noop
-        }
-        return null;
-    },
-
-    set: function(name, value) {
-        try {
-            win.localStorage.setItem(name, value);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-    },
-
-    remove: function(name) {
-        try {
-            win.localStorage.removeItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
+var _localStorageSupported = null;
+var localStorageSupported = function(storage, forceCheck) {
+    if (_localStorageSupported !== null && !forceCheck) {
+        return _localStorageSupported;
     }
+    return _localStorageSupported = _testStorageSupported(storage || win.localStorage);
 };
+
+var _sessionStorageSupported = null;
+var sessionStorageSupported = function(storage, forceCheck) {
+    if (_sessionStorageSupported !== null && !forceCheck) {
+        return _sessionStorageSupported;
+    }
+    return _sessionStorageSupported = _testStorageSupported(storage || win.sessionStorage);
+};
+
+function _storageWrapper(storage, name, is_supported_fn) {
+    var log_error = function(msg) {
+        console.error(name + ' error: ' + msg);
+    };
+
+    return {
+        is_supported: function(forceCheck) {
+            var supported = is_supported_fn(storage, forceCheck);
+            if (!supported) {
+                console.error(name + ' unsupported');
+            }
+            return supported;
+        },
+        error: log_error,
+        get: function(key) {
+            try {
+                return storage.getItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+            return null;
+        },
+        parse: function(key) {
+            try {
+                return _.JSONDecode(storage.getItem(key)) || {};
+            } catch (err) {
+                // noop
+            }
+            return null;
+        },
+        set: function(key, value) {
+            try {
+                storage.setItem(key, value);
+            } catch (err) {
+                log_error(err);
+            }
+        },
+        remove: function(key) {
+            try {
+                storage.removeItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+        }
+    };
+}
+
+_.localStorage = _storageWrapper(win.localStorage, 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(win.sessionStorage, 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function() {
     // written by Dean Edwards, 2005
@@ -2037,6 +2073,31 @@ _.info = {
     }
 };
 
+/**
+ * Returns a throttled function that will only run at most every `waitMs` and returns a promise that resolves with the next invocation.
+ * Throttled calls will build up a batch of args and invoke the callback with all args since the last invocation.
+ */
+var batchedThrottle = function (fn, waitMs) {
+    var timeoutPromise = null;
+    var throttledItems = [];
+    return function (item) {
+        var self = this;
+        throttledItems.push(item);
+
+        if (!timeoutPromise) {
+            timeoutPromise = new PromisePolyfill(function (resolve) {
+                setTimeout(function () {
+                    var returnValue = fn.apply(self, [throttledItems]);
+                    timeoutPromise = null;
+                    throttledItems = [];
+                    resolve(returnValue);
+                }, waitMs);
+            });
+        }
+        return timeoutPromise;
+    };
+};
+
 var cheap_guid = function(maxlen) {
     var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
     return maxlen ? guid.substring(0, maxlen) : guid;
@@ -2079,6 +2140,8 @@ var isOnline = function() {
     return _.isUndefined(onLine) || onLine;
 };
 
+var NOOP_FUNC = function () {};
+
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -2087,19 +2150,873 @@ if (typeof JSON !== 'undefined') {
 JSONStringify = JSONStringify || _.JSONEncode;
 JSONParse = JSONParse || _.JSONDecode;
 
-// EXPORTS (for closure compiler)
-_['toArray']                = _.toArray;
-_['isObject']               = _.isObject;
-_['JSONEncode']             = _.JSONEncode;
-_['JSONDecode']             = _.JSONDecode;
-_['isBlockedUA']            = _.isBlockedUA;
-_['isEmptyObject']          = _.isEmptyObject;
+// UNMINIFIED EXPORTS (for closure compiler)
 _['info']                   = _.info;
-_['info']['device']         = _.info.device;
 _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
+_['info']['device']         = _.info.device;
 _['info']['properties']     = _.info.properties;
+_['isBlockedUA']            = _.isBlockedUA;
+_['isEmptyObject']          = _.isEmptyObject;
+_['isObject']               = _.isObject;
+_['JSONDecode']             = _.JSONDecode;
+_['JSONEncode']             = _.JSONEncode;
+_['toArray']                = _.toArray;
 _['NPO']                    = NpoPromise;
+
+/**
+ * @param {import('./session-recording').SerializedRecording} serializedRecording
+ * @returns {boolean}
+ */
+var isRecordingExpired = function(serializedRecording) {
+    var now = Date.now();
+    return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
+};
+
+// stateless utils
+
+var EV_CHANGE = 'change';
+var EV_CLICK = 'click';
+var EV_HASHCHANGE = 'hashchange';
+var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
+var EV_POPSTATE = 'popstate';
+// TODO scrollend isn't available in Safari: document or polyfill?
+var EV_SCROLLEND = 'scrollend';
+var EV_SUBMIT = 'submit';
+
+var CLICK_EVENT_PROPS = [
+    'clientX', 'clientY',
+    'offsetX', 'offsetY',
+    'pageX', 'pageY',
+    'screenX', 'screenY',
+    'x', 'y'
+];
+var OPT_IN_CLASSES = ['mp-include'];
+var OPT_OUT_CLASSES = ['mp-no-track'];
+var SENSITIVE_DATA_CLASSES = OPT_OUT_CLASSES.concat(['mp-sensitive']);
+var TRACKED_ATTRS = [
+    'aria-label', 'aria-labelledby', 'aria-describedby',
+    'href', 'name', 'role', 'title', 'type'
+];
+
+var logger$3 = console_with_prefix('autocapture');
+
+
+function getClasses(el) {
+    var classes = {};
+    var classList = getClassName(el).split(' ');
+    for (var i = 0; i < classList.length; i++) {
+        var cls = classList[i];
+        if (cls) {
+            classes[cls] = true;
+        }
+    }
+    return classes;
+}
+
+/*
+ * Get the className of an element, accounting for edge cases where element.className is an object
+ * @param {Element} el - element to get the className of
+ * @returns {string} the element's class
+ */
+function getClassName(el) {
+    switch(typeof el.className) {
+        case 'string':
+            return el.className;
+        case 'object': // handle cases where className might be SVGAnimatedString or some other type
+            return el.className.baseVal || el.getAttribute('class') || '';
+        default: // future proof
+            return '';
+    }
+}
+
+function getPreviousElementSibling(el) {
+    if (el.previousElementSibling) {
+        return el.previousElementSibling;
+    } else {
+        do {
+            el = el.previousSibling;
+        } while (el && !isElementNode(el));
+        return el;
+    }
+}
+
+function getPropertiesFromElement(el, ev, blockAttrsSet, extraAttrs, allowElementCallback, allowSelectors) {
+    var props = {
+        '$classes': getClassName(el).split(' '),
+        '$tag_name': el.tagName.toLowerCase()
+    };
+    var elId = el.id;
+    if (elId) {
+        props['$id'] = elId;
+    }
+
+    if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors)) {
+        _.each(TRACKED_ATTRS.concat(extraAttrs), function(attr) {
+            if (el.hasAttribute(attr) && !blockAttrsSet[attr]) {
+                var attrVal = el.getAttribute(attr);
+                if (shouldTrackValue(attrVal)) {
+                    props['$attr-' + attr] = attrVal;
+                }
+            }
+        });
+    }
+
+    var nthChild = 1;
+    var nthOfType = 1;
+    var currentElem = el;
+    while (currentElem = getPreviousElementSibling(currentElem)) { // eslint-disable-line no-cond-assign
+        nthChild++;
+        if (currentElem.tagName === el.tagName) {
+            nthOfType++;
+        }
+    }
+    props['$nth_child'] = nthChild;
+    props['$nth_of_type'] = nthOfType;
+
+    return props;
+}
+
+function getPropsForDOMEvent(ev, config) {
+    var allowElementCallback = config.allowElementCallback;
+    var allowSelectors = config.allowSelectors || [];
+    var blockAttrs = config.blockAttrs || [];
+    var blockElementCallback = config.blockElementCallback;
+    var blockSelectors = config.blockSelectors || [];
+    var captureTextContent = config.captureTextContent || false;
+    var captureExtraAttrs = config.captureExtraAttrs || [];
+
+    // convert array to set every time, as the config may have changed
+    var blockAttrsSet = {};
+    _.each(blockAttrs, function(attr) {
+        blockAttrsSet[attr] = true;
+    });
+
+    var props = null;
+
+    var target = typeof ev.target === 'undefined' ? ev.srcElement : ev.target;
+    if (isTextNode(target)) { // defeat Safari bug (see: http://www.quirksmode.org/js/events_properties.html)
+        target = target.parentNode;
+    }
+
+    if (
+        shouldTrackDomEvent(target, ev) &&
+        isElementAllowed(target, ev, allowElementCallback, allowSelectors) &&
+        !isElementBlocked(target, ev, blockElementCallback, blockSelectors)
+    ) {
+        var targetElementList = [target];
+        var curEl = target;
+        while (curEl.parentNode && !isTag(curEl, 'body')) {
+            targetElementList.push(curEl.parentNode);
+            curEl = curEl.parentNode;
+        }
+
+        var elementsJson = [];
+        var href, explicitNoTrack = false;
+        _.each(targetElementList, function(el) {
+            var shouldTrackDetails = shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors);
+
+            // if the element or a parent element is an anchor tag
+            // include the href as a property
+            if (!blockAttrsSet['href'] && el.tagName.toLowerCase() === 'a') {
+                href = el.getAttribute('href');
+                href = shouldTrackDetails && shouldTrackValue(href) && href;
+            }
+
+            if (isElementBlocked(el, ev, blockElementCallback, blockSelectors)) {
+                explicitNoTrack = true;
+            }
+
+            elementsJson.push(getPropertiesFromElement(el, ev, blockAttrsSet, captureExtraAttrs, allowElementCallback, allowSelectors));
+        }, this);
+
+        if (!explicitNoTrack) {
+            var docElement = document$1['documentElement'];
+            props = {
+                '$event_type': ev.type,
+                '$host': win.location.host,
+                '$pathname': win.location.pathname,
+                '$elements':  elementsJson,
+                '$el_attr__href': href,
+                '$viewportHeight': Math.max(docElement['clientHeight'], win['innerHeight'] || 0),
+                '$viewportWidth': Math.max(docElement['clientWidth'], win['innerWidth'] || 0)
+            };
+            _.each(captureExtraAttrs, function(attr) {
+                if (!blockAttrsSet[attr] && target.hasAttribute(attr)) {
+                    var attrVal = target.getAttribute(attr);
+                    if (shouldTrackValue(attrVal)) {
+                        props['$el_attr__' + attr] = attrVal;
+                    }
+                }
+            });
+
+            if (captureTextContent) {
+                elementText = getSafeText(target, ev, allowElementCallback, allowSelectors);
+                if (elementText && elementText.length) {
+                    props['$el_text'] = elementText;
+                }
+            }
+
+            if (ev.type === EV_CLICK) {
+                _.each(CLICK_EVENT_PROPS, function(prop) {
+                    if (prop in ev) {
+                        props['$' + prop] = ev[prop];
+                    }
+                });
+                target = guessRealClickTarget(ev);
+            }
+            // prioritize text content from "real" click target if different from original target
+            if (captureTextContent) {
+                var elementText = getSafeText(target, ev, allowElementCallback, allowSelectors);
+                if (elementText && elementText.length) {
+                    props['$el_text'] = elementText;
+                }
+            }
+
+            if (target) {
+                // target may have been recalculated; check allowlists and blocklists again
+                if (
+                    !isElementAllowed(target, ev, allowElementCallback, allowSelectors) ||
+                    isElementBlocked(target, ev, blockElementCallback, blockSelectors)
+                ) {
+                    return null;
+                }
+
+                var targetProps = getPropertiesFromElement(target, ev, blockAttrsSet, captureExtraAttrs, allowElementCallback, allowSelectors);
+                props['$target'] = targetProps;
+                // pull up more props onto main event props
+                props['$el_classes'] = targetProps['$classes'];
+                _.extend(props, _.strip_empty_properties({
+                    '$el_id': targetProps['$id'],
+                    '$el_tag_name': targetProps['$tag_name']
+                }));
+            }
+        }
+    }
+
+    return props;
+}
+
+
+/**
+ * Get the direct text content of an element, protecting against sensitive data collection.
+ * Concats textContent of each of the element's text node children; this avoids potential
+ * collection of sensitive data that could happen if we used element.textContent and the
+ * element had sensitive child elements, since element.textContent includes child content.
+ * Scrubs values that look like they could be sensitive (i.e. cc or ssn number).
+ * @param {Element} el - element to get the text of
+ * @param {Array<string>} allowSelectors - CSS selectors for elements that should be included
+ * @returns {string} the element's direct text content
+ */
+function getSafeText(el, ev, allowElementCallback, allowSelectors) {
+    var elText = '';
+
+    if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) && el.childNodes && el.childNodes.length) {
+        _.each(el.childNodes, function(child) {
+            if (isTextNode(child) && child.textContent) {
+                elText += _.trim(child.textContent)
+                    // scrub potentially sensitive values
+                    .split(/(\s+)/).filter(shouldTrackValue).join('')
+                    // normalize whitespace
+                    .replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ')
+                    // truncate
+                    .substring(0, 255);
+            }
+        });
+    }
+
+    return _.trim(elText);
+}
+
+function guessRealClickTarget(ev) {
+    var target = ev.target;
+    var composedPath = ev['composedPath']();
+    for (var i = 0; i < composedPath.length; i++) {
+        var node = composedPath[i];
+        if (
+            isTag(node, 'a') ||
+            isTag(node, 'button') ||
+            isTag(node, 'input') ||
+            isTag(node, 'select') ||
+            (node.getAttribute && node.getAttribute('role') === 'button')
+        ) {
+            target = node;
+            break;
+        }
+        if (node === target) {
+            break;
+        }
+    }
+    return target;
+}
+
+function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
+    if (allowElementCallback) {
+        try {
+            if (!allowElementCallback(el, ev)) {
+                return false;
+            }
+        } catch (err) {
+            logger$3.critical('Error while checking element in allowElementCallback', err);
+            return false;
+        }
+    }
+
+    if (!allowSelectors.length) {
+        // no allowlist; all elements are fair game
+        return true;
+    }
+
+    for (var i = 0; i < allowSelectors.length; i++) {
+        var sel = allowSelectors[i];
+        try {
+            if (el['matches'](sel)) {
+                return true;
+            }
+        } catch (err) {
+            logger$3.critical('Error while checking selector: ' + sel, err);
+        }
+    }
+    return false;
+}
+
+function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
+    var i;
+
+    if (blockElementCallback) {
+        try {
+            if (blockElementCallback(el, ev)) {
+                return true;
+            }
+        } catch (err) {
+            logger$3.critical('Error while checking element in blockElementCallback', err);
+            return true;
+        }
+    }
+
+    if (blockSelectors && blockSelectors.length) {
+        // programmatically prevent tracking of elements that match CSS selectors
+        for (i = 0; i < blockSelectors.length; i++) {
+            var sel = blockSelectors[i];
+            try {
+                if (el['matches'](sel)) {
+                    return true;
+                }
+            } catch (err) {
+                logger$3.critical('Error while checking selector: ' + sel, err);
+            }
+        }
+    }
+
+    // allow users to programmatically prevent tracking of elements by adding default classes such as 'mp-no-track'
+    var classes = getClasses(el);
+    for (i = 0; i < OPT_OUT_CLASSES.length; i++) {
+        if (classes[OPT_OUT_CLASSES[i]]) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/*
+ * Check whether a DOM node has nodeType Node.ELEMENT_NODE
+ * @param {Node} node - node to check
+ * @returns {boolean} whether node is of the correct nodeType
+ */
+function isElementNode(node) {
+    return node && node.nodeType === 1; // Node.ELEMENT_NODE - use integer constant for browser portability
+}
+
+/*
+ * Check whether an element is of a given tag type.
+ * Due to potential reference discrepancies (such as the webcomponents.js polyfill),
+ * we want to match tagNames instead of specific references because something like
+ * element === document.body won't always work because element might not be a native
+ * element.
+ * @param {Element} el - element to check
+ * @param {string} tag - tag name (e.g., "div")
+ * @returns {boolean} whether el is of the given tag type
+ */
+function isTag(el, tag) {
+    return el && el.tagName && el.tagName.toLowerCase() === tag.toLowerCase();
+}
+
+/*
+ * Check whether a DOM node is a TEXT_NODE
+ * @param {Node} node - node to check
+ * @returns {boolean} whether node is of type Node.TEXT_NODE
+ */
+function isTextNode(node) {
+    return node && node.nodeType === 3; // Node.TEXT_NODE - use integer constant for browser portability
+}
+
+function minDOMApisSupported() {
+    try {
+        var testEl = document$1.createElement('div');
+        return !!testEl['matches'];
+    } catch (err) {
+        return false;
+    }
+}
+
+/*
+ * Check whether a DOM event should be "tracked" or if it may contain sensitive data
+ * using a variety of heuristics.
+ * @param {Element} el - element to check
+ * @param {Event} ev - event to check
+ * @returns {boolean} whether the event should be tracked
+ */
+function shouldTrackDomEvent(el, ev) {
+    if (!el || isTag(el, 'html') || !isElementNode(el)) {
+        return false;
+    }
+    var tag = el.tagName.toLowerCase();
+    switch (tag) {
+        case 'form':
+            return ev.type === EV_SUBMIT;
+        case 'input':
+            if (['button', 'submit'].indexOf(el.getAttribute('type')) === -1) {
+                return ev.type === EV_CHANGE;
+            } else {
+                return ev.type === EV_CLICK;
+            }
+        case 'select':
+        case 'textarea':
+            return ev.type === EV_CHANGE;
+        default:
+            return ev.type === EV_CLICK;
+    }
+}
+
+/*
+ * Check whether a DOM element should be "tracked" or if it may contain sensitive data
+ * using a variety of heuristics.
+ * @param {Element} el - element to check
+ * @param {Array<string>} allowSelectors - CSS selectors for elements that should be included
+ * @returns {boolean} whether the element should be tracked
+ */
+function shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) {
+    var i;
+
+    if (!isElementAllowed(el, ev, allowElementCallback, allowSelectors)) {
+        return false;
+    }
+
+    for (var curEl = el; curEl.parentNode && !isTag(curEl, 'body'); curEl = curEl.parentNode) {
+        var classes = getClasses(curEl);
+        for (i = 0; i < SENSITIVE_DATA_CLASSES.length; i++) {
+            if (classes[SENSITIVE_DATA_CLASSES[i]]) {
+                return false;
+            }
+        }
+    }
+
+    var elClasses = getClasses(el);
+    for (i = 0; i < OPT_IN_CLASSES.length; i++) {
+        if (elClasses[OPT_IN_CLASSES[i]]) {
+            return true;
+        }
+    }
+
+    // don't send data from inputs or similar elements since there will always be
+    // a risk of clientside javascript placing sensitive data in attributes
+    if (
+        isTag(el, 'input') ||
+        isTag(el, 'select') ||
+        isTag(el, 'textarea') ||
+        el.getAttribute('contenteditable') === 'true'
+    ) {
+        return false;
+    }
+
+    // don't include hidden or password fields
+    var type = el.type || '';
+    if (typeof type === 'string') { // it's possible for el.type to be a DOM element if el is a form with a child input[name="type"]
+        switch(type.toLowerCase()) {
+            case 'hidden':
+                return false;
+            case 'password':
+                return false;
+        }
+    }
+
+    // filter out data from fields that look like sensitive fields
+    var name = el.name || el.id || '';
+    if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
+        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
+        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+/*
+ * Check whether a string value should be "tracked" or if it may contain sensitive data
+ * using a variety of heuristics.
+ * @param {string} value - string value to check
+ * @returns {boolean} whether the element should be tracked
+ */
+function shouldTrackValue(value) {
+    if (value === null || _.isUndefined(value)) {
+        return false;
+    }
+
+    if (typeof value === 'string') {
+        value = _.trim(value);
+
+        // check to see if input value looks like a credit card number
+        // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
+        var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
+        if (ccRegex.test((value || '').replace(/[- ]/g, ''))) {
+            return false;
+        }
+
+        // check to see if input value looks like a social security number
+        var ssnRegex = /(^\d{3}-?\d{2}-?\d{4}$)/;
+        if (ssnRegex.test(value)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
+var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
+
+var PAGEVIEW_OPTION_FULL_URL = 'full-url';
+var PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING = 'url-with-path-and-query-string';
+var PAGEVIEW_OPTION_URL_WITH_PATH = 'url-with-path';
+
+var CONFIG_ALLOW_ELEMENT_CALLBACK = 'allow_element_callback';
+var CONFIG_ALLOW_SELECTORS = 'allow_selectors';
+var CONFIG_ALLOW_URL_REGEXES = 'allow_url_regexes';
+var CONFIG_BLOCK_ATTRS = 'block_attrs';
+var CONFIG_BLOCK_ELEMENT_CALLBACK = 'block_element_callback';
+var CONFIG_BLOCK_SELECTORS = 'block_selectors';
+var CONFIG_BLOCK_URL_REGEXES = 'block_url_regexes';
+var CONFIG_CAPTURE_EXTRA_ATTRS = 'capture_extra_attrs';
+var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
+var CONFIG_SCROLL_CAPTURE_ALL = 'scroll_capture_all';
+var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
+var CONFIG_TRACK_CLICK = 'click';
+var CONFIG_TRACK_INPUT = 'input';
+var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_SCROLL = 'scroll';
+var CONFIG_TRACK_SUBMIT = 'submit';
+
+var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_ALLOW_SELECTORS] = [];
+CONFIG_DEFAULTS[CONFIG_ALLOW_URL_REGEXES] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_ATTRS] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_ELEMENT_CALLBACK] = null;
+CONFIG_DEFAULTS[CONFIG_BLOCK_SELECTORS] = [];
+CONFIG_DEFAULTS[CONFIG_BLOCK_URL_REGEXES] = [];
+CONFIG_DEFAULTS[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
+CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
+CONFIG_DEFAULTS[CONFIG_SCROLL_CAPTURE_ALL] = false;
+CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
+CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
+
+var DEFAULT_PROPS = {
+    '$mp_autocapture': true
+};
+
+var MP_EV_CLICK = '$mp_click';
+var MP_EV_INPUT = '$mp_input_change';
+var MP_EV_SCROLL = '$mp_scroll';
+var MP_EV_SUBMIT = '$mp_submit';
+
+/**
+ * Autocapture: manages automatic event tracking
+ * @constructor
+ */
+var Autocapture = function(mp) {
+    this.mp = mp;
+};
+
+Autocapture.prototype.init = function() {
+    if (!minDOMApisSupported()) {
+        logger$3.critical('Autocapture unavailable: missing required DOM APIs');
+        return;
+    }
+
+    this.initPageviewTracking();
+    this.initClickTracking();
+    this.initInputTracking();
+    this.initScrollTracking();
+    this.initSubmitTracking();
+};
+
+Autocapture.prototype.getFullConfig = function() {
+    var autocaptureConfig = this.mp.get_config(AUTOCAPTURE_CONFIG_KEY);
+    if (!autocaptureConfig) {
+        // Autocapture is completely off
+        return {};
+    } else if (_.isObject(autocaptureConfig)) {
+        return _.extend({}, CONFIG_DEFAULTS, autocaptureConfig);
+    } else {
+        // Autocapture config is non-object truthy value, return default
+        return CONFIG_DEFAULTS;
+    }
+};
+
+Autocapture.prototype.getConfig = function(key) {
+    return this.getFullConfig()[key];
+};
+
+Autocapture.prototype.currentUrlBlocked = function() {
+    var i;
+    var currentUrl = _.info.currentUrl();
+
+    var allowUrlRegexes = this.getConfig(CONFIG_ALLOW_URL_REGEXES) || [];
+    if (allowUrlRegexes.length) {
+        // we're using an allowlist, only track if current URL matches
+        var allowed = false;
+        for (i = 0; i < allowUrlRegexes.length; i++) {
+            var allowRegex = allowUrlRegexes[i];
+            try {
+                if (currentUrl.match(allowRegex)) {
+                    allowed = true;
+                    break;
+                }
+            } catch (err) {
+                logger$3.critical('Error while checking block URL regex: ' + allowRegex, err);
+                return true;
+            }
+        }
+        if (!allowed) {
+            // wasn't allowed by any regex
+            return true;
+        }
+    }
+
+    var blockUrlRegexes = this.getConfig(CONFIG_BLOCK_URL_REGEXES) || [];
+    if (!blockUrlRegexes || !blockUrlRegexes.length) {
+        return false;
+    }
+
+    for (i = 0; i < blockUrlRegexes.length; i++) {
+        try {
+            if (currentUrl.match(blockUrlRegexes[i])) {
+                return true;
+            }
+        } catch (err) {
+            logger$3.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
+            return true;
+        }
+    }
+    return false;
+};
+
+Autocapture.prototype.pageviewTrackingConfig = function() {
+    // supports both autocapture config and old track_pageview config
+    if (this.mp.get_config(AUTOCAPTURE_CONFIG_KEY)) {
+        return this.getConfig(CONFIG_TRACK_PAGEVIEW);
+    } else {
+        return this.mp.get_config(LEGACY_PAGEVIEW_CONFIG_KEY);
+    }
+};
+
+// helper for event handlers
+Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
+    if (this.currentUrlBlocked()) {
+        return;
+    }
+
+    var props = getPropsForDOMEvent(ev, {
+        allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
+        allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
+        blockAttrs: this.getConfig(CONFIG_BLOCK_ATTRS),
+        blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
+        blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
+        captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
+        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+    });
+    if (props) {
+        _.extend(props, DEFAULT_PROPS);
+        this.mp.track(mpEventName, props);
+    }
+};
+
+Autocapture.prototype.initClickTracking = function() {
+    win.removeEventListener(EV_CLICK, this.listenerClick);
+
+    if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+        return;
+    }
+    logger$3.log('Initializing click tracking');
+
+    this.listenerClick = win.addEventListener(EV_CLICK, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+            return;
+        }
+        this.trackDomEvent(ev, MP_EV_CLICK);
+    }.bind(this));
+};
+
+Autocapture.prototype.initInputTracking = function() {
+    win.removeEventListener(EV_CHANGE, this.listenerChange);
+
+    if (!this.getConfig(CONFIG_TRACK_INPUT)) {
+        return;
+    }
+    logger$3.log('Initializing input tracking');
+
+    this.listenerChange = win.addEventListener(EV_CHANGE, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_INPUT)) {
+            return;
+        }
+        this.trackDomEvent(ev, MP_EV_INPUT);
+    }.bind(this));
+};
+
+Autocapture.prototype.initPageviewTracking = function() {
+    win.removeEventListener(EV_POPSTATE, this.listenerPopstate);
+    win.removeEventListener(EV_HASHCHANGE, this.listenerHashchange);
+    win.removeEventListener(EV_MP_LOCATION_CHANGE, this.listenerLocationchange);
+
+    if (!this.pageviewTrackingConfig()) {
+        return;
+    }
+    logger$3.log('Initializing pageview tracking');
+
+    var previousTrackedUrl = '';
+    var tracked = false;
+    if (!this.currentUrlBlocked()) {
+        tracked = this.mp.track_pageview(DEFAULT_PROPS);
+    }
+    if (tracked) {
+        previousTrackedUrl = _.info.currentUrl();
+    }
+
+    this.listenerPopstate = win.addEventListener(EV_POPSTATE, function() {
+        win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+    });
+    this.listenerHashchange = win.addEventListener(EV_HASHCHANGE, function() {
+        win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+    });
+    var nativePushState = win.history.pushState;
+    if (typeof nativePushState === 'function') {
+        win.history.pushState = function(state, unused, url) {
+            nativePushState.call(win.history, state, unused, url);
+            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+        };
+    }
+    var nativeReplaceState = win.history.replaceState;
+    if (typeof nativeReplaceState === 'function') {
+        win.history.replaceState = function(state, unused, url) {
+            nativeReplaceState.call(win.history, state, unused, url);
+            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+        };
+    }
+    this.listenerLocationchange = win.addEventListener(EV_MP_LOCATION_CHANGE, safewrap(function() {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        var currentUrl = _.info.currentUrl();
+        var shouldTrack = false;
+        var didPathChange = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
+        var trackPageviewOption = this.pageviewTrackingConfig();
+        if (trackPageviewOption === PAGEVIEW_OPTION_FULL_URL) {
+            shouldTrack = currentUrl !== previousTrackedUrl;
+        } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING) {
+            shouldTrack = currentUrl.split('#')[0] !== previousTrackedUrl.split('#')[0];
+        } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH) {
+            shouldTrack = didPathChange;
+        }
+
+        if (shouldTrack) {
+            var tracked = this.mp.track_pageview(DEFAULT_PROPS);
+            if (tracked) {
+                previousTrackedUrl = currentUrl;
+            }
+            if (didPathChange) {
+                this.lastScrollCheckpoint = 0;
+                logger$3.log('Path change: re-initializing scroll depth checkpoints');
+            }
+        }
+    }.bind(this)));
+};
+
+Autocapture.prototype.initScrollTracking = function() {
+    win.removeEventListener(EV_SCROLLEND, this.listenerScroll);
+
+    if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
+        return;
+    }
+    logger$3.log('Initializing scroll tracking');
+    this.lastScrollCheckpoint = 0;
+
+    this.listenerScroll = win.addEventListener(EV_SCROLLEND, safewrap(function() {
+        if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
+            return;
+        }
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        var shouldTrack = this.getConfig(CONFIG_SCROLL_CAPTURE_ALL);
+        var scrollCheckpoints = (this.getConfig(CONFIG_SCROLL_CHECKPOINTS) || [])
+            .slice()
+            .sort(function(a, b) { return a - b; });
+
+        var scrollTop = win.scrollY;
+        var props = _.extend({'$scroll_top': scrollTop}, DEFAULT_PROPS);
+        try {
+            var scrollHeight = document$1.body.scrollHeight;
+            var scrollPercentage = Math.round((scrollTop / (scrollHeight - win.innerHeight)) * 100);
+            props['$scroll_height'] = scrollHeight;
+            props['$scroll_percentage'] = scrollPercentage;
+            if (scrollPercentage > this.lastScrollCheckpoint) {
+                for (var i = 0; i < scrollCheckpoints.length; i++) {
+                    var checkpoint = scrollCheckpoints[i];
+                    if (
+                        scrollPercentage >= checkpoint &&
+                        this.lastScrollCheckpoint < checkpoint
+                    ) {
+                        props['$scroll_checkpoint'] = checkpoint;
+                        this.lastScrollCheckpoint = checkpoint;
+                        shouldTrack = true;
+                    }
+                }
+            }
+        } catch (err) {
+            logger$3.critical('Error while calculating scroll percentage', err);
+        }
+        if (shouldTrack) {
+            this.mp.track(MP_EV_SCROLL, props);
+        }
+    }.bind(this)));
+};
+
+Autocapture.prototype.initSubmitTracking = function() {
+    win.removeEventListener(EV_SUBMIT, this.listenerSubmit);
+
+    if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
+        return;
+    }
+    logger$3.log('Initializing submit tracking');
+
+    this.listenerSubmit = win.addEventListener(EV_SUBMIT, function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
+            return;
+        }
+        this.trackDomEvent(ev, MP_EV_SUBMIT);
+    }.bind(this));
+};
+
+// TODO integrate error_reporter from mixpanel instance
+safewrapClass(Autocapture);
 
 /* eslint camelcase: "off" */
 
@@ -2278,7 +3195,7 @@ var SharedLock = function(key, options) {
     options = options || {};
 
     this.storageKey = key;
-    this.storage = options.storage || window.localStorage;
+    this.storage = options.storage || win.localStorage;
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
 
@@ -2293,7 +3210,6 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     return new Promise(_.bind(function (resolve, reject) {
         var i = pid || (new Date().getTime() + '|' + Math.random());
         var startTime = new Date().getTime();
-
         var key = this.storageKey;
         var pollIntervalMS = this.pollIntervalMS;
         var timeoutMS = this.timeoutMS;
@@ -2404,11 +3320,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
 };
 
 /**
- * @typedef {import('./wrapper').StorageWrapper}
- */
-
-/**
- * @type {StorageWrapper}
+ * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function (storageOverride) {
     this.storage = storageOverride || localStorage;
@@ -2421,7 +3333,7 @@ LocalStorageWrapper.prototype.init = function () {
 LocalStorageWrapper.prototype.setItem = function (key, value) {
     return new PromisePolyfill(_.bind(function (resolve, reject) {
         try {
-            this.storage.setItem(key, value);
+            this.storage.setItem(key, JSONStringify(value));
         } catch (e) {
             reject(e);
         }
@@ -2433,7 +3345,7 @@ LocalStorageWrapper.prototype.getItem = function (key) {
     return new PromisePolyfill(_.bind(function (resolve, reject) {
         var item;
         try {
-            item = this.storage.getItem(key);
+            item = JSONParse(this.storage.getItem(key));
         } catch (e) {
             reject(e);
         }
@@ -2476,8 +3388,10 @@ var RequestQueue = function (storageKey, options) {
     this.usePersistence = options.usePersistence;
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
-        this.lock = new SharedLock(storageKey, { storage: options.sharedLockStorage || window.localStorage });
-        this.queueStorage.init();
+        this.lock = new SharedLock(storageKey, {
+            storage: options.sharedLockStorage || win.localStorage,
+            timeoutMS: options.sharedLockTimeoutMS,
+        });
     }
     this.reportError = options.errorReporter || _.bind(logger$1.error, logger$1);
 
@@ -2485,6 +3399,14 @@ var RequestQueue = function (storageKey, options) {
 
     this.memQueue = [];
     this.initialized = false;
+
+    if (options.enqueueThrottleMs) {
+        this.enqueuePersisted = batchedThrottle(_.bind(this._enqueuePersisted, this), options.enqueueThrottleMs);
+    } else {
+        this.enqueuePersisted = _.bind(function (queueEntry) {
+            return this._enqueuePersisted([queueEntry]);
+        }, this);
+    }
 };
 
 RequestQueue.prototype.ensureInit = function () {
@@ -2527,36 +3449,39 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
         this.memQueue.push(queueEntry);
         return PromisePolyfill.resolve(true);
     } else {
+        return this.enqueuePersisted(queueEntry);
+    }
+};
 
-        var enqueueItem = _.bind(function () {
-            return this.ensureInit()
-                .then(_.bind(function () {
-                    return this.readFromStorage();
-                }, this))
-                .then(_.bind(function (storedQueue) {
-                    storedQueue.push(queueEntry);
-                    return this.saveToStorage(storedQueue);
-                }, this))
-                .then(_.bind(function (succeeded) {
-                    // only add to in-memory queue when storage succeeds
-                    if (succeeded) {
-                        this.memQueue.push(queueEntry);
-                    }
-                    return succeeded;
-                }, this))
-                .catch(_.bind(function (err) {
-                    this.reportError('Error enqueueing item', err, item);
-                    return false;
-                }, this));
-        }, this);
+RequestQueue.prototype._enqueuePersisted = function (queueEntries) {
+    var enqueueItem = _.bind(function () {
+        return this.ensureInit()
+            .then(_.bind(function () {
+                return this.readFromStorage();
+            }, this))
+            .then(_.bind(function (storedQueue) {
+                return this.saveToStorage(storedQueue.concat(queueEntries));
+            }, this))
+            .then(_.bind(function (succeeded) {
+                // only add to in-memory queue when storage succeeds
+                if (succeeded) {
+                    this.memQueue = this.memQueue.concat(queueEntries);
+                }
 
-        return this.lock
-            .withLock(enqueueItem, this.pid)
+                return succeeded;
+            }, this))
             .catch(_.bind(function (err) {
-                this.reportError('Error acquiring storage lock', err);
+                this.reportError('Error enqueueing items', err, queueEntries);
                 return false;
             }, this));
-    }
+    }, this);
+
+    return this.lock
+        .withLock(enqueueItem, this.pid)
+        .catch(_.bind(function (err) {
+            this.reportError('Error acquiring storage lock', err);
+            return false;
+        }, this));
 };
 
 /**
@@ -2577,7 +3502,7 @@ RequestQueue.prototype.fillBatch = function (batchSize) {
             }, this))
             .then(_.bind(function (storedQueue) {
                 if (storedQueue.length) {
-                // item IDs already in batch; don't duplicate out of storage
+                    // item IDs already in batch; don't duplicate out of storage
                     var idsInBatch = {}; // poor man's Set
                     _.each(batch, function (item) {
                         idsInBatch[item['id']] = true;
@@ -2664,7 +3589,7 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
             .withLock(removeFromStorage, this.pid)
             .catch(_.bind(function (err) {
                 this.reportError('Error acquiring storage lock', err);
-                if (!localStorageSupported(this.queueStorage.storage, true)) {
+                if (!localStorageSupported(this.lock.storage, true)) {
                     // Looks like localStorage writes have stopped working sometime after
                     // initialization (probably full), and so nobody can acquire locks
                     // anymore. Consider it temporarily safe to remove items without the
@@ -2752,7 +3677,6 @@ RequestQueue.prototype.readFromStorage = function () {
         }, this))
         .then(_.bind(function (storageEntry) {
             if (storageEntry) {
-                storageEntry = JSONParse(storageEntry);
                 if (!_.isArray(storageEntry)) {
                     this.reportError('Invalid storage entry:', storageEntry);
                     storageEntry = null;
@@ -2770,16 +3694,9 @@ RequestQueue.prototype.readFromStorage = function () {
  * Serialize the given items array to localStorage.
  */
 RequestQueue.prototype.saveToStorage = function (queue) {
-    try {
-        var serialized = JSONStringify(queue);
-    } catch (err) {
-        this.reportError('Error serializing queue', err);
-        return PromisePolyfill.resolve(false);
-    }
-
     return this.ensureInit()
         .then(_.bind(function () {
-            return this.queueStorage.setItem(this.storageKey, serialized);
+            return this.queueStorage.setItem(this.storageKey, queue);
         }, this))
         .then(function () {
             return true;
@@ -2823,7 +3740,9 @@ var RequestBatcher = function(storageKey, options) {
         errorReporter: _.bind(this.reportError, this),
         queueStorage: options.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
-        usePersistence: options.usePersistence
+        sharedLockTimeoutMS: options.sharedLockTimeoutMS,
+        usePersistence: options.usePersistence,
+        enqueueThrottleMs: options.enqueueThrottleMs
     });
 
     this.libConfig = options.libConfig;
@@ -2845,6 +3764,8 @@ var RequestBatcher = function(storageKey, options) {
     // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
     // in a request loop and get ratelimited by the server.
     this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
+
+    this._flushPromise = null;
 };
 
 /**
@@ -2904,7 +3825,7 @@ RequestBatcher.prototype.scheduleFlush = function(flushMS) {
     if (!this.stopped) { // don't schedule anymore if batching has been stopped
         this.timeoutID = setTimeout(_.bind(function() {
             if (!this.stopped) {
-                this.flush();
+                this._flushPromise = this.flush();
             }
         }, this), this.flushInterval);
     }
@@ -4530,8 +5451,12 @@ MixpanelPersistence.prototype._add_to_people_queue = function(queue, data) {
                 if (!(k in union_q)) {
                     union_q[k] = [];
                 }
-                // We may send duplicates, the server will dedup them.
-                union_q[k] = union_q[k].concat(v);
+                // Prevent duplicate values
+                _.each(v, function(item) {
+                    if (!_.include(union_q[k], item)) {
+                        union_q[k].push(item);
+                    }
+                });
             }
         });
         this._pop_from_people_queue(UNSET_ACTION, q_data);
@@ -4616,6 +5541,129 @@ MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
     return timestamp;
 };
 
+var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
+
+var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
+var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
+
+// note: increment the version number when adding new object stores
+var DB_VERSION = 1;
+var OBJECT_STORES = [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME];
+
+/**
+ * @type {import('./wrapper').StorageWrapper}
+ */
+var IDBStorageWrapper = function (storeName) {
+    /**
+     * @type {Promise<IDBDatabase>|null}
+     */
+    this.dbPromise = null;
+    this.storeName = storeName;
+};
+
+IDBStorageWrapper.prototype._openDb = function () {
+    return new PromisePolyfill(function (resolve, reject) {
+        var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+        openRequest['onerror'] = function () {
+            reject(openRequest.error);
+        };
+
+        openRequest['onsuccess'] = function () {
+            resolve(openRequest.result);
+        };
+
+        openRequest['onupgradeneeded'] = function (ev) {
+            var db = ev.target.result;
+
+            OBJECT_STORES.forEach(function (storeName) {
+                db.createObjectStore(storeName);
+            });
+        };
+    });
+};
+
+IDBStorageWrapper.prototype.init = function () {
+    if (!win.indexedDB) {
+        return PromisePolyfill.reject('indexedDB is not supported in this browser');
+    }
+
+    if (!this.dbPromise) {
+        this.dbPromise = this._openDb();
+    }
+
+    return this.dbPromise
+        .then(function (dbOrError) {
+            if (dbOrError instanceof win['IDBDatabase']) {
+                return PromisePolyfill.resolve();
+            } else {
+                return PromisePolyfill.reject(dbOrError);
+            }
+        });
+};
+
+/**
+ * @param {IDBTransactionMode} mode
+ * @param {function(IDBObjectStore): void} storeCb
+ */
+IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
+    var storeName = this.storeName;
+    var doTransaction = function (db) {
+        return new PromisePolyfill(function (resolve, reject) {
+            var transaction = db.transaction(storeName, mode);
+            transaction.oncomplete = function () {
+                resolve(transaction);
+            };
+            transaction.onabort = transaction.onerror = function () {
+                reject(transaction.error);
+            };
+
+            storeCb(transaction.objectStore(storeName));
+        });
+    };
+
+    return this.dbPromise
+        .then(doTransaction)
+        .catch(function (err) {
+            if (err && err['name'] === 'InvalidStateError') {
+                // try reopening the DB if the connection is closed
+                this.dbPromise = this._openDb();
+                return this.dbPromise.then(doTransaction);
+            } else {
+                return PromisePolyfill.reject(err);
+            }
+        }.bind(this));
+};
+
+IDBStorageWrapper.prototype.setItem = function (key, value) {
+    return this.makeTransaction('readwrite', function (objectStore) {
+        objectStore.put(value, key);
+    });
+};
+
+IDBStorageWrapper.prototype.getItem = function (key) {
+    var req;
+    return this.makeTransaction('readonly', function (objectStore) {
+        req = objectStore.get(key);
+    }).then(function () {
+        return req.result;
+    });
+};
+
+IDBStorageWrapper.prototype.removeItem = function (key) {
+    return this.makeTransaction('readwrite', function (objectStore) {
+        objectStore.delete(key);
+    });
+};
+
+IDBStorageWrapper.prototype.getAll = function () {
+    var req;
+    return this.makeTransaction('readonly', function (objectStore) {
+        req = objectStore.getAll();
+    }).then(function () {
+        return req.result;
+    });
+};
+
 /* eslint camelcase: "off" */
 
 /*
@@ -4629,11 +5677,6 @@ MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
  * (c) 2011 Jeremy Ashkenas, DocumentCloud Inc.
  * Released under the MIT License.
  */
-
-// ==ClosureCompiler==
-// @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.8.min.js
-// ==/ClosureCompiler==
 
 /*
 SIMPLE STYLE GUIDE:
@@ -4657,7 +5700,6 @@ var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
 
 var IDENTITY_FUNC = function(x) {return x;};
-var NOOP_FUNC = function() {};
 
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
@@ -4703,6 +5745,7 @@ var DEFAULT_CONFIG = {
     'api_transport':                     'XHR',
     'api_payload_format':                PAYLOAD_TYPE_BASE64,
     'app_host':                          'https://mixpanel.com',
+    'autocapture':                       false,
     'cdn':                               'https://cdn.mxpnl.com',
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
@@ -4962,39 +6005,128 @@ MixpanelLib.prototype._init = function(token, config, name) {
         }, '');
     }
 
-    var track_pageview_option = this.get_config('track_pageview');
-    if (track_pageview_option) {
-        this._init_url_change_tracking(track_pageview_option);
-    }
+    this.autocapture = new Autocapture(this);
+    this.autocapture.init();
 
-    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
-        this.start_session_recording();
+    this._init_tab_id();
+    this._check_and_start_session_recording();
+};
+
+/**
+ * Assigns a unique UUID to this tab / window by leveraging sessionStorage.
+ * This is primarily used for session recording, where data must be isolated to the current tab.
+ */
+MixpanelLib.prototype._init_tab_id = function() {
+    if (_.sessionStorage.is_supported()) {
+        try {
+            var key_suffix = this.get_config('name') + '_' + this.get_config('token');
+            var tab_id_key = 'mp_tab_id_' + key_suffix;
+
+            // A flag is used to determine if sessionStorage is copied over and we need to generate a new tab ID.
+            // This enforces a unique ID in the cases like duplicated tab, window.open(...)
+            var should_generate_new_tab_id_key = 'mp_gen_new_tab_id_' + key_suffix;
+            if (_.sessionStorage.get(should_generate_new_tab_id_key) || !_.sessionStorage.get(tab_id_key)) {
+                _.sessionStorage.set(tab_id_key, '$tab-' + _.UUID());
+            }
+
+            _.sessionStorage.set(should_generate_new_tab_id_key, '1');
+            this.tab_id = _.sessionStorage.get(tab_id_key);
+
+            // Remove the flag when the tab is unloaded to indicate the stored tab ID can be reused. This event is not reliable to detect all page unloads,
+            // but reliable in cases where the user remains in the tab e.g. a refresh or href navigation.
+            // If the flag is absent, this indicates to the next SDK instance that we can reuse the stored tab_id.
+            win.addEventListener('beforeunload', function () {
+                _.sessionStorage.remove(should_generate_new_tab_id_key);
+            });
+        } catch(err) {
+            this.report_error('Error initializing tab id', err);
+        }
+    } else {
+        this.report_error('Session storage is not supported, cannot keep track of unique tab ID.');
     }
 };
 
-MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function () {
+MixpanelLib.prototype.get_tab_id = function () {
+    return this.tab_id || null;
+};
+
+MixpanelLib.prototype._should_load_recorder = function () {
+    var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    var tab_id = this.get_tab_id();
+    return recording_registry_idb.init()
+        .then(function () {
+            return recording_registry_idb.getAll();
+        })
+        .then(function (recordings) {
+            for (var i = 0; i < recordings.length; i++) {
+                // if there are expired recordings in the registry, we should load the recorder to flush them
+                // if there's a recording for this tab id, we should load the recorder to continue the recording
+                if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {
+                    return true;
+                }
+            }
+            return false;
+        })
+        .catch(_.bind(function (err) {
+            this.report_error('Error checking recording registry', err);
+        }, this));
+};
+
+MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpanelLib(function(force_start) {
     if (!win['MutationObserver']) {
         console.critical('Browser does not support MutationObserver; skipping session recording');
         return;
     }
 
-    var handleLoadedRecorder = _.bind(function() {
-        this._recorder = this._recorder || new win['__mp_recorder'](this);
-        this._recorder['startRecording']();
+    var loadRecorder = _.bind(function(startNewIfInactive) {
+        var handleLoadedRecorder = _.bind(function() {
+            this._recorder = this._recorder || new win['__mp_recorder'](this);
+            this._recorder['resumeRecording'](startNewIfInactive);
+        }, this);
+
+        if (_.isUndefined(win['__mp_recorder'])) {
+            load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+        } else {
+            handleLoadedRecorder();
+        }
     }, this);
 
-    if (_.isUndefined(win['__mp_recorder'])) {
-        load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+    /**
+     * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
+     * Otherwise, if the recording registry has any records then it's likely there's a recording in progress or orphaned data that needs to be flushed.
+     */
+    var is_sampled = this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent');
+    if (force_start || is_sampled) {
+        loadRecorder(true);
     } else {
-        handleLoadedRecorder();
+        this._should_load_recorder()
+            .then(function (shouldLoad) {
+                if (shouldLoad) {
+                    loadRecorder(false);
+                }
+            });
     }
 });
+
+MixpanelLib.prototype.start_session_recording = function () {
+    this._check_and_start_session_recording(true);
+};
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
         this._recorder['stopRecording']();
-    } else {
-        console.critical('Session recorder module not loaded');
+    }
+};
+
+MixpanelLib.prototype.pause_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['pauseRecording']();
+    }
+};
+
+MixpanelLib.prototype.resume_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['resumeRecording']();
     }
 };
 
@@ -5027,6 +6159,11 @@ MixpanelLib.prototype._get_session_replay_id = function () {
         replay_id = this._recorder['replayId'];
     }
     return replay_id || null;
+};
+
+// "private" public method to reach into the recorder in test cases
+MixpanelLib.prototype.__get_recorder = function () {
+    return this._recorder;
 };
 
 // Private methods
@@ -5088,55 +6225,6 @@ MixpanelLib.prototype._track_dom = function(DomClass, args) {
 
     var dt = new DomClass().init(this);
     return dt.track.apply(dt, args);
-};
-
-MixpanelLib.prototype._init_url_change_tracking = function(track_pageview_option) {
-    var previous_tracked_url = '';
-    var tracked = this.track_pageview();
-    if (tracked) {
-        previous_tracked_url = _.info.currentUrl();
-    }
-
-    if (_.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
-        win.addEventListener('popstate', function() {
-            win.dispatchEvent(new Event('mp_locationchange'));
-        });
-        win.addEventListener('hashchange', function() {
-            win.dispatchEvent(new Event('mp_locationchange'));
-        });
-        var nativePushState = win.history.pushState;
-        if (typeof nativePushState === 'function') {
-            win.history.pushState = function(state, unused, url) {
-                nativePushState.call(win.history, state, unused, url);
-                win.dispatchEvent(new Event('mp_locationchange'));
-            };
-        }
-        var nativeReplaceState = win.history.replaceState;
-        if (typeof nativeReplaceState === 'function') {
-            win.history.replaceState = function(state, unused, url) {
-                nativeReplaceState.call(win.history, state, unused, url);
-                win.dispatchEvent(new Event('mp_locationchange'));
-            };
-        }
-        win.addEventListener('mp_locationchange', function() {
-            var current_url = _.info.currentUrl();
-            var should_track = false;
-            if (track_pageview_option === 'full-url') {
-                should_track = current_url !== previous_tracked_url;
-            } else if (track_pageview_option === 'url-with-path-and-query-string') {
-                should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
-            } else if (track_pageview_option === 'url-with-path') {
-                should_track = current_url.split('#')[0].split('?')[0] !== previous_tracked_url.split('#')[0].split('?')[0];
-            }
-
-            if (should_track) {
-                var tracked = this.track_pageview();
-                if (tracked) {
-                    previous_tracked_url = current_url;
-                }
-            }
-        }.bind(this));
-    }
 };
 
 /**
@@ -5417,7 +6505,7 @@ MixpanelLib.prototype.init_batchers = function() {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
-                    usePersistence: true
+                    usePersistence: true,
                 }
             );
         }, this);
@@ -6396,6 +7484,10 @@ MixpanelLib.prototype.set_config = function(config) {
             this['persistence'].update_config(this['config']);
         }
         Config.DEBUG = Config.DEBUG || this.get_config('debug');
+
+        if ('autocapture' in config && this.autocapture) {
+            this.autocapture.init();
+        }
     }
 };
 
@@ -6514,6 +7606,7 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
 
     if (disabled) {
         this.stop_batch_senders();
+        this.stop_session_recording();
     } else {
         // only start batchers after opt-in if they have previously been started
         // in order to avoid unintentionally starting up batching for the first time
@@ -6754,9 +7847,15 @@ MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.protot
 MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
 MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['pause_session_recording']            = MixpanelLib.prototype.pause_session_recording;
+MixpanelLib.prototype['resume_session_recording']           = MixpanelLib.prototype.resume_session_recording;
 MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
 MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
+MixpanelLib.prototype['get_tab_id']                         = MixpanelLib.prototype.get_tab_id;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
+
+// Exports intended only for testing
+MixpanelLib.prototype['__get_recorder']                     = MixpanelLib.prototype.__get_recorder;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;

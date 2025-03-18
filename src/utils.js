@@ -1,6 +1,6 @@
 /* eslint camelcase: "off", eqeqeq: "off" */
 import Config from './config';
-import { NpoPromise } from './promise-polyfill';
+import { NpoPromise, Promise } from './promise-polyfill';
 import { window } from './window';
 
 // Maximum allowed session recording length
@@ -107,6 +107,29 @@ var console_with_prefix = function(prefix) {
         error: log_func_with_prefix(console.error, prefix),
         critical: log_func_with_prefix(console.critical, prefix)
     };
+};
+
+
+var safewrap = function(f) {
+    return function() {
+        try {
+            return f.apply(this, arguments);
+        } catch (e) {
+            console.critical('Implementation error. Please turn on debug and contact support@mixpanel.com.');
+            if (Config.DEBUG){
+                console.critical(e);
+            }
+        }
+    };
+};
+
+var safewrapClass = function(klass) {
+    var proto = klass.prototype;
+    for (var func in proto) {
+        if (typeof(proto[func]) === 'function') {
+            proto[func] = safewrap(proto[func]);
+        }
+    }
 };
 
 
@@ -888,6 +911,7 @@ _.UUID = (function() {
 var BLOCKED_UA_STRS = [
     'ahrefsbot',
     'ahrefssiteaudit',
+    'amazonbot',
     'baiduspider',
     'bingbot',
     'bingpreview',
@@ -897,7 +921,7 @@ var BLOCKED_UA_STRS = [
     'pinterest',
     'screaming frog',
     'yahoo! slurp',
-    'yandexbot',
+    'yandex',
 
     // a whole bunch of goog-specific crawlers
     // https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers
@@ -1056,15 +1080,9 @@ _.cookie = {
     }
 };
 
-var _localStorageSupported = null;
-var localStorageSupported = function(storage, forceCheck) {
-    if (_localStorageSupported !== null && !forceCheck) {
-        return _localStorageSupported;
-    }
-
+var _testStorageSupported = function (storage) {
     var supported = true;
     try {
-        storage = storage || window.localStorage;
         var key = '__mplss_' + cheap_guid(8),
             val = 'xyz';
         storage.setItem(key, val);
@@ -1075,59 +1093,74 @@ var localStorageSupported = function(storage, forceCheck) {
     } catch (err) {
         supported = false;
     }
-
-    _localStorageSupported = supported;
     return supported;
 };
 
-// _.localStorage
-_.localStorage = {
-    is_supported: function(force_check) {
-        var supported = localStorageSupported(null, force_check);
-        if (!supported) {
-            console.error('localStorage unsupported; falling back to cookie store');
-        }
-        return supported;
-    },
-
-    error: function(msg) {
-        console.error('localStorage error: ' + msg);
-    },
-
-    get: function(name) {
-        try {
-            return window.localStorage.getItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-        return null;
-    },
-
-    parse: function(name) {
-        try {
-            return _.JSONDecode(_.localStorage.get(name)) || {};
-        } catch (err) {
-            // noop
-        }
-        return null;
-    },
-
-    set: function(name, value) {
-        try {
-            window.localStorage.setItem(name, value);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
-    },
-
-    remove: function(name) {
-        try {
-            window.localStorage.removeItem(name);
-        } catch (err) {
-            _.localStorage.error(err);
-        }
+var _localStorageSupported = null;
+var localStorageSupported = function(storage, forceCheck) {
+    if (_localStorageSupported !== null && !forceCheck) {
+        return _localStorageSupported;
     }
+    return _localStorageSupported = _testStorageSupported(storage || window.localStorage);
 };
+
+var _sessionStorageSupported = null;
+var sessionStorageSupported = function(storage, forceCheck) {
+    if (_sessionStorageSupported !== null && !forceCheck) {
+        return _sessionStorageSupported;
+    }
+    return _sessionStorageSupported = _testStorageSupported(storage || window.sessionStorage);
+};
+
+function _storageWrapper(storage, name, is_supported_fn) {
+    var log_error = function(msg) {
+        console.error(name + ' error: ' + msg);
+    };
+
+    return {
+        is_supported: function(forceCheck) {
+            var supported = is_supported_fn(storage, forceCheck);
+            if (!supported) {
+                console.error(name + ' unsupported');
+            }
+            return supported;
+        },
+        error: log_error,
+        get: function(key) {
+            try {
+                return storage.getItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+            return null;
+        },
+        parse: function(key) {
+            try {
+                return _.JSONDecode(storage.getItem(key)) || {};
+            } catch (err) {
+                // noop
+            }
+            return null;
+        },
+        set: function(key, value) {
+            try {
+                storage.setItem(key, value);
+            } catch (err) {
+                log_error(err);
+            }
+        },
+        remove: function(key) {
+            try {
+                storage.removeItem(key);
+            } catch (err) {
+                log_error(err);
+            }
+        }
+    };
+}
+
+_.localStorage = _storageWrapper(window.localStorage, 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(window.sessionStorage, 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function() {
     // written by Dean Edwards, 2005
@@ -1654,6 +1687,31 @@ _.info = {
     }
 };
 
+/**
+ * Returns a throttled function that will only run at most every `waitMs` and returns a promise that resolves with the next invocation.
+ * Throttled calls will build up a batch of args and invoke the callback with all args since the last invocation.
+ */
+var batchedThrottle = function (fn, waitMs) {
+    var timeoutPromise = null;
+    var throttledItems = [];
+    return function (item) {
+        var self = this;
+        throttledItems.push(item);
+
+        if (!timeoutPromise) {
+            timeoutPromise = new Promise(function (resolve) {
+                setTimeout(function () {
+                    var returnValue = fn.apply(self, [throttledItems]);
+                    timeoutPromise = null;
+                    throttledItems = [];
+                    resolve(returnValue);
+                }, waitMs);
+            });
+        }
+        return timeoutPromise;
+    };
+};
+
 var cheap_guid = function(maxlen) {
     var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
     return maxlen ? guid.substring(0, maxlen) : guid;
@@ -1696,6 +1754,8 @@ var isOnline = function() {
     return _.isUndefined(onLine) || onLine;
 };
 
+var NOOP_FUNC = function () {};
+
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -1704,22 +1764,23 @@ if (typeof JSON !== 'undefined') {
 JSONStringify = JSONStringify || _.JSONEncode;
 JSONParse = JSONParse || _.JSONDecode;
 
-// EXPORTS (for closure compiler)
-_['toArray']                = _.toArray;
-_['isObject']               = _.isObject;
-_['JSONEncode']             = _.JSONEncode;
-_['JSONDecode']             = _.JSONDecode;
-_['isBlockedUA']            = _.isBlockedUA;
-_['isEmptyObject']          = _.isEmptyObject;
+// UNMINIFIED EXPORTS (for closure compiler)
 _['info']                   = _.info;
-_['info']['device']         = _.info.device;
 _['info']['browser']        = _.info.browser;
 _['info']['browserVersion'] = _.info.browserVersion;
+_['info']['device']         = _.info.device;
 _['info']['properties']     = _.info.properties;
+_['isBlockedUA']            = _.isBlockedUA;
+_['isEmptyObject']          = _.isEmptyObject;
+_['isObject']               = _.isObject;
+_['JSONDecode']             = _.JSONDecode;
+_['JSONEncode']             = _.JSONEncode;
+_['toArray']                = _.toArray;
 _['NPO']                    = NpoPromise;
 
 export {
     _,
+    batchedThrottle,
     cheap_guid,
     console_with_prefix,
     console,
@@ -1732,6 +1793,9 @@ export {
     MAX_RECORDING_MS,
     MAX_VALUE_FOR_MIN_RECORDING_MS,
     navigator,
+    NOOP_FUNC,
+    safewrap,
+    safewrapClass,
     slice,
     userAgent,
 };

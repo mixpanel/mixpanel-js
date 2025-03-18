@@ -19,7 +19,7 @@ You can then import the lib:
 ```javascript
 import mixpanel from 'mixpanel-browser';
 
-mixpanel.init("YOUR_TOKEN");
+mixpanel.init("YOUR_TOKEN", {autocapture: true});
 mixpanel.track("An event");
 ```
 
@@ -56,7 +56,7 @@ Then you are free to import `mixpanel-browser` in your javascript modules.
 // main.js
 import mixpanel from 'mixpanel-browser';
 
-mixpanel.init('YOUR_TOKEN', {debug: true, track_pageview: true, persistence: 'localStorage'});
+mixpanel.init('YOUR_TOKEN', {autocapture: true, debug: true, persistence: 'localStorage'});
 ```
 
 ## Building bundles for release
@@ -78,4 +78,4 @@ Mixpanel production releases are tested against a large matrix of browsers and o
 - Publish to readme.io via the [rdme](https://www.npmjs.com/package/rdme) util: `RDME_API_KEY=<API_KEY> RDME_DOC_VERSION=<version> npm run dox-publish`
 
 ## Thanks
-For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx, @pkaminski, @austince, @danielbaker, @mkdai, @wolever, @dpraul, @chriszamierowski, @JoaoGomesTW, @@aliyalcinkaya
+For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx, @pkaminski, @austince, @danielbaker, @mkdai, @wolever, @dpraul, @chriszamierowski, @JoaoGomesTW, @@aliyalcinkaya, @chrisdeely

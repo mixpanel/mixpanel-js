@@ -1,9 +1,28 @@
+**2.61.2** (14 Mar 2025)
+- Revert 10ms throttle on enqueueing events to improve tracking reliability on page unload
+
+**2.61.1** (11 Mar 2025)
+- Session recording stops if initial DOM snapshot fails
+- Errors triggered by rrweb's record function are now caught
+- Fix for issue causing opt-out check error messages in `debug` mode
+
+**2.61.0** (6 Mar 2025)
+- Session recordings now continue across page loads within the same tab, using IndexedDB for persistence
+
+**2.60.0** (31 Jan 2025)
+- Expanded Autocapture configs
+- Prevent duplicate values in persistence when using people.union (thanks @chrisdeely)
+
+**2.59.0** (21 Jan 2025)
+- Initial Autocapture support
+- Block more crawlers (AmazonBot, more Yandex bots)
+
 **2.58.0** (16 Dec 2024)
 - Added canvas recording option
 - Session Replay checkpoint events now include a starting URL
 
 **2.57.1** (12 Dec 2024)
-- Asynchronous abstractions (primarily Promise support) introduced in internal refactor of batch/queue/retry system.
+- Asynchronous abstractions (primarily Promise support) introduced in internal refactor of batch/queue/retry system
 
 **2.57.0** (Dec 2024)
 REDACTED

@@ -1,7 +1,9 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC } from './utils';
+import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
+import { Autocapture } from './autocapture';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -19,6 +21,7 @@ import {
     clearOptInOut,
     addOptOutCheckMixpanelLib
 } from './gdpr-utils';
+import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from './storage/indexed-db';
 
 /*
  * Mixpanel JS Library
@@ -31,11 +34,6 @@ import {
  * (c) 2011 Jeremy Ashkenas, DocumentCloud Inc.
  * Released under the MIT License.
  */
-
-// ==ClosureCompiler==
-// @compilation_level ADVANCED_OPTIMIZATIONS
-// @output_file_name mixpanel-2.8.min.js
-// ==/ClosureCompiler==
 
 /*
 SIMPLE STYLE GUIDE:
@@ -59,7 +57,6 @@ var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
 
 var IDENTITY_FUNC = function(x) {return x;};
-var NOOP_FUNC = function() {};
 
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
@@ -105,6 +102,7 @@ var DEFAULT_CONFIG = {
     'api_transport':                     'XHR',
     'api_payload_format':                PAYLOAD_TYPE_BASE64,
     'app_host':                          'https://mixpanel.com',
+    'autocapture':                       false,
     'cdn':                               'https://cdn.mxpnl.com',
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
@@ -364,39 +362,128 @@ MixpanelLib.prototype._init = function(token, config, name) {
         }, '');
     }
 
-    var track_pageview_option = this.get_config('track_pageview');
-    if (track_pageview_option) {
-        this._init_url_change_tracking(track_pageview_option);
-    }
+    this.autocapture = new Autocapture(this);
+    this.autocapture.init();
 
-    if (this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent')) {
-        this.start_session_recording();
+    this._init_tab_id();
+    this._check_and_start_session_recording();
+};
+
+/**
+ * Assigns a unique UUID to this tab / window by leveraging sessionStorage.
+ * This is primarily used for session recording, where data must be isolated to the current tab.
+ */
+MixpanelLib.prototype._init_tab_id = function() {
+    if (_.sessionStorage.is_supported()) {
+        try {
+            var key_suffix = this.get_config('name') + '_' + this.get_config('token');
+            var tab_id_key = 'mp_tab_id_' + key_suffix;
+
+            // A flag is used to determine if sessionStorage is copied over and we need to generate a new tab ID.
+            // This enforces a unique ID in the cases like duplicated tab, window.open(...)
+            var should_generate_new_tab_id_key = 'mp_gen_new_tab_id_' + key_suffix;
+            if (_.sessionStorage.get(should_generate_new_tab_id_key) || !_.sessionStorage.get(tab_id_key)) {
+                _.sessionStorage.set(tab_id_key, '$tab-' + _.UUID());
+            }
+
+            _.sessionStorage.set(should_generate_new_tab_id_key, '1');
+            this.tab_id = _.sessionStorage.get(tab_id_key);
+
+            // Remove the flag when the tab is unloaded to indicate the stored tab ID can be reused. This event is not reliable to detect all page unloads,
+            // but reliable in cases where the user remains in the tab e.g. a refresh or href navigation.
+            // If the flag is absent, this indicates to the next SDK instance that we can reuse the stored tab_id.
+            window.addEventListener('beforeunload', function () {
+                _.sessionStorage.remove(should_generate_new_tab_id_key);
+            });
+        } catch(err) {
+            this.report_error('Error initializing tab id', err);
+        }
+    } else {
+        this.report_error('Session storage is not supported, cannot keep track of unique tab ID.');
     }
 };
 
-MixpanelLib.prototype.start_session_recording = addOptOutCheckMixpanelLib(function () {
+MixpanelLib.prototype.get_tab_id = function () {
+    return this.tab_id || null;
+};
+
+MixpanelLib.prototype._should_load_recorder = function () {
+    var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    var tab_id = this.get_tab_id();
+    return recording_registry_idb.init()
+        .then(function () {
+            return recording_registry_idb.getAll();
+        })
+        .then(function (recordings) {
+            for (var i = 0; i < recordings.length; i++) {
+                // if there are expired recordings in the registry, we should load the recorder to flush them
+                // if there's a recording for this tab id, we should load the recorder to continue the recording
+                if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {
+                    return true;
+                }
+            }
+            return false;
+        })
+        .catch(_.bind(function (err) {
+            this.report_error('Error checking recording registry', err);
+        }, this));
+};
+
+MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpanelLib(function(force_start) {
     if (!window['MutationObserver']) {
         console.critical('Browser does not support MutationObserver; skipping session recording');
         return;
     }
 
-    var handleLoadedRecorder = _.bind(function() {
-        this._recorder = this._recorder || new window['__mp_recorder'](this);
-        this._recorder['startRecording']();
+    var loadRecorder = _.bind(function(startNewIfInactive) {
+        var handleLoadedRecorder = _.bind(function() {
+            this._recorder = this._recorder || new window['__mp_recorder'](this);
+            this._recorder['resumeRecording'](startNewIfInactive);
+        }, this);
+
+        if (_.isUndefined(window['__mp_recorder'])) {
+            load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+        } else {
+            handleLoadedRecorder();
+        }
     }, this);
 
-    if (_.isUndefined(window['__mp_recorder'])) {
-        load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
+    /**
+     * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
+     * Otherwise, if the recording registry has any records then it's likely there's a recording in progress or orphaned data that needs to be flushed.
+     */
+    var is_sampled = this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent');
+    if (force_start || is_sampled) {
+        loadRecorder(true);
     } else {
-        handleLoadedRecorder();
+        this._should_load_recorder()
+            .then(function (shouldLoad) {
+                if (shouldLoad) {
+                    loadRecorder(false);
+                }
+            });
     }
 });
+
+MixpanelLib.prototype.start_session_recording = function () {
+    this._check_and_start_session_recording(true);
+};
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
         this._recorder['stopRecording']();
-    } else {
-        console.critical('Session recorder module not loaded');
+    }
+};
+
+MixpanelLib.prototype.pause_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['pauseRecording']();
+    }
+};
+
+MixpanelLib.prototype.resume_session_recording = function () {
+    if (this._recorder) {
+        this._recorder['resumeRecording']();
     }
 };
 
@@ -429,6 +516,11 @@ MixpanelLib.prototype._get_session_replay_id = function () {
         replay_id = this._recorder['replayId'];
     }
     return replay_id || null;
+};
+
+// "private" public method to reach into the recorder in test cases
+MixpanelLib.prototype.__get_recorder = function () {
+    return this._recorder;
 };
 
 // Private methods
@@ -490,55 +582,6 @@ MixpanelLib.prototype._track_dom = function(DomClass, args) {
 
     var dt = new DomClass().init(this);
     return dt.track.apply(dt, args);
-};
-
-MixpanelLib.prototype._init_url_change_tracking = function(track_pageview_option) {
-    var previous_tracked_url = '';
-    var tracked = this.track_pageview();
-    if (tracked) {
-        previous_tracked_url = _.info.currentUrl();
-    }
-
-    if (_.include(['full-url', 'url-with-path-and-query-string', 'url-with-path'], track_pageview_option)) {
-        window.addEventListener('popstate', function() {
-            window.dispatchEvent(new Event('mp_locationchange'));
-        });
-        window.addEventListener('hashchange', function() {
-            window.dispatchEvent(new Event('mp_locationchange'));
-        });
-        var nativePushState = window.history.pushState;
-        if (typeof nativePushState === 'function') {
-            window.history.pushState = function(state, unused, url) {
-                nativePushState.call(window.history, state, unused, url);
-                window.dispatchEvent(new Event('mp_locationchange'));
-            };
-        }
-        var nativeReplaceState = window.history.replaceState;
-        if (typeof nativeReplaceState === 'function') {
-            window.history.replaceState = function(state, unused, url) {
-                nativeReplaceState.call(window.history, state, unused, url);
-                window.dispatchEvent(new Event('mp_locationchange'));
-            };
-        }
-        window.addEventListener('mp_locationchange', function() {
-            var current_url = _.info.currentUrl();
-            var should_track = false;
-            if (track_pageview_option === 'full-url') {
-                should_track = current_url !== previous_tracked_url;
-            } else if (track_pageview_option === 'url-with-path-and-query-string') {
-                should_track = current_url.split('#')[0] !== previous_tracked_url.split('#')[0];
-            } else if (track_pageview_option === 'url-with-path') {
-                should_track = current_url.split('#')[0].split('?')[0] !== previous_tracked_url.split('#')[0].split('?')[0];
-            }
-
-            if (should_track) {
-                var tracked = this.track_pageview();
-                if (tracked) {
-                    previous_tracked_url = current_url;
-                }
-            }
-        }.bind(this));
-    }
 };
 
 /**
@@ -819,7 +862,7 @@ MixpanelLib.prototype.init_batchers = function() {
                         return this._run_hook('before_send_' + attrs.type, item);
                     }, this),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
-                    usePersistence: true
+                    usePersistence: true,
                 }
             );
         }, this);
@@ -1798,6 +1841,10 @@ MixpanelLib.prototype.set_config = function(config) {
             this['persistence'].update_config(this['config']);
         }
         Config.DEBUG = Config.DEBUG || this.get_config('debug');
+
+        if ('autocapture' in config && this.autocapture) {
+            this.autocapture.init();
+        }
     }
 };
 
@@ -1916,6 +1963,7 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
 
     if (disabled) {
         this.stop_batch_senders();
+        this.stop_session_recording();
     } else {
         // only start batchers after opt-in if they have previously been started
         // in order to avoid unintentionally starting up batching for the first time
@@ -2156,9 +2204,15 @@ MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.protot
 MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
 MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
 MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
+MixpanelLib.prototype['pause_session_recording']            = MixpanelLib.prototype.pause_session_recording;
+MixpanelLib.prototype['resume_session_recording']           = MixpanelLib.prototype.resume_session_recording;
 MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
 MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
+MixpanelLib.prototype['get_tab_id']                         = MixpanelLib.prototype.get_tab_id;
 MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
+
+// Exports intended only for testing
+MixpanelLib.prototype['__get_recorder']                     = MixpanelLib.prototype.__get_recorder;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;

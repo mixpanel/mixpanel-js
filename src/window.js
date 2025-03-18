@@ -7,11 +7,14 @@ if (typeof(window) === 'undefined') {
     win = {
         navigator: { userAgent: '', onLine: true },
         document: {
+            createElement: function() { return {}; },
             location: loc,
             referrer: ''
         },
         screen: { width: 0, height: 0 },
-        location: loc
+        location: loc,
+        addEventListener: function() {},
+        removeEventListener: function() {}
     };
 } else {
     win = window;

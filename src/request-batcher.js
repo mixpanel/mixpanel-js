@@ -20,7 +20,9 @@ var RequestBatcher = function(storageKey, options) {
         errorReporter: _.bind(this.reportError, this),
         queueStorage: options.queueStorage,
         sharedLockStorage: options.sharedLockStorage,
-        usePersistence: options.usePersistence
+        sharedLockTimeoutMS: options.sharedLockTimeoutMS,
+        usePersistence: options.usePersistence,
+        enqueueThrottleMs: options.enqueueThrottleMs
     });
 
     this.libConfig = options.libConfig;
@@ -42,6 +44,8 @@ var RequestBatcher = function(storageKey, options) {
     // as long as the queue is not empty. This is useful for high-frequency events like Session Replay where we might end up
     // in a request loop and get ratelimited by the server.
     this.flushOnlyOnInterval = options.flushOnlyOnInterval || false;
+
+    this._flushPromise = null;
 };
 
 /**
@@ -101,7 +105,7 @@ RequestBatcher.prototype.scheduleFlush = function(flushMS) {
     if (!this.stopped) { // don't schedule anymore if batching has been stopped
         this.timeoutID = setTimeout(_.bind(function() {
             if (!this.stopped) {
-                this.flush();
+                this._flushPromise = this.flush();
             }
         }, this), this.flushInterval);
     }
