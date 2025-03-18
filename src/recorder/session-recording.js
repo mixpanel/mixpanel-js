@@ -193,39 +193,41 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         blockSelector = undefined;
     }
 
-    this._stopRecording = this._rrwebRecord({
-        'emit': addOptOutCheckMixpanelLib(function (ev) {
-            if (this.idleExpires < ev.timestamp) {
-                this._onIdleTimeout();
-                return;
-            }
-
-            if (isUserEvent(ev)) {
-                if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
-                    // start flushing again after user activity
-                    this.batcher.start();
+    try {
+        this._stopRecording = this._rrwebRecord({
+            'emit': function (ev) {
+                if (this.idleExpires < ev.timestamp) {
+                    this._onIdleTimeout();
+                    return;
                 }
-                resetIdleTimeout();
+                if (isUserEvent(ev)) {
+                    if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
+                        // start flushing again after user activity
+                        this.batcher.start();
+                    }
+                    resetIdleTimeout();
+                }
+                // promise only used to await during tests
+                this.__enqueuePromise = this.batcher.enqueue(ev);
+            }.bind(this),
+            'blockClass': this.getConfig('record_block_class'),
+            'blockSelector': blockSelector,
+            'collectFonts': this.getConfig('record_collect_fonts'),
+            'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
+                'type': 'image/webp',
+                'quality': 0.6
+            },
+            'maskAllInputs': true,
+            'maskTextClass': this.getConfig('record_mask_text_class'),
+            'maskTextSelector': this.getConfig('record_mask_text_selector'),
+            'recordCanvas': this.getConfig('record_canvas'),
+            'sampling': {
+                'canvas': 15
             }
-
-            // promise only used to await during tests
-            this.__enqueuePromise = this.batcher.enqueue(ev);
-        }.bind(this)),
-        'blockClass': this.getConfig('record_block_class'),
-        'blockSelector': blockSelector,
-        'collectFonts': this.getConfig('record_collect_fonts'),
-        'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
-            'type': 'image/webp',
-            'quality': 0.6
-        },
-        'maskAllInputs': true,
-        'maskTextClass': this.getConfig('record_mask_text_class'),
-        'maskTextSelector': this.getConfig('record_mask_text_selector'),
-        'recordCanvas': this.getConfig('record_canvas'),
-        'sampling': {
-            'canvas': 15
-        }
-    });
+        });
+    } catch (err) {
+        this.reportError('Unexpected error when starting rrweb recording.', err);
+    }
 
     if (typeof this._stopRecording !== 'function') {
         this.reportError('rrweb failed to start, skipping this recording.');
@@ -269,12 +271,21 @@ SessionRecording.prototype.isRrwebStopped = function () {
     return this._stopRecording === null;
 };
 
+
 /**
  * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
  * we stop recording and dump any queued events if the user has opted out.
  */
 SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
-    this._flushEvents(data, options, cb, this._onOptOut.bind(this));
+    var onOptOut = function (code) {
+        // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
+        if (code === 0) {
+            this.stopRecording();
+            cb({error: 'Tracking has been opted out, stopping recording.'});
+        }
+    }.bind(this);
+
+    this._flushEvents(data, options, cb, onOptOut);
 };
 
 /**
@@ -322,13 +333,6 @@ SessionRecording.deserialize = function (serializedRecording, options) {
     }));
 
     return recording;
-};
-
-SessionRecording.prototype._onOptOut = function (code) {
-    // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
-    if (code === 0) {
-        this.stopRecording();
-    }
 };
 
 SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {

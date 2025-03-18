@@ -863,7 +863,6 @@ MixpanelLib.prototype.init_batchers = function() {
                     }, this),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
                     usePersistence: true,
-                    enqueueThrottleMs: 10,
                 }
             );
         }, this);

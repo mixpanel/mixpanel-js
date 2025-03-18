@@ -11845,7 +11845,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.61.0'
+    LIB_VERSION: '2.61.2'
 };
 
 exports['default'] = Config;
@@ -13257,8 +13257,7 @@ MixpanelLib.prototype.init_batchers = function () {
                     return this._run_hook('before_send_' + attrs.type, item);
                 }, this),
                 stopAllBatchingFunc: _utils._.bind(this.stop_batch_senders, this),
-                usePersistence: true,
-                enqueueThrottleMs: 10
+                usePersistence: true
             });
         }, this);
         var batcher_configs = this.get_batcher_configs();
@@ -16673,34 +16672,37 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         blockSelector = undefined;
     }
 
-    this._stopRecording = this._rrwebRecord({
-        'emit': (0, _gdprUtils.addOptOutCheckMixpanelLib)((function (ev) {
-            if (isUserEvent(ev)) {
-                if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
-                    // start flushing again after user activity
-                    this.batcher.start();
+    try {
+        this._stopRecording = this._rrwebRecord({
+            'emit': (function (ev) {
+                if (isUserEvent(ev)) {
+                    if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
+                        // start flushing again after user activity
+                        this.batcher.start();
+                    }
+                    resetIdleTimeout();
                 }
-                resetIdleTimeout();
+                // promise only used to await during tests
+                this.__enqueuePromise = this.batcher.enqueue(ev);
+            }).bind(this),
+            'blockClass': this.getConfig('record_block_class'),
+            'blockSelector': blockSelector,
+            'collectFonts': this.getConfig('record_collect_fonts'),
+            'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
+                'type': 'image/webp',
+                'quality': 0.6
+            },
+            'maskAllInputs': true,
+            'maskTextClass': this.getConfig('record_mask_text_class'),
+            'maskTextSelector': this.getConfig('record_mask_text_selector'),
+            'recordCanvas': this.getConfig('record_canvas'),
+            'sampling': {
+                'canvas': 15
             }
-
-            // promise only used to await during tests
-            this.__enqueuePromise = this.batcher.enqueue(ev);
-        }).bind(this)),
-        'blockClass': this.getConfig('record_block_class'),
-        'blockSelector': blockSelector,
-        'collectFonts': this.getConfig('record_collect_fonts'),
-        'dataURLOptions': { // canvas image options (https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
-            'type': 'image/webp',
-            'quality': 0.6
-        },
-        'maskAllInputs': true,
-        'maskTextClass': this.getConfig('record_mask_text_class'),
-        'maskTextSelector': this.getConfig('record_mask_text_selector'),
-        'recordCanvas': this.getConfig('record_canvas'),
-        'sampling': {
-            'canvas': 15
-        }
-    });
+        });
+    } catch (err) {
+        this.reportError('Unexpected error when starting rrweb recording.', err);
+    }
 
     if (typeof this._stopRecording !== 'function') {
         this.reportError('rrweb failed to start, skipping this recording.');
@@ -16749,7 +16751,15 @@ SessionRecording.prototype.isRrwebStopped = function () {
  * we stop recording and dump any queued events if the user has opted out.
  */
 SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
-    this._flushEvents(data, options, cb, this._onOptOut.bind(this));
+    var onOptOut = (function (code) {
+        // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
+        if (code === 0) {
+            this.stopRecording();
+            cb({ error: 'Tracking has been opted out, stopping recording.' });
+        }
+    }).bind(this);
+
+    this._flushEvents(data, options, cb, onOptOut);
 };
 
 /**
@@ -16798,13 +16808,6 @@ SessionRecording.deserialize = function (serializedRecording, options) {
     return recording;
 };
 
-SessionRecording.prototype._onOptOut = function (code) {
-    // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
-    if (code === 0) {
-        this.stopRecording();
-    }
-};
-
 SessionRecording.prototype._sendRequest = function (currentReplayId, reqParams, reqBody, callback) {
     var onSuccess = (function (response, responseBody) {
         // Update batch specific props only if the request was successful to guarantee ordering.
@@ -16847,17 +16850,32 @@ SessionRecording.prototype._flushEvents = (0, _gdprUtils.addOptOutCheckMixpanelL
 
     if (numEvents > 0) {
         var replayId = this.replayId;
-        // each rrweb event has a timestamp - leverage those to get time properties
-        var batchStartTime = data[0].timestamp;
-        if (this.seqNo === 0 || !this.replayStartTime) {
-            // extra safety net so that we don't send a null replay start time
-            if (this.seqNo !== 0) {
-                this.reportError('Replay start time not set but seqNo is not 0. Using current batch start time as a fallback.');
-            }
 
+        // each rrweb event has a timestamp - leverage those to get time properties
+        var batchStartTime = Infinity;
+        var batchEndTime = -Infinity;
+        var hasFullSnapshot = false;
+        for (var i = 0; i < numEvents; i++) {
+            batchStartTime = Math.min(batchStartTime, data[i].timestamp);
+            batchEndTime = Math.max(batchEndTime, data[i].timestamp);
+            if (data[i].type === _rrwebTypes.EventType.FullSnapshot) {
+                hasFullSnapshot = true;
+            }
+        }
+
+        if (this.seqNo === 0) {
+            if (!hasFullSnapshot) {
+                callback({ error: 'First batch does not contain a full snapshot. Aborting recording.' });
+                this.stopRecording(true);
+                return;
+            }
+            this.replayStartTime = batchStartTime;
+        } else if (!this.replayStartTime) {
+            this.reportError('Replay start time not set but seqNo is not 0. Using current batch start time as a fallback.');
             this.replayStartTime = batchStartTime;
         }
-        var replayLengthMs = data[numEvents - 1].timestamp - this.replayStartTime;
+
+        var replayLengthMs = batchEndTime - this.replayStartTime;
 
         var reqParams = {
             '$current_url': this.batchStartUrl,
@@ -17871,7 +17889,7 @@ IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
     };
 
     return this.dbPromise.then(doTransaction)['catch']((function (err) {
-        if (err['name'] === 'InvalidStateError') {
+        if (err && err['name'] === 'InvalidStateError') {
             // try reopening the DB if the connection is closed
             this.dbPromise = this._openDb();
             return this.dbPromise.then(doTransaction);

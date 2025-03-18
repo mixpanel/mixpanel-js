@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.61.0'
+        LIB_VERSION: '2.61.2'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -5625,7 +5625,7 @@
         return this.dbPromise
             .then(doTransaction)
             .catch(function (err) {
-                if (err['name'] === 'InvalidStateError') {
+                if (err && err['name'] === 'InvalidStateError') {
                     // try reopening the DB if the connection is closed
                     this.dbPromise = this._openDb();
                     return this.dbPromise.then(doTransaction);
@@ -6507,7 +6507,6 @@
                         }, this),
                         stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
                         usePersistence: true,
-                        enqueueThrottleMs: 10,
                     }
                 );
             }, this);

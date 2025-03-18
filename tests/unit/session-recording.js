@@ -13,6 +13,7 @@ import { setupFakeIDB, idbGetItem, idbSetItem, idbCreateDatabase } from './test-
 import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 import { setupRrwebMock } from './test-utils/mock-rrweb';
 import { RECORD_ENQUEUE_THROTTLE_MS } from '../../src/recorder/utils';
+import { _ } from '../../src/utils';
 
 describe(`SessionRecording`, function() {
   let replayId,
@@ -353,5 +354,37 @@ describe(`SessionRecording`, function() {
     expect(onIdleTimeoutSpy.calledOnce).to.be.false;
     mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove, NOW_MS + rightBeforeTimeout + 2);
     expect(onIdleTimeoutSpy.calledOnce).to.be.true;
+  });
+
+  it(`respects tracking opt-out check`, async function() {
+    sessionRecording.startRecording();
+    expect(sessionRecording.isRrwebStopped()).to.be.false;
+
+    mockRrweb.emit(EventType.Meta);
+    mockRrweb.emit(EventType.FullSnapshot);
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
+    await sessionRecording.__enqueuePromise;
+
+    sinon.stub(_.localStorage, `get`).callsFake(function (key) {
+      if (key === `__mp_opt_in_out_test-token`) {
+        return `0`;
+      }
+      return null;
+    });
+
+    clock.tick(1000);
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+    // this should not be queued, it would await the previous completed enqueuePromise
+    clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
+    await sessionRecording.__enqueuePromise;
+
+    clock.tick(10 * 1000);
+    await sessionRecording.batcher._flushPromise;
+    expect(fetchStub.calledOnce).to.be.false;
+    expect(mockRrweb.stopSpy.calledOnce).to.be.true;
+    expect(sessionRecording.isRrwebStopped()).to.be.true;
+
+    const queue = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
+    expect(queue.length).to.equal(0, `batcher should have removed the items from IDB`);
   });
 });
