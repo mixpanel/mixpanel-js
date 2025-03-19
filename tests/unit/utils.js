@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import {randomUUID} from 'crypto';
 import sinon from 'sinon';
 
 import { batchedThrottle, extract_domain, _, document } from '../../src/utils';
@@ -339,25 +338,27 @@ describe('batchedThrottle', function () {
 describe(`_.UUID`, function() {
   context(`when the environment supports the crypto API`, function() {
     beforeEach(function() {
-      sinon.stub(window.crypto, `randomUUID`).callsFake(randomUUID);
+      sinon.stub(window.crypto, `randomUUID`).returns(`fake-uuid`);
     });
 
     afterEach(function() {
       sinon.restore();
     });
 
-    it(`generates a 36-char UUIDv4`, function() {
-      for (let i = 0; i < 100; i++) {
-        expect(_.UUID()).to.match(/^[a-f0-9\-]{36}$/);
-      }
+    it(`uses the native randomUUID function`, function() {
+      expect(_.UUID()).to.equal(`fake-uuid`);
     });
   });
 
   context(`when the environment does not support the crypto API`, function() {
-    it(`generates a 36-char UUID`, function() {
+    it(`generates a unique 36-char UUID`, function() {
+      const generatedIds = new Set();
       for (let i = 0; i < 100; i++) {
-        expect(_.UUID()).to.match(/^[a-f0-9\-]{36}$/);
+        const uuid = _.UUID();
+        expect(uuid).to.match(/^[a-f0-9\-]{36}$/);
+        generatedIds.add(uuid);
       }
+      expect(generatedIds.size).to.equal(100);
     });
   });
 });
