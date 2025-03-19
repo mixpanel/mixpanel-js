@@ -416,7 +416,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             'replay_start_url': this.replayStartUrl,
             'seq': this.seqNo
         };
-        var eventsJson = _.JSONEncode(data);
+        var eventsJson = JSON.stringify(data);
 
         // send ID management props if they exist
         var deviceId = this._mixpanel.get_property('$device_id');

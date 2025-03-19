@@ -9,7 +9,7 @@ import {
     REMOVE_ACTION,
     UNION_ACTION
 } from './api-actions';
-import { _, console } from './utils';
+import { _, console, JSONStringify } from './utils';
 
 /*
  * Constants
@@ -125,7 +125,7 @@ MixpanelPersistence.prototype.save = function() {
 
     this.storage.set(
         this.name,
-        _.JSONEncode(this['props']),
+        JSONStringify(this['props']),
         this.expire_days,
         this.cross_subdomain,
         this.secure,
