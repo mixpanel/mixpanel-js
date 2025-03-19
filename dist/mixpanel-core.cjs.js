@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.61.2'
+    LIB_VERSION: '2.62.0-rc1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -12,6 +12,7 @@ if (typeof(window) === 'undefined') {
         hostname: ''
     };
     win = {
+        crypto: {randomUUID: function() {throw Error('unsupported');}},
         navigator: { userAgent: '', onLine: true },
         document: {
             createElement: function() { return {}; },
@@ -1225,71 +1226,27 @@ _.utf8Encode = function(string) {
     return utftext;
 };
 
-_.UUID = (function() {
-
-    // Time-based entropy
-    var T = function() {
-        var time = 1 * new Date(); // cross-browser version of Date.now()
-        var ticks;
-        if (win.performance && win.performance.now) {
-            ticks = win.performance.now();
-        } else {
-            // fall back to busy loop
-            ticks = 0;
-
-            // this while loop figures how many browser ticks go by
-            // before 1*new Date() returns a new number, ie the amount
-            // of ticks that go by per millisecond
-            while (time == 1 * new Date()) {
-                ticks++;
-            }
+_.UUID = function() {
+    try {
+        // use native Crypto API when available
+        return win['crypto']['randomUUID']();
+    } catch (err) {
+        // fall back to generating our own UUID
+        // based on https://gist.github.com/scwood/3bff42cc005cc20ab7ec98f0d8e1d59d
+        var uuid = new Array(36);
+        for (var i = 0; i < 36; i++) {
+            uuid[i] = Math.floor(Math.random() * 16);
         }
-        return time.toString(16) + Math.floor(ticks).toString(16);
-    };
+        uuid[14] = 4; // set bits 12-15 of time-high-and-version to 0100
+        uuid[19] = uuid[19] &= ~(1 << 2); // set bit 6 of clock-seq-and-reserved to zero
+        uuid[19] = uuid[19] |= (1 << 3); // set bit 7 of clock-seq-and-reserved to one
+        uuid[8] = uuid[13] = uuid[18] = uuid[23] = '-';
 
-    // Math.Random entropy
-    var R = function() {
-        return Math.random().toString(16).replace('.', '');
-    };
-
-    // User agent entropy
-    // This function takes the user agent string, and then xors
-    // together each sequence of 8 bytes.  This produces a final
-    // sequence of 8 bytes which it returns as hex.
-    var UA = function() {
-        var ua = userAgent,
-            i, ch, buffer = [],
-            ret = 0;
-
-        function xor(result, byte_array) {
-            var j, tmp = 0;
-            for (j = 0; j < byte_array.length; j++) {
-                tmp |= (buffer[j] << j * 8);
-            }
-            return result ^ tmp;
-        }
-
-        for (i = 0; i < ua.length; i++) {
-            ch = ua.charCodeAt(i);
-            buffer.unshift(ch & 0xFF);
-            if (buffer.length >= 4) {
-                ret = xor(ret, buffer);
-                buffer = [];
-            }
-        }
-
-        if (buffer.length > 0) {
-            ret = xor(ret, buffer);
-        }
-
-        return ret.toString(16);
-    };
-
-    return function() {
-        var se = (screen.height * screen.width).toString(16);
-        return (T() + '-' + R() + '-' + UA() + '-' + se + '-' + T());
-    };
-})();
+        return _.map(uuid, function(x) {
+            return x.toString(16);
+        }).join('');
+    }
+};
 
 // _.isBlockedUA()
 // This is to block various web spiders from executing our JS and
@@ -5231,7 +5188,7 @@ MixpanelPersistence.prototype.save = function() {
 
     this.storage.set(
         this.name,
-        _.JSONEncode(this['props']),
+        JSONStringify(this['props']),
         this.expire_days,
         this.cross_subdomain,
         this.secure,
@@ -6575,7 +6532,7 @@ MixpanelLib.prototype.disable = function(events) {
 };
 
 MixpanelLib.prototype._encode_data_for_request = function(data) {
-    var encoded_data = _.JSONEncode(data);
+    var encoded_data = JSONStringify(data);
     if (this.get_config('api_payload_format') === PAYLOAD_TYPE_BASE64) {
         encoded_data = _.base64Encode(encoded_data);
     }
