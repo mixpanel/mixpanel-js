@@ -187,6 +187,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.idleTimeoutId = setTimeout(this._onIdleTimeout, idleTimeoutMs);
         this.idleExpires = new Date().getTime() + idleTimeoutMs;
     }.bind(this);
+    resetIdleTimeout();
 
     var blockSelector = this.getConfig('record_block_selector');
     if (blockSelector === '' || blockSelector === null) {
@@ -196,7 +197,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     try {
         this._stopRecording = this._rrwebRecord({
             'emit': function (ev) {
-                if (this.idleExpires < ev.timestamp) {
+                if (this.idleExpires && this.idleExpires < ev.timestamp) {
                     this._onIdleTimeout();
                     return;
                 }
@@ -235,8 +236,6 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.stopRecording(); // stop batcher looping and any timeouts
         return;
     }
-
-    resetIdleTimeout();
 
     var maxTimeoutMs = this.maxExpires - new Date().getTime();
     this.maxTimeoutId = setTimeout(this._onMaxLengthReached.bind(this), maxTimeoutMs);

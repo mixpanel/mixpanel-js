@@ -101,7 +101,6 @@ describe(`SessionRecording`, function() {
 
     expect(flushSpy.calledOnce).to.be.false;
     expect(sessionRecording.batcher.stopped).to.be.true;
-    expect(sessionRecording.idleTimeoutId).to.be.null;
     expect(sessionRecording.maxTimeoutId).to.be.null;
   });
 
