@@ -196,6 +196,10 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     try {
         this._stopRecording = this._rrwebRecord({
             'emit': function (ev) {
+                if (this.idleExpires < ev.timestamp) {
+                    this._onIdleTimeout();
+                    return;
+                }
                 if (isUserEvent(ev)) {
                     if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
                         // start flushing again after user activity

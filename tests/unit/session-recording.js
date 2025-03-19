@@ -333,6 +333,29 @@ describe(`SessionRecording`, function() {
     expect(params2.get(`batch_start_time`)).to.equal(((NOW_MS + 1000) / 1000).toString());
   });
 
+  it(`runs the idle timeout handler when timing out`, function () {
+    sessionRecording.startRecording();
+    clock.tick(60 * 1000);
+
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
+    clock.tick(29 * 60 * 1000);
+    expect(onIdleTimeoutSpy.calledOnce).to.be.false;
+    clock.tick(61 * 1000);
+
+    expect(onIdleTimeoutSpy.calledOnce).to.be.true;
+  });
+
+  it(`will respect the idle timeout even when setTimeout fails (race condition where a browser tab might pause timers)`, function () {
+    sessionRecording.startRecording();
+
+    const rightBeforeTimeout = 30 * 60 * 1000 - 1;
+    clock.tick(rightBeforeTimeout);
+
+    expect(onIdleTimeoutSpy.calledOnce).to.be.false;
+    mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove, NOW_MS + rightBeforeTimeout + 2);
+    expect(onIdleTimeoutSpy.calledOnce).to.be.true;
+  });
+
   it(`respects tracking opt-out check`, async function() {
     sessionRecording.startRecording();
     expect(sessionRecording.isRrwebStopped()).to.be.false;
