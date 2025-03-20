@@ -8403,8 +8403,9 @@
 	                retryAfter: response.headers.get('Retry-After')
 	            });
 	        }.bind(this);
+	        const apiHost = this.getConfig('session_recording_use_proxy') ? this.getConfig('api_host') : 'https://api.mixpanel.com';
 
-	        win['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+	        win['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
 	            'method': 'POST',
 	            'headers': {
 	                'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
@@ -11042,7 +11043,8 @@
 	        'record_max_ms':                     MAX_RECORDING_MS,
 	        'record_min_ms':                     0,
 	        'record_sessions_percent':           0,
-	        'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
+	        'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+	        'session_recording_use_proxy':       false,
 	    };
 
 	    var DOM_LOADED = false;
