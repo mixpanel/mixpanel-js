@@ -59,43 +59,39 @@ FeatureFlagManager.prototype.fetchFlags = function() {
   }.bind(this)).catch(function(error) {});
 };
 
-FeatureFlagManager.prototype.getFeature = function(featureName) {
+FeatureFlagManager.prototype.getFeature = function(featureName, fallback) {
   return this.fetchPromise.then(function() {
-    var feature = this.flags[featureName];
-    if (!feature) {
-      logger.log('No flag found: "' + featureName + '"');
-    }
-    return feature;
+    return this.getFeatureSync(featureName, fallback);
   }.bind(this)).catch(function(error) {
     logger.error(error);
-    return null;
+    return fallback;
   });
 };
 
-FeatureFlagManager.prototype.getFeatureSync = function(featureName) {
+FeatureFlagManager.prototype.getFeatureSync = function(featureName, fallback) {
   if (!this.areFeaturesReady()) {
     logger.log('Flags not loaded yet');
-    return null;
+    return fallback;
   }
   var feature = this.flags[featureName];
   if (!feature) {
     logger.log('No flag found: "' + featureName + '"');
+    return fallback;
   }
   return feature;
 };
 
 FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
-  return this.getFeature(featureName).then(function(flag) {
-    return flag ? flag['data'] : fallbackValue;
-  }.bind(this)).catch(function(error) {
+  return this.getFeature(featureName, {'data': fallbackValue}).then(function(feature) {
+    return feature['data'];
+  }).catch(function(error) {
     logger.error(error);
     return fallbackValue;
   });
 };
 
 FeatureFlagManager.prototype.getFeatureDataSync = function(featureName, fallbackValue) {
-  var feature = this.getFeatureSync(featureName);
-  return feature ? feature['data'] : fallbackValue;
+  return this.getFeatureSync(featureName, {'data': fallbackValue})['data'];
 };
 
 FeatureFlagManager.prototype.isEnabled = function() {
