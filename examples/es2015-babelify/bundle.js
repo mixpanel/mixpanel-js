@@ -12553,8 +12553,7 @@ var DEFAULT_CONFIG = {
     'record_max_ms': _utils.MAX_RECORDING_MS,
     'record_min_ms': 0,
     'record_sessions_percent': 0,
-    'recorder_src': 'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
-    'session_recording_use_proxy': false
+    'recorder_src': 'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
 
 var DOM_LOADED = false;
@@ -16839,7 +16838,7 @@ SessionRecording.prototype._sendRequest = function (currentReplayId, reqParams, 
             retryAfter: response.headers.get('Retry-After')
         });
     }).bind(this);
-    var apiHost = this.getConfig('session_recording_use_proxy') ? this._mixpanel._getApiHost("record") : 'https://api.mixpanel.com';
+    var apiHost = this._mixpanel.get_config('api_hosts')['record'] || 'https://api.mixpanel.com';
 
     _window.window['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',

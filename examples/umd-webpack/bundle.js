@@ -8403,7 +8403,7 @@
 	                retryAfter: response.headers.get('Retry-After')
 	            });
 	        }.bind(this);
-	        const apiHost = this.getConfig('session_recording_use_proxy') ? this._mixpanel._getApiHost("record") : 'https://api.mixpanel.com';
+	        const apiHost = this._mixpanel.get_config('api_hosts')['record'] || 'https://api.mixpanel.com';
 
 	        win['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
 	            'method': 'POST',
@@ -11045,7 +11045,6 @@
 	        'record_min_ms':                     0,
 	        'record_sessions_percent':           0,
 	        'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
-	        'session_recording_use_proxy':       false,
 	    };
 
 	    var DOM_LOADED = false;
