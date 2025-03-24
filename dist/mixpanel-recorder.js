@@ -8153,8 +8153,9 @@
                 retryAfter: response.headers.get('Retry-After')
             });
         }.bind(this);
+        const apiHost = this.getConfig('session_recording_use_proxy') ? this.getConfig('api_host') : 'https://api.mixpanel.com';
 
-        win['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+        win['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
             'method': 'POST',
             'headers': {
                 'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),

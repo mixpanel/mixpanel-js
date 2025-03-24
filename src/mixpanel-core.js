@@ -97,6 +97,7 @@ var DEFAULT_API_ROUTES = {
  */
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
+    'api_hosts':                         {},
     'api_routes':                        DEFAULT_API_ROUTES,
     'api_method':                        'POST',
     'api_transport':                     'XHR',
@@ -153,7 +154,7 @@ var DEFAULT_CONFIG = {
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
-    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
+    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
 };
 
 var DOM_LOADED = false;
@@ -1078,7 +1079,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this.get_config('api_host') + '/' + this.get_config('api_routes')['track'],
+        endpoint: this._getApiHost('events') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
@@ -1890,6 +1891,17 @@ MixpanelLib.prototype._run_hook = function(hook_name) {
  */
 MixpanelLib.prototype.get_property = function(property_name) {
     return this['persistence'].load_prop([property_name]);
+};
+
+/**
+ * Get the API host for a specific endpoint type, falling back to the default api_host if not specified
+ * 
+ * @param {String} endpoint_type The type of endpoint (e.g., "events", "people", "groups")
+ * @returns {String} The API host to use for this endpoint
+ * @private
+ */
+MixpanelLib.prototype._getApiHost = function(endpoint_type) {
+    return this.get_config('api_hosts')[endpoint_type] || this.get_config('api_host');
 };
 
 MixpanelLib.prototype.toString = function() {
