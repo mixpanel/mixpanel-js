@@ -61,7 +61,11 @@ FeatureFlagManager.prototype.fetchFlags = function() {
 
 FeatureFlagManager.prototype.getFeature = function(featureName) {
   return this.fetchPromise.then(function() {
-    return this.flags[featureName];
+    var feature = this.flags[featureName];
+    if (!feature) {
+      logger.log('No flag found: "' + featureName + '"');
+    }
+    return feature;
   }.bind(this)).catch(function(error) {
     logger.error(error);
     return null;
@@ -73,20 +77,25 @@ FeatureFlagManager.prototype.getFeatureSync = function(featureName) {
     logger.log('Flags not loaded yet');
     return null;
   }
-  return this.flags[featureName];
+  var feature = this.flags[featureName];
+  if (!feature) {
+    logger.log('No flag found: "' + featureName + '"');
+  }
+  return feature;
 };
 
-FeatureFlagManager.prototype.getFeatureData = function(featureName) {
+FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
   return this.getFeature(featureName).then(function(flag) {
-    return flag['data'];
+    return flag ? flag['data'] : fallbackValue;
   }.bind(this)).catch(function(error) {
     logger.error(error);
-    return null;
+    return fallbackValue;
   });
 };
 
-FeatureFlagManager.prototype.getFeatureDataSync = function(featureName) {
-  return this.getFeatureSync(featureName)['data'];
+FeatureFlagManager.prototype.getFeatureDataSync = function(featureName, fallbackValue) {
+  var feature = this.getFeatureSync(featureName);
+  return feature ? feature['data'] : fallbackValue;
 };
 
 FeatureFlagManager.prototype.isEnabled = function() {
