@@ -349,7 +349,7 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
             retryAfter: response.headers.get('Retry-After')
         });
     }.bind(this);
-    const apiHost = this.getConfig('session_recording_use_proxy') ? this.getConfig('api_host') : 'https://api.mixpanel.com';
+    const apiHost = this.getConfig('session_recording_use_proxy') ? this._mixpanel._getApiHost("record") : 'https://api.mixpanel.com';
 
     window['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
