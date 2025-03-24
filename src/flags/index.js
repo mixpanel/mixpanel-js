@@ -24,11 +24,14 @@ FeatureFlagManager.prototype.init = function() {
 };
 
 FeatureFlagManager.prototype.areFeaturesReady = function() {
+  if (!this.isEnabled()) {
+    logger.error('Feature Flags not enabled');
+  }
   return !!this.flags;
 };
 
 FeatureFlagManager.prototype.fetchFlags = function() {
-  if (!this.getConfig('flags')) {
+  if (!this.isEnabled()) {
     return;
   }
 
@@ -61,7 +64,16 @@ FeatureFlagManager.prototype.getFeature = function(featureName) {
     return this.flags[featureName];
   }.bind(this)).catch(function(error) {
     logger.error(error);
+    return null;
   });
+};
+
+FeatureFlagManager.prototype.getFeatureSync = function(featureName) {
+  if (!this.areFeaturesReady()) {
+    logger.log('Flags not loaded yet');
+    return null;
+  }
+  return this.flags[featureName];
 };
 
 FeatureFlagManager.prototype.getFeatureData = function(featureName) {
@@ -69,15 +81,16 @@ FeatureFlagManager.prototype.getFeatureData = function(featureName) {
     return flag['data'];
   }.bind(this)).catch(function(error) {
     logger.error(error);
+    return null;
   });
 };
 
 FeatureFlagManager.prototype.getFeatureDataSync = function(featureName) {
-  if (!this.areFeaturesReady()) {
-    logger.log('Flags not loaded yet');
-    return null;
-  }
-  return this.flags[featureName]['data'];
+  return this.getFeatureSync(featureName)['data'];
+};
+
+FeatureFlagManager.prototype.isEnabled = function() {
+  return !!this.getConfig('flags');
 };
 
 function minApisSupported() {
@@ -87,7 +100,9 @@ function minApisSupported() {
 safewrapClass(FeatureFlagManager);
 
 FeatureFlagManager.prototype['are_features_ready'] = FeatureFlagManager.prototype['areFeaturesReady'] = FeatureFlagManager.prototype.areFeaturesReady;
+FeatureFlagManager.prototype['get_feature'] = FeatureFlagManager.prototype['getFeature'] = FeatureFlagManager.prototype.getFeature;
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype['getFeatureData'] = FeatureFlagManager.prototype.getFeatureData;
 FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype['getFeatureDataSync'] = FeatureFlagManager.prototype.getFeatureDataSync;
+FeatureFlagManager.prototype['get_feature_sync'] = FeatureFlagManager.prototype['getFeatureSync'] = FeatureFlagManager.prototype.getFeatureSync;
 
 export { FeatureFlagManager };
