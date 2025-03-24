@@ -23,6 +23,10 @@ FeatureFlagManager.prototype.init = function() {
   this.fetchFlags();
 };
 
+FeatureFlagManager.prototype.areFeaturesReady = function() {
+  return !!this.flags;
+};
+
 FeatureFlagManager.prototype.fetchFlags = function() {
   if (!this.getConfig('flags')) {
     return;
@@ -68,12 +72,22 @@ FeatureFlagManager.prototype.getFeatureData = function(featureName) {
   });
 };
 
+FeatureFlagManager.prototype.getFeatureDataSync = function(featureName) {
+  if (!this.areFeaturesReady()) {
+    logger.log('Flags not loaded yet');
+    return null;
+  }
+  return this.flags[featureName]['data'];
+};
+
 function minApisSupported() {
   return !!fetch;
 }
 
 safewrapClass(FeatureFlagManager);
 
+FeatureFlagManager.prototype['are_features_ready'] = FeatureFlagManager.prototype['areFeaturesReady'] = FeatureFlagManager.prototype.areFeaturesReady;
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype['getFeatureData'] = FeatureFlagManager.prototype.getFeatureData;
+FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype['getFeatureDataSync'] = FeatureFlagManager.prototype.getFeatureDataSync;
 
 export { FeatureFlagManager };
