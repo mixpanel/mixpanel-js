@@ -18,6 +18,8 @@ const COMMON_CLOSURE_FLAGS = {
     externs: ['src/externs.js'],
 };
 
+const MINIFY = process.env.MINIFY || process.env.FULL;
+
 // Main builds used to develop / iterate quickly
 const MAIN_BUILDS = [
     // compile rrweb first to es5 with swc, we'll replace the import later on
@@ -41,13 +43,17 @@ const MAIN_BUILDS = [
                 name: 'mixpanel_recorder',
                 format: 'iife',
             },
-            {
-                file: 'build/mixpanel-recorder.min.js',
-                name: 'mixpanel_recorder',
-                format: 'iife',
-                plugins: [esbuild({target: 'es5', minify: true, sourceMap: true})],
-                sourcemap: true,
-            }
+            ...(MINIFY
+                ? [
+                    {
+                      file: 'build/mixpanel-recorder.min.js',
+                      name: 'mixpanel_recorder',
+                      format: 'iife',
+                      plugins: [esbuild({target: 'es5', minify: true, sourceMap: true})],
+                      sourcemap: true,
+                    },
+                  ]
+                : []),
         ],
         plugins: [aliasRrweb()],
     },
@@ -61,11 +67,15 @@ const MAIN_BUILDS = [
                 name: 'mixpanel',
                 format: 'iife',
             },
-            {
-                file: 'build/mixpanel.min.js',
-                format: 'iife',
-                plugins: [closureCompiler(COMMON_CLOSURE_FLAGS)],
-            },
+            ...(MINIFY
+                ? [
+                    {
+                      file: 'build/mixpanel.min.js',
+                      format: 'iife',
+                      plugins: [closureCompiler(COMMON_CLOSURE_FLAGS)],
+                    },
+                  ]
+                : []),
         ],
         plugins: [
             nodeResolve({
