@@ -1,5 +1,6 @@
 import { Promise } from '../promise-polyfill';
 import { _, JSONParse, JSONStringify } from '../utils'; // eslint-disable-line camelcase
+import { window } from '../window';
 
 /**
  * @type {import('./wrapper').StorageWrapper}

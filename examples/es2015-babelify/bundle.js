@@ -26051,11 +26051,13 @@ var _utils = require('../utils');
 
 // eslint-disable-line camelcase
 
+var _window = require('../window');
+
 /**
  * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function LocalStorageWrapper(storageOverride) {
-    this.storage = storageOverride || window.localStorage;
+    this.storage = storageOverride || _window.window.localStorage;
 };
 
 LocalStorageWrapper.prototype.init = function () {
@@ -26098,7 +26100,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
 
 exports.LocalStorageWrapper = LocalStorageWrapper;
 
-},{"../promise-polyfill":20,"../utils":31}],31:[function(require,module,exports){
+},{"../promise-polyfill":20,"../utils":31,"../window":32}],31:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
