@@ -24963,7 +24963,7 @@ SessionRecording.prototype._flushEvents = (0, _gdprUtils.addOptOutCheckMixpanelL
         for (var i = 0; i < numEvents; i++) {
             batchStartTime = Math.min(batchStartTime, data[i].timestamp);
             batchEndTime = Math.max(batchEndTime, data[i].timestamp);
-            if (data[i].type === _rrwebTypes.EventType.FullSnapshot) {
+            if (data[i].type === _rrweb.EventType.FullSnapshot) {
                 hasFullSnapshot = true;
             }
         }
