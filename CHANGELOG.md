@@ -1,3 +1,8 @@
+**2.62.0** (26 Mar 2025)
+- Replace UUID generator with UUIDv4 (using native API when available)
+- Consistently use native JSON serialization when available
+- Fix for session recording idle timeout race condition
+
 **2.61.2** (14 Mar 2025)
 - Revert 10ms throttle on enqueueing events to improve tracking reliability on page unload
 
