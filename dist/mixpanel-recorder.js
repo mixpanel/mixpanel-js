@@ -13944,31 +13944,7 @@
     }
 
     var Config = {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-        DEBUG: false,
-<<<<<<< HEAD
         LIB_VERSION: '2.62.0'
-=======
-<<<<<<< HEAD
-        LIB_VERSION: '2.61.2'
-=======
-        LIB_VERSION: '2.61.0'
-=======
-        LIB_VERSION: '2.61.0-rc1'
->>>>>>> 216e2df (build)
->>>>>>> 259768c (build)
-<<<<<<< HEAD
->>>>>>> ca689ef (build)
-=======
-=======
-        LIB_VERSION: '2.61.0'
->>>>>>> dc80372 (build after rebase)
->>>>>>> 2c1cd86 (build after rebase)
-=======
-        LIB_VERSION: '2.61.2'
->>>>>>> 5224ea7 (rebase build)
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -14769,7 +14745,7 @@
                 uuid[i] = Math.floor(Math.random() * 16);
             }
             uuid[14] = 4; // set bits 12-15 of time-high-and-version to 0100
-            uuid[19] = uuid[19] &= ~(1 << 2); // set bit 6 of clock-seq-and-reserved to zero
+            uuid[19] = uuid[19] &= -5; // set bit 6 of clock-seq-and-reserved to zero
             uuid[19] = uuid[19] |= (1 << 3); // set bit 7 of clock-seq-and-reserved to one
             uuid[8] = uuid[13] = uuid[18] = uuid[23] = '-';
 
