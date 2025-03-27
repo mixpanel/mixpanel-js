@@ -1578,6 +1578,11 @@ MixpanelLib.prototype.identify = function(
             '$anon_distinct_id': previous_distinct_id
         }, {skip_hooks: true});
     }
+
+    // check feature flags again if distinct id has changed
+    if (new_distinct_id !== previous_distinct_id) {
+        this.flags.fetchFlags();
+    }
 };
 
 /**
