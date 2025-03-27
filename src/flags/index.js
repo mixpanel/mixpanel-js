@@ -1,4 +1,4 @@
-import { console_with_prefix, safewrapClass } from '../utils'; // eslint-disable-line camelcase
+import { _, console_with_prefix, safewrapClass } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
 
 var fetch = window['fetch'];
@@ -48,10 +48,17 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     },
   }).then(function(response) {
     return response.json().then(function(responseBody) {
-      var flags = responseBody['flags'];
-      if (!flags) {
+      var responseFlags = responseBody['flags'];
+      if (!responseFlags) {
         throw new Error('No flags in API response');
       }
+      var flags = {};
+      _.each(responseFlags, function(data, key) {
+        flags[key] = {
+          'key': data['variant_key'],
+          'data': data['variant_value']
+        };
+      });
       this.flags = flags;
     }.bind(this)).catch(function(error) {
       logger.error(error);
