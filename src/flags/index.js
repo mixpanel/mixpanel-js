@@ -105,6 +105,25 @@ FeatureFlagManager.prototype.isEnabled = function() {
   return !!this.getConfig('flags');
 };
 
+FeatureFlagManager.prototype.isFeatureEnabled = function(featureName, fallbackValue) {
+  return this.getFeatureData(featureName).then(function() {
+    return this.isFeatureEnabledSync(featureName, fallbackValue);
+  }.bind(this)).catch(function(error) {
+    logger.error(error);
+    return fallbackValue;
+  });
+};
+
+FeatureFlagManager.prototype.isFeatureEnabledSync = function(featureName, fallbackValue) {
+  fallbackValue = fallbackValue || false;
+  var val = this.getFeatureDataSync(featureName, fallbackValue);
+  if (val !== true && val !== false) {
+    logger.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
+    val = fallbackValue;
+  }
+  return val;
+};
+
 function minApisSupported() {
   return !!fetch;
 }
@@ -116,5 +135,7 @@ FeatureFlagManager.prototype['get_feature'] = FeatureFlagManager.prototype['getF
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype['getFeatureData'] = FeatureFlagManager.prototype.getFeatureData;
 FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype['getFeatureDataSync'] = FeatureFlagManager.prototype.getFeatureDataSync;
 FeatureFlagManager.prototype['get_feature_sync'] = FeatureFlagManager.prototype['getFeatureSync'] = FeatureFlagManager.prototype.getFeatureSync;
+FeatureFlagManager.prototype['is_feature_enabled'] = FeatureFlagManager.prototype['isFeatureEnabled'] = FeatureFlagManager.prototype.isFeatureEnabled;
+FeatureFlagManager.prototype['is_feature_enabled_sync'] = FeatureFlagManager.prototype['isFeatureEnabledSync'] = FeatureFlagManager.prototype.isFeatureEnabledSync;
 
 export { FeatureFlagManager };
