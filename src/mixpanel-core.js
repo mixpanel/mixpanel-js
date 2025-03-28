@@ -98,6 +98,7 @@ var DEFAULT_API_ROUTES = {
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
     'api_routes':                        DEFAULT_API_ROUTES,
+    'api_additional_query_params':       '',
     'api_method':                        'POST',
     'api_transport':                     'XHR',
     'api_payload_format':                PAYLOAD_TYPE_BASE64,
@@ -628,6 +629,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 
     var DEFAULT_OPTIONS = {
         method: this.get_config('api_method'),
+        additional_query_params: this.get_config('api_additional_query_params'),
         transport: this.get_config('api_transport'),
         verbose: this.get_config('verbose')
     };
@@ -672,6 +674,10 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     }
 
     url += '?' + _.HTTPBuildQuery(data);
+
+    if (options.additional_query_params) {
+        url += '&' + options.additional_query_params;
+    }
 
     var lib = this;
     if ('img' in data) {
