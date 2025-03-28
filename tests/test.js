@@ -497,15 +497,16 @@
         });
 
 
-        test("additional query string is honored", 2, function() {
+        test("additional query string is honored", 1, function() {
             mixpanel.test.set_config({
+                img: true,
                 api_additional_query_params: 'some_param=some_value&another_param=another_value'
             });
 
             mixpanel.test.track("api_additional_query_params set");
             var with_additional_query_params = $('img').get(-1);
 
-            ok(with_additional_query_params.src.indexOf('some_param=some_value&another_param=another_value') > 0, '_send_request should send ip=1 by default');
+            ok(with_additional_query_params.src.indexOf('some_param=some_value&another_param=another_value') > 0, '_send_request should send api_additional_query_params when configured');
         });
 
         test("properties on blacklist are not sent", 4, function() {
