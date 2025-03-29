@@ -500,13 +500,13 @@
         test("additional query string is honored", 1, function() {
             mixpanel.test.set_config({
                 img: true,
-                api_additional_query_params: 'some_param=some_value&another_param=another_value'
+                api_extra_query_params: {some_param: 'some_value', another_param: 'another_value'}
             });
 
-            mixpanel.test.track("api_additional_query_params set");
+            mixpanel.test.track("api_extra_query_params set");
             var with_additional_query_params = $('img').get(-1);
 
-            ok(with_additional_query_params.src.indexOf('some_param=some_value&another_param=another_value') > 0, '_send_request should send api_additional_query_params when configured');
+            ok(with_additional_query_params.src.indexOf('some_param=some_value&another_param=another_value') > 0, '_send_request should send extra_query_params when configured');
         });
 
         test("properties on blacklist are not sent", 4, function() {
