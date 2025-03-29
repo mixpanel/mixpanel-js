@@ -673,7 +673,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     }
 
     _.extend(data, this.get_config('api_extra_query_params'));
-    
+
     url += '?' + _.HTTPBuildQuery(data);
 
     var lib = this;
