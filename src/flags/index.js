@@ -130,12 +130,12 @@ function minApisSupported() {
 
 safewrapClass(FeatureFlagManager);
 
-FeatureFlagManager.prototype['are_features_ready'] = FeatureFlagManager.prototype['areFeaturesReady'] = FeatureFlagManager.prototype.areFeaturesReady;
-FeatureFlagManager.prototype['get_feature'] = FeatureFlagManager.prototype['getFeature'] = FeatureFlagManager.prototype.getFeature;
-FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype['getFeatureData'] = FeatureFlagManager.prototype.getFeatureData;
-FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype['getFeatureDataSync'] = FeatureFlagManager.prototype.getFeatureDataSync;
-FeatureFlagManager.prototype['get_feature_sync'] = FeatureFlagManager.prototype['getFeatureSync'] = FeatureFlagManager.prototype.getFeatureSync;
-FeatureFlagManager.prototype['is_feature_enabled'] = FeatureFlagManager.prototype['isFeatureEnabled'] = FeatureFlagManager.prototype.isFeatureEnabled;
-FeatureFlagManager.prototype['is_feature_enabled_sync'] = FeatureFlagManager.prototype['isFeatureEnabledSync'] = FeatureFlagManager.prototype.isFeatureEnabledSync;
+FeatureFlagManager.prototype['are_features_ready'] = FeatureFlagManager.prototype.areFeaturesReady;
+FeatureFlagManager.prototype['get_feature'] = FeatureFlagManager.prototype.getFeature;
+FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
+FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype.getFeatureDataSync;
+FeatureFlagManager.prototype['get_feature_sync'] = FeatureFlagManager.prototype.getFeatureSync;
+FeatureFlagManager.prototype['is_feature_enabled'] = FeatureFlagManager.prototype.isFeatureEnabled;
+FeatureFlagManager.prototype['is_feature_enabled_sync'] = FeatureFlagManager.prototype.isFeatureEnabledSync;
 
 export { FeatureFlagManager };
