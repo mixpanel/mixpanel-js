@@ -67,6 +67,13 @@ FeatureFlagManager.prototype.fetchFlags = function() {
 };
 
 FeatureFlagManager.prototype.getFeature = function(featureName, fallback) {
+    if (!this.fetchPromise) {
+        return new Promise(function(resolve) {
+            logger.critical('Feature Flags not initialized');
+            resolve(fallback);
+        });
+    }
+
     return this.fetchPromise.then(function() {
         return this.getFeatureSync(featureName, fallback);
     }.bind(this)).catch(function(error) {
