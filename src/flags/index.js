@@ -52,12 +52,12 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             if (!responseFlags) {
                 throw new Error('No flags in API response');
             }
-            var flags = {};
+            var flags = new Map();
             _.each(responseFlags, function(data, key) {
-                flags[key] = {
+                flags.set(key, {
                     'key': data['variant_key'],
                     'data': data['variant_value']
-                };
+                });
             });
             this.flags = flags;
         }.bind(this)).catch(function(error) {
@@ -87,7 +87,7 @@ FeatureFlagManager.prototype.getFeatureSync = function(featureName, fallback) {
         logger.log('Flags not loaded yet');
         return fallback;
     }
-    var feature = this.flags[featureName];
+    var feature = this.flags.get(featureName);
     if (!feature) {
         logger.log('No flag found: "' + featureName + '"');
         return fallback;
@@ -132,7 +132,9 @@ FeatureFlagManager.prototype.isFeatureEnabledSync = function(featureName, fallba
 };
 
 function minApisSupported() {
-    return !!fetch;
+    return !!fetch &&
+      typeof Promise !== 'undefined' &&
+      typeof Map !== 'undefined';
 }
 
 safewrapClass(FeatureFlagManager);
