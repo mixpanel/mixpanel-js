@@ -1,3 +1,7 @@
+**2.63.0** (1 Apr 2025)
+- Update rrweb to latest alpha version
+- Refactor SDK build process to rely mainly on Rollup
+
 **2.62.0** (26 Mar 2025)
 - Replace UUID generator with UUIDv4 (using native API when available)
 - Consistently use native JSON serialization when available
