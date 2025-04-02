@@ -4,12 +4,18 @@ import { window } from '../window';
 var fetch = window['fetch'];
 var logger = console_with_prefix('flags');
 
+var FLAGS_CONFIG_KEY = 'flags';
+
+var CONFIG_CONTEXT = 'context';
+var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
+
 /**
  * FeatureFlagManager: support for Mixpanel's feature flagging product
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
-    this.getConfig = initOptions.get_config_func;
+    this.getMpConfig = initOptions.get_config_func;
     this.getDistinctId = initOptions.get_distinct_id_func;
 };
 
@@ -21,6 +27,27 @@ FeatureFlagManager.prototype.init = function() {
 
     this.flags = null;
     this.fetchFlags();
+};
+
+FeatureFlagManager.prototype.getFullConfig = function() {
+    var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+    if (!ffConfig) {
+        // flags are completely off
+        return {};
+    } else if (_.isObject(ffConfig)) {
+        return _.extend({}, CONFIG_DEFAULTS, ffConfig);
+    } else {
+        // config is non-object truthy value, return default
+        return CONFIG_DEFAULTS;
+    }
+};
+
+FeatureFlagManager.prototype.getConfig = function(key) {
+    return this.getFullConfig()[key];
+};
+
+FeatureFlagManager.prototype.isEnabled = function() {
+    return !!this.getMpConfig(FLAGS_CONFIG_KEY);
 };
 
 FeatureFlagManager.prototype.areFeaturesReady = function() {
@@ -38,14 +65,15 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var distinctId = this.getDistinctId();
     logger.log('Fetching flags for distinct ID: ' + distinctId);
     var reqParams = {
-        'distinct_id': distinctId
+        'context': _.extend({'distinct_id': distinctId}, this.getConfig(CONFIG_CONTEXT))
     };
-    this.fetchPromise = window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['flags'] + '?' + new URLSearchParams(reqParams), {
-        'method': 'GET',
+    this.fetchPromise = window['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+        'method': 'POST',
         'headers': {
-            'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
             'Content-Type': 'application/octet-stream'
         },
+        'body': JSON.stringify(reqParams)
     }).then(function(response) {
         return response.json().then(function(responseBody) {
             var responseFlags = responseBody['flags'];
@@ -106,10 +134,6 @@ FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValu
 
 FeatureFlagManager.prototype.getFeatureDataSync = function(featureName, fallbackValue) {
     return this.getFeatureSync(featureName, {'data': fallbackValue})['data'];
-};
-
-FeatureFlagManager.prototype.isEnabled = function() {
-    return !!this.getConfig('flags');
 };
 
 FeatureFlagManager.prototype.isFeatureEnabled = function(featureName, fallbackValue) {
