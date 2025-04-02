@@ -6261,9 +6261,11 @@
                                     this.assertRecorderScript(true);
                                     return new Promise(_.bind(function (resolve) {
                                         this.randomStub.restore();
-                                        this.getRecorderScript().addEventListener('load', function() {
+                                        if (window['__mp_recorder']) {
                                             resolve();
-                                        });
+                                        } else {
+                                            this.getRecorderScript().addEventListener('load', resolve);
+                                        }
                                     }, this))
                                 }, this))
                                 .then(_.bind(function () {
