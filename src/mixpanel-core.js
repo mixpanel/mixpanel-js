@@ -152,6 +152,7 @@ var DEFAULT_CONFIG = {
     'record_mask_text_selector':         '*',
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
+    'record_capture_interactions':       false,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
@@ -485,6 +486,13 @@ MixpanelLib.prototype.resume_session_recording = function () {
     if (this._recorder) {
         this._recorder['resumeRecording']();
     }
+};
+
+MixpanelLib.prototype.get_active_record_capture_interactions = function () {
+    if (this._recorder) {
+        return this._recorder['getActiveReplayId']() && this.get_config('record_capture_interactions');
+    }
+    return false;
 };
 
 MixpanelLib.prototype.get_session_recording_properties = function () {
@@ -1842,7 +1850,7 @@ MixpanelLib.prototype.set_config = function(config) {
         }
         Config.DEBUG = Config.DEBUG || this.get_config('debug');
 
-        if ('autocapture' in config && this.autocapture) {
+        if (('autocapture' in config || this.get_config('record_capture_interactions')) && this.autocapture) {
             this.autocapture.init();
         }
     }

@@ -171,13 +171,13 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
 Autocapture.prototype.initClickTracking = function() {
     window.removeEventListener(EV_CLICK, this.listenerClick);
 
-    if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+    if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_active_record_capture_interactions()) {
         return;
     }
     logger.log('Initializing click tracking');
 
     this.listenerClick = window.addEventListener(EV_CLICK, function(ev) {
-        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_active_record_capture_interactions()) {
             return;
         }
         this.trackDomEvent(ev, MP_EV_CLICK);
