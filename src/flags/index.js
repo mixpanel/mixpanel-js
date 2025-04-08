@@ -15,8 +15,9 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
-    this.getMpConfig = initOptions.get_config_func;
-    this.getDistinctId = initOptions.get_distinct_id_func;
+    this.getMpConfig = initOptions.getConfigFunc;
+    this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.track = initOptions.trackingFunc;
 };
 
 FeatureFlagManager.prototype.init = function() {
@@ -27,6 +28,8 @@ FeatureFlagManager.prototype.init = function() {
 
     this.flags = null;
     this.fetchFlags();
+
+    this.trackedFeatures = new Set();
 };
 
 FeatureFlagManager.prototype.getFullConfig = function() {
@@ -120,6 +123,7 @@ FeatureFlagManager.prototype.getFeatureSync = function(featureName, fallback) {
         logger.log('No flag found: "' + featureName + '"');
         return fallback;
     }
+    this.trackFeatureCheck(featureName, feature);
     return feature;
 };
 
@@ -155,10 +159,23 @@ FeatureFlagManager.prototype.isFeatureEnabledSync = function(featureName, fallba
     return val;
 };
 
+FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) {
+    if (this.trackedFeatures.has(featureName)) {
+        return;
+    }
+    this.trackedFeatures.add(featureName);
+    this.track('$experiment_started', {
+        'Experiment name': featureName,
+        'Variant name': feature['key'],
+        '$experiment_type': 'feature_flag'
+    });
+}
+
 function minApisSupported() {
     return !!fetch &&
       typeof Promise !== 'undefined' &&
-      typeof Map !== 'undefined';
+      typeof Map !== 'undefined' &&
+      typeof Set !== 'undefined';
 }
 
 safewrapClass(FeatureFlagManager);
