@@ -114,6 +114,7 @@ function getPropsForDOMEvent(ev, config) {
     var blockSelectors = config.blockSelectors || [];
     var captureTextContent = config.captureTextContent || false;
     var captureExtraAttrs = config.captureExtraAttrs || [];
+    var capturedForHeatMap = config.capturedForHeatMap || false;
 
     // convert array to set every time, as the config may have changed
     var blockAttrsSet = {};
@@ -192,6 +193,7 @@ function getPropsForDOMEvent(ev, config) {
                         props['$' + prop] = ev[prop];
                     }
                 });
+                props['$captured_for_heatmap'] = capturedForHeatMap;
                 target = guessRealClickTarget(ev);
             }
             // prioritize text content from "real" click target if different from original target
