@@ -193,7 +193,9 @@ function getPropsForDOMEvent(ev, config) {
                         props['$' + prop] = ev[prop];
                     }
                 });
-                props['$captured_for_heatmap'] = capturedForHeatMap;
+                if (capturedForHeatMap) {
+                    props['$captured_for_heatmap'] = true;
+                }
                 target = guessRealClickTarget(ev);
             }
             // prioritize text content from "real" click target if different from original target

@@ -147,12 +147,12 @@ var DEFAULT_CONFIG = {
     'record_block_selector':             'img, video',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
+    'record_heatmap_data':               false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
-    'record_heatmap_data':               false,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
 };
