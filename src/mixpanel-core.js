@@ -488,7 +488,7 @@ MixpanelLib.prototype.resume_session_recording = function () {
     }
 };
 
-MixpanelLib.prototype.get_active_record_heatmap_data = function () {
+MixpanelLib.prototype.is_recording_heatmap_data = function () {
     return this._get_session_replay_id() && this.get_config('record_heatmap_data');
 };
 

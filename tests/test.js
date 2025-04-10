@@ -3912,7 +3912,7 @@
                 same(this.requests.length, 1, "click event should fire request");
                 var last_event = getRequestData(this.requests[0]);
                 same(last_event.event, "$mp_click", "last request should be $mp_click event");
-                same(last_event.properties.$captured_for_heatmap, undefined, "click event should not be tagged as captured for heatmap");
+                notOk('$captured_for_heatmap' in last_event.properties, "click event should not be tagged as captured for heatmap");
                 ok(originalHandlerCalled, "original click handler should also have been called");
             });
 
