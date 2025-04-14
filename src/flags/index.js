@@ -169,7 +169,7 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
         'Variant name': feature['key'],
         '$experiment_type': 'feature_flag'
     });
-}
+};
 
 function minApisSupported() {
     return !!fetch &&
