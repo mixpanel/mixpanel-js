@@ -160,7 +160,8 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
-        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
+        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data(),
     });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
@@ -171,13 +172,13 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
 Autocapture.prototype.initClickTracking = function() {
     window.removeEventListener(EV_CLICK, this.listenerClick);
 
-    if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+    if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
     logger.log('Initializing click tracking');
 
     this.listenerClick = window.addEventListener(EV_CLICK, function(ev) {
-        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
             return;
         }
         this.trackDomEvent(ev, MP_EV_CLICK);

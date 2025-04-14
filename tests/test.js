@@ -3891,7 +3891,7 @@
                 same(this.requests.length, 0, "autocapture init with pageview=false should not fire request on load");
             });
 
-            test("autocapture tracks click events", 4, function() {
+            test("autocapture tracks click events", 5, function() {
                 mixpanel.init("autocapture_test_token", {
                     autocapture: {
                         pageview: false,
@@ -3912,6 +3912,7 @@
                 same(this.requests.length, 1, "click event should fire request");
                 var last_event = getRequestData(this.requests[0]);
                 same(last_event.event, "$mp_click", "last request should be $mp_click event");
+                notOk('$captured_for_heatmap' in last_event.properties, "click event should not be tagged as captured for heatmap");
                 ok(originalHandlerCalled, "original click handler should also have been called");
             });
 
@@ -6184,6 +6185,12 @@
                     this.randomStub = sinon.stub(Math, 'random');
                     this.fetchStub = sinon.stub(window, 'fetch');
 
+                    this.xhr = sinon.useFakeXMLHttpRequest();
+                    this.requests = [];
+                    this.xhr.onCreate = _.bind(function(req) {
+                        this.requests.push(req);
+                    }, this);
+
                     // realistic successful response
                     this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({code: 200, status: 'OK'}), {
                         status: 200,
@@ -6323,6 +6330,8 @@
                     if (this.responseBlobStub) {
                         this.responseBlobStub.restore();
                     }
+
+                    this.xhr.restore();
 
                     var scriptEl = this.getRecorderScript();
                     if (scriptEl) {
@@ -6545,6 +6554,49 @@
                             start();
                         }, this), 2);
                     }, this))
+            });
+
+            asyncTest('does not track clicks when using recording and capturing heat map data is off', function () {
+                this.randomStub.returns(0.02);
+                this.initMixpanelRecorder({record_sessions_percent: 100, record_heatmap_data: false, batch_requests: false});
+                this.waitForRecorderLoad()
+                    .then(_.bind(function () {
+                        var e1 = ele_with_class();
+                        var originalHandlerCalled = false;
+                        e1.e.onclick = function() {
+                            originalHandlerCalled = true;
+                            return false;
+                        }
+
+                        simulateMouseClick(e1.e);
+
+                        same(this.requests.length, 0, "click event should not fire request");
+                        ok(originalHandlerCalled, "original click handler should also have been called");
+                    }, this))
+                    .then(start)
+            });
+
+            asyncTest('tracks clicks when using recording and capturing capturing heat map data is on', function () {
+                this.randomStub.returns(0.02);
+                this.initMixpanelRecorder({record_sessions_percent: 100, record_heatmap_data: true, batch_requests: false});
+                this.waitForRecorderLoad()
+                    .then(_.bind(function () {
+                        var e1 = ele_with_class();
+                        var originalHandlerCalled = false;
+                        e1.e.onclick = function() {
+                            originalHandlerCalled = true;
+                            return false;
+                        }
+
+                        simulateMouseClick(e1.e);
+
+                        same(this.requests.length, 1, "click event should fire request");
+                        var last_event = getRequestData(this.requests[0]);
+                        same(last_event.event, "$mp_click", "last request should be $mp_click event");
+                        same(last_event.properties.$captured_for_heatmap, true, "last request should be tagged as captured for heat map");
+                        ok(originalHandlerCalled, "original click handler should also have been called");
+                    }, this))
+                    .then(start)
             });
 
             test('respects tracking opt-out when sampled', 3, function () {

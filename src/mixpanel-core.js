@@ -150,6 +150,7 @@ var DEFAULT_CONFIG = {
     'record_block_selector':             'img, video',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
+    'record_heatmap_data':               false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
@@ -496,6 +497,10 @@ MixpanelLib.prototype.resume_session_recording = function () {
     if (this._recorder) {
         this._recorder['resumeRecording']();
     }
+};
+
+MixpanelLib.prototype.is_recording_heatmap_data = function () {
+    return this._get_session_replay_id() && this.get_config('record_heatmap_data');
 };
 
 MixpanelLib.prototype.get_session_recording_properties = function () {
@@ -1858,7 +1863,7 @@ MixpanelLib.prototype.set_config = function(config) {
         }
         Config.DEBUG = Config.DEBUG || this.get_config('debug');
 
-        if ('autocapture' in config && this.autocapture) {
+        if (('autocapture' in config || 'record_heatmap_data' in config) && this.autocapture) {
             this.autocapture.init();
         }
     }
