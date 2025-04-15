@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.63.0'
+        LIB_VERSION: '2.64.0-rc1'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2159,7 +2159,7 @@
         'href', 'name', 'role', 'title', 'type'
     ];
 
-    var logger$3 = console_with_prefix('autocapture');
+    var logger$4 = console_with_prefix('autocapture');
 
 
     function getClasses(el) {
@@ -2245,6 +2245,7 @@
         var blockSelectors = config.blockSelectors || [];
         var captureTextContent = config.captureTextContent || false;
         var captureExtraAttrs = config.captureExtraAttrs || [];
+        var capturedForHeatMap = config.capturedForHeatMap || false;
 
         // convert array to set every time, as the config may have changed
         var blockAttrsSet = {};
@@ -2323,6 +2324,9 @@
                             props['$' + prop] = ev[prop];
                         }
                     });
+                    if (capturedForHeatMap) {
+                        props['$captured_for_heatmap'] = true;
+                    }
                     target = guessRealClickTarget(ev);
                 }
                 // prioritize text content from "real" click target if different from original target
@@ -2417,7 +2421,7 @@
                     return false;
                 }
             } catch (err) {
-                logger$3.critical('Error while checking element in allowElementCallback', err);
+                logger$4.critical('Error while checking element in allowElementCallback', err);
                 return false;
             }
         }
@@ -2434,7 +2438,7 @@
                     return true;
                 }
             } catch (err) {
-                logger$3.critical('Error while checking selector: ' + sel, err);
+                logger$4.critical('Error while checking selector: ' + sel, err);
             }
         }
         return false;
@@ -2449,7 +2453,7 @@
                     return true;
                 }
             } catch (err) {
-                logger$3.critical('Error while checking element in blockElementCallback', err);
+                logger$4.critical('Error while checking element in blockElementCallback', err);
                 return true;
             }
         }
@@ -2463,7 +2467,7 @@
                         return true;
                     }
                 } catch (err) {
-                    logger$3.critical('Error while checking selector: ' + sel, err);
+                    logger$4.critical('Error while checking selector: ' + sel, err);
                 }
             }
         }
@@ -2669,22 +2673,22 @@
     var CONFIG_TRACK_SCROLL = 'scroll';
     var CONFIG_TRACK_SUBMIT = 'submit';
 
-    var CONFIG_DEFAULTS = {};
-    CONFIG_DEFAULTS[CONFIG_ALLOW_SELECTORS] = [];
-    CONFIG_DEFAULTS[CONFIG_ALLOW_URL_REGEXES] = [];
-    CONFIG_DEFAULTS[CONFIG_BLOCK_ATTRS] = [];
-    CONFIG_DEFAULTS[CONFIG_BLOCK_ELEMENT_CALLBACK] = null;
-    CONFIG_DEFAULTS[CONFIG_BLOCK_SELECTORS] = [];
-    CONFIG_DEFAULTS[CONFIG_BLOCK_URL_REGEXES] = [];
-    CONFIG_DEFAULTS[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
-    CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
-    CONFIG_DEFAULTS[CONFIG_SCROLL_CAPTURE_ALL] = false;
-    CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
-    CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
-    CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
-    CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
-    CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
-    CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
+    var CONFIG_DEFAULTS$1 = {};
+    CONFIG_DEFAULTS$1[CONFIG_ALLOW_SELECTORS] = [];
+    CONFIG_DEFAULTS$1[CONFIG_ALLOW_URL_REGEXES] = [];
+    CONFIG_DEFAULTS$1[CONFIG_BLOCK_ATTRS] = [];
+    CONFIG_DEFAULTS$1[CONFIG_BLOCK_ELEMENT_CALLBACK] = null;
+    CONFIG_DEFAULTS$1[CONFIG_BLOCK_SELECTORS] = [];
+    CONFIG_DEFAULTS$1[CONFIG_BLOCK_URL_REGEXES] = [];
+    CONFIG_DEFAULTS$1[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
+    CONFIG_DEFAULTS$1[CONFIG_CAPTURE_TEXT_CONTENT] = false;
+    CONFIG_DEFAULTS$1[CONFIG_SCROLL_CAPTURE_ALL] = false;
+    CONFIG_DEFAULTS$1[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
+    CONFIG_DEFAULTS$1[CONFIG_TRACK_CLICK] = true;
+    CONFIG_DEFAULTS$1[CONFIG_TRACK_INPUT] = true;
+    CONFIG_DEFAULTS$1[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+    CONFIG_DEFAULTS$1[CONFIG_TRACK_SCROLL] = true;
+    CONFIG_DEFAULTS$1[CONFIG_TRACK_SUBMIT] = true;
 
     var DEFAULT_PROPS = {
         '$mp_autocapture': true
@@ -2705,7 +2709,7 @@
 
     Autocapture.prototype.init = function() {
         if (!minDOMApisSupported()) {
-            logger$3.critical('Autocapture unavailable: missing required DOM APIs');
+            logger$4.critical('Autocapture unavailable: missing required DOM APIs');
             return;
         }
 
@@ -2722,10 +2726,10 @@
             // Autocapture is completely off
             return {};
         } else if (_.isObject(autocaptureConfig)) {
-            return _.extend({}, CONFIG_DEFAULTS, autocaptureConfig);
+            return _.extend({}, CONFIG_DEFAULTS$1, autocaptureConfig);
         } else {
             // Autocapture config is non-object truthy value, return default
-            return CONFIG_DEFAULTS;
+            return CONFIG_DEFAULTS$1;
         }
     };
 
@@ -2749,7 +2753,7 @@
                         break;
                     }
                 } catch (err) {
-                    logger$3.critical('Error while checking block URL regex: ' + allowRegex, err);
+                    logger$4.critical('Error while checking block URL regex: ' + allowRegex, err);
                     return true;
                 }
             }
@@ -2770,7 +2774,7 @@
                     return true;
                 }
             } catch (err) {
-                logger$3.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
+                logger$4.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
                 return true;
             }
         }
@@ -2799,7 +2803,8 @@
             blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
             blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
             captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
-            captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+            captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
+            capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data(),
         });
         if (props) {
             _.extend(props, DEFAULT_PROPS);
@@ -2810,13 +2815,13 @@
     Autocapture.prototype.initClickTracking = function() {
         win.removeEventListener(EV_CLICK, this.listenerClick);
 
-        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
             return;
         }
-        logger$3.log('Initializing click tracking');
+        logger$4.log('Initializing click tracking');
 
         this.listenerClick = win.addEventListener(EV_CLICK, function(ev) {
-            if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+            if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
                 return;
             }
             this.trackDomEvent(ev, MP_EV_CLICK);
@@ -2829,7 +2834,7 @@
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
             return;
         }
-        logger$3.log('Initializing input tracking');
+        logger$4.log('Initializing input tracking');
 
         this.listenerChange = win.addEventListener(EV_CHANGE, function(ev) {
             if (!this.getConfig(CONFIG_TRACK_INPUT)) {
@@ -2847,7 +2852,7 @@
         if (!this.pageviewTrackingConfig()) {
             return;
         }
-        logger$3.log('Initializing pageview tracking');
+        logger$4.log('Initializing pageview tracking');
 
         var previousTrackedUrl = '';
         var tracked = false;
@@ -2902,7 +2907,7 @@
                 }
                 if (didPathChange) {
                     this.lastScrollCheckpoint = 0;
-                    logger$3.log('Path change: re-initializing scroll depth checkpoints');
+                    logger$4.log('Path change: re-initializing scroll depth checkpoints');
                 }
             }
         }.bind(this)));
@@ -2914,7 +2919,7 @@
         if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
             return;
         }
-        logger$3.log('Initializing scroll tracking');
+        logger$4.log('Initializing scroll tracking');
         this.lastScrollCheckpoint = 0;
 
         this.listenerScroll = win.addEventListener(EV_SCROLLEND, safewrap(function() {
@@ -2951,7 +2956,7 @@
                     }
                 }
             } catch (err) {
-                logger$3.critical('Error while calculating scroll percentage', err);
+                logger$4.critical('Error while calculating scroll percentage', err);
             }
             if (shouldTrack) {
                 this.mp.track(MP_EV_SCROLL, props);
@@ -2965,7 +2970,7 @@
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
             return;
         }
-        logger$3.log('Initializing submit tracking');
+        logger$4.log('Initializing submit tracking');
 
         this.listenerSubmit = win.addEventListener(EV_SUBMIT, function(ev) {
             if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
@@ -2977,6 +2982,193 @@
 
     // TODO integrate error_reporter from mixpanel instance
     safewrapClass(Autocapture);
+
+    var fetch = win['fetch'];
+    var logger$3 = console_with_prefix('flags');
+
+    var FLAGS_CONFIG_KEY = 'flags';
+
+    var CONFIG_CONTEXT = 'context';
+    var CONFIG_DEFAULTS = {};
+    CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
+
+    /**
+     * FeatureFlagManager: support for Mixpanel's feature flagging product
+     * @constructor
+     */
+    var FeatureFlagManager = function(initOptions) {
+        this.getMpConfig = initOptions.getConfigFunc;
+        this.getDistinctId = initOptions.getDistinctIdFunc;
+        this.track = initOptions.trackingFunc;
+    };
+
+    FeatureFlagManager.prototype.init = function() {
+        if (!minApisSupported()) {
+            logger$3.critical('Feature Flags unavailable: missing minimum required APIs');
+            return;
+        }
+
+        this.flags = null;
+        this.fetchFlags();
+
+        this.trackedFeatures = new Set();
+    };
+
+    FeatureFlagManager.prototype.getFullConfig = function() {
+        var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+        if (!ffConfig) {
+            // flags are completely off
+            return {};
+        } else if (_.isObject(ffConfig)) {
+            return _.extend({}, CONFIG_DEFAULTS, ffConfig);
+        } else {
+            // config is non-object truthy value, return default
+            return CONFIG_DEFAULTS;
+        }
+    };
+
+    FeatureFlagManager.prototype.getConfig = function(key) {
+        return this.getFullConfig()[key];
+    };
+
+    FeatureFlagManager.prototype.isEnabled = function() {
+        return !!this.getMpConfig(FLAGS_CONFIG_KEY);
+    };
+
+    FeatureFlagManager.prototype.areFeaturesReady = function() {
+        if (!this.isEnabled()) {
+            logger$3.error('Feature Flags not enabled');
+        }
+        return !!this.flags;
+    };
+
+    FeatureFlagManager.prototype.fetchFlags = function() {
+        if (!this.isEnabled()) {
+            return;
+        }
+
+        var distinctId = this.getDistinctId();
+        logger$3.log('Fetching flags for distinct ID: ' + distinctId);
+        var reqParams = {
+            'context': _.extend({'distinct_id': distinctId}, this.getConfig(CONFIG_CONTEXT))
+        };
+        this.fetchPromise = win['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+            'method': 'POST',
+            'headers': {
+                'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
+                'Content-Type': 'application/octet-stream'
+            },
+            'body': JSON.stringify(reqParams)
+        }).then(function(response) {
+            return response.json().then(function(responseBody) {
+                var responseFlags = responseBody['flags'];
+                if (!responseFlags) {
+                    throw new Error('No flags in API response');
+                }
+                var flags = new Map();
+                _.each(responseFlags, function(data, key) {
+                    flags.set(key, {
+                        'key': data['variant_key'],
+                        'data': data['variant_value']
+                    });
+                });
+                this.flags = flags;
+            }.bind(this)).catch(function(error) {
+                logger$3.error(error);
+            });
+        }.bind(this)).catch(function() {});
+    };
+
+    FeatureFlagManager.prototype.getFeature = function(featureName, fallback) {
+        if (!this.fetchPromise) {
+            return new Promise(function(resolve) {
+                logger$3.critical('Feature Flags not initialized');
+                resolve(fallback);
+            });
+        }
+
+        return this.fetchPromise.then(function() {
+            return this.getFeatureSync(featureName, fallback);
+        }.bind(this)).catch(function(error) {
+            logger$3.error(error);
+            return fallback;
+        });
+    };
+
+    FeatureFlagManager.prototype.getFeatureSync = function(featureName, fallback) {
+        if (!this.areFeaturesReady()) {
+            logger$3.log('Flags not loaded yet');
+            return fallback;
+        }
+        var feature = this.flags.get(featureName);
+        if (!feature) {
+            logger$3.log('No flag found: "' + featureName + '"');
+            return fallback;
+        }
+        this.trackFeatureCheck(featureName, feature);
+        return feature;
+    };
+
+    FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
+        return this.getFeature(featureName, {'data': fallbackValue}).then(function(feature) {
+            return feature['data'];
+        }).catch(function(error) {
+            logger$3.error(error);
+            return fallbackValue;
+        });
+    };
+
+    FeatureFlagManager.prototype.getFeatureDataSync = function(featureName, fallbackValue) {
+        return this.getFeatureSync(featureName, {'data': fallbackValue})['data'];
+    };
+
+    FeatureFlagManager.prototype.isFeatureEnabled = function(featureName, fallbackValue) {
+        return this.getFeatureData(featureName).then(function() {
+            return this.isFeatureEnabledSync(featureName, fallbackValue);
+        }.bind(this)).catch(function(error) {
+            logger$3.error(error);
+            return fallbackValue;
+        });
+    };
+
+    FeatureFlagManager.prototype.isFeatureEnabledSync = function(featureName, fallbackValue) {
+        fallbackValue = fallbackValue || false;
+        var val = this.getFeatureDataSync(featureName, fallbackValue);
+        if (val !== true && val !== false) {
+            logger$3.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
+            val = fallbackValue;
+        }
+        return val;
+    };
+
+    FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) {
+        if (this.trackedFeatures.has(featureName)) {
+            return;
+        }
+        this.trackedFeatures.add(featureName);
+        this.track('$experiment_started', {
+            'Experiment name': featureName,
+            'Variant name': feature['key'],
+            '$experiment_type': 'feature_flag'
+        });
+    };
+
+    function minApisSupported() {
+        return !!fetch &&
+          typeof Promise !== 'undefined' &&
+          typeof Map !== 'undefined' &&
+          typeof Set !== 'undefined';
+    }
+
+    safewrapClass(FeatureFlagManager);
+
+    FeatureFlagManager.prototype['are_features_ready'] = FeatureFlagManager.prototype.areFeaturesReady;
+    FeatureFlagManager.prototype['get_feature'] = FeatureFlagManager.prototype.getFeature;
+    FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
+    FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype.getFeatureDataSync;
+    FeatureFlagManager.prototype['get_feature_sync'] = FeatureFlagManager.prototype.getFeatureSync;
+    FeatureFlagManager.prototype['is_feature_enabled'] = FeatureFlagManager.prototype.isFeatureEnabled;
+    FeatureFlagManager.prototype['is_feature_enabled_sync'] = FeatureFlagManager.prototype.isFeatureEnabledSync;
 
     /* eslint camelcase: "off" */
 
@@ -5693,10 +5885,11 @@
     }
 
     var DEFAULT_API_ROUTES = {
-        'track': 'track/',
+        'track':  'track/',
         'engage': 'engage/',
         'groups': 'groups/',
-        'record': 'record/'
+        'record': 'record/',
+        'flags':  'flags/'
     };
 
     /*
@@ -5714,6 +5907,7 @@
         'cross_site_cookie':                 false,
         'cross_subdomain_cookie':            true,
         'error_reporter':                    NOOP_FUNC,
+        'flags':                             false,
         'persistence':                       'cookie',
         'persistence_name':                  '',
         'cookie_domain':                     '',
@@ -5754,6 +5948,7 @@
         'record_block_selector':             'img, video',
         'record_canvas':                     false,
         'record_collect_fonts':              false,
+        'record_heatmap_data':               false,
         'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
         'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
         'record_mask_text_selector':         '*',
@@ -5969,6 +6164,14 @@
             }, '');
         }
 
+        this.flags = new FeatureFlagManager({
+            getConfigFunc: _.bind(this.get_config, this),
+            getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+            trackingFunc: _.bind(this.track, this)
+        });
+        this.flags.init();
+        this['flags'] = this.flags;
+
         this.autocapture = new Autocapture(this);
         this.autocapture.init();
 
@@ -6092,6 +6295,10 @@
         if (this._recorder) {
             this._recorder['resumeRecording']();
         }
+    };
+
+    MixpanelLib.prototype.is_recording_heatmap_data = function () {
+        return this._get_session_replay_id() && this.get_config('record_heatmap_data');
     };
 
     MixpanelLib.prototype.get_session_recording_properties = function () {
@@ -7175,6 +7382,11 @@
                 '$anon_distinct_id': previous_distinct_id
             }, {skip_hooks: true});
         }
+
+        // check feature flags again if distinct id has changed
+        if (new_distinct_id !== previous_distinct_id) {
+            this.flags.fetchFlags();
+        }
     };
 
     /**
@@ -7449,7 +7661,7 @@
             }
             Config.DEBUG = Config.DEBUG || this.get_config('debug');
 
-            if ('autocapture' in config && this.autocapture) {
+            if (('autocapture' in config || 'record_heatmap_data' in config) && this.autocapture) {
                 this.autocapture.init();
             }
         }

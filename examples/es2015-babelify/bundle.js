@@ -17,7 +17,7 @@ _srcLoadersLoaderModule2['default'].init("FAKE_TOKEN", {
 
 _srcLoadersLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loaders/loader-module":15}],2:[function(require,module,exports){
+},{"../../src/loaders/loader-module":16}],2:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -19076,7 +19076,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":31}],9:[function(require,module,exports){
+},{"./utils":32}],9:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -19243,7 +19243,8 @@ Autocapture.prototype.trackDomEvent = function (ev, mpEventName) {
         blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
-        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
+        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data()
     });
     if (props) {
         _utils._.extend(props, DEFAULT_PROPS);
@@ -19254,13 +19255,13 @@ Autocapture.prototype.trackDomEvent = function (ev, mpEventName) {
 Autocapture.prototype.initClickTracking = function () {
     _window.window.removeEventListener(_utils2.EV_CLICK, this.listenerClick);
 
-    if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+    if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
     _utils2.logger.log('Initializing click tracking');
 
     this.listenerClick = _window.window.addEventListener(_utils2.EV_CLICK, (function (ev) {
-        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
             return;
         }
         this.trackDomEvent(ev, MP_EV_CLICK);
@@ -19421,7 +19422,7 @@ Autocapture.prototype.initSubmitTracking = function () {
 
 exports.Autocapture = Autocapture;
 
-},{"../utils":31,"../window":32,"./utils":10}],10:[function(require,module,exports){
+},{"../utils":32,"../window":33,"./utils":10}],10:[function(require,module,exports){
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
 
@@ -19540,6 +19541,7 @@ function getPropsForDOMEvent(ev, config) {
     var blockSelectors = config.blockSelectors || [];
     var captureTextContent = config.captureTextContent || false;
     var captureExtraAttrs = config.captureExtraAttrs || [];
+    var capturedForHeatMap = config.capturedForHeatMap || false;
 
     // convert array to set every time, as the config may have changed
     var blockAttrsSet = {};
@@ -19616,6 +19618,9 @@ function getPropsForDOMEvent(ev, config) {
                         props['$' + prop] = ev[prop];
                     }
                 });
+                if (capturedForHeatMap) {
+                    props['$captured_for_heatmap'] = true;
+                }
                 target = guessRealClickTarget(ev);
             }
             // prioritize text content from "real" click target if different from original target
@@ -19939,7 +19944,7 @@ exports.EV_POPSTATE = EV_POPSTATE;
 exports.EV_SCROLLEND = EV_SCROLLEND;
 exports.EV_SUBMIT = EV_SUBMIT;
 
-},{"../utils":31,"../window":32}],11:[function(require,module,exports){
+},{"../utils":32,"../window":33}],11:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -19947,7 +19952,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.63.0'
+    LIB_VERSION: '2.64.0-rc1'
 };
 
 exports['default'] = Config;
@@ -20116,7 +20121,206 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":31}],13:[function(require,module,exports){
+},{"./utils":32}],13:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _utils = require('../utils');
+
+// eslint-disable-line camelcase
+
+var _window = require('../window');
+
+var fetch = _window.window['fetch'];
+var logger = (0, _utils.console_with_prefix)('flags');
+
+var FLAGS_CONFIG_KEY = 'flags';
+
+var CONFIG_CONTEXT = 'context';
+var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
+
+/**
+ * FeatureFlagManager: support for Mixpanel's feature flagging product
+ * @constructor
+ */
+var FeatureFlagManager = function FeatureFlagManager(initOptions) {
+    this.getMpConfig = initOptions.getConfigFunc;
+    this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.track = initOptions.trackingFunc;
+};
+
+FeatureFlagManager.prototype.init = function () {
+    if (!minApisSupported()) {
+        logger.critical('Feature Flags unavailable: missing minimum required APIs');
+        return;
+    }
+
+    this.flags = null;
+    this.fetchFlags();
+
+    this.trackedFeatures = new Set();
+};
+
+FeatureFlagManager.prototype.getFullConfig = function () {
+    var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+    if (!ffConfig) {
+        // flags are completely off
+        return {};
+    } else if (_utils._.isObject(ffConfig)) {
+        return _utils._.extend({}, CONFIG_DEFAULTS, ffConfig);
+    } else {
+        // config is non-object truthy value, return default
+        return CONFIG_DEFAULTS;
+    }
+};
+
+FeatureFlagManager.prototype.getConfig = function (key) {
+    return this.getFullConfig()[key];
+};
+
+FeatureFlagManager.prototype.isEnabled = function () {
+    return !!this.getMpConfig(FLAGS_CONFIG_KEY);
+};
+
+FeatureFlagManager.prototype.areFeaturesReady = function () {
+    if (!this.isEnabled()) {
+        logger.error('Feature Flags not enabled');
+    }
+    return !!this.flags;
+};
+
+FeatureFlagManager.prototype.fetchFlags = function () {
+    if (!this.isEnabled()) {
+        return;
+    }
+
+    var distinctId = this.getDistinctId();
+    logger.log('Fetching flags for distinct ID: ' + distinctId);
+    var reqParams = {
+        'context': _utils._.extend({ 'distinct_id': distinctId }, this.getConfig(CONFIG_CONTEXT))
+    };
+    this.fetchPromise = _window.window['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+        'method': 'POST',
+        'headers': {
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
+            'Content-Type': 'application/octet-stream'
+        },
+        'body': JSON.stringify(reqParams)
+    }).then((function (response) {
+        return response.json().then((function (responseBody) {
+            var responseFlags = responseBody['flags'];
+            if (!responseFlags) {
+                throw new Error('No flags in API response');
+            }
+            var flags = new Map();
+            _utils._.each(responseFlags, function (data, key) {
+                flags.set(key, {
+                    'key': data['variant_key'],
+                    'data': data['variant_value']
+                });
+            });
+            this.flags = flags;
+        }).bind(this))['catch'](function (error) {
+            logger.error(error);
+        });
+    }).bind(this))['catch'](function () {});
+};
+
+FeatureFlagManager.prototype.getFeature = function (featureName, fallback) {
+    if (!this.fetchPromise) {
+        return new Promise(function (resolve) {
+            logger.critical('Feature Flags not initialized');
+            resolve(fallback);
+        });
+    }
+
+    return this.fetchPromise.then((function () {
+        return this.getFeatureSync(featureName, fallback);
+    }).bind(this))['catch'](function (error) {
+        logger.error(error);
+        return fallback;
+    });
+};
+
+FeatureFlagManager.prototype.getFeatureSync = function (featureName, fallback) {
+    if (!this.areFeaturesReady()) {
+        logger.log('Flags not loaded yet');
+        return fallback;
+    }
+    var feature = this.flags.get(featureName);
+    if (!feature) {
+        logger.log('No flag found: "' + featureName + '"');
+        return fallback;
+    }
+    this.trackFeatureCheck(featureName, feature);
+    return feature;
+};
+
+FeatureFlagManager.prototype.getFeatureData = function (featureName, fallbackValue) {
+    return this.getFeature(featureName, { 'data': fallbackValue }).then(function (feature) {
+        return feature['data'];
+    })['catch'](function (error) {
+        logger.error(error);
+        return fallbackValue;
+    });
+};
+
+FeatureFlagManager.prototype.getFeatureDataSync = function (featureName, fallbackValue) {
+    return this.getFeatureSync(featureName, { 'data': fallbackValue })['data'];
+};
+
+FeatureFlagManager.prototype.isFeatureEnabled = function (featureName, fallbackValue) {
+    return this.getFeatureData(featureName).then((function () {
+        return this.isFeatureEnabledSync(featureName, fallbackValue);
+    }).bind(this))['catch'](function (error) {
+        logger.error(error);
+        return fallbackValue;
+    });
+};
+
+FeatureFlagManager.prototype.isFeatureEnabledSync = function (featureName, fallbackValue) {
+    fallbackValue = fallbackValue || false;
+    var val = this.getFeatureDataSync(featureName, fallbackValue);
+    if (val !== true && val !== false) {
+        logger.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
+        val = fallbackValue;
+    }
+    return val;
+};
+
+FeatureFlagManager.prototype.trackFeatureCheck = function (featureName, feature) {
+    if (this.trackedFeatures.has(featureName)) {
+        return;
+    }
+    this.trackedFeatures.add(featureName);
+    this.track('$experiment_started', {
+        'Experiment name': featureName,
+        'Variant name': feature['key'],
+        '$experiment_type': 'feature_flag'
+    });
+};
+
+function minApisSupported() {
+    return !!fetch && typeof Promise !== 'undefined' && typeof Map !== 'undefined' && typeof Set !== 'undefined';
+}
+
+(0, _utils.safewrapClass)(FeatureFlagManager);
+
+FeatureFlagManager.prototype['are_features_ready'] = FeatureFlagManager.prototype.areFeaturesReady;
+FeatureFlagManager.prototype['get_feature'] = FeatureFlagManager.prototype.getFeature;
+FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
+FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype.getFeatureDataSync;
+FeatureFlagManager.prototype['get_feature_sync'] = FeatureFlagManager.prototype.getFeatureSync;
+FeatureFlagManager.prototype['is_feature_enabled'] = FeatureFlagManager.prototype.isFeatureEnabled;
+FeatureFlagManager.prototype['is_feature_enabled_sync'] = FeatureFlagManager.prototype.isFeatureEnabledSync;
+
+exports.FeatureFlagManager = FeatureFlagManager;
+
+},{"../utils":32,"../window":33}],14:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -20431,7 +20635,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":31,"./window":32}],14:[function(require,module,exports){
+},{"./utils":32,"./window":33}],15:[function(require,module,exports){
 // For loading separate bundles asynchronously via script tag
 // so that we don't load them until they are needed at runtime.
 'use strict';
@@ -20466,7 +20670,7 @@ function loadThrowError(src, _onload) {
     throw new Error('This build of Mixpanel only includes core SDK functionality, could not load ' + src);
 }
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -20485,7 +20689,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)(_bundleLoaders.loadNoop);
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"../mixpanel-core":16,"../recorder":21,"./bundle-loaders":14}],16:[function(require,module,exports){
+},{"../mixpanel-core":17,"../recorder":22,"./bundle-loaders":15}],17:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -20508,6 +20712,8 @@ var _recorderUtils = require('./recorder/utils');
 var _window = require('./window');
 
 var _autocapture = require('./autocapture');
+
+var _flags = require('./flags');
 
 var _domTrackers = require('./dom-trackers');
 
@@ -20590,7 +20796,8 @@ var DEFAULT_API_ROUTES = {
     'track': 'track/',
     'engage': 'engage/',
     'groups': 'groups/',
-    'record': 'record/'
+    'record': 'record/',
+    'flags': 'flags/'
 };
 
 /*
@@ -20608,6 +20815,7 @@ var DEFAULT_CONFIG = {
     'cross_site_cookie': false,
     'cross_subdomain_cookie': true,
     'error_reporter': _utils.NOOP_FUNC,
+    'flags': false,
     'persistence': 'cookie',
     'persistence_name': '',
     'cookie_domain': '',
@@ -20648,6 +20856,7 @@ var DEFAULT_CONFIG = {
     'record_block_selector': 'img, video',
     'record_canvas': false,
     'record_collect_fonts': false,
+    'record_heatmap_data': false,
     'record_idle_timeout_ms': 30 * 60 * 1000, // 30 minutes
     'record_mask_text_class': new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector': '*',
@@ -20862,6 +21071,14 @@ MixpanelLib.prototype._init = function (token, config, name) {
         }, '');
     }
 
+    this.flags = new _flags.FeatureFlagManager({
+        getConfigFunc: _utils._.bind(this.get_config, this),
+        getDistinctIdFunc: _utils._.bind(this.get_distinct_id, this),
+        trackingFunc: _utils._.bind(this.track, this)
+    });
+    this.flags.init();
+    this['flags'] = this.flags;
+
     this.autocapture = new _autocapture.Autocapture(this);
     this.autocapture.init();
 
@@ -20981,6 +21198,10 @@ MixpanelLib.prototype.resume_session_recording = function () {
     if (this._recorder) {
         this._recorder['resumeRecording']();
     }
+};
+
+MixpanelLib.prototype.is_recording_heatmap_data = function () {
+    return this._get_session_replay_id() && this.get_config('record_heatmap_data');
 };
 
 MixpanelLib.prototype.get_session_recording_properties = function () {
@@ -22039,6 +22260,11 @@ MixpanelLib.prototype.identify = function (new_distinct_id, _set_callback, _add_
             '$anon_distinct_id': previous_distinct_id
         }, { skip_hooks: true });
     }
+
+    // check feature flags again if distinct id has changed
+    if (new_distinct_id !== previous_distinct_id) {
+        this.flags.fetchFlags();
+    }
 };
 
 /**
@@ -22313,7 +22539,7 @@ MixpanelLib.prototype.set_config = function (config) {
         }
         _config2['default'].DEBUG = _config2['default'].DEBUG || this.get_config('debug');
 
-        if ('autocapture' in config && this.autocapture) {
+        if (('autocapture' in config || 'record_heatmap_data' in config) && this.autocapture) {
             this.autocapture.init();
         }
     }
@@ -22846,7 +23072,7 @@ function init_as_module(bundle_loader) {
     return mixpanel_master;
 }
 
-},{"./autocapture":9,"./config":11,"./dom-trackers":12,"./gdpr-utils":13,"./mixpanel-group":17,"./mixpanel-people":18,"./mixpanel-persistence":19,"./recorder/utils":25,"./request-batcher":26,"./storage/indexed-db":29,"./utils":31,"./window":32}],17:[function(require,module,exports){
+},{"./autocapture":9,"./config":11,"./dom-trackers":12,"./flags":13,"./gdpr-utils":14,"./mixpanel-group":18,"./mixpanel-people":19,"./mixpanel-persistence":20,"./recorder/utils":26,"./request-batcher":27,"./storage/indexed-db":30,"./utils":32,"./window":33}],18:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -23030,7 +23256,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":8,"./gdpr-utils":13,"./utils":31}],18:[function(require,module,exports){
+},{"./api-actions":8,"./gdpr-utils":14,"./utils":32}],19:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -23510,7 +23736,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":8,"./gdpr-utils":13,"./utils":31}],19:[function(require,module,exports){
+},{"./api-actions":8,"./gdpr-utils":14,"./utils":32}],20:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -23944,7 +24170,7 @@ exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":8,"./utils":31}],20:[function(require,module,exports){
+},{"./api-actions":8,"./utils":32}],21:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24320,7 +24546,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 exports.Promise = PromisePolyfill;
 exports.NpoPromise = NpoPromise;
 
-},{"./window":32}],21:[function(require,module,exports){
+},{"./window":33}],22:[function(require,module,exports){
 'use strict';
 
 var _window = require('../window');
@@ -24329,7 +24555,7 @@ var _recorder = require('./recorder');
 
 _window.window['__mp_recorder'] = _recorder.MixpanelRecorder;
 
-},{"../window":32,"./recorder":22}],22:[function(require,module,exports){
+},{"../window":33,"./recorder":23}],23:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24476,7 +24702,7 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
 
 exports.MixpanelRecorder = MixpanelRecorder;
 
-},{"../promise-polyfill":20,"../utils":31,"./recording-registry":23,"./session-recording":24,"rrweb":7}],23:[function(require,module,exports){
+},{"../promise-polyfill":21,"../utils":32,"./recording-registry":24,"./session-recording":25,"rrweb":7}],24:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24571,7 +24797,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
 
 exports.RecordingRegistry = RecordingRegistry;
 
-},{"../promise-polyfill":20,"../storage/indexed-db":29,"./session-recording":24,"./utils":25}],24:[function(require,module,exports){
+},{"../promise-polyfill":21,"../storage/indexed-db":30,"./session-recording":25,"./utils":26}],25:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25034,7 +25260,7 @@ SessionRecording.prototype.reportError = function (msg, err) {
 
 exports.SessionRecording = SessionRecording;
 
-},{"../config":11,"../gdpr-utils":13,"../request-batcher":26,"../storage/indexed-db":29,"../utils":31,"../window":32,"./utils":25,"rrweb":7}],25:[function(require,module,exports){
+},{"../config":11,"../gdpr-utils":14,"../request-batcher":27,"../storage/indexed-db":30,"../utils":32,"../window":33,"./utils":26,"rrweb":7}],26:[function(require,module,exports){
 /**
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  * @returns {boolean}
@@ -25054,7 +25280,7 @@ var RECORD_ENQUEUE_THROTTLE_MS = 250;
 exports.isRecordingExpired = isRecordingExpired;
 exports.RECORD_ENQUEUE_THROTTLE_MS = RECORD_ENQUEUE_THROTTLE_MS;
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25389,7 +25615,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./config":11,"./promise-polyfill":20,"./request-queue":27,"./utils":31}],27:[function(require,module,exports){
+},{"./config":11,"./promise-polyfill":21,"./request-queue":28,"./utils":32}],28:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25737,7 +25963,7 @@ RequestQueue.prototype.clear = function () {
 
 exports.RequestQueue = RequestQueue;
 
-},{"./promise-polyfill":20,"./shared-lock":28,"./storage/local-storage":30,"./utils":31,"./window":32}],28:[function(require,module,exports){
+},{"./promise-polyfill":21,"./shared-lock":29,"./storage/local-storage":31,"./utils":32,"./window":33}],29:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25903,7 +26129,7 @@ SharedLock.prototype.withLock = function (lockedCB, pid) {
 
 exports.SharedLock = SharedLock;
 
-},{"./promise-polyfill":20,"./utils":31,"./window":32}],29:[function(require,module,exports){
+},{"./promise-polyfill":21,"./utils":32,"./window":33}],30:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26038,7 +26264,7 @@ exports.IDBStorageWrapper = IDBStorageWrapper;
 exports.RECORDING_EVENTS_STORE_NAME = RECORDING_EVENTS_STORE_NAME;
 exports.RECORDING_REGISTRY_STORE_NAME = RECORDING_REGISTRY_STORE_NAME;
 
-},{"../promise-polyfill":20,"../window":32}],30:[function(require,module,exports){
+},{"../promise-polyfill":21,"../window":33}],31:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26100,7 +26326,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
 
 exports.LocalStorageWrapper = LocalStorageWrapper;
 
-},{"../promise-polyfill":20,"../utils":31,"../window":32}],31:[function(require,module,exports){
+},{"../promise-polyfill":21,"../utils":32,"../window":33}],32:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -27842,7 +28068,7 @@ exports.safewrapClass = safewrapClass;
 exports.slice = slice;
 exports.userAgent = userAgent;
 
-},{"./config":11,"./promise-polyfill":20,"./window":32}],32:[function(require,module,exports){
+},{"./config":11,"./promise-polyfill":21,"./window":33}],33:[function(require,module,exports){
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 'use strict';
 

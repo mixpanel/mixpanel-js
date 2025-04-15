@@ -13944,7 +13944,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.63.0'
+    LIB_VERSION: '2.64.0-rc1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -16103,7 +16103,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-var logger$5 = console_with_prefix('lock');
+var logger$6 = console_with_prefix('lock');
 
 /**
  * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
@@ -16155,7 +16155,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
 
         var delay = function(cb) {
             if (new Date().getTime() - startTime > timeoutMS) {
-                logger$5.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                logger$6.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                 storage.removeItem(keyZ);
                 storage.removeItem(keyY);
                 loop();
@@ -16298,7 +16298,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
     }, this));
 };
 
-var logger$4 = console_with_prefix('batch');
+var logger$5 = console_with_prefix('batch');
 
 /**
  * RequestQueue: queue for batching API requests with localStorage backup for retries.
@@ -16327,7 +16327,7 @@ var RequestQueue = function (storageKey, options) {
             timeoutMS: options.sharedLockTimeoutMS,
         });
     }
-    this.reportError = options.errorReporter || _.bind(logger$4.error, logger$4);
+    this.reportError = options.errorReporter || _.bind(logger$5.error, logger$5);
 
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
@@ -16660,7 +16660,7 @@ RequestQueue.prototype.clear = function () {
 // maximum interval between request retries after exponential backoff
 var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-var logger$3 = console_with_prefix('batch');
+var logger$4 = console_with_prefix('batch');
 
 /**
  * RequestBatcher: manages the queueing, flushing, retry etc of requests of one
@@ -16788,7 +16788,7 @@ RequestBatcher.prototype.sendRequestPromise = function(data, options) {
  */
 RequestBatcher.prototype.flush = function(options) {
     if (this.requestInProgress) {
-        logger$3.log('Flush: Request already in progress');
+        logger$4.log('Flush: Request already in progress');
         return PromisePolyfill.resolve();
     }
 
@@ -16965,7 +16965,7 @@ RequestBatcher.prototype.flush = function(options) {
             if (options.unloading) {
                 requestOptions.transport = 'sendBeacon';
             }
-            logger$3.log('MIXPANEL REQUEST:', dataForRequest);
+            logger$4.log('MIXPANEL REQUEST:', dataForRequest);
             return this.sendRequestPromise(dataForRequest, requestOptions).then(batchSendCallback);
         }, this))
         .catch(_.bind(function(err) {
@@ -16978,7 +16978,7 @@ RequestBatcher.prototype.flush = function(options) {
  * Log error to global logger and optional user-defined logger.
  */
 RequestBatcher.prototype.reportError = function(msg, err) {
-    logger$3.error.apply(logger$3.error, arguments);
+    logger$4.error.apply(logger$4.error, arguments);
     if (this.errorReporter) {
         try {
             if (!(err instanceof Error)) {
@@ -16986,7 +16986,7 @@ RequestBatcher.prototype.reportError = function(msg, err) {
             }
             this.errorReporter(msg, err);
         } catch(err) {
-            logger$3.error(err);
+            logger$4.error(err);
         }
     }
 };
@@ -17002,7 +17002,7 @@ var isRecordingExpired = function(serializedRecording) {
 
 var RECORD_ENQUEUE_THROTTLE_MS = 250;
 
-var logger$2 = console_with_prefix('recorder');
+var logger$3 = console_with_prefix('recorder');
 var CompressionStream = win['CompressionStream'];
 
 var RECORDER_BATCHER_LIB_CONFIG = {
@@ -17139,14 +17139,14 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     if (this._stopRecording !== null) {
-        logger$2.log('Recording already in progress, skipping startRecording.');
+        logger$3.log('Recording already in progress, skipping startRecording.');
         return;
     }
 
     this.recordMaxMs = this.getConfig('record_max_ms');
     if (this.recordMaxMs > MAX_RECORDING_MS) {
         this.recordMaxMs = MAX_RECORDING_MS;
-        logger$2.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
+        logger$3.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
     }
 
     if (!this.maxExpires) {
@@ -17156,7 +17156,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     this.recordMinMs = this.getConfig('record_min_ms');
     if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
         this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
-        logger$2.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+        logger$3.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
     }
 
     if (!this.replayStartTime) {
@@ -17440,14 +17440,14 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
 
 
 SessionRecording.prototype.reportError = function(msg, err) {
-    logger$2.error.apply(logger$2.error, arguments);
+    logger$3.error.apply(logger$3.error, arguments);
     try {
         if (!err && !(msg instanceof Error)) {
             msg = new Error(msg);
         }
         this.getConfig('error_reporter')(msg, err);
     } catch(err) {
-        logger$2.error(err);
+        logger$3.error(err);
     }
 };
 
@@ -17543,7 +17543,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
         .catch(this.handleError.bind(this));
 };
 
-var logger$1 = console_with_prefix('recorder');
+var logger$2 = console_with_prefix('recorder');
 
 /**
  * Recorder API: bundles rrweb and and exposes methods to start and stop recordings.
@@ -17559,7 +17559,7 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
      */
     this.recordingRegistry = new RecordingRegistry({
         mixpanelInstance: this.mixpanelInstance,
-        errorReporter: logger$1.error,
+        errorReporter: logger$2.error,
         sharedLockStorage: sharedLockStorage
     });
     this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
@@ -17570,17 +17570,17 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
 MixpanelRecorder.prototype.startRecording = function(options) {
     options = options || {};
     if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
-        logger$1.log('Recording already in progress, skipping startRecording.');
+        logger$2.log('Recording already in progress, skipping startRecording.');
         return;
     }
 
     var onIdleTimeout = function () {
-        logger$1.log('Idle timeout reached, restarting recording.');
+        logger$2.log('Idle timeout reached, restarting recording.');
         this.resetRecording();
     }.bind(this);
 
     var onMaxLengthReached = function () {
-        logger$1.log('Max recording length reached, stopping recording.');
+        logger$2.log('Max recording length reached, stopping recording.');
         this.resetRecording();
     }.bind(this);
 
@@ -17643,7 +17643,7 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
             } else if (startNewIfInactive) {
                 return this.startRecording({shouldStopBatcher: false});
             } else {
-                logger$1.log('No resumable recording found.');
+                logger$2.log('No resumable recording found.');
                 return null;
             }
         }.bind(this));
@@ -17701,7 +17701,7 @@ var TRACKED_ATTRS = [
     'href', 'name', 'role', 'title', 'type'
 ];
 
-var logger = console_with_prefix('autocapture');
+var logger$1 = console_with_prefix('autocapture');
 
 
 function getClasses(el) {
@@ -17787,6 +17787,7 @@ function getPropsForDOMEvent(ev, config) {
     var blockSelectors = config.blockSelectors || [];
     var captureTextContent = config.captureTextContent || false;
     var captureExtraAttrs = config.captureExtraAttrs || [];
+    var capturedForHeatMap = config.capturedForHeatMap || false;
 
     // convert array to set every time, as the config may have changed
     var blockAttrsSet = {};
@@ -17865,6 +17866,9 @@ function getPropsForDOMEvent(ev, config) {
                         props['$' + prop] = ev[prop];
                     }
                 });
+                if (capturedForHeatMap) {
+                    props['$captured_for_heatmap'] = true;
+                }
                 target = guessRealClickTarget(ev);
             }
             // prioritize text content from "real" click target if different from original target
@@ -17959,7 +17963,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return false;
             }
         } catch (err) {
-            logger.critical('Error while checking element in allowElementCallback', err);
+            logger$1.critical('Error while checking element in allowElementCallback', err);
             return false;
         }
     }
@@ -17976,7 +17980,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return true;
             }
         } catch (err) {
-            logger.critical('Error while checking selector: ' + sel, err);
+            logger$1.critical('Error while checking selector: ' + sel, err);
         }
     }
     return false;
@@ -17991,7 +17995,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                 return true;
             }
         } catch (err) {
-            logger.critical('Error while checking element in blockElementCallback', err);
+            logger$1.critical('Error while checking element in blockElementCallback', err);
             return true;
         }
     }
@@ -18005,7 +18009,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                     return true;
                 }
             } catch (err) {
-                logger.critical('Error while checking selector: ' + sel, err);
+                logger$1.critical('Error while checking selector: ' + sel, err);
             }
         }
     }
@@ -18211,22 +18215,22 @@ var CONFIG_TRACK_PAGEVIEW = 'pageview';
 var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
-var CONFIG_DEFAULTS = {};
-CONFIG_DEFAULTS[CONFIG_ALLOW_SELECTORS] = [];
-CONFIG_DEFAULTS[CONFIG_ALLOW_URL_REGEXES] = [];
-CONFIG_DEFAULTS[CONFIG_BLOCK_ATTRS] = [];
-CONFIG_DEFAULTS[CONFIG_BLOCK_ELEMENT_CALLBACK] = null;
-CONFIG_DEFAULTS[CONFIG_BLOCK_SELECTORS] = [];
-CONFIG_DEFAULTS[CONFIG_BLOCK_URL_REGEXES] = [];
-CONFIG_DEFAULTS[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
-CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
-CONFIG_DEFAULTS[CONFIG_SCROLL_CAPTURE_ALL] = false;
-CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
-CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
-CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
-CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
-CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
-CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
+var CONFIG_DEFAULTS$1 = {};
+CONFIG_DEFAULTS$1[CONFIG_ALLOW_SELECTORS] = [];
+CONFIG_DEFAULTS$1[CONFIG_ALLOW_URL_REGEXES] = [];
+CONFIG_DEFAULTS$1[CONFIG_BLOCK_ATTRS] = [];
+CONFIG_DEFAULTS$1[CONFIG_BLOCK_ELEMENT_CALLBACK] = null;
+CONFIG_DEFAULTS$1[CONFIG_BLOCK_SELECTORS] = [];
+CONFIG_DEFAULTS$1[CONFIG_BLOCK_URL_REGEXES] = [];
+CONFIG_DEFAULTS$1[CONFIG_CAPTURE_EXTRA_ATTRS] = [];
+CONFIG_DEFAULTS$1[CONFIG_CAPTURE_TEXT_CONTENT] = false;
+CONFIG_DEFAULTS$1[CONFIG_SCROLL_CAPTURE_ALL] = false;
+CONFIG_DEFAULTS$1[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
+CONFIG_DEFAULTS$1[CONFIG_TRACK_CLICK] = true;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_INPUT] = true;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_SCROLL] = true;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_SUBMIT] = true;
 
 var DEFAULT_PROPS = {
     '$mp_autocapture': true
@@ -18247,7 +18251,7 @@ var Autocapture = function(mp) {
 
 Autocapture.prototype.init = function() {
     if (!minDOMApisSupported()) {
-        logger.critical('Autocapture unavailable: missing required DOM APIs');
+        logger$1.critical('Autocapture unavailable: missing required DOM APIs');
         return;
     }
 
@@ -18264,10 +18268,10 @@ Autocapture.prototype.getFullConfig = function() {
         // Autocapture is completely off
         return {};
     } else if (_.isObject(autocaptureConfig)) {
-        return _.extend({}, CONFIG_DEFAULTS, autocaptureConfig);
+        return _.extend({}, CONFIG_DEFAULTS$1, autocaptureConfig);
     } else {
         // Autocapture config is non-object truthy value, return default
-        return CONFIG_DEFAULTS;
+        return CONFIG_DEFAULTS$1;
     }
 };
 
@@ -18291,7 +18295,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
                     break;
                 }
             } catch (err) {
-                logger.critical('Error while checking block URL regex: ' + allowRegex, err);
+                logger$1.critical('Error while checking block URL regex: ' + allowRegex, err);
                 return true;
             }
         }
@@ -18312,7 +18316,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
                 return true;
             }
         } catch (err) {
-            logger.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
+            logger$1.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
             return true;
         }
     }
@@ -18341,7 +18345,8 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
-        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT)
+        captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
+        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data(),
     });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
@@ -18352,13 +18357,13 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
 Autocapture.prototype.initClickTracking = function() {
     win.removeEventListener(EV_CLICK, this.listenerClick);
 
-    if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+    if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
-    logger.log('Initializing click tracking');
+    logger$1.log('Initializing click tracking');
 
     this.listenerClick = win.addEventListener(EV_CLICK, function(ev) {
-        if (!this.getConfig(CONFIG_TRACK_CLICK)) {
+        if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
             return;
         }
         this.trackDomEvent(ev, MP_EV_CLICK);
@@ -18371,7 +18376,7 @@ Autocapture.prototype.initInputTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_INPUT)) {
         return;
     }
-    logger.log('Initializing input tracking');
+    logger$1.log('Initializing input tracking');
 
     this.listenerChange = win.addEventListener(EV_CHANGE, function(ev) {
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
@@ -18389,7 +18394,7 @@ Autocapture.prototype.initPageviewTracking = function() {
     if (!this.pageviewTrackingConfig()) {
         return;
     }
-    logger.log('Initializing pageview tracking');
+    logger$1.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
     var tracked = false;
@@ -18444,7 +18449,7 @@ Autocapture.prototype.initPageviewTracking = function() {
             }
             if (didPathChange) {
                 this.lastScrollCheckpoint = 0;
-                logger.log('Path change: re-initializing scroll depth checkpoints');
+                logger$1.log('Path change: re-initializing scroll depth checkpoints');
             }
         }
     }.bind(this)));
@@ -18456,7 +18461,7 @@ Autocapture.prototype.initScrollTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
     }
-    logger.log('Initializing scroll tracking');
+    logger$1.log('Initializing scroll tracking');
     this.lastScrollCheckpoint = 0;
 
     this.listenerScroll = win.addEventListener(EV_SCROLLEND, safewrap(function() {
@@ -18493,7 +18498,7 @@ Autocapture.prototype.initScrollTracking = function() {
                 }
             }
         } catch (err) {
-            logger.critical('Error while calculating scroll percentage', err);
+            logger$1.critical('Error while calculating scroll percentage', err);
         }
         if (shouldTrack) {
             this.mp.track(MP_EV_SCROLL, props);
@@ -18507,7 +18512,7 @@ Autocapture.prototype.initSubmitTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
         return;
     }
-    logger.log('Initializing submit tracking');
+    logger$1.log('Initializing submit tracking');
 
     this.listenerSubmit = win.addEventListener(EV_SUBMIT, function(ev) {
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
@@ -18519,6 +18524,193 @@ Autocapture.prototype.initSubmitTracking = function() {
 
 // TODO integrate error_reporter from mixpanel instance
 safewrapClass(Autocapture);
+
+var fetch = win['fetch'];
+var logger = console_with_prefix('flags');
+
+var FLAGS_CONFIG_KEY = 'flags';
+
+var CONFIG_CONTEXT = 'context';
+var CONFIG_DEFAULTS = {};
+CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
+
+/**
+ * FeatureFlagManager: support for Mixpanel's feature flagging product
+ * @constructor
+ */
+var FeatureFlagManager = function(initOptions) {
+    this.getMpConfig = initOptions.getConfigFunc;
+    this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.track = initOptions.trackingFunc;
+};
+
+FeatureFlagManager.prototype.init = function() {
+    if (!minApisSupported()) {
+        logger.critical('Feature Flags unavailable: missing minimum required APIs');
+        return;
+    }
+
+    this.flags = null;
+    this.fetchFlags();
+
+    this.trackedFeatures = new Set();
+};
+
+FeatureFlagManager.prototype.getFullConfig = function() {
+    var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+    if (!ffConfig) {
+        // flags are completely off
+        return {};
+    } else if (_.isObject(ffConfig)) {
+        return _.extend({}, CONFIG_DEFAULTS, ffConfig);
+    } else {
+        // config is non-object truthy value, return default
+        return CONFIG_DEFAULTS;
+    }
+};
+
+FeatureFlagManager.prototype.getConfig = function(key) {
+    return this.getFullConfig()[key];
+};
+
+FeatureFlagManager.prototype.isEnabled = function() {
+    return !!this.getMpConfig(FLAGS_CONFIG_KEY);
+};
+
+FeatureFlagManager.prototype.areFeaturesReady = function() {
+    if (!this.isEnabled()) {
+        logger.error('Feature Flags not enabled');
+    }
+    return !!this.flags;
+};
+
+FeatureFlagManager.prototype.fetchFlags = function() {
+    if (!this.isEnabled()) {
+        return;
+    }
+
+    var distinctId = this.getDistinctId();
+    logger.log('Fetching flags for distinct ID: ' + distinctId);
+    var reqParams = {
+        'context': _.extend({'distinct_id': distinctId}, this.getConfig(CONFIG_CONTEXT))
+    };
+    this.fetchPromise = win['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+        'method': 'POST',
+        'headers': {
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
+            'Content-Type': 'application/octet-stream'
+        },
+        'body': JSON.stringify(reqParams)
+    }).then(function(response) {
+        return response.json().then(function(responseBody) {
+            var responseFlags = responseBody['flags'];
+            if (!responseFlags) {
+                throw new Error('No flags in API response');
+            }
+            var flags = new Map();
+            _.each(responseFlags, function(data, key) {
+                flags.set(key, {
+                    'key': data['variant_key'],
+                    'data': data['variant_value']
+                });
+            });
+            this.flags = flags;
+        }.bind(this)).catch(function(error) {
+            logger.error(error);
+        });
+    }.bind(this)).catch(function() {});
+};
+
+FeatureFlagManager.prototype.getFeature = function(featureName, fallback) {
+    if (!this.fetchPromise) {
+        return new Promise(function(resolve) {
+            logger.critical('Feature Flags not initialized');
+            resolve(fallback);
+        });
+    }
+
+    return this.fetchPromise.then(function() {
+        return this.getFeatureSync(featureName, fallback);
+    }.bind(this)).catch(function(error) {
+        logger.error(error);
+        return fallback;
+    });
+};
+
+FeatureFlagManager.prototype.getFeatureSync = function(featureName, fallback) {
+    if (!this.areFeaturesReady()) {
+        logger.log('Flags not loaded yet');
+        return fallback;
+    }
+    var feature = this.flags.get(featureName);
+    if (!feature) {
+        logger.log('No flag found: "' + featureName + '"');
+        return fallback;
+    }
+    this.trackFeatureCheck(featureName, feature);
+    return feature;
+};
+
+FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
+    return this.getFeature(featureName, {'data': fallbackValue}).then(function(feature) {
+        return feature['data'];
+    }).catch(function(error) {
+        logger.error(error);
+        return fallbackValue;
+    });
+};
+
+FeatureFlagManager.prototype.getFeatureDataSync = function(featureName, fallbackValue) {
+    return this.getFeatureSync(featureName, {'data': fallbackValue})['data'];
+};
+
+FeatureFlagManager.prototype.isFeatureEnabled = function(featureName, fallbackValue) {
+    return this.getFeatureData(featureName).then(function() {
+        return this.isFeatureEnabledSync(featureName, fallbackValue);
+    }.bind(this)).catch(function(error) {
+        logger.error(error);
+        return fallbackValue;
+    });
+};
+
+FeatureFlagManager.prototype.isFeatureEnabledSync = function(featureName, fallbackValue) {
+    fallbackValue = fallbackValue || false;
+    var val = this.getFeatureDataSync(featureName, fallbackValue);
+    if (val !== true && val !== false) {
+        logger.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
+        val = fallbackValue;
+    }
+    return val;
+};
+
+FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) {
+    if (this.trackedFeatures.has(featureName)) {
+        return;
+    }
+    this.trackedFeatures.add(featureName);
+    this.track('$experiment_started', {
+        'Experiment name': featureName,
+        'Variant name': feature['key'],
+        '$experiment_type': 'feature_flag'
+    });
+};
+
+function minApisSupported() {
+    return !!fetch &&
+      typeof Promise !== 'undefined' &&
+      typeof Map !== 'undefined' &&
+      typeof Set !== 'undefined';
+}
+
+safewrapClass(FeatureFlagManager);
+
+FeatureFlagManager.prototype['are_features_ready'] = FeatureFlagManager.prototype.areFeaturesReady;
+FeatureFlagManager.prototype['get_feature'] = FeatureFlagManager.prototype.getFeature;
+FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
+FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype.getFeatureDataSync;
+FeatureFlagManager.prototype['get_feature_sync'] = FeatureFlagManager.prototype.getFeatureSync;
+FeatureFlagManager.prototype['is_feature_enabled'] = FeatureFlagManager.prototype.isFeatureEnabled;
+FeatureFlagManager.prototype['is_feature_enabled_sync'] = FeatureFlagManager.prototype.isFeatureEnabledSync;
 
 /* eslint camelcase: "off" */
 
@@ -19924,10 +20116,11 @@ if (navigator['sendBeacon']) {
 }
 
 var DEFAULT_API_ROUTES = {
-    'track': 'track/',
+    'track':  'track/',
     'engage': 'engage/',
     'groups': 'groups/',
-    'record': 'record/'
+    'record': 'record/',
+    'flags':  'flags/'
 };
 
 /*
@@ -19945,6 +20138,7 @@ var DEFAULT_CONFIG = {
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
     'error_reporter':                    NOOP_FUNC,
+    'flags':                             false,
     'persistence':                       'cookie',
     'persistence_name':                  '',
     'cookie_domain':                     '',
@@ -19985,6 +20179,7 @@ var DEFAULT_CONFIG = {
     'record_block_selector':             'img, video',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
+    'record_heatmap_data':               false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
     'record_mask_text_selector':         '*',
@@ -20200,6 +20395,14 @@ MixpanelLib.prototype._init = function(token, config, name) {
         }, '');
     }
 
+    this.flags = new FeatureFlagManager({
+        getConfigFunc: _.bind(this.get_config, this),
+        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        trackingFunc: _.bind(this.track, this)
+    });
+    this.flags.init();
+    this['flags'] = this.flags;
+
     this.autocapture = new Autocapture(this);
     this.autocapture.init();
 
@@ -20323,6 +20526,10 @@ MixpanelLib.prototype.resume_session_recording = function () {
     if (this._recorder) {
         this._recorder['resumeRecording']();
     }
+};
+
+MixpanelLib.prototype.is_recording_heatmap_data = function () {
+    return this._get_session_replay_id() && this.get_config('record_heatmap_data');
 };
 
 MixpanelLib.prototype.get_session_recording_properties = function () {
@@ -21406,6 +21613,11 @@ MixpanelLib.prototype.identify = function(
             '$anon_distinct_id': previous_distinct_id
         }, {skip_hooks: true});
     }
+
+    // check feature flags again if distinct id has changed
+    if (new_distinct_id !== previous_distinct_id) {
+        this.flags.fetchFlags();
+    }
 };
 
 /**
@@ -21680,7 +21892,7 @@ MixpanelLib.prototype.set_config = function(config) {
         }
         Config.DEBUG = Config.DEBUG || this.get_config('debug');
 
-        if ('autocapture' in config && this.autocapture) {
+        if (('autocapture' in config || 'record_heatmap_data' in config) && this.autocapture) {
             this.autocapture.init();
         }
     }
