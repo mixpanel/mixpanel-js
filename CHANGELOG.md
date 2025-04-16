@@ -1,3 +1,7 @@
+**2.64.0** (15 Apr 2025)
+- Add `record_heatmap_data` init option for Session Recording to ensure click events are captured for Heat Maps
+- Initial support for feature flagging
+
 **2.63.0** (1 Apr 2025)
 - Update rrweb to latest alpha version
 - Refactor SDK build process to rely mainly on Rollup
