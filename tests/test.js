@@ -496,6 +496,19 @@
             ok(without_ip.src.indexOf('ip=0') > 0, '_send_request should send ip=0 when the config ip=false');
         });
 
+
+        test("additional query string is honored", 1, function() {
+            mixpanel.test.set_config({
+                img: true,
+                api_extra_query_params: {some_param: 'some_value', another_param: 'another_value'}
+            });
+
+            mixpanel.test.track("api_extra_query_params set");
+            var with_additional_query_params = $('img').get(-1);
+
+            ok(with_additional_query_params.src.indexOf('some_param=some_value&another_param=another_value') > 0, '_send_request should send extra_query_params when configured');
+        });
+
         test("properties on blacklist are not sent", 4, function() {
             mixpanel.test.set_config({
                 property_blacklist: ['$current_url', '$referrer', 'blacklisted_custom_prop']

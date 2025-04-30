@@ -100,6 +100,7 @@ var DEFAULT_API_ROUTES = {
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
     'api_routes':                        DEFAULT_API_ROUTES,
+    'api_extra_query_params':            {},
     'api_method':                        'POST',
     'api_transport':                     'XHR',
     'api_payload_format':                PAYLOAD_TYPE_BASE64,
@@ -686,6 +687,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         body_data = 'data=' + encodeURIComponent(data['data']);
         delete data['data'];
     }
+
+    _.extend(data, this.get_config('api_extra_query_params'));
 
     url += '?' + _.HTTPBuildQuery(data);
 
