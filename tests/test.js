@@ -496,7 +496,6 @@
             ok(without_ip.src.indexOf('ip=0') > 0, '_send_request should send ip=0 when the config ip=false');
         });
 
-
         test("additional query string is honored", 1, function() {
             mixpanel.test.set_config({
                 img: true,
@@ -3723,6 +3722,33 @@
                 same(
                     req.requestBody, null,
                     'GET request should not have transmitted data in request body'
+                );
+            });
+
+            test("tracking supports additional query string params", 5, function() {
+                mixpanel.test.set_config({
+                    api_extra_query_params: {
+                        some_param: 'some_value',
+                        another_param: 'another_value'
+                    }
+                });
+
+                mixpanel.test.track("api_extra_query_params set");
+
+                same(this.requests.length, 1, "track should have fired off a request");
+                var req = this.requests[0];
+                same(req.method, 'POST');
+                same(
+                    req.requestBody.indexOf('data='), 0,
+                    'POST request should have transmitted data in request body'
+                );
+                ok(
+                    req.url.indexOf('some_param=some_value') >= 0,
+                    'api_extra_query_params should be included in the URL'
+                );
+                ok(
+                    req.url.indexOf('another_param=another_value') >= 0,
+                    'api_extra_query_params should be included in the URL'
                 );
             });
 
