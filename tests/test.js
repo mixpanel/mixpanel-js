@@ -2038,6 +2038,16 @@
                 same(fake_event_after_second_identify.properties.distinct_id, new_id2);
             });
 
+            test("reset calls stop_session_recording and rerolls sampling", 2, function() {
+                var stopSessionRecordingSpy = sinon.spy(mixpanel.test, 'stop_session_recording');
+                var rerunRecordingSampling = sinon.spy(mixpanel.test, '_check_and_start_session_recording')
+                mixpanel.test.reset();
+                ok(stopSessionRecordingSpy.calledOnce, "stop_session_recording should be called once during reset.");
+                ok(rerunRecordingSampling.calledOnce, "_check_and_start_session_recording should be called once during reset.");
+                stopSessionRecordingSpy.restore();
+                rerunRecordingSampling.restore();
+            });
+
             test("alias also sends an identify event", 7, function() {
                 var current_id = mixpanel.test.get_distinct_id(),
                     new_id = rand_name();

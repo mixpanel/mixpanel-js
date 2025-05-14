@@ -1606,6 +1606,8 @@ MixpanelLib.prototype.reset = function() {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
+    this.stop_session_recording();
+    this._check_and_start_session_recording();
 };
 
 /**
