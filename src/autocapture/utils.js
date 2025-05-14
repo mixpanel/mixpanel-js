@@ -169,7 +169,9 @@ function getPropsForDOMEvent(ev, config) {
                 '$elements':  elementsJson,
                 '$el_attr__href': href,
                 '$viewportHeight': Math.max(docElement['clientHeight'], window['innerHeight'] || 0),
-                '$viewportWidth': Math.max(docElement['clientWidth'], window['innerWidth'] || 0)
+                '$viewportWidth': Math.max(docElement['clientWidth'], window['innerWidth'] || 0),
+                '$pageHeight': document['body']['offsetHeight'] || 0,
+                '$pageWidth': document['body']['offsetWidth'] || 0,
             };
             _.each(captureExtraAttrs, function(attr) {
                 if (!blockAttrsSet[attr] && target.hasAttribute(attr)) {

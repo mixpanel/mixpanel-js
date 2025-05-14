@@ -3937,6 +3937,8 @@
                 same(props.$el_classes, [anchor.name], "click event should include classes");
                 ok(props.$viewportHeight > 0, "click event should include viewport height");
                 ok(props.$viewportWidth > 0, "click event should include viewport width");
+                ok(props.$pageHeight > 0, "click event should include page height");
+                ok(props.$pageWidth > 0, "click event should include page width");
                 notOk('$el_id' in props, "click event should not include id when not present");
             });
 
