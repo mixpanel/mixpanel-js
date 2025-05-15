@@ -2038,16 +2038,6 @@
                 same(fake_event_after_second_identify.properties.distinct_id, new_id2);
             });
 
-            test("reset calls stop_session_recording and rerolls sampling", 2, function() {
-                var stopSessionRecordingSpy = sinon.spy(mixpanel.test, 'stop_session_recording');
-                var rerunRecordingSampling = sinon.spy(mixpanel.test, '_check_and_start_session_recording')
-                mixpanel.test.reset();
-                ok(stopSessionRecordingSpy.calledOnce, "stop_session_recording should be called once during reset.");
-                ok(rerunRecordingSampling.calledOnce, "_check_and_start_session_recording should be called once during reset.");
-                stopSessionRecordingSpy.restore();
-                rerunRecordingSampling.restore();
-            });
-
             test("alias also sends an identify event", 7, function() {
                 var current_id = mixpanel.test.get_distinct_id(),
                     new_id = rand_name();
@@ -3974,7 +3964,7 @@
                 ok(originalHandlerCalled, "original click handler should also have been called");
             });
 
-            test("autocapture click events include relevant properties", 7, function() {
+            test("autocapture click events include relevant properties", 9, function() {
                 mixpanel.init("autocapture_test_token", {
                     autocapture: {
                         pageview: false,
@@ -6716,6 +6706,7 @@
                         start();
                     }, this));
             });
+
             asyncTest('retries record request after a 500', 17, function () {
                 this.randomStub.returns(0.02);
                 this.initMixpanelRecorder({record_sessions_percent: 10});
@@ -7055,7 +7046,6 @@
                     }, this));
             });
 
-
             asyncTest('handles race condition where the recording resets while a request is in flight', 16, function () {
                 if (!IS_RECORDER_BUNDLED) {
                     this.clock.restore();
@@ -7128,6 +7118,29 @@
                         mixpanel.recordertest.stop_session_recording();
                         start();
                     }, this))
+            });
+
+            asyncTest("mixpanel.reset() calls stop_session_recording", 4, function() {
+                this.randomStub.restore();
+                this.initMixpanelRecorder({record_sessions_percent: 100});
+                var recorder;
+
+                this.waitForRecorderLoad()
+                    .then(_.bind(function () {
+                        recorder = mixpanel.recordertest.__get_recorder();
+
+                        var stopRecordingSpy = sinon.spy(recorder, 'stopRecording');
+                        // this will be called within _check_and_start_session_recording
+                        var restartRecorderSpy = sinon.spy(recorder, 'resumeRecording');
+
+                        mixpanel.recordertest.reset();
+                        ok(stopRecordingSpy.calledOnce, "stop_session_recording should be called once during reset.");
+                        ok(restartRecorderSpy.calledOnce, "_check_and_start_session_recording should be called once during reset.");
+
+                        stopRecordingSpy.restore();
+                        restartRecorderSpy.restore();
+                        start();
+                    }, this));
             });
         }
     };
