@@ -136,6 +136,12 @@ FeatureFlagManager.prototype.getVariantValue = function(featureName, fallbackVal
     });
 };
 
+// TODO remove deprecated method
+FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
+    logger.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
+    return this.getVariantValue(featureName, fallbackValue);
+};
+
 FeatureFlagManager.prototype.getVariantValueSync = function(featureName, fallbackValue) {
     return this.getVariantSync(featureName, {'value': fallbackValue})['value'];
 };
@@ -187,5 +193,8 @@ FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
+
+// Deprecated method
+FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
 
 export { FeatureFlagManager };
