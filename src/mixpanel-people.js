@@ -263,17 +263,7 @@ MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name
  * @deprecated
  */
 MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(amount, properties, callback) {
-    if (!_.isNumber(amount)) {
-        amount = parseFloat(amount);
-        if (isNaN(amount)) {
-            console.error('Invalid value passed to mixpanel.people.track_charge - must be a number');
-            return;
-        }
-    }
-
-    return this.append('$transactions', _.extend({
-        '$amount': amount
-    }, properties), callback);
+    console.error('mixpanel.people.track_charge() is deprecated and no longer has any effect.');
 });
 
 /*

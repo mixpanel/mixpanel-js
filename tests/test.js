@@ -2838,65 +2838,6 @@
 
         });
 
-        mpmodule("mixpanel.people.track_charge");
-
-        test("track_charge (basic functionality)", 2, function() {
-            var amt = 50,
-                amt_2 = 20,
-                charge = {
-                    '$amount': amt
-                }
-            charge_2 = {
-                '$amount': amt_2
-            }
-
-            var i = mixpanel.people.track_charge(amt);
-            ok(contains_obj(i['$append']['$transactions'], charge), '.track_charge() correctly appends to the $transactions object');
-
-            mixpanel.test.identify(this.id);
-            i = mixpanel.test.people.track_charge(amt_2);
-            ok(contains_obj(i['$append']['$transactions'], charge_2), '.track_charge() works for additional libs');
-        });
-
-        test("track_charge accepts properties", 1, function() {
-            var amt = 50,
-                time = new Date('feb 1 2012'),
-                charge = {
-                    '$amount': amt,
-                    '$time': date_to_ISO(time)
-                };
-
-            var i = mixpanel.people.track_charge(amt, {
-                '$time': time
-            });
-            ok(contains_obj(i['$append']['$transactions'], charge), '.track_charge() correctly appends to the $transactions object');
-        });
-
-        test("track_charge handles numeric strings", 1, function() {
-            var amt = " 40.56 ",
-                charge = {
-                    '$amount': 40.56
-                }
-            var i = mixpanel.people.track_charge(amt);
-
-            ok(contains_obj(i['$append']['$transactions'], charge), '.track_charge() correctly converts numeric strings');
-        });
-
-        // callsError may fail if there is no console, so we can't expect 2 tests
-        test("track_charge handles invalid values", function() {
-            if (window.console) {
-                callsError(function(restore_console) {
-                    mixpanel.people.track_charge();
-                    restore_console();
-                }, ".track_charge() should call an error if called with no arguments");
-
-                callsError(function(restore_console) {
-                    mixpanel.people.track_charge("asdf");
-                    restore_console();
-                }, ".track_charge() should call an error if called with a non-numeric string argument");
-            }
-        });
-
         mpmodule("mixpanel.people.clear_charges");
 
         test("clear_charges", 1, function() {
@@ -5569,7 +5510,6 @@
             gdprTestMethod('increment'   , ['prop_name' , 1              ]);
             gdprTestMethod('append'      , ['prop_name' , 'prop_value'   ]);
             gdprTestMethod('union'       , ['prop_name' , 'prop_value'   ]);
-            gdprTestMethod('track_charge', [1           , {prop: 'value'}]);
 
             test('opt out of cookies', 42, function() {
                 var name;
