@@ -23532,7 +23532,7 @@ MixpanelPeople.prototype.union = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(fu
  * @param {Function} [callback] If provided, the callback will be called when the server responds
  * @deprecated
  */
-MixpanelPeople.prototype.track_charge = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function (amount, properties, callback) {
+MixpanelPeople.prototype.track_charge = (0, _gdprUtils.addOptOutCheckMixpanelPeople)(function () {
     _utils.console.error('mixpanel.people.track_charge() is deprecated and no longer has any effect.');
 });
 

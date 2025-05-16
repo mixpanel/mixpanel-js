@@ -5067,7 +5067,7 @@
      * @param {Function} [callback] If provided, the callback will be called when the server responds
      * @deprecated
      */
-    MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(amount, properties, callback) {
+    MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function() {
         console.error('mixpanel.people.track_charge() is deprecated and no longer has any effect.');
     });
 
