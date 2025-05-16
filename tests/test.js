@@ -9,6 +9,7 @@
         old_handler_run = true;
         return true;
     };
+    var loadedRecorderProject = false; // global script tag check
 
     var _jsc = [];
     var mpmodule = function(module_name, extra_setup, extra_teardown) {
@@ -6190,7 +6191,8 @@
                     })));
 
                     this.initMixpanelRecorder = function (extraConfig) {
-                        const config = Object.assign({
+                        loadedRecorderProject = true;
+                        var config = Object.assign({
                             debug: true,
                             record_sessions_percent: 0,
                             recorder_src: recorderSrc
@@ -6249,6 +6251,11 @@
                             return this.waitForRecordingStarted();
                         }
                     } else {
+                        if (!loadedRecorderProject) {
+                            // we should not have any global recorder object yet; but it may exist
+                            // due to other mixpanel instances finding orphaned recording data in IDB
+                            delete window['__mp_recorder'];
+                        }
                         this.waitForRecorderLoad = function () {
                             return untilDonePromise(_.bind(function () {
                                 // the sdk will check IDB if it needs to resume, so we can't synchronously check that the script is there
@@ -6297,11 +6304,11 @@
                                     var store = transaction.objectStore(allStores[i]);
                                     store.clear();
                                 }
-                            }
+                            };
 
                             openRequest.onupgradeneeded = function () {
                                 isFresh = true; // idb doesn't exist yet, the sdk will make it
-                            }
+                            };
                         };
                     } else {
                         this.clearIDB = function () {};
