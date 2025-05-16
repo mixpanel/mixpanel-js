@@ -13944,7 +13944,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.64.0'
+        LIB_VERSION: '2.65.0-rc1'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -15377,6 +15377,9 @@
                 return 'Microsoft Edge';
             } else if (_.includes(user_agent, 'FBIOS')) {
                 return 'Facebook Mobile';
+            } else if (_.includes(user_agent, 'Whale/')) {
+                // https://user-agents.net/browsers/whale-browser
+                return 'Whale Browser';
             } else if (_.includes(user_agent, 'Chrome')) {
                 return 'Chrome';
             } else if (_.includes(user_agent, 'CriOS')) {
@@ -15428,7 +15431,8 @@
                 'Android Mobile': /android\s(\d+(\.\d+)?)/,
                 'Samsung Internet': /SamsungBrowser\/(\d+(\.\d+)?)/,
                 'Internet Explorer': /(rv:|MSIE )(\d+(\.\d+)?)/,
-                'Mozilla': /rv:(\d+(\.\d+)?)/
+                'Mozilla': /rv:(\d+(\.\d+)?)/,
+                'Whale Browser': /Whale\/(\d+(\.\d+)?)/
             };
             var regex = versionRegexs[browser];
             if (regex === undefined) {

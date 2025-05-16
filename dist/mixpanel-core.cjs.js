@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.64.0'
+    LIB_VERSION: '2.65.0-rc1'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1870,6 +1870,9 @@ _.info = {
             return 'Microsoft Edge';
         } else if (_.includes(user_agent, 'FBIOS')) {
             return 'Facebook Mobile';
+        } else if (_.includes(user_agent, 'Whale/')) {
+            // https://user-agents.net/browsers/whale-browser
+            return 'Whale Browser';
         } else if (_.includes(user_agent, 'Chrome')) {
             return 'Chrome';
         } else if (_.includes(user_agent, 'CriOS')) {
@@ -1921,7 +1924,8 @@ _.info = {
             'Android Mobile': /android\s(\d+(\.\d+)?)/,
             'Samsung Internet': /SamsungBrowser\/(\d+(\.\d+)?)/,
             'Internet Explorer': /(rv:|MSIE )(\d+(\.\d+)?)/,
-            'Mozilla': /rv:(\d+(\.\d+)?)/
+            'Mozilla': /rv:(\d+(\.\d+)?)/,
+            'Whale Browser': /Whale\/(\d+(\.\d+)?)/
         };
         var regex = versionRegexs[browser];
         if (regex === undefined) {
@@ -2299,7 +2303,9 @@ function getPropsForDOMEvent(ev, config) {
                 '$elements':  elementsJson,
                 '$el_attr__href': href,
                 '$viewportHeight': Math.max(docElement['clientHeight'], win['innerHeight'] || 0),
-                '$viewportWidth': Math.max(docElement['clientWidth'], win['innerWidth'] || 0)
+                '$viewportWidth': Math.max(docElement['clientWidth'], win['innerWidth'] || 0),
+                '$pageHeight': document$1['body']['offsetHeight'] || 0,
+                '$pageWidth': document$1['body']['offsetWidth'] || 0,
             };
             _.each(captureExtraAttrs, function(attr) {
                 if (!blockAttrsSet[attr] && target.hasAttribute(attr)) {
@@ -3030,19 +3036,19 @@ FeatureFlagManager.prototype.getConfig = function(key) {
     return this.getFullConfig()[key];
 };
 
-FeatureFlagManager.prototype.isEnabled = function() {
+FeatureFlagManager.prototype.isSystemEnabled = function() {
     return !!this.getMpConfig(FLAGS_CONFIG_KEY);
 };
 
-FeatureFlagManager.prototype.areFeaturesReady = function() {
-    if (!this.isEnabled()) {
+FeatureFlagManager.prototype.areFlagsReady = function() {
+    if (!this.isSystemEnabled()) {
         logger$3.error('Feature Flags not enabled');
     }
     return !!this.flags;
 };
 
 FeatureFlagManager.prototype.fetchFlags = function() {
-    if (!this.isEnabled()) {
+    if (!this.isSystemEnabled()) {
         return;
     }
 
@@ -3068,7 +3074,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             _.each(responseFlags, function(data, key) {
                 flags.set(key, {
                     'key': data['variant_key'],
-                    'data': data['variant_value']
+                    'value': data['variant_value']
                 });
             });
             this.flags = flags;
@@ -3078,7 +3084,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     }.bind(this)).catch(function() {});
 };
 
-FeatureFlagManager.prototype.getFeature = function(featureName, fallback) {
+FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
     if (!this.fetchPromise) {
         return new Promise(function(resolve) {
             logger$3.critical('Feature Flags not initialized');
@@ -3087,15 +3093,15 @@ FeatureFlagManager.prototype.getFeature = function(featureName, fallback) {
     }
 
     return this.fetchPromise.then(function() {
-        return this.getFeatureSync(featureName, fallback);
+        return this.getVariantSync(featureName, fallback);
     }.bind(this)).catch(function(error) {
         logger$3.error(error);
         return fallback;
     });
 };
 
-FeatureFlagManager.prototype.getFeatureSync = function(featureName, fallback) {
-    if (!this.areFeaturesReady()) {
+FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
+    if (!this.areFlagsReady()) {
         logger$3.log('Flags not loaded yet');
         return fallback;
     }
@@ -3108,31 +3114,37 @@ FeatureFlagManager.prototype.getFeatureSync = function(featureName, fallback) {
     return feature;
 };
 
-FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
-    return this.getFeature(featureName, {'data': fallbackValue}).then(function(feature) {
-        return feature['data'];
+FeatureFlagManager.prototype.getVariantValue = function(featureName, fallbackValue) {
+    return this.getVariant(featureName, {'value': fallbackValue}).then(function(feature) {
+        return feature['value'];
     }).catch(function(error) {
         logger$3.error(error);
         return fallbackValue;
     });
 };
 
-FeatureFlagManager.prototype.getFeatureDataSync = function(featureName, fallbackValue) {
-    return this.getFeatureSync(featureName, {'data': fallbackValue})['data'];
+// TODO remove deprecated method
+FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
+    logger$3.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
+    return this.getVariantValue(featureName, fallbackValue);
 };
 
-FeatureFlagManager.prototype.isFeatureEnabled = function(featureName, fallbackValue) {
-    return this.getFeatureData(featureName).then(function() {
-        return this.isFeatureEnabledSync(featureName, fallbackValue);
+FeatureFlagManager.prototype.getVariantValueSync = function(featureName, fallbackValue) {
+    return this.getVariantSync(featureName, {'value': fallbackValue})['value'];
+};
+
+FeatureFlagManager.prototype.isEnabled = function(featureName, fallbackValue) {
+    return this.getVariantValue(featureName).then(function() {
+        return this.isEnabledSync(featureName, fallbackValue);
     }.bind(this)).catch(function(error) {
         logger$3.error(error);
         return fallbackValue;
     });
 };
 
-FeatureFlagManager.prototype.isFeatureEnabledSync = function(featureName, fallbackValue) {
+FeatureFlagManager.prototype.isEnabledSync = function(featureName, fallbackValue) {
     fallbackValue = fallbackValue || false;
-    var val = this.getFeatureDataSync(featureName, fallbackValue);
+    var val = this.getVariantValueSync(featureName, fallbackValue);
     if (val !== true && val !== false) {
         logger$3.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
         val = fallbackValue;
@@ -3161,13 +3173,16 @@ function minApisSupported() {
 
 safewrapClass(FeatureFlagManager);
 
-FeatureFlagManager.prototype['are_features_ready'] = FeatureFlagManager.prototype.areFeaturesReady;
-FeatureFlagManager.prototype['get_feature'] = FeatureFlagManager.prototype.getFeature;
+FeatureFlagManager.prototype['are_flags_ready'] = FeatureFlagManager.prototype.areFlagsReady;
+FeatureFlagManager.prototype['get_variant'] = FeatureFlagManager.prototype.getVariant;
+FeatureFlagManager.prototype['get_variant_sync'] = FeatureFlagManager.prototype.getVariantSync;
+FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype.getVariantValue;
+FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
+FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
+FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
+
+// Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
-FeatureFlagManager.prototype['get_feature_data_sync'] = FeatureFlagManager.prototype.getFeatureDataSync;
-FeatureFlagManager.prototype['get_feature_sync'] = FeatureFlagManager.prototype.getFeatureSync;
-FeatureFlagManager.prototype['is_feature_enabled'] = FeatureFlagManager.prototype.isFeatureEnabled;
-FeatureFlagManager.prototype['is_feature_enabled_sync'] = FeatureFlagManager.prototype.isFeatureEnabledSync;
 
 /* eslint camelcase: "off" */
 
@@ -5052,17 +5067,7 @@ MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name
  * @deprecated
  */
 MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function(amount, properties, callback) {
-    if (!_.isNumber(amount)) {
-        amount = parseFloat(amount);
-        if (isNaN(amount)) {
-            console.error('Invalid value passed to mixpanel.people.track_charge - must be a number');
-            return;
-        }
-    }
-
-    return this.append('$transactions', _.extend({
-        '$amount': amount
-    }, properties), callback);
+    console.error('mixpanel.people.track_charge() is deprecated and no longer has any effect.');
 });
 
 /*
@@ -5897,6 +5902,7 @@ var DEFAULT_API_ROUTES = {
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
     'api_routes':                        DEFAULT_API_ROUTES,
+    'api_extra_query_params':            {},
     'api_method':                        'POST',
     'api_transport':                     'XHR',
     'api_payload_format':                PAYLOAD_TYPE_BASE64,
@@ -6483,6 +6489,8 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
         body_data = 'data=' + encodeURIComponent(data['data']);
         delete data['data'];
     }
+
+    _.extend(data, this.get_config('api_extra_query_params'));
 
     url += '?' + _.HTTPBuildQuery(data);
 
@@ -7400,6 +7408,8 @@ MixpanelLib.prototype.reset = function() {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
+    this.stop_session_recording();
+    this._check_and_start_session_recording();
 };
 
 /**
