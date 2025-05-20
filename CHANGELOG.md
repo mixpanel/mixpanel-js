@@ -1,3 +1,11 @@
+**2.65.0** (20 May 2025)
+- `mixpanel.people.track_charge()` (deprecated) no longer sets profile property
+- Adds page height and width tracking to autocapture click tracking
+- Session recording now stops when mixpanel.reset() is called
+- Support for adding arbitrary query string params to tracking requests (thanks @dylan-asos)
+- Feature flagging API revisions
+- Whale Browser detection
+
 **2.64.0** (15 Apr 2025)
 - Add `record_heatmap_data` init option for Session Recording to ensure click events are captured for Heat Maps
 - Initial support for feature flagging
