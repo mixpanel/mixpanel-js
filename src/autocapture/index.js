@@ -5,6 +5,7 @@ import {
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,
     EV_SCROLLEND, EV_SUBMIT
 } from './utils';
+import { RageClickTracker } from './rageclick';
 
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
@@ -62,6 +63,7 @@ var MP_EV_SUBMIT = '$mp_submit';
  */
 var Autocapture = function(mp) {
     this.mp = mp;
+    this._rageClickTracker = new RageClickTracker();
 };
 
 Autocapture.prototype.init = function() {
@@ -151,6 +153,33 @@ Autocapture.prototype.pageviewTrackingConfig = function() {
 Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
     if (this.currentUrlBlocked()) {
         return;
+    }
+
+    // Rage click detection (only for click events, and only if enabled in config)
+    if (
+        mpEventName === MP_EV_CLICK &&
+        ev &&
+        this.mp.get_config('rageclick') // Only track rage click if enabled
+    ) {
+        var x = (typeof ev.pageX === 'number') ? ev.pageX : ev.clientX;
+        var y = (typeof ev.pageY === 'number') ? ev.pageY : ev.clientY;
+        var now = Date.now();
+        if (this._rageClickTracker.isRageClick(x, y, now)) {
+            var rageProps = getPropsForDOMEvent(ev, {
+                allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
+                allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
+                blockAttrs: this.getConfig(CONFIG_BLOCK_ATTRS),
+                blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
+                blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
+                captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
+                captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
+                capturedForHeatMap: false,
+            });
+            if (rageProps) {
+                _.extend(rageProps, DEFAULT_PROPS);
+                this.mp.track('$rage_click', rageProps);
+            }
+        }
     }
 
     var props = getPropsForDOMEvent(ev, {
