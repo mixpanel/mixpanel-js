@@ -1,8 +1,8 @@
 // RageClickTracker: Detects rage clicks (rapid, clustered clicks)
-// Criteria: 3 clicks within 600ms, within 20px Manhattan distance
+// Criteria: RAGE_CLICK_CLICK_COUNT clicks within RAGE_CLICK_TIMEOUT_MSms, within RAGE_CLICK_THRESHOLD_PX Manhattan distance
 
-var RAGE_CLICK_THRESHOLD_PX = 20;
-var RAGE_CLICK_TIMEOUT_MS = 600;
+var RAGE_CLICK_THRESHOLD_PX = 30;
+var RAGE_CLICK_TIMEOUT_MS = 1000;
 var RAGE_CLICK_CLICK_COUNT = 3;
 
 function RageClickTracker() {

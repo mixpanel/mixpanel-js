@@ -158,8 +158,7 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
     // Rage click detection (only for click events, and only if enabled in config)
     if (
         mpEventName === MP_EV_CLICK &&
-        ev &&
-        this.mp.get_config('rageclick') // Only track rage click if enabled
+        ev
     ) {
         var x = (typeof ev.pageX === 'number') ? ev.pageX : ev.clientX;
         var y = (typeof ev.pageY === 'number') ? ev.pageY : ev.clientY;
