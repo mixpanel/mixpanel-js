@@ -484,7 +484,7 @@ MixpanelLib.prototype.start_session_recording = function () {
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
-        this._recorder['stopRecording']();
+        return this._recorder['stopRecording']();
     }
 };
 
@@ -1606,8 +1606,9 @@ MixpanelLib.prototype.reset = function() {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
-    this.stop_session_recording();
-    this._check_and_start_session_recording();
+    this.stop_session_recording().then(() => {
+        this._check_and_start_session_recording();
+    });
 };
 
 /**
