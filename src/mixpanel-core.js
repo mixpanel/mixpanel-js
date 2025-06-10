@@ -1606,7 +1606,13 @@ MixpanelLib.prototype.reset = function() {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
-    this.stop_session_recording().then(() => {
+    var stopPromise = this.stop_session_recording();
+
+    if (!stopPromise || typeof stopPromise.then !== 'function') {
+        stopPromise = Promise.resolve();
+    }
+
+    stopPromise.then(() => {
         this._check_and_start_session_recording();
     });
 };
