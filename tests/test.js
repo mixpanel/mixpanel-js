@@ -7078,15 +7078,31 @@
 
                         var stopRecordingSpy = sinon.spy(recorder, 'stopRecording');
                         // this will be called within _check_and_start_session_recording
-                        var restartRecorderSpy = sinon.spy(recorder, 'resumeRecording');
+                        const originalResumeRecording = recorder.resumeRecording;
+                        var resumeRecordingStub = sinon.stub(recorder, 'resumeRecording');
+
+                        let resumeCalledPromise = new Promise(resolve => {
+                            resumeRecordingStub.callsFake(function() {
+                                const result = originalResumeRecording.apply(this, arguments);
+                                resolve();
+                                return result;
+                            });
+                        });
 
                         mixpanel.recordertest.reset();
                         ok(stopRecordingSpy.calledOnce, "stop_session_recording should be called once during reset.");
-                        ok(restartRecorderSpy.calledOnce, "_check_and_start_session_recording should be called once during reset.");
+                        return resumeCalledPromise.then(() => {
+                            ok(resumeRecordingStub.calledOnce, "resumeRecording should be called once after session stops.");
 
-                        stopRecordingSpy.restore();
-                        restartRecorderSpy.restore();
-                        start();
+                            if (stopRecordingSpy && stopRecordingSpy.restore) {
+                               stopRecordingSpy.restore();
+                            }
+                            if (resumeRecordingStub && resumeRecordingStub.restore) {
+                               resumeRecordingStub.restore();
+                            }
+                            start(); 
+                        });
+
                     }, this));
             });
         }
