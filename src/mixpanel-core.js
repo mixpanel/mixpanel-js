@@ -484,7 +484,7 @@ MixpanelLib.prototype.start_session_recording = function () {
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
-        return this._recorder['stopRecording']();
+        this._recorder['stopRecording']();
     }
 };
 
@@ -1606,15 +1606,12 @@ MixpanelLib.prototype.reset = function() {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
-    var stopPromise = this.stop_session_recording();
-
-    if (!stopPromise || typeof stopPromise.then !== 'function') {
-        stopPromise = Promise.resolve();
+    if (this._recorder) {
+        var stopPromise = this._recorder['stopRecording']();
+        stopPromise.then(() => {
+            this._check_and_start_session_recording();
+        });
     }
-
-    stopPromise.then(() => {
-        this._check_and_start_session_recording();
-    });
 };
 
 /**
