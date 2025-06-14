@@ -1614,7 +1614,6 @@ MixpanelLib.prototype._heartbeat_flush_by_content_id = function(contentId, optio
  */
 MixpanelLib.prototype._heartbeat_clear = function() {
     // Clear all timers
-    var self = this;
     this._heartbeat_timers.forEach(function(timerId) {
         clearTimeout(timerId);
     });
