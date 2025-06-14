@@ -1166,16 +1166,16 @@ MixpanelLib.prototype._init_heartbeat = function() {
      * @returns {Function} The heartbeat function for method chaining
      *
      * @example
-     * // Basic usage with automatic $duration and $hits tracking
+     * // Basic usage with automatic $duration and $heartbeats tracking
      * mixpanel.heartbeat('podcast_listen', 'episode_123', { platform: 'web' });
      * mixpanel.heartbeat('podcast_listen', 'episode_123', { quality: 'high' });
-     * // After 30 seconds: { platform: 'web', quality: 'high', $duration: 30, $hits: 2 }
+     * // After 30 seconds: { platform: 'web', quality: 'high', $duration: 30, $heartbeats: 2 }
      *
      * @example
      * // Property aggregation - numbers sum, arrays append
      * mixpanel.heartbeat('video_watch', 'video_123', { duration: 30, interactions: ['play'] });
      * mixpanel.heartbeat('video_watch', 'video_123', { duration: 10, interactions: ['pause'] });
-     * // Results in: { duration: 40, interactions: ['play', 'pause'], $duration: 5, $hits: 2 }
+     * // Results in: { duration: 40, interactions: ['play', 'pause'], $duration: 5, $heartbeats: 2 }
      *
      * @example
      * // FlushOn condition - flush when status becomes 'complete'
@@ -1361,10 +1361,14 @@ MixpanelLib.prototype._heartbeat_check_flushon_match = function(props, flushOnCo
 
 /**
  * Logs heartbeat debug messages if logging is enabled
+ * Logs when either heartbeat_enable_logging is true OR global debug is true
  * @private
  */
 MixpanelLib.prototype._heartbeat_log = function() {
-    if (this.get_config('heartbeat_enable_logging')) {
+    var heartbeatLoggingEnabled = this.get_config('heartbeat_enable_logging');
+    var globalDebugEnabled = this.get_config('debug');
+    
+    if (heartbeatLoggingEnabled || globalDebugEnabled) {
         var args = Array.prototype.slice.call(arguments);
         args.unshift('[Mixpanel Heartbeat]');
         console.log.apply(console, args);
@@ -1587,7 +1591,7 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
         // Update automatic tracking properties
         var durationSeconds = Math.round((currentTime - existingData.firstCall) / 1000);
         aggregatedProps['$duration'] = durationSeconds;
-        aggregatedProps['$hits'] = (existingData.hitCount || 1) + 1;
+        aggregatedProps['$heartbeats'] = (existingData.hitCount || 1) + 1;
 
         storage[eventKey] = {
             eventName: eventName,
@@ -1603,7 +1607,7 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
         // Create new entry
         var newProps = _.extend({}, props);
         newProps['$duration'] = 0;
-        newProps['$hits'] = 1;
+        newProps['$heartbeats'] = 1;
 
         storage[eventKey] = {
             eventName: eventName,

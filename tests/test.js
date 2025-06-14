@@ -640,7 +640,7 @@
         });
 
         test("basic heartbeat functionality", 1, function() {
-            var data = mixpanel.test.track('heartbeat_test', {"contentId": "test_content", "$duration": 0, "$hits": 1});
+            var data = mixpanel.test.track('heartbeat_test', {"contentId": "test_content", "$duration": 0, "$heartbeats": 1});
             
             // Verify heartbeat method exists and is callable
             ok(_.isFunction(mixpanel.test.heartbeat), "heartbeat method should exist");
@@ -679,7 +679,7 @@
             same(trackCalls.length, 1, "should have made one track call");
             if (trackCalls.length > 0) {
                 var trackedProps = trackCalls[0].props;
-                same(trackedProps.$hits, 2, "should track correct number of hits");
+                same(trackedProps.$heartbeats, 2, "should track correct number of heartbeats");
                 // Note: Duration might be 3 due to timing, but we mainly want to verify it exists
             }
         });

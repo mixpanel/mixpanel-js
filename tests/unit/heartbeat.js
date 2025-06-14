@@ -24,6 +24,7 @@ const DEFAULT_CONFIG = {
 	opt_out_tracking_persistence_type: 'localStorage',
 	opt_out_tracking_cookie_prefix: null,
 	ignore_dnt: false,
+	debug: false,
 	heartbeat_max_buffer_time_ms: 300000,
 	heartbeat_max_props_count: 1000,
 	heartbeat_max_aggregated_value: 100000,
@@ -120,7 +121,10 @@ function createMockLib(config) {
 	};
 
 	lib._heartbeat_log = function () {
-		if (this.get_config('heartbeat_enable_logging')) {
+		var heartbeatLoggingEnabled = this.get_config('heartbeat_enable_logging');
+		var globalDebugEnabled = this.get_config('debug');
+		
+		if (heartbeatLoggingEnabled || globalDebugEnabled) {
 			var args = Array.prototype.slice.call(arguments);
 			args.unshift('[Mixpanel Heartbeat]');
 			console.log.apply(console, args);
@@ -293,7 +297,7 @@ function createMockLib(config) {
 			// Update automatic tracking properties
 			var durationSeconds = Math.round((currentTime - existingData.firstCall) / 1000);
 			aggregatedProps['$duration'] = durationSeconds;
-			aggregatedProps['$hits'] = (existingData.hitCount || 1) + 1;
+			aggregatedProps['$heartbeats'] = (existingData.hitCount || 1) + 1;
 
 			storage[eventKey] = {
 				eventName: eventName,
@@ -308,7 +312,7 @@ function createMockLib(config) {
 		} else {
 			var newProps = _.extend({}, props);
 			newProps['$duration'] = 0;
-			newProps['$hits'] = 1;
+			newProps['$heartbeats'] = 1;
 
 			storage[eventKey] = {
 				eventName: eventName,
@@ -925,7 +929,7 @@ describe(`heartbeat`, function () {
 		});
 	});
 
-	describe(`automatic $duration and $hits tracking`, function () {
+	describe(`automatic $duration and $heartbeats tracking`, function () {
 		it(`should track $duration from first to last heartbeat`, function () {
 			lib.heartbeat(`duration_test`, `content_1`, { prop: 'value1' });
 			clock.tick(5000); // 5 seconds
@@ -939,13 +943,13 @@ describe(`heartbeat`, function () {
 					prop: 'value3',
 					contentId: 'content_1',
 					$duration: 8, // 8 seconds total
-					$hits: 3
+					$heartbeats: 3
 				}),
 				{}
 			);
 		});
 
-		it(`should start with $duration: 0 and $hits: 1 for first call`, function () {
+		it(`should start with $duration: 0 and $heartbeats: 1 for first call`, function () {
 			lib.heartbeat(`first_call`, `content_1`, { prop: 'value' }, { forceFlush: true });
 
 			expect(lib.track).to.have.been.calledWith(
@@ -954,29 +958,29 @@ describe(`heartbeat`, function () {
 					prop: 'value',
 					contentId: 'content_1',
 					$duration: 0,
-					$hits: 1
+					$heartbeats: 1
 				}),
 				{}
 			);
 		});
 
-		it(`should increment $hits correctly`, function () {
-			lib.heartbeat(`hits_test`, `content_1`);
-			lib.heartbeat(`hits_test`, `content_1`);
-			lib.heartbeat(`hits_test`, `content_1`);
-			lib.heartbeat(`hits_test`, `content_1`, {}, { forceFlush: true });
+		it(`should increment $heartbeats correctly`, function () {
+			lib.heartbeat(`heartbeats_test`, `content_1`);
+			lib.heartbeat(`heartbeats_test`, `content_1`);
+			lib.heartbeat(`heartbeats_test`, `content_1`);
+			lib.heartbeat(`heartbeats_test`, `content_1`, {}, { forceFlush: true });
 
 			expect(lib.track).to.have.been.calledWith(
-				`hits_test`,
+				`heartbeats_test`,
 				sinon.match({
 					contentId: 'content_1',
-					$hits: 4
+					$heartbeats: 4
 				}),
 				{}
 			);
 		});
 
-		it(`should track separate $duration and $hits per contentId`, function () {
+		it(`should track separate $duration and $heartbeats per contentId`, function () {
 			// First content ID
 			lib.heartbeat(`multi_content`, `content_1`);
 			clock.tick(2000);
@@ -996,7 +1000,7 @@ describe(`heartbeat`, function () {
 				sinon.match({
 					contentId: 'content_1',
 					$duration: 2,
-					$hits: 2
+					$heartbeats: 2
 				}),
 				{}
 			);
@@ -1006,7 +1010,7 @@ describe(`heartbeat`, function () {
 				sinon.match({
 					contentId: 'content_2',
 					$duration: 3,
-					$hits: 3
+					$heartbeats: 3
 				}),
 				{}
 			);
@@ -1043,7 +1047,7 @@ describe(`heartbeat`, function () {
 					status: 'complete',
 					progress: 100,
 					contentId: 'content_1',
-					$hits: 4
+					$heartbeats: 4
 				}),
 				{}
 			);
@@ -1113,6 +1117,48 @@ describe(`heartbeat`, function () {
 			// Verify flushOn storage is empty
 			flushOnStorage = lib._heartbeat_get_flushon_storage();
 			expect(Object.keys(flushOnStorage)).to.have.length(0);
+		});
+	});
+
+	describe(`debug logging`, function () {
+		it(`should log when heartbeat_enable_logging is true`, function () {
+			const lib = createMockLib({ heartbeat_enable_logging: true, debug: false });
+			const consoleLogSpy = sinon.spy(console, 'log');
+
+			lib.heartbeat('test_event', 'content_1', { prop: 'value' });
+
+			expect(consoleLogSpy).to.have.been.calledWith('[Mixpanel Heartbeat]', sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any);
+			consoleLogSpy.restore();
+		});
+
+		it(`should log when global debug is true`, function () {
+			const lib = createMockLib({ heartbeat_enable_logging: false, debug: true });
+			const consoleLogSpy = sinon.spy(console, 'log');
+
+			lib.heartbeat('test_event', 'content_1', { prop: 'value' });
+
+			expect(consoleLogSpy).to.have.been.calledWith('[Mixpanel Heartbeat]', sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any);
+			consoleLogSpy.restore();
+		});
+
+		it(`should log when both are true`, function () {
+			const lib = createMockLib({ heartbeat_enable_logging: true, debug: true });
+			const consoleLogSpy = sinon.spy(console, 'log');
+
+			lib.heartbeat('test_event', 'content_1', { prop: 'value' });
+
+			expect(consoleLogSpy).to.have.been.calledWith('[Mixpanel Heartbeat]', sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any);
+			consoleLogSpy.restore();
+		});
+
+		it(`should not log when both are false`, function () {
+			const lib = createMockLib({ heartbeat_enable_logging: false, debug: false });
+			const consoleLogSpy = sinon.spy(console, 'log');
+
+			lib.heartbeat('test_event', 'content_1', { prop: 'value' });
+
+			expect(consoleLogSpy).to.not.have.been.called;
+			consoleLogSpy.restore();
 		});
 	});
 
