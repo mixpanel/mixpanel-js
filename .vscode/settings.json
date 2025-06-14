@@ -1,0 +1,16 @@
+{
+  "mochaExplorer.files": "tests/unit/*.js",
+  "mochaExplorer.require": ["babel-core/register"],
+  "mochaExplorer.env": {
+    "BABEL_ENV": "test"
+  },
+  "mochaExplorer.timeout": 5000,
+  "mochaExplorer.ui": "bdd",
+  "mochaExplorer.mochaPath": "./node_modules/mocha",
+  "mochaExplorer.logpanel": true,
+  "mochaExplorer.autoload": true,
+  "testExplorer.codeLens": true,
+  "testExplorer.gutterDecoration": true,
+  "testExplorer.onStart": "retire",
+  "testExplorer.onReload": "retire"
+}
