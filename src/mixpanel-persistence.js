@@ -25,6 +25,7 @@ import { _, console, JSONStringify } from './utils';
 /** @const */ var PEOPLE_DISTINCT_ID_KEY = '$people_distinct_id';
 /** @const */ var ALIAS_ID_KEY           = '__alias';
 /** @const */ var EVENT_TIMERS_KEY       = '__timers';
+/** @const */ var HEARTBEAT_QUEUE_KEY   = '__mphb';
 /** @const */ var RESERVED_PROPERTIES = [
     SET_QUEUE_KEY,
     SET_ONCE_QUEUE_KEY,
@@ -35,7 +36,8 @@ import { _, console, JSONStringify } from './utils';
     UNION_QUEUE_KEY,
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
-    EVENT_TIMERS_KEY
+    EVENT_TIMERS_KEY,
+    HEARTBEAT_QUEUE_KEY
 ];
 
 /**
@@ -446,5 +448,6 @@ export {
     UNION_QUEUE_KEY,
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
-    EVENT_TIMERS_KEY
+    EVENT_TIMERS_KEY,
+    HEARTBEAT_QUEUE_KEY
 };
