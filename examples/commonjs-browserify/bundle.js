@@ -19648,6 +19648,7 @@ MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 /** @const */ var PEOPLE_DISTINCT_ID_KEY = '$people_distinct_id';
 /** @const */ var ALIAS_ID_KEY           = '__alias';
 /** @const */ var EVENT_TIMERS_KEY       = '__timers';
+/** @const */ var HEARTBEAT_QUEUE_KEY   = '__mphb';
 /** @const */ var RESERVED_PROPERTIES = [
     SET_QUEUE_KEY,
     SET_ONCE_QUEUE_KEY,
@@ -19658,7 +19659,8 @@ MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
     UNION_QUEUE_KEY,
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
-    EVENT_TIMERS_KEY
+    EVENT_TIMERS_KEY,
+    HEARTBEAT_QUEUE_KEY
 ];
 
 /**
@@ -20194,7 +20196,12 @@ var DEFAULT_CONFIG = {
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
-    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
+    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+    'heartbeat_max_buffer_time_ms':      300000,  // 5 minutes
+    'heartbeat_max_props_count':         1000,    // max properties per event
+    'heartbeat_max_aggregated_value':    100000,  // max numeric aggregation
+    'heartbeat_max_storage_size':        100,     // max number of events in storage
+    'heartbeat_enable_logging':          false    // debug logging
 };
 
 var DOM_LOADED = false;
@@ -20416,6 +20423,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     this._init_tab_id();
     this._check_and_start_session_recording();
+    this._init_heartbeat();
 };
 
 /**
@@ -21141,6 +21149,540 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
 
     return ret;
 });
+
+/**
+ * Initializes the heartbeat tracking system for the instance
+ * @private
+ */
+MixpanelLib.prototype._init_heartbeat = function() {
+    var self = this;
+    
+    // Internal heartbeat state storage
+    this._heartbeat_timers = new Map();
+    this._heartbeat_unload_setup = false;
+    
+    // Setup page unload handlers once
+    this._setup_heartbeat_unload_handlers();
+    
+    /**
+     * Aggregates small events into summary events before sending to Mixpanel.
+     * Provides intelligent flushing, deduplication, and transport options.
+     * 
+     * Events are automatically flushed in the following scenarios:
+     * 1. Time-based Flushing: Events are automatically flushed after `maxBufferTime`
+     *    milliseconds of inactivity (default: 5 minutes). Each new heartbeat call resets
+     *    the timer for that specific event.
+     * 2. Size Limits: Events are flushed when they exceed:
+     *    - `maxPropsCount`: Maximum number of properties (default: 1000)
+     *    - `maxAggregatedValue`: Maximum numeric value for any property (default: 100,000)
+     * 3. Page Unload: All events are flushed when the user leaves the page,
+     *    using sendBeacon transport for reliability.
+     * 
+     * PROPERTY AGGREGATION RULES:
+     * When the same property key appears in multiple heartbeat calls:
+     * - Numbers: Values are added together
+     *   Example: {duration: 30} + {duration: 45} = {duration: 75}
+     * - Strings: Latest value replaces the previous value  
+     *   Example: {status: 'playing'} + {status: 'paused'} = {status: 'paused'}
+     * - Objects: Shallow merge with the new object's properties overwriting existing ones
+     *   Example: {metadata: {quality: 'HD', lang: 'en'}} + {metadata: {quality: '4K', fps: 60}}
+     *   Result: {metadata: {quality: '4K', lang: 'en', fps: 60}}
+     * - Arrays: New array elements are appended to the existing array
+     *   Example: {actions: ['play', 'pause']} + {actions: ['seek', 'volume']}
+     *   Result: {actions: ['play', 'pause', 'seek', 'volume']}
+     * 
+     * @param {string} eventName - The name of the event to track (e.g., 'video_watch', 'podcast_listen')
+     * @param {string} contentId - Unique identifier for the content being tracked (e.g., video ID, episode ID)
+     * @param {Object} [props={}] - Properties to aggregate with existing data
+     * @param {Object} [options={}] - Call-specific options
+     * @param {boolean} [options.forceFlush=false] - Force immediate flush after aggregation
+     * @param {string} [options.transport] - Transport method: 'xhr' or 'sendBeacon'
+     * @returns {Function} The heartbeat function for method chaining
+     * 
+     * @example
+     * // Basic usage
+     * mixpanel.heartbeat('podcast_listen', 'episode_123', {
+     *   duration: 30,
+     *   platform: 'web'
+     * });
+     * 
+     * @example
+     * // Aggregation example
+     * mixpanel.heartbeat('video_watch', 'video_123', { duration: 30, interactions: ['play'] });
+     * mixpanel.heartbeat('video_watch', 'video_123', { duration: 10, interactions: ['pause'] });
+     * // Results in: { duration: 40, interactions: ['play', 'pause'], contentId: 'video_123' }
+     * 
+     * @example
+     * // Force flush with sendBeacon
+     * mixpanel.heartbeat('video_complete', 'video_456', 
+     *   { completion_rate: 100 },
+     *   { forceFlush: true, transport: 'sendBeacon' }
+     * );
+     */
+    this.heartbeat = function(eventName, contentId, props, options) {
+        return self._heartbeat_impl(eventName, contentId, props, options);
+    };
+    
+    /**
+     * Flushes stored heartbeat events manually
+     * @function flush
+     * @memberof heartbeat
+     * @param {string} [eventName] - Flush only events with this name
+     * @param {string} [contentId] - Flush only this specific event (requires eventName)
+     * @param {Object} [options={}] - Flush options
+     * @param {string} [options.transport] - Transport method: 'xhr' or 'sendBeacon'
+     * @returns {Function} The heartbeat function for method chaining
+     * 
+     * @example
+     * // Flush all events
+     * mixpanel.heartbeat.flush();
+     * 
+     * @example
+     * // Flush specific event with sendBeacon
+     * mixpanel.heartbeat.flush('video_watch', 'video_123', { transport: 'sendBeacon' });
+     */
+    this.heartbeat.flush = function(eventName, contentId, options) {
+        return self._heartbeat_flush(eventName, contentId, options);
+    };
+    
+    /**
+     * Flushes all events for a specific content ID across all event types
+     * @function flushByContentId
+     * @memberof heartbeat
+     * @param {string} contentId - The content ID to flush
+     * @param {Object} [options={}] - Flush options
+     * @param {string} [options.transport] - Transport method: 'xhr' or 'sendBeacon'
+     * @returns {Function} The heartbeat function for method chaining
+     * 
+     * @example
+     * mixpanel.heartbeat.flushByContentId('episode_123');
+     */
+    this.heartbeat.flushByContentId = function(contentId, options) {
+        return self._heartbeat_flush_by_content_id(contentId, options);
+    };
+    
+    /**
+     * Clears all stored heartbeat events without flushing them
+     * @function clear
+     * @memberof heartbeat
+     * @returns {Function} The heartbeat function for method chaining
+     * 
+     * @example
+     * mixpanel.heartbeat.clear(); // Discards all pending events
+     */
+    this.heartbeat.clear = function() {
+        return self._heartbeat_clear();
+    };
+    
+    /**
+     * Gets the current state of all stored heartbeat events (for debugging)
+     * @function getState
+     * @memberof heartbeat
+     * @returns {Object} Object with event keys and their aggregated data
+     * 
+     * @example
+     * const currentState = mixpanel.heartbeat.getState();
+     * console.log('Pending events:', Object.keys(currentState).length);
+     */
+    this.heartbeat.getState = function() {
+        return self._heartbeat_get_state();
+    };
+    
+    /**
+     * Gets the current heartbeat configuration
+     * @function getConfig
+     * @memberof heartbeat
+     * @returns {Object} Current configuration object
+     * 
+     * @example
+     * const config = mixpanel.heartbeat.getConfig();
+     * console.log('Max buffer time:', config.maxBufferTime);
+     */
+    this.heartbeat.getConfig = function() {
+        return self._heartbeat_get_config();
+    };
+};
+
+/**
+ * Sets up page unload handlers for heartbeat auto-flush
+ * @private
+ */
+MixpanelLib.prototype._setup_heartbeat_unload_handlers = function() {
+    if (this._heartbeat_unload_setup) {
+        return;
+    }
+    this._heartbeat_unload_setup = true;
+    
+    var self = this;
+    var handleUnload = function() {
+        self._heartbeat_log('Page unload detected, flushing all heartbeat events');
+        self._heartbeat_flush_all('pageUnload', true);
+    };
+    
+    // Multiple event handlers for cross-browser compatibility
+    if (win.addEventListener) {
+        win.addEventListener('beforeunload', handleUnload);
+        win.addEventListener('pagehide', handleUnload);
+        win.addEventListener('visibilitychange', function() {
+            if (document$1.visibilityState === 'hidden') {
+                handleUnload();
+            }
+        });
+    }
+};
+
+/**
+ * Gets heartbeat event storage from persistence
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_get_storage = function() {
+    var stored = this['persistence'].props[HEARTBEAT_QUEUE_KEY];
+    return stored && typeof stored === 'object' ? stored : {};
+};
+
+/**
+ * Saves heartbeat events to persistence
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_save_storage = function(data) {
+    var current_props = {};
+    current_props[HEARTBEAT_QUEUE_KEY] = data;
+    this['persistence'].register(current_props);
+};
+
+/**
+ * Logs heartbeat debug messages if logging is enabled
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_log = function() {
+    if (this.get_config('heartbeat_enable_logging')) {
+        var args = Array.prototype.slice.call(arguments);
+        args.unshift('[Mixpanel Heartbeat]');
+        console$1.log.apply(console$1, args);
+    }
+};
+
+/**
+ * Aggregates properties according to heartbeat rules
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_aggregate_props = function(existingProps, newProps) {
+    var result = _.extend({}, existingProps);
+    
+    _.each(newProps, function(newValue, key) {
+        if (!(key in result)) {
+            result[key] = newValue;
+        } else {
+            var existingValue = result[key];
+            var newType = typeof newValue;
+            var existingType = typeof existingValue;
+            
+            if (newType === 'number' && existingType === 'number') {
+                // Add numbers together
+                result[key] = existingValue + newValue;
+            } else if (newType === 'string') {
+                // Replace with new string
+                result[key] = newValue;
+            } else if (newType === 'object' && existingType === 'object') {
+                if (_.isArray(newValue) && _.isArray(existingValue)) {
+                    // Concatenate arrays
+                    result[key] = existingValue.concat(newValue);
+                } else if (!_.isArray(newValue) && !_.isArray(existingValue)) {
+                    // Merge objects (shallow merge with overwrites)
+                    result[key] = _.extend({}, existingValue, newValue);
+                } else {
+                    // Type mismatch, replace
+                    result[key] = newValue;
+                }
+            } else {
+                // For all other cases, replace
+                result[key] = newValue;
+            }
+        }
+    });
+    
+    return result;
+};
+
+/**
+ * Checks if event should be auto-flushed based on limits
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_check_flush_limits = function(eventData) {
+    var props = eventData.props;
+    
+    // Check property count
+    var propCount = Object.keys(props).length;
+    if (propCount >= this.get_config('heartbeat_max_props_count')) {
+        return 'maxPropsCount';
+    }
+    
+    // Check aggregated numeric values
+    for (var key in props) {
+        var value = props[key];
+        if (typeof value === 'number' && Math.abs(value) >= this.get_config('heartbeat_max_aggregated_value')) {
+            return 'maxAggregatedValue';
+        }
+    }
+    
+    return null;
+};
+
+/**
+ * Clears the auto-flush timer for a specific event
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_clear_timer = function(eventKey) {
+    if (this._heartbeat_timers.has(eventKey)) {
+        clearTimeout(this._heartbeat_timers.get(eventKey));
+        this._heartbeat_timers.delete(eventKey);
+        this._heartbeat_log('Cleared flush timer for', eventKey);
+    }
+};
+
+/**
+ * Sets up auto-flush timer for a specific event
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_setup_timer = function(eventKey) {
+    var self = this;
+    self._heartbeat_clear_timer(eventKey);
+    
+    var timerId = setTimeout(function() {
+        self._heartbeat_log('Auto-flushing due to maxBufferTime for', eventKey);
+        self._heartbeat_flush_event(eventKey, 'maxBufferTime', false);
+    }, this.get_config('heartbeat_max_buffer_time_ms'));
+    
+    this._heartbeat_timers.set(eventKey, timerId);
+};
+
+/**
+ * Flushes a single heartbeat event
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_flush_event = function(eventKey, reason, useSendBeacon) {
+    var storage = this._heartbeat_get_storage();
+    var eventData = storage[eventKey];
+    
+    if (!eventData) {
+        return;
+    }
+    
+    var eventName = eventData.eventName;
+    var contentId = eventData.contentId;
+    var props = eventData.props;
+    
+    // Clear any pending timers
+    this._heartbeat_clear_timer(eventKey);
+    
+    // Prepare tracking properties
+    var trackingProps = _.extend({}, props, { contentId: contentId });
+    
+    // Prepare transport options
+    var transportOptions = useSendBeacon ? { transport: 'sendBeacon' } : {};
+    
+    try {
+        this.track(eventName, trackingProps, transportOptions);
+        this._heartbeat_log('Flushed event', eventKey, 'reason:', reason, 'props:', trackingProps);
+    } catch (error) {
+        this.report_error('Error flushing heartbeat event: ' + error.message);
+    }
+    
+    // Remove from storage after flushing
+    delete storage[eventKey];
+    this._heartbeat_save_storage(storage);
+};
+
+/**
+ * Flushes all heartbeat events
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_flush_all = function(reason, useSendBeacon) {
+    var storage = this._heartbeat_get_storage();
+    var keys = Object.keys(storage);
+    
+    this._heartbeat_log('Flushing all heartbeat events, count:', keys.length, 'reason:', reason);
+    
+    for (var i = 0; i < keys.length; i++) {
+        this._heartbeat_flush_event(keys[i], reason, useSendBeacon);
+    }
+};
+
+/**
+ * Main heartbeat implementation
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(eventName, contentId, props, options) {
+    // If called with no parameters, flush all events
+    if (arguments.length === 0) {
+        this._heartbeat_flush_all('manualFlushCall', false);
+        return this.heartbeat;
+    }
+    
+    // Validate required parameters
+    if (!eventName || !contentId) {
+        this.report_error('heartbeat: eventName and contentId are required');
+        return this.heartbeat;
+    }
+    
+    // Convert to strings
+    eventName = eventName.toString();
+    contentId = contentId.toString();
+    props = props || {};
+    options = options || {};
+    
+    var eventKey = eventName + '|' + contentId;
+    
+    this._heartbeat_log('Heartbeat called for', eventKey, 'props:', props);
+    
+    // Get current storage
+    var storage = this._heartbeat_get_storage();
+    
+    // Check storage size limit
+    var storageKeys = Object.keys(storage);
+    if (storageKeys.length >= this.get_config('heartbeat_max_storage_size') && !(eventKey in storage)) {
+        this.report_error('heartbeat: Maximum storage size reached, flushing oldest event');
+        // Flush the first (oldest) event to make room
+        var oldestKey = storageKeys[0];
+        this._heartbeat_flush_event(oldestKey, 'maxStorageSize', false);
+        storage = this._heartbeat_get_storage(); // Refresh storage after flush
+    }
+    
+    // Get or create event data
+    if (storage[eventKey]) {
+        // Aggregate with existing data
+        var existingData = storage[eventKey];
+        var aggregatedProps = this._heartbeat_aggregate_props(existingData.props, props);
+        
+        storage[eventKey] = {
+            eventName: eventName,
+            contentId: contentId,
+            props: aggregatedProps,
+            lastUpdate: new Date().getTime()
+        };
+        
+        this._heartbeat_log('Aggregated props for', eventKey, 'new props:', aggregatedProps);
+    } else {
+        // Create new entry
+        storage[eventKey] = {
+            eventName: eventName,
+            contentId: contentId,
+            props: _.extend({}, props),
+            lastUpdate: new Date().getTime()
+        };
+        
+        this._heartbeat_log('Created new heartbeat entry for', eventKey);
+    }
+    
+    // Save to persistence
+    this._heartbeat_save_storage(storage);
+    
+    var updatedEventData = storage[eventKey];
+    
+    // Check if we should auto-flush based on limits
+    var flushReason = this._heartbeat_check_flush_limits(updatedEventData);
+    if (flushReason) {
+        this._heartbeat_log('Auto-flushing due to limit:', flushReason);
+        this._heartbeat_flush_event(eventKey, flushReason, options.transport === 'sendBeacon');
+    } else if (options.forceFlush) {
+        this._heartbeat_log('Force flushing requested');
+        this._heartbeat_flush_event(eventKey, 'forceFlush', options.transport === 'sendBeacon');
+    } else {
+        // Set up or reset the auto-flush timer
+        this._heartbeat_setup_timer(eventKey);
+    }
+    
+    return this.heartbeat;
+});
+
+/**
+ * Flushes heartbeat events manually
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_flush = function(eventName, contentId, options) {
+    options = options || {};
+    var useSendBeacon = options.transport === 'sendBeacon';
+    
+    if (eventName && contentId) {
+        // Flush specific event
+        var eventKey = eventName.toString() + '|' + contentId.toString();
+        this._heartbeat_flush_event(eventKey, 'manualFlush', useSendBeacon);
+    } else if (eventName) {
+        // Flush all events with this eventName
+        var storage = this._heartbeat_get_storage();
+        var eventNameStr = eventName.toString();
+        
+        for (var key in storage) {
+            if (key.indexOf(eventNameStr + '|') === 0) {
+                this._heartbeat_flush_event(key, 'manualFlush', useSendBeacon);
+            }
+        }
+    } else {
+        // Flush all events
+        this._heartbeat_flush_all('manualFlush', useSendBeacon);
+    }
+    
+    return this.heartbeat;
+};
+
+/**
+ * Flushes all events for a specific content ID
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_flush_by_content_id = function(contentId, options) {
+    options = options || {};
+    var useSendBeacon = options.transport === 'sendBeacon';
+    var storage = this._heartbeat_get_storage();
+    var contentIdStr = contentId.toString();
+    
+    for (var key in storage) {
+        var parts = key.split('|');
+        if (parts.length === 2 && parts[1] === contentIdStr) {
+            this._heartbeat_flush_event(key, 'manualFlushByContentId', useSendBeacon);
+        }
+    }
+    
+    return this.heartbeat;
+};
+
+/**
+ * Clears all heartbeat events without flushing
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_clear = function() {
+    this._heartbeat_timers.forEach(function(timerId) {
+        clearTimeout(timerId);
+    });
+    this._heartbeat_timers.clear();
+    
+    // Clear storage
+    this._heartbeat_save_storage({});
+    this._heartbeat_log('Cleared all heartbeat events and timers');
+    
+    return this.heartbeat;
+};
+
+/**
+ * Gets the current state of all stored heartbeat events
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_get_state = function() {
+    return _.extend({}, this._heartbeat_get_storage());
+};
+
+/**
+ * Gets the current heartbeat configuration
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_get_config = function() {
+    return {
+        maxBufferTime: this.get_config('heartbeat_max_buffer_time_ms'),
+        maxPropsCount: this.get_config('heartbeat_max_props_count'),
+        maxAggregatedValue: this.get_config('heartbeat_max_aggregated_value'),
+        maxStorageSize: this.get_config('heartbeat_max_storage_size'),
+        enableLogging: this.get_config('heartbeat_enable_logging')
+    };
+};
 
 /**
  * Register the current user into one/many groups.

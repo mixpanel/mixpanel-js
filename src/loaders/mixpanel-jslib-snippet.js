@@ -53,7 +53,7 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
 
             // create shallow clone of the public mixpanel interface
             // Note: only supports 1 additional level atm, e.g. mixpanel.people.set, not mixpanel.people.set.do_something_else.
-            functions = "disable time_event track track_pageview track_links track_forms track_with_groups add_group set_group remove_group register register_once alias unregister identify name_tag set_config reset opt_in_tracking opt_out_tracking has_opted_in_tracking has_opted_out_tracking clear_opt_in_out_tracking start_batch_senders start_session_recording stop_session_recording people.set people.set_once people.unset people.increment people.append people.union people.track_charge people.clear_charges people.delete_user people.remove".split(' ');
+            functions = "disable time_event track track_pageview track_links track_forms track_with_groups add_group set_group remove_group register register_once alias unregister identify name_tag set_config reset opt_in_tracking opt_out_tracking has_opted_in_tracking has_opted_out_tracking clear_opt_in_out_tracking start_batch_senders start_session_recording stop_session_recording heartbeat people.set people.set_once people.unset people.increment people.append people.union people.track_charge people.clear_charges people.delete_user people.remove".split(' ');
             for (i = 0; i < functions.length; i++) {
                 _set_and_defer(target, functions[i]);
             }
@@ -78,6 +78,17 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
                 }
                 return mock_group;
             };
+
+            // special case for heartbeat(): handle sub-methods like mixpanel.heartbeat.flush()
+            var heartbeat_functions = "flush flushByContentId clear getState getConfig".split(' ');
+            // Override the basic heartbeat stub with one that supports sub-methods
+            target['heartbeat'] = function() {
+                target.push(['heartbeat'].concat(Array.prototype.slice.call(arguments, 0)));
+                return target['heartbeat']; // return self for chaining
+            };
+            for (var i = 0; i < heartbeat_functions.length; i++) {
+                _set_and_defer(target['heartbeat'], heartbeat_functions[i]);
+            }
 
             // register mixpanel instance
             mixpanel['_i'].push([token, config, name]);
