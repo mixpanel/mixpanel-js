@@ -249,6 +249,124 @@ var has_opted_out = mixpanel.has_opted_out_tracking();
 
 
 ___
+## mixpanel.heartbeat
+Aggregate small events into summary events before sending to Mixpanel. 
+Designed for high-frequency events like video playback, audio streaming, 
+or any content consumption that needs to be tracked continuously.
+
+Events are automatically aggregated by eventName and contentId, with 
+intelligent flushing based on time limits, property counts, and page unload.
+
+
+### Usage:
+
+```javascript
+// Basic heartbeat tracking for video watching
+mixpanel.heartbeat('video_watch', 'video_123', {
+  duration: 30,        // seconds watched
+  interactions: ['play']
+});
+
+// Subsequent calls aggregate automatically
+mixpanel.heartbeat('video_watch', 'video_123', {
+  duration: 45,        // added to previous: 75 total
+  interactions: ['pause', 'seek']  // appended: ['play', 'pause', 'seek']
+});
+
+// Force immediate flush with sendBeacon
+mixpanel.heartbeat('video_complete', 'video_123', 
+  { completion_rate: 100 },
+  { forceFlush: true, transport: 'sendBeacon' }
+);
+
+// Manual flushing
+mixpanel.heartbeat.flush();                    // flush all events
+mixpanel.heartbeat.flush('video_watch');       // flush all video_watch events
+mixpanel.heartbeat.flush('video_watch', 'video_123'); // flush specific event
+
+// Flush by content ID across event types
+mixpanel.heartbeat.flushByContentId('video_123');
+
+// Get current state for debugging
+console.log(mixpanel.heartbeat.getState());
+
+// Clear all pending events
+mixpanel.heartbeat.clear();
+```
+
+
+
+### Auto-Flush Behavior:
+Events are automatically flushed when:
+- **Time limit reached**: No activity for 5 minutes (configurable via `heartbeat_max_buffer_time_ms`)
+- **Property count exceeded**: More than 1000 properties (configurable via `heartbeat_max_props_count`)  
+- **Numeric value limit**: Any numeric property exceeds 100,000 (configurable via `heartbeat_max_aggregated_value`)
+- **Page unload**: Browser navigation or tab close (uses sendBeacon for reliability)
+
+### Property Aggregation Rules:
+- **Numbers**: Added together (`{duration: 30} + {duration: 45} = {duration: 75}`)
+- **Strings**: Latest value replaces previous (`{status: 'playing'} + {status: 'paused'} = {status: 'paused'}`)
+- **Objects**: Shallow merge with overwrites (`{meta: {quality: 'HD'}} + {meta: {fps: 60}} = {meta: {quality: 'HD', fps: 60}}`)
+- **Arrays**: Elements appended (`{actions: ['play']} + {actions: ['pause']} = {actions: ['play', 'pause']}`)
+
+### Configuration:
+Configure heartbeat behavior during init:
+```javascript
+mixpanel.init('YOUR_TOKEN', {
+  heartbeat_max_buffer_time_ms: 60000,    // 1 minute auto-flush
+  heartbeat_max_props_count: 500,         // fewer properties before flush
+  heartbeat_max_aggregated_value: 50000,  // lower numeric limit
+  heartbeat_max_storage_size: 50,         // max events in storage
+  heartbeat_enable_logging: true          // debug logging
+});
+```
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the event to track (e.g., 'video_watch', 'podcast_listen', 'article_read') |
+| **content_id** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Unique identifier for the content being tracked (e.g., video ID, episode ID, article slug) |
+| **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Properties to aggregate with existing data for this event/content combination |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Optional configuration for this heartbeat call |
+| **options.forceFlush** | <span class="mp-arg-type">Boolean</span></br></span><span class="mp-arg-optional">optional</span> | Force immediate flush after aggregation (bypasses normal batching) |
+| **options.transport** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Transport method for network request ('xhr' or 'sendBeacon') |
+
+#### Returns:
+| Type | Description |
+| ----- | ------------- |
+| <span class="mp-arg-type">Function</span> | The heartbeat function for method chaining |
+
+### Heartbeat Methods:
+
+#### mixpanel.heartbeat.flush()
+Manually flush stored heartbeat events.
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Flush only events with this name |
+| **content_id** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Flush only this specific event (requires event_name) |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Flush options |
+| **options.transport** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Transport method ('xhr' or 'sendBeacon') |
+
+#### mixpanel.heartbeat.flushByContentId()
+Flush all events for a specific content ID across all event types.
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **content_id** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The content ID to flush |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Flush options |
+| **options.transport** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Transport method ('xhr' or 'sendBeacon') |
+
+#### mixpanel.heartbeat.clear()
+Clear all stored heartbeat events without flushing them.
+
+#### mixpanel.heartbeat.getState()
+Get the current state of all stored heartbeat events (for debugging).
+
+#### mixpanel.heartbeat.getConfig()
+Get the current heartbeat configuration.
+
+
+___
 ## mixpanel.identify
 Identify a user with a unique ID to track user activity across  devices, tie a user to their events, and create a user profile.  If you never call this method, unique visitors are tracked using  a UUID generated the first time they visit the site.
 
