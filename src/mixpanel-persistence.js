@@ -26,6 +26,7 @@ import { _, console, JSONStringify } from './utils';
 /** @const */ var ALIAS_ID_KEY           = '__alias';
 /** @const */ var EVENT_TIMERS_KEY       = '__timers';
 /** @const */ var HEARTBEAT_QUEUE_KEY   = '__mphb';
+/** @const */ var HEARTBEAT_FLUSHON_KEY = '__mphbf';
 /** @const */ var RESERVED_PROPERTIES = [
     SET_QUEUE_KEY,
     SET_ONCE_QUEUE_KEY,
@@ -37,7 +38,8 @@ import { _, console, JSONStringify } from './utils';
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
     EVENT_TIMERS_KEY,
-    HEARTBEAT_QUEUE_KEY
+    HEARTBEAT_QUEUE_KEY,
+    HEARTBEAT_FLUSHON_KEY
 ];
 
 /**

@@ -7,7 +7,7 @@ chai.use(sinonChai);
 
 import { _, console } from '../../src/utils';
 import { window } from '../../src/window';
-import { MixpanelPersistence, HEARTBEAT_QUEUE_KEY } from '../../src/mixpanel-persistence';
+import { MixpanelPersistence, HEARTBEAT_QUEUE_KEY, HEARTBEAT_FLUSHON_KEY } from '../../src/mixpanel-persistence';
 import {
 	optIn,
 	optOut,
@@ -91,6 +91,32 @@ function createMockLib(config) {
 		var current_props = {};
 		current_props[HEARTBEAT_QUEUE_KEY] = data;
 		this.persistence.register(current_props);
+	};
+
+	lib._heartbeat_get_flushon_storage = function () {
+		var stored = this.persistence.props[HEARTBEAT_FLUSHON_KEY];
+		return stored && typeof stored === 'object' ? stored : {};
+	};
+
+	lib._heartbeat_save_flushon_storage = function (data) {
+		var current_props = {};
+		current_props[HEARTBEAT_FLUSHON_KEY] = data;
+		this.persistence.register(current_props);
+	};
+
+	lib._heartbeat_check_flushon_match = function (props, flushOnCondition) {
+		if (!flushOnCondition || typeof flushOnCondition !== 'object') {
+			return false;
+		}
+
+		for (var key in flushOnCondition) {
+			if (flushOnCondition.hasOwnProperty(key)) {
+				if (props[key] !== flushOnCondition[key]) {
+					return false;
+				}
+			}
+		}
+		return true;
 	};
 
 	lib._heartbeat_log = function () {
@@ -197,6 +223,13 @@ function createMockLib(config) {
 
 		delete storage[eventKey];
 		this._heartbeat_save_storage(storage);
+
+		// Clean up flushOn condition if it exists
+		var flushOnStorage = this._heartbeat_get_flushon_storage();
+		if (flushOnStorage[eventKey]) {
+			delete flushOnStorage[eventKey];
+			this._heartbeat_save_flushon_storage(flushOnStorage);
+		}
 	};
 
 	lib._heartbeat_flush_all = function (reason, useSendBeacon) {
@@ -216,6 +249,9 @@ function createMockLib(config) {
 			return this.heartbeat;
 		}
 
+		if (arguments.length === 1) {
+			throw new Error('heartbeat: contentId is required when eventName is provided');
+		}
 		if (!eventName || !contentId) {
 			this.report_error('heartbeat: eventName and contentId are required');
 			return this.heartbeat;
@@ -240,24 +276,47 @@ function createMockLib(config) {
 			storage = this._heartbeat_get_storage();
 		}
 
+		var currentTime = new Date().getTime();
+
+		// Handle flushOn option for new entries
+		var flushOnStorage = this._heartbeat_get_flushon_storage();
+		if (options.flushOn && !storage[eventKey]) {
+			flushOnStorage[eventKey] = options.flushOn;
+			this._heartbeat_save_flushon_storage(flushOnStorage);
+			this._heartbeat_log('Set flushOn condition for', eventKey, ':', options.flushOn);
+		}
+
 		if (storage[eventKey]) {
 			var existingData = storage[eventKey];
 			var aggregatedProps = this._heartbeat_aggregate_props(existingData.props, props);
+
+			// Update automatic tracking properties
+			var durationSeconds = Math.round((currentTime - existingData.firstCall) / 1000);
+			aggregatedProps['$duration'] = durationSeconds;
+			aggregatedProps['$hits'] = (existingData.hitCount || 1) + 1;
 
 			storage[eventKey] = {
 				eventName: eventName,
 				contentId: contentId,
 				props: aggregatedProps,
-				lastUpdate: new Date().getTime()
+				lastUpdate: currentTime,
+				firstCall: existingData.firstCall,
+				hitCount: (existingData.hitCount || 1) + 1
 			};
 
 			this._heartbeat_log('Aggregated props for', eventKey, 'new props:', aggregatedProps);
 		} else {
+			var newProps = _.extend({}, props);
+			newProps['$duration'] = 0;
+			newProps['$hits'] = 1;
+
 			storage[eventKey] = {
 				eventName: eventName,
 				contentId: contentId,
-				props: _.extend({}, props),
-				lastUpdate: new Date().getTime()
+				props: newProps,
+				lastUpdate: currentTime,
+				firstCall: currentTime,
+				hitCount: 1
 			};
 
 			this._heartbeat_log('Created new heartbeat entry for', eventKey);
@@ -267,10 +326,24 @@ function createMockLib(config) {
 
 		var updatedEventData = storage[eventKey];
 
+		// Check if we should flush due to flushOn condition
+		var flushOnCondition = flushOnStorage[eventKey];
+		var shouldFlushOnMatch = false;
+		if (flushOnCondition && props && this._heartbeat_check_flushon_match(props, flushOnCondition)) {
+			shouldFlushOnMatch = true;
+			this._heartbeat_log('FlushOn condition matched for', eventKey, 'condition:', flushOnCondition);
+			// Remove the flushOn condition after matching
+			delete flushOnStorage[eventKey];
+			this._heartbeat_save_flushon_storage(flushOnStorage);
+		}
+
 		var flushReason = this._heartbeat_check_flush_limits(updatedEventData);
 		if (flushReason) {
 			this._heartbeat_log('Auto-flushing due to limit:', flushReason);
 			this._heartbeat_flush_event(eventKey, flushReason, options.transport === 'sendBeacon');
+		} else if (shouldFlushOnMatch) {
+			this._heartbeat_log('Flushing due to flushOn condition match');
+			this._heartbeat_flush_event(eventKey, 'flushOnMatch', options.transport === 'sendBeacon');
 		} else if (options.forceFlush) {
 			this._heartbeat_log('Force flushing requested');
 			this._heartbeat_flush_event(eventKey, 'forceFlush', options.transport === 'sendBeacon');
@@ -362,7 +435,11 @@ function createMockLib(config) {
 		this._heartbeat_timers.clear();
 
 		this._heartbeat_save_storage({});
-		this._heartbeat_log('Cleared all heartbeat events and timers');
+
+		// Clear flushOn conditions
+		this._heartbeat_save_flushon_storage({});
+
+		this._heartbeat_log('Cleared all heartbeat events, timers, and flushOn conditions');
 
 		return this.heartbeat;
 	};
@@ -827,6 +904,215 @@ describe(`heartbeat`, function () {
 				sinon.match.any,
 				{ transport: `sendBeacon` }
 			);
+		});
+	});
+
+	describe(`argument validation`, function () {
+		it(`should allow zero arguments (flush all)`, function () {
+			lib.heartbeat(`test_event`, `content_1`, { count: 1 });
+			expect(() => lib.heartbeat()).to.not.throw();
+			expect(lib.track).to.have.been.called;
+		});
+
+		it(`should throw error for single argument`, function () {
+			expect(() => lib.heartbeat(`test_event`)).to.throw('heartbeat: contentId is required when eventName is provided');
+		});
+
+		it(`should accept two or more arguments`, function () {
+			expect(() => lib.heartbeat(`test_event`, `content_1`)).to.not.throw();
+			expect(() => lib.heartbeat(`test_event`, `content_1`, { prop: 'value' })).to.not.throw();
+			expect(() => lib.heartbeat(`test_event`, `content_1`, { prop: 'value' }, { forceFlush: true })).to.not.throw();
+		});
+	});
+
+	describe(`automatic $duration and $hits tracking`, function () {
+		it(`should track $duration from first to last heartbeat`, function () {
+			lib.heartbeat(`duration_test`, `content_1`, { prop: 'value1' });
+			clock.tick(5000); // 5 seconds
+			lib.heartbeat(`duration_test`, `content_1`, { prop: 'value2' });
+			clock.tick(3000); // 3 more seconds
+			lib.heartbeat(`duration_test`, `content_1`, { prop: 'value3' }, { forceFlush: true });
+
+			expect(lib.track).to.have.been.calledWith(
+				`duration_test`,
+				sinon.match({
+					prop: 'value3',
+					contentId: 'content_1',
+					$duration: 8, // 8 seconds total
+					$hits: 3
+				}),
+				{}
+			);
+		});
+
+		it(`should start with $duration: 0 and $hits: 1 for first call`, function () {
+			lib.heartbeat(`first_call`, `content_1`, { prop: 'value' }, { forceFlush: true });
+
+			expect(lib.track).to.have.been.calledWith(
+				`first_call`,
+				sinon.match({
+					prop: 'value',
+					contentId: 'content_1',
+					$duration: 0,
+					$hits: 1
+				}),
+				{}
+			);
+		});
+
+		it(`should increment $hits correctly`, function () {
+			lib.heartbeat(`hits_test`, `content_1`);
+			lib.heartbeat(`hits_test`, `content_1`);
+			lib.heartbeat(`hits_test`, `content_1`);
+			lib.heartbeat(`hits_test`, `content_1`, {}, { forceFlush: true });
+
+			expect(lib.track).to.have.been.calledWith(
+				`hits_test`,
+				sinon.match({
+					contentId: 'content_1',
+					$hits: 4
+				}),
+				{}
+			);
+		});
+
+		it(`should track separate $duration and $hits per contentId`, function () {
+			// First content ID
+			lib.heartbeat(`multi_content`, `content_1`);
+			clock.tick(2000);
+			lib.heartbeat(`multi_content`, `content_1`);
+
+			// Second content ID
+			lib.heartbeat(`multi_content`, `content_2`);
+			clock.tick(3000);
+			lib.heartbeat(`multi_content`, `content_2`);
+			lib.heartbeat(`multi_content`, `content_2`);
+
+			lib.heartbeat.flush();
+
+			// Check both events were tracked with correct values
+			expect(lib.track).to.have.been.calledWith(
+				`multi_content`,
+				sinon.match({
+					contentId: 'content_1',
+					$duration: 2,
+					$hits: 2
+				}),
+				{}
+			);
+
+			expect(lib.track).to.have.been.calledWith(
+				`multi_content`,
+				sinon.match({
+					contentId: 'content_2',
+					$duration: 3,
+					$hits: 3
+				}),
+				{}
+			);
+		});
+	});
+
+	describe(`flushOn functionality`, function () {
+		it(`should set flushOn condition on first call`, function () {
+			lib.heartbeat(`flushon_test`, `content_1`, null, { flushOn: { status: 'complete' } });
+
+			const flushOnStorage = lib._heartbeat_get_flushon_storage();
+			expect(flushOnStorage[`flushon_test|content_1`]).to.deep.equal({ status: 'complete' });
+		});
+
+		it(`should not override flushOn condition on subsequent calls`, function () {
+			lib.heartbeat(`flushon_test`, `content_1`, null, { flushOn: { status: 'complete' } });
+			lib.heartbeat(`flushon_test`, `content_1`, null, { flushOn: { status: 'different' } });
+
+			const flushOnStorage = lib._heartbeat_get_flushon_storage();
+			expect(flushOnStorage[`flushon_test|content_1`]).to.deep.equal({ status: 'complete' });
+		});
+
+		it(`should trigger flush when flushOn condition matches`, function () {
+			lib.heartbeat(`flushon_test`, `content_1`, { progress: 25 }, { flushOn: { status: 'complete' } });
+			lib.heartbeat(`flushon_test`, `content_1`, { progress: 50 });
+			lib.heartbeat(`flushon_test`, `content_1`, { progress: 75 });
+
+			// This should trigger the flush
+			lib.heartbeat(`flushon_test`, `content_1`, { status: 'complete', progress: 100 });
+
+			expect(lib.track).to.have.been.calledWith(
+				`flushon_test`,
+				sinon.match({
+					status: 'complete',
+					progress: 100,
+					contentId: 'content_1',
+					$hits: 4
+				}),
+				{}
+			);
+		});
+
+		it(`should use shallow comparison for flushOn matching`, function () {
+			lib.heartbeat(`shallow_test`, `content_1`, null, { flushOn: { status: 'complete', level: 5 } });
+			
+			// This should NOT trigger flush (missing level)
+			lib.heartbeat(`shallow_test`, `content_1`, { status: 'complete' });
+			expect(lib.track).to.not.have.been.called;
+
+			// This should NOT trigger flush (wrong level)
+			lib.heartbeat(`shallow_test`, `content_1`, { status: 'complete', level: 4 });
+			expect(lib.track).to.not.have.been.called;
+
+			// This SHOULD trigger flush (exact match)
+			lib.heartbeat(`shallow_test`, `content_1`, { status: 'complete', level: 5 });
+			expect(lib.track).to.have.been.called;
+		});
+
+		it(`should remove flushOn condition after matching`, function () {
+			lib.heartbeat(`remove_test`, `content_1`, null, { flushOn: { status: 'done' } });
+			
+			// Trigger flush
+			lib.heartbeat(`remove_test`, `content_1`, { status: 'done' });
+
+			// FlushOn condition should be removed
+			const flushOnStorage = lib._heartbeat_get_flushon_storage();
+			expect(flushOnStorage[`remove_test|content_1`]).to.be.undefined;
+		});
+
+		it(`should clean up flushOn conditions when events are flushed`, function () {
+			lib.heartbeat(`cleanup_test`, `content_1`, null, { flushOn: { status: 'complete' } });
+			lib.heartbeat(`cleanup_test`, `content_1`, { progress: 50 }, { forceFlush: true });
+
+			// FlushOn condition should be cleaned up
+			const flushOnStorage = lib._heartbeat_get_flushon_storage();
+			expect(flushOnStorage[`cleanup_test|content_1`]).to.be.undefined;
+		});
+
+		it(`should persist flushOn conditions across sessions`, function () {
+			lib.heartbeat(`persist_test`, `content_1`, null, { flushOn: { status: 'complete' } });
+
+			// Create new instance (simulating page reload)
+			const lib2 = createMockLib();
+			const flushOnStorage = lib2._heartbeat_get_flushon_storage();
+			expect(flushOnStorage[`persist_test|content_1`]).to.deep.equal({ status: 'complete' });
+
+			// Cleanup
+			lib2.heartbeat.clear();
+		});
+	});
+
+	describe(`clear function with flushOn cleanup`, function () {
+		it(`should clear flushOn conditions when clearing heartbeat`, function () {
+			lib.heartbeat(`clear_test`, `content_1`, null, { flushOn: { status: 'complete' } });
+			lib.heartbeat(`clear_test`, `content_2`, { prop: 'value' });
+
+			// Verify flushOn condition exists
+			let flushOnStorage = lib._heartbeat_get_flushon_storage();
+			expect(Object.keys(flushOnStorage)).to.have.length(1);
+
+			// Clear everything
+			lib.heartbeat.clear();
+
+			// Verify flushOn storage is empty
+			flushOnStorage = lib._heartbeat_get_flushon_storage();
+			expect(Object.keys(flushOnStorage)).to.have.length(0);
 		});
 	});
 

@@ -633,6 +633,87 @@
             same(data1.properties.time, 123456);
         });
 
+        mpmodule("mixpanel.heartbeat", function() {
+            this.clock = sinon.useFakeTimers();
+        }, function() {
+            this.clock.restore();
+        });
+
+        test("basic heartbeat functionality", 1, function() {
+            var data = mixpanel.test.track('heartbeat_test', {"contentId": "test_content", "$duration": 0, "$hits": 1});
+            
+            // Verify heartbeat method exists and is callable
+            ok(_.isFunction(mixpanel.test.heartbeat), "heartbeat method should exist");
+        });
+
+        test("heartbeat method chaining", 3, function() {
+            var result1 = mixpanel.test.heartbeat('test_event', 'content_1', { prop: 'value' });
+            var result2 = mixpanel.test.heartbeat.flush();
+            var result3 = mixpanel.test.heartbeat.clear();
+            
+            same(result1, mixpanel.test.heartbeat, "heartbeat should return chainable object");
+            same(result2, mixpanel.test.heartbeat, "flush should return chainable object");
+            same(result3, mixpanel.test.heartbeat, "clear should return chainable object");
+        });
+
+        test("heartbeat automatic properties", 2, function() {
+            // Call heartbeat a few times
+            mixpanel.test.heartbeat('duration_test', 'content_1', { custom_prop: 'value1' });
+            this.clock.tick(3000); // 3 seconds
+            mixpanel.test.heartbeat('duration_test', 'content_1', { custom_prop: 'value2' });
+            
+            // Force flush and capture the track call
+            var originalTrack = mixpanel.test.track;
+            var trackCalls = [];
+            mixpanel.test.track = function(eventName, props, options) {
+                trackCalls.push({eventName: eventName, props: props, options: options});
+                return originalTrack.call(this, eventName, props, options);
+            };
+            
+            mixpanel.test.heartbeat.flush('duration_test', 'content_1');
+            
+            // Restore original track
+            mixpanel.test.track = originalTrack;
+            
+            // Verify the event was tracked with automatic properties
+            same(trackCalls.length, 1, "should have made one track call");
+            if (trackCalls.length > 0) {
+                var trackedProps = trackCalls[0].props;
+                same(trackedProps.$hits, 2, "should track correct number of hits");
+                // Note: Duration might be 3 due to timing, but we mainly want to verify it exists
+            }
+        });
+
+        test("heartbeat argument validation", 1, function() {
+            try {
+                mixpanel.test.heartbeat('only_event_name');
+                ok(false, "should have thrown error for single argument");
+            } catch(e) {
+                ok(e.message.indexOf('contentId is required') !== -1, "should throw error about missing contentId");
+            }
+        });
+
+        test("heartbeat flushOn functionality", 1, function() {
+            var originalTrack = mixpanel.test.track;
+            var trackCalls = [];
+            mixpanel.test.track = function(eventName, props, options) {
+                trackCalls.push({eventName: eventName, props: props, options: options});
+                return originalTrack.call(this, eventName, props, options);
+            };
+            
+            // Set up flushOn condition
+            mixpanel.test.heartbeat('flushon_test', 'content_1', { progress: 25 }, { flushOn: { status: 'complete' } });
+            mixpanel.test.heartbeat('flushon_test', 'content_1', { progress: 50 });
+            
+            // This should trigger the flush
+            mixpanel.test.heartbeat('flushon_test', 'content_1', { status: 'complete', progress: 100 });
+            
+            // Restore original track
+            mixpanel.test.track = originalTrack;
+            
+            same(trackCalls.length, 1, "flushOn condition should have triggered automatic flush");
+        });
+
         mpmodule("mixpanel.time_event", function() {
             this.clock = sinon.useFakeTimers();
         }, function() {

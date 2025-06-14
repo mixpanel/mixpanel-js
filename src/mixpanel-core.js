@@ -13,7 +13,8 @@ import {
     MixpanelPersistence,
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY,
-    HEARTBEAT_QUEUE_KEY
+    HEARTBEAT_QUEUE_KEY,
+    HEARTBEAT_FLUSHON_KEY
 } from './mixpanel-persistence';
 import {
     optIn,
@@ -1129,54 +1130,61 @@ MixpanelLib.prototype._init_heartbeat = function() {
 
     /**
      * Aggregates small events into summary events before sending to Mixpanel.
-     * Provides intelligent flushing, deduplication, and transport options.
+     * Automatically tracks $duration and $hits properties, with intelligent flushing and property aggregation.
      *
-     * Events are automatically flushed in the following scenarios:
-     * 1. Time-based Flushing: Events are automatically flushed after `maxBufferTime`
-     *    milliseconds of inactivity (default: 5 minutes). Each new heartbeat call resets
-     *    the timer for that specific event.
-     * 2. Size Limits: Events are flushed when they exceed:
-     *    - `maxPropsCount`: Maximum number of properties (default: 1000)
-     *    - `maxAggregatedValue`: Maximum numeric value for any property (default: 100,000)
-     * 3. Page Unload: All events are flushed when the user leaves the page,
-     *    using sendBeacon transport for reliability.
+     * ### Usage:
      *
-     * PROPERTY AGGREGATION RULES:
-     * When the same property key appears in multiple heartbeat calls:
-     * - Numbers: Values are added together
-     *   Example: {duration: 30} + {duration: 45} = {duration: 75}
-     * - Strings: Latest value replaces the previous value
-     *   Example: {status: 'playing'} + {status: 'paused'} = {status: 'paused'}
-     * - Objects: Shallow merge with the new object's properties overwriting existing ones
-     *   Example: {metadata: {quality: 'HD', lang: 'en'}} + {metadata: {quality: '4K', fps: 60}}
-     *   Result: {metadata: {quality: '4K', lang: 'en', fps: 60}}
-     * - Arrays: New array elements are appended to the existing array
-     *   Example: {actions: ['play', 'pause']} + {actions: ['seek', 'volume']}
-     *   Result: {actions: ['play', 'pause', 'seek', 'volume']}
+     *     // Basic usage - automatically tracks duration and hit count
+     *     mixpanel.heartbeat('video_watch', 'video_123', { quality: 'HD' });
      *
-     * @param {string} eventName - The name of the event to track (e.g., 'video_watch', 'podcast_listen')
-     * @param {string} contentId - Unique identifier for the content being tracked (e.g., video ID, episode ID)
-     * @param {Object} [props={}] - Properties to aggregate with existing data
-     * @param {Object} [options={}] - Call-specific options
-     * @param {boolean} [options.forceFlush=false] - Force immediate flush after aggregation
-     * @param {string} [options.transport] - Transport method: 'xhr' or 'sendBeacon'
+     *     // Flush all events manually
+     *     mixpanel.heartbeat();
+     *
+     * ### Notes:
+     *
+     * **Automatic Properties:**
+     * - `$duration`: Wall clock time in seconds from first to last heartbeat
+     * - `$hits`: Total number of heartbeat calls for this contentId
+     *
+     * **Automatic Flushing:**
+     * Events are flushed automatically based on time limits, size limits, flushOn conditions,
+     * or page unload. Time-based flushing occurs after 5 minutes of inactivity by default.
+     *
+     * **Property Aggregation:**
+     * - Numbers: Values are summed together
+     * - Strings: Latest value overwrites previous
+     * - Objects: Shallow merge with new properties overwriting existing
+     * - Arrays: New elements are appended to existing array
+     *
+     * @param {String} [eventName] The name of the event to track. If omitted, flushes all events.
+     * @param {String} [contentId] Unique identifier for the content being tracked. Required when eventName is provided.
+     * @param {Object} [props] Properties to aggregate with existing data
+     * @param {Object} [options] Call-specific options
+     * @param {Boolean} [options.forceFlush] Force immediate flush after aggregation
+     * @param {String} [options.transport] Transport method: 'xhr' or 'sendBeacon'
+     * @param {Object} [options.flushOn] Condition for automatic flushing (shallow object comparison). Set on first call only.
      * @returns {Function} The heartbeat function for method chaining
      *
      * @example
-     * // Basic usage
-     * mixpanel.heartbeat('podcast_listen', 'episode_123', {
-     *   duration: 30,
-     *   platform: 'web'
-     * });
+     * // Basic usage with automatic $duration and $hits tracking
+     * mixpanel.heartbeat('podcast_listen', 'episode_123', { platform: 'web' });
+     * mixpanel.heartbeat('podcast_listen', 'episode_123', { quality: 'high' });
+     * // After 30 seconds: { platform: 'web', quality: 'high', $duration: 30, $hits: 2 }
      *
      * @example
-     * // Aggregation example
+     * // Property aggregation - numbers sum, arrays append
      * mixpanel.heartbeat('video_watch', 'video_123', { duration: 30, interactions: ['play'] });
      * mixpanel.heartbeat('video_watch', 'video_123', { duration: 10, interactions: ['pause'] });
-     * // Results in: { duration: 40, interactions: ['play', 'pause'], contentId: 'video_123' }
+     * // Results in: { duration: 40, interactions: ['play', 'pause'], $duration: 5, $hits: 2 }
      *
      * @example
-     * // Force flush with sendBeacon
+     * // FlushOn condition - flush when status becomes 'complete'
+     * mixpanel.heartbeat('video_watch', 'video_123', null, { flushOn: { status: 'complete' } });
+     * mixpanel.heartbeat('video_watch', 'video_123', { progress: 50 });
+     * mixpanel.heartbeat('video_watch', 'video_123', { status: 'complete' }); // This triggers flush
+     *
+     * @example
+     * // Force flush with sendBeacon for reliability
      * mixpanel.heartbeat('video_complete', 'video_456',
      *   { completion_rate: 100 },
      *   { forceFlush: true, transport: 'sendBeacon' }
@@ -1190,10 +1198,10 @@ MixpanelLib.prototype._init_heartbeat = function() {
      * Flushes stored heartbeat events manually
      * @function flush
      * @memberof heartbeat
-     * @param {string} [eventName] - Flush only events with this name
-     * @param {string} [contentId] - Flush only this specific event (requires eventName)
-     * @param {Object} [options={}] - Flush options
-     * @param {string} [options.transport] - Transport method: 'xhr' or 'sendBeacon'
+     * @param {String} [eventName] Flush only events with this name
+     * @param {String} [contentId] Flush only this specific event (requires eventName)
+     * @param {Object} [options] Flush options
+     * @param {String} [options.transport] Transport method: 'xhr' or 'sendBeacon'
      * @returns {Function} The heartbeat function for method chaining
      *
      * @example
@@ -1212,9 +1220,9 @@ MixpanelLib.prototype._init_heartbeat = function() {
      * Flushes all events for a specific content ID across all event types
      * @function flushByContentId
      * @memberof heartbeat
-     * @param {string} contentId - The content ID to flush
-     * @param {Object} [options={}] - Flush options
-     * @param {string} [options.transport] - Transport method: 'xhr' or 'sendBeacon'
+     * @param {String} contentId The content ID to flush
+     * @param {Object} [options] Flush options
+     * @param {String} [options.transport] Transport method: 'xhr' or 'sendBeacon'
      * @returns {Function} The heartbeat function for method chaining
      *
      * @example
@@ -1311,6 +1319,44 @@ MixpanelLib.prototype._heartbeat_save_storage = function(data) {
     var current_props = {};
     current_props[HEARTBEAT_QUEUE_KEY] = data;
     this['persistence'].register(current_props);
+};
+
+/**
+ * Gets flushOn conditions from persistence
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_get_flushon_storage = function() {
+    var stored = this['persistence'].props[HEARTBEAT_FLUSHON_KEY];
+    return stored && typeof stored === 'object' ? stored : {};
+};
+
+/**
+ * Saves flushOn conditions to persistence
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_save_flushon_storage = function(data) {
+    var current_props = {};
+    current_props[HEARTBEAT_FLUSHON_KEY] = data;
+    this['persistence'].register(current_props);
+};
+
+/**
+ * Checks if properties match flushOn condition (shallow comparison)
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_check_flushon_match = function(props, flushOnCondition) {
+    if (!flushOnCondition || typeof flushOnCondition !== 'object') {
+        return false;
+    }
+
+    for (var key in flushOnCondition) {
+        if (flushOnCondition.hasOwnProperty(key)) {
+            if (props[key] !== flushOnCondition[key]) {
+                return false;
+            }
+        }
+    }
+    return true;
 };
 
 /**
@@ -1454,6 +1500,13 @@ MixpanelLib.prototype._heartbeat_flush_event = function(eventKey, reason, useSen
     // Remove from storage after flushing
     delete storage[eventKey];
     this._heartbeat_save_storage(storage);
+
+    // Clean up flushOn condition if it exists
+    var flushOnStorage = this._heartbeat_get_flushon_storage();
+    if (flushOnStorage[eventKey]) {
+        delete flushOnStorage[eventKey];
+        this._heartbeat_save_flushon_storage(flushOnStorage);
+    }
 };
 
 /**
@@ -1483,6 +1536,9 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
     }
 
     // Validate required parameters
+    if (arguments.length === 1) {
+        throw new Error('heartbeat: contentId is required when eventName is provided');
+    }
     if (!eventName || !contentId) {
         this.report_error('heartbeat: eventName and contentId are required');
         return this.heartbeat;
@@ -1511,27 +1567,51 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
         storage = this._heartbeat_get_storage(); // Refresh storage after flush
     }
 
+    var currentTime = new Date().getTime();
+
+    // Handle flushOn option for new entries
+    var flushOnStorage = this._heartbeat_get_flushon_storage();
+    if (options.flushOn && !storage[eventKey]) {
+        // Store flushOn condition for this contentId (first time only)
+        flushOnStorage[eventKey] = options.flushOn;
+        this._heartbeat_save_flushon_storage(flushOnStorage);
+        this._heartbeat_log('Set flushOn condition for', eventKey, ':', options.flushOn);
+    }
+
     // Get or create event data
     if (storage[eventKey]) {
         // Aggregate with existing data
         var existingData = storage[eventKey];
         var aggregatedProps = this._heartbeat_aggregate_props(existingData.props, props);
 
+        // Update automatic tracking properties
+        var durationSeconds = Math.round((currentTime - existingData.firstCall) / 1000);
+        aggregatedProps['$duration'] = durationSeconds;
+        aggregatedProps['$hits'] = (existingData.hitCount || 1) + 1;
+
         storage[eventKey] = {
             eventName: eventName,
             contentId: contentId,
             props: aggregatedProps,
-            lastUpdate: new Date().getTime()
+            lastUpdate: currentTime,
+            firstCall: existingData.firstCall,
+            hitCount: (existingData.hitCount || 1) + 1
         };
 
         this._heartbeat_log('Aggregated props for', eventKey, 'new props:', aggregatedProps);
     } else {
         // Create new entry
+        var newProps = _.extend({}, props);
+        newProps['$duration'] = 0;
+        newProps['$hits'] = 1;
+
         storage[eventKey] = {
             eventName: eventName,
             contentId: contentId,
-            props: _.extend({}, props),
-            lastUpdate: new Date().getTime()
+            props: newProps,
+            lastUpdate: currentTime,
+            firstCall: currentTime,
+            hitCount: 1
         };
 
         this._heartbeat_log('Created new heartbeat entry for', eventKey);
@@ -1542,11 +1622,25 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
 
     var updatedEventData = storage[eventKey];
 
+    // Check if we should flush due to flushOn condition
+    var flushOnCondition = flushOnStorage[eventKey];
+    var shouldFlushOnMatch = false;
+    if (flushOnCondition && props && this._heartbeat_check_flushon_match(props, flushOnCondition)) {
+        shouldFlushOnMatch = true;
+        this._heartbeat_log('FlushOn condition matched for', eventKey, 'condition:', flushOnCondition);
+        // Remove the flushOn condition after matching
+        delete flushOnStorage[eventKey];
+        this._heartbeat_save_flushon_storage(flushOnStorage);
+    }
+
     // Check if we should auto-flush based on limits
     var flushReason = this._heartbeat_check_flush_limits(updatedEventData);
     if (flushReason) {
         this._heartbeat_log('Auto-flushing due to limit:', flushReason);
         this._heartbeat_flush_event(eventKey, flushReason, options.transport === 'sendBeacon');
+    } else if (shouldFlushOnMatch) {
+        this._heartbeat_log('Flushing due to flushOn condition match');
+        this._heartbeat_flush_event(eventKey, 'flushOnMatch', options.transport === 'sendBeacon');
     } else if (options.forceFlush) {
         this._heartbeat_log('Force flushing requested');
         this._heartbeat_flush_event(eventKey, 'forceFlush', options.transport === 'sendBeacon');
@@ -1621,7 +1715,11 @@ MixpanelLib.prototype._heartbeat_clear = function() {
 
     // Clear storage
     this._heartbeat_save_storage({});
-    this._heartbeat_log('Cleared all heartbeat events and timers');
+
+    // Clear flushOn conditions
+    this._heartbeat_save_flushon_storage({});
+
+    this._heartbeat_log('Cleared all heartbeat events, timers, and flushOn conditions');
 
     return this.heartbeat;
 };
