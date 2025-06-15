@@ -161,7 +161,7 @@ var DEFAULT_CONFIG = {
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
-    'heartbeat_max_buffer_time_ms':      300000,  // 5 minutes
+    'heartbeat_max_buffer_time_ms':      30000,   // 30 seconds
     'heartbeat_max_props_count':         1000,    // max properties per event
     'heartbeat_max_aggregated_value':    100000,  // max numeric aggregation
     'heartbeat_max_storage_size':        100,     // max number of events in storage
@@ -1369,8 +1369,18 @@ MixpanelLib.prototype._heartbeat_log = function() {
     var globalDebugEnabled = this.get_config('debug');
     if (heartbeatLoggingEnabled || globalDebugEnabled) {
         var args = Array.prototype.slice.call(arguments);
-        args.unshift('[Mixpanel Heartbeat]');
-        console.log.apply(console, args);
+        args[0] = '[Mixpanel Heartbeat] ' + args[0];
+        try {
+            if (typeof window !== 'undefined' && window.console && window.console.log) {
+                window.console.log.apply(window.console, args);
+            }
+        } catch (err) {
+            _.each(args, function(arg) {
+                if (typeof window !== 'undefined' && window.console && window.console.log) {
+                    window.console.log(arg);
+                }
+            });
+        }
     }
 };
 
@@ -1380,6 +1390,8 @@ MixpanelLib.prototype._heartbeat_log = function() {
  */
 MixpanelLib.prototype._heartbeat_aggregate_props = function(existingProps, newProps) {
     var result = _.extend({}, existingProps);
+    // Remove legacy contentId property in favor of $contentId
+    delete result.contentId;
 
     _.each(newProps, function(newValue, key) {
         if (!(key in result)) {
@@ -1481,14 +1493,14 @@ MixpanelLib.prototype._heartbeat_flush_event = function(eventKey, reason, useSen
     }
 
     var eventName = eventData.eventName;
-    var contentId = eventData.contentId;
     var props = eventData.props;
 
     // Clear any pending timers
     this._heartbeat_clear_timer(eventKey);
 
-    // Prepare tracking properties
-    var trackingProps = _.extend({}, props, { contentId: contentId });
+    // Prepare tracking properties (exclude old contentId property)
+    var trackingProps = _.extend({}, props);
+    delete trackingProps.contentId;
 
     // Prepare transport options
     var transportOptions = useSendBeacon ? { transport: 'sendBeacon' } : {};
@@ -1591,6 +1603,7 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
         var durationSeconds = Math.round((currentTime - existingData.firstCall) / 1000);
         aggregatedProps['$duration'] = durationSeconds;
         aggregatedProps['$heartbeats'] = (existingData.hitCount || 1) + 1;
+        aggregatedProps['$contentId'] = contentId;
 
         storage[eventKey] = {
             eventName: eventName,
@@ -1607,6 +1620,7 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
         var newProps = _.extend({}, props);
         newProps['$duration'] = 0;
         newProps['$heartbeats'] = 1;
+        newProps['$contentId'] = contentId;
 
         storage[eventKey] = {
             eventName: eventName,
@@ -2483,6 +2497,22 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *
  *       // whether to ignore or respect the web browser's Do Not Track setting
  *       ignore_dnt: false
+ *
+ *       // heartbeat event aggregation settings
+ *       // milliseconds to wait before auto-flushing aggregated heartbeat events
+ *       heartbeat_max_buffer_time_ms: 30000
+ *
+ *       // maximum number of properties per heartbeat event before auto-flush
+ *       heartbeat_max_props_count: 1000
+ *
+ *       // maximum numeric value for property aggregation before auto-flush
+ *       heartbeat_max_aggregated_value: 100000
+ *
+ *       // maximum number of events stored in heartbeat queue before auto-flush
+ *       heartbeat_max_storage_size: 100
+ *
+ *       // enable debug logging for heartbeat events
+ *       heartbeat_enable_logging: false
  *     }
  *
  *

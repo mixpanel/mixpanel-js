@@ -25,7 +25,7 @@ const DEFAULT_CONFIG = {
 	opt_out_tracking_cookie_prefix: null,
 	ignore_dnt: false,
 	debug: false,
-	heartbeat_max_buffer_time_ms: 300000,
+	heartbeat_max_buffer_time_ms: 30000,
 	heartbeat_max_props_count: 1000,
 	heartbeat_max_aggregated_value: 100000,
 	heartbeat_max_storage_size: 100,
@@ -133,6 +133,8 @@ function createMockLib(config) {
 
 	lib._heartbeat_aggregate_props = function (existingProps, newProps) {
 		var result = _.extend({}, existingProps);
+		// Remove legacy contentId property in favor of $contentId
+		delete result.contentId;
 
 		_.each(newProps, function (newValue, key) {
 			if (!(key in result)) {
@@ -215,7 +217,8 @@ function createMockLib(config) {
 
 		this._heartbeat_clear_timer(eventKey);
 
-		var trackingProps = _.extend({}, props, { contentId: contentId });
+		var trackingProps = _.extend({}, props);
+		delete trackingProps.contentId;
 		var transportOptions = useSendBeacon ? { transport: 'sendBeacon' } : {};
 
 		try {
@@ -298,6 +301,7 @@ function createMockLib(config) {
 			var durationSeconds = Math.round((currentTime - existingData.firstCall) / 1000);
 			aggregatedProps['$duration'] = durationSeconds;
 			aggregatedProps['$heartbeats'] = (existingData.hitCount || 1) + 1;
+			aggregatedProps['$contentId'] = contentId;
 
 			storage[eventKey] = {
 				eventName: eventName,
@@ -313,6 +317,7 @@ function createMockLib(config) {
 			var newProps = _.extend({}, props);
 			newProps['$duration'] = 0;
 			newProps['$heartbeats'] = 1;
+			newProps['$contentId'] = contentId;
 
 			storage[eventKey] = {
 				eventName: eventName,
@@ -647,7 +652,7 @@ describe(`heartbeat`, function () {
 			expect(lib.track).to.have.been.calledWith(`video_watch`, {
 				duration: 60,
 				status: `completed`,
-				contentId: `video_123`,
+				$contentId: `video_123`,
 				$duration: 0,
 				$heartbeats: 1
 			}, {});
@@ -724,14 +729,14 @@ describe(`heartbeat`, function () {
 
 	describe(`auto-flush limits`, function () {
 		it(`should auto-flush when property count exceeds limit`, function () {
-			lib.set_config({ heartbeat_max_props_count: 4 });
+			lib.set_config({ heartbeat_max_props_count: 5 });
 			lib.track.resetHistory(); // Reset history after config change
 
-			// First call - should not auto-flush (3 props: prop1, $duration, $heartbeats - within limit)
+			// First call - should not auto-flush (4 props: prop1, $duration, $heartbeats, $contentId - within limit)
 			lib.heartbeat(`big_event`, `content_1`, { prop1: 1 });
 			expect(lib.track).to.not.have.been.called;
 
-			// This should trigger auto-flush (4 properties, reaches limit)
+			// This should trigger auto-flush (5 properties, reaches limit)
 			lib.heartbeat(`big_event`, `content_1`, { prop2: 2 });
 			expect(lib.track).to.have.been.calledOnce;
 		});
@@ -806,7 +811,7 @@ describe(`heartbeat`, function () {
 			const config = lib.heartbeat.getConfig();
 
 			expect(config).to.be.an(`object`);
-			expect(config.maxBufferTime).to.equal(300000); // Default 5 minutes
+			expect(config.maxBufferTime).to.equal(30000); // Default 30 seconds
 			expect(config.maxPropsCount).to.equal(1000);
 			expect(config.maxAggregatedValue).to.equal(100000);
 			expect(config.maxStorageSize).to.equal(100);
@@ -959,7 +964,7 @@ describe(`heartbeat`, function () {
 				`duration_test`,
 				sinon.match({
 					prop: 'value3',
-					contentId: 'content_1',
+					$contentId: 'content_1',
 					$duration: 8, // 8 seconds total
 					$heartbeats: 3
 				}),
@@ -974,7 +979,7 @@ describe(`heartbeat`, function () {
 				`first_call`,
 				sinon.match({
 					prop: 'value',
-					contentId: 'content_1',
+					$contentId: 'content_1',
 					$duration: 0,
 					$heartbeats: 1
 				}),
@@ -991,7 +996,7 @@ describe(`heartbeat`, function () {
 			expect(lib.track).to.have.been.calledWith(
 				`heartbeats_test`,
 				sinon.match({
-					contentId: 'content_1',
+					$contentId: 'content_1',
 					$heartbeats: 4
 				}),
 				{}
@@ -1016,7 +1021,7 @@ describe(`heartbeat`, function () {
 			expect(lib.track).to.have.been.calledWith(
 				`multi_content`,
 				sinon.match({
-					contentId: 'content_1',
+					$contentId: 'content_1',
 					$duration: 2,
 					$heartbeats: 2
 				}),
@@ -1026,7 +1031,7 @@ describe(`heartbeat`, function () {
 			expect(lib.track).to.have.been.calledWith(
 				`multi_content`,
 				sinon.match({
-					contentId: 'content_2',
+					$contentId: 'content_2',
 					$duration: 3,
 					$heartbeats: 3
 				}),
@@ -1064,7 +1069,7 @@ describe(`heartbeat`, function () {
 				sinon.match({
 					status: 'complete',
 					progress: 250, // 25 + 50 + 75 + 100 = 250 (numeric values are summed)
-					contentId: 'content_1',
+					$contentId: 'content_1',
 					$heartbeats: 4
 				}),
 				{}
