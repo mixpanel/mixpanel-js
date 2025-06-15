@@ -12,5 +12,19 @@
   "testExplorer.codeLens": true,
   "testExplorer.gutterDecoration": true,
   "testExplorer.onStart": "retire",
-  "testExplorer.onReload": "retire"
+"testExplorer.onReload": "retire",
+"cSpell.words": [
+	"Ashkenas",
+	"avocat",
+	"copypasta",
+	"esque",
+	"FLUSHON",
+	"mainsite",
+	"mixpanelinit",
+	"mplib",
+	"optout",
+	"sendbeacon",
+	"superproperties",
+	"superprops"
+]
 }

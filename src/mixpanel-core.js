@@ -367,7 +367,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     if (!this.get_distinct_id()) {
         // There is no need to set the distinct id
         // or the device id if something was already stored
-        // in the persitence
+        // in the persistence
         this.register_once({
             'distinct_id': DEVICE_ID_PREFIX + uuid,
             '$device_id': uuid
@@ -1367,7 +1367,6 @@ MixpanelLib.prototype._heartbeat_check_flushon_match = function(props, flushOnCo
 MixpanelLib.prototype._heartbeat_log = function() {
     var heartbeatLoggingEnabled = this.get_config('heartbeat_enable_logging');
     var globalDebugEnabled = this.get_config('debug');
-    
     if (heartbeatLoggingEnabled || globalDebugEnabled) {
         var args = Array.prototype.slice.call(arguments);
         args.unshift('[Mixpanel Heartbeat]');
@@ -2921,7 +2920,7 @@ var override_mp_init_func = function() {
                 // main mixpanel lib already initialized
                 instance = instances[PRIMARY_INSTANCE_NAME];
             } else if (token) {
-                // intialize the main mixpanel lib
+                // initialize the main mixpanel lib
                 instance = create_mplib(token, config, PRIMARY_INSTANCE_NAME);
                 instance._loaded();
                 instances[PRIMARY_INSTANCE_NAME] = instance;
