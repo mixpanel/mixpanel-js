@@ -250,12 +250,18 @@ var has_opted_out = mixpanel.has_opted_out_tracking();
 
 ___
 ## mixpanel.heartbeat
-Aggregate small events into summary events before sending to Mixpanel. 
-Designed for high-frequency events like video playback, audio streaming, 
+Aggregate many small events into single summary events before sending to Mixpanel. 
+Designed for high-frequency events and loops like video playback, audio streaming, 
 or any content consumption that needs to be tracked continuously.
 
-Events are automatically aggregated by eventName and contentId, with 
-intelligent flushing based on time limits, property counts, and page unload.
+Events sent by `heartbeat()` have three additional properties:
+	- `$duration`: total time (seconds) from first heartbeat to last heartbeat
+	- `$heartbeats`: the number of heartbeats sent
+	- `$contentId`: the content ID (e.g., video ID, episode ID, article slug) being tracked
+
+Events are automatically aggregated by eventName and contentId, `$duration` (wall clock time), `$heartbeats` (# of small events), and `$contentId` (the Id of the media being tracked).
+
+heartbeat() supports manual and automatic flushing based on time limits, property counts, and page unload.
 
 
 ### Usage:
@@ -263,14 +269,16 @@ intelligent flushing based on time limits, property counts, and page unload.
 ```javascript
 // Basic heartbeat tracking for video watching
 mixpanel.heartbeat('video_watch', 'video_123', {
-  duration: 30,        // seconds watched
-  interactions: ['play']
+  bytes: 1024,
+  interactions: ['play'],
+  language: 'en'
 });
 
 // Subsequent calls aggregate automatically
 mixpanel.heartbeat('video_watch', 'video_123', {
-  duration: 45,        // added to previous: 75 total
+  bytes: 2048, // aggregated: {bytes: 3072}
   interactions: ['pause', 'seek']  // appended: ['play', 'pause', 'seek']
+  language: 'fr' // replaced: {language: 'fr'}
 });
 
 // Force immediate flush with sendBeacon
@@ -285,7 +293,7 @@ mixpanel.heartbeat.flush('video_watch');       // flush all video_watch events
 mixpanel.heartbeat.flush('video_watch', 'video_123'); // flush specific event
 
 // Flush by content ID across event types
-mixpanel.heartbeat.flushByContentId('video_123');
+mixpanel.heartbeat.flushByContentId('video_123'); // event will have $duration, $heartbeats, $contentId
 
 // Get current state for debugging
 console.log(mixpanel.heartbeat.getState());
@@ -293,8 +301,6 @@ console.log(mixpanel.heartbeat.getState());
 // Clear all pending events
 mixpanel.heartbeat.clear();
 ```
-
-
 
 ### Auto-Flush Behavior:
 Events are automatically flushed when:
