@@ -679,19 +679,18 @@
             same(trackCalls.length, 1, "should have made one track call");
             if (trackCalls.length > 0) {
                 var trackedProps = trackCalls[0].props;
+				console.log(trackedProps)
                 same(trackedProps.$heartbeats, 2, "should track correct number of heartbeats");
                 // Note: Duration might be 3 due to timing, but we mainly want to verify it exists
             }
         });
 
-        test("heartbeat argument validation", 1, function() {
-            try {
-                mixpanel.test.heartbeat('only_event_name');
-                ok(false, "should have thrown error for single argument");
-            } catch(e) {
-                ok(e.message.indexOf('contentId is required') !== -1, "should throw error about missing contentId");
-            }
-        });
+		test("heartbeat argument validation", 1, function() {
+			callsError(function(done) {
+				mixpanel.test.heartbeat('only_event_name');
+				done();
+			}, "eventName and contentId are required", "should report_error about missing contentId");
+		});
 
         test("heartbeat flushOn functionality", 1, function() {
             var originalTrack = mixpanel.test.track;
