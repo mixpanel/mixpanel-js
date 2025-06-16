@@ -250,38 +250,47 @@ var has_opted_out = mixpanel.has_opted_out_tracking();
 
 ___
 ## mixpanel.heartbeat
-Aggregate many small events into single summary events before sending to Mixpanel. 
-Designed for high-frequency events and loops like video playback, audio streaming, 
+Aggregate many small events into a single summary event before sending to Mixpanel. 
+
+Heartbeat is designed for high-frequency events and loops like video playback, audio streaming, 
 or any content consumption that needs to be tracked continuously.
 
-Events sent by `heartbeat()` have three additional properties:
+### Basic Usage:
+```javascript
+mixpanel.heartbeat('watch video', 'video_123')
+mixpanel.heartbeat('watch video', 'video_123') // 10 sec later
+mixpanel.heartbeat('watch video', 'video_123') // 10 sec later
+
+// manual flush or wait for auto-flush
+mixpanel.heartbeat().flush() 
+// ^ sends {event: "watch video", $contentId: "video_123", $duration: 20, $heartbeats: 3}
+```
+Events sent by `heartbeat()` have three additional default properties:
 	- `$duration`: total time (seconds) from first heartbeat to last heartbeat
 	- `$heartbeats`: the number of heartbeats sent
 	- `$contentId`: the content ID (e.g., video ID, episode ID, article slug) being tracked
 
-Events are automatically aggregated by eventName and contentId, `$duration` (wall clock time), `$heartbeats` (# of small events), and `$contentId` (the Id of the media being tracked).
-
-heartbeat() supports manual and automatic flushing based on time limits, property counts, and page unload.
+Events sent to `heartbeat()` are automatically aggregated by eventName and contentId; `heartbeat()` supports manual and automatic flushing based on time limits, property counts, and page unload.
 
 
-### Usage:
+### Examples:
 
 ```javascript
-// Basic heartbeat tracking for video watching
 mixpanel.heartbeat('video_watch', 'video_123', {
   bytes: 1024,
   interactions: ['play'],
   language: 'en'
 });
 
-// Subsequent calls aggregate automatically
+// aggregating different types of properties
 mixpanel.heartbeat('video_watch', 'video_123', {
   bytes: 2048, // aggregated: {bytes: 3072}
   interactions: ['pause', 'seek']  // appended: ['play', 'pause', 'seek']
   language: 'fr' // replaced: {language: 'fr'}
 });
 
-// Force immediate flush with sendBeacon
+
+// sending additional options
 mixpanel.heartbeat('video_complete', 'video_123', 
   { completion_rate: 100 },
   { forceFlush: true, transport: 'sendBeacon' }
@@ -304,16 +313,16 @@ mixpanel.heartbeat.clear();
 
 ### Auto-Flush Behavior:
 Events are automatically flushed when:
-- **Time limit reached**: No activity for 5 minutes (configurable via `heartbeat_max_buffer_time_ms`)
+- **Time limit reached**: No activity for 30 seconds(configurable via `heartbeat_max_buffer_time_ms`)
 - **Property count exceeded**: More than 1000 properties (configurable via `heartbeat_max_props_count`)  
 - **Numeric value limit**: Any numeric property exceeds 100,000 (configurable via `heartbeat_max_aggregated_value`)
 - **Page unload**: Browser navigation or tab close (uses sendBeacon for reliability)
 
-### Property Aggregation Rules:
+<!-- ### Property Aggregation Rules:
 - **Numbers**: Added together (`{duration: 30} + {duration: 45} = {duration: 75}`)
 - **Strings**: Latest value replaces previous (`{status: 'playing'} + {status: 'paused'} = {status: 'paused'}`)
 - **Objects**: Shallow merge with overwrites (`{meta: {quality: 'HD'}} + {meta: {fps: 60}} = {meta: {quality: 'HD', fps: 60}}`)
-- **Arrays**: Elements appended (`{actions: ['play']} + {actions: ['pause']} = {actions: ['play', 'pause']}`)
+- **Arrays**: Elements appended (`{actions: ['play']} + {actions: ['pause']} = {actions: ['play', 'pause']}`) -->
 
 ### Configuration:
 Configure heartbeat behavior during init:
@@ -343,7 +352,7 @@ mixpanel.init('YOUR_TOKEN', {
 
 ### Heartbeat Methods:
 
-#### mixpanel.heartbeat.flush()
+#### mixpanel.heartbeat().flush()
 Manually flush stored heartbeat events.
 
 | Argument | Type | Description |
@@ -353,7 +362,7 @@ Manually flush stored heartbeat events.
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Flush options |
 | **options.transport** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Transport method ('xhr' or 'sendBeacon') |
 
-#### mixpanel.heartbeat.flushByContentId()
+#### mixpanel.heartbeat().flushByContentId()
 Flush all events for a specific content ID across all event types.
 
 | Argument | Type | Description |
@@ -362,13 +371,13 @@ Flush all events for a specific content ID across all event types.
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Flush options |
 | **options.transport** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Transport method ('xhr' or 'sendBeacon') |
 
-#### mixpanel.heartbeat.clear()
+#### mixpanel.heartbeat().clear()
 Clear all stored heartbeat events without flushing them.
 
-#### mixpanel.heartbeat.getState()
+#### mixpanel.heartbeat().getState()
 Get the current state of all stored heartbeat events (for debugging).
 
-#### mixpanel.heartbeat.getConfig()
+#### mixpanel.heartbeat().getConfig()
 Get the current heartbeat configuration.
 
 
