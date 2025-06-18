@@ -639,11 +639,13 @@
             this.clock.restore();
         });
 
-        test("basic heartbeat functionality", 1, function() {
-            var data = mixpanel.test.track('heartbeat_test', {"contentId": "test_content", "$duration": 0, "$heartbeats": 1});
-            
+        test("basic heartbeat functionality", 2, function() {
             // Verify heartbeat method exists and is callable
             ok(_.isFunction(mixpanel.test.heartbeat), "heartbeat method should exist");
+            
+            // Test basic heartbeat call doesn't throw errors
+            var result = mixpanel.test.heartbeat('test_event', 'test_content', { prop: 'value' });
+            same(result, undefined, "heartbeat should return undefined");
         });
 
         test("heartbeat return value", 1, function() {
@@ -706,6 +708,71 @@
             mixpanel.test.track = originalTrack;
             
             same(trackCalls.length, 1, "custom timeout should have triggered automatic flush");
+        });
+
+        test("heartbeat property aggregation", 4, function() {
+            var originalTrack = mixpanel.test.track;
+            var trackCalls = [];
+            mixpanel.test.track = function(eventName, props, options) {
+                trackCalls.push({eventName: eventName, props: props, options: options});
+                return originalTrack.call(this, eventName, props, options);
+            };
+            
+            // Test different property types get aggregated correctly
+            mixpanel.test.heartbeat('aggregate_test', 'content_1', { 
+                score: 10, 
+                level: 'easy', 
+                tags: ['action'], 
+                metadata: { version: 1 }
+            });
+            
+            mixpanel.test.heartbeat('aggregate_test', 'content_1', { 
+                score: 25, 
+                level: 'medium', 
+                tags: ['puzzle'], 
+                metadata: { difficulty: 'hard' }
+            });
+            
+            // Force flush to capture aggregated result
+            mixpanel.test.heartbeat('aggregate_test', 'content_1', {}, { forceFlush: true });
+            
+            // Restore original track
+            mixpanel.test.track = originalTrack;
+            
+            // Verify aggregation
+            same(trackCalls.length, 1, "should have made one track call");
+            if (trackCalls.length > 0) {
+                var props = trackCalls[0].props;
+                same(props.score, 35, "numbers should be added together");
+                same(props.level, 'medium', "strings should use latest value");
+                deepEqual(props.tags, ['action', 'puzzle'], "arrays should be concatenated");
+            }
+        });
+
+        test("heartbeat different timeouts", 1, function() {
+            var originalTrack = mixpanel.test.track;
+            var trackCalls = [];
+            mixpanel.test.track = function(eventName, props, options) {
+                trackCalls.push({eventName: eventName, props: props, options: options});
+                return originalTrack.call(this, eventName, props, options);
+            };
+            
+            // Start with long timeout
+            mixpanel.test.heartbeat('timeout_override', 'content_1', { step: 1 }, { timeout: 10000 });
+            
+            // Advance halfway
+            this.clock.tick(5000);
+            
+            // Override with short timeout (should reset timer)
+            mixpanel.test.heartbeat('timeout_override', 'content_1', { step: 2 }, { timeout: 2000 });
+            
+            // Advance 2 seconds (should flush now, not wait for original 10s)
+            this.clock.tick(2000);
+            
+            // Restore original track
+            mixpanel.test.track = originalTrack;
+            
+            same(trackCalls.length, 1, "latest timeout should override previous timeout");
         });
 
         mpmodule("mixpanel.time_event", function() {

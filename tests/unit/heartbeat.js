@@ -344,6 +344,33 @@ describe('Heartbeat', function () {
 			expect(lib.report_error).to.have.been.calledWith('heartbeat: eventName and contentId are required');
 		});
 
+		it('should convert eventName and contentId to strings', function () {
+			lib.heartbeat(123, 456, { prop: 'value' });
+			
+			const storage = lib._heartbeat_get_storage();
+			expect(storage).to.have.property('123|456');
+			
+			const entry = storage['123|456'];
+			expect(entry.eventName).to.equal('123');
+			expect(entry.contentId).to.equal('456');
+		});
+
+		it('should handle empty contentId as invalid', function () {
+			lib.heartbeat('event', '');
+			expect(lib.report_error).to.have.been.calledWith('heartbeat: eventName and contentId are required');
+
+			lib.heartbeat('event', null);
+			expect(lib.report_error).to.have.been.calledWith('heartbeat: eventName and contentId are required');
+		});
+
+		it('should handle empty eventName as invalid', function () {
+			lib.heartbeat('', 'content');
+			expect(lib.report_error).to.have.been.calledWith('heartbeat: eventName and contentId are required');
+
+			lib.heartbeat(null, 'content');
+			expect(lib.report_error).to.have.been.calledWith('heartbeat: eventName and contentId are required');
+		});
+
 		it('should create new heartbeat entry', function () {
 			lib.heartbeat('test_event', 'content_123', { prop1: 'value1' });
 
@@ -443,6 +470,19 @@ describe('Heartbeat', function () {
 			const result = lib.heartbeat('test_event', 'content_123', { prop: 'value' });
 			expect(result).to.be.undefined;
 		});
+
+		it('should not expose old sub-methods', function () {
+			// Verify that the old chaining methods don't exist
+			const result = lib.heartbeat('test_event', 'content_123', { prop: 'value' });
+			expect(result).to.be.undefined;
+			
+			// Verify old methods don't exist on the main instance
+			expect(lib.heartbeat.flush).to.be.undefined;
+			expect(lib.heartbeat.clear).to.be.undefined;
+			expect(lib.heartbeat.getState).to.be.undefined;
+			expect(lib.heartbeat.getConfig).to.be.undefined;
+			expect(lib.heartbeat.flushByContentId).to.be.undefined;
+		});
 	});
 
 	describe('Property aggregation', function () {
@@ -518,6 +558,44 @@ describe('Heartbeat', function () {
 			expect(logSpy).not.to.have.been.called;
 			
 			logSpy.restore();
+		});
+	});
+
+	describe('Error resilience', function () {
+		it('should handle localStorage failures gracefully', function () {
+			// Mock localStorage to return empty object when failing
+			const originalGet = lib._heartbeat_get_storage;
+			const originalSave = lib._heartbeat_save_storage;
+			
+			lib._heartbeat_get_storage = function() {
+				return {}; // Return empty storage when localStorage fails
+			};
+			
+			lib._heartbeat_save_storage = function() {
+				// Silent failure - localStorage not available
+			};
+			
+			// Should not throw error and still work
+			expect(function() {
+				lib.heartbeat('test_event', 'content_123', { prop: 'value' });
+			}).not.to.throw();
+			
+			// Restore original methods
+			lib._heartbeat_get_storage = originalGet;
+			lib._heartbeat_save_storage = originalSave;
+		});
+
+		it('should handle track method failures gracefully', function () {
+			// Mock track method failure
+			lib.track = sinon.stub().throws(new Error('Network failure'));
+			
+			// Should not throw error when flushing
+			expect(function() {
+				lib.heartbeat('test_event', 'content_123', { prop: 'value' }, { forceFlush: true });
+			}).not.to.throw();
+			
+			// Should report the error
+			expect(lib.report_error).to.have.been.calledWith('Error flushing heartbeat event: Network failure');
 		});
 	});
 
