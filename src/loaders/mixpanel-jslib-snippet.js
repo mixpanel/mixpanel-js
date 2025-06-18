@@ -79,16 +79,10 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
                 return mock_group;
             };
 
-            // special case for heartbeat(): handle sub-methods like mixpanel.heartbeat.flush()
-            var heartbeat_functions = "flush flushByContentId clear getState getConfig".split(' ');
-            // Override the basic heartbeat stub with one that supports sub-methods
+            // special case for heartbeat(): simple stub
             target['heartbeat'] = function() {
                 target.push(['heartbeat'].concat(Array.prototype.slice.call(arguments, 0)));
-                return target['heartbeat']; // return self for chaining
             };
-            for (var i = 0; i < heartbeat_functions.length; i++) {
-                _set_and_defer(target['heartbeat'], heartbeat_functions[i]);
-            }
 
             // register mixpanel instance
             mixpanel['_i'].push([token, config, name]);

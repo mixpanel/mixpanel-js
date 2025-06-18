@@ -646,14 +646,10 @@
             ok(_.isFunction(mixpanel.test.heartbeat), "heartbeat method should exist");
         });
 
-        test("heartbeat method chaining", 3, function() {
+        test("heartbeat return value", 1, function() {
             var result1 = mixpanel.test.heartbeat('test_event', 'content_1', { prop: 'value' });
-            var result2 = mixpanel.test.heartbeat.flush();
-            var result3 = mixpanel.test.heartbeat.clear();
             
-            same(result1, mixpanel.test.heartbeat, "heartbeat should return chainable object");
-            same(result2, mixpanel.test.heartbeat, "flush should return chainable object");
-            same(result3, mixpanel.test.heartbeat, "clear should return chainable object");
+            same(result1, undefined, "heartbeat should return undefined (no chaining)");
         });
 
         test("heartbeat automatic properties", 2, function() {
@@ -670,7 +666,8 @@
                 return originalTrack.call(this, eventName, props, options);
             };
             
-            mixpanel.test.heartbeat.flush('duration_test', 'content_1');
+            // Use forceFlush option to trigger immediate flush
+            mixpanel.test.heartbeat('duration_test', 'content_1', { custom_prop: 'value3' }, { forceFlush: true });
             
             // Restore original track
             mixpanel.test.track = originalTrack;
@@ -679,8 +676,7 @@
             same(trackCalls.length, 1, "should have made one track call");
             if (trackCalls.length > 0) {
                 var trackedProps = trackCalls[0].props;
-				console.log(trackedProps)
-                same(trackedProps.$heartbeats, 2, "should track correct number of heartbeats");
+                same(trackedProps.$heartbeats, 3, "should track correct number of heartbeats");
                 // Note: Duration might be 3 due to timing, but we mainly want to verify it exists
             }
         });
@@ -692,7 +688,7 @@
 			}, "eventName and contentId are required", "should report_error about missing contentId");
 		});
 
-        test("heartbeat flushOn functionality", 1, function() {
+        test("heartbeat timeout functionality", 1, function() {
             var originalTrack = mixpanel.test.track;
             var trackCalls = [];
             mixpanel.test.track = function(eventName, props, options) {
@@ -700,17 +696,16 @@
                 return originalTrack.call(this, eventName, props, options);
             };
             
-            // Set up flushOn condition
-            mixpanel.test.heartbeat('flushon_test', 'content_1', { progress: 25 }, { flushOn: { status: 'complete' } });
-            mixpanel.test.heartbeat('flushon_test', 'content_1', { progress: 50 });
+            // Call heartbeat with custom timeout
+            mixpanel.test.heartbeat('timeout_test', 'content_1', { progress: 25 }, { timeout: 5000 });
             
-            // This should trigger the flush
-            mixpanel.test.heartbeat('flushon_test', 'content_1', { status: 'complete', progress: 100 });
+            // Advance time by 5 seconds
+            this.clock.tick(5000);
             
             // Restore original track
             mixpanel.test.track = originalTrack;
             
-            same(trackCalls.length, 1, "flushOn condition should have triggered automatic flush");
+            same(trackCalls.length, 1, "custom timeout should have triggered automatic flush");
         });
 
         mpmodule("mixpanel.time_event", function() {
