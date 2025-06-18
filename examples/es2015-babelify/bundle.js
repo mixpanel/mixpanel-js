@@ -21845,7 +21845,7 @@ MixpanelLib.prototype._init_heartbeat = function () {
      * @param {Object} [options] Configuration options
      * @param {Number} [options.timeout] Timeout in milliseconds (default 30000)
      * @param {Boolean} [options.forceFlush] Force immediate flush after aggregation
-     * @returns {Void} 
+     * @returns {Void}
      *
      * @example
      * // Basic video tracking
@@ -22044,13 +22044,6 @@ MixpanelLib.prototype._heartbeat_flush_event = function (eventKey, reason, useSe
     // Remove from storage after flushing
     delete storage[eventKey];
     this._heartbeat_save_storage(storage);
-
-    // Clean up flushOn condition if it exists
-    var flushOnStorage = this._heartbeat_get_flushon_storage();
-    if (flushOnStorage[eventKey]) {
-        delete flushOnStorage[eventKey];
-        this._heartbeat_save_flushon_storage(flushOnStorage);
-    }
 };
 
 /**
@@ -22073,7 +22066,6 @@ MixpanelLib.prototype._heartbeat_flush_all = function (reason, useSendBeacon) {
  * @private
  */
 MixpanelLib.prototype._heartbeat_impl = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function (eventName, contentId, props, options) {
-    var MAX_HEARTBEAT_STORAGE = 500;
 
     // Validate required parameters
     if (!eventName || !contentId) {
@@ -22096,7 +22088,7 @@ MixpanelLib.prototype._heartbeat_impl = (0, _gdprUtils.addOptOutCheckMixpanelLib
 
     // Check storage size limit (hardcoded to 500)
     var storageKeys = Object.keys(storage);
-    if (storageKeys.length >= MAX_HEARTBEAT_STORAGE && !(eventKey in storage)) {
+    if (storageKeys.length >= 500 && !(eventKey in storage)) {
         this.report_error('heartbeat: Maximum storage size reached, flushing oldest event');
         // Flush the first (oldest) event to make room
         var oldestKey = storageKeys[0];
