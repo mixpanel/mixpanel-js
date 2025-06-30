@@ -1926,7 +1926,6 @@ MixpanelLib.prototype.get_property = function(property_name) {
  *
  * @param {String} endpoint_type The type of endpoint (e.g., "events", "people", "groups")
  * @returns {String} The API host to use for this endpoint
- * @private
  */
 MixpanelLib.prototype.get_api_host = function(endpoint_type) {
     return this.get_config('api_hosts')[endpoint_type] || this.get_config('api_host');
