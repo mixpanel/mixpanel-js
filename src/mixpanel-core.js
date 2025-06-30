@@ -1098,7 +1098,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this._getApiHost('events') + '/' + this.get_config('api_routes')['track'],
+        endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
@@ -1925,12 +1925,12 @@ MixpanelLib.prototype.get_property = function(property_name) {
 
 /**
  * Get the API host for a specific endpoint type, falling back to the default api_host if not specified
- * 
+ *
  * @param {String} endpoint_type The type of endpoint (e.g., "events", "people", "groups")
  * @returns {String} The API host to use for this endpoint
  * @private
  */
-MixpanelLib.prototype._getApiHost = function(endpoint_type) {
+MixpanelLib.prototype.get_api_host = function(endpoint_type) {
     return this.get_config('api_hosts')[endpoint_type] || this.get_config('api_host');
 };
 
@@ -2229,6 +2229,7 @@ MixpanelLib.prototype['alias']                              = MixpanelLib.protot
 MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
 MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
 MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
+MixpanelLib.prototype['get_api_host']                       = MixpanelLib.prototype.get_api_host;
 MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
 MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
 MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;
