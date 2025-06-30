@@ -7067,7 +7067,7 @@
                     }, this))
             });
 
-            asyncTest('mixpanel.recordertest.reset() changes replay_id', 6, function () {
+            asyncTest('mixpanel.reset() changes replay_id', 6, function () {
                 this.randomStub.restore();
                 this.initMixpanelRecorder({ record_sessions_percent: 100 });
                 mixpanel.recordertest.start_session_recording();
@@ -7097,7 +7097,7 @@
                         start();
                     }, this));
             });
-                    }
+        }
     };
 })();
  
