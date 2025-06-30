@@ -1609,7 +1609,7 @@ MixpanelLib.prototype.reset = function() {
     }, '');
     if (this._recorder) {
         this._recorder['stopRecording']()
-          .then(_.bind(this._check_and_start_session_recording, this));
+            .then(_.bind(this._check_and_start_session_recording, this));
     }
 };
 
