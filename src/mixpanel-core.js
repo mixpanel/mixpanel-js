@@ -1608,10 +1608,8 @@ MixpanelLib.prototype.reset = function() {
         '$device_id': uuid
     }, '');
     if (this._recorder) {
-        var stopPromise = this._recorder['stopRecording']();
-        stopPromise.then(() => {
-            this._check_and_start_session_recording();
-        });
+        this._recorder['stopRecording']()
+          .then(_.bind(this._check_and_start_session_recording, this));
     }
 };
 
