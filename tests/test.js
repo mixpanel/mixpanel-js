@@ -7067,29 +7067,37 @@
                     }, this))
             });
 
-            asyncTest("mixpanel.reset() calls stop_session_recording", 4, function() {
+            asyncTest('mixpanel.recordertest.reset() changes replay_id', 6, function () {
                 this.randomStub.restore();
-                this.initMixpanelRecorder({record_sessions_percent: 100});
-                var recorder;
+                this.initMixpanelRecorder({ record_sessions_percent: 100 });
+                mixpanel.recordertest.start_session_recording();
+
+                var replayId1 = null;
+                var replayId2 = null;
 
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
-                        recorder = mixpanel.recordertest.__get_recorder();
-
-                        var stopRecordingSpy = sinon.spy(recorder, 'stopRecording');
-                        // this will be called within _check_and_start_session_recording
-                        var restartRecorderSpy = sinon.spy(recorder, 'resumeRecording');
-
+                        simulateMouseClick(document.body);
+                        return this.waitForRecorderEnqueue();
+                    }, this))
+                    .then(_.bind(function () {
+                        replayId1 = mixpanel.recordertest._get_session_replay_id();
+                        ok(replayId1, 'Initial replay_id exists');
                         mixpanel.recordertest.reset();
-                        ok(stopRecordingSpy.calledOnce, "stop_session_recording should be called once during reset.");
-                        ok(restartRecorderSpy.calledOnce, "_check_and_start_session_recording should be called once during reset.");
-
-                        stopRecordingSpy.restore();
-                        restartRecorderSpy.restore();
+                        return this.waitForRecorderLoad();
+                    }, this))
+                    .then(_.bind(function () {
+                        simulateMouseClick(document.body);
+                        return this.waitForRecorderEnqueue();
+                    }, this))
+                    .then(_.bind(function () {
+                        replayId2 = mixpanel.recordertest._get_session_replay_id();
+                        ok(replayId2, 'Replay_id after reset exists');
+                        notEqual(replayId1, replayId2, 'Replay_id changes after reset');
                         start();
                     }, this));
             });
-        }
+                    }
     };
 })();
  
