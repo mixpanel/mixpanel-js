@@ -7090,7 +7090,6 @@
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-                        console.info(`JLA Hello`)
                         var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
                         same(urlParams.get('seq'), '0', 'sends first sequence');
                         replayId1 = urlParams.get('replay_id');
