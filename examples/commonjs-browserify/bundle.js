@@ -17620,9 +17620,9 @@ MixpanelRecorder.prototype.startRecording = function(options) {
 
 MixpanelRecorder.prototype.stopRecording = function() {
     var stopPromise = this._stopCurrentRecording(false);
-    var clearRecordingPromise = this.recordingRegistry.clearActiveRecording();
+    this.recordingRegistry.clearActiveRecording();
     this.activeRecording = null;
-    return PromisePolyfill.all([stopPromise, clearRecordingPromise]);
+    return stopPromise;
 };
 
 MixpanelRecorder.prototype.pauseRecording = function() {
@@ -21636,28 +21636,16 @@ MixpanelLib.prototype.identify = function(
  * Useful for clearing data when a user logs out.
  */
 MixpanelLib.prototype.reset = function() {
-    var self = this;
-
-    var reset = function () {
-        self['persistence'].clear();
-        self._flags.identify_called = false;
-        var uuid = _.UUID();
-        self.register_once({
-            'distinct_id': DEVICE_ID_PREFIX + uuid,
-            '$device_id': uuid
-        }, '');
-    };
-
-    if (self._recorder) {
-        if (self._recorder['replayId']) {
-            self._recorder['stopRecording']()
-                .then(function () {
-                    reset();
-                    self._check_and_start_session_recording();
-                });
-        } else {
-            reset();
-        }
+    this['persistence'].clear();
+    this._flags.identify_called = false;
+    var uuid = _.UUID();
+    this.register_once({
+        'distinct_id': DEVICE_ID_PREFIX + uuid,
+        '$device_id': uuid
+    }, '');
+    if (this._recorder) {
+        this._recorder['stopRecording']()
+            .then(_.bind(this._check_and_start_session_recording, this));
     }
 };
 
