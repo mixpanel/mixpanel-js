@@ -304,7 +304,7 @@
                 realClearInterval(interval);
                 start();
             });
-        }, 20);
+        }, 22);
     };
 
     var untilDonePromise = function(func) {
@@ -321,7 +321,7 @@
                     realClearInterval(interval);
                     resolve();
                 }
-            }, 20);
+            }, 22);
         });
     };
 
@@ -7066,34 +7066,58 @@
                         start();
                     }, this))
             });
-
-            asyncTest('mixpanel.reset() changes replay_id', 6, function () {
+            
+            asyncTest('mixpanel.reset() changes replay_id', 15, function () {
                 this.randomStub.restore();
-                this.initMixpanelRecorder({ record_sessions_percent: 100 });
+                this.initMixpanelRecorder({record_sessions_percent: 100 });
                 mixpanel.recordertest.start_session_recording();
+                
+                this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
+                this.responseBlobStub.returns(Promise.resolve(new Blob()));
+                this.fetchStub.onFirstCall()
+                    .returns(makeFakeFetchResponse(200))
+                    .onSecondCall()
+                    .returns(makeFakeFetchResponse(200));
 
                 var replayId1 = null;
-                var replayId2 = null;
-
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
-                        simulateMouseClick(document.body);
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        replayId1 = mixpanel.recordertest.get_session_recording_properties()['$mp_replay_id'];
-                        ok(replayId1, 'Initial replay_id exists');
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(this.waitForFetchCalls(1))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
+                        console.info(`JLA Hello`)
+                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        same(urlParams.get('seq'), '0', 'sends first sequence');
+                        replayId1 = urlParams.get('replay_id');
                         mixpanel.recordertest.reset();
                         return this.waitForRecorderLoad();
                     }, this))
                     .then(_.bind(function () {
-                        simulateMouseClick(document.body);
+                        document.body.appendChild(document.createElement('div'));
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        replayId2 = mixpanel.recordertest.get_session_recording_properties()['$mp_replay_id'];
-                        ok(replayId2, 'Replay_id after reset exists');
-                        notEqual(replayId1, replayId2, 'Replay_id changes after reset');
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 1, 'One fetch request, mutation is ignored');
+                        simulateMouseClick(document.body);
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(this.waitForFetchCalls(2))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 2, 'Starts sending record requests again after user activity');
+                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                        same(urlParams.get('seq'), '0', 'resets to first sequence');
+                        var replayId2 = urlParams.get('replay_id');
+                        ok(replayId1 !== replayId2, 'replay id is different after reset');
+
+                        mixpanel.recordertest.stop_session_recording();
                         start();
                     }, this));
             });
