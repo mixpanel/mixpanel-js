@@ -13944,7 +13944,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.65.0'
+        LIB_VERSION: '2.66.0-rc1'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -17167,8 +17167,8 @@
                 retryAfter: response.headers.get('Retry-After')
             });
         }.bind(this);
-
-        win['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+        var apiHost = (this._mixpanel.get_api_host && this._mixpanel.get_api_host('record')) || this.getConfig('api_host');
+        win['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
             'method': 'POST',
             'headers': {
                 'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),

@@ -19954,7 +19954,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.65.0'
+    LIB_VERSION: '2.66.0-rc1'
 };
 
 exports['default'] = Config;
@@ -20816,6 +20816,7 @@ var DEFAULT_API_ROUTES = {
  */
 var DEFAULT_CONFIG = {
     'api_host': 'https://api-js.mixpanel.com',
+    'api_hosts': {},
     'api_routes': DEFAULT_API_ROUTES,
     'api_extra_query_params': {},
     'api_method': 'POST',
@@ -21794,7 +21795,7 @@ MixpanelLib.prototype.track = (0, _gdprUtils.addOptOutCheckMixpanelLib)(function
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this.get_config('api_host') + '/' + this.get_config('api_routes')['track'],
+        endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
@@ -22293,8 +22294,9 @@ MixpanelLib.prototype.reset = function () {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
-    this.stop_session_recording();
-    this._check_and_start_session_recording();
+    if (this._recorder) {
+        this._recorder['stopRecording']().then(_utils._.bind(this._check_and_start_session_recording, this));
+    }
 };
 
 /**
@@ -22605,6 +22607,16 @@ MixpanelLib.prototype.get_property = function (property_name) {
     return this['persistence'].load_prop([property_name]);
 };
 
+/**
+ * Get the API host for a specific endpoint type, falling back to the default api_host if not specified
+ *
+ * @param {String} endpoint_type The type of endpoint (e.g., "events", "people", "groups")
+ * @returns {String} The API host to use for this endpoint
+ */
+MixpanelLib.prototype.get_api_host = function (endpoint_type) {
+    return this.get_config('api_hosts')[endpoint_type] || this.get_config('api_host');
+};
+
 MixpanelLib.prototype.toString = function () {
     var name = this.get_config('name');
     if (name !== PRIMARY_INSTANCE_NAME) {
@@ -22896,6 +22908,7 @@ MixpanelLib.prototype['alias'] = MixpanelLib.prototype.alias;
 MixpanelLib.prototype['name_tag'] = MixpanelLib.prototype.name_tag;
 MixpanelLib.prototype['set_config'] = MixpanelLib.prototype.set_config;
 MixpanelLib.prototype['get_config'] = MixpanelLib.prototype.get_config;
+MixpanelLib.prototype['get_api_host'] = MixpanelLib.prototype.get_api_host;
 MixpanelLib.prototype['get_property'] = MixpanelLib.prototype.get_property;
 MixpanelLib.prototype['get_distinct_id'] = MixpanelLib.prototype.get_distinct_id;
 MixpanelLib.prototype['toString'] = MixpanelLib.prototype.toString;
@@ -23245,7 +23258,7 @@ MixpanelGroup.prototype._send_request = function (data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'groups',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/' + this._get_config('api_routes')['groups'],
+        endpoint: this._mixpanel.get_api_host('groups') + '/' + this._get_config('api_routes')['groups'],
         batcher: this._mixpanel.request_batchers.groups
     }, callback);
 };
@@ -23607,7 +23620,7 @@ MixpanelPeople.prototype._send_request = function (data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'people',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/' + this._get_config('api_routes')['engage'],
+        endpoint: this._mixpanel.get_api_host('people') + '/' + this._get_config('api_routes')['engage'],
         batcher: this._mixpanel.request_batchers.people
     }, callback);
 };
@@ -25163,8 +25176,8 @@ SessionRecording.prototype._sendRequest = function (currentReplayId, reqParams, 
             retryAfter: response.headers.get('Retry-After')
         });
     }).bind(this);
-
-    _window.window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+    var apiHost = this._mixpanel.get_api_host && this._mixpanel.get_api_host('record') || this.getConfig('api_host');
+    _window.window['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
