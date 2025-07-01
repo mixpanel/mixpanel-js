@@ -1602,11 +1602,11 @@ MixpanelLib.prototype.identify = function(
 MixpanelLib.prototype.reset = function() {
     var self = this;
 
-    const reset = () => {
-        this['persistence'].clear();
-        this._flags.identify_called = false;
+    var reset = function () {
+        self['persistence'].clear();
+        self._flags.identify_called = false;
         var uuid = _.UUID();
-        this.register_once({
+        self.register_once({
             'distinct_id': DEVICE_ID_PREFIX + uuid,
             '$device_id': uuid
         }, '');
