@@ -7081,7 +7081,7 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        replayId1 = mixpanel.recordertest._get_session_replay_id();
+                        replayId1 = mixpanel.recordertest.get_session_recording_properties()['$mp_replay_id'];
                         ok(replayId1, 'Initial replay_id exists');
                         mixpanel.recordertest.reset();
                         return this.waitForRecorderLoad();
@@ -7091,7 +7091,7 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        replayId2 = mixpanel.recordertest._get_session_replay_id();
+                        replayId2 = mixpanel.recordertest.get_session_recording_properties()['$mp_replay_id'];
                         ok(replayId2, 'Replay_id after reset exists');
                         notEqual(replayId1, replayId2, 'Replay_id changes after reset');
                         start();
