@@ -304,7 +304,7 @@
                 realClearInterval(interval);
                 start();
             });
-        }, 22);
+        }, 20);
     };
 
     var untilDonePromise = function(func) {
@@ -321,7 +321,7 @@
                     realClearInterval(interval);
                     resolve();
                 }
-            }, 22);
+            }, 20);
         });
     };
 
