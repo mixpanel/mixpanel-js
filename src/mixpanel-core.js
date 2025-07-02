@@ -485,20 +485,23 @@ MixpanelLib.prototype.start_session_recording = function () {
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
-        this._recorder['stopRecording']();
+        return this._recorder['stopRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.pause_session_recording = function () {
     if (this._recorder) {
-        this._recorder['pauseRecording']();
+        return this._recorder['pauseRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.resume_session_recording = function () {
     if (this._recorder) {
-        this._recorder['resumeRecording']();
+        return this._recorder['resumeRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.is_recording_heatmap_data = function () {
@@ -1613,15 +1616,13 @@ MixpanelLib.prototype.reset = function() {
     };
 
     if (self._recorder) {
-        if (self._recorder['replayId']) {
-            self._recorder['stopRecording']()
-                .then(function () {
-                    reset();
-                    self._check_and_start_session_recording();
-                });
-        } else {
-            reset();
-        }
+        self.stop_session_recording()
+            .then(function () {
+                reset();
+                self._check_and_start_session_recording();
+            });
+    } else {
+        reset();
     }
 };
 

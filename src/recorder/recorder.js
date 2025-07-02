@@ -27,6 +27,7 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
     this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
 
     this.activeRecording = null;
+    this.stopRecordingInProgress = false;
 };
 
 MixpanelRecorder.prototype.startRecording = function(options) {
@@ -75,10 +76,15 @@ MixpanelRecorder.prototype.startRecording = function(options) {
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
-    var stopPromise = this._stopCurrentRecording(false);
-    var clearRecordingPromise = this.recordingRegistry.clearActiveRecording();
+    var stopPromise = this._stopCurrentRecording(false, true).then(function() {
+        return this.recordingRegistry.clearActiveRecording();
+    }.bind(this)).then(function() {
+        this.stopRecordingInProgress = false;
+    }.bind(this));
+    this.stopRecordingInProgress = true;
     this.activeRecording = null;
-    return Promise.all([stopPromise, clearRecordingPromise]);
+
+    return stopPromise;
 };
 
 MixpanelRecorder.prototype.pauseRecording = function() {
@@ -100,7 +106,7 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
 
     return this.recordingRegistry.getActiveRecording()
         .then(function (activeSerializedRecording) {
-            if (activeSerializedRecording) {
+            if (activeSerializedRecording && !this.stopRecordingInProgress) {
                 return this.startRecording({activeSerializedRecording: activeSerializedRecording});
             } else if (startNewIfInactive) {
                 return this.startRecording({shouldStopBatcher: false});
