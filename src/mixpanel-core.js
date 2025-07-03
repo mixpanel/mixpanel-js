@@ -1620,7 +1620,8 @@ MixpanelLib.prototype.reset = function() {
             .then(function () {
                 reset();
                 self._check_and_start_session_recording();
-            });
+            })
+            .catch(reset());
     } else {
         reset();
     }
