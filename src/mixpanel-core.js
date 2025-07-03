@@ -369,6 +369,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     this.flags = new FeatureFlagManager({
         getConfigFunc: _.bind(this.get_config, this),
+        getPropertyFunc: _.bind(this.get_property, this),
         getDistinctIdFunc: _.bind(this.get_distinct_id, this),
         trackingFunc: _.bind(this.track, this)
     });
