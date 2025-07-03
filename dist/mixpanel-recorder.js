@@ -13944,7 +13944,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.66.0-rc1'
+        LIB_VERSION: '2.66.0-rc2'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -17385,6 +17385,7 @@
         this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
 
         this.activeRecording = null;
+        this.stopRecordingInProgress = false;
     };
 
     MixpanelRecorder.prototype.startRecording = function(options) {
@@ -17433,19 +17434,26 @@
     };
 
     MixpanelRecorder.prototype.stopRecording = function() {
-        var stopPromise = this._stopCurrentRecording(false);
-        this.recordingRegistry.clearActiveRecording();
-        this.activeRecording = null;
-        return stopPromise;
+        // Prevents activeSerializedRecording from being reused when stopping the recording.
+        this.stopRecordingInProgress = true;
+        return this._stopCurrentRecording(false, true).then(function() {
+            return this.recordingRegistry.clearActiveRecording();
+        }.bind(this)).then(function() {
+            this.stopRecordingInProgress = false;
+        }.bind(this));
     };
 
     MixpanelRecorder.prototype.pauseRecording = function() {
         return this._stopCurrentRecording(false);
     };
 
-    MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush) {
+    MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush, disableActiveRecording) {
         if (this.activeRecording) {
-            return this.activeRecording.stopRecording(skipFlush);
+            var stopRecordingPromise = this.activeRecording.stopRecording(skipFlush);
+            if (disableActiveRecording) {
+                this.activeRecording = null;
+            }
+            return stopRecordingPromise;
         }
         return PromisePolyfill.resolve();
     };
@@ -17458,7 +17466,7 @@
 
         return this.recordingRegistry.getActiveRecording()
             .then(function (activeSerializedRecording) {
-                if (activeSerializedRecording) {
+                if (activeSerializedRecording && !this.stopRecordingInProgress) {
                     return this.startRecording({activeSerializedRecording: activeSerializedRecording});
                 } else if (startNewIfInactive) {
                     return this.startRecording({shouldStopBatcher: false});

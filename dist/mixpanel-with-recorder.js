@@ -13945,7 +13945,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.66.0-rc1'
+        LIB_VERSION: '2.66.0-rc2'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -17570,6 +17570,7 @@
         this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
 
         this.activeRecording = null;
+        this.stopRecordingInProgress = false;
     };
 
     MixpanelRecorder.prototype.startRecording = function(options) {
@@ -17618,19 +17619,26 @@
     };
 
     MixpanelRecorder.prototype.stopRecording = function() {
-        var stopPromise = this._stopCurrentRecording(false);
-        this.recordingRegistry.clearActiveRecording();
-        this.activeRecording = null;
-        return stopPromise;
+        // Prevents activeSerializedRecording from being reused when stopping the recording.
+        this.stopRecordingInProgress = true;
+        return this._stopCurrentRecording(false, true).then(function() {
+            return this.recordingRegistry.clearActiveRecording();
+        }.bind(this)).then(function() {
+            this.stopRecordingInProgress = false;
+        }.bind(this));
     };
 
     MixpanelRecorder.prototype.pauseRecording = function() {
         return this._stopCurrentRecording(false);
     };
 
-    MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush) {
+    MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush, disableActiveRecording) {
         if (this.activeRecording) {
-            return this.activeRecording.stopRecording(skipFlush);
+            var stopRecordingPromise = this.activeRecording.stopRecording(skipFlush);
+            if (disableActiveRecording) {
+                this.activeRecording = null;
+            }
+            return stopRecordingPromise;
         }
         return PromisePolyfill.resolve();
     };
@@ -17643,7 +17651,7 @@
 
         return this.recordingRegistry.getActiveRecording()
             .then(function (activeSerializedRecording) {
-                if (activeSerializedRecording) {
+                if (activeSerializedRecording && !this.stopRecordingInProgress) {
                     return this.startRecording({activeSerializedRecording: activeSerializedRecording});
                 } else if (startNewIfInactive) {
                     return this.startRecording({shouldStopBatcher: false});
@@ -20520,20 +20528,23 @@
 
     MixpanelLib.prototype.stop_session_recording = function () {
         if (this._recorder) {
-            this._recorder['stopRecording']();
+            return this._recorder['stopRecording']();
         }
+        return Promise.resolve();
     };
 
     MixpanelLib.prototype.pause_session_recording = function () {
         if (this._recorder) {
-            this._recorder['pauseRecording']();
+            return this._recorder['pauseRecording']();
         }
+        return Promise.resolve();
     };
 
     MixpanelLib.prototype.resume_session_recording = function () {
         if (this._recorder) {
-            this._recorder['resumeRecording']();
+            return this._recorder['resumeRecording']();
         }
+        return Promise.resolve();
     };
 
     MixpanelLib.prototype.is_recording_heatmap_data = function () {
@@ -21635,16 +21646,30 @@
      * Useful for clearing data when a user logs out.
      */
     MixpanelLib.prototype.reset = function() {
-        this['persistence'].clear();
-        this._flags.identify_called = false;
-        var uuid = _.UUID();
-        this.register_once({
-            'distinct_id': DEVICE_ID_PREFIX + uuid,
-            '$device_id': uuid
-        }, '');
-        if (this._recorder) {
-            this._recorder['stopRecording']()
-                .then(_.bind(this._check_and_start_session_recording, this));
+        var self = this;
+
+        var reset = function () {
+            self['persistence'].clear();
+            self._flags.identify_called = false;
+            var uuid = _.UUID();
+            self.register_once({
+                'distinct_id': DEVICE_ID_PREFIX + uuid,
+                '$device_id': uuid
+            }, '');
+        };
+
+        if (self._recorder) {
+            self.stop_session_recording()
+                .then(function () {
+                    reset();
+                    self._check_and_start_session_recording();
+                })
+                .catch(_.bind(function (err) {
+                    reset();
+                    this.report_error('Error restarting recording session', err);
+                }, this));
+        } else {
+            reset();
         }
     };
 
