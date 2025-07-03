@@ -76,24 +76,26 @@ MixpanelRecorder.prototype.startRecording = function(options) {
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
-    var stopPromise = this._stopCurrentRecording(false).then(function() {
+    return this._stopCurrentRecording(false, true).then(function() {
         return this.recordingRegistry.clearActiveRecording();
     }.bind(this)).then(function() {
         this.stopRecordingInProgress = false;
     }.bind(this));
-    this.stopRecordingInProgress = true;
-    this.activeRecording = null;
-
-    return stopPromise;
 };
 
 MixpanelRecorder.prototype.pauseRecording = function() {
     return this._stopCurrentRecording(false);
 };
 
-MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush) {
+MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush, disableActiveRecording) {
     if (this.activeRecording) {
-        return this.activeRecording.stopRecording(skipFlush);
+        // Prevents activeSerializedRecording from being reused when stopping the recording.
+        this.stopRecordingInProgress = true;
+        var stopRecordingPromise = this.activeRecording.stopRecording(skipFlush);
+        if (disableActiveRecording) {
+            this.activeRecording = null;
+        }
+        return stopRecordingPromise;
     }
     return Promise.resolve();
 };

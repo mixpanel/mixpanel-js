@@ -1621,7 +1621,10 @@ MixpanelLib.prototype.reset = function() {
                 reset();
                 self._check_and_start_session_recording();
             })
-            .catch(reset());
+            .catch(_.bind(function (err) {
+                reset();
+                this.report_error('Error restarting recording session', err);
+            }, this));
     } else {
         reset();
     }
