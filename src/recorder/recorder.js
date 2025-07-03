@@ -76,6 +76,8 @@ MixpanelRecorder.prototype.startRecording = function(options) {
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
+    // Prevents activeSerializedRecording from being reused when stopping the recording.
+    this.stopRecordingInProgress = true;
     return this._stopCurrentRecording(false, true).then(function() {
         return this.recordingRegistry.clearActiveRecording();
     }.bind(this)).then(function() {
@@ -89,8 +91,6 @@ MixpanelRecorder.prototype.pauseRecording = function() {
 
 MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush, disableActiveRecording) {
     if (this.activeRecording) {
-        // Prevents activeSerializedRecording from being reused when stopping the recording.
-        this.stopRecordingInProgress = true;
         var stopRecordingPromise = this.activeRecording.stopRecording(skipFlush);
         if (disableActiveRecording) {
             this.activeRecording = null;
