@@ -17,7 +17,6 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
 var FeatureFlagManager = function(initOptions) {
     this.getMpConfig = initOptions.getConfigFunc;
     this.getMpProperty = initOptions.getPropertyFunc;
-    this.getDistinctId = initOptions.getDistinctIdFunc;
     this.track = initOptions.trackingFunc;
 };
 
@@ -66,7 +65,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         return;
     }
 
-    var distinctId = this.getDistinctId();
+    var distinctId = this.getMpProperty('distinct_id');
     var deviceId = this.getMpProperty('$device_id');
     logger.log('Fetching flags for distinct ID: ' + distinctId);
     var reqParams = {
