@@ -13944,7 +13944,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.66.0-rc2'
+        LIB_VERSION: '2.66.0'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
