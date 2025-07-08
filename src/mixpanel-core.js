@@ -12,8 +12,7 @@ import { MixpanelPeople } from './mixpanel-people';
 import {
     MixpanelPersistence,
     PEOPLE_DISTINCT_ID_KEY,
-    ALIAS_ID_KEY,
-    HEARTBEAT_QUEUE_KEY
+    ALIAS_ID_KEY
 } from './mixpanel-persistence';
 import {
     optIn,
@@ -1117,6 +1116,7 @@ MixpanelLib.prototype._init_heartbeat = function() {
 
     // Internal heartbeat state storage
     this._heartbeat_timers = new Map();
+    this._heartbeat_storage = {}; // In-memory storage for heartbeat events
     this._heartbeat_unload_setup = false;
 
     // Setup page unload handlers once
@@ -1200,22 +1200,19 @@ MixpanelLib.prototype._setup_heartbeat_unload_handlers = function() {
 };
 
 /**
- * Gets heartbeat event storage from persistence
+ * Gets heartbeat event storage from memory
  * @private
  */
 MixpanelLib.prototype._heartbeat_get_storage = function() {
-    var stored = this['persistence'].props[HEARTBEAT_QUEUE_KEY];
-    return stored && typeof stored === 'object' ? stored : {};
+    return this._heartbeat_storage || {};
 };
 
 /**
- * Saves heartbeat events to persistence
+ * Saves heartbeat events to memory
  * @private
  */
 MixpanelLib.prototype._heartbeat_save_storage = function(data) {
-    var current_props = {};
-    current_props[HEARTBEAT_QUEUE_KEY] = data;
-    this['persistence'].register(current_props);
+    this._heartbeat_storage = data;
 };
 
 

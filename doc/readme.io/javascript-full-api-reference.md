@@ -254,6 +254,8 @@ Client-side aggregation for streaming analytics events like video watch time, po
 
 Heartbeat produces a single event which represents many heartbeats; the event which summarizes all the heartbeats is sent when the user stops sending heartbeats for a configurable timeout period (default 30 seconds) or when the page unloads.
 
+**Note**: Heartbeat data is session-scoped and does not persist across page refreshes. All pending heartbeat events are automatically flushed when the page unloads.
+
 Each summary event automatically tracks:
 - `$duration`: Seconds from first to last heartbeat call
 - `$heartbeats`: Number of heartbeat calls made
@@ -301,6 +303,8 @@ mixpanel.heartbeat('video_watch', 'video_123', {
 Events are automatically flushed when:
 - **Time limit reached**: No activity for 30 seconds (or custom timeout)
 - **Page unload**: Browser navigation or tab close (uses sendBeacon for reliability)
+
+**Session Scope**: All heartbeat data is stored in memory only and is lost when the page refreshes or navigates away. This design ensures reliable data transmission without cross-page persistence complexity.
 
 
 | Argument | Type | Description |

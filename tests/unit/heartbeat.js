@@ -7,7 +7,7 @@ chai.use(sinonChai);
 
 import { _, console } from '../../src/utils';
 import { window } from '../../src/window';
-import { MixpanelPersistence, HEARTBEAT_QUEUE_KEY } from '../../src/mixpanel-persistence';
+import { MixpanelPersistence } from '../../src/mixpanel-persistence';
 import {
 	optIn,
 	optOut,
@@ -79,14 +79,11 @@ function createMockLib(config) {
 	};
 
 	lib._heartbeat_get_storage = function () {
-		var stored = this.persistence.props[HEARTBEAT_QUEUE_KEY];
-		return stored && typeof stored === 'object' ? stored : {};
+		return this._heartbeat_storage || {};
 	};
 
 	lib._heartbeat_save_storage = function (data) {
-		var current_props = {};
-		current_props[HEARTBEAT_QUEUE_KEY] = data;
-		this.persistence.register(current_props);
+		this._heartbeat_storage = data;
 	};
 
 	lib._heartbeat_log = function () {
@@ -287,6 +284,7 @@ function createMockLib(config) {
 
 		this._heartbeat_timers = new Map();
 		this._heartbeat_unload_setup = false;
+		this._heartbeat_storage = {};
 
 		this._setup_heartbeat_unload_handlers();
 
