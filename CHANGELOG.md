@@ -1,3 +1,8 @@
+**2.66.0** (8 Jul 2025)
+- Add `api_host` configuration option to support different hosts/proxies for different endpoints (thanks @chrisknu)
+- Add types.d.ts from existing public repo
+- Fix race condition when calling `mixpanel.reset()` while a session recording is active
+
 **2.65.0** (20 May 2025)
 - `mixpanel.people.track_charge()` (deprecated) no longer sets profile property
 - Adds page height and width tracking to autocapture click tracking
