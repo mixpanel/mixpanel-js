@@ -16,7 +16,7 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  */
 var FeatureFlagManager = function(initOptions) {
     this.getMpConfig = initOptions.getConfigFunc;
-    this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
 };
 
@@ -65,10 +65,11 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         return;
     }
 
-    var distinctId = this.getDistinctId();
+    var distinctId = this.getMpProperty('distinct_id');
+    var deviceId = this.getMpProperty('$device_id');
     logger.log('Fetching flags for distinct ID: ' + distinctId);
     var reqParams = {
-        'context': _.extend({'distinct_id': distinctId}, this.getConfig(CONFIG_CONTEXT))
+        'context': _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT))
     };
     this.fetchPromise = window['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
         'method': 'POST',
