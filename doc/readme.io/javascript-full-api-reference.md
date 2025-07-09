@@ -249,6 +249,76 @@ var has_opted_out = mixpanel.has_opted_out_tracking();
 
 
 ___
+## mixpanel.heartbeat
+Client-side aggregation for streaming analytics events like video watch time, podcast listen time, or other continuous interactions. `mixpanel.heartbeat()` is safe to be called in a loop without exploding your event counts.
+
+Heartbeat produces a single event which represents many heartbeats; the event which summarizes all the heartbeats is sent when the user stops sending heartbeats for a configurable timeout period (default 30 seconds) or when the page unloads.
+
+**Note**: Heartbeat data is session-scoped and does not persist across page refreshes. All pending heartbeat events are automatically flushed when the page unloads.
+
+Each summary event automatically tracks:
+- `$duration`: Seconds from first to last heartbeat call
+- `$heartbeats`: Number of heartbeat calls made
+- `$contentId`: The contentId parameter
+
+### Basic Usage:
+```javascript
+mixpanel.heartbeat('video_watch', 'video_123');
+mixpanel.heartbeat('video_watch', 'video_123'); // 10 seconds later
+mixpanel.heartbeat('video_watch', 'video_123'); // 30 seconds later
+// After 30 seconds of inactivity, the event is flushed:
+// {event: 'video_watch', properties: {$contentId: 'video_123', $duration: 40, $heartbeats: 3}}
+```
+
+You can also pass additional properties, and options to be aggregated with each heartbeat call. Properties are merged intelligently by type:
+- Numbers are added together
+- Strings take the latest value
+- Objects are merged (latest overwrites)
+- Arrays have elements appended
+
+### Examples:
+
+```javascript
+// Force immediate flush
+mixpanel.heartbeat('podcast_listen', 'episode_123', { platform: 'mobile' }, { forceFlush: true });
+
+// Custom timeout (60 seconds)
+mixpanel.heartbeat('video_watch', 'video_123', { quality: 'HD' }, { timeout: 60000 });
+
+// Property aggregation
+mixpanel.heartbeat('video_watch', 'video_123', { 
+  bytes: 1024,
+  interactions: ['play'],
+  language: 'en'
+});
+
+mixpanel.heartbeat('video_watch', 'video_123', {
+  bytes: 2048, // aggregated: {bytes: 3072}
+  interactions: ['pause'], // appended: ['play', 'pause']
+  language: 'fr' // replaced: {language: 'fr'}
+});
+```
+
+### Auto-Flush Behavior:
+Events are automatically flushed when:
+- **Time limit reached**: No activity for 30 seconds (or custom timeout)
+- **Page unload**: Browser navigation or tab close (uses sendBeacon for reliability)
+
+**Session Scope**: All heartbeat data is stored in memory only and is lost when the page refreshes or navigates away. This design ensures reliable data transmission without cross-page persistence complexity.
+
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the event to track |
+| **content_id** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Unique identifier for the content being tracked |
+| **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Properties to aggregate with existing data |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Configuration options |
+| **options.timeout** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | Timeout in milliseconds (default 30000) |
+| **options.forceFlush** | <span class="mp-arg-type">Boolean</span></br></span><span class="mp-arg-optional">optional</span> | Force immediate flush after aggregation |
+
+
+
+___
 ## mixpanel.identify
 Identify a user with a unique ID to track user activity across  devices, tie a user to their events, and create a user profile.  If you never call this method, unique visitors are tracked using  a UUID generated the first time they visit the site.
 
