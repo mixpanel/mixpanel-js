@@ -856,11 +856,10 @@ MixpanelLib.prototype.are_batchers_initialized = function() {
 
 MixpanelLib.prototype.get_batcher_configs = function() {
     var queue_prefix = '__mpq_' + this.get_config('token');
-    var api_routes = this.get_config('api_routes');
     this._batcher_configs = this._batcher_configs || {
-        events: {type: 'events', endpoint: '/' + api_routes['track'], queue_key: queue_prefix + '_ev'},
-        people: {type: 'people', endpoint: '/' + api_routes['engage'], queue_key: queue_prefix + '_pp'},
-        groups: {type: 'groups', endpoint: '/' + api_routes['groups'], queue_key: queue_prefix + '_gr'}
+        events: {type: 'events', api_name: 'track', queue_key: queue_prefix + '_ev'},
+        people: {type: 'people', api_name: 'engage', queue_key: queue_prefix + '_pp'},
+        groups: {type: 'groups', api_name: 'groups', queue_key: queue_prefix + '_gr'}
     };
     return this._batcher_configs;
 };
@@ -874,8 +873,9 @@ MixpanelLib.prototype.init_batchers = function() {
                     libConfig: this['config'],
                     errorReporter: this.get_config('error_reporter'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
+                        var api_routes = this.get_config('api_routes');
                         this._send_request(
-                            this.get_config('api_host') + attrs.endpoint,
+                            this.get_api_host(attrs.api_name) + '/' + api_routes[attrs.api_name],
                             this._encode_data_for_request(data),
                             options,
                             this._prepare_callback(cb, data)
