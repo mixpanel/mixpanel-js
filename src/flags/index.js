@@ -15,6 +15,7 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
+    this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
@@ -71,7 +72,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var reqParams = {
         'context': _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT))
     };
-    this.fetchPromise = window['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+    this.fetchPromise = window['fetch'](this.getFullApiRoute(), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),

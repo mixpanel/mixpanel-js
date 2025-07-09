@@ -369,6 +369,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
     }
 
     this.flags = new FeatureFlagManager({
+        getFullApiRoute: _.bind(function() {
+            return this.get_api_host('flags') + '/' + this.get_config('api_routes')['flags'];
+        }, this),
         getConfigFunc: _.bind(this.get_config, this),
         getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this)
