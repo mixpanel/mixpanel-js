@@ -6423,11 +6423,6 @@
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
-                    // .then(_.bind(function () {
-                    //     // same(this.fetchStub.getCalls().length, 1, 'One fetch request, mutation is ignored');
-                    //     simulateMouseClick(document.body);
-                    //     return this.clock.tickAsync(10 * 1000);
-                    // }, this))
                     .then(this.waitForFetchCalls(2))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 2, 'Starts sending record requests again after user activity');
