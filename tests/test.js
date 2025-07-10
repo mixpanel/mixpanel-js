@@ -6389,7 +6389,6 @@
             asyncTest('mixpanel.reset() changes replay_id', 14, function () {
                 this.randomStub.restore();
                 this.initMixpanelRecorder({record_sessions_percent: 100 });
-                // mixpanel.recordertest.start_session_recording();
                 
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
