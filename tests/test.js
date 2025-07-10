@@ -7105,8 +7105,6 @@
                         same(urlParams.get('seq'), '0', 'sends first sequence');
                         replayId1 = urlParams.get('replay_id');
                         mixpanel.recordertest.reset();
-                    }, this))
-                     .then(_.bind(function () {
                         return this.waitForRecorderLoad();
                     }, this))
                     .then(_.bind(function () {
