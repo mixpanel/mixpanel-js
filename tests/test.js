@@ -7079,9 +7079,9 @@
                     });
             });
             
-            asyncTest('mixpanel.reset() changes replay_id', 11, function () {
+            asyncTest('mixpanel.reset() changes replay_id', 10, function () {
                 this.randomStub.restore();
-                this.initMixpanelRecorder({record_sessions_percent: 100 });
+                this.initMixpanelRecorder({record_sessions_percent: 100});
                 
                 var distinctId = mixpanel.recordertest.get_distinct_id();
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
