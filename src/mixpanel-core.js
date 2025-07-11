@@ -1606,31 +1606,15 @@ MixpanelLib.prototype.identify = function(
  * Useful for clearing data when a user logs out.
  */
 MixpanelLib.prototype.reset = function() {
-    var self = this;
-
-    var reset = function () {
-        self['persistence'].clear();
-        self._flags.identify_called = false;
-        var uuid = _.UUID();
-        self.register_once({
-            'distinct_id': DEVICE_ID_PREFIX + uuid,
-            '$device_id': uuid
-        }, '');
-    };
-
-    if (self._recorder) {
-        self.stop_session_recording()
-            .then(function () {
-                reset();
-                self._check_and_start_session_recording();
-            })
-            .catch(_.bind(function (err) {
-                reset();
-                this.report_error('Error restarting recording session', err);
-            }, this));
-    } else {
-        reset();
-    }
+    this.stop_session_recording();
+    this['persistence'].clear();
+    this._flags.identify_called = false;
+    var uuid = _.UUID();
+    this.register_once({
+        'distinct_id': DEVICE_ID_PREFIX + uuid,
+        '$device_id': uuid
+    }, '');
+    this._check_and_start_session_recording();
 };
 
 /**

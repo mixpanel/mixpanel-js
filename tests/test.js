@@ -7078,11 +7078,12 @@
                         start();
                     });
             });
-
-            asyncTest('mixpanel.reset() changes replay_id', 14, function () {
+            
+            asyncTest('mixpanel.reset() changes replay_id', 10, function () {
                 this.randomStub.restore();
-                this.initMixpanelRecorder({record_sessions_percent: 100 });
+                this.initMixpanelRecorder({record_sessions_percent: 100});
                 
+                var distinctId = mixpanel.recordertest.get_distinct_id();
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
                 this.fetchStub.onFirstCall()
@@ -7096,18 +7097,20 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        return this.clock.tickAsync(10 * 1000);
+                        mixpanel.recordertest.reset();
+                        return this.waitForRecorderLoad();
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        var calledURL = this.fetchStub.getCall(0).args[0];
+                        var paramsStr = calledURL.split('?')[1];
+                        var urlParams = new URLSearchParams(paramsStr);
+
                         same(urlParams.get('seq'), '0', 'sends first sequence');
+                        same(urlParams.get('distinct_id'), distinctId, 'distinct_id is set');
                         replayId1 = urlParams.get('replay_id');
-                        mixpanel.recordertest.reset();
-                        return this.waitForRecorderLoad();
-                    }, this))
-                    .then(_.bind(function () {
+
                         document.body.appendChild(document.createElement('div'));
                         return this.waitForRecorderEnqueue();
                     }, this))
@@ -7117,10 +7120,14 @@
                     .then(this.waitForFetchCalls(2))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 2, 'Starts sending record requests again after user activity');
-                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                        var calledURL = this.fetchStub.getCall(1).args[0];
+                        var paramsStr = calledURL.split('?')[1];
+                        var urlParams = new URLSearchParams(paramsStr);
+
                         same(urlParams.get('seq'), '0', 'resets to first sequence');
                         var replayId2 = urlParams.get('replay_id');
                         ok(replayId1 !== replayId2, 'replay id is different after reset');
+                        ok(urlParams.get('distinct_id') !== distinctId, 'distinct_id is different after reset');
 
                         return mixpanel.recordertest.stop_session_recording();
                     }, this))
