@@ -15,8 +15,9 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
+    this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
-    this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
 };
 
@@ -65,12 +66,14 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         return;
     }
 
-    var distinctId = this.getDistinctId();
+    var distinctId = this.getMpProperty('distinct_id');
+    var deviceId = this.getMpProperty('$device_id');
     logger.log('Fetching flags for distinct ID: ' + distinctId);
     var reqParams = {
-        'context': _.extend({'distinct_id': distinctId}, this.getConfig(CONFIG_CONTEXT))
+        'context': _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT))
     };
-    this.fetchPromise = window['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+    this._fetchInProgressStartTime = Date.now();
+    this.fetchPromise = window['fetch'](this.getFullApiRoute(), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
@@ -78,6 +81,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         },
         'body': JSON.stringify(reqParams)
     }).then(function(response) {
+        this.markFetchComplete();
         return response.json().then(function(responseBody) {
             var responseFlags = responseBody['flags'];
             if (!responseFlags) {
@@ -92,9 +96,24 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             });
             this.flags = flags;
         }.bind(this)).catch(function(error) {
+            this.markFetchComplete();
             logger.error(error);
-        });
-    }.bind(this)).catch(function() {});
+        }.bind(this));
+    }.bind(this)).catch(function(error) {
+        this.markFetchComplete();
+        logger.error(error);
+    }.bind(this));
+};
+
+FeatureFlagManager.prototype.markFetchComplete = function() {
+    if (!this._fetchInProgressStartTime) {
+        logger.error('Fetch in progress started time not set, cannot mark fetch complete');
+        return;
+    }
+    this._fetchStartTime = this._fetchInProgressStartTime;
+    this._fetchCompleteTime = Date.now();
+    this._fetchLatency = this._fetchCompleteTime - this._fetchStartTime;
+    this._fetchInProgressStartTime = null;
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
@@ -173,7 +192,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
     this.track('$experiment_started', {
         'Experiment name': featureName,
         'Variant name': feature['key'],
-        '$experiment_type': 'feature_flag'
+        '$experiment_type': 'feature_flag',
+        'Variant fetch start time': this._fetchStartTime,
+        'Variant fetch complete time': this._fetchCompleteTime,
+        'Variant fetch latency (ms)': this._fetchLatency
     });
 };
 
