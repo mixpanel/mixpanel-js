@@ -193,8 +193,8 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
         'Experiment name': featureName,
         'Variant name': feature['key'],
         '$experiment_type': 'feature_flag',
-        'Variant fetch start time': this._fetchStartTime,
-        'Variant fetch complete time': this._fetchCompleteTime,
+        'Variant fetch start time': new Date(this._fetchStartTime).toISOString(),
+        'Variant fetch complete time': new Date(this._fetchCompleteTime).toISOString(),
         'Variant fetch latency (ms)': this._fetchLatency
     });
 };
