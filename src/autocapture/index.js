@@ -191,7 +191,7 @@ Autocapture.prototype.initRageClickTracking = function() {
         if (!this.getConfig(CONFIG_TRACK_RAGE_CLICK) && !this.mp.is_recording_heatmap_data()) {
             return;
         }
-        
+
         // pageX/Y is not supported on old browsers such as IE6 and below
         var x = ev.pageX ? ev.pageX : ev.clientX;
         var y = ev.pageY ? ev.pageY : ev.clientY;
