@@ -26,6 +26,7 @@ var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
 var CONFIG_SCROLL_CAPTURE_ALL = 'scroll_capture_all';
 var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
+var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
 var CONFIG_TRACK_SCROLL = 'scroll';
@@ -43,6 +44,7 @@ CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
 CONFIG_DEFAULTS[CONFIG_SCROLL_CAPTURE_ALL] = false;
 CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
+CONFIG_DEFAULTS[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
 CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
@@ -53,6 +55,7 @@ var DEFAULT_PROPS = {
 };
 
 var MP_EV_CLICK = '$mp_click';
+var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_INPUT = '$mp_input_change';
 var MP_EV_SCROLL = '$mp_scroll';
 var MP_EV_SUBMIT = '$mp_submit';
@@ -77,6 +80,7 @@ Autocapture.prototype.init = function() {
     this.initInputTracking();
     this.initScrollTracking();
     this.initSubmitTracking();
+    this.initRageClickTracking();
 };
 
 Autocapture.prototype.getFullConfig = function() {
@@ -155,31 +159,8 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
-    // Rage click detection (only for click events, and only if enabled in config)
-    if (
-        mpEventName === MP_EV_CLICK &&
-        ev
-    ) {
-        var x = (typeof ev.pageX === 'number') ? ev.pageX : ev.clientX;
-        var y = (typeof ev.pageY === 'number') ? ev.pageY : ev.clientY;
-        var now = Date.now();
-        if (this._rageClickTracker.isRageClick(x, y, now)) {
-            var rageProps = getPropsForDOMEvent(ev, {
-                allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
-                allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
-                blockAttrs: this.getConfig(CONFIG_BLOCK_ATTRS),
-                blockElementCallback: this.getConfig(CONFIG_BLOCK_ELEMENT_CALLBACK),
-                blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
-                captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
-                captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
-                capturedForHeatMap: false,
-            });
-            if (rageProps) {
-                _.extend(rageProps, DEFAULT_PROPS);
-                this.mp.track('$rage_click', rageProps);
-            }
-        }
-    }
+    var isCapturedForHeatMap = (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data())
+    || (mpEventName === MP_EV_RAGE_CLICK && !this.getConfig(CONFIG_TRACK_RAGE_CLICK) && this.mp.is_recording_heatmap_data());
 
     var props = getPropsForDOMEvent(ev, {
         allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
@@ -189,12 +170,37 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
         captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
-        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data(),
+        capturedForHeatMap: isCapturedForHeatMap,
     });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);
     }
+};
+
+Autocapture.prototype.initRageClickTracking = function() {
+    window.removeEventListener(EV_CLICK, this.listenerRageClick);
+
+    if (!this.getConfig(CONFIG_TRACK_RAGE_CLICK) && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    logger.log('Initializing rage click tracking');
+
+    this.listenerRageClick = function(ev) {
+        if (!this.getConfig(CONFIG_TRACK_RAGE_CLICK) && !this.mp.is_recording_heatmap_data()) {
+            return;
+        }
+        
+        // pageX/Y is not supported on old browsers such as IE6 and below
+        var x = ev.pageX ? ev.pageX : ev.clientX;
+        var y = ev.pageY ? ev.pageY : ev.clientY;
+        if (this._rageClickTracker.isRageClick(x, y, Date.now())) {
+            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
+        }
+    }.bind(this);
+
+    window.addEventListener(EV_CLICK, this.listenerRageClick);
 };
 
 Autocapture.prototype.initClickTracking = function() {
