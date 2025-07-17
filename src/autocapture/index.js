@@ -196,10 +196,7 @@ Autocapture.prototype.initRageClickTracking = function() {
             return;
         }
 
-        // pageX/Y is not supported on old browsers such as IE6 and below
-        var x = ev['pageX'] ? ev['pageX'] : ev['clientX'];
-        var y = ev['pageY'] ? ev['pageY'] : ev['clientY'];
-        if (this._rageClickTracker.isRageClick(x, y, Date.now())) {
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], Date.now())) {
             this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
         }
     }.bind(this);
