@@ -348,6 +348,12 @@
         }
     }
 
+    function simulateMouseClickWithCoordinates(element, x, y) {
+        var evt = element.ownerDocument.createEvent('MouseEvents');
+        evt.initMouseEvent('click', true, true, element.ownerDocument.defaultView, 1, x, y, x, y, false, false, false, false, 0, null);
+        element.dispatchEvent(evt);
+    }
+
     function date_to_ISO(d) {
         // YYYY-MM-DDTHH:MM:SS in UTC
         function pad(n) {
@@ -4157,7 +4163,8 @@
                             // only track elements with /foobar/ links
                             return !!href && href.startsWith('/foobar');
                         },
-                        allow_selectors: [".track-only-me"]
+                        allow_selectors: [".track-only-me"],
+                        rage_click: false,
                     },
                     batch_requests: false
                 }, 'acclicks');
@@ -4433,6 +4440,149 @@
 
                 simulateMouseClick(anchor.e);
                 same(this.requests.length, 2, "click event should not have fired request");
+            });
+
+            // Rage click tests
+            test("autocapture tracks rage click events when enabled", 3, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        rage_click: true
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                var baseTime = Date.now();
+                var clock = sinon.useFakeTimers(baseTime);
+                
+                // Simulate 3 rapid clicks within threshold (5px apart each)
+                simulateMouseClickWithCoordinates(anchor.e, 100, 100);
+                clock.tick(100);
+                simulateMouseClickWithCoordinates(anchor.e, 105, 105);
+                clock.tick(100);
+                simulateMouseClickWithCoordinates(anchor.e, 110, 110);
+
+                // Should have 4 events: 3 regular clicks + 1 rage click
+                same(this.requests.length, 4, "should have 3 click events + 1 rage click event");
+                
+                var rageClickEvent = null;
+                for (var i = 0; i < this.requests.length; i++) {
+                    var event = getRequestData(this.requests[i]);
+                    if (event.event === '$mp_rage_click') {
+                        rageClickEvent = event;
+                        break;
+                    }
+                }
+                
+                ok(rageClickEvent !== null, "should have detected a rage click event");
+                same(rageClickEvent.event, "$mp_rage_click", "rage click event should be named $mp_rage_click");
+
+                clock.restore();
+            });
+
+            test("autocapture does not track rage clicks when disabled", 5, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        rage_click: false
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                // Simulate 3 rapid clicks with close coordinates (would trigger rage click if enabled)
+                simulateMouseClickWithCoordinates(anchor.e, 100, 100);
+                simulateMouseClickWithCoordinates(anchor.e, 105, 105);
+                simulateMouseClickWithCoordinates(anchor.e, 110, 110);
+
+                // Should only have 3 regular click events, no rage click
+                same(this.requests.length, 3, "should have 3 click events only");
+                
+                var hasRageClick = false;
+                for (var i = 0; i < this.requests.length; i++) {
+                    var event = getRequestData(this.requests[i]);
+                    if (event.event === '$mp_rage_click') {
+                        hasRageClick = true;
+                        break;
+                    }
+                }
+                
+                notOk(hasRageClick, "should not have detected any rage click events");
+                same(getRequestData(this.requests[0]).event, "$mp_click", "all events should be regular clicks");
+                same(getRequestData(this.requests[1]).event, "$mp_click", "all events should be regular clicks");
+                same(getRequestData(this.requests[2]).event, "$mp_click", "all events should be regular clicks");
+            });
+
+            test("autocapture rage click respects distance threshold", 2, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        rage_click: true
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                var baseTime = Date.now();
+                var clock = sinon.useFakeTimers(baseTime);
+                
+                // Simulate 3 clicks far apart (beyond threshold)
+                simulateMouseClickWithCoordinates(anchor.e, 100, 100);
+                clock.tick(100);
+                simulateMouseClickWithCoordinates(anchor.e, 150, 150);
+                clock.tick(100);
+                simulateMouseClickWithCoordinates(anchor.e, 200, 200);
+
+                // Should only have 3 regular click events, no rage click due to distance
+                same(this.requests.length, 3, "should have 3 click events only");
+                
+                var hasRageClick = false;
+                for (var i = 0; i < this.requests.length; i++) {
+                    var event = getRequestData(this.requests[i]);
+                    if (event.event === '$mp_rage_click') {
+                        hasRageClick = true;
+                        break;
+                    }
+                }
+                
+                notOk(hasRageClick, "should not detect rage click when clicks are too far apart");
+
+                clock.restore();
+            });
+
+            test("autocapture does not track clicks and rage clicks when autocapture is disabled", 1, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: false,
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+
+                var baseTime = Date.now();
+                var clock = sinon.useFakeTimers(baseTime);
+                
+                // Simulate 3 rapid clicks within threshold (5px apart each)
+                simulateMouseClickWithCoordinates(anchor.e, 100, 100);
+                clock.tick(100);
+                simulateMouseClickWithCoordinates(anchor.e, 105, 105);
+                clock.tick(100);
+                simulateMouseClickWithCoordinates(anchor.e, 110, 110);
+
+                // Should have no click/rage click events since autocapture is disabled
+                same(this.requests.length, 0, "should have no events when autocapture is disabled");
+                
+                clock.restore();
             });
         }
 

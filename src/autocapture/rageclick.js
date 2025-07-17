@@ -10,7 +10,7 @@ RageClickTracker.prototype.isRageClick = function(x, y, timestamp) {
     var lastClick = this.clicks[this.clicks.length - 1];
     if (
         lastClick &&
-        Math.abs(x - lastClick.x) + Math.abs(y - lastClick.y) < RAGE_CLICK_THRESHOLD_PX &&
+        Math.sqrt(Math.pow(x - lastClick.x, 2) + Math.pow(y - lastClick.y, 2)) < RAGE_CLICK_THRESHOLD_PX &&
         timestamp - lastClick.timestamp < RAGE_CLICK_TIMEOUT_MS
     ) {
         this.clicks.push({ x: x, y: y, timestamp: timestamp });

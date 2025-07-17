@@ -26,9 +26,9 @@ var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
 var CONFIG_SCROLL_CAPTURE_ALL = 'scroll_capture_all';
 var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
-var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
@@ -44,9 +44,9 @@ CONFIG_DEFAULTS[CONFIG_CAPTURE_TEXT_CONTENT] = false;
 CONFIG_DEFAULTS[CONFIG_SCROLL_CAPTURE_ALL] = false;
 CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
-CONFIG_DEFAULTS[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
 
@@ -55,8 +55,8 @@ var DEFAULT_PROPS = {
 };
 
 var MP_EV_CLICK = '$mp_click';
-var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_INPUT = '$mp_input_change';
+var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_SCROLL = '$mp_scroll';
 var MP_EV_SUBMIT = '$mp_submit';
 
@@ -66,7 +66,6 @@ var MP_EV_SUBMIT = '$mp_submit';
  */
 var Autocapture = function(mp) {
     this.mp = mp;
-    this._rageClickTracker = new RageClickTracker();
 };
 
 Autocapture.prototype.init = function() {
@@ -159,8 +158,10 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
-    var isCapturedForHeatMap = (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data())
-    || (mpEventName === MP_EV_RAGE_CLICK && !this.getConfig(CONFIG_TRACK_RAGE_CLICK) && this.mp.is_recording_heatmap_data());
+    var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (
+        (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK))||
+        (mpEventName === MP_EV_RAGE_CLICK && !this.getConfig(CONFIG_TRACK_RAGE_CLICK))
+    );
 
     var props = getPropsForDOMEvent(ev, {
         allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
@@ -186,6 +187,9 @@ Autocapture.prototype.initRageClickTracking = function() {
     }
 
     logger.log('Initializing rage click tracking');
+    if(!this._rageClickTracker) {
+        this._rageClickTracker = new RageClickTracker();
+    }
 
     this.listenerRageClick = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_RAGE_CLICK) && !this.mp.is_recording_heatmap_data()) {
@@ -193,8 +197,8 @@ Autocapture.prototype.initRageClickTracking = function() {
         }
 
         // pageX/Y is not supported on old browsers such as IE6 and below
-        var x = ev.pageX ? ev.pageX : ev.clientX;
-        var y = ev.pageY ? ev.pageY : ev.clientY;
+        var x = ev['pageX'] ? ev['pageX'] : ev['clientX'];
+        var y = ev['pageY'] ? ev['pageY'] : ev['clientY'];
         if (this._rageClickTracker.isRageClick(x, y, Date.now())) {
             this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
         }

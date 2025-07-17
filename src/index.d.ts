@@ -57,11 +57,6 @@ export interface AutocaptureConfig {
    */
   click?: boolean;
   /**
-   * When set to `true`, Mixpanel will track rage clicks (multiple clicks in a short time on the same element).
-   * @default true
-   */
-  rage_click?: boolean;
-  /**
    * When set to `true`, Mixpanel will track when an input is provided. It will not capture input content.
    * @default true
    */
@@ -71,6 +66,11 @@ export interface AutocaptureConfig {
    * @default 'full-url'
    */
   pageview?: TrackPageView;
+  /**
+   * When set to `true`, Mixpanel will track rage clicks (multiple clicks in a short time on the same element).
+   * @default true
+   */
+  rage_click?: boolean;
   /**
    * When set, Mixpanel will collect page scrolls at specified scroll intervals.
    * @default true
