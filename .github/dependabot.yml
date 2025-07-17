@@ -1,12 +1,7 @@
 # .github/dependabot.yml
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/" # Location of package.json files
+  - package-ecosystem: "npm" # Or "yarn"
+    directory: "/" # Tells Dependabot to scan root directory only
     schedule:
       interval: "daily"
-    # Ignore dependencies found within pattern-matched directories
-    ignore:
-      - dependency-name: "*" # Apply to all dependencies
-        patterns:
-          - "examples/*"     # Ignore any package.json or lock file within 'examples/'
