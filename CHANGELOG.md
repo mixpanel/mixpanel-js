@@ -1,3 +1,10 @@
+**2.67.0** (17 Jul 2025)
+- Use `get_api_host()` consistently across the SDK
+- Include `device_id` in default Feature Flag context
+- Track latency props in `$experiment_started` event
+- Fix async behavior in `mixpanel.reset()` when a session recording is active
+- Fix recorder integration test race conditions
+
 **2.66.0** (8 Jul 2025)
 - Add `api_host` configuration option to support different hosts/proxies for different endpoints (thanks @chrisknu)
 - Add types.d.ts from existing public repo
