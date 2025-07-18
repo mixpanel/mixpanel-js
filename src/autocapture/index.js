@@ -159,7 +159,7 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
     }
 
     var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (
-        (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK))||
+        (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK)) ||
         (mpEventName === MP_EV_RAGE_CLICK && !this._getRageClickConfig())
     );
 
