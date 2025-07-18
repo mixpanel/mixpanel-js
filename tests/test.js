@@ -6434,9 +6434,11 @@
                         ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
                         ok(urlParams2.get("replay_start_url").endsWith('#my-url-1'), 'start url does not change in later batches');
 
-                        mixpanel.recordertest.stop_session_recording();
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
                         start();
-                    }, this));
+                    });
             });
 
             asyncTest('can get replay properties when recording is active', 4, function () {
@@ -6452,7 +6454,6 @@
                     .then(_.bind(function () {
                         ok(Boolean(mixpanel.recordertest.get_session_recording_properties()["$mp_replay_id"]), 'replay id is populated in recording properties')
                         mixpanel.recordertest.stop_session_recording();
-                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(start)
@@ -6476,7 +6477,6 @@
                         ok(replay_url.searchParams.get('replay_id'))
                         ok(replay_url.searchParams.get('distinct_id'))
                         mixpanel.recordertest.stop_session_recording();
-                        return this.clock.tickAsync(10 * 1000);
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(start)
@@ -6649,9 +6649,11 @@
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 1, 'no /record calls made after user has opted out.');
                         same(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length, 0, 'no recording is taking place')
-                        mixpanel.recordertest.stop_session_recording();
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
                         start();
-                    }, this));
+                    });
             });
 
             asyncTest('retries record request after a 500', 17, function () {
@@ -6698,9 +6700,11 @@
                         validateAndGetUrlParams(this.fetchStub.getCall(2));
                         same(urlParams.get("seq"), "1", "2nd sequence is retried");
 
-                        mixpanel.recordertest.stop_session_recording();
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
                         start();
-                    }, this));
+                    });
             });
 
             asyncTest('retries record requests when offline', 12, function () {
@@ -6749,10 +6753,11 @@
                         same(fetchBody, fetchCall1.args[1].body, 'fetch body should be the same as the first request');
                         onlineStub.restore();
                         compressionStreamStub.restore();
-                        mixpanel.recordertest.stop_session_recording();
-
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
                         start();
-                    }, this));
+                    });
             });
 
             asyncTest('halves batch size and retries record request after a 413', 25, function () {
@@ -6825,7 +6830,9 @@
                     }, this))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 4, 'all events are flushed, no more requests are made');
-                        mixpanel.recordertest.stop_session_recording();
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(_.bind(function () {
                         this.blobConstructorSpy.restore();
                         start();
                     }, this));
@@ -6844,8 +6851,7 @@
                         return this.clock.tickAsync(5 * 1000);
                     }, this))
                     .then(_.bind(function () {
-                        mixpanel.recordertest.stop_session_recording();
-                        return this.clock.tickAsync(5 * 1000);
+                        return mixpanel.recordertest.stop_session_recording();
                     }, this))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 0, 'does not flush events if session is too short');
@@ -6925,9 +6931,11 @@
                         same(urlParams2.get("seq"), "1");
                         same(replayId, urlParams2.get("replay_id"));
 
-                        mixpanel.recordertest.stop_session_recording();
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
                         start();
-                    }, this));
+                    });
             });
 
             asyncTest('resets after idle timeout', 14, function () {
@@ -6988,9 +6996,11 @@
                         var replayId2 = urlParams.get('replay_id');
                         ok(replayId1 !== replayId2, 'replay id is different after reset');
 
-                        mixpanel.recordertest.stop_session_recording();
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
                         start();
-                    }, this));
+                    });
             });
 
             asyncTest('handles race condition where the recording resets while a request is in flight', 16, function () {
@@ -7062,16 +7072,18 @@
                         var replayId2 = urlParams.get('replay_id');
                         ok(replayId2 !== String(null), "replay id is not null");
                         ok(replayId1 !== replayId2, 'replay id is different after reset');
-                        mixpanel.recordertest.stop_session_recording();
-                        start();
+                        return mixpanel.recordertest.stop_session_recording();
                     }, this))
+                    .then(function () {
+                        start();
+                    });
             });
             
-            asyncTest('mixpanel.reset() changes replay_id', 15, function () {
+            asyncTest('mixpanel.reset() changes replay_id', 10, function () {
                 this.randomStub.restore();
-                this.initMixpanelRecorder({record_sessions_percent: 100 });
-                mixpanel.recordertest.start_session_recording();
+                this.initMixpanelRecorder({record_sessions_percent: 100});
                 
+                var distinctId = mixpanel.recordertest.get_distinct_id();
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
                 this.fetchStub.onFirstCall()
@@ -7085,40 +7097,43 @@
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
-                        return this.clock.tickAsync(10 * 1000);
+                        mixpanel.recordertest.reset();
+                        return this.waitForRecorderLoad();
                     }, this))
                     .then(this.waitForFetchCalls(1))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds');
-                        var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
+                        var calledURL = this.fetchStub.getCall(0).args[0];
+                        var paramsStr = calledURL.split('?')[1];
+                        var urlParams = new URLSearchParams(paramsStr);
+
                         same(urlParams.get('seq'), '0', 'sends first sequence');
+                        same(urlParams.get('distinct_id'), distinctId, 'distinct_id is set');
                         replayId1 = urlParams.get('replay_id');
-                        mixpanel.recordertest.reset();
-                        return this.waitForRecorderLoad();
-                    }, this))
-                    .then(_.bind(function () {
+
                         document.body.appendChild(document.createElement('div'));
                         return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(10 * 1000);
                     }, this))
-                    .then(_.bind(function () {
-                        same(this.fetchStub.getCalls().length, 1, 'One fetch request, mutation is ignored');
-                        simulateMouseClick(document.body);
-                        return this.clock.tickAsync(10 * 1000);
-                    }, this))
                     .then(this.waitForFetchCalls(2))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 2, 'Starts sending record requests again after user activity');
-                        urlParams = validateAndGetUrlParams(this.fetchStub.getCall(1));
+                        var calledURL = this.fetchStub.getCall(1).args[0];
+                        var paramsStr = calledURL.split('?')[1];
+                        var urlParams = new URLSearchParams(paramsStr);
+
                         same(urlParams.get('seq'), '0', 'resets to first sequence');
                         var replayId2 = urlParams.get('replay_id');
                         ok(replayId1 !== replayId2, 'replay id is different after reset');
+                        ok(urlParams.get('distinct_id') !== distinctId, 'distinct_id is different after reset');
 
-                        mixpanel.recordertest.stop_session_recording();
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
                         start();
-                    }, this));
+                    });
             });
         }
     };

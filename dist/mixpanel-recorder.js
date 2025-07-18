@@ -13944,7 +13944,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.66.0'
+        LIB_VERSION: '2.67.0'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -16878,6 +16878,13 @@
      * @property {string} replayStartUrl
      */
 
+    /**
+     * @typedef {Object} UserIdInfo
+     * @property {string} distinct_id
+     * @property {string} user_id
+     * @property {string} device_id
+     */
+
 
     /**
      * This class encapsulates a single session recording and its lifecycle.
@@ -16931,6 +16938,30 @@
             enqueueThrottleMs: RECORD_ENQUEUE_THROTTLE_MS,
             sharedLockTimeoutMS: 10 * 1000,
         });
+    };
+
+    /**
+     * @returns {UserIdInfo}
+     */
+    SessionRecording.prototype.getUserIdInfo = function () {
+        if (this.finalFlushUserIdInfo) {
+            return this.finalFlushUserIdInfo;
+        }
+
+        var userIdInfo = {
+            'distinct_id': String(this._mixpanel.get_distinct_id()),
+        };
+
+        // send ID management props if they exist
+        var deviceId = this._mixpanel.get_property('$device_id');
+        if (deviceId) {
+            userIdInfo['$device_id'] = deviceId;
+        }
+        var userId = this._mixpanel.get_property('$user_id');
+        if (userId) {
+            userIdInfo['$user_id'] = userId;
+        }
+        return userIdInfo;
     };
 
     SessionRecording.prototype.unloadPersistedData = function () {
@@ -17057,6 +17088,9 @@
     };
 
     SessionRecording.prototype.stopRecording = function (skipFlush) {
+        // store the user ID info in case this is getting called in mixpanel.reset()
+        this.finalFlushUserIdInfo = this.getUserIdInfo();
+
         if (!this.isRrwebStopped()) {
             try {
                 this._stopRecording();
@@ -17222,7 +17256,6 @@
                 '$current_url': this.batchStartUrl,
                 '$lib_version': Config.LIB_VERSION,
                 'batch_start_time': batchStartTime / 1000,
-                'distinct_id': String(this._mixpanel.get_distinct_id()),
                 'mp_lib': 'web',
                 'replay_id': replayId,
                 'replay_length_ms': replayLengthMs,
@@ -17231,16 +17264,7 @@
                 'seq': this.seqNo
             };
             var eventsJson = JSON.stringify(data);
-
-            // send ID management props if they exist
-            var deviceId = this._mixpanel.get_property('$device_id');
-            if (deviceId) {
-                reqParams['$device_id'] = deviceId;
-            }
-            var userId = this._mixpanel.get_property('$user_id');
-            if (userId) {
-                reqParams['$user_id'] = userId;
-            }
+            Object.assign(reqParams, this.getUserIdInfo());
 
             if (CompressionStream) {
                 var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
