@@ -4442,7 +4442,14 @@
                 same(this.requests.length, 2, "click event should not have fired request");
             });
 
-            // Rage click tests
+            mpmodule("rage click", function() {
+                this.clock = sinon.useFakeTimers();
+                startRecordingXhrRequests.call(this);
+            }, function() {
+                this.clock.restore();
+                stopRecordingXhrRequests.call(this);
+            });
+
             test("autocapture tracks rage click events when enabled", 3, function() {
                 mixpanel.init("autocapture_test_token", {
                     autocapture: {
@@ -4455,15 +4462,12 @@
 
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
-
-                var baseTime = Date.now();
-                var clock = sinon.useFakeTimers(baseTime);
                 
                 // Simulate 3 rapid clicks within threshold (5px apart each)
                 simulateMouseClickWithCoordinates(anchor.e, 100, 100);
-                clock.tick(100);
+                this.clock.tick(100);
                 simulateMouseClickWithCoordinates(anchor.e, 105, 105);
-                clock.tick(100);
+                this.clock.tick(100);
                 simulateMouseClickWithCoordinates(anchor.e, 110, 110);
 
                 // Should have 4 events: 3 regular clicks + 1 rage click
@@ -4480,8 +4484,6 @@
                 
                 ok(rageClickEvent !== null, "should have detected a rage click event");
                 same(rageClickEvent.event, "$mp_rage_click", "rage click event should be named $mp_rage_click");
-
-                clock.restore();
             });
 
             test("autocapture does not track rage clicks when disabled", 5, function() {
@@ -4532,15 +4534,12 @@
 
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
-
-                var baseTime = Date.now();
-                var clock = sinon.useFakeTimers(baseTime);
                 
                 // Simulate 3 clicks far apart (beyond threshold)
                 simulateMouseClickWithCoordinates(anchor.e, 100, 100);
-                clock.tick(100);
+                this.clock.tick(100);
                 simulateMouseClickWithCoordinates(anchor.e, 150, 150);
-                clock.tick(100);
+                this.clock.tick(100);
                 simulateMouseClickWithCoordinates(anchor.e, 200, 200);
 
                 // Should only have 3 regular click events, no rage click due to distance
@@ -4556,8 +4555,6 @@
                 }
                 
                 notOk(hasRageClick, "should not detect rage click when clicks are too far apart");
-
-                clock.restore();
             });
 
             test("autocapture does not track clicks and rage clicks when autocapture is disabled", 1, function() {
@@ -4568,21 +4565,16 @@
 
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
-
-                var baseTime = Date.now();
-                var clock = sinon.useFakeTimers(baseTime);
                 
                 // Simulate 3 rapid clicks within threshold (5px apart each)
                 simulateMouseClickWithCoordinates(anchor.e, 100, 100);
-                clock.tick(100);
+                this.clock.tick(100);
                 simulateMouseClickWithCoordinates(anchor.e, 105, 105);
-                clock.tick(100);
+                this.clock.tick(100);
                 simulateMouseClickWithCoordinates(anchor.e, 110, 110);
 
                 // Should have no click/rage click events since autocapture is disabled
                 same(this.requests.length, 0, "should have no events when autocapture is disabled");
-                
-                clock.restore();
             });
         }
 
