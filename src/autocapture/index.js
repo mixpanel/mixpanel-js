@@ -206,7 +206,7 @@ Autocapture.prototype.initRageClickTracking = function() {
     }
 
     logger.log('Initializing rage click tracking');
-    if(!this._rageClickTracker) {
+    if (!this._rageClickTracker) {
         this._rageClickTracker = new RageClickTracker(rageClickConfig);
     }
 
