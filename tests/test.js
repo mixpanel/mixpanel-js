@@ -4460,7 +4460,7 @@
                     batch_requests: false
                 }, 'acrageclick');
 
-                var anchor = ele_with_class();
+                var anchor = ele_with_class("Click me button");
                 anchor.e.onclick = function() { return false; }
                 
                 // Simulate 3 rapid clicks within threshold (5px apart each)
@@ -4483,7 +4483,7 @@
                 }
                 
                 ok(rageClickEvent !== null, "should have detected a rage click event");
-                same(rageClickEvent.event, "$mp_rage_click", "rage click event should be named $mp_rage_click");
+                same(rageClickEvent.properties.$el_text, "Click me button", "rage click event should include correct element text");
             });
 
             test("autocapture does not track rage clicks when disabled", 5, function() {
