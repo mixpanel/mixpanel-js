@@ -196,7 +196,7 @@ Autocapture.prototype.initRageClickTracking = function() {
             return;
         }
 
-        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], Date.now())) {
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'])) {
             this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
         }
     }.bind(this);

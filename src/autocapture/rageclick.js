@@ -2,11 +2,14 @@ var RAGE_CLICK_THRESHOLD_PX = 30;
 var RAGE_CLICK_TIMEOUT_MS = 1000;
 var RAGE_CLICK_CLICK_COUNT = 3;
 
-function RageClickTracker() {
+function RageClickTracker(timeProvider) {
     this.clicks = [];
+    this._timeProvider = timeProvider || function() { return Date.now(); };
 }
 
-RageClickTracker.prototype.isRageClick = function(x, y, timestamp) {
+RageClickTracker.prototype.isRageClick = function(x, y) {
+    var timestamp = this._timeProvider();
+    
     var lastClick = this.clicks[this.clicks.length - 1];
     if (
         lastClick &&
