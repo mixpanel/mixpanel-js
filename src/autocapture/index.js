@@ -160,7 +160,7 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
 
     var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (
         (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK))||
-        (mpEventName === MP_EV_RAGE_CLICK && !this.getConfig(CONFIG_TRACK_RAGE_CLICK))
+        (mpEventName === MP_EV_RAGE_CLICK && !this._getRageClickConfig())
     );
 
     var props = getPropsForDOMEvent(ev, {
@@ -179,20 +179,40 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
     }
 };
 
+Autocapture.prototype._getRageClickConfig = function() {
+    var config = this.getConfig(CONFIG_TRACK_RAGE_CLICK);
+
+    if (!config) {
+        return null; // rage click tracking disabled
+    }
+
+    if (config === true) {
+        return {}; // use defaults
+    }
+
+    if (typeof config === 'object') {
+        return config; // use custom configuration
+    }
+
+    return {}; // fallback to defaults for any other truthy value
+};
+
 Autocapture.prototype.initRageClickTracking = function() {
     window.removeEventListener(EV_CLICK, this.listenerRageClick);
 
-    if (!this.getConfig(CONFIG_TRACK_RAGE_CLICK) && !this.mp.get_config('record_heatmap_data')) {
+    var rageClickConfig = this._getRageClickConfig();
+    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
 
     logger.log('Initializing rage click tracking');
     if(!this._rageClickTracker) {
-        this._rageClickTracker = new RageClickTracker();
+        this._rageClickTracker = new RageClickTracker(rageClickConfig);
     }
 
     this.listenerRageClick = function(ev) {
-        if (!this.getConfig(CONFIG_TRACK_RAGE_CLICK) && !this.mp.is_recording_heatmap_data()) {
+        var currentRageClickConfig = this._getRageClickConfig();
+        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
             return;
         }
 

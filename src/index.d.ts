@@ -40,6 +40,17 @@ export interface OutTrackingOptions extends ClearOptOutInOutOptions {
   delete_user: boolean;
 }
 
+export type RageClickConfig = 
+  | boolean
+  | {
+    /** Distance threshold in pixels for clicks to be considered within the same area (default: 30) */
+    threshold_px?: number;
+    /** Time window in milliseconds for clicks to be considered rapid (default: 1000) */
+    timeout_ms?: number;
+    /** Number of clicks required to trigger a rage click event (default: 3) */
+    click_count?: number;
+  };
+
 export interface RegisterOptions {
   persistent: boolean;
 }
@@ -68,9 +79,10 @@ export interface AutocaptureConfig {
   pageview?: TrackPageView;
   /**
    * When set to `true`, Mixpanel will track rage clicks (multiple clicks in a short time on the same element).
+   * Can also be configured as an object to customize rage click detection parameters.
    * @default true
    */
-  rage_click?: boolean;
+  rage_click?: RageClickConfig;
   /**
    * When set, Mixpanel will collect page scrolls at specified scroll intervals.
    * @default true
