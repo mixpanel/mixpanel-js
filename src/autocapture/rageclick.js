@@ -9,7 +9,7 @@ function RageClickTracker(timeProvider) {
 
 RageClickTracker.prototype.isRageClick = function(x, y) {
     var timestamp = this._timeProvider();
-    
+
     var lastClick = this.clicks[this.clicks.length - 1];
     if (
         lastClick &&
