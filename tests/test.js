@@ -338,20 +338,18 @@
         }
     }
 
-    function simulateMouseClick(element) {
-        if (element.click) {
+    function simulateMouseClick(element, options) {
+        options = options || {};
+        var x = options.x || 0;
+        var y = options.y || 0;
+        
+        if (element.click && !options.x && !options.y) {
             element.click();
         } else {
             var evt = element.ownerDocument.createEvent('MouseEvents');
-            evt.initMouseEvent('click', true, true, element.ownerDocument.defaultView, 1, 0, 0, 0, 0, false, false, false, false, 0, null);
+            evt.initMouseEvent('click', true, true, element.ownerDocument.defaultView, 1, x, y, x, y, false, false, false, false, 0, null);
             element.dispatchEvent(evt);
         }
-    }
-
-    function simulateMouseClickWithCoordinates(element, x, y) {
-        var evt = element.ownerDocument.createEvent('MouseEvents');
-        evt.initMouseEvent('click', true, true, element.ownerDocument.defaultView, 1, x, y, x, y, false, false, false, false, 0, null);
-        element.dispatchEvent(evt);
     }
 
     function date_to_ISO(d) {
@@ -4464,11 +4462,11 @@
                 anchor.e.onclick = function() { return false; }
                 
                 // Simulate 3 rapid clicks within threshold (5px apart each)
-                simulateMouseClickWithCoordinates(anchor.e, 100, 100);
+                simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
-                simulateMouseClickWithCoordinates(anchor.e, 105, 105);
+                simulateMouseClick(anchor.e, {x: 105, y: 105});
                 this.clock.tick(100);
-                simulateMouseClickWithCoordinates(anchor.e, 110, 110);
+                simulateMouseClick(anchor.e, {x: 110, y: 110});
 
                 // Should have 4 events: 3 regular clicks + 1 rage click
                 same(this.requests.length, 4, "should have 3 click events + 1 rage click event");
@@ -4500,9 +4498,9 @@
                 anchor.e.onclick = function() { return false; }
 
                 // Simulate 3 rapid clicks with close coordinates (would trigger rage click if enabled)
-                simulateMouseClickWithCoordinates(anchor.e, 100, 100);
-                simulateMouseClickWithCoordinates(anchor.e, 105, 105);
-                simulateMouseClickWithCoordinates(anchor.e, 110, 110);
+                simulateMouseClick(anchor.e, {x: 100, y: 100});
+                simulateMouseClick(anchor.e, {x: 105, y: 105});
+                simulateMouseClick(anchor.e, {x: 110, y: 110});
 
                 // Should only have 3 regular click events, no rage click
                 same(this.requests.length, 3, "should have 3 click events only");
@@ -4536,11 +4534,11 @@
                 anchor.e.onclick = function() { return false; }
                 
                 // Simulate 3 clicks far apart (beyond threshold)
-                simulateMouseClickWithCoordinates(anchor.e, 100, 100);
+                simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
-                simulateMouseClickWithCoordinates(anchor.e, 150, 150);
+                simulateMouseClick(anchor.e, {x: 150, y: 150});
                 this.clock.tick(100);
-                simulateMouseClickWithCoordinates(anchor.e, 200, 200);
+                simulateMouseClick(anchor.e, {x: 200, y: 200});
 
                 // Should only have 3 regular click events, no rage click due to distance
                 same(this.requests.length, 3, "should have 3 click events only");
@@ -4567,11 +4565,11 @@
                 anchor.e.onclick = function() { return false; }
                 
                 // Simulate 3 rapid clicks within threshold (5px apart each)
-                simulateMouseClickWithCoordinates(anchor.e, 100, 100);
+                simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
-                simulateMouseClickWithCoordinates(anchor.e, 105, 105);
+                simulateMouseClick(anchor.e, {x: 105, y: 105});
                 this.clock.tick(100);
-                simulateMouseClickWithCoordinates(anchor.e, 110, 110);
+                simulateMouseClick(anchor.e, {x: 110, y: 110});
 
                 // Should have no click/rage click events since autocapture is disabled
                 same(this.requests.length, 0, "should have no events when autocapture is disabled");
