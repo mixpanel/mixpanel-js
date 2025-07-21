@@ -2,9 +2,8 @@
 /** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
 /** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 3;
 
-function RageClickTracker(options, timeProvider) {
+function RageClickTracker(options) {
     this.clicks = [];
-    this._timeProvider = timeProvider || function() { return Date.now(); };
 
     options = options || {};
     this._thresholdPx = options.threshold_px || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
@@ -13,7 +12,7 @@ function RageClickTracker(options, timeProvider) {
 }
 
 RageClickTracker.prototype.isRageClick = function(x, y) {
-    var timestamp = this._timeProvider();
+    var timestamp = Date.now();
 
     var lastClick = this.clicks[this.clicks.length - 1];
     if (

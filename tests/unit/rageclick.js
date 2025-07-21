@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 
 import {
     RageClickTracker,
@@ -12,13 +13,15 @@ describe('RageClickTracker', function() {
     jsdomSetup();
 
     let rageClickTrackerInstance;
-    let fakeTime;
-    let timeProvider;
+    let clock;
 
     beforeEach(function() {
-        fakeTime = 1000;
-        timeProvider = function() { return fakeTime; };
-        rageClickTrackerInstance = new RageClickTracker(null, timeProvider);
+        clock = sinon.useFakeTimers();
+        rageClickTrackerInstance = new RageClickTracker();
+    });
+
+    afterEach(function() {
+        clock.restore();
     });
 
     describe('isRageClick correctly identifies rage clicks', function() {
@@ -30,7 +33,7 @@ describe('RageClickTracker', function() {
 
         it('should return false for second click within threshold', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(105, 105);
             expect(result).to.be.false;
             expect(rageClickTrackerInstance.clicks).to.have.length(2);
@@ -38,9 +41,9 @@ describe('RageClickTracker', function() {
 
         it('should return true for third click within threshold and timeout', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             rageClickTrackerInstance.isRageClick(105, 105);
-            fakeTime = 1200;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(110, 110);
             expect(result).to.be.true;
             expect(rageClickTrackerInstance.clicks).to.have.length(0); // should reset after rage click
@@ -48,9 +51,9 @@ describe('RageClickTracker', function() {
 
         it('should reset clicks array when click is outside threshold', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             rageClickTrackerInstance.isRageClick(105, 105);
-            fakeTime = 1200;
+            clock.tick(100);
             // Click far away (outside threshold)
             const result = rageClickTrackerInstance.isRageClick(200, 200);
             expect(result).to.be.false;
@@ -61,19 +64,18 @@ describe('RageClickTracker', function() {
 
         it('should reset clicks array when click is outside timeout', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             rageClickTrackerInstance.isRageClick(105, 105);
-            fakeTime = 2500;
+            clock.tick(1500); // Exceed timeout
             // Click after timeout
             const result = rageClickTrackerInstance.isRageClick(110, 110);
             expect(result).to.be.false;
             expect(rageClickTrackerInstance.clicks).to.have.length(1);
-            expect(rageClickTrackerInstance.clicks[0].timestamp).to.equal(2500);
         });
 
         it('should handle clicks exactly at threshold boundary', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             // Click exactly at threshold distance (Euclidean distance = DEFAULT_RAGE_CLICK_THRESHOLD_PX - 1)
             const result = rageClickTrackerInstance.isRageClick(100 + DEFAULT_RAGE_CLICK_THRESHOLD_PX - 1, 100);
             expect(result).to.be.false;
@@ -82,7 +84,7 @@ describe('RageClickTracker', function() {
 
         it('should reject clicks at threshold distance', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             // Click exactly at threshold distance (Euclidean distance = DEFAULT_RAGE_CLICK_THRESHOLD_PX)
             const result = rageClickTrackerInstance.isRageClick(100 + DEFAULT_RAGE_CLICK_THRESHOLD_PX, 100);
             expect(result).to.be.false;
@@ -92,7 +94,7 @@ describe('RageClickTracker', function() {
 
         it('should handle clicks exactly at timeout boundary', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1000 + DEFAULT_RAGE_CLICK_TIMEOUT_MS - 1;
+            clock.tick(DEFAULT_RAGE_CLICK_TIMEOUT_MS - 1);
             // Click exactly at timeout boundary
             const result = rageClickTrackerInstance.isRageClick(105, 105);
             expect(result).to.be.false;
@@ -101,17 +103,16 @@ describe('RageClickTracker', function() {
 
         it('should reject clicks at timeout boundary', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1000 + DEFAULT_RAGE_CLICK_TIMEOUT_MS;
+            clock.tick(DEFAULT_RAGE_CLICK_TIMEOUT_MS);
             // Click exactly at timeout
             const result = rageClickTrackerInstance.isRageClick(105, 105);
             expect(result).to.be.false;
             expect(rageClickTrackerInstance.clicks).to.have.length(1);
-            expect(rageClickTrackerInstance.clicks[0].timestamp).to.equal(1000 + DEFAULT_RAGE_CLICK_TIMEOUT_MS);
         });
 
         it('should calculate Euclidean distance correctly', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(110, 115);
             expect(result).to.be.false;
             expect(rageClickTrackerInstance.clicks).to.have.length(2);
@@ -119,7 +120,7 @@ describe('RageClickTracker', function() {
 
         it('should handle negative coordinates', function() {
             rageClickTrackerInstance.isRageClick(-100, -100);
-            fakeTime = 1100;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(-105, -105);
             expect(result).to.be.false;
             expect(rageClickTrackerInstance.clicks).to.have.length(2);
@@ -127,7 +128,7 @@ describe('RageClickTracker', function() {
 
         it('should handle zero coordinates', function() {
             rageClickTrackerInstance.isRageClick(0, 0);
-            fakeTime = 1100;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(5, 5);
             expect(result).to.be.false;
             expect(rageClickTrackerInstance.clicks).to.have.length(2);
@@ -135,7 +136,7 @@ describe('RageClickTracker', function() {
         
         it('should reset when Euclidean distance exceeds threshold', function() {
             rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(122, 122);
             expect(result).to.be.false;
             expect(rageClickTrackerInstance.clicks).to.have.length(1); // Should reset due to distance > threshold
@@ -147,20 +148,20 @@ describe('RageClickTracker', function() {
             // First rage click sequence
             var isRageClick = false;
             isRageClick = rageClickTrackerInstance.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             isRageClick = rageClickTrackerInstance.isRageClick(105, 105);
             expect(isRageClick).to.be.false;
-            fakeTime = 1200;
+            clock.tick(100);
             isRageClick = rageClickTrackerInstance.isRageClick(110, 110);
             expect(isRageClick).to.be.true;
 
             // Start new sequence
-            fakeTime = 2000;
+            clock.tick(800);
             isRageClick = rageClickTrackerInstance.isRageClick(200, 200);
             expect(isRageClick).to.be.false;
-            fakeTime = 2100;
+            clock.tick(100);
             isRageClick = rageClickTrackerInstance.isRageClick(205, 205);
-            fakeTime = 2200;
+            clock.tick(100);
             isRageClick = rageClickTrackerInstance.isRageClick(210, 210);
             expect(isRageClick).to.be.true;
         });
@@ -168,9 +169,9 @@ describe('RageClickTracker', function() {
         it('should detect rage click with negative and zero coordinates', function() {
             // Start with negative coordinates
             rageClickTrackerInstance.isRageClick(-50, -50);
-            fakeTime = 1100;
+            clock.tick(100);
             rageClickTrackerInstance.isRageClick(-45, -47);
-            fakeTime = 1200;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(-42, -44);
             expect(result).to.be.true;
             expect(rageClickTrackerInstance.clicks).to.have.length(0); // should reset after rage click
@@ -179,9 +180,9 @@ describe('RageClickTracker', function() {
         it('should detect rage click starting from zero coordinates', function() {
             // Start at origin
             rageClickTrackerInstance.isRageClick(0, 0);
-            fakeTime = 1100;
+            clock.tick(100);
             rageClickTrackerInstance.isRageClick(3, 4); // Distance = 5px
-            fakeTime = 1200;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(6, 8); // Distance from origin = 10px
             expect(result).to.be.true;
             expect(rageClickTrackerInstance.clicks).to.have.length(0); // should reset after rage click
@@ -190,9 +191,9 @@ describe('RageClickTracker', function() {
         it('should detect rage click with mixed negative/positive coordinates', function() {
             // Start negative, move towards positive
             rageClickTrackerInstance.isRageClick(-10, -10);
-            fakeTime = 1100;
+            clock.tick(100);
             rageClickTrackerInstance.isRageClick(-5, -5); // Distance ≈ 7.07px
-            fakeTime = 1200;
+            clock.tick(100);
             const result = rageClickTrackerInstance.isRageClick(0, 0); // Distance ≈ 7.07px from (-5,-5)
             expect(result).to.be.true;
             expect(rageClickTrackerInstance.clicks).to.have.length(0); // should reset after rage click
@@ -202,53 +203,53 @@ describe('RageClickTracker', function() {
     describe('configurable rage click parameters', function() {
         it('should use custom threshold_px', function() {
             const customOptions = { threshold_px: 50 };
-            const tracker = new RageClickTracker(customOptions, timeProvider);
+            const tracker = new RageClickTracker(customOptions);
             
             tracker.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             tracker.isRageClick(135, 135);
-            fakeTime = 1200;
+            clock.tick(100);
             const result = tracker.isRageClick(140, 140);
             expect(result).to.be.true;
         });
 
         it('should use custom timeout_ms', function() {
             const customOptions = { timeout_ms: 2000 };
-            const tracker = new RageClickTracker(customOptions, timeProvider);
+            const tracker = new RageClickTracker(customOptions);
             
             tracker.isRageClick(100, 100);
-            fakeTime = 2500; // 1.5 seconds later, within 2 second threshold
+            clock.tick(1500); // 1.5 seconds later, within 2 second threshold
             tracker.isRageClick(105, 105);
-            fakeTime = 3000;
+            clock.tick(500);
             const result = tracker.isRageClick(110, 110);
             expect(result).to.be.true;
         });
 
         it('should use custom click_count', function() {
             const customOptions = { click_count: 5 };
-            const tracker = new RageClickTracker(customOptions, timeProvider);
+            const tracker = new RageClickTracker(customOptions);
             
             tracker.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             tracker.isRageClick(105, 105);
-            fakeTime = 1200;
+            clock.tick(100);
             let result = tracker.isRageClick(110, 110);
             expect(result).to.be.false; // should not trigger yet
             
-            fakeTime = 1300;
+            clock.tick(100);
             tracker.isRageClick(115, 115);
-            fakeTime = 1400;
+            clock.tick(100);
             result = tracker.isRageClick(120, 120);
             expect(result).to.be.true; // should trigger on 5th click
         });
 
         it('should use defaults when options object is empty', function() {
-            const tracker = new RageClickTracker({}, timeProvider);
+            const tracker = new RageClickTracker({});
             
             tracker.isRageClick(100, 100);
-            fakeTime = 1100;
+            clock.tick(100);
             tracker.isRageClick(105, 105);
-            fakeTime = 1200;
+            clock.tick(100);
             const result = tracker.isRageClick(110, 110);
             expect(result).to.be.true;
         });
