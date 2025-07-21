@@ -184,6 +184,7 @@ export interface Config {
   record_max_ms: number;
   record_sessions_percent: number;
   record_canvas: boolean;
+  record_heatmap_data: boolean;
 }
 
 export type VerboseResponse =
