@@ -343,7 +343,7 @@
         var x = options.x || 0;
         var y = options.y || 0;
         
-        if (element.click && !options.x && !options.y) {
+        if (element.click && options.x === undefined && options.y === undefined) {
             element.click();
         } else {
             var evt = element.ownerDocument.createEvent('MouseEvents');
