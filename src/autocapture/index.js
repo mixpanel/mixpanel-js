@@ -207,7 +207,7 @@ Autocapture.prototype.initRageClickTracking = function() {
 
     logger.log('Initializing rage click tracking');
     if (!this._rageClickTracker) {
-        this._rageClickTracker = new RageClickTracker(rageClickConfig);
+        this._rageClickTracker = new RageClickTracker();
     }
 
     this.listenerRageClick = function(ev) {
@@ -216,11 +216,10 @@ Autocapture.prototype.initRageClickTracking = function() {
             return;
         }
 
-        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'])) {
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
             this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
         }
     }.bind(this);
-
     window.addEventListener(EV_CLICK, this.listenerRageClick);
 };
 
