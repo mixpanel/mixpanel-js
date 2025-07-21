@@ -149,7 +149,7 @@ var DEFAULT_CONFIG = {
     'batch_autostart':                   true,
     'hooks':                             {},
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
-    'record_block_selector':             'img, video',
+    'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
     'record_heatmap_data':               false,
