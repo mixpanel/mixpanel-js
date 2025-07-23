@@ -13942,7 +13942,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.67.0'
+    LIB_VERSION: '2.68.0-rc1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -18227,6 +18227,39 @@ function shouldTrackValue(value) {
     return true;
 }
 
+/** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
+/** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
+/** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 3;
+
+function RageClickTracker() {
+    this.clicks = [];
+}
+
+RageClickTracker.prototype.isRageClick = function(x, y, options) {
+    options = options || {};
+    var thresholdPx = options.threshold_px || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
+    var timeoutMs = options.timeout_ms || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
+    var clickCount = options.click_count || DEFAULT_RAGE_CLICK_CLICK_COUNT;
+
+    var timestamp = Date.now();
+
+    var lastClick = this.clicks[this.clicks.length - 1];
+    if (
+        lastClick &&
+        timestamp - lastClick.timestamp < timeoutMs &&
+        Math.sqrt(Math.pow(x - lastClick.x, 2) + Math.pow(y - lastClick.y, 2)) < thresholdPx
+    ) {
+        this.clicks.push({ x: x, y: y, timestamp: timestamp });
+        if (this.clicks.length >= clickCount) {
+            this.clicks = [];
+            return true;
+        }
+    } else {
+        this.clicks = [{ x: x, y: y, timestamp: timestamp }];
+    }
+    return false;
+};
+
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
 
@@ -18248,6 +18281,7 @@ var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
@@ -18265,6 +18299,7 @@ CONFIG_DEFAULTS$1[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS$1[CONFIG_TRACK_CLICK] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_SCROLL] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_SUBMIT] = true;
 
@@ -18274,6 +18309,7 @@ var DEFAULT_PROPS = {
 
 var MP_EV_CLICK = '$mp_click';
 var MP_EV_INPUT = '$mp_input_change';
+var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_SCROLL = '$mp_scroll';
 var MP_EV_SUBMIT = '$mp_submit';
 
@@ -18296,6 +18332,7 @@ Autocapture.prototype.init = function() {
     this.initInputTracking();
     this.initScrollTracking();
     this.initSubmitTracking();
+    this.initRageClickTracking();
 };
 
 Autocapture.prototype.getFullConfig = function() {
@@ -18374,6 +18411,11 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
+    var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (
+        (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK)) ||
+        (mpEventName === MP_EV_RAGE_CLICK && !this._getRageClickConfig())
+    );
+
     var props = getPropsForDOMEvent(ev, {
         allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
         allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
@@ -18382,12 +18424,56 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
         captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
-        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data(),
+        capturedForHeatMap: isCapturedForHeatMap,
     });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);
     }
+};
+
+Autocapture.prototype._getRageClickConfig = function() {
+    var config = this.getConfig(CONFIG_TRACK_RAGE_CLICK);
+
+    if (!config) {
+        return null; // rage click tracking disabled
+    }
+
+    if (config === true) {
+        return {}; // use defaults
+    }
+
+    if (typeof config === 'object') {
+        return config; // use custom configuration
+    }
+
+    return {}; // fallback to defaults for any other truthy value
+};
+
+Autocapture.prototype.initRageClickTracking = function() {
+    win.removeEventListener(EV_CLICK, this.listenerRageClick);
+
+    var rageClickConfig = this._getRageClickConfig();
+    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    logger$1.log('Initializing rage click tracking');
+    if (!this._rageClickTracker) {
+        this._rageClickTracker = new RageClickTracker();
+    }
+
+    this.listenerRageClick = function(ev) {
+        var currentRageClickConfig = this._getRageClickConfig();
+        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
+            return;
+        }
+
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
+        }
+    }.bind(this);
+    win.addEventListener(EV_CLICK, this.listenerRageClick);
 };
 
 Autocapture.prototype.initClickTracking = function() {
@@ -20235,7 +20321,7 @@ var DEFAULT_CONFIG = {
     'batch_autostart':                   true,
     'hooks':                             {},
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
-    'record_block_selector':             'img, video',
+    'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
     'record_heatmap_data':               false,

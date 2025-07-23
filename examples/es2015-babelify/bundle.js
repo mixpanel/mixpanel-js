@@ -17,7 +17,7 @@ _srcLoadersLoaderModule2['default'].init("FAKE_TOKEN", {
 
 _srcLoadersLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loaders/loader-module":16}],2:[function(require,module,exports){
+},{"../../src/loaders/loader-module":17}],2:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -19076,7 +19076,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":32}],9:[function(require,module,exports){
+},{"./utils":33}],9:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -19088,6 +19088,8 @@ var _utils = require('../utils');
 var _window = require('../window');
 
 var _utils2 = require('./utils');
+
+var _rageclick = require('./rageclick');
 
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
@@ -19110,6 +19112,7 @@ var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
@@ -19127,6 +19130,7 @@ CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
 
@@ -19136,6 +19140,7 @@ var DEFAULT_PROPS = {
 
 var MP_EV_CLICK = '$mp_click';
 var MP_EV_INPUT = '$mp_input_change';
+var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_SCROLL = '$mp_scroll';
 var MP_EV_SUBMIT = '$mp_submit';
 
@@ -19158,6 +19163,7 @@ Autocapture.prototype.init = function () {
     this.initInputTracking();
     this.initScrollTracking();
     this.initSubmitTracking();
+    this.initRageClickTracking();
 };
 
 Autocapture.prototype.getFullConfig = function () {
@@ -19236,6 +19242,8 @@ Autocapture.prototype.trackDomEvent = function (ev, mpEventName) {
         return;
     }
 
+    var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) || mpEventName === MP_EV_RAGE_CLICK && !this._getRageClickConfig());
+
     var props = (0, _utils2.getPropsForDOMEvent)(ev, {
         allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
         allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
@@ -19244,12 +19252,56 @@ Autocapture.prototype.trackDomEvent = function (ev, mpEventName) {
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
         captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
-        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data()
+        capturedForHeatMap: isCapturedForHeatMap
     });
     if (props) {
         _utils._.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);
     }
+};
+
+Autocapture.prototype._getRageClickConfig = function () {
+    var config = this.getConfig(CONFIG_TRACK_RAGE_CLICK);
+
+    if (!config) {
+        return null; // rage click tracking disabled
+    }
+
+    if (config === true) {
+        return {}; // use defaults
+    }
+
+    if (typeof config === 'object') {
+        return config; // use custom configuration
+    }
+
+    return {}; // fallback to defaults for any other truthy value
+};
+
+Autocapture.prototype.initRageClickTracking = function () {
+    _window.window.removeEventListener(_utils2.EV_CLICK, this.listenerRageClick);
+
+    var rageClickConfig = this._getRageClickConfig();
+    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    _utils2.logger.log('Initializing rage click tracking');
+    if (!this._rageClickTracker) {
+        this._rageClickTracker = new _rageclick.RageClickTracker();
+    }
+
+    this.listenerRageClick = (function (ev) {
+        var currentRageClickConfig = this._getRageClickConfig();
+        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
+            return;
+        }
+
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
+        }
+    }).bind(this);
+    _window.window.addEventListener(_utils2.EV_CLICK, this.listenerRageClick);
 };
 
 Autocapture.prototype.initClickTracking = function () {
@@ -19422,7 +19474,47 @@ Autocapture.prototype.initSubmitTracking = function () {
 
 exports.Autocapture = Autocapture;
 
-},{"../utils":32,"../window":33,"./utils":10}],10:[function(require,module,exports){
+},{"../utils":33,"../window":34,"./rageclick":10,"./utils":11}],10:[function(require,module,exports){
+/** @const */"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
+/** @const */var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
+/** @const */var DEFAULT_RAGE_CLICK_CLICK_COUNT = 3;
+
+function RageClickTracker() {
+    this.clicks = [];
+}
+
+RageClickTracker.prototype.isRageClick = function (x, y, options) {
+    options = options || {};
+    var thresholdPx = options.threshold_px || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
+    var timeoutMs = options.timeout_ms || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
+    var clickCount = options.click_count || DEFAULT_RAGE_CLICK_CLICK_COUNT;
+
+    var timestamp = Date.now();
+
+    var lastClick = this.clicks[this.clicks.length - 1];
+    if (lastClick && timestamp - lastClick.timestamp < timeoutMs && Math.sqrt(Math.pow(x - lastClick.x, 2) + Math.pow(y - lastClick.y, 2)) < thresholdPx) {
+        this.clicks.push({ x: x, y: y, timestamp: timestamp });
+        if (this.clicks.length >= clickCount) {
+            this.clicks = [];
+            return true;
+        }
+    } else {
+        this.clicks = [{ x: x, y: y, timestamp: timestamp }];
+    }
+    return false;
+};
+
+exports.RageClickTracker = RageClickTracker;
+exports.DEFAULT_RAGE_CLICK_THRESHOLD_PX = DEFAULT_RAGE_CLICK_THRESHOLD_PX;
+exports.DEFAULT_RAGE_CLICK_TIMEOUT_MS = DEFAULT_RAGE_CLICK_TIMEOUT_MS;
+exports.DEFAULT_RAGE_CLICK_CLICK_COUNT = DEFAULT_RAGE_CLICK_CLICK_COUNT;
+
+},{}],11:[function(require,module,exports){
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
 
@@ -19946,7 +20038,7 @@ exports.EV_POPSTATE = EV_POPSTATE;
 exports.EV_SCROLLEND = EV_SCROLLEND;
 exports.EV_SUBMIT = EV_SUBMIT;
 
-},{"../utils":32,"../window":33}],11:[function(require,module,exports){
+},{"../utils":33,"../window":34}],12:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -19954,13 +20046,13 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.67.0'
+    LIB_VERSION: '2.68.0-rc1'
 };
 
 exports['default'] = Config;
 module.exports = exports['default'];
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -20123,7 +20215,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":32}],13:[function(require,module,exports){
+},{"./utils":33}],14:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -20353,7 +20445,7 @@ FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.
 
 exports.FeatureFlagManager = FeatureFlagManager;
 
-},{"../utils":32,"../window":33}],14:[function(require,module,exports){
+},{"../utils":33,"../window":34}],15:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -20668,7 +20760,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":32,"./window":33}],15:[function(require,module,exports){
+},{"./utils":33,"./window":34}],16:[function(require,module,exports){
 // For loading separate bundles asynchronously via script tag
 // so that we don't load them until they are needed at runtime.
 'use strict';
@@ -20703,7 +20795,7 @@ function loadThrowError(src, _onload) {
     throw new Error('This build of Mixpanel only includes core SDK functionality, could not load ' + src);
 }
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -20722,7 +20814,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)(_bundleLoaders.loadNoop);
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"../mixpanel-core":17,"../recorder":22,"./bundle-loaders":15}],17:[function(require,module,exports){
+},{"../mixpanel-core":18,"../recorder":23,"./bundle-loaders":16}],18:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -20888,7 +20980,7 @@ var DEFAULT_CONFIG = {
     'batch_autostart': true,
     'hooks': {},
     'record_block_class': new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
-    'record_block_selector': 'img, video',
+    'record_block_selector': 'img, video, audio',
     'record_canvas': false,
     'record_collect_fonts': false,
     'record_heatmap_data': false,
@@ -23128,7 +23220,7 @@ function init_as_module(bundle_loader) {
     return mixpanel_master;
 }
 
-},{"./autocapture":9,"./config":11,"./dom-trackers":12,"./flags":13,"./gdpr-utils":14,"./mixpanel-group":18,"./mixpanel-people":19,"./mixpanel-persistence":20,"./recorder/utils":26,"./request-batcher":27,"./storage/indexed-db":30,"./utils":32,"./window":33}],18:[function(require,module,exports){
+},{"./autocapture":9,"./config":12,"./dom-trackers":13,"./flags":14,"./gdpr-utils":15,"./mixpanel-group":19,"./mixpanel-people":20,"./mixpanel-persistence":21,"./recorder/utils":27,"./request-batcher":28,"./storage/indexed-db":31,"./utils":33,"./window":34}],19:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -23312,7 +23404,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":8,"./gdpr-utils":14,"./utils":32}],19:[function(require,module,exports){
+},{"./api-actions":8,"./gdpr-utils":15,"./utils":33}],20:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -23782,7 +23874,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":8,"./gdpr-utils":14,"./utils":32}],20:[function(require,module,exports){
+},{"./api-actions":8,"./gdpr-utils":15,"./utils":33}],21:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -24216,7 +24308,7 @@ exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":8,"./utils":32}],21:[function(require,module,exports){
+},{"./api-actions":8,"./utils":33}],22:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24592,7 +24684,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 exports.Promise = PromisePolyfill;
 exports.NpoPromise = NpoPromise;
 
-},{"./window":33}],22:[function(require,module,exports){
+},{"./window":34}],23:[function(require,module,exports){
 'use strict';
 
 var _window = require('../window');
@@ -24601,7 +24693,7 @@ var _recorder = require('./recorder');
 
 _window.window['__mp_recorder'] = _recorder.MixpanelRecorder;
 
-},{"../window":33,"./recorder":23}],23:[function(require,module,exports){
+},{"../window":34,"./recorder":24}],24:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24756,7 +24848,7 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
 
 exports.MixpanelRecorder = MixpanelRecorder;
 
-},{"../promise-polyfill":21,"../utils":32,"./recording-registry":24,"./session-recording":25,"rrweb":7}],24:[function(require,module,exports){
+},{"../promise-polyfill":22,"../utils":33,"./recording-registry":25,"./session-recording":26,"rrweb":7}],25:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24851,7 +24943,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
 
 exports.RecordingRegistry = RecordingRegistry;
 
-},{"../promise-polyfill":21,"../storage/indexed-db":30,"./session-recording":25,"./utils":26}],25:[function(require,module,exports){
+},{"../promise-polyfill":22,"../storage/indexed-db":31,"./session-recording":26,"./utils":27}],26:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25338,7 +25430,7 @@ SessionRecording.prototype.reportError = function (msg, err) {
 
 exports.SessionRecording = SessionRecording;
 
-},{"../config":11,"../gdpr-utils":14,"../request-batcher":27,"../storage/indexed-db":30,"../utils":32,"../window":33,"./utils":26,"rrweb":7}],26:[function(require,module,exports){
+},{"../config":12,"../gdpr-utils":15,"../request-batcher":28,"../storage/indexed-db":31,"../utils":33,"../window":34,"./utils":27,"rrweb":7}],27:[function(require,module,exports){
 /**
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  * @returns {boolean}
@@ -25358,7 +25450,7 @@ var RECORD_ENQUEUE_THROTTLE_MS = 250;
 exports.isRecordingExpired = isRecordingExpired;
 exports.RECORD_ENQUEUE_THROTTLE_MS = RECORD_ENQUEUE_THROTTLE_MS;
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25693,7 +25785,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./config":11,"./promise-polyfill":21,"./request-queue":28,"./utils":32}],28:[function(require,module,exports){
+},{"./config":12,"./promise-polyfill":22,"./request-queue":29,"./utils":33}],29:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26041,7 +26133,7 @@ RequestQueue.prototype.clear = function () {
 
 exports.RequestQueue = RequestQueue;
 
-},{"./promise-polyfill":21,"./shared-lock":29,"./storage/local-storage":31,"./utils":32,"./window":33}],29:[function(require,module,exports){
+},{"./promise-polyfill":22,"./shared-lock":30,"./storage/local-storage":32,"./utils":33,"./window":34}],30:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26207,7 +26299,7 @@ SharedLock.prototype.withLock = function (lockedCB, pid) {
 
 exports.SharedLock = SharedLock;
 
-},{"./promise-polyfill":21,"./utils":32,"./window":33}],30:[function(require,module,exports){
+},{"./promise-polyfill":22,"./utils":33,"./window":34}],31:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26342,7 +26434,7 @@ exports.IDBStorageWrapper = IDBStorageWrapper;
 exports.RECORDING_EVENTS_STORE_NAME = RECORDING_EVENTS_STORE_NAME;
 exports.RECORDING_REGISTRY_STORE_NAME = RECORDING_REGISTRY_STORE_NAME;
 
-},{"../promise-polyfill":21,"../window":33}],31:[function(require,module,exports){
+},{"../promise-polyfill":22,"../window":34}],32:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26404,7 +26496,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
 
 exports.LocalStorageWrapper = LocalStorageWrapper;
 
-},{"../promise-polyfill":21,"../utils":32,"../window":33}],32:[function(require,module,exports){
+},{"../promise-polyfill":22,"../utils":33,"../window":34}],33:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -28150,7 +28242,7 @@ exports.safewrapClass = safewrapClass;
 exports.slice = slice;
 exports.userAgent = userAgent;
 
-},{"./config":11,"./promise-polyfill":21,"./window":33}],33:[function(require,module,exports){
+},{"./config":12,"./promise-polyfill":22,"./window":34}],34:[function(require,module,exports){
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 'use strict';
 
