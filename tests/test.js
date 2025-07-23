@@ -4453,7 +4453,8 @@
                     autocapture: {
                         pageview: false,
                         click: true,
-                        rage_click: true
+                        rage_click: true,
+                        capture_text_content: true
                     },
                     batch_requests: false
                 }, 'acrageclick');
