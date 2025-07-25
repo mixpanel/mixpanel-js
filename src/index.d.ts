@@ -125,6 +125,8 @@ export interface Config {
     track?: string;
     engage?: string;
     groups?: string;
+    record?: string;
+    flags?: string;
   };
   api_method: string;
   api_transport: string;
