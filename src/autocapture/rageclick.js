@@ -8,10 +8,9 @@ function RageClickTracker() {
 
 RageClickTracker.prototype.isRageClick = function(x, y, options) {
     options = options || {};
-    var thresholdPx = options.threshold_px || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
-    var timeoutMs = options.timeout_ms || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
-    var clickCount = options.click_count || DEFAULT_RAGE_CLICK_CLICK_COUNT;
-
+    var thresholdPx = options['threshold_px'] || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
+    var timeoutMs = options['timeout_ms'] || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
+    var clickCount = options['click_count'] || DEFAULT_RAGE_CLICK_CLICK_COUNT;
     var timestamp = Date.now();
 
     var lastClick = this.clicks[this.clicks.length - 1];

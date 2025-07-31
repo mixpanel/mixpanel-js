@@ -4575,6 +4575,93 @@
                 // Should have no click/rage click events since autocapture is disabled
                 same(this.requests.length, 0, "should have no events when autocapture is disabled");
             });
+
+            test("rage click uses the custom click_count config", 4, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        rage_click: {
+                            click_count: 4
+                        }
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+                
+                simulateMouseClick(anchor.e, {x: 100, y: 100});
+                this.clock.tick(100);
+                simulateMouseClick(anchor.e, {x: 105, y: 105});
+                this.clock.tick(100);
+                simulateMouseClick(anchor.e, {x: 110, y: 110});
+
+                same(this.requests.length, 3, "should have 3 click events only with custom click_count=4, no rage clicks");
+                
+                var hasRageClick = false;
+                for (var i = 0; i < this.requests.length; i++) {
+                    var event = getRequestData(this.requests[i]);
+                    if (event.event === '$mp_rage_click') {
+                        hasRageClick = true;
+                        break;
+                    }
+                }
+                
+                notOk(hasRageClick, "should not detect rage click with only 3 clicks when click_count=4");
+
+                this.clock.tick(100);
+                simulateMouseClick(anchor.e, {x: 110, y: 110});
+
+                same(this.requests.length, 5, "should have 4 click events and 1 rage click event");
+                hasRageClick = false;
+                for (var i = 0; i < this.requests.length; i++) {
+                    var event = getRequestData(this.requests[i]);
+                    if (event.event === '$mp_rage_click') {
+                        hasRageClick = true;
+                        break;
+                    }
+                }
+                ok(hasRageClick, "should detect rage click with when click_count=4");
+            });
+
+            test("rage click allows overriding all config properties", 2, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        rage_click: {
+                            click_count: 4,
+                            timeout_ms: 2000,
+                            threshold_px: 50
+                        }
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; }
+                
+                simulateMouseClick(anchor.e, {x: 100, y: 100});
+                this.clock.tick(1000);
+                simulateMouseClick(anchor.e, {x: 105, y: 105});
+                this.clock.tick(100);
+                simulateMouseClick(anchor.e, {x: 110, y: 110});                
+                this.clock.tick(100);
+                simulateMouseClick(anchor.e, {x: 145, y: 145});
+                
+                same(this.requests.length, 5, "should have 4 click events + 1 rage click event with custom config");
+                
+                var rageClickEvent = null;
+                for (var i = 0; i < this.requests.length; i++) {
+                    var event = getRequestData(this.requests[i]);
+                    if (event.event === '$mp_rage_click') {
+                        rageClickEvent = event;
+                        break;
+                    }
+                }
+                ok(rageClickEvent !== null, "should detect rage click with 4 clicks when click_count=4");
+            });
         }
 
         if (USE_XHR && window.localStorage) {
