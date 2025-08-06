@@ -79,9 +79,15 @@ var MIXPANEL_LIB_URL = '//cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
                 return mock_group;
             };
 
-            // special case for heartbeat(): simple stub
+            // special case for heartbeat(): simple stub with start/stop methods
             target['heartbeat'] = function() {
                 target.push(['heartbeat'].concat(Array.prototype.slice.call(arguments, 0)));
+            };
+            target['heartbeat']['start'] = function() {
+                target.push(['heartbeat.start'].concat(Array.prototype.slice.call(arguments, 0)));
+            };
+            target['heartbeat']['stop'] = function() {
+                target.push(['heartbeat.stop'].concat(Array.prototype.slice.call(arguments, 0)));
             };
 
             // register mixpanel instance

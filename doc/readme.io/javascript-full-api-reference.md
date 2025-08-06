@@ -319,6 +319,103 @@ Events are automatically flushed when:
 
 
 ___
+## mixpanel.heartbeat.start
+Start a managed heartbeat that automatically sends heartbeat calls at regular intervals. This is ideal for tracking continuous activities like video watching or audio playback where you want automated tracking without manual heartbeat() calls.
+
+**Important**: You cannot mix `mixpanel.heartbeat()` calls with `mixpanel.heartbeat.start()` for the same event and content ID. Use one approach or the other.
+
+### Basic Usage:
+```javascript
+// Start managed heartbeat with default 5-second interval
+mixpanel.heartbeat.start('video_watch', 'video_123');
+
+// Stop the managed heartbeat when user stops watching
+mixpanel.heartbeat.stop('video_watch', 'video_123');
+```
+
+### Custom Interval:
+```javascript
+// Start with custom 10-second interval
+mixpanel.heartbeat.start('podcast_listen', 'episode_456', 
+  { platform: 'mobile' }, 
+  { interval: 10000 }
+);
+```
+
+### Property Aggregation:
+Properties passed to `heartbeat.start()` are sent with each interval heartbeat and aggregated the same way as manual heartbeat calls:
+
+```javascript
+mixpanel.heartbeat.start('game_session', 'level_1', {
+  score: 100,    // Numbers are added together each interval
+  level: 'easy', // Strings use latest value
+  powerups: ['speed'] // Arrays have elements appended
+});
+
+// After multiple intervals, properties are aggregated:
+// {score: 300, level: 'easy', powerups: ['speed', 'speed', 'speed']}
+```
+
+### Auto-Management:
+- Automatically calls internal heartbeat at specified intervals (default 5 seconds)
+- Each interval call aggregates the provided properties
+- Includes standard automatic properties: `$duration`, `$heartbeats`, `$contentId`
+- Must be stopped with `mixpanel.heartbeat.stop()` to flush final event
+
+**Session Scope**: Like manual heartbeat calls, managed heartbeats are session-scoped and do not persist across page refreshes.
+
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the event to track |
+| **content_id** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Unique identifier for the content being tracked |
+| **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Properties to include with each heartbeat interval |
+| **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Configuration options |
+| **options.interval** | <span class="mp-arg-type">Number</span></br></span><span class="mp-arg-optional">optional</span> | Interval in milliseconds between heartbeats (default 5000) |
+
+
+___
+## mixpanel.heartbeat.stop
+Stop a managed heartbeat started with `mixpanel.heartbeat.start()` and immediately flush the aggregated event data.
+
+### Basic Usage:
+```javascript
+// Start managed tracking
+mixpanel.heartbeat.start('video_watch', 'video_123', { quality: 'HD' });
+
+// Stop and flush when user stops watching (e.g., pause, close)
+mixpanel.heartbeat.stop('video_watch', 'video_123');
+```
+
+### Immediate Flush:
+When `heartbeat.stop()` is called:
+1. The interval timer is immediately cleared (no more automatic heartbeats)
+2. Any accumulated heartbeat data is immediately flushed as a track event
+3. The event includes all aggregated properties and automatic properties
+
+### Multiple Concurrent Heartbeats:
+You can run multiple managed heartbeats simultaneously:
+
+```javascript
+// Start multiple different content tracking
+mixpanel.heartbeat.start('video_watch', 'video_123');
+mixpanel.heartbeat.start('podcast_listen', 'episode_456');
+
+// Stop them independently
+mixpanel.heartbeat.stop('video_watch', 'video_123'); // Flushes video data
+mixpanel.heartbeat.stop('podcast_listen', 'episode_456'); // Flushes podcast data
+```
+
+**Note**: Calling `stop()` on a non-existent heartbeat is safe and will not produce errors.
+
+
+| Argument | Type | Description |
+| ------------- | ------------- | ----- |
+| **event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the event to stop tracking |
+| **content_id** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | Unique identifier for the content to stop tracking |
+
+
+___
 ## mixpanel.identify
 Identify a user with a unique ID to track user activity across  devices, tie a user to their events, and create a user profile.  If you never call this method, unique visitors are tracked using  a UUID generated the first time they visit the site.
 

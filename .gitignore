@@ -9,3 +9,4 @@ tunnel.log
 *.ps1
 *.bundle.js
 .DS_Store
+examples/heartbeat-demo
