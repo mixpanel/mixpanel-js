@@ -1118,6 +1118,7 @@ MixpanelLib.prototype._init_heartbeat = function() {
     this._heartbeat_timers = new Map();
     this._heartbeat_storage = {}; // In-memory storage for heartbeat events
     this._heartbeat_unload_setup = false;
+    this._heartbeat_counter = 0; // Track total heartbeat calls for logging
     // State tracking for start/stop vs manual heartbeat APIs
     this._heartbeat_intervals = new Map(); // Track active start/stop intervals
     this._heartbeat_manual_events = new Set(); // Track events managed by manual heartbeat() calls
@@ -1241,7 +1242,7 @@ MixpanelLib.prototype._heartbeat_log = function() {
     var globalDebugEnabled = this.get_config('debug');
     if (globalDebugEnabled) {
         var args = Array.prototype.slice.call(arguments);
-        args[0] = '[Mixpanel Heartbeat] ' + args[0];
+        args[0] = '[mixpanel-heartbeat] ' + args[0];
         try {
             if (typeof window !== 'undefined' && window.console && window.console.log) {
                 window.console.log.apply(window.console, args);
@@ -1309,7 +1310,7 @@ MixpanelLib.prototype._heartbeat_clear_timer = function(eventKey) {
     if (this._heartbeat_timers.has(eventKey)) {
         clearTimeout(this._heartbeat_timers.get(eventKey));
         this._heartbeat_timers.delete(eventKey);
-        this._heartbeat_log('Cleared flush timer for', eventKey);
+        this._heartbeat_log('Timer stopped for', eventKey);
     }
 };
 
@@ -1324,7 +1325,7 @@ MixpanelLib.prototype._heartbeat_setup_timer = function(eventKey, timeout) {
 
         var timerId = setTimeout(function() {
             try {
-                self._heartbeat_log('Auto-flushing due to timeout for', eventKey);
+                self._heartbeat_log('Timer expired, flushing', eventKey);
                 self._heartbeat_flush_event(eventKey, 'timeout', false);
             } catch (e) {
                 self.report_error('Error in heartbeat timeout handler: ' + e.message);
@@ -1400,7 +1401,8 @@ MixpanelLib.prototype._heartbeat_flush_all = function(reason, useSendBeacon) {
  */
 MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props, options) {
     var eventKey = eventName + '|' + contentId;
-    this._heartbeat_log('Heartbeat called for', eventKey, 'props:', props);
+    this._heartbeat_counter++;
+    this._heartbeat_log('Beat #' + this._heartbeat_counter, eventName, contentId);
 
     // Get current storage
     var storage = this._heartbeat_get_storage();
@@ -1438,7 +1440,6 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
             hitCount: (existingData.hitCount || 1) + 1
         };
 
-        this._heartbeat_log('Aggregated props for', eventKey, 'new props:', aggregatedProps);
     } else {
         // Create new entry
         var newProps = _.extend({}, props);
@@ -1454,8 +1455,8 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
             firstCall: currentTime,
             hitCount: 1
         };
+        this._heartbeat_log('New heartbeat entry for', eventKey);
 
-        this._heartbeat_log('Created new heartbeat entry for', eventKey);
     }
 
     // Save to persistence
