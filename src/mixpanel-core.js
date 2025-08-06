@@ -1179,8 +1179,8 @@ MixpanelLib.prototype._init_heartbeat = function() {
         return self._heartbeat_start_impl(eventName, contentId, props, options);
     };
 
-    this.heartbeat.stop = function(eventName, contentId) {
-        return self._heartbeat_stop_impl(eventName, contentId);
+    this.heartbeat.stop = function(eventName, contentId, options) {
+        return self._heartbeat_stop_impl(eventName, contentId, options);
     };
 
 };
@@ -1263,8 +1263,6 @@ MixpanelLib.prototype._heartbeat_log = function() {
  */
 MixpanelLib.prototype._heartbeat_aggregate_props = function(existingProps, newProps) {
     var result = _.extend({}, existingProps);
-    // Remove legacy contentId property in favor of $contentId
-    delete result.contentId;
 
     _.each(newProps, function(newValue, key) {
         if (!(key in result)) {
@@ -1282,8 +1280,14 @@ MixpanelLib.prototype._heartbeat_aggregate_props = function(existingProps, newPr
                 result[key] = newValue;
             } else if (newType === 'object' && existingType === 'object') {
                 if (_.isArray(newValue) && _.isArray(existingValue)) {
-                    // Concatenate arrays
-                    result[key] = existingValue.concat(newValue);
+                    // Concatenate arrays with 50-item circular buffer limit
+                    var combined = existingValue.concat(newValue);
+                    if (combined.length > 50) {
+                        // Keep only the last 50 items (circular buffer behavior)
+                        result[key] = combined.slice(-50);
+                    } else {
+                        result[key] = combined;
+                    }
                 } else if (!_.isArray(newValue) && !_.isArray(existingValue)) {
                     // Merge objects (shallow merge with overwrites)
                     result[key] = _.extend({}, existingValue, newValue);
@@ -1310,7 +1314,6 @@ MixpanelLib.prototype._heartbeat_clear_timer = function(eventKey) {
     if (this._heartbeat_timers.has(eventKey)) {
         clearTimeout(this._heartbeat_timers.get(eventKey));
         this._heartbeat_timers.delete(eventKey);
-        this._heartbeat_log('Timer stopped for', eventKey);
     }
 };
 
@@ -1321,7 +1324,12 @@ MixpanelLib.prototype._heartbeat_clear_timer = function(eventKey) {
 MixpanelLib.prototype._heartbeat_setup_timer = function(eventKey, timeout) {
     var self = this;
     try {
+        var hadExistingTimer = this._heartbeat_timers.has(eventKey);
         self._heartbeat_clear_timer(eventKey);
+
+        if (hadExistingTimer) {
+            this._heartbeat_log('Timer restarted for', eventKey);
+        }
 
         var timerId = setTimeout(function() {
             try {
@@ -1356,9 +1364,8 @@ MixpanelLib.prototype._heartbeat_flush_event = function(eventKey, reason, useSen
     // Clear any pending timers
     this._heartbeat_clear_timer(eventKey);
 
-    // Prepare tracking properties (exclude old contentId property)
+    // Prepare tracking properties for sending
     var trackingProps = _.extend({}, props);
-    delete trackingProps.contentId;
 
     // Prepare transport options
     var transportOptions = useSendBeacon ? { transport: 'sendBeacon' } : {};
@@ -1402,7 +1409,7 @@ MixpanelLib.prototype._heartbeat_flush_all = function(reason, useSendBeacon) {
 MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props, options) {
     var eventKey = eventName + '|' + contentId;
     this._heartbeat_counter++;
-    this._heartbeat_log('Beat #' + this._heartbeat_counter, eventName, contentId);
+    this._heartbeat_log('#' + this._heartbeat_counter, eventName, contentId);
 
     // Get current storage
     var storage = this._heartbeat_get_storage();
@@ -1425,15 +1432,14 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
         var existingData = storage[eventKey];
         var aggregatedProps = this._heartbeat_aggregate_props(existingData.props, props);
 
-        // Update automatic tracking properties
-        var durationSeconds = Math.round((currentTime - existingData.firstCall) / 1000);
-        aggregatedProps['$duration'] = durationSeconds;
+        // Update automatic tracking properties (duration in seconds with 3 decimal precision)
+        var durationSeconds = Math.round((currentTime - existingData.firstCall)) / 1000;
+        aggregatedProps['$duration'] = Math.round(durationSeconds * 1000) / 1000;
         aggregatedProps['$heartbeats'] = (existingData.hitCount || 1) + 1;
         aggregatedProps['$contentId'] = contentId;
 
         storage[eventKey] = {
             eventName: eventName,
-            contentId: contentId,
             props: aggregatedProps,
             lastUpdate: currentTime,
             firstCall: existingData.firstCall,
@@ -1449,13 +1455,11 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
 
         storage[eventKey] = {
             eventName: eventName,
-            contentId: contentId,
             props: newProps,
             lastUpdate: currentTime,
             firstCall: currentTime,
             hitCount: 1
         };
-        this._heartbeat_log('New heartbeat entry for', eventKey);
 
     }
 
@@ -1538,7 +1542,16 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
     // Check if already started - warn and restart with new params
     if (this._heartbeat_managed_events.has(eventKey)) {
         this.report_error('heartbeat.start: Event already started, restarting with new parameters');
-        this._heartbeat_stop_impl(eventName, contentId);
+        this._heartbeat_stop_impl(eventName, contentId, { forceFlush: true }); // Force flush when restarting
+    }
+
+    // Check if we have an existing paused session (data exists but no active interval)
+    var storage = this._heartbeat_get_storage();
+    var isResuming = eventKey in storage && !this._heartbeat_managed_events.has(eventKey);
+    if (isResuming) {
+        this._heartbeat_log('Resuming paused session for', eventKey);
+        // Clear any existing auto-flush timer since we're resuming active tracking
+        this._heartbeat_clear_timer(eventKey);
     }
 
     // Track this as a managed heartbeat event
@@ -1576,7 +1589,7 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
  * Stop implementation for managed heartbeat intervals
  * @private
  */
-MixpanelLib.prototype._heartbeat_stop_impl = addOptOutCheckMixpanelLib(function(eventName, contentId) {
+MixpanelLib.prototype._heartbeat_stop_impl = addOptOutCheckMixpanelLib(function(eventName, contentId, options) {
     // Validate required parameters
     if (!eventName || !contentId) {
         this.report_error('heartbeat.stop: eventName and contentId are required');
@@ -1586,6 +1599,7 @@ MixpanelLib.prototype._heartbeat_stop_impl = addOptOutCheckMixpanelLib(function(
     // Convert to strings
     eventName = eventName.toString();
     contentId = contentId.toString();
+    options = options || {};
 
     var eventKey = eventName + '|' + contentId;
 
@@ -1600,8 +1614,17 @@ MixpanelLib.prototype._heartbeat_stop_impl = addOptOutCheckMixpanelLib(function(
     // Remove from managed events tracking
     this._heartbeat_managed_events.delete(eventKey);
 
-    // Force flush the event immediately (as per requirements)
-    this._heartbeat_flush_event(eventKey, 'stop', false);
+    // NEW BEHAVIOR: Only flush immediately if forceFlush is true
+    if (options.forceFlush) {
+        this._heartbeat_flush_event(eventKey, 'stopForceFlush', false);
+    } else {
+        // Just pause the session - data remains for potential restart or auto-flush
+        this._heartbeat_log('Session paused for', eventKey, '- data preserved for restart or auto-flush');
+        // Set up 30-second inactivity timer if not already present
+        if (!this._heartbeat_timers.has(eventKey)) {
+            this._heartbeat_setup_timer(eventKey, 30000);
+        }
+    }
 
     return;
 });

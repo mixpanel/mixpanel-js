@@ -32,6 +32,12 @@ describe('Heartbeat', function() {
 			});
 			mixpanel._heartbeat_intervals.clear();
 		}
+		if (mixpanel._heartbeat_timers) {
+			mixpanel._heartbeat_timers.forEach((timerId) => {
+				clearTimeout(timerId);
+			});
+			mixpanel._heartbeat_timers.clear();
+		}
 		if (mixpanel._heartbeat_storage) {
 			mixpanel._heartbeat_storage = {};
 		}
@@ -210,6 +216,45 @@ describe('Heartbeat', function() {
 				$duration: 2 // 2 seconds
 			});
 		});
+
+		it('should handle concurrent heartbeats with same eventName but different contentId', function() {
+			// Start heartbeats for two different content items with same event name
+			mixpanel.heartbeat('video_watch', 'video_123', { score: 100, platform: 'html5' });
+			mixpanel.heartbeat('video_watch', 'video_456', { score: 200, platform: 'youtube' });
+			
+			clock.tick(1000); // Advance 1 second
+			
+			// Add more data to each and force flush on the second call
+			mixpanel.heartbeat('video_watch', 'video_123', { score: 50, quality: 'HD' }, { forceFlush: true });
+			mixpanel.heartbeat('video_watch', 'video_456', { score: 75, quality: '4K' }, { forceFlush: true });
+
+			// Should have called track twice (once for each contentId)
+			expect(mixpanel.track).to.have.been.calledTwice;
+			
+			// Check first event (video_123)
+			const firstCall = mixpanel.track.getCall(0);
+			expect(firstCall.args[0]).to.equal('video_watch');
+			expect(firstCall.args[1]).to.include({
+				$contentId: 'video_123',
+				score: 150, // 100 + 50
+				platform: 'html5',
+				quality: 'HD', // Latest value
+				$heartbeats: 2,
+				$duration: 1
+			});
+
+			// Check second event (video_456) 
+			const secondCall = mixpanel.track.getCall(1);
+			expect(secondCall.args[0]).to.equal('video_watch');
+			expect(secondCall.args[1]).to.include({
+				$contentId: 'video_456',
+				score: 275, // 200 + 75
+				platform: 'youtube',
+				quality: '4K', // Latest value
+				$heartbeats: 2,
+				$duration: 1
+			});
+		});
 	});
 
 	describe('Storage management', function() {
@@ -291,7 +336,7 @@ describe('Heartbeat', function() {
 				clock.tick(5000);
 				
 				// Stop to flush and verify
-				mixpanel.heartbeat.stop(123, 456);
+				mixpanel.heartbeat.stop(123, 456, { forceFlush: true });
 				
 				expect(mixpanel.track).to.have.been.called;
 				const trackCall = mixpanel.track.getCall(0);
@@ -309,7 +354,7 @@ describe('Heartbeat', function() {
 				clock.tick(5000);
 
 				// Force stop to flush and verify heartbeat was called
-				mixpanel.heartbeat.stop('video_watch', 'video_123');
+				mixpanel.heartbeat.stop('video_watch', 'video_123', { forceFlush: true });
 				
 				expect(mixpanel.track).to.have.been.called;
 				const trackCall = mixpanel.track.getCall(0);
@@ -325,15 +370,15 @@ describe('Heartbeat', function() {
 
 				// Should not track after 2 seconds (no heartbeat interval fired yet)
 				clock.tick(2000);
-				mixpanel.heartbeat.stop('video_watch', 'video_123');
+				mixpanel.heartbeat.stop('video_watch', 'video_123', { forceFlush: true });
 				mixpanel.track.resetHistory();
 
 				// Start again and wait for 3 seconds
 				mixpanel.heartbeat.start('video_watch', 'video_456', { quality: 'HD' }, { interval: 3000 });
 				clock.tick(3000);
 				
-				// Should have heartbeat data after 3 seconds
-				mixpanel.heartbeat.stop('video_watch', 'video_456');
+				// Should have heartbeat data after 3 seconds - force flush to verify
+				mixpanel.heartbeat.stop('video_watch', 'video_456', { forceFlush: true });
 				expect(mixpanel.track).to.have.been.called;
 			});
 
@@ -413,7 +458,7 @@ describe('Heartbeat', function() {
 				expect(mixpanel.report_error).to.have.been.calledWith('heartbeat.stop: eventName and contentId are required');
 			});
 
-			it('should immediately flush event when stopped', function() {
+			it('should NOT immediately flush when stopped (unless forceFlush)', function() {
 				mixpanel.heartbeat.start('video_watch', 'video_123', { quality: 'HD' });
 				
 				// Advance time to trigger some heartbeats
@@ -422,7 +467,11 @@ describe('Heartbeat', function() {
 				mixpanel.track.resetHistory();
 				mixpanel.heartbeat.stop('video_watch', 'video_123');
 
-				// Should have flushed immediately
+				// Should NOT have flushed immediately (new behavior)
+				expect(mixpanel.track).to.not.have.been.called;
+				
+				// But should flush after 30-second inactivity timer
+				clock.tick(30000);
 				expect(mixpanel.track).to.have.been.calledOnce;
 				const trackCall = mixpanel.track.getCall(0);
 				expect(trackCall.args[0]).to.equal('video_watch');
@@ -430,6 +479,52 @@ describe('Heartbeat', function() {
 					quality: 'HD',
 					$contentId: 'video_123',
 					$heartbeats: 2
+				});
+			});
+
+			it('should flush immediately when stopped with forceFlush: true', function() {
+				mixpanel.heartbeat.start('video_watch', 'video_123', { quality: 'HD' });
+				
+				// Advance time to trigger some heartbeats
+				clock.tick(10000); // 2 heartbeats at 5-second intervals
+				
+				mixpanel.track.resetHistory();
+				mixpanel.heartbeat.stop('video_watch', 'video_123', { forceFlush: true });
+
+				// Should have flushed immediately with forceFlush
+				expect(mixpanel.track).to.have.been.calledOnce;
+				const trackCall = mixpanel.track.getCall(0);
+				expect(trackCall.args[0]).to.equal('video_watch');
+				expect(trackCall.args[1]).to.include({
+					quality: 'HD',
+					$contentId: 'video_123',
+					$heartbeats: 2
+				});
+			});
+
+			it('should allow resuming a stopped session with start()', function() {
+				// Start initial session
+				mixpanel.heartbeat.start('video_watch', 'video_123', { quality: 'HD' });
+				clock.tick(10000); // 2 heartbeats
+				
+				// Stop without force flush (pauses session)
+				mixpanel.heartbeat.stop('video_watch', 'video_123');
+				expect(mixpanel.track).to.not.have.been.called;
+				
+				// Resume the session
+				mixpanel.track.resetHistory();
+				mixpanel.heartbeat.start('video_watch', 'video_123', { quality: '4K' }); // Updated props
+				clock.tick(5000); // 1 more heartbeat
+				
+				// Force flush to check aggregated data
+				mixpanel.heartbeat.stop('video_watch', 'video_123', { forceFlush: true });
+				
+				expect(mixpanel.track).to.have.been.calledOnce;
+				const trackCall = mixpanel.track.getCall(0);
+				expect(trackCall.args[1]).to.include({
+					quality: '4K', // Latest value
+					$contentId: 'video_123',
+					$heartbeats: 3 // 2 from first session + 1 from resumed session
 				});
 			});
 
@@ -472,10 +567,10 @@ describe('Heartbeat', function() {
 				// Advance time to trigger heartbeats
 				clock.tick(5000);
 
-				// Stop all to flush and count tracks
-				mixpanel.heartbeat.stop('video_watch', 'video_1');
-				mixpanel.heartbeat.stop('podcast_listen', 'episode_1');
-				mixpanel.heartbeat.stop('video_watch', 'video_2');
+				// Stop all with force flush to ensure immediate tracking
+				mixpanel.heartbeat.stop('video_watch', 'video_1', { forceFlush: true });
+				mixpanel.heartbeat.stop('podcast_listen', 'episode_1', { forceFlush: true });
+				mixpanel.heartbeat.stop('video_watch', 'video_2', { forceFlush: true });
 
 				// Should have tracked all three
 				expect(mixpanel.track).to.have.callCount(3);
@@ -487,9 +582,9 @@ describe('Heartbeat', function() {
 				// Advance time and let some heartbeats fire
 				clock.tick(10000); // 2 heartbeats
 
-				// Stop and check aggregation
+				// Stop with force flush and check aggregation
 				mixpanel.track.resetHistory();
-				mixpanel.heartbeat.stop('game_session', 'level_1');
+				mixpanel.heartbeat.stop('game_session', 'level_1', { forceFlush: true });
 
 				expect(mixpanel.track).to.have.been.calledOnce;
 				const trackCall = mixpanel.track.getCall(0);
