@@ -4462,15 +4462,17 @@
                 var anchor = ele_with_class("Click me button");
                 anchor.e.onclick = function() { return false; }
                 
-                // Simulate 3 rapid clicks within threshold (5px apart each)
+                // Simulate 4 rapid clicks within threshold (5px apart each) - now needs 4 clicks
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
                 simulateMouseClick(anchor.e, {x: 105, y: 105});
                 this.clock.tick(100);
                 simulateMouseClick(anchor.e, {x: 110, y: 110});
+                this.clock.tick(100);
+                simulateMouseClick(anchor.e, {x: 115, y: 115});
 
-                // Should have 4 events: 3 regular clicks + 1 rage click
-                same(this.requests.length, 4, "should have 3 click events + 1 rage click event");
+                // Should have 5 events: 4 regular clicks + 1 rage click
+                same(this.requests.length, 5, "should have 4 click events + 1 rage click event");
                 
                 var rageClickEvent = null;
                 for (var i = 0; i < this.requests.length; i++) {
@@ -4485,7 +4487,7 @@
                 same(rageClickEvent.properties.$el_text, "Click me button", "rage click event should include correct element text");
             });
 
-            test("autocapture does not track rage clicks when disabled", 5, function() {
+            test("autocapture does not track rage clicks when disabled", 6, function() {
                 mixpanel.init("autocapture_test_token", {
                     autocapture: {
                         pageview: false,
@@ -4498,13 +4500,14 @@
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
 
-                // Simulate 3 rapid clicks with close coordinates (would trigger rage click if enabled)
+                // Simulate 4 rapid clicks with close coordinates (would trigger rage click if enabled)
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 simulateMouseClick(anchor.e, {x: 105, y: 105});
                 simulateMouseClick(anchor.e, {x: 110, y: 110});
+                simulateMouseClick(anchor.e, {x: 115, y: 115});
 
-                // Should only have 3 regular click events, no rage click
-                same(this.requests.length, 3, "should have 3 click events only");
+                // Should only have 4 regular click events, no rage click
+                same(this.requests.length, 4, "should have 4 click events only");
                 
                 var hasRageClick = false;
                 for (var i = 0; i < this.requests.length; i++) {
@@ -4519,6 +4522,7 @@
                 same(getRequestData(this.requests[0]).event, "$mp_click", "all events should be regular clicks");
                 same(getRequestData(this.requests[1]).event, "$mp_click", "all events should be regular clicks");
                 same(getRequestData(this.requests[2]).event, "$mp_click", "all events should be regular clicks");
+                same(getRequestData(this.requests[3]).event, "$mp_click", "all events should be regular clicks");
             });
 
             test("autocapture rage click respects distance threshold", 2, function() {
@@ -4534,15 +4538,17 @@
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
                 
-                // Simulate 3 clicks far apart (beyond threshold)
+                // Simulate 4 clicks far apart (beyond threshold)
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
                 simulateMouseClick(anchor.e, {x: 150, y: 150});
                 this.clock.tick(100);
                 simulateMouseClick(anchor.e, {x: 200, y: 200});
+                this.clock.tick(100);
+                simulateMouseClick(anchor.e, {x: 250, y: 250});
 
-                // Should only have 3 regular click events, no rage click due to distance
-                same(this.requests.length, 3, "should have 3 click events only");
+                // Should only have 4 regular click events, no rage click due to distance
+                same(this.requests.length, 4, "should have 4 click events only");
                 
                 var hasRageClick = false;
                 for (var i = 0; i < this.requests.length; i++) {
@@ -4565,12 +4571,14 @@
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
                 
-                // Simulate 3 rapid clicks within threshold (5px apart each)
+                // Simulate 4 rapid clicks within threshold (5px apart each)
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
                 simulateMouseClick(anchor.e, {x: 105, y: 105});
                 this.clock.tick(100);
                 simulateMouseClick(anchor.e, {x: 110, y: 110});
+                this.clock.tick(100);
+                simulateMouseClick(anchor.e, {x: 115, y: 115});
 
                 // Should have no click/rage click events since autocapture is disabled
                 same(this.requests.length, 0, "should have no events when autocapture is disabled");

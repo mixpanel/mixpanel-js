@@ -39,12 +39,24 @@ describe(`RageClickTracker`, function() {
       expect(rageClickTrackerInstance.clicks).to.have.length(2);
     });
 
-    it(`should return true for third click within threshold and timeout`, function() {
+    it(`should return false for third click within threshold`, function() {
       rageClickTrackerInstance.isRageClick(100, 100);
       clock.tick(100);
       rageClickTrackerInstance.isRageClick(105, 105);
       clock.tick(100);
       const result = rageClickTrackerInstance.isRageClick(110, 110);
+      expect(result).to.be.false;
+      expect(rageClickTrackerInstance.clicks).to.have.length(3);
+    });
+
+    it(`should return true for fourth click within threshold and timeout`, function() {
+      rageClickTrackerInstance.isRageClick(100, 100);
+      clock.tick(100);
+      rageClickTrackerInstance.isRageClick(105, 105);
+      clock.tick(100);
+      rageClickTrackerInstance.isRageClick(110, 110);
+      clock.tick(100);
+      const result = rageClickTrackerInstance.isRageClick(115, 115);
       expect(result).to.be.true;
       expect(rageClickTrackerInstance.clicks).to.have.length(0); // should reset after rage click
     });
@@ -95,7 +107,6 @@ describe(`RageClickTracker`, function() {
     it(`should handle clicks exactly at timeout boundary`, function() {
       rageClickTrackerInstance.isRageClick(100, 100);
       clock.tick(DEFAULT_RAGE_CLICK_TIMEOUT_MS - 1);
-      // Click exactly at timeout boundary
       const result = rageClickTrackerInstance.isRageClick(105, 105);
       expect(result).to.be.false;
       expect(rageClickTrackerInstance.clicks).to.have.length(2);
@@ -148,11 +159,15 @@ describe(`RageClickTracker`, function() {
       // First rage click sequence
       var isRageClick = false;
       isRageClick = rageClickTrackerInstance.isRageClick(100, 100);
+      expect(isRageClick).to.be.false;
       clock.tick(100);
       isRageClick = rageClickTrackerInstance.isRageClick(105, 105);
       expect(isRageClick).to.be.false;
       clock.tick(100);
       isRageClick = rageClickTrackerInstance.isRageClick(110, 110);
+      expect(isRageClick).to.be.false;
+      clock.tick(100);
+      isRageClick = rageClickTrackerInstance.isRageClick(115, 115);
       expect(isRageClick).to.be.true;
 
       // Start new sequence
@@ -161,8 +176,12 @@ describe(`RageClickTracker`, function() {
       expect(isRageClick).to.be.false;
       clock.tick(100);
       isRageClick = rageClickTrackerInstance.isRageClick(205, 205);
+      expect(isRageClick).to.be.false;
       clock.tick(100);
       isRageClick = rageClickTrackerInstance.isRageClick(210, 210);
+      expect(isRageClick).to.be.false;
+      clock.tick(100);
+      isRageClick = rageClickTrackerInstance.isRageClick(215, 215);
       expect(isRageClick).to.be.true;
     });
 
@@ -172,7 +191,9 @@ describe(`RageClickTracker`, function() {
       clock.tick(100);
       rageClickTrackerInstance.isRageClick(-45, -47);
       clock.tick(100);
-      const result = rageClickTrackerInstance.isRageClick(-42, -44);
+      rageClickTrackerInstance.isRageClick(-42, -44);
+      clock.tick(100);
+      const result = rageClickTrackerInstance.isRageClick(-40, -41);
       expect(result).to.be.true;
       expect(rageClickTrackerInstance.clicks).to.have.length(0); // should reset after rage click
     });
@@ -183,7 +204,9 @@ describe(`RageClickTracker`, function() {
       clock.tick(100);
       rageClickTrackerInstance.isRageClick(3, 4); // Distance = 5px
       clock.tick(100);
-      const result = rageClickTrackerInstance.isRageClick(6, 8); // Distance from origin = 10px
+      rageClickTrackerInstance.isRageClick(6, 8); // Distance from origin = 10px
+      clock.tick(100);
+      const result = rageClickTrackerInstance.isRageClick(9, 12); // Distance from origin = 15px
       expect(result).to.be.true;
       expect(rageClickTrackerInstance.clicks).to.have.length(0); // should reset after rage click
     });
@@ -194,7 +217,9 @@ describe(`RageClickTracker`, function() {
       clock.tick(100);
       rageClickTrackerInstance.isRageClick(-5, -5); // Distance ≈ 7.07px
       clock.tick(100);
-      const result = rageClickTrackerInstance.isRageClick(0, 0); // Distance ≈ 7.07px from (-5,-5)
+      rageClickTrackerInstance.isRageClick(0, 0); // Distance ≈ 7.07px from (-5,-5)
+      clock.tick(100);
+      const result = rageClickTrackerInstance.isRageClick(5, 5); // Distance ≈ 7.07px from (0,0)
       expect(result).to.be.true;
       expect(rageClickTrackerInstance.clicks).to.have.length(0); // should reset after rage click
     });
@@ -208,7 +233,9 @@ describe(`RageClickTracker`, function() {
       clock.tick(100);
       rageClickTrackerInstance.isRageClick(135, 135, customOptions);
       clock.tick(100);
-      const result = rageClickTrackerInstance.isRageClick(140, 140, customOptions);
+      rageClickTrackerInstance.isRageClick(140, 140, customOptions);
+      clock.tick(100);
+      const result = rageClickTrackerInstance.isRageClick(145, 145, customOptions);
       expect(result).to.be.true;
     });
 
@@ -218,8 +245,10 @@ describe(`RageClickTracker`, function() {
       rageClickTrackerInstance.isRageClick(100, 100, customOptions);
       clock.tick(1500); // 1.5 seconds later, within 2 second threshold
       rageClickTrackerInstance.isRageClick(105, 105, customOptions);
-      clock.tick(500);
-      const result = rageClickTrackerInstance.isRageClick(110, 110, customOptions);
+      clock.tick(400);
+      rageClickTrackerInstance.isRageClick(110, 110, customOptions);
+      clock.tick(100);
+      const result = rageClickTrackerInstance.isRageClick(115, 115, customOptions);
       expect(result).to.be.true;
     });
 
@@ -245,7 +274,9 @@ describe(`RageClickTracker`, function() {
       clock.tick(100);
       rageClickTrackerInstance.isRageClick(105, 105);
       clock.tick(100);
-      const result = rageClickTrackerInstance.isRageClick(110, 110);
+      rageClickTrackerInstance.isRageClick(110, 110);
+      clock.tick(100);
+      const result = rageClickTrackerInstance.isRageClick(115, 115);
       expect(result).to.be.true;
     });
   });

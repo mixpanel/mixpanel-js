@@ -1,6 +1,6 @@
 /** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
 /** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
-/** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 3;
+/** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
 
 function RageClickTracker() {
     this.clicks = [];

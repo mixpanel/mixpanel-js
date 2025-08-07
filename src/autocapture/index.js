@@ -197,32 +197,6 @@ Autocapture.prototype._getRageClickConfig = function() {
     return {}; // fallback to defaults for any other truthy value
 };
 
-Autocapture.prototype.initRageClickTracking = function() {
-    window.removeEventListener(EV_CLICK, this.listenerRageClick);
-
-    var rageClickConfig = this._getRageClickConfig();
-    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
-        return;
-    }
-
-    logger.log('Initializing rage click tracking');
-    if (!this._rageClickTracker) {
-        this._rageClickTracker = new RageClickTracker();
-    }
-
-    this.listenerRageClick = function(ev) {
-        var currentRageClickConfig = this._getRageClickConfig();
-        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
-            return;
-        }
-
-        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
-            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
-        }
-    }.bind(this);
-    window.addEventListener(EV_CLICK, this.listenerRageClick);
-};
-
 Autocapture.prototype.initClickTracking = function() {
     window.removeEventListener(EV_CLICK, this.listenerClick);
 
@@ -322,6 +296,36 @@ Autocapture.prototype.initPageviewTracking = function() {
             }
         }
     }.bind(this)));
+};
+
+Autocapture.prototype.initRageClickTracking = function() {
+    window.removeEventListener(EV_CLICK, this.listenerRageClick);
+
+    var rageClickConfig = this._getRageClickConfig();
+    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    logger.log('Initializing rage click tracking');
+    if (!this._rageClickTracker) {
+        this._rageClickTracker = new RageClickTracker();
+    }
+
+    this.listenerRageClick = function(ev) {
+        var currentRageClickConfig = this._getRageClickConfig();
+        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
+            return;
+        }
+
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
+        }
+    }.bind(this);
+    window.addEventListener(EV_CLICK, this.listenerRageClick);
 };
 
 Autocapture.prototype.initScrollTracking = function() {
