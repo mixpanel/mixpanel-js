@@ -1124,7 +1124,7 @@ MixpanelLib.prototype._init_heartbeat = function() {
     this._heartbeat_timers = {};
     this._heartbeat_storage = {};
     this._heartbeat_unload_setup = false;
-    this._heartbeat_counter = 0;
+    this._heartbeat_counters = {};
     this._heartbeat_intervals = {};
     this._heartbeat_manual_events = {};
     this._heartbeat_managed_events = {};
@@ -1213,11 +1213,13 @@ MixpanelLib.prototype._setup_heartbeat_unload_handlers = function() {
                 flush_on_unload();
             }
         });
-        window.addEventListener('visibilitychange', function() {
-            if (document['visibilityState'] === 'hidden') {
-                flush_on_unload();
-            }
-        });
+        // Note: visibilitychange removed - users can still consume content when tab loses focus
+        // (e.g., listening to audio, background video). Only flush on actual page navigation.
+        // window.addEventListener('visibilitychange', function() {
+        //     if (document['visibilityState'] === 'hidden') {
+        //         flush_on_unload();
+        //     }
+        // });
     }
 };
 
@@ -1377,6 +1379,7 @@ MixpanelLib.prototype._heartbeat_flush_event = function(eventKey, reason, useSen
 
     delete this._heartbeat_manual_events[eventKey];
     delete this._heartbeat_managed_events[eventKey];
+    delete this._heartbeat_counters[eventKey];
 
 };
 
@@ -1401,8 +1404,8 @@ MixpanelLib.prototype._heartbeat_flush_all = function(reason, useSendBeacon) {
  */
 MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props, options) {
     var eventKey = eventName + '|' + contentId;
-    this._heartbeat_counter++;
-    this._heartbeat_log('#' + this._heartbeat_counter, eventName, contentId);
+    this._heartbeat_counters[eventKey] = (this._heartbeat_counters[eventKey] || 0) + 1;
+    this._heartbeat_log('#' + this._heartbeat_counters[eventKey], eventName, contentId);
 
     var storage = this._heartbeat_get_storage();
 

@@ -49,6 +49,9 @@ describe('Heartbeat', function() {
 		if (mixpanel.hb._heartbeat_managed_events) {
 			mixpanel.hb._heartbeat_managed_events = {};
 		}
+		if (mixpanel.hb._heartbeat_counters) {
+			mixpanel.hb._heartbeat_counters = {};
+		}
 
 		// Store original methods and stub only the external dependencies on the test instance
 		originalTrack = mixpanel.hb.track;
