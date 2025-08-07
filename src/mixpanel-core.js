@@ -86,6 +86,13 @@ if (navigator['sendBeacon']) {
     };
 }
 
+// Heartbeat configuration constants
+var DEFAULT_HEARTBEAT_TIMEOUT = 30000; // 30 seconds
+var DEFAULT_HEARTBEAT_INTERVAL = 5000; // 5 seconds
+var MIN_HEARTBEAT_INTERVAL = 100; // 100ms
+var MAX_HEARTBEAT_INTERVAL = 300000; // 5 minutes
+var MAX_HEARTBEAT_STORAGE_SIZE = 500;
+
 var DEFAULT_API_ROUTES = {
     'track':  'track/',
     'engage': 'engage/',
@@ -1414,9 +1421,9 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
     // Get current storage
     var storage = this._heartbeat_get_storage();
 
-    // Check storage size limit (hardcoded to 500)
+    // Check storage size limit
     var storageKeys = Object.keys(storage);
-    if (storageKeys.length >= 500 && !(eventKey in storage)) {
+    if (storageKeys.length >= MAX_HEARTBEAT_STORAGE_SIZE && !(eventKey in storage)) {
         this.report_error('heartbeat: Maximum storage size reached, flushing oldest event');
         // Flush the first (oldest) event to make room
         var oldestKey = storageKeys[0];
@@ -1472,7 +1479,7 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
         this._heartbeat_flush_event(eventKey, 'forceFlush', false);
     } else if (!options._managed) {
         // Set up or reset the auto-flush timer with custom timeout (only for manual heartbeats)
-        var timeout = options.timeout || 30000; // Default 30 seconds
+        var timeout = options.timeout || DEFAULT_HEARTBEAT_TIMEOUT;
         this._heartbeat_setup_timer(eventKey, timeout);
     }
 
@@ -1557,16 +1564,16 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
     // Track this as a managed heartbeat event
     this._heartbeat_managed_events.add(eventKey);
 
-    var interval = options.interval || 5000; // Default 5 seconds
+    var interval = options.interval || DEFAULT_HEARTBEAT_INTERVAL;
 
     // Validate interval parameter to prevent performance issues
-    if (typeof interval !== 'number' || interval < 100) {
-        this.report_error('heartbeat.start: interval must be a number >= 100ms, using default 5000ms');
-        interval = 5000;
+    if (typeof interval !== 'number' || interval < MIN_HEARTBEAT_INTERVAL) {
+        this.report_error('heartbeat.start: interval must be a number >= ' + MIN_HEARTBEAT_INTERVAL + 'ms, using default ' + DEFAULT_HEARTBEAT_INTERVAL + 'ms');
+        interval = DEFAULT_HEARTBEAT_INTERVAL;
     }
-    if (interval > 300000) { // 5 minutes max
-        this.report_error('heartbeat.start: interval too large, using maximum 300000ms');
-        interval = 300000;
+    if (interval > MAX_HEARTBEAT_INTERVAL) {
+        this.report_error('heartbeat.start: interval too large, using maximum ' + MAX_HEARTBEAT_INTERVAL + 'ms');
+        interval = MAX_HEARTBEAT_INTERVAL;
     }
 
     var self = this;
@@ -1576,7 +1583,7 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
     // Start the interval
     var intervalId = setInterval(function() {
         // Call the internal heartbeat implementation with managed flag to skip timer setup
-        self._heartbeat_internal(eventName, contentId, props, { timeout: 30000, _managed: true });
+        self._heartbeat_internal(eventName, contentId, props, { timeout: DEFAULT_HEARTBEAT_TIMEOUT, _managed: true });
     }, interval);
 
     // Store the interval ID
@@ -2365,21 +2372,6 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // whether to ignore or respect the web browser's Do Not Track setting
  *       ignore_dnt: false
  *
- *       // heartbeat event aggregation settings
- *       // milliseconds to wait before auto-flushing aggregated heartbeat events
- *       heartbeat_max_buffer_time_ms: 30000
- *
- *       // maximum number of properties per heartbeat event before auto-flush
- *       heartbeat_max_props_count: 1000
- *
- *       // maximum numeric value for property aggregation before auto-flush
- *       heartbeat_max_aggregated_value: 100000
- *
- *       // maximum number of events stored in heartbeat queue before auto-flush
- *       heartbeat_max_storage_size: 100
- *
- *       // enable debug logging for heartbeat events
- *       heartbeat_enable_logging: false
  *     }
  *
  *
