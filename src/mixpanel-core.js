@@ -1121,18 +1121,85 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
 MixpanelLib.prototype._init_heartbeat = function() {
     var self = this;
 
-    // Internal heartbeat state storage
-    this._heartbeat_timers = new Map();
-    this._heartbeat_storage = {}; // In-memory storage for heartbeat events
-    this._heartbeat_unload_setup = false;
-    this._heartbeat_counter = 0; // Track total heartbeat calls for logging
-    // State tracking for start/stop vs manual heartbeat APIs
-    this._heartbeat_intervals = new Map(); // Track active start/stop intervals
-    this._heartbeat_manual_events = new Set(); // Track events managed by manual heartbeat() calls
-    this._heartbeat_managed_events = new Set(); // Track events managed by start/stop
+    try {
+        // Internal heartbeat state storage (with fallbacks for older browsers)
+        this._heartbeat_timers = typeof Map !== 'undefined' ? new Map() : {};
+        this._heartbeat_storage = {}; // In-memory storage for heartbeat events
+        this._heartbeat_unload_setup = false;
+        this._heartbeat_counter = 0; // Track total heartbeat calls for logging
+        // State tracking for start/stop vs manual heartbeat APIs
+        this._heartbeat_intervals = typeof Map !== 'undefined' ? new Map() : {}; // Track active start/stop intervals
+        this._heartbeat_manual_events = typeof Set !== 'undefined' ? new Set() : {}; // Track events managed by manual heartbeat() calls
+        this._heartbeat_managed_events = typeof Set !== 'undefined' ? new Set() : {}; // Track events managed by start/stop
+    } catch (error) {
+        // Fallback to plain objects if Map/Set not available
+        this.report_error('Error initializing heartbeat Map/Set collections, using fallbacks: ' + error.message);
+        this._heartbeat_timers = {};
+        this._heartbeat_storage = {};
+        this._heartbeat_unload_setup = false;
+        this._heartbeat_counter = 0;
+        this._heartbeat_intervals = {};
+        this._heartbeat_manual_events = {};
+        this._heartbeat_managed_events = {};
+    }
 
     // Setup page unload handlers once
     this._setup_heartbeat_unload_handlers();
+
+    // Helper methods for cross-compatible Map/Set operations
+    this._heartbeat_set_add = function(set, key) {
+        try {
+            if (typeof set.add === 'function') {
+                set.add(key);
+            } else {
+                set[key] = true;
+            }
+        } catch (error) {
+            this.report_error('Error adding to heartbeat set: ' + error.message);
+        }
+    };
+
+    this._heartbeat_set_has = function(set, key) {
+        try {
+            return typeof set.has === 'function' ? set.has(key) : (key in set);
+        } catch (error) {
+            this.report_error('Error checking heartbeat set: ' + error.message);
+            return false;
+        }
+    };
+
+    this._heartbeat_set_delete = function(set, key) {
+        try {
+            if (typeof set.delete === 'function') {
+                set.delete(key);
+            } else {
+                delete set[key];
+            }
+        } catch (error) {
+            this.report_error('Error deleting from heartbeat set: ' + error.message);
+        }
+    };
+
+    this._heartbeat_map_set = function(map, key, value) {
+        try {
+            if (typeof map.set === 'function') {
+                map.set(key, value);
+            } else {
+                map[key] = value;
+            }
+        } catch (error) {
+            this.report_error('Error setting heartbeat map value: ' + error.message);
+        }
+    };
+
+    this._heartbeat_map_get = function(map, key) {
+        try {
+            return typeof map.get === 'function' ? map.get(key) : map[key];
+        } catch (error) {
+            this.report_error('Error getting heartbeat map value: ' + error.message);
+            return undefined;
+        }
+    };
 
     /**
      * Client-side aggregation for streaming analytics events like video watch time,
@@ -1207,19 +1274,44 @@ MixpanelLib.prototype._setup_heartbeat_unload_handlers = function() {
     var handleUnload = function() {
         if (hasUnloaded) return;
         hasUnloaded = true;
-        self._heartbeat_log('Page unload detected, flushing all heartbeat events');
-        self._heartbeat_flush_all('pageUnload', true);
+        try {
+            self._heartbeat_log('Page unload detected, flushing all heartbeat events');
+            self._heartbeat_flush_all('pageUnload', true);
+        } catch (error) {
+            // Silently fail during unload to prevent breaking page navigation
+            if (typeof console !== 'undefined' && console.error) {
+                console.error('Mixpanel heartbeat unload error:', error);
+            }
+        }
+    };
+
+    var handleVisibilityChange = function() {
+        try {
+            if (document && document.visibilityState === 'hidden') {
+                handleUnload();
+            }
+        } catch (error) {
+            // Silently fail - don't break page functionality
+        }
+    };
+
+    // Store references for cleanup
+    this._heartbeat_unload_handlers = {
+        beforeunload: handleUnload,
+        pagehide: handleUnload,
+        visibilitychange: handleVisibilityChange
     };
 
     // Multiple event handlers for cross-browser compatibility
-    if (window.addEventListener) {
-        window.addEventListener('beforeunload', handleUnload);
-        window.addEventListener('pagehide', handleUnload);
-        window.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'hidden') {
-                handleUnload();
-            }
-        });
+    if (typeof window !== 'undefined' && window.addEventListener) {
+        try {
+            window.addEventListener('beforeunload', handleUnload);
+            window.addEventListener('pagehide', handleUnload);
+            window.addEventListener('visibilitychange', handleVisibilityChange);
+        } catch (error) {
+            // Old browsers might not support some events
+            this.report_error('Error setting up heartbeat unload handlers: ' + error.message);
+        }
     }
 };
 
@@ -1318,9 +1410,22 @@ MixpanelLib.prototype._heartbeat_aggregate_props = function(existingProps, newPr
  * @private
  */
 MixpanelLib.prototype._heartbeat_clear_timer = function(eventKey) {
-    if (this._heartbeat_timers.has(eventKey)) {
-        clearTimeout(this._heartbeat_timers.get(eventKey));
-        this._heartbeat_timers.delete(eventKey);
+    try {
+        if (typeof this._heartbeat_timers.has === 'function') {
+            // Using Map
+            if (this._heartbeat_timers.has(eventKey)) {
+                clearTimeout(this._heartbeat_timers.get(eventKey));
+                this._heartbeat_timers.delete(eventKey);
+            }
+        } else {
+            // Using plain object fallback
+            if (eventKey in this._heartbeat_timers) {
+                clearTimeout(this._heartbeat_timers[eventKey]);
+                delete this._heartbeat_timers[eventKey];
+            }
+        }
+    } catch (error) {
+        this.report_error('Error clearing heartbeat timer: ' + error.message);
     }
 };
 
@@ -1331,11 +1436,14 @@ MixpanelLib.prototype._heartbeat_clear_timer = function(eventKey) {
 MixpanelLib.prototype._heartbeat_setup_timer = function(eventKey, timeout) {
     var self = this;
     try {
-        var hadExistingTimer = this._heartbeat_timers.has(eventKey);
+        var hadExistingTimer = typeof this._heartbeat_timers.has === 'function' ?
+            this._heartbeat_timers.has(eventKey) :
+            (eventKey in this._heartbeat_timers);
         self._heartbeat_clear_timer(eventKey);
 
         if (hadExistingTimer) {
-            this._heartbeat_log('Timer restarted for', eventKey);
+			// this log is super noisy...
+            // this._heartbeat_log('Timer restarted for', eventKey);
         }
 
         var timerId = setTimeout(function() {
