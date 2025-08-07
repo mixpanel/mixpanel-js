@@ -1179,7 +1179,6 @@ MixpanelLib.prototype._init_heartbeat = function() {
         return self._heartbeat_impl(eventName, contentId, props, options);
     };
 
-    // Add start/stop methods to the heartbeat function
     this.heartbeat.start = function(eventName, contentId, props, options) {
         return self._heartbeat_start_impl(eventName, contentId, props, options);
     };
@@ -1279,30 +1278,23 @@ MixpanelLib.prototype._heartbeat_aggregate_props = function(existingProps, newPr
             var existingType = typeof existingValue;
 
             if (newType === 'number' && existingType === 'number') {
-                // Replace with new number (latest value wins)
                 result[key] = newValue;
             } else if (newType === 'string') {
-                // Replace with new string
                 result[key] = newValue;
             } else if (newType === 'object' && existingType === 'object') {
                 if (_.isArray(newValue) && _.isArray(existingValue)) {
-                    // Concatenate arrays with 50-item circular buffer limit
                     var combined = existingValue.concat(newValue);
                     if (combined.length > 50) {
-                        // Keep only the last 50 items (circular buffer behavior)
                         result[key] = combined.slice(-50);
                     } else {
                         result[key] = combined;
                     }
                 } else if (!_.isArray(newValue) && !_.isArray(existingValue)) {
-                    // Merge objects (shallow merge with overwrites)
                     result[key] = _.extend({}, existingValue, newValue);
                 } else {
-                    // Type mismatch, replace
                     result[key] = newValue;
                 }
             } else {
-                // For all other cases, replace
                 result[key] = newValue;
             }
         }
@@ -1332,9 +1324,8 @@ MixpanelLib.prototype._heartbeat_setup_timer = function(eventKey, timeout) {
     try {
         var hadExistingTimer = (eventKey in this._heartbeat_timers);
         self._heartbeat_clear_timer(eventKey);
-
         if (hadExistingTimer) {
-			// this log is super noisy...
+            // this log is super noisy... so leaving out for now
             // this._heartbeat_log('Timer restarted for', eventKey);
         }
 
@@ -1368,13 +1359,10 @@ MixpanelLib.prototype._heartbeat_flush_event = function(eventKey, reason, useSen
     var eventName = eventData.eventName;
     var props = eventData.props;
 
-    // Clear any pending timers
     this._heartbeat_clear_timer(eventKey);
 
-    // Prepare tracking properties for sending
     var trackingProps = _.extend({}, props);
 
-    // Prepare transport options
     var transportOptions = useSendBeacon ? { transport: 'sendBeacon' } : {};
 
     try {
@@ -1384,11 +1372,9 @@ MixpanelLib.prototype._heartbeat_flush_event = function(eventKey, reason, useSen
         this.report_error('Error flushing heartbeat event: ' + error.message);
     }
 
-    // Remove from storage after flushing
     delete storage[eventKey];
     this._heartbeat_save_storage(storage);
 
-    // Clean up event tracking state
     delete this._heartbeat_manual_events[eventKey];
     delete this._heartbeat_managed_events[eventKey];
 
@@ -1418,28 +1404,22 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
     this._heartbeat_counter++;
     this._heartbeat_log('#' + this._heartbeat_counter, eventName, contentId);
 
-    // Get current storage
     var storage = this._heartbeat_get_storage();
 
-    // Check storage size limit
     var storageKeys = Object.keys(storage);
     if (storageKeys.length >= MAX_HEARTBEAT_STORAGE_SIZE && !(eventKey in storage)) {
         this.report_error('heartbeat: Maximum storage size reached, flushing oldest event');
-        // Flush the first (oldest) event to make room
         var oldestKey = storageKeys[0];
         this._heartbeat_flush_event(oldestKey, 'maxStorageSize', false);
-        storage = this._heartbeat_get_storage(); // Refresh storage after flush
+        storage = this._heartbeat_get_storage();
     }
 
     var currentTime = new Date().getTime();
 
-    // Get or create event data
     if (storage[eventKey]) {
-        // Aggregate with existing data
         var existingData = storage[eventKey];
         var aggregatedProps = this._heartbeat_aggregate_props(existingData.props, props);
 
-        // Update automatic tracking properties (duration in seconds with 3 decimal precision)
         var durationSeconds = Math.round((currentTime - existingData.firstCall)) / 1000;
         aggregatedProps['$duration'] = Math.round(durationSeconds * 1000) / 1000;
         aggregatedProps['$heartbeats'] = (existingData.hitCount || 1) + 1;
@@ -1454,7 +1434,6 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
         };
 
     } else {
-        // Create new entry
         var newProps = _.extend({}, props);
         newProps['$duration'] = 0;
         newProps['$heartbeats'] = 1;
@@ -1470,15 +1449,12 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
 
     }
 
-    // Save to persistence
     this._heartbeat_save_storage(storage);
 
-    // Handle force flush or set up timer (skip timer setup for managed intervals)
     if (options.forceFlush) {
         this._heartbeat_log('Force flushing requested');
         this._heartbeat_flush_event(eventKey, 'forceFlush', false);
     } else if (!options._managed) {
-        // Set up or reset the auto-flush timer with custom timeout (only for manual heartbeats)
         var timeout = options.timeout || DEFAULT_HEARTBEAT_TIMEOUT;
         this._heartbeat_setup_timer(eventKey, timeout);
     }
@@ -1492,13 +1468,11 @@ MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props
  */
 MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(eventName, contentId, props, options) {
 
-    // Validate required parameters
     if (!eventName || !contentId) {
         this.report_error('heartbeat: eventName and contentId are required');
         return;
     }
 
-    // Convert to strings
     eventName = eventName.toString();
     contentId = contentId.toString();
     props = props || {};
@@ -1506,16 +1480,13 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
 
     var eventKey = eventName + '|' + contentId;
 
-    // API separation: prevent manual heartbeat() calls on start/stop managed events
     if (eventKey in this._heartbeat_managed_events) {
         this.report_error('heartbeat: Cannot call heartbeat() on an event managed by heartbeat.start(). Use heartbeat.stop() first.');
         return;
     }
 
-    // Track this as a manual heartbeat event
     this._heartbeat_manual_events[eventKey] = true;
 
-    // Call the internal implementation
     this._heartbeat_internal(eventName, contentId, props, options);
 
     return;
@@ -1526,13 +1497,11 @@ MixpanelLib.prototype._heartbeat_impl = addOptOutCheckMixpanelLib(function(event
  * @private
  */
 MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function(eventName, contentId, props, options) {
-    // Validate required parameters
     if (!eventName || !contentId) {
         this.report_error('heartbeat.start: eventName and contentId are required');
         return;
     }
 
-    // Convert to strings
     eventName = eventName.toString();
     contentId = contentId.toString();
     props = props || {};
@@ -1540,33 +1509,27 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
 
     var eventKey = eventName + '|' + contentId;
 
-    // API separation: prevent start() calls on manual heartbeat events
     if (eventKey in this._heartbeat_manual_events) {
         this.report_error('heartbeat.start: Cannot start managed heartbeat on an event already using manual heartbeat() calls. Stop calling heartbeat() first.');
         return;
     }
 
-    // Check if already started - warn and restart with new params
     if (eventKey in this._heartbeat_managed_events) {
         this.report_error('heartbeat.start: Event already started, restarting with new parameters');
-        this._heartbeat_stop_impl(eventName, contentId, { forceFlush: true }); // Force flush when restarting
+        this._heartbeat_stop_impl(eventName, contentId, { forceFlush: true });
     }
 
-    // Check if we have an existing paused session (data exists but no active interval)
     var storage = this._heartbeat_get_storage();
     var isResuming = eventKey in storage && !(eventKey in this._heartbeat_managed_events);
     if (isResuming) {
         this._heartbeat_log('Resuming paused session for', eventKey);
-        // Clear any existing auto-flush timer since we're resuming active tracking
         this._heartbeat_clear_timer(eventKey);
     }
 
-    // Track this as a managed heartbeat event
     this._heartbeat_managed_events[eventKey] = true;
 
     var interval = options.interval || DEFAULT_HEARTBEAT_INTERVAL;
 
-    // Validate interval parameter to prevent performance issues
     if (typeof interval !== 'number' || interval < MIN_HEARTBEAT_INTERVAL) {
         this.report_error('heartbeat.start: interval must be a number >= ' + MIN_HEARTBEAT_INTERVAL + 'ms, using default ' + DEFAULT_HEARTBEAT_INTERVAL + 'ms');
         interval = DEFAULT_HEARTBEAT_INTERVAL;
@@ -1580,13 +1543,10 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
 
     this._heartbeat_log('Starting managed heartbeat for', eventKey, 'interval:', interval + 'ms');
 
-    // Start the interval
     var intervalId = setInterval(function() {
-        // Call the internal heartbeat implementation with managed flag to skip timer setup
         self._heartbeat_internal(eventName, contentId, props, { timeout: DEFAULT_HEARTBEAT_TIMEOUT, _managed: true });
     }, interval);
 
-    // Store the interval ID
     this._heartbeat_intervals[eventKey] = intervalId;
 
     return;
@@ -1597,13 +1557,11 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
  * @private
  */
 MixpanelLib.prototype._heartbeat_stop_impl = addOptOutCheckMixpanelLib(function(eventName, contentId, options) {
-    // Validate required parameters
     if (!eventName || !contentId) {
         this.report_error('heartbeat.stop: eventName and contentId are required');
         return;
     }
 
-    // Convert to strings
     eventName = eventName.toString();
     contentId = contentId.toString();
     options = options || {};
@@ -1612,13 +1570,11 @@ MixpanelLib.prototype._heartbeat_stop_impl = addOptOutCheckMixpanelLib(function(
 
     this._heartbeat_log('Stopping managed heartbeat for', eventKey);
 
-    // Clear the interval if it exists
     if (eventKey in this._heartbeat_intervals) {
         clearInterval(this._heartbeat_intervals[eventKey]);
         delete this._heartbeat_intervals[eventKey];
     }
 
-    // Remove from managed events tracking
     delete this._heartbeat_managed_events[eventKey];
 
     // NEW BEHAVIOR: Only flush immediately if forceFlush is true
