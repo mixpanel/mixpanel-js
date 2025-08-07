@@ -17,6 +17,7 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
 var FeatureFlagManager = function(initOptions) {
     this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
+    this.setMpConfig = initOptions.setConfigFunc;
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
 };
@@ -54,6 +55,23 @@ FeatureFlagManager.prototype.isSystemEnabled = function() {
     return !!this.getMpConfig(FLAGS_CONFIG_KEY);
 };
 
+FeatureFlagManager.prototype.updateContext = function(newContext, options) {
+    if (!this.isSystemEnabled()) {
+        logger.critical('Feature Flags not enabled, cannot update context');
+        return Promise.resolve();
+    }
+
+    var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+    if (!_.isObject(ffConfig)) {
+        ffConfig = {};
+    }
+    var oldContext = (options && options['replace']) ? {} : this.getConfig(CONFIG_CONTEXT);
+    ffConfig[CONFIG_CONTEXT] = _.extend({}, oldContext, newContext);
+
+    this.setMpConfig(FLAGS_CONFIG_KEY, ffConfig);
+    return this.fetchFlags();
+};
+
 FeatureFlagManager.prototype.areFlagsReady = function() {
     if (!this.isSystemEnabled()) {
         logger.error('Feature Flags not enabled');
@@ -63,7 +81,7 @@ FeatureFlagManager.prototype.areFlagsReady = function() {
 
 FeatureFlagManager.prototype.fetchFlags = function() {
     if (!this.isSystemEnabled()) {
-        return;
+        return Promise.resolve();
     }
 
     var distinctId = this.getMpProperty('distinct_id');
@@ -103,6 +121,8 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         this.markFetchComplete();
         logger.error(error);
     }.bind(this));
+
+    return this.fetchPromise;
 };
 
 FeatureFlagManager.prototype.markFetchComplete = function() {
@@ -215,6 +235,7 @@ FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
+FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.updateContext;
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
