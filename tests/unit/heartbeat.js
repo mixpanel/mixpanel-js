@@ -27,25 +27,27 @@ describe('Heartbeat', function() {
 
 		// Clean up any existing heartbeat state on the test instance
 		if (mixpanel.hb._heartbeat_intervals) {
-			mixpanel.hb._heartbeat_intervals.forEach((intervalId) => {
-				clearInterval(intervalId);
+			// Clean up intervals using object keys since we're using plain objects now
+			Object.keys(mixpanel.hb._heartbeat_intervals).forEach((key) => {
+				clearInterval(mixpanel.hb._heartbeat_intervals[key]);
 			});
-			mixpanel.hb._heartbeat_intervals.clear();
+			mixpanel.hb._heartbeat_intervals = {};
 		}
 		if (mixpanel.hb._heartbeat_timers) {
-			mixpanel.hb._heartbeat_timers.forEach((timerId) => {
-				clearTimeout(timerId);
+			// Clean up timers using object keys since we're using plain objects now
+			Object.keys(mixpanel.hb._heartbeat_timers).forEach((key) => {
+				clearTimeout(mixpanel.hb._heartbeat_timers[key]);
 			});
-			mixpanel.hb._heartbeat_timers.clear();
+			mixpanel.hb._heartbeat_timers = {};
 		}
 		if (mixpanel.hb._heartbeat_storage) {
 			mixpanel.hb._heartbeat_storage = {};
 		}
 		if (mixpanel.hb._heartbeat_manual_events) {
-			mixpanel.hb._heartbeat_manual_events.clear();
+			mixpanel.hb._heartbeat_manual_events = {};
 		}
 		if (mixpanel.hb._heartbeat_managed_events) {
-			mixpanel.hb._heartbeat_managed_events.clear();
+			mixpanel.hb._heartbeat_managed_events = {};
 		}
 
 		// Store original methods and stub only the external dependencies on the test instance
