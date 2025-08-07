@@ -1273,8 +1273,8 @@ MixpanelLib.prototype._heartbeat_aggregate_props = function(existingProps, newPr
             var existingType = typeof existingValue;
 
             if (newType === 'number' && existingType === 'number') {
-                // Add numbers together
-                result[key] = existingValue + newValue;
+                // Replace with new number (latest value wins)
+                result[key] = newValue;
             } else if (newType === 'string') {
                 // Replace with new string
                 result[key] = newValue;

@@ -166,13 +166,13 @@ describe('Heartbeat', function() {
 	});
 
 	describe('Property aggregation behavior', function() {
-		it('should aggregate numbers by adding', function() {
-			mixpanel.hb.heartbeat('test_event', 'content_123', { count: 10 });
-			mixpanel.hb.heartbeat('test_event', 'content_123', { count: 5 }, { forceFlush: true });
+		it('should aggregate numbers by using latest value', function() {
+			mixpanel.hb.heartbeat('test_event', 'content_123', { currentTime: 10 });
+			mixpanel.hb.heartbeat('test_event', 'content_123', { currentTime: 25 }, { forceFlush: true });
 
 			expect(mixpanel.hb.track).to.have.been.calledOnce;
 			const trackCall = mixpanel.hb.track.getCall(0);
-			expect(trackCall.args[1]).to.include({ count: 15 });
+			expect(trackCall.args[1]).to.include({ currentTime: 25 });
 		});
 
 		it('should aggregate strings by using latest value', function() {
@@ -239,7 +239,7 @@ describe('Heartbeat', function() {
 			expect(firstCall.args[0]).to.equal('video_watch');
 			expect(firstCall.args[1]).to.include({
 				$contentId: 'video_123',
-				score: 150, // 100 + 50
+				score: 50, // Latest value (not 100 + 50)
 				platform: 'html5',
 				quality: 'HD', // Latest value
 				$heartbeats: 2,
@@ -251,7 +251,7 @@ describe('Heartbeat', function() {
 			expect(secondCall.args[0]).to.equal('video_watch');
 			expect(secondCall.args[1]).to.include({
 				$contentId: 'video_456',
-				score: 275, // 200 + 75
+				score: 75, // Latest value (not 200 + 75)
 				platform: 'youtube',
 				quality: '4K', // Latest value
 				$heartbeats: 2,
@@ -592,7 +592,7 @@ describe('Heartbeat', function() {
 				expect(mixpanel.hb.track).to.have.been.calledOnce;
 				const trackCall = mixpanel.hb.track.getCall(0);
 				expect(trackCall.args[1]).to.include({
-					score: 200, // 100 * 2 heartbeats  
+					score: 100, // Latest value (same as each heartbeat since they all send 100)
 					level: 'easy', // Latest value
 					$heartbeats: 2,
 					$contentId: 'level_1'

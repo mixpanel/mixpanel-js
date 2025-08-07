@@ -743,7 +743,7 @@
             same(trackCalls.length, 1, "should have made one track call");
             if (trackCalls.length > 0) {
                 var props = trackCalls[0].props;
-                same(props.score, 35, "numbers should be added together");
+                same(props.score, 25, "numbers should use latest value");
                 same(props.level, 'medium', "strings should use latest value");
                 deepEqual(props.tags, ['action', 'puzzle'], "arrays should be concatenated");
             }

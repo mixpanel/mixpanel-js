@@ -271,7 +271,7 @@ mixpanel.heartbeat('video_watch', 'video_123'); // 30 seconds later
 ```
 
 You can also pass additional properties, and options to be aggregated with each heartbeat call. Properties are merged intelligently by type:
-- Numbers are added together
+- Numbers take the latest value
 - Strings take the latest value
 - Objects are merged (latest overwrites)
 - Arrays have elements appended
@@ -287,13 +287,13 @@ mixpanel.heartbeat('video_watch', 'video_123', { quality: 'HD' }, { timeout: 600
 
 // Property aggregation
 mixpanel.heartbeat('video_watch', 'video_123', { 
-  bytes: 1024,
+  currentTime: 30,
   interactions: ['play'],
   language: 'en'
 });
 
 mixpanel.heartbeat('video_watch', 'video_123', {
-  bytes: 2048, // aggregated: {bytes: 3072}
+  currentTime: 45, // latest value: {currentTime: 45}
   interactions: ['pause'], // appended: ['play', 'pause']
   language: 'fr' // replaced: {language: 'fr'}
 });
@@ -347,13 +347,13 @@ Properties passed to `heartbeat.start()` are sent with each interval heartbeat a
 
 ```javascript
 mixpanel.heartbeat.start('game_session', 'level_1', {
-  score: 100,    // Numbers are added together each interval
+  score: 100,    // Numbers use latest value each interval
   level: 'easy', // Strings use latest value
   powerups: ['speed'] // Arrays have elements appended
 });
 
 // After multiple intervals, properties are aggregated:
-// {score: 300, level: 'easy', powerups: ['speed', 'speed', 'speed']}
+// {score: 100, level: 'easy', powerups: ['speed', 'speed', 'speed']}
 ```
 
 ### Auto-Management:
