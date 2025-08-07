@@ -335,11 +335,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
                 // the events will be flushed again on startup and deduplicated on the Mixpanel server
                 // side.
                 // There is no reliable way to capture only page close events, so we lean on the
-                // visibilitychange and pagehide events as recommended at
+                // beforeunload and pagehide events as recommended at
                 // https://developer.mozilla.org/en-US/docs/Web/API/Window/unload_event#usage_notes.
-                // These events fire when the user clicks away from the current page/tab, so will occur
-                // more frequently than page unload, but are the only mechanism currently for capturing
-                // this scenario somewhat reliably.
+                // These events fire when the user navigates away from or closes the page.
                 var flush_on_unload = _.bind(function() {
                     if (!this.request_batchers.events.stopped) {
                         this.request_batchers.events.flush({unloading: true});
@@ -1241,6 +1239,22 @@ MixpanelLib.prototype._heartbeat_save_storage = function(data) {
 
 
 /**
+ * Helper to format eventName and contentId consistently for logging
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_format_event = function(eventName, contentId) {
+    return eventName + ' | ' + contentId;
+};
+
+/**
+ * Helper to format eventKey consistently for logging
+ * @private
+ */
+MixpanelLib.prototype._heartbeat_format_event_key = function(eventKey) {
+    return eventKey.replace('|', ' | ');
+};
+
+/**
  * Logs heartbeat debug messages if logging is enabled
  * Logs when either global debug is true
  * @private
@@ -1333,7 +1347,7 @@ MixpanelLib.prototype._heartbeat_setup_timer = function(eventKey, timeout) {
 
         var timerId = setTimeout(function() {
             try {
-                self._heartbeat_log('Timer expired, flushing', eventKey);
+                self._heartbeat_log('Timer expired, flushing', self._heartbeat_format_event_key(eventKey));
                 self._heartbeat_flush_event(eventKey, 'timeout', false);
             } catch (e) {
                 self.report_error('Error in heartbeat timeout handler: ' + e.message);
@@ -1369,7 +1383,7 @@ MixpanelLib.prototype._heartbeat_flush_event = function(eventKey, reason, useSen
 
     try {
         this.track(eventName, trackingProps, transportOptions);
-        this._heartbeat_log('Flushed event', eventKey, 'reason:', reason, 'props:', trackingProps);
+        this._heartbeat_log('Flushed event', this._heartbeat_format_event_key(eventKey), 'reason:', reason, 'props:', trackingProps);
     } catch (error) {
         this.report_error('Error flushing heartbeat event: ' + error.message);
     }
@@ -1405,7 +1419,7 @@ MixpanelLib.prototype._heartbeat_flush_all = function(reason, useSendBeacon) {
 MixpanelLib.prototype._heartbeat_internal = function(eventName, contentId, props, options) {
     var eventKey = eventName + '|' + contentId;
     this._heartbeat_counters[eventKey] = (this._heartbeat_counters[eventKey] || 0) + 1;
-    this._heartbeat_log('#' + this._heartbeat_counters[eventKey], eventName, contentId);
+    this._heartbeat_log('beat #' + this._heartbeat_counters[eventKey], this._heartbeat_format_event(eventName, contentId));
 
     var storage = this._heartbeat_get_storage();
 
@@ -1525,7 +1539,7 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
     var storage = this._heartbeat_get_storage();
     var isResuming = eventKey in storage && !(eventKey in this._heartbeat_managed_events);
     if (isResuming) {
-        this._heartbeat_log('Resuming paused session for', eventKey);
+        this._heartbeat_log('Resuming paused session for', this._heartbeat_format_event_key(eventKey));
         this._heartbeat_clear_timer(eventKey);
     }
 
@@ -1544,7 +1558,7 @@ MixpanelLib.prototype._heartbeat_start_impl = addOptOutCheckMixpanelLib(function
 
     var self = this;
 
-    this._heartbeat_log('Starting managed heartbeat for', eventKey, 'interval:', interval + 'ms');
+    this._heartbeat_log('start() for', this._heartbeat_format_event_key(eventKey), 'interval:', interval + 'ms');
 
     var intervalId = setInterval(function() {
         self._heartbeat_internal(eventName, contentId, props, { timeout: DEFAULT_HEARTBEAT_TIMEOUT, _managed: true });
@@ -1571,7 +1585,7 @@ MixpanelLib.prototype._heartbeat_stop_impl = addOptOutCheckMixpanelLib(function(
 
     var eventKey = eventName + '|' + contentId;
 
-    this._heartbeat_log('Stopping managed heartbeat for', eventKey);
+    this._heartbeat_log('stop() for', this._heartbeat_format_event_key(eventKey));
 
     if (eventKey in this._heartbeat_intervals) {
         clearInterval(this._heartbeat_intervals[eventKey]);
@@ -1585,7 +1599,7 @@ MixpanelLib.prototype._heartbeat_stop_impl = addOptOutCheckMixpanelLib(function(
         this._heartbeat_flush_event(eventKey, 'stopForceFlush', false);
     } else {
         // Just pause the session - data remains for potential restart or auto-flush
-        this._heartbeat_log('Session paused for', eventKey, '- data preserved for restart or auto-flush');
+        this._heartbeat_log('paused for', this._heartbeat_format_event_key(eventKey), '- awaiting restart or auto-flush');
         // Set up 30-second inactivity timer if not already present
         if (!(eventKey in this._heartbeat_timers)) {
             this._heartbeat_setup_timer(eventKey, 30000);
