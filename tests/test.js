@@ -5250,6 +5250,31 @@
                 ok(typeof(tab_id) === "string", "tab id is a string");
                 ok(tab_id !== mixpanel.test.get_tab_id(), "tab ID has changed since the flag to generate a new tab ID was set");
             });
+
+            module("tab_id when disable_persistence: true", {
+                setup: function() {
+                    this.token = rand_name();
+                    this.id = rand_name();
+
+                    mixpanel.init(this.token, {
+                        batch_requests: false,
+                        disable_persistence: true,
+                        debug: true
+                    }, "test");
+                },
+                teardown: function() {
+                    clearAllLibInstances();
+                }
+            });
+
+            test("no tab id is persisted in session storage", 3, function () {
+                var tab_id = mixpanel.test.get_tab_id();
+                ok(tab_id === null, "tab id is null");
+
+                var stored_tab_id = window.sessionStorage.getItem("mp_tab_id_test_" + this.token);
+                ok(stored_tab_id === null, "no tab id is stored in sessionStorage");
+                ok(Object.keys(window.sessionStorage).length === 0, "sessionStorage is empty");
+            });
         }
 
         if (!window.COOKIE_FAILURE_TEST) { // GDPR functionality cannot operate without cookies
