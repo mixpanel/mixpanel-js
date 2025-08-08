@@ -50,7 +50,7 @@ var RequestQueue = function (storageKey, options) {
 };
 
 RequestQueue.prototype.ensureInit = function () {
-    if (this.initialized) {
+    if (this.initialized || !this.usePersistence) {
         return Promise.resolve();
     }
 

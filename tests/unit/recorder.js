@@ -299,6 +299,7 @@ describe(`Recorder`, function() {
   });
 
   describe(`scenarios where storage is not available`, function () {
+    let getConfigStub;
     async function verifyBasicRecording() {
       await recorder.startRecording();
       expect(mockRrweb.recordStub.callCount).to.equal(1);
@@ -350,10 +351,24 @@ describe(`Recorder`, function() {
     });
 
     it(`records without persistence when localStorage fails`, async function () {
-      var idbOpenStub = sinon.spy(window.indexedDB, `open`);
+      var idbOpenSpy = sinon.spy(window.indexedDB, `open`);
       sinon.stub(localStorage, `setItem`).throws(`test error`);
       await verifyBasicRecording();
-      expect(idbOpenStub.callCount).to.equal(0);
+      expect(idbOpenSpy.callCount).to.equal(0);
+    });
+
+    it(`records without persistence when disable_persistence=true`, async function () {
+      const idbOpenSpy = sinon.spy(window.indexedDB, `open`);
+      const getConfigStub = sinon.stub(MockMixpanelLib.prototype, 'get_config');
+      getConfigStub.withArgs('disable_persistence').returns(true);
+      getConfigStub.callThrough();
+
+      // create new recorder so that disable_persistence is true at the start
+      recorder = new MixpanelRecorder(mockMixpanelInstance, mockRrweb.recordStub, localStorage);
+
+      await verifyBasicRecording();
+      expect(getConfigStub.called).to.be.true;
+      expect(idbOpenSpy.callCount).to.equal(0);
     });
   });
 });
