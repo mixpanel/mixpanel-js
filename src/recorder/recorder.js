@@ -24,16 +24,10 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
         errorReporter: logger.error,
         sharedLockStorage: sharedLockStorage
     });
-    if (this.isPersistenceEnabled()) {
-        this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
-    }
+    this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
 
     this.activeRecording = null;
     this.stopRecordingInProgress = false;
-};
-
-MixpanelRecorder.prototype.isPersistenceEnabled = function() {
-    return !this.mixpanelInstance.get_config('disable_persistence');
 };
 
 MixpanelRecorder.prototype.startRecording = function(options) {
@@ -54,9 +48,7 @@ MixpanelRecorder.prototype.startRecording = function(options) {
     }.bind(this);
 
     var onBatchSent = function () {
-        if (this.isPersistenceEnabled()) {
-            this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
-        }
+        this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
         this['__flushPromise'] = this.activeRecording.batcher._flushPromise;
     }.bind(this);
 
@@ -80,22 +72,14 @@ MixpanelRecorder.prototype.startRecording = function(options) {
     }
 
     this.activeRecording.startRecording(options.shouldStopBatcher);
-    if (this.isPersistenceEnabled()) {
-        return this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
-    } else {
-        return Promise.resolve();
-    }
+    return this.recordingRegistry.setActiveRecording(this.activeRecording.serialize());
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
     // Prevents activeSerializedRecording from being reused when stopping the recording.
     this.stopRecordingInProgress = true;
     return this._stopCurrentRecording(false, true).then(function() {
-        if (this.isPersistenceEnabled()) {
-            return this.recordingRegistry.markActiveRecordingExpired();
-        } else {
-            return this.recordingRegistry.deleteActiveRecording();
-        }
+        return this.recordingRegistry.clearActiveRecording();
     }.bind(this)).then(function() {
         this.stopRecordingInProgress = false;
     }.bind(this));
@@ -122,14 +106,7 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
         return Promise.resolve(null);
     }
 
-    var activeRecordingPromise;
-    if (this.isPersistenceEnabled()) {
-        activeRecordingPromise = this.recordingRegistry.getActiveRecording();
-    } else {
-        activeRecordingPromise = Promise.resolve(null);
-    }
-
-    return activeRecordingPromise
+    return this.recordingRegistry.getActiveRecording()
         .then(function (activeSerializedRecording) {
             if (activeSerializedRecording && !this.stopRecordingInProgress) {
                 return this.startRecording({activeSerializedRecording: activeSerializedRecording});
