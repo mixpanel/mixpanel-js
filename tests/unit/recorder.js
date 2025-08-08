@@ -299,7 +299,6 @@ describe(`Recorder`, function() {
   });
 
   describe(`scenarios where storage is not available`, function () {
-    let getConfigStub;
     async function verifyBasicRecording() {
       await recorder.startRecording();
       expect(mockRrweb.recordStub.callCount).to.equal(1);
@@ -369,6 +368,18 @@ describe(`Recorder`, function() {
       await verifyBasicRecording();
       expect(getConfigStub.called).to.be.true;
       expect(idbOpenSpy.callCount).to.equal(0);
+    });
+
+    it(`deletes the active recording when recording is stopped and disable_persistence=true`, async function () {
+      await verifyBasicRecording();
+      const getConfigStub = sinon.stub(MockMixpanelLib.prototype, 'get_config');
+      getConfigStub.withArgs('disable_persistence').returns(true);
+      getConfigStub.callThrough();
+
+      await recorder.stopRecording();
+      
+      const storedRecording = await idbGetItem(`mixpanelRecordingRegistry`, `test-tab-id`);
+      expect(storedRecording).to.not.exist;
     });
   });
 });

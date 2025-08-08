@@ -13,6 +13,10 @@ LocalStorageWrapper.prototype.init = function () {
     return Promise.resolve();
 };
 
+LocalStorageWrapper.prototype.isInitialized = function () {
+    return true;
+};
+
 LocalStorageWrapper.prototype.setItem = function (key, value) {
     return new Promise(_.bind(function (resolve, reject) {
         try {

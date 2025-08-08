@@ -92,9 +92,9 @@ MixpanelRecorder.prototype.stopRecording = function() {
     this.stopRecordingInProgress = true;
     return this._stopCurrentRecording(false, true).then(function() {
         if (this.isPersistenceEnabled()) {
-            return this.recordingRegistry.clearActiveRecording();
+            return this.recordingRegistry.markActiveRecordingExpired();
         } else {
-            return Promise.resolve();
+            return this.recordingRegistry.deleteActiveRecording();
         }
     }.bind(this)).then(function() {
         this.stopRecordingInProgress = false;

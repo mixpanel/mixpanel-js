@@ -61,6 +61,10 @@ IDBStorageWrapper.prototype.init = function () {
         });
 };
 
+IDBStorageWrapper.prototype.isInitialized = function () {
+    return !!this.dbPromise;
+};
+
 /**
  * @param {IDBTransactionMode} mode
  * @param {function(IDBObjectStore): void} storeCb

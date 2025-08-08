@@ -8,6 +8,7 @@ import { isRecordingExpired } from './utils';
  * Makes sure that only one tab can be recording at a time.
  */
 var RecordingRegistry = function (options) {
+    /** @type {IDBStorageWrapper} */
     this.idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
@@ -49,7 +50,7 @@ RecordingRegistry.prototype.getActiveRecording = function () {
         .catch(this.handleError.bind(this));
 };
 
-RecordingRegistry.prototype.clearActiveRecording = function () {
+RecordingRegistry.prototype.markActiveRecordingExpired = function () {
     // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
     // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
     return this.getActiveRecording()
@@ -60,6 +61,15 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
             }
         }.bind(this))
         .catch(this.handleError.bind(this));
+};
+
+RecordingRegistry.prototype.deleteActiveRecording = function () {
+    if (this.idb.isInitialized()) {
+        return this.idb.removeItem(this.mixpanelInstance.get_tab_id())
+            .catch(this.handleError.bind(this));
+    } else {
+        return Promise.resolve();
+    }
 };
 
 /**
