@@ -19278,32 +19278,6 @@ Autocapture.prototype._getRageClickConfig = function () {
     return {}; // fallback to defaults for any other truthy value
 };
 
-Autocapture.prototype.initRageClickTracking = function () {
-    _window.window.removeEventListener(_utils2.EV_CLICK, this.listenerRageClick);
-
-    var rageClickConfig = this._getRageClickConfig();
-    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
-        return;
-    }
-
-    _utils2.logger.log('Initializing rage click tracking');
-    if (!this._rageClickTracker) {
-        this._rageClickTracker = new _rageclick.RageClickTracker();
-    }
-
-    this.listenerRageClick = (function (ev) {
-        var currentRageClickConfig = this._getRageClickConfig();
-        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
-            return;
-        }
-
-        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
-            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
-        }
-    }).bind(this);
-    _window.window.addEventListener(_utils2.EV_CLICK, this.listenerRageClick);
-};
-
 Autocapture.prototype.initClickTracking = function () {
     _window.window.removeEventListener(_utils2.EV_CLICK, this.listenerClick);
 
@@ -19405,6 +19379,36 @@ Autocapture.prototype.initPageviewTracking = function () {
     }).bind(this)));
 };
 
+Autocapture.prototype.initRageClickTracking = function () {
+    _window.window.removeEventListener(_utils2.EV_CLICK, this.listenerRageClick);
+
+    var rageClickConfig = this._getRageClickConfig();
+    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    _utils2.logger.log('Initializing rage click tracking');
+    if (!this._rageClickTracker) {
+        this._rageClickTracker = new _rageclick.RageClickTracker();
+    }
+
+    this.listenerRageClick = (function (ev) {
+        var currentRageClickConfig = this._getRageClickConfig();
+        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
+            return;
+        }
+
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
+        }
+    }).bind(this);
+    _window.window.addEventListener(_utils2.EV_CLICK, this.listenerRageClick);
+};
+
 Autocapture.prototype.initScrollTracking = function () {
     _window.window.removeEventListener(_utils2.EV_SCROLLEND, this.listenerScroll);
 
@@ -19475,14 +19479,14 @@ Autocapture.prototype.initSubmitTracking = function () {
 exports.Autocapture = Autocapture;
 
 },{"../utils":33,"../window":34,"./rageclick":10,"./utils":11}],10:[function(require,module,exports){
-/** @const */"use strict";
+/** @const */'use strict';
 
-Object.defineProperty(exports, "__esModule", {
+Object.defineProperty(exports, '__esModule', {
     value: true
 });
 var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
 /** @const */var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
-/** @const */var DEFAULT_RAGE_CLICK_CLICK_COUNT = 3;
+/** @const */var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
 
 function RageClickTracker() {
     this.clicks = [];
@@ -19490,10 +19494,9 @@ function RageClickTracker() {
 
 RageClickTracker.prototype.isRageClick = function (x, y, options) {
     options = options || {};
-    var thresholdPx = options.threshold_px || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
-    var timeoutMs = options.timeout_ms || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
-    var clickCount = options.click_count || DEFAULT_RAGE_CLICK_CLICK_COUNT;
-
+    var thresholdPx = options['threshold_px'] || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
+    var timeoutMs = options['timeout_ms'] || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
+    var clickCount = options['click_count'] || DEFAULT_RAGE_CLICK_CLICK_COUNT;
     var timestamp = Date.now();
 
     var lastClick = this.clicks[this.clicks.length - 1];
@@ -20046,7 +20049,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.68.0-rc1'
+    LIB_VERSION: '2.68.0-rc3'
 };
 
 exports['default'] = Config;
@@ -20244,6 +20247,7 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
 var FeatureFlagManager = function FeatureFlagManager(initOptions) {
     this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
+    this.setMpConfig = initOptions.setConfigFunc;
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
 };
@@ -20281,6 +20285,23 @@ FeatureFlagManager.prototype.isSystemEnabled = function () {
     return !!this.getMpConfig(FLAGS_CONFIG_KEY);
 };
 
+FeatureFlagManager.prototype.updateContext = function (newContext, options) {
+    if (!this.isSystemEnabled()) {
+        logger.critical('Feature Flags not enabled, cannot update context');
+        return Promise.resolve();
+    }
+
+    var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+    if (!_utils._.isObject(ffConfig)) {
+        ffConfig = {};
+    }
+    var oldContext = options && options['replace'] ? {} : this.getConfig(CONFIG_CONTEXT);
+    ffConfig[CONFIG_CONTEXT] = _utils._.extend({}, oldContext, newContext);
+
+    this.setMpConfig(FLAGS_CONFIG_KEY, ffConfig);
+    return this.fetchFlags();
+};
+
 FeatureFlagManager.prototype.areFlagsReady = function () {
     if (!this.isSystemEnabled()) {
         logger.error('Feature Flags not enabled');
@@ -20290,7 +20311,7 @@ FeatureFlagManager.prototype.areFlagsReady = function () {
 
 FeatureFlagManager.prototype.fetchFlags = function () {
     if (!this.isSystemEnabled()) {
-        return;
+        return Promise.resolve();
     }
 
     var distinctId = this.getMpProperty('distinct_id');
@@ -20330,6 +20351,8 @@ FeatureFlagManager.prototype.fetchFlags = function () {
         this.markFetchComplete();
         logger.error(error);
     }).bind(this));
+
+    return this.fetchPromise;
 };
 
 FeatureFlagManager.prototype.markFetchComplete = function () {
@@ -20439,6 +20462,7 @@ FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
+FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.updateContext;
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
@@ -21203,6 +21227,7 @@ MixpanelLib.prototype._init = function (token, config, name) {
             return this.get_api_host('flags') + '/' + this.get_config('api_routes')['flags'];
         }, this),
         getConfigFunc: _utils._.bind(this.get_config, this),
+        setConfigFunc: _utils._.bind(this.set_config, this),
         getPropertyFunc: _utils._.bind(this.get_property, this),
         trackingFunc: _utils._.bind(this.track, this)
     });
