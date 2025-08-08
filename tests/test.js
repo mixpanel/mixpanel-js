@@ -1023,6 +1023,22 @@
                 disablePersistenceTest(lib2);
             });
 
+            test("disable persistence doesn't create an IDB database", 1, function() {
+                var idbOpenSpy = sinon.spy(window.indexedDB, `open`);
+                mixpanel.init('lib3', {
+                    persistence: 'localStorage',
+                    persistence_name: name,
+                    batch_requests: false,
+                    disable_persistence: true
+                }, 'lib3');
+
+                stop();
+                setTimeout(function() {
+                    same(idbOpenSpy.callCount, 0, "IDB should not be opened when persistence is disabled");
+                    start();
+                }, 500);
+            });
+
             test("upgrade from cookie", 9, function() {
                 // populate cookie
                 var ut1 = mixpanel.init('UT_TOKEN', {}, 'ut1'),
