@@ -36,7 +36,7 @@
   "devDependencies": {
     "@ampproject/rollup-plugin-closure-compiler": "0.27.0",
     "@rollup/plugin-alias": "5.1.1",
-    "@rollup/plugin-node-resolve": "15.2.3",
+    "@rollup/plugin-node-resolve": "16.0.1",
     "@rollup/plugin-swc": "0.4.0",
     "@swc/core": "1.11.7",
     "babel": "6.5.2",
