@@ -1,3 +1,8 @@
+**2.68.0** (11 Aug 2025)
+- Initial rage-click detection support
+- Block `<audio>` tags by default in Session Recording
+- Add `flags.update_context()` method for updating context variables and refetching variants
+
 **2.67.0** (17 Jul 2025)
 - Use `get_api_host()` consistently across the SDK
 - Include `device_id` in default Feature Flag context
