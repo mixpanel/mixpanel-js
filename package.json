@@ -66,6 +66,6 @@
     "webpack": "1.12.2"
   },
   "dependencies": {
-    "rrweb": "2.0.0-alpha.18"
+    "@mixpanel/rrweb": "2.0.0-alpha.18.1"
   }
 }
