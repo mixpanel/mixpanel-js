@@ -1023,8 +1023,12 @@
                 disablePersistenceTest(lib2);
             });
 
-            test("disable persistence doesn't create an IDB database", 1, function() {
+            test("when disable persistence is true, `init` should make no calls to browser storage APIs (cookie/localstorage/sessionstorage/idb)", 4, function() {
                 var idbOpenSpy = sinon.spy(window.indexedDB, `open`);
+                var localStorageSetItemSpy = sinon.spy(window.localStorage, `setItem`);
+                var sessionStorageSetItemSpy = sinon.spy(window.sessionStorage, `setItem`);
+                var originalCookie = document.cookie;
+
                 mixpanel.init('lib3', {
                     persistence: 'localStorage',
                     persistence_name: name,
@@ -1034,7 +1038,11 @@
 
                 stop();
                 setTimeout(function() {
-                    same(idbOpenSpy.callCount, 0, "IDB should not be opened when persistence is disabled");
+                    same(idbOpenSpy.callCount, 0, "IDB should not be opened");
+                    same(localStorageSetItemSpy.callCount, 0, "localStorage.setItem should not be called");
+                    same(sessionStorageSetItemSpy.callCount, 0, "sessionStorage.setItem should not be called");
+                    same(document.cookie, originalCookie, "document.cookie shouldn't have been changed");
+                    sinon.restore();
                     start();
                 }, 500);
             });
