@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { EventType } from '@rrweb/types';
+import { EventType } from '@mixpanel/rrweb-types';
 
 import sinon from 'sinon';
 import { window } from '../../src/window';

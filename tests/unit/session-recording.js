@@ -4,7 +4,7 @@
 
 import { expect } from 'chai';
 import { SessionRecording } from '../../src/recorder/session-recording';
-import { IncrementalSource, EventType } from '@rrweb/types';
+import { IncrementalSource, EventType } from '@mixpanel/rrweb-types';
 
 import sinon from 'sinon';
 import { window } from '../../src/window';

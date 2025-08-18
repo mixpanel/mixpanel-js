@@ -1,4 +1,4 @@
-import { record } from 'rrweb';
+import { record } from '@mixpanel/rrweb';
 import { Promise } from '../promise-polyfill';
 import { SessionRecording } from './session-recording';
 import { RecordingRegistry } from './recording-registry';

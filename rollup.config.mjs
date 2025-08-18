@@ -8,7 +8,7 @@ const COMPILED_RRWEB_PATH = 'build/rrweb-compiled.js';
 
 const aliasRrweb = () => alias({
     entries: [
-        { find: 'rrweb', replacement: COMPILED_RRWEB_PATH },
+        { find: '@mixpanel/rrweb', replacement: COMPILED_RRWEB_PATH },
     ]
 });
 
@@ -24,7 +24,7 @@ const MINIFY = process.env.MINIFY || process.env.FULL;
 const MAIN_BUILDS = [
     // compile rrweb first to es5 with swc, we'll replace the import later on
     {
-        'input': 'rrweb',
+        'input': '@mixpanel/rrweb',
         'output': [
             {
                 file: COMPILED_RRWEB_PATH,
