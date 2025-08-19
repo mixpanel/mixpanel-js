@@ -869,30 +869,6 @@
                     start();
                 });
             });
-
-            test("when disable persistence is true, `init` should make no calls to browser storage APIs (cookie/localstorage/sessionstorage/idb)", 4, function() {
-                var idbOpenSpy = sinon.spy(window.indexedDB, `open`);
-                var localStorageSetItemSpy = sinon.spy(window.localStorage, `setItem`);
-                var sessionStorageSetItemSpy = sinon.spy(window.sessionStorage, `setItem`);
-                var originalCookie = document.cookie;
-
-                mixpanel.init('lib3', {
-                    persistence: 'cookie',
-                    persistence_name: name,
-                    batch_requests: false,
-                    disable_persistence: true
-                }, 'lib3');
-
-                stop();
-                setTimeout(function() {
-                    same(idbOpenSpy.callCount, 0, "IDB should not be opened");
-                    same(localStorageSetItemSpy.callCount, 0, "localStorage.setItem should not be called");
-                    same(sessionStorageSetItemSpy.callCount, 0, "sessionStorage.setItem should not be called");
-                    same(document.cookie, originalCookie, "document.cookie shouldn't have been changed");
-                    sinon.restore();
-                    start();
-                }, 500);
-            });
         }
 
         if (window.localStorage) {
@@ -1047,30 +1023,6 @@
                 disablePersistenceTest(lib2);
             });
 
-            test("when disable persistence is true, `init` should make no calls to browser storage APIs (cookie/localstorage/sessionstorage/idb)", 4, function() {
-                var idbOpenSpy = sinon.spy(window.indexedDB, `open`);
-                var localStorageSetItemSpy = sinon.spy(window.localStorage, `setItem`);
-                var sessionStorageSetItemSpy = sinon.spy(window.sessionStorage, `setItem`);
-                var originalCookie = document.cookie;
-
-                mixpanel.init('lib3', {
-                    persistence: 'localStorage',
-                    persistence_name: name,
-                    batch_requests: false,
-                    disable_persistence: true
-                }, 'lib3');
-
-                stop();
-                setTimeout(function() {
-                    same(idbOpenSpy.callCount, 0, "IDB should not be opened");
-                    same(localStorageSetItemSpy.callCount, 0, "localStorage.setItem should not be called");
-                    same(sessionStorageSetItemSpy.callCount, 0, "sessionStorage.setItem should not be called");
-                    same(document.cookie, originalCookie, "document.cookie shouldn't have been changed");
-                    sinon.restore();
-                    start();
-                }, 500);
-            });
-
             test("upgrade from cookie", 9, function() {
                 // populate cookie
                 var ut1 = mixpanel.init('UT_TOKEN', {}, 'ut1'),
@@ -1192,6 +1144,37 @@
                 }), "tracking properties sent correctly");
             });
         }
+
+        mpmodule("disable_persistence")
+            
+        function testNoCallsToBrowserStorage(persistenceType) {
+            test(persistenceType + " persistence type should make no calls to browser storage APIs", 4, function() {            
+                var idbOpenSpy = sinon.spy(window.indexedDB, `open`);
+                var localStorageSetItemSpy = sinon.spy(window.localStorage, `setItem`);
+                var sessionStorageSetItemSpy = sinon.spy(window.sessionStorage, `setItem`);
+                var originalCookie = document.cookie;
+    
+                mixpanel.init('persistence_lib', {
+                    persistence: persistenceType,
+                    persistence_name: name,
+                    batch_requests: false,
+                    disable_persistence: true
+                }, 'persistence_lib');
+    
+                stop();
+                setTimeout(function() {
+                    same(idbOpenSpy.callCount, 0, "IDB should not be opened");
+                    same(localStorageSetItemSpy.callCount, 0, "localStorage.setItem should not be called");
+                    same(sessionStorageSetItemSpy.callCount, 0, "sessionStorage.setItem should not be called");
+                    same(document.cookie, originalCookie, "document.cookie shouldn't have been changed");
+                    sinon.restore();
+                    start();
+                }, 500);
+            });
+        }
+
+        testNoCallsToBrowserStorage('cookie');
+        testNoCallsToBrowserStorage('localStorage');
 
         mpmodule("mixpanel");
 
