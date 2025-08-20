@@ -487,6 +487,30 @@ function querySelectorAll$1(n2, selectors) {
 function mutationObserverCtor$1() {
     return getUntaintedPrototype$1("MutationObserver").constructor;
 }
+function patch$1(source, name, replacement) {
+    try {
+        if (!(name in source)) {
+            return function() {};
+        }
+        var original = source[name];
+        var wrapped = replacement(original);
+        if (typeof wrapped === "function") {
+            wrapped.prototype = wrapped.prototype || {};
+            Object.defineProperties(wrapped, {
+                __rrweb_original__: {
+                    enumerable: false,
+                    value: original
+                }
+            });
+        }
+        source[name] = wrapped;
+        return function() {
+            source[name] = original;
+        };
+    } catch (e) {
+        return function() {};
+    }
+}
 var index$1 = {
     childNodes: childNodes$1,
     parentNode: parentNode$1,
@@ -499,7 +523,8 @@ var index$1 = {
     shadowRoot: shadowRoot$1,
     querySelector: querySelector$1,
     querySelectorAll: querySelectorAll$1,
-    mutationObserver: mutationObserverCtor$1
+    mutationObserver: mutationObserverCtor$1,
+    patch: patch$1
 };
 function isElement(n2) {
     return n2.nodeType === n2.ELEMENT_NODE;
@@ -750,26 +775,82 @@ function absolutifyURLs(cssText, href) {
         return "url(" + maybeQuote + stack.join("/") + maybeQuote + ")";
     });
 }
-function normalizeCssString(cssText) {
-    return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "");
+function normalizeCssString(cssText, _testNoPxNorm) {
+    if (_testNoPxNorm === void 0) _testNoPxNorm = false;
+    if (_testNoPxNorm) {
+        return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "");
+    } else {
+        return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "").replace(/0px/g, "0");
+    }
 }
-function splitCssText(cssText, style) {
+function splitCssText(cssText, style, _testNoPxNorm) {
+    if (_testNoPxNorm === void 0) _testNoPxNorm = false;
     var childNodes2 = Array.from(style.childNodes);
     var splits = [];
+    var iterCount = 0;
     if (childNodes2.length > 1 && cssText && typeof cssText === "string") {
-        var cssTextNorm = normalizeCssString(cssText);
+        var cssTextNorm = normalizeCssString(cssText, _testNoPxNorm);
+        var normFactor = cssTextNorm.length / cssText.length;
         for(var i2 = 1; i2 < childNodes2.length; i2++){
             if (childNodes2[i2].textContent && typeof childNodes2[i2].textContent === "string") {
-                var textContentNorm = normalizeCssString(childNodes2[i2].textContent);
-                for(var j = 3; j < textContentNorm.length; j++){
-                    var bit = textContentNorm.substring(0, j);
-                    if (cssTextNorm.split(bit).length === 2) {
-                        var splitNorm = cssTextNorm.indexOf(bit);
-                        for(var k = splitNorm; k < cssText.length; k++){
-                            if (normalizeCssString(cssText.substring(0, k)).length === splitNorm) {
+                var textContentNorm = normalizeCssString(childNodes2[i2].textContent, _testNoPxNorm);
+                var jLimit = 100;
+                var j = 3;
+                for(; j < textContentNorm.length; j++){
+                    if (// keep consuming css identifiers (to get a decent chunk more quickly)
+                    textContentNorm[j].match(/[a-zA-Z0-9]/) || // substring needs to be unique to this section
+                    textContentNorm.indexOf(textContentNorm.substring(0, j), 1) !== -1) {
+                        continue;
+                    }
+                    break;
+                }
+                for(; j < textContentNorm.length; j++){
+                    var startSubstring = textContentNorm.substring(0, j);
+                    var cssNormSplits = cssTextNorm.split(startSubstring);
+                    var splitNorm = -1;
+                    if (cssNormSplits.length === 2) {
+                        splitNorm = cssNormSplits[0].length;
+                    } else if (cssNormSplits.length > 2 && cssNormSplits[0] === "" && childNodes2[i2 - 1].textContent !== "") {
+                        splitNorm = cssTextNorm.indexOf(startSubstring, 1);
+                    } else if (cssNormSplits.length === 1) {
+                        startSubstring = startSubstring.substring(0, startSubstring.length - 1);
+                        cssNormSplits = cssTextNorm.split(startSubstring);
+                        if (cssNormSplits.length <= 1) {
+                            splits.push(cssText);
+                            return splits;
+                        }
+                        j = jLimit + 1;
+                    } else if (j === textContentNorm.length - 1) {
+                        splitNorm = cssTextNorm.indexOf(startSubstring);
+                    }
+                    if (cssNormSplits.length >= 2 && j > jLimit) {
+                        var prevTextContent = childNodes2[i2 - 1].textContent;
+                        if (prevTextContent && typeof prevTextContent === "string") {
+                            var prevMinLength = normalizeCssString(prevTextContent).length;
+                            splitNorm = cssTextNorm.indexOf(startSubstring, prevMinLength);
+                        }
+                        if (splitNorm === -1) {
+                            splitNorm = cssNormSplits[0].length;
+                        }
+                    }
+                    if (splitNorm !== -1) {
+                        var k = Math.floor(splitNorm / normFactor);
+                        for(; k > 0 && k < cssText.length;){
+                            iterCount += 1;
+                            if (iterCount > 50 * childNodes2.length) {
+                                splits.push(cssText);
+                                return splits;
+                            }
+                            var normPart = normalizeCssString(cssText.substring(0, k), _testNoPxNorm);
+                            if (normPart.length === splitNorm) {
                                 splits.push(cssText.substring(0, k));
                                 cssText = cssText.substring(k);
+                                cssTextNorm = cssTextNorm.substring(splitNorm);
                                 break;
+                            } else if (normPart.length < splitNorm) {
+                                k += Math.max(1, Math.floor((splitNorm - normPart.length) / normFactor));
+                            } else {
+                                k -= Math.max(1, Math.floor((normPart.length - splitNorm) * normFactor));
                             }
                         }
                         break;
@@ -1286,7 +1367,7 @@ function slimDOMExcluded(sn, slimDOMOptions) {
     } else if (sn.type === NodeType$3.Element) {
         if (slimDOMOptions.script && // script tag
         (sn.tagName === "script" || // (module)preload link
-        sn.tagName === "link" && (sn.attributes.rel === "preload" || sn.attributes.rel === "modulepreload") && sn.attributes.as === "script" || // prefetch link
+        sn.tagName === "link" && (sn.attributes.rel === "preload" && sn.attributes.as === "script" || sn.attributes.rel === "modulepreload") || // prefetch link
         sn.tagName === "link" && sn.attributes.rel === "prefetch" && typeof sn.attributes.href === "string" && extractFileExtension(sn.attributes.href) === "js")) {
             return true;
         } else if (slimDOMOptions.headFavicon && (sn.tagName === "link" && sn.attributes.rel === "shortcut icon" || sn.tagName === "meta" && (lowerIfExists(sn.attributes.name).match(/^msapplication-tile(image|color)$/) || lowerIfExists(sn.attributes.name) === "application-name" || lowerIfExists(sn.attributes.rel) === "icon" || lowerIfExists(sn.attributes.rel) === "apple-touch-icon" || lowerIfExists(sn.attributes.rel) === "shortcut icon"))) {
@@ -10037,6 +10118,30 @@ function querySelectorAll(n2, selectors) {
 function mutationObserverCtor() {
     return getUntaintedPrototype("MutationObserver").constructor;
 }
+function patch(source, name, replacement) {
+    try {
+        if (!(name in source)) {
+            return function() {};
+        }
+        var original = source[name];
+        var wrapped = replacement(original);
+        if (typeof wrapped === "function") {
+            wrapped.prototype = wrapped.prototype || {};
+            Object.defineProperties(wrapped, {
+                __rrweb_original__: {
+                    enumerable: false,
+                    value: original
+                }
+            });
+        }
+        source[name] = wrapped;
+        return function() {
+            source[name] = original;
+        };
+    } catch (e) {
+        return function() {};
+    }
+}
 var index = {
     childNodes: childNodes,
     parentNode: parentNode,
@@ -10049,7 +10154,8 @@ var index = {
     shadowRoot: shadowRoot,
     querySelector: querySelector,
     querySelectorAll: querySelectorAll,
-    mutationObserver: mutationObserverCtor
+    mutationObserver: mutationObserverCtor,
+    patch: patch
 };
 function on(type, fn, target) {
     if (target === void 0) target = document;
@@ -10141,30 +10247,6 @@ function hookSetter(target, key, d, isRevoked, win) {
     return function() {
         return hookSetter(target, key, original || {}, true);
     };
-}
-function patch(source, name, replacement) {
-    try {
-        if (!(name in source)) {
-            return function() {};
-        }
-        var original = source[name];
-        var wrapped = replacement(original);
-        if (typeof wrapped === "function") {
-            wrapped.prototype = wrapped.prototype || {};
-            Object.defineProperties(wrapped, {
-                __rrweb_original__: {
-                    enumerable: false,
-                    value: original
-                }
-            });
-        }
-        source[name] = wrapped;
-        return function() {
-            source[name] = original;
-        };
-    } catch (e) {
-        return function() {};
-    }
 }
 var nowTimestamp = Date.now;
 if (!/* @__PURE__ */ /[1-9][0-9]{12}/.test(Date.now().toString())) {
@@ -10756,9 +10838,17 @@ var MutationBuffer = /*#__PURE__*/ function() {
                 _this.attributes.push(item);
                 _this.attributeMap.set(textarea, item);
             }
-            item.attributes.value = Array.from(index.childNodes(textarea), function(cn) {
+            var value = Array.from(index.childNodes(textarea), function(cn) {
                 return index.textContent(cn) || "";
             }).join("");
+            item.attributes.value = maskInputValue({
+                element: textarea,
+                maskInputOptions: _this.maskInputOptions,
+                tagName: textarea.tagName,
+                type: getInputType(textarea),
+                value: value,
+                maskInputFn: _this.maskInputFn
+            });
         });
         __publicField(this, "processMutation", function(m) {
             if (isIgnored(m.target, _this.mirror, _this.slimDOMOptions)) {
@@ -13539,8 +13629,15 @@ function record(options) {
             }, window));
         }
         return function() {
-            handlers.forEach(function(h) {
-                return h();
+            handlers.forEach(function(handler) {
+                try {
+                    handler();
+                } catch (error) {
+                    var msg = String(error).toLowerCase();
+                    if (!msg.includes("cross-origin")) {
+                        console.warn(error);
+                    }
+                }
             });
             processedNodeManager.destroy();
             recording = false;
@@ -13946,7 +14043,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.68.0'
+    LIB_VERSION: '2.69.0-rc1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -15746,6 +15843,10 @@ IDBStorageWrapper.prototype.init = function () {
         });
 };
 
+IDBStorageWrapper.prototype.isInitialized = function () {
+    return !!this.dbPromise;
+};
+
 /**
  * @param {IDBTransactionMode} mode
  * @param {function(IDBObjectStore): void} storeCb
@@ -16270,6 +16371,10 @@ LocalStorageWrapper.prototype.init = function () {
     return PromisePolyfill.resolve();
 };
 
+LocalStorageWrapper.prototype.isInitialized = function () {
+    return true;
+};
+
 LocalStorageWrapper.prototype.setItem = function (key, value) {
     return new PromisePolyfill(_.bind(function (resolve, reject) {
         try {
@@ -16350,7 +16455,7 @@ var RequestQueue = function (storageKey, options) {
 };
 
 RequestQueue.prototype.ensureInit = function () {
-    if (this.initialized) {
+    if (this.initialized || !this.usePersistence) {
         return PromisePolyfill.resolve();
     }
 
@@ -17102,10 +17207,9 @@ var SessionRecording = function(options) {
 
     // disable persistence if localStorage is not supported
     // request-queue will automatically disable persistence if indexedDB fails to initialize
-    var usePersistence = localStorageSupported(options.sharedLockStorage, true);
+    var usePersistence = localStorageSupported(options.sharedLockStorage, true) && !this.getConfig('disable_persistence');
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
-    // this will be important when persistence is introduced
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
     this.queueStorage = new IDBStorageWrapper(RECORDING_EVENTS_STORE_NAME);
     this.batcher = new RequestBatcher(this.batcherKey, {
@@ -17486,10 +17590,15 @@ SessionRecording.prototype.reportError = function(msg, err) {
  * Makes sure that only one tab can be recording at a time.
  */
 var RecordingRegistry = function (options) {
+    /** @type {IDBStorageWrapper} */
     this.idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
     this.sharedLockStorage = options.sharedLockStorage;
+};
+
+RecordingRegistry.prototype.isPersistenceEnabled = function() {
+    return !this.mixpanelInstance.get_config('disable_persistence');
 };
 
 RecordingRegistry.prototype.handleError = function (err) {
@@ -17500,6 +17609,10 @@ RecordingRegistry.prototype.handleError = function (err) {
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
+    if (!this.isPersistenceEnabled()) {
+        return PromisePolyfill.resolve();
+    }
+
     var tabId = serializedRecording['tabId'];
     if (!tabId) {
         console.warn('No tab ID is set, cannot persist recording metadata.');
@@ -17517,6 +17630,10 @@ RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) 
  * @returns {Promise<import('./session-recording').SerializedRecording>}
  */
 RecordingRegistry.prototype.getActiveRecording = function () {
+    if (!this.isPersistenceEnabled()) {
+        return PromisePolyfill.resolve(null);
+    }
+
     return this.idb.init()
         .then(function () {
             return this.idb.getItem(this.mixpanelInstance.get_tab_id());
@@ -17528,8 +17645,16 @@ RecordingRegistry.prototype.getActiveRecording = function () {
 };
 
 RecordingRegistry.prototype.clearActiveRecording = function () {
-    // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
-    // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+    if (this.isPersistenceEnabled()) {
+        // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
+        // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+        return this.markActiveRecordingExpired();
+    } else {
+        return this.deleteActiveRecording();
+    }
+};
+
+RecordingRegistry.prototype.markActiveRecordingExpired = function () {
     return this.getActiveRecording()
         .then(function (serializedRecording) {
             if (serializedRecording) {
@@ -17540,11 +17665,25 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
         .catch(this.handleError.bind(this));
 };
 
+RecordingRegistry.prototype.deleteActiveRecording = function () {
+    // avoid initializing IDB if this registry instance hasn't already written a recording
+    if (this.idb.isInitialized()) {
+        return this.idb.removeItem(this.mixpanelInstance.get_tab_id())
+            .catch(this.handleError.bind(this));
+    } else {
+        return PromisePolyfill.resolve();
+    }
+};
+
 /**
  * Flush any inactive recordings from the registry to minimize data loss.
  * The main idea here is that we can flush remaining rrweb events on the next page load if a tab is closed mid-batch.
  */
 RecordingRegistry.prototype.flushInactiveRecordings = function () {
+    if (!this.isPersistenceEnabled()) {
+        return PromisePolyfill.resolve([]);
+    }
+
     return this.idb.init()
         .then(function() {
             return this.idb.getAll();
@@ -20592,7 +20731,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
  * This is primarily used for session recording, where data must be isolated to the current tab.
  */
 MixpanelLib.prototype._init_tab_id = function() {
-    if (_.sessionStorage.is_supported()) {
+    if (this.get_config('disable_persistence')) {
+        console$1.log('Tab ID initialization skipped due to disable_persistence config');
+    } else if (_.sessionStorage.is_supported()) {
         try {
             var key_suffix = this.get_config('name') + '_' + this.get_config('token');
             var tab_id_key = 'mp_tab_id_' + key_suffix;
@@ -20626,6 +20767,11 @@ MixpanelLib.prototype.get_tab_id = function () {
 };
 
 MixpanelLib.prototype._should_load_recorder = function () {
+    if (this.get_config('disable_persistence')) {
+        console$1.log('Load recorder check skipped due to disable_persistence config');
+        return Promise.resolve(false);
+    }
+
     var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     var tab_id = this.get_tab_id();
     return recording_registry_idb.init()
