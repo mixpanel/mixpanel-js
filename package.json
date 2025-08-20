@@ -23,6 +23,18 @@
     "validate": "npm ls"
   },
   "types": "./src/index.d.ts",
+  "exports": {
+    "./src/loaders/loader-module-core": {
+      "types": "./src/index.d.ts",
+      "import": "./src/loaders/loader-module-core.js",
+      "require": "./src/loaders/loader-module-core.js"
+    },
+    "./src/loaders/loader-module-with-async-recorder": {
+      "types": "./src/index.d.ts",
+      "import": "./src/loaders/loader-module-with-async-recorder.js",
+      "require": "./src/loaders/loader-module-with-async-recorder.js"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/mixpanel/mixpanel-js.git"
