@@ -1149,6 +1149,37 @@
             });
         }
 
+        mpmodule("disable_persistence")
+            
+        function testNoCallsToBrowserStorage(persistenceType) {
+            test(persistenceType + " persistence type should make no calls to browser storage APIs", 4, function() {            
+                var idbOpenSpy = sinon.spy(window.indexedDB, `open`);
+                var localStorageSetItemSpy = sinon.spy(window.localStorage, `setItem`);
+                var sessionStorageSetItemSpy = sinon.spy(window.sessionStorage, `setItem`);
+                var originalCookie = document.cookie;
+    
+                mixpanel.init('persistence_lib', {
+                    persistence: persistenceType,
+                    persistence_name: name,
+                    batch_requests: false,
+                    disable_persistence: true
+                }, 'persistence_lib');
+    
+                stop();
+                setTimeout(function() {
+                    same(idbOpenSpy.callCount, 0, "IDB should not be opened");
+                    same(localStorageSetItemSpy.callCount, 0, "localStorage.setItem should not be called");
+                    same(sessionStorageSetItemSpy.callCount, 0, "sessionStorage.setItem should not be called");
+                    same(document.cookie, originalCookie, "document.cookie shouldn't have been changed");
+                    sinon.restore();
+                    start();
+                }, 500);
+            });
+        }
+
+        testNoCallsToBrowserStorage('cookie');
+        testNoCallsToBrowserStorage('localStorage');
+
         mpmodule("mixpanel");
 
         var get_superprops_without_defaults = function(instance) {
@@ -5485,6 +5516,31 @@
                 ok(typeof(mixpanel.test.get_tab_id()) === "string", "tab id is a string");
                 ok(typeof(tab_id) === "string", "tab id is a string");
                 ok(tab_id !== mixpanel.test.get_tab_id(), "tab ID has changed since the flag to generate a new tab ID was set");
+            });
+
+            module("tab_id when disable_persistence: true", {
+                setup: function() {
+                    this.token = rand_name();
+                    this.id = rand_name();
+
+                    mixpanel.init(this.token, {
+                        batch_requests: false,
+                        disable_persistence: true,
+                        debug: true
+                    }, "test");
+                },
+                teardown: function() {
+                    clearAllLibInstances();
+                }
+            });
+
+            test("no tab id is persisted in session storage", 3, function () {
+                var tab_id = mixpanel.test.get_tab_id();
+                ok(tab_id === null, "tab id is null");
+
+                var stored_tab_id = window.sessionStorage.getItem("mp_tab_id_test_" + this.token);
+                ok(stored_tab_id === null, "no tab id is stored in sessionStorage");
+                ok(Object.keys(window.sessionStorage).length === 0, "sessionStorage is empty");
             });
         }
 

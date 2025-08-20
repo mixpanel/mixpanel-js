@@ -8,10 +8,15 @@ import { isRecordingExpired } from './utils';
  * Makes sure that only one tab can be recording at a time.
  */
 var RecordingRegistry = function (options) {
+    /** @type {IDBStorageWrapper} */
     this.idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
     this.sharedLockStorage = options.sharedLockStorage;
+};
+
+RecordingRegistry.prototype.isPersistenceEnabled = function() {
+    return !this.mixpanelInstance.get_config('disable_persistence');
 };
 
 RecordingRegistry.prototype.handleError = function (err) {
@@ -22,6 +27,10 @@ RecordingRegistry.prototype.handleError = function (err) {
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
+    if (!this.isPersistenceEnabled()) {
+        return Promise.resolve();
+    }
+
     var tabId = serializedRecording['tabId'];
     if (!tabId) {
         console.warn('No tab ID is set, cannot persist recording metadata.');
@@ -39,6 +48,10 @@ RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) 
  * @returns {Promise<import('./session-recording').SerializedRecording>}
  */
 RecordingRegistry.prototype.getActiveRecording = function () {
+    if (!this.isPersistenceEnabled()) {
+        return Promise.resolve(null);
+    }
+
     return this.idb.init()
         .then(function () {
             return this.idb.getItem(this.mixpanelInstance.get_tab_id());
@@ -50,8 +63,16 @@ RecordingRegistry.prototype.getActiveRecording = function () {
 };
 
 RecordingRegistry.prototype.clearActiveRecording = function () {
-    // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
-    // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+    if (this.isPersistenceEnabled()) {
+        // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
+        // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+        return this.markActiveRecordingExpired();
+    } else {
+        return this.deleteActiveRecording();
+    }
+};
+
+RecordingRegistry.prototype.markActiveRecordingExpired = function () {
     return this.getActiveRecording()
         .then(function (serializedRecording) {
             if (serializedRecording) {
@@ -62,11 +83,25 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
         .catch(this.handleError.bind(this));
 };
 
+RecordingRegistry.prototype.deleteActiveRecording = function () {
+    // avoid initializing IDB if this registry instance hasn't already written a recording
+    if (this.idb.isInitialized()) {
+        return this.idb.removeItem(this.mixpanelInstance.get_tab_id())
+            .catch(this.handleError.bind(this));
+    } else {
+        return Promise.resolve();
+    }
+};
+
 /**
  * Flush any inactive recordings from the registry to minimize data loss.
  * The main idea here is that we can flush remaining rrweb events on the next page load if a tab is closed mid-batch.
  */
 RecordingRegistry.prototype.flushInactiveRecordings = function () {
+    if (!this.isPersistenceEnabled()) {
+        return Promise.resolve([]);
+    }
+
     return this.idb.init()
         .then(function() {
             return this.idb.getAll();
