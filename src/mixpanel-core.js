@@ -392,7 +392,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
  * This is primarily used for session recording, where data must be isolated to the current tab.
  */
 MixpanelLib.prototype._init_tab_id = function() {
-    if (_.sessionStorage.is_supported()) {
+    if (this.get_config('disable_persistence')) {
+        console.log('Tab ID initialization skipped due to disable_persistence config');
+    } else if (_.sessionStorage.is_supported()) {
         try {
             var key_suffix = this.get_config('name') + '_' + this.get_config('token');
             var tab_id_key = 'mp_tab_id_' + key_suffix;
@@ -426,6 +428,11 @@ MixpanelLib.prototype.get_tab_id = function () {
 };
 
 MixpanelLib.prototype._should_load_recorder = function () {
+    if (this.get_config('disable_persistence')) {
+        console.log('Load recorder check skipped due to disable_persistence config');
+        return Promise.resolve(false);
+    }
+
     var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     var tab_id = this.get_tab_id();
     return recording_registry_idb.init()

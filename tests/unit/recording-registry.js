@@ -81,14 +81,31 @@ describe(`RecordingRegistry`, function() {
     });
   });
 
-  describe(`clearActiveRecording()`, function () {
+  describe(`markActiveRecordingExpired()`, function () {
     it(`marks the active recording as expired`, async function() {
       await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingRegistry`]);
       await idbSetItem(`mixpanelRecordingRegistry`, `test-tab-id`, SERIALIZED_RECORDING);
 
-      await recordingRegistry.clearActiveRecording();
+      await recordingRegistry.markActiveRecordingExpired();
       const storedRecording = await idbGetItem(`mixpanelRecordingRegistry`, `test-tab-id`);
       expect(storedRecording.maxExpires).to.equal(0);
+    });
+  });
+
+  describe(`deleteActiveRecording()`, function () {
+    it(`deletes the active recording`, async function() {
+      await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingRegistry`]);
+      await recordingRegistry.setActiveRecording(SERIALIZED_RECORDING);
+
+      await recordingRegistry.deleteActiveRecording();
+      const storedRecording = await idbGetItem(`mixpanelRecordingRegistry`, `test-tab-id`);
+      expect(storedRecording).to.not.exist;
+    });
+
+    it(`doesn't try to open the database if it is not initialized (no recording to delete)`, async function() {
+      const idbOpenSpy = sinon.spy(window.indexedDB, `open`);
+      await recordingRegistry.deleteActiveRecording();
+      expect(idbOpenSpy.callCount).to.be.equal(0);
     });
   });
 

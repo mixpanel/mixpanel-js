@@ -2166,6 +2166,32 @@ function querySelectorAll$1(n2, selectors) {
 function mutationObserverCtor$1() {
   return getUntaintedPrototype$1("MutationObserver").constructor;
 }
+function patch$1(source, name, replacement) {
+  try {
+    if (!(name in source)) {
+      return () => {
+      };
+    }
+    const original = source[name];
+    const wrapped = replacement(original);
+    if (typeof wrapped === "function") {
+      wrapped.prototype = wrapped.prototype || {};
+      Object.defineProperties(wrapped, {
+        __rrweb_original__: {
+          enumerable: false,
+          value: original
+        }
+      });
+    }
+    source[name] = wrapped;
+    return () => {
+      source[name] = original;
+    };
+  } catch (e2) {
+    return () => {
+    };
+  }
+}
 const index$1 = {
   childNodes: childNodes$1,
   parentNode: parentNode$1,
@@ -2178,7 +2204,8 @@ const index$1 = {
   shadowRoot: shadowRoot$1,
   querySelector: querySelector$1,
   querySelectorAll: querySelectorAll$1,
-  mutationObserver: mutationObserverCtor$1
+  mutationObserver: mutationObserverCtor$1,
+  patch: patch$1
 };
 function isElement(n2) {
   return n2.nodeType === n2.ELEMENT_NODE;
@@ -2460,26 +2487,97 @@ function absolutifyURLs(cssText, href) {
     }
   );
 }
-function normalizeCssString(cssText) {
-  return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "");
+function normalizeCssString(cssText, _testNoPxNorm = false) {
+  if (_testNoPxNorm) {
+    return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "");
+  } else {
+    return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "").replace(/0px/g, "0");
+  }
 }
-function splitCssText(cssText, style) {
+function splitCssText(cssText, style, _testNoPxNorm = false) {
   const childNodes2 = Array.from(style.childNodes);
   const splits = [];
+  let iterCount = 0;
   if (childNodes2.length > 1 && cssText && typeof cssText === "string") {
-    const cssTextNorm = normalizeCssString(cssText);
+    let cssTextNorm = normalizeCssString(cssText, _testNoPxNorm);
+    const normFactor = cssTextNorm.length / cssText.length;
     for (let i2 = 1; i2 < childNodes2.length; i2++) {
       if (childNodes2[i2].textContent && typeof childNodes2[i2].textContent === "string") {
-        const textContentNorm = normalizeCssString(childNodes2[i2].textContent);
-        for (let j = 3; j < textContentNorm.length; j++) {
-          const bit = textContentNorm.substring(0, j);
-          if (cssTextNorm.split(bit).length === 2) {
-            const splitNorm = cssTextNorm.indexOf(bit);
-            for (let k = splitNorm; k < cssText.length; k++) {
-              if (normalizeCssString(cssText.substring(0, k)).length === splitNorm) {
+        const textContentNorm = normalizeCssString(
+          childNodes2[i2].textContent,
+          _testNoPxNorm
+        );
+        const jLimit = 100;
+        let j = 3;
+        for (; j < textContentNorm.length; j++) {
+          if (
+            // keep consuming css identifiers (to get a decent chunk more quickly)
+            textContentNorm[j].match(/[a-zA-Z0-9]/) || // substring needs to be unique to this section
+            textContentNorm.indexOf(textContentNorm.substring(0, j), 1) !== -1
+          ) {
+            continue;
+          }
+          break;
+        }
+        for (; j < textContentNorm.length; j++) {
+          let startSubstring = textContentNorm.substring(0, j);
+          let cssNormSplits = cssTextNorm.split(startSubstring);
+          let splitNorm = -1;
+          if (cssNormSplits.length === 2) {
+            splitNorm = cssNormSplits[0].length;
+          } else if (cssNormSplits.length > 2 && cssNormSplits[0] === "" && childNodes2[i2 - 1].textContent !== "") {
+            splitNorm = cssTextNorm.indexOf(startSubstring, 1);
+          } else if (cssNormSplits.length === 1) {
+            startSubstring = startSubstring.substring(
+              0,
+              startSubstring.length - 1
+            );
+            cssNormSplits = cssTextNorm.split(startSubstring);
+            if (cssNormSplits.length <= 1) {
+              splits.push(cssText);
+              return splits;
+            }
+            j = jLimit + 1;
+          } else if (j === textContentNorm.length - 1) {
+            splitNorm = cssTextNorm.indexOf(startSubstring);
+          }
+          if (cssNormSplits.length >= 2 && j > jLimit) {
+            const prevTextContent = childNodes2[i2 - 1].textContent;
+            if (prevTextContent && typeof prevTextContent === "string") {
+              const prevMinLength = normalizeCssString(prevTextContent).length;
+              splitNorm = cssTextNorm.indexOf(startSubstring, prevMinLength);
+            }
+            if (splitNorm === -1) {
+              splitNorm = cssNormSplits[0].length;
+            }
+          }
+          if (splitNorm !== -1) {
+            let k = Math.floor(splitNorm / normFactor);
+            for (; k > 0 && k < cssText.length; ) {
+              iterCount += 1;
+              if (iterCount > 50 * childNodes2.length) {
+                splits.push(cssText);
+                return splits;
+              }
+              const normPart = normalizeCssString(
+                cssText.substring(0, k),
+                _testNoPxNorm
+              );
+              if (normPart.length === splitNorm) {
                 splits.push(cssText.substring(0, k));
                 cssText = cssText.substring(k);
+                cssTextNorm = cssTextNorm.substring(splitNorm);
                 break;
+              } else if (normPart.length < splitNorm) {
+                k += Math.max(
+                  1,
+                  Math.floor((splitNorm - normPart.length) / normFactor)
+                );
+              } else {
+                k -= Math.max(
+                  1,
+                  Math.floor((normPart.length - splitNorm) * normFactor)
+                );
               }
             }
             break;
@@ -3051,7 +3149,7 @@ function slimDOMExcluded(sn, slimDOMOptions) {
   } else if (sn.type === NodeType$3.Element) {
     if (slimDOMOptions.script && // script tag
     (sn.tagName === "script" || // (module)preload link
-    sn.tagName === "link" && (sn.attributes.rel === "preload" || sn.attributes.rel === "modulepreload") && sn.attributes.as === "script" || // prefetch link
+    sn.tagName === "link" && (sn.attributes.rel === "preload" && sn.attributes.as === "script" || sn.attributes.rel === "modulepreload") || // prefetch link
     sn.tagName === "link" && sn.attributes.rel === "prefetch" && typeof sn.attributes.href === "string" && extractFileExtension(sn.attributes.href) === "js")) {
       return true;
     } else if (slimDOMOptions.headFavicon && (sn.tagName === "link" && sn.attributes.rel === "shortcut icon" || sn.tagName === "meta" && (lowerIfExists(sn.attributes.name).match(
@@ -7023,11 +7121,16 @@ function getTagName(n2) {
 function adaptCssForReplay(cssText, cache) {
   const cachedStyle = cache == null ? void 0 : cache.stylesWithHoverClass.get(cssText);
   if (cachedStyle) return cachedStyle;
-  const ast = postcss$1$1([
-    mediaSelectorPlugin,
-    pseudoClassPlugin
-  ]).process(cssText);
-  const result2 = ast.css;
+  let result2 = cssText;
+  try {
+    const ast = postcss$1$1([
+      mediaSelectorPlugin,
+      pseudoClassPlugin
+    ]).process(cssText);
+    result2 = ast.css;
+  } catch (error) {
+    console.warn("Failed to adapt css for replay", error);
+  }
   cache == null ? void 0 : cache.stylesWithHoverClass.set(cssText, result2);
   return result2;
 }
@@ -7048,11 +7151,39 @@ function applyCssSplits(n2, cssText, hackCss, cache) {
   while (cssTextSplits.length > 1 && cssTextSplits.length > childTextNodes.length) {
     cssTextSplits.splice(-2, 2, cssTextSplits.slice(-2).join(""));
   }
+  let adaptedCss = "";
+  if (hackCss) {
+    adaptedCss = adaptCssForReplay(cssTextSplits.join(""), cache);
+  }
+  let startIndex = 0;
   for (let i2 = 0; i2 < childTextNodes.length; i2++) {
+    if (i2 === cssTextSplits.length) {
+      break;
+    }
     const childTextNode = childTextNodes[i2];
-    const cssTextSection = cssTextSplits[i2];
-    if (childTextNode && cssTextSection) {
-      childTextNode.textContent = hackCss ? adaptCssForReplay(cssTextSection, cache) : cssTextSection;
+    if (!hackCss) {
+      childTextNode.textContent = cssTextSplits[i2];
+    } else if (i2 < cssTextSplits.length - 1) {
+      let endIndex = startIndex;
+      let endSearch = cssTextSplits[i2 + 1].length;
+      endSearch = Math.min(endSearch, 30);
+      let found = false;
+      for (; endSearch > 2; endSearch--) {
+        const searchBit = cssTextSplits[i2 + 1].substring(0, endSearch);
+        const searchIndex = adaptedCss.substring(startIndex).indexOf(searchBit);
+        found = searchIndex !== -1;
+        if (found) {
+          endIndex += searchIndex;
+          break;
+        }
+      }
+      if (!found) {
+        endIndex += cssTextSplits[i2].length;
+      }
+      childTextNode.textContent = adaptedCss.substring(startIndex, endIndex);
+      startIndex = endIndex;
+    } else {
+      childTextNode.textContent = adaptedCss.substring(startIndex);
     }
   }
 }
@@ -7136,8 +7267,8 @@ function buildNode(n2, options) {
           } else if (tagName === "meta" && n2.attributes["http-equiv"] === "Content-Security-Policy" && name === "content") {
             node2.setAttribute("csp-content", value.toString());
             continue;
-          } else if (tagName === "link" && (n2.attributes.rel === "preload" || n2.attributes.rel === "modulepreload") && n2.attributes.as === "script") {
-          } else if (tagName === "link" && n2.attributes.rel === "prefetch" && typeof n2.attributes.href === "string" && n2.attributes.href.endsWith(".js")) {
+          } else if (tagName === "link" && (n2.attributes.rel === "preload" && n2.attributes.as === "script" || n2.attributes.rel === "modulepreload")) {
+          } else if (tagName === "link" && n2.attributes.rel === "prefetch" && typeof n2.attributes.href === "string" && extractFileExtension(n2.attributes.href) === "js") {
           } else if (tagName === "img" && n2.attributes.srcset && n2.attributes.rr_dataURL) {
             node2.setAttribute(
               "rrweb-original-srcset",
@@ -12375,6 +12506,32 @@ function querySelectorAll(n2, selectors) {
 function mutationObserverCtor() {
   return getUntaintedPrototype("MutationObserver").constructor;
 }
+function patch(source, name, replacement) {
+  try {
+    if (!(name in source)) {
+      return () => {
+      };
+    }
+    const original = source[name];
+    const wrapped = replacement(original);
+    if (typeof wrapped === "function") {
+      wrapped.prototype = wrapped.prototype || {};
+      Object.defineProperties(wrapped, {
+        __rrweb_original__: {
+          enumerable: false,
+          value: original
+        }
+      });
+    }
+    source[name] = wrapped;
+    return () => {
+      source[name] = original;
+    };
+  } catch (e2) {
+    return () => {
+    };
+  }
+}
 const index = {
   childNodes,
   parentNode,
@@ -12387,7 +12544,8 @@ const index = {
   shadowRoot,
   querySelector,
   querySelectorAll,
-  mutationObserver: mutationObserverCtor
+  mutationObserver: mutationObserverCtor,
+  patch
 };
 function on(type, fn, target = document) {
   const options = { capture: true, passive: true };
@@ -12469,32 +12627,6 @@ function hookSetter(target, key, d, isRevoked, win = window) {
     }
   );
   return () => hookSetter(target, key, original || {}, true);
-}
-function patch(source, name, replacement) {
-  try {
-    if (!(name in source)) {
-      return () => {
-      };
-    }
-    const original = source[name];
-    const wrapped = replacement(original);
-    if (typeof wrapped === "function") {
-      wrapped.prototype = wrapped.prototype || {};
-      Object.defineProperties(wrapped, {
-        __rrweb_original__: {
-          enumerable: false,
-          value: original
-        }
-      });
-    }
-    source[name] = wrapped;
-    return () => {
-      source[name] = original;
-    };
-  } catch (e2) {
-    return () => {
-    };
-  }
 }
 let nowTimestamp = Date.now;
 if (!/* @__PURE__ */ /[1-9][0-9]{12}/.test(Date.now().toString())) {
@@ -12782,7 +12914,6 @@ const utils = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePropert
     return nowTimestamp;
   },
   on,
-  patch,
   polyfill: polyfill$1,
   queueToResolveTrees,
   shadowHostInDom,
@@ -13208,10 +13339,18 @@ class MutationBuffer {
         this.attributes.push(item);
         this.attributeMap.set(textarea, item);
       }
-      item.attributes.value = Array.from(
+      const value = Array.from(
         index.childNodes(textarea),
         (cn) => index.textContent(cn) || ""
       ).join("");
+      item.attributes.value = maskInputValue({
+        element: textarea,
+        maskInputOptions: this.maskInputOptions,
+        tagName: textarea.tagName,
+        type: getInputType(textarea),
+        value,
+        maskInputFn: this.maskInputFn
+      });
     });
     __publicField(this, "processMutation", (m) => {
       if (isIgnored(m.target, this.mirror, this.slimDOMOptions)) {
@@ -16008,7 +16147,16 @@ function record(options = {}) {
       );
     }
     return () => {
-      handlers.forEach((h) => h());
+      handlers.forEach((handler) => {
+        try {
+          handler();
+        } catch (error) {
+          const msg = String(error).toLowerCase();
+          if (!msg.includes("cross-origin")) {
+            console.warn(error);
+          }
+        }
+      });
       processedNodeManager.destroy();
       recording = false;
       unregisterErrorHandler();
@@ -17331,21 +17479,21 @@ class Replayer {
           if (plugin3.handler) plugin3.handler(event, isSync, { replayer: this });
         }
         this.service.send({ type: "CAST_EVENT", payload: { event } });
-        const last_index = this.service.state.context.events.length - 1;
-        if (!this.config.liveMode && event === this.service.state.context.events[last_index]) {
+        const lastIndex = this.service.state.context.events.length - 1;
+        if (!this.config.liveMode && event === this.service.state.context.events[lastIndex]) {
           const finish = () => {
-            if (last_index < this.service.state.context.events.length - 1) {
+            if (lastIndex < this.service.state.context.events.length - 1) {
               return;
             }
             this.backToNormal();
             this.service.send("END");
             this.emitter.emit(ReplayerEvents.Finish);
           };
-          let finish_buffer = 50;
+          let finishBuffer = 50;
           if (event.type === EventType.IncrementalSnapshot && event.data.source === IncrementalSource.MouseMove && event.data.positions.length) {
-            finish_buffer += Math.max(0, -event.data.positions[0].timeOffset);
+            finishBuffer += Math.max(0, -event.data.positions[0].timeOffset);
           }
-          setTimeout(finish, finish_buffer);
+          setTimeout(finish, finishBuffer);
         }
         this.emitter.emit(ReplayerEvents.EventCast, event);
       };
@@ -18526,18 +18674,23 @@ class Replayer {
                   const newSn = mirror2.getMeta(
                     target
                   );
+                  const newNode = buildNodeWithSN(
+                    __spreadProps(__spreadValues({}, newSn), {
+                      attributes: __spreadValues(__spreadValues({}, newSn.attributes), mutation.attributes)
+                    }),
+                    {
+                      doc: target.ownerDocument,
+                      // can be Document or RRDocument
+                      mirror: mirror2,
+                      skipChild: true,
+                      hackCss: true,
+                      cache: this.cache
+                    }
+                  );
                   Object.assign(
                     newSn.attributes,
                     mutation.attributes
                   );
-                  const newNode = buildNodeWithSN(newSn, {
-                    doc: target.ownerDocument,
-                    // can be Document or RRDocument
-                    mirror: mirror2,
-                    skipChild: true,
-                    hackCss: true,
-                    cache: this.cache
-                  });
                   const siblingNode = target.nextSibling;
                   const parentNode2 = target.parentNode;
                   if (newNode && parentNode2) {
@@ -20049,7 +20202,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.68.0'
+    LIB_VERSION: '2.69.0'
 };
 
 exports['default'] = Config;
@@ -21246,7 +21399,9 @@ MixpanelLib.prototype._init = function (token, config, name) {
  * This is primarily used for session recording, where data must be isolated to the current tab.
  */
 MixpanelLib.prototype._init_tab_id = function () {
-    if (_utils._.sessionStorage.is_supported()) {
+    if (this.get_config('disable_persistence')) {
+        _utils.console.log('Tab ID initialization skipped due to disable_persistence config');
+    } else if (_utils._.sessionStorage.is_supported()) {
         try {
             var key_suffix = this.get_config('name') + '_' + this.get_config('token');
             var tab_id_key = 'mp_tab_id_' + key_suffix;
@@ -21280,6 +21435,11 @@ MixpanelLib.prototype.get_tab_id = function () {
 };
 
 MixpanelLib.prototype._should_load_recorder = function () {
+    if (this.get_config('disable_persistence')) {
+        _utils.console.log('Load recorder check skipped due to disable_persistence config');
+        return Promise.resolve(false);
+    }
+
     var recording_registry_idb = new _storageIndexedDb.IDBStorageWrapper(_storageIndexedDb.RECORDING_REGISTRY_STORE_NAME);
     var tab_id = this.get_tab_id();
     return recording_registry_idb.init().then(function () {
@@ -24725,7 +24885,7 @@ Object.defineProperty(exports, '__esModule', {
     value: true
 });
 
-var _rrweb = require('rrweb');
+var _mixpanelRrweb = require('@mixpanel/rrweb');
 
 var _promisePolyfill = require('../promise-polyfill');
 
@@ -24745,7 +24905,7 @@ var logger = (0, _utils.console_with_prefix)('recorder');
 */
 var MixpanelRecorder = function MixpanelRecorder(mixpanelInstance, rrwebRecord, sharedLockStorage) {
     this.mixpanelInstance = mixpanelInstance;
-    this.rrwebRecord = rrwebRecord || _rrweb.record;
+    this.rrwebRecord = rrwebRecord || _mixpanelRrweb.record;
     this.sharedLockStorage = sharedLockStorage;
 
     /**
@@ -24873,7 +25033,7 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
 
 exports.MixpanelRecorder = MixpanelRecorder;
 
-},{"../promise-polyfill":22,"../utils":33,"./recording-registry":25,"./session-recording":26,"rrweb":7}],25:[function(require,module,exports){
+},{"../promise-polyfill":22,"../utils":33,"./recording-registry":25,"./session-recording":26,"@mixpanel/rrweb":7}],25:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -24893,10 +25053,15 @@ var _utils = require('./utils');
  * Makes sure that only one tab can be recording at a time.
  */
 var RecordingRegistry = function RecordingRegistry(options) {
+    /** @type {IDBStorageWrapper} */
     this.idb = new _storageIndexedDb.IDBStorageWrapper(_storageIndexedDb.RECORDING_REGISTRY_STORE_NAME);
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
     this.sharedLockStorage = options.sharedLockStorage;
+};
+
+RecordingRegistry.prototype.isPersistenceEnabled = function () {
+    return !this.mixpanelInstance.get_config('disable_persistence');
 };
 
 RecordingRegistry.prototype.handleError = function (err) {
@@ -24907,6 +25072,10 @@ RecordingRegistry.prototype.handleError = function (err) {
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
+    if (!this.isPersistenceEnabled()) {
+        return _promisePolyfill.Promise.resolve();
+    }
+
     var tabId = serializedRecording['tabId'];
     if (!tabId) {
         console.warn('No tab ID is set, cannot persist recording metadata.');
@@ -24922,6 +25091,10 @@ RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) 
  * @returns {Promise<import('./session-recording').SerializedRecording>}
  */
 RecordingRegistry.prototype.getActiveRecording = function () {
+    if (!this.isPersistenceEnabled()) {
+        return _promisePolyfill.Promise.resolve(null);
+    }
+
     return this.idb.init().then((function () {
         return this.idb.getItem(this.mixpanelInstance.get_tab_id());
     }).bind(this)).then((function (serializedRecording) {
@@ -24930,8 +25103,16 @@ RecordingRegistry.prototype.getActiveRecording = function () {
 };
 
 RecordingRegistry.prototype.clearActiveRecording = function () {
-    // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
-    // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+    if (this.isPersistenceEnabled()) {
+        // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
+        // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+        return this.markActiveRecordingExpired();
+    } else {
+        return this.deleteActiveRecording();
+    }
+};
+
+RecordingRegistry.prototype.markActiveRecordingExpired = function () {
     return this.getActiveRecording().then((function (serializedRecording) {
         if (serializedRecording) {
             serializedRecording['maxExpires'] = 0;
@@ -24940,11 +25121,24 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
     }).bind(this))['catch'](this.handleError.bind(this));
 };
 
+RecordingRegistry.prototype.deleteActiveRecording = function () {
+    // avoid initializing IDB if this registry instance hasn't already written a recording
+    if (this.idb.isInitialized()) {
+        return this.idb.removeItem(this.mixpanelInstance.get_tab_id())['catch'](this.handleError.bind(this));
+    } else {
+        return _promisePolyfill.Promise.resolve();
+    }
+};
+
 /**
  * Flush any inactive recordings from the registry to minimize data loss.
  * The main idea here is that we can flush remaining rrweb events on the next page load if a tab is closed mid-batch.
  */
 RecordingRegistry.prototype.flushInactiveRecordings = function () {
+    if (!this.isPersistenceEnabled()) {
+        return _promisePolyfill.Promise.resolve([]);
+    }
+
     return this.idb.init().then((function () {
         return this.idb.getAll();
     }).bind(this)).then((function (serializedRecordings) {
@@ -24979,7 +25173,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'd
 
 var _window = require('../window');
 
-var _rrweb = require('rrweb');
+var _mixpanelRrweb = require('@mixpanel/rrweb');
 
 var _utils = require('../utils');
 
@@ -25007,10 +25201,10 @@ var RECORDER_BATCHER_LIB_CONFIG = {
     'batch_autostart': true
 };
 
-var ACTIVE_SOURCES = new Set([_rrweb.IncrementalSource.MouseMove, _rrweb.IncrementalSource.MouseInteraction, _rrweb.IncrementalSource.Scroll, _rrweb.IncrementalSource.ViewportResize, _rrweb.IncrementalSource.Input, _rrweb.IncrementalSource.TouchMove, _rrweb.IncrementalSource.MediaInteraction, _rrweb.IncrementalSource.Drag, _rrweb.IncrementalSource.Selection]);
+var ACTIVE_SOURCES = new Set([_mixpanelRrweb.IncrementalSource.MouseMove, _mixpanelRrweb.IncrementalSource.MouseInteraction, _mixpanelRrweb.IncrementalSource.Scroll, _mixpanelRrweb.IncrementalSource.ViewportResize, _mixpanelRrweb.IncrementalSource.Input, _mixpanelRrweb.IncrementalSource.TouchMove, _mixpanelRrweb.IncrementalSource.MediaInteraction, _mixpanelRrweb.IncrementalSource.Drag, _mixpanelRrweb.IncrementalSource.Selection]);
 
 function isUserEvent(ev) {
-    return ev.type === _rrweb.EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.data.source);
+    return ev.type === _mixpanelRrweb.EventType.IncrementalSnapshot && ACTIVE_SOURCES.has(ev.data.source);
 }
 
 /**
@@ -25080,10 +25274,9 @@ var SessionRecording = function SessionRecording(options) {
 
     // disable persistence if localStorage is not supported
     // request-queue will automatically disable persistence if indexedDB fails to initialize
-    var usePersistence = (0, _utils.localStorageSupported)(options.sharedLockStorage, true);
+    var usePersistence = (0, _utils.localStorageSupported)(options.sharedLockStorage, true) && !this.getConfig('disable_persistence');
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
-    // this will be important when persistence is introduced
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
     this.queueStorage = new _storageIndexedDb.IDBStorageWrapper(_storageIndexedDb.RECORDING_EVENTS_STORE_NAME);
     this.batcher = new _requestBatcher.RequestBatcher(this.batcherKey, {
@@ -25394,7 +25587,7 @@ SessionRecording.prototype._flushEvents = (0, _gdprUtils.addOptOutCheckMixpanelL
         for (var i = 0; i < numEvents; i++) {
             batchStartTime = Math.min(batchStartTime, data[i].timestamp);
             batchEndTime = Math.max(batchEndTime, data[i].timestamp);
-            if (data[i].type === _rrweb.EventType.FullSnapshot) {
+            if (data[i].type === _mixpanelRrweb.EventType.FullSnapshot) {
                 hasFullSnapshot = true;
             }
         }
@@ -25455,7 +25648,7 @@ SessionRecording.prototype.reportError = function (msg, err) {
 
 exports.SessionRecording = SessionRecording;
 
-},{"../config":12,"../gdpr-utils":15,"../request-batcher":28,"../storage/indexed-db":31,"../utils":33,"../window":34,"./utils":27,"rrweb":7}],27:[function(require,module,exports){
+},{"../config":12,"../gdpr-utils":15,"../request-batcher":28,"../storage/indexed-db":31,"../utils":33,"../window":34,"./utils":27,"@mixpanel/rrweb":7}],27:[function(require,module,exports){
 /**
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  * @returns {boolean}
@@ -25875,7 +26068,7 @@ var RequestQueue = function RequestQueue(storageKey, options) {
 };
 
 RequestQueue.prototype.ensureInit = function () {
-    if (this.initialized) {
+    if (this.initialized || !this.usePersistence) {
         return _promisePolyfill.Promise.resolve();
     }
 
@@ -26394,6 +26587,10 @@ IDBStorageWrapper.prototype.init = function () {
     });
 };
 
+IDBStorageWrapper.prototype.isInitialized = function () {
+    return !!this.dbPromise;
+};
+
 /**
  * @param {IDBTransactionMode} mode
  * @param {function(IDBObjectStore): void} storeCb
@@ -26483,6 +26680,10 @@ var LocalStorageWrapper = function LocalStorageWrapper(storageOverride) {
 
 LocalStorageWrapper.prototype.init = function () {
     return _promisePolyfill.Promise.resolve();
+};
+
+LocalStorageWrapper.prototype.isInitialized = function () {
+    return true;
 };
 
 LocalStorageWrapper.prototype.setItem = function (key, value) {

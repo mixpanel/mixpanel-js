@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.68.0'
+        LIB_VERSION: '2.69.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -3630,6 +3630,10 @@
         return PromisePolyfill.resolve();
     };
 
+    LocalStorageWrapper.prototype.isInitialized = function () {
+        return true;
+    };
+
     LocalStorageWrapper.prototype.setItem = function (key, value) {
         return new PromisePolyfill(_.bind(function (resolve, reject) {
             try {
@@ -3710,7 +3714,7 @@
     };
 
     RequestQueue.prototype.ensureInit = function () {
-        if (this.initialized) {
+        if (this.initialized || !this.usePersistence) {
             return PromisePolyfill.resolve();
         }
 
@@ -5894,6 +5898,10 @@
             });
     };
 
+    IDBStorageWrapper.prototype.isInitialized = function () {
+        return !!this.dbPromise;
+    };
+
     /**
      * @param {IDBTransactionMode} mode
      * @param {function(IDBObjectStore): void} storeCb
@@ -6327,7 +6335,9 @@
      * This is primarily used for session recording, where data must be isolated to the current tab.
      */
     MixpanelLib.prototype._init_tab_id = function() {
-        if (_.sessionStorage.is_supported()) {
+        if (this.get_config('disable_persistence')) {
+            console.log('Tab ID initialization skipped due to disable_persistence config');
+        } else if (_.sessionStorage.is_supported()) {
             try {
                 var key_suffix = this.get_config('name') + '_' + this.get_config('token');
                 var tab_id_key = 'mp_tab_id_' + key_suffix;
@@ -6361,6 +6371,11 @@
     };
 
     MixpanelLib.prototype._should_load_recorder = function () {
+        if (this.get_config('disable_persistence')) {
+            console.log('Load recorder check skipped due to disable_persistence config');
+            return Promise.resolve(false);
+        }
+
         var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
         var tab_id = this.get_tab_id();
         return recording_registry_idb.init()
