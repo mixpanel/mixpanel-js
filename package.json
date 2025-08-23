@@ -24,6 +24,11 @@
   },
   "types": "./src/index.d.ts",
   "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./dist/mixpanel.module.js",
+      "require": "./dist/mixpanel.cjs.js"
+    },
     "./src/loaders/loader-module-core": {
       "types": "./src/index.d.ts",
       "import": "./src/loaders/loader-module-core.js",
