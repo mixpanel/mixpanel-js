@@ -33,6 +33,11 @@
       "types": "./src/index.d.ts",
       "import": "./src/loaders/loader-module-with-async-recorder.js",
       "require": "./src/loaders/loader-module-with-async-recorder.js"
+    },
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./dist/mixpanel.module.js",
+      "require": "./dist/mixpanel.cjs.js"
     }
   },
   "repository": {
