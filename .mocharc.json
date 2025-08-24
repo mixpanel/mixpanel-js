@@ -1,0 +1,8 @@
+{
+  "require": ["babel-core/register"],
+  "spec": ["tests/unit/*.js"],
+  "ignore": ["tests/unit/test-utils/**/*.js"],
+  "timeout": 5000,
+  "ui": "bdd",
+  "recursive": false
+}
