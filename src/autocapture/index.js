@@ -5,6 +5,7 @@ import {
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,
     EV_SCROLLEND, EV_SUBMIT
 } from './utils';
+import { RageClickTracker } from './rageclick';
 
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
@@ -27,6 +28,7 @@ var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
@@ -44,6 +46,7 @@ CONFIG_DEFAULTS[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS[CONFIG_TRACK_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_SCROLL] = true;
 CONFIG_DEFAULTS[CONFIG_TRACK_SUBMIT] = true;
 
@@ -53,6 +56,7 @@ var DEFAULT_PROPS = {
 
 var MP_EV_CLICK = '$mp_click';
 var MP_EV_INPUT = '$mp_input_change';
+var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_SCROLL = '$mp_scroll';
 var MP_EV_SUBMIT = '$mp_submit';
 
@@ -75,6 +79,7 @@ Autocapture.prototype.init = function() {
     this.initInputTracking();
     this.initScrollTracking();
     this.initSubmitTracking();
+    this.initRageClickTracking();
 };
 
 Autocapture.prototype.getFullConfig = function() {
@@ -153,6 +158,11 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
+    var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (
+        (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK)) ||
+        (mpEventName === MP_EV_RAGE_CLICK && !this._getRageClickConfig())
+    );
+
     var props = getPropsForDOMEvent(ev, {
         allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
         allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
@@ -161,12 +171,30 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
         captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
-        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data(),
+        capturedForHeatMap: isCapturedForHeatMap,
     });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);
     }
+};
+
+Autocapture.prototype._getRageClickConfig = function() {
+    var config = this.getConfig(CONFIG_TRACK_RAGE_CLICK);
+
+    if (!config) {
+        return null; // rage click tracking disabled
+    }
+
+    if (config === true) {
+        return {}; // use defaults
+    }
+
+    if (typeof config === 'object') {
+        return config; // use custom configuration
+    }
+
+    return {}; // fallback to defaults for any other truthy value
 };
 
 Autocapture.prototype.initClickTracking = function() {
@@ -268,6 +296,36 @@ Autocapture.prototype.initPageviewTracking = function() {
             }
         }
     }.bind(this)));
+};
+
+Autocapture.prototype.initRageClickTracking = function() {
+    window.removeEventListener(EV_CLICK, this.listenerRageClick);
+
+    var rageClickConfig = this._getRageClickConfig();
+    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    logger.log('Initializing rage click tracking');
+    if (!this._rageClickTracker) {
+        this._rageClickTracker = new RageClickTracker();
+    }
+
+    this.listenerRageClick = function(ev) {
+        var currentRageClickConfig = this._getRageClickConfig();
+        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
+            return;
+        }
+
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
+        }
+    }.bind(this);
+    window.addEventListener(EV_CLICK, this.listenerRageClick);
 };
 
 Autocapture.prototype.initScrollTracking = function() {

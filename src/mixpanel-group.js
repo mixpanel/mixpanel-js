@@ -146,7 +146,7 @@ MixpanelGroup.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'groups',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/' +  this._get_config('api_routes')['groups'],
+        endpoint: this._mixpanel.get_api_host('groups') + '/' +  this._get_config('api_routes')['groups'],
         batcher: this._mixpanel.request_batchers.groups
     }, callback);
 };

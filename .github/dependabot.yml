@@ -1,0 +1,7 @@
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: "npm" # Or "yarn"
+    directory: "/" # Tells Dependabot to scan root directory only
+    schedule:
+      interval: "daily"

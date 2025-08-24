@@ -1,6 +1,6 @@
 {
   "name": "mixpanel-browser",
-  "version": "2.65.0",
+  "version": "2.69.1",
   "description": "The official Mixpanel JavaScript browser client library",
   "main": "dist/mixpanel.cjs.js",
   "module": "dist/mixpanel.module.js",
@@ -21,6 +21,24 @@
     "test": "npm run lint && npm run unit-test",
     "unit-test": "BABEL_ENV=test mocha --require babel-core/register tests/unit/*.js",
     "validate": "npm ls"
+  },
+  "types": "./src/index.d.ts",
+  "exports": {
+    "./src/loaders/loader-module-core": {
+      "types": "./src/index.d.ts",
+      "import": "./src/loaders/loader-module-core.js",
+      "require": "./src/loaders/loader-module-core.js"
+    },
+    "./src/loaders/loader-module-with-async-recorder": {
+      "types": "./src/index.d.ts",
+      "import": "./src/loaders/loader-module-with-async-recorder.js",
+      "require": "./src/loaders/loader-module-with-async-recorder.js"
+    },
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./dist/mixpanel.module.js",
+      "require": "./dist/mixpanel.cjs.js"
+    }
   },
   "repository": {
     "type": "git",
@@ -65,6 +83,6 @@
     "webpack": "1.12.2"
   },
   "dependencies": {
-    "rrweb": "2.0.0-alpha.18"
+    "@mixpanel/rrweb": "2.0.0-alpha.18.1"
   }
 }

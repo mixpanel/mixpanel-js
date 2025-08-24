@@ -24,6 +24,10 @@ export class MockMixpanelLib {
     }[configVar];
   }
 
+  get_api_host() {
+    return this.get_config('api_host');
+  }
+
   get_property (propName) {
     return {
       '$device_id': `test-device-id`,

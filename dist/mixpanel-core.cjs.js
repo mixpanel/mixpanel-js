@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.65.0'
+    LIB_VERSION: '2.69.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2654,6 +2654,38 @@ function shouldTrackValue(value) {
     return true;
 }
 
+/** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
+/** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
+/** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
+
+function RageClickTracker() {
+    this.clicks = [];
+}
+
+RageClickTracker.prototype.isRageClick = function(x, y, options) {
+    options = options || {};
+    var thresholdPx = options['threshold_px'] || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
+    var timeoutMs = options['timeout_ms'] || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
+    var clickCount = options['click_count'] || DEFAULT_RAGE_CLICK_CLICK_COUNT;
+    var timestamp = Date.now();
+
+    var lastClick = this.clicks[this.clicks.length - 1];
+    if (
+        lastClick &&
+        timestamp - lastClick.timestamp < timeoutMs &&
+        Math.sqrt(Math.pow(x - lastClick.x, 2) + Math.pow(y - lastClick.y, 2)) < thresholdPx
+    ) {
+        this.clicks.push({ x: x, y: y, timestamp: timestamp });
+        if (this.clicks.length >= clickCount) {
+            this.clicks = [];
+            return true;
+        }
+    } else {
+        this.clicks = [{ x: x, y: y, timestamp: timestamp }];
+    }
+    return false;
+};
+
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
 
@@ -2675,6 +2707,7 @@ var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
@@ -2692,6 +2725,7 @@ CONFIG_DEFAULTS$1[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS$1[CONFIG_TRACK_CLICK] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_SCROLL] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_SUBMIT] = true;
 
@@ -2701,6 +2735,7 @@ var DEFAULT_PROPS = {
 
 var MP_EV_CLICK = '$mp_click';
 var MP_EV_INPUT = '$mp_input_change';
+var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_SCROLL = '$mp_scroll';
 var MP_EV_SUBMIT = '$mp_submit';
 
@@ -2723,6 +2758,7 @@ Autocapture.prototype.init = function() {
     this.initInputTracking();
     this.initScrollTracking();
     this.initSubmitTracking();
+    this.initRageClickTracking();
 };
 
 Autocapture.prototype.getFullConfig = function() {
@@ -2801,6 +2837,11 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
+    var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (
+        (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK)) ||
+        (mpEventName === MP_EV_RAGE_CLICK && !this._getRageClickConfig())
+    );
+
     var props = getPropsForDOMEvent(ev, {
         allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
         allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
@@ -2809,12 +2850,30 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
         captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
-        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data(),
+        capturedForHeatMap: isCapturedForHeatMap,
     });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);
     }
+};
+
+Autocapture.prototype._getRageClickConfig = function() {
+    var config = this.getConfig(CONFIG_TRACK_RAGE_CLICK);
+
+    if (!config) {
+        return null; // rage click tracking disabled
+    }
+
+    if (config === true) {
+        return {}; // use defaults
+    }
+
+    if (typeof config === 'object') {
+        return config; // use custom configuration
+    }
+
+    return {}; // fallback to defaults for any other truthy value
 };
 
 Autocapture.prototype.initClickTracking = function() {
@@ -2918,6 +2977,36 @@ Autocapture.prototype.initPageviewTracking = function() {
     }.bind(this)));
 };
 
+Autocapture.prototype.initRageClickTracking = function() {
+    win.removeEventListener(EV_CLICK, this.listenerRageClick);
+
+    var rageClickConfig = this._getRageClickConfig();
+    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    logger$4.log('Initializing rage click tracking');
+    if (!this._rageClickTracker) {
+        this._rageClickTracker = new RageClickTracker();
+    }
+
+    this.listenerRageClick = function(ev) {
+        var currentRageClickConfig = this._getRageClickConfig();
+        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
+            return;
+        }
+
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
+        }
+    }.bind(this);
+    win.addEventListener(EV_CLICK, this.listenerRageClick);
+};
+
 Autocapture.prototype.initScrollTracking = function() {
     win.removeEventListener(EV_SCROLLEND, this.listenerScroll);
 
@@ -3002,8 +3091,10 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
+    this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
-    this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.setMpConfig = initOptions.setConfigFunc;
+    this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
 };
 
@@ -3040,6 +3131,23 @@ FeatureFlagManager.prototype.isSystemEnabled = function() {
     return !!this.getMpConfig(FLAGS_CONFIG_KEY);
 };
 
+FeatureFlagManager.prototype.updateContext = function(newContext, options) {
+    if (!this.isSystemEnabled()) {
+        logger$3.critical('Feature Flags not enabled, cannot update context');
+        return Promise.resolve();
+    }
+
+    var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+    if (!_.isObject(ffConfig)) {
+        ffConfig = {};
+    }
+    var oldContext = (options && options['replace']) ? {} : this.getConfig(CONFIG_CONTEXT);
+    ffConfig[CONFIG_CONTEXT] = _.extend({}, oldContext, newContext);
+
+    this.setMpConfig(FLAGS_CONFIG_KEY, ffConfig);
+    return this.fetchFlags();
+};
+
 FeatureFlagManager.prototype.areFlagsReady = function() {
     if (!this.isSystemEnabled()) {
         logger$3.error('Feature Flags not enabled');
@@ -3049,15 +3157,17 @@ FeatureFlagManager.prototype.areFlagsReady = function() {
 
 FeatureFlagManager.prototype.fetchFlags = function() {
     if (!this.isSystemEnabled()) {
-        return;
+        return Promise.resolve();
     }
 
-    var distinctId = this.getDistinctId();
+    var distinctId = this.getMpProperty('distinct_id');
+    var deviceId = this.getMpProperty('$device_id');
     logger$3.log('Fetching flags for distinct ID: ' + distinctId);
     var reqParams = {
-        'context': _.extend({'distinct_id': distinctId}, this.getConfig(CONFIG_CONTEXT))
+        'context': _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT))
     };
-    this.fetchPromise = win['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+    this._fetchInProgressStartTime = Date.now();
+    this.fetchPromise = win['fetch'](this.getFullApiRoute(), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
@@ -3065,6 +3175,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         },
         'body': JSON.stringify(reqParams)
     }).then(function(response) {
+        this.markFetchComplete();
         return response.json().then(function(responseBody) {
             var responseFlags = responseBody['flags'];
             if (!responseFlags) {
@@ -3079,9 +3190,26 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             });
             this.flags = flags;
         }.bind(this)).catch(function(error) {
+            this.markFetchComplete();
             logger$3.error(error);
-        });
-    }.bind(this)).catch(function() {});
+        }.bind(this));
+    }.bind(this)).catch(function(error) {
+        this.markFetchComplete();
+        logger$3.error(error);
+    }.bind(this));
+
+    return this.fetchPromise;
+};
+
+FeatureFlagManager.prototype.markFetchComplete = function() {
+    if (!this._fetchInProgressStartTime) {
+        logger$3.error('Fetch in progress started time not set, cannot mark fetch complete');
+        return;
+    }
+    this._fetchStartTime = this._fetchInProgressStartTime;
+    this._fetchCompleteTime = Date.now();
+    this._fetchLatency = this._fetchCompleteTime - this._fetchStartTime;
+    this._fetchInProgressStartTime = null;
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
@@ -3160,7 +3288,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
     this.track('$experiment_started', {
         'Experiment name': featureName,
         'Variant name': feature['key'],
-        '$experiment_type': 'feature_flag'
+        '$experiment_type': 'feature_flag',
+        'Variant fetch start time': new Date(this._fetchStartTime).toISOString(),
+        'Variant fetch complete time': new Date(this._fetchCompleteTime).toISOString(),
+        'Variant fetch latency (ms)': this._fetchLatency
     });
 };
 
@@ -3180,6 +3311,7 @@ FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
+FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.updateContext;
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
@@ -3497,6 +3629,10 @@ LocalStorageWrapper.prototype.init = function () {
     return PromisePolyfill.resolve();
 };
 
+LocalStorageWrapper.prototype.isInitialized = function () {
+    return true;
+};
+
 LocalStorageWrapper.prototype.setItem = function (key, value) {
     return new PromisePolyfill(_.bind(function (resolve, reject) {
         try {
@@ -3577,7 +3713,7 @@ var RequestQueue = function (storageKey, options) {
 };
 
 RequestQueue.prototype.ensureInit = function () {
-    if (this.initialized) {
+    if (this.initialized || !this.usePersistence) {
         return PromisePolyfill.resolve();
     }
 
@@ -4789,7 +4925,7 @@ MixpanelGroup.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'groups',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/' +  this._get_config('api_routes')['groups'],
+        endpoint: this._mixpanel.get_api_host('groups') + '/' +  this._get_config('api_routes')['groups'],
         batcher: this._mixpanel.request_batchers.groups
     }, callback);
 };
@@ -5141,7 +5277,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'people',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/' +  this._get_config('api_routes')['engage'],
+        endpoint: this._mixpanel.get_api_host('people') + '/' +  this._get_config('api_routes')['engage'],
         batcher: this._mixpanel.request_batchers.people
     }, callback);
 };
@@ -5761,6 +5897,10 @@ IDBStorageWrapper.prototype.init = function () {
         });
 };
 
+IDBStorageWrapper.prototype.isInitialized = function () {
+    return !!this.dbPromise;
+};
+
 /**
  * @param {IDBTransactionMode} mode
  * @param {function(IDBObjectStore): void} storeCb
@@ -5901,6 +6041,7 @@ var DEFAULT_API_ROUTES = {
  */
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
+    'api_hosts':                         {},
     'api_routes':                        DEFAULT_API_ROUTES,
     'api_extra_query_params':            {},
     'api_method':                        'POST',
@@ -5950,7 +6091,7 @@ var DEFAULT_CONFIG = {
     'batch_autostart':                   true,
     'hooks':                             {},
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
-    'record_block_selector':             'img, video',
+    'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
     'record_heatmap_data':               false,
@@ -6170,8 +6311,12 @@ MixpanelLib.prototype._init = function(token, config, name) {
     }
 
     this.flags = new FeatureFlagManager({
+        getFullApiRoute: _.bind(function() {
+            return this.get_api_host('flags') + '/' + this.get_config('api_routes')['flags'];
+        }, this),
         getConfigFunc: _.bind(this.get_config, this),
-        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        setConfigFunc: _.bind(this.set_config, this),
+        getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this)
     });
     this.flags.init();
@@ -6189,7 +6334,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
  * This is primarily used for session recording, where data must be isolated to the current tab.
  */
 MixpanelLib.prototype._init_tab_id = function() {
-    if (_.sessionStorage.is_supported()) {
+    if (this.get_config('disable_persistence')) {
+        console.log('Tab ID initialization skipped due to disable_persistence config');
+    } else if (_.sessionStorage.is_supported()) {
         try {
             var key_suffix = this.get_config('name') + '_' + this.get_config('token');
             var tab_id_key = 'mp_tab_id_' + key_suffix;
@@ -6223,6 +6370,11 @@ MixpanelLib.prototype.get_tab_id = function () {
 };
 
 MixpanelLib.prototype._should_load_recorder = function () {
+    if (this.get_config('disable_persistence')) {
+        console.log('Load recorder check skipped due to disable_persistence config');
+        return Promise.resolve(false);
+    }
+
     var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     var tab_id = this.get_tab_id();
     return recording_registry_idb.init()
@@ -6286,20 +6438,23 @@ MixpanelLib.prototype.start_session_recording = function () {
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
-        this._recorder['stopRecording']();
+        return this._recorder['stopRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.pause_session_recording = function () {
     if (this._recorder) {
-        this._recorder['pauseRecording']();
+        return this._recorder['pauseRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.resume_session_recording = function () {
     if (this._recorder) {
-        this._recorder['resumeRecording']();
+        return this._recorder['resumeRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.is_recording_heatmap_data = function () {
@@ -6654,11 +6809,10 @@ MixpanelLib.prototype.are_batchers_initialized = function() {
 
 MixpanelLib.prototype.get_batcher_configs = function() {
     var queue_prefix = '__mpq_' + this.get_config('token');
-    var api_routes = this.get_config('api_routes');
     this._batcher_configs = this._batcher_configs || {
-        events: {type: 'events', endpoint: '/' + api_routes['track'], queue_key: queue_prefix + '_ev'},
-        people: {type: 'people', endpoint: '/' + api_routes['engage'], queue_key: queue_prefix + '_pp'},
-        groups: {type: 'groups', endpoint: '/' + api_routes['groups'], queue_key: queue_prefix + '_gr'}
+        events: {type: 'events', api_name: 'track', queue_key: queue_prefix + '_ev'},
+        people: {type: 'people', api_name: 'engage', queue_key: queue_prefix + '_pp'},
+        groups: {type: 'groups', api_name: 'groups', queue_key: queue_prefix + '_gr'}
     };
     return this._batcher_configs;
 };
@@ -6672,8 +6826,9 @@ MixpanelLib.prototype.init_batchers = function() {
                     libConfig: this['config'],
                     errorReporter: this.get_config('error_reporter'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
+                        var api_routes = this.get_config('api_routes');
                         this._send_request(
-                            this.get_config('api_host') + attrs.endpoint,
+                            this.get_api_host(attrs.api_name) + '/' + api_routes[attrs.api_name],
                             this._encode_data_for_request(data),
                             options,
                             this._prepare_callback(cb, data)
@@ -6899,7 +7054,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this.get_config('api_host') + '/' + this.get_config('api_routes')['track'],
+        endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
@@ -7401,6 +7556,7 @@ MixpanelLib.prototype.identify = function(
  * Useful for clearing data when a user logs out.
  */
 MixpanelLib.prototype.reset = function() {
+    this.stop_session_recording();
     this['persistence'].clear();
     this._flags.identify_called = false;
     var uuid = _.UUID();
@@ -7408,7 +7564,6 @@ MixpanelLib.prototype.reset = function() {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
-    this.stop_session_recording();
     this._check_and_start_session_recording();
 };
 
@@ -7720,6 +7875,16 @@ MixpanelLib.prototype.get_property = function(property_name) {
     return this['persistence'].load_prop([property_name]);
 };
 
+/**
+ * Get the API host for a specific endpoint type, falling back to the default api_host if not specified
+ *
+ * @param {String} endpoint_type The type of endpoint (e.g., "events", "people", "groups")
+ * @returns {String} The API host to use for this endpoint
+ */
+MixpanelLib.prototype.get_api_host = function(endpoint_type) {
+    return this.get_config('api_hosts')[endpoint_type] || this.get_config('api_host');
+};
+
 MixpanelLib.prototype.toString = function() {
     var name = this.get_config('name');
     if (name !== PRIMARY_INSTANCE_NAME) {
@@ -8015,6 +8180,7 @@ MixpanelLib.prototype['alias']                              = MixpanelLib.protot
 MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
 MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
 MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
+MixpanelLib.prototype['get_api_host']                       = MixpanelLib.prototype.get_api_host;
 MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
 MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
 MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;

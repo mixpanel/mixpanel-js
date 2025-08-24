@@ -485,6 +485,30 @@ function querySelectorAll$1(n2, selectors) {
 function mutationObserverCtor$1() {
     return getUntaintedPrototype$1("MutationObserver").constructor;
 }
+function patch$1(source, name, replacement) {
+    try {
+        if (!(name in source)) {
+            return function() {};
+        }
+        var original = source[name];
+        var wrapped = replacement(original);
+        if (typeof wrapped === "function") {
+            wrapped.prototype = wrapped.prototype || {};
+            Object.defineProperties(wrapped, {
+                __rrweb_original__: {
+                    enumerable: false,
+                    value: original
+                }
+            });
+        }
+        source[name] = wrapped;
+        return function() {
+            source[name] = original;
+        };
+    } catch (e) {
+        return function() {};
+    }
+}
 var index$1 = {
     childNodes: childNodes$1,
     parentNode: parentNode$1,
@@ -497,7 +521,8 @@ var index$1 = {
     shadowRoot: shadowRoot$1,
     querySelector: querySelector$1,
     querySelectorAll: querySelectorAll$1,
-    mutationObserver: mutationObserverCtor$1
+    mutationObserver: mutationObserverCtor$1,
+    patch: patch$1
 };
 function isElement(n2) {
     return n2.nodeType === n2.ELEMENT_NODE;
@@ -748,26 +773,82 @@ function absolutifyURLs(cssText, href) {
         return "url(" + maybeQuote + stack.join("/") + maybeQuote + ")";
     });
 }
-function normalizeCssString(cssText) {
-    return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "");
+function normalizeCssString(cssText, _testNoPxNorm) {
+    if (_testNoPxNorm === void 0) _testNoPxNorm = false;
+    if (_testNoPxNorm) {
+        return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "");
+    } else {
+        return cssText.replace(/(\/\*[^*]*\*\/)|[\s;]/g, "").replace(/0px/g, "0");
+    }
 }
-function splitCssText(cssText, style) {
+function splitCssText(cssText, style, _testNoPxNorm) {
+    if (_testNoPxNorm === void 0) _testNoPxNorm = false;
     var childNodes2 = Array.from(style.childNodes);
     var splits = [];
+    var iterCount = 0;
     if (childNodes2.length > 1 && cssText && typeof cssText === "string") {
-        var cssTextNorm = normalizeCssString(cssText);
+        var cssTextNorm = normalizeCssString(cssText, _testNoPxNorm);
+        var normFactor = cssTextNorm.length / cssText.length;
         for(var i2 = 1; i2 < childNodes2.length; i2++){
             if (childNodes2[i2].textContent && typeof childNodes2[i2].textContent === "string") {
-                var textContentNorm = normalizeCssString(childNodes2[i2].textContent);
-                for(var j = 3; j < textContentNorm.length; j++){
-                    var bit = textContentNorm.substring(0, j);
-                    if (cssTextNorm.split(bit).length === 2) {
-                        var splitNorm = cssTextNorm.indexOf(bit);
-                        for(var k = splitNorm; k < cssText.length; k++){
-                            if (normalizeCssString(cssText.substring(0, k)).length === splitNorm) {
+                var textContentNorm = normalizeCssString(childNodes2[i2].textContent, _testNoPxNorm);
+                var jLimit = 100;
+                var j = 3;
+                for(; j < textContentNorm.length; j++){
+                    if (// keep consuming css identifiers (to get a decent chunk more quickly)
+                    textContentNorm[j].match(/[a-zA-Z0-9]/) || // substring needs to be unique to this section
+                    textContentNorm.indexOf(textContentNorm.substring(0, j), 1) !== -1) {
+                        continue;
+                    }
+                    break;
+                }
+                for(; j < textContentNorm.length; j++){
+                    var startSubstring = textContentNorm.substring(0, j);
+                    var cssNormSplits = cssTextNorm.split(startSubstring);
+                    var splitNorm = -1;
+                    if (cssNormSplits.length === 2) {
+                        splitNorm = cssNormSplits[0].length;
+                    } else if (cssNormSplits.length > 2 && cssNormSplits[0] === "" && childNodes2[i2 - 1].textContent !== "") {
+                        splitNorm = cssTextNorm.indexOf(startSubstring, 1);
+                    } else if (cssNormSplits.length === 1) {
+                        startSubstring = startSubstring.substring(0, startSubstring.length - 1);
+                        cssNormSplits = cssTextNorm.split(startSubstring);
+                        if (cssNormSplits.length <= 1) {
+                            splits.push(cssText);
+                            return splits;
+                        }
+                        j = jLimit + 1;
+                    } else if (j === textContentNorm.length - 1) {
+                        splitNorm = cssTextNorm.indexOf(startSubstring);
+                    }
+                    if (cssNormSplits.length >= 2 && j > jLimit) {
+                        var prevTextContent = childNodes2[i2 - 1].textContent;
+                        if (prevTextContent && typeof prevTextContent === "string") {
+                            var prevMinLength = normalizeCssString(prevTextContent).length;
+                            splitNorm = cssTextNorm.indexOf(startSubstring, prevMinLength);
+                        }
+                        if (splitNorm === -1) {
+                            splitNorm = cssNormSplits[0].length;
+                        }
+                    }
+                    if (splitNorm !== -1) {
+                        var k = Math.floor(splitNorm / normFactor);
+                        for(; k > 0 && k < cssText.length;){
+                            iterCount += 1;
+                            if (iterCount > 50 * childNodes2.length) {
+                                splits.push(cssText);
+                                return splits;
+                            }
+                            var normPart = normalizeCssString(cssText.substring(0, k), _testNoPxNorm);
+                            if (normPart.length === splitNorm) {
                                 splits.push(cssText.substring(0, k));
                                 cssText = cssText.substring(k);
+                                cssTextNorm = cssTextNorm.substring(splitNorm);
                                 break;
+                            } else if (normPart.length < splitNorm) {
+                                k += Math.max(1, Math.floor((splitNorm - normPart.length) / normFactor));
+                            } else {
+                                k -= Math.max(1, Math.floor((normPart.length - splitNorm) * normFactor));
                             }
                         }
                         break;
@@ -1284,7 +1365,7 @@ function slimDOMExcluded(sn, slimDOMOptions) {
     } else if (sn.type === NodeType$3.Element) {
         if (slimDOMOptions.script && // script tag
         (sn.tagName === "script" || // (module)preload link
-        sn.tagName === "link" && (sn.attributes.rel === "preload" || sn.attributes.rel === "modulepreload") && sn.attributes.as === "script" || // prefetch link
+        sn.tagName === "link" && (sn.attributes.rel === "preload" && sn.attributes.as === "script" || sn.attributes.rel === "modulepreload") || // prefetch link
         sn.tagName === "link" && sn.attributes.rel === "prefetch" && typeof sn.attributes.href === "string" && extractFileExtension(sn.attributes.href) === "js")) {
             return true;
         } else if (slimDOMOptions.headFavicon && (sn.tagName === "link" && sn.attributes.rel === "shortcut icon" || sn.tagName === "meta" && (lowerIfExists(sn.attributes.name).match(/^msapplication-tile(image|color)$/) || lowerIfExists(sn.attributes.name) === "application-name" || lowerIfExists(sn.attributes.rel) === "icon" || lowerIfExists(sn.attributes.rel) === "apple-touch-icon" || lowerIfExists(sn.attributes.rel) === "shortcut icon"))) {
@@ -10035,6 +10116,30 @@ function querySelectorAll(n2, selectors) {
 function mutationObserverCtor() {
     return getUntaintedPrototype("MutationObserver").constructor;
 }
+function patch(source, name, replacement) {
+    try {
+        if (!(name in source)) {
+            return function() {};
+        }
+        var original = source[name];
+        var wrapped = replacement(original);
+        if (typeof wrapped === "function") {
+            wrapped.prototype = wrapped.prototype || {};
+            Object.defineProperties(wrapped, {
+                __rrweb_original__: {
+                    enumerable: false,
+                    value: original
+                }
+            });
+        }
+        source[name] = wrapped;
+        return function() {
+            source[name] = original;
+        };
+    } catch (e) {
+        return function() {};
+    }
+}
 var index = {
     childNodes: childNodes,
     parentNode: parentNode,
@@ -10047,7 +10152,8 @@ var index = {
     shadowRoot: shadowRoot,
     querySelector: querySelector,
     querySelectorAll: querySelectorAll,
-    mutationObserver: mutationObserverCtor
+    mutationObserver: mutationObserverCtor,
+    patch: patch
 };
 function on(type, fn, target) {
     if (target === void 0) target = document;
@@ -10139,30 +10245,6 @@ function hookSetter(target, key, d, isRevoked, win) {
     return function() {
         return hookSetter(target, key, original || {}, true);
     };
-}
-function patch(source, name, replacement) {
-    try {
-        if (!(name in source)) {
-            return function() {};
-        }
-        var original = source[name];
-        var wrapped = replacement(original);
-        if (typeof wrapped === "function") {
-            wrapped.prototype = wrapped.prototype || {};
-            Object.defineProperties(wrapped, {
-                __rrweb_original__: {
-                    enumerable: false,
-                    value: original
-                }
-            });
-        }
-        source[name] = wrapped;
-        return function() {
-            source[name] = original;
-        };
-    } catch (e) {
-        return function() {};
-    }
 }
 var nowTimestamp = Date.now;
 if (!/* @__PURE__ */ /[1-9][0-9]{12}/.test(Date.now().toString())) {
@@ -10754,9 +10836,17 @@ var MutationBuffer = /*#__PURE__*/ function() {
                 _this.attributes.push(item);
                 _this.attributeMap.set(textarea, item);
             }
-            item.attributes.value = Array.from(index.childNodes(textarea), function(cn) {
+            var value = Array.from(index.childNodes(textarea), function(cn) {
                 return index.textContent(cn) || "";
             }).join("");
+            item.attributes.value = maskInputValue({
+                element: textarea,
+                maskInputOptions: _this.maskInputOptions,
+                tagName: textarea.tagName,
+                type: getInputType(textarea),
+                value: value,
+                maskInputFn: _this.maskInputFn
+            });
         });
         __publicField(this, "processMutation", function(m) {
             if (isIgnored(m.target, _this.mirror, _this.slimDOMOptions)) {
@@ -13537,8 +13627,15 @@ function record(options) {
             }, window));
         }
         return function() {
-            handlers.forEach(function(h) {
-                return h();
+            handlers.forEach(function(handler) {
+                try {
+                    handler();
+                } catch (error) {
+                    var msg = String(error).toLowerCase();
+                    if (!msg.includes("cross-origin")) {
+                        console.warn(error);
+                    }
+                }
             });
             processedNodeManager.destroy();
             recording = false;
@@ -13944,7 +14041,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.65.0'
+    LIB_VERSION: '2.69.0'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -15744,6 +15841,10 @@ IDBStorageWrapper.prototype.init = function () {
         });
 };
 
+IDBStorageWrapper.prototype.isInitialized = function () {
+    return !!this.dbPromise;
+};
+
 /**
  * @param {IDBTransactionMode} mode
  * @param {function(IDBObjectStore): void} storeCb
@@ -16268,6 +16369,10 @@ LocalStorageWrapper.prototype.init = function () {
     return PromisePolyfill.resolve();
 };
 
+LocalStorageWrapper.prototype.isInitialized = function () {
+    return true;
+};
+
 LocalStorageWrapper.prototype.setItem = function (key, value) {
     return new PromisePolyfill(_.bind(function (resolve, reject) {
         try {
@@ -16348,7 +16453,7 @@ var RequestQueue = function (storageKey, options) {
 };
 
 RequestQueue.prototype.ensureInit = function () {
-    if (this.initialized) {
+    if (this.initialized || !this.usePersistence) {
         return PromisePolyfill.resolve();
     }
 
@@ -17062,6 +17167,13 @@ function isUserEvent(ev) {
  * @property {string} replayStartUrl
  */
 
+/**
+ * @typedef {Object} UserIdInfo
+ * @property {string} distinct_id
+ * @property {string} user_id
+ * @property {string} device_id
+ */
+
 
 /**
  * This class encapsulates a single session recording and its lifecycle.
@@ -17093,10 +17205,9 @@ var SessionRecording = function(options) {
 
     // disable persistence if localStorage is not supported
     // request-queue will automatically disable persistence if indexedDB fails to initialize
-    var usePersistence = localStorageSupported(options.sharedLockStorage, true);
+    var usePersistence = localStorageSupported(options.sharedLockStorage, true) && !this.getConfig('disable_persistence');
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
-    // this will be important when persistence is introduced
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
     this.queueStorage = new IDBStorageWrapper(RECORDING_EVENTS_STORE_NAME);
     this.batcher = new RequestBatcher(this.batcherKey, {
@@ -17115,6 +17226,30 @@ var SessionRecording = function(options) {
         enqueueThrottleMs: RECORD_ENQUEUE_THROTTLE_MS,
         sharedLockTimeoutMS: 10 * 1000,
     });
+};
+
+/**
+ * @returns {UserIdInfo}
+ */
+SessionRecording.prototype.getUserIdInfo = function () {
+    if (this.finalFlushUserIdInfo) {
+        return this.finalFlushUserIdInfo;
+    }
+
+    var userIdInfo = {
+        'distinct_id': String(this._mixpanel.get_distinct_id()),
+    };
+
+    // send ID management props if they exist
+    var deviceId = this._mixpanel.get_property('$device_id');
+    if (deviceId) {
+        userIdInfo['$device_id'] = deviceId;
+    }
+    var userId = this._mixpanel.get_property('$user_id');
+    if (userId) {
+        userIdInfo['$user_id'] = userId;
+    }
+    return userIdInfo;
 };
 
 SessionRecording.prototype.unloadPersistedData = function () {
@@ -17241,6 +17376,9 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 };
 
 SessionRecording.prototype.stopRecording = function (skipFlush) {
+    // store the user ID info in case this is getting called in mixpanel.reset()
+    this.finalFlushUserIdInfo = this.getUserIdInfo();
+
     if (!this.isRrwebStopped()) {
         try {
             this._stopRecording();
@@ -17351,8 +17489,8 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
             retryAfter: response.headers.get('Retry-After')
         });
     }.bind(this);
-
-    win['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+    var apiHost = (this._mixpanel.get_api_host && this._mixpanel.get_api_host('record')) || this.getConfig('api_host');
+    win['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
@@ -17406,7 +17544,6 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             '$current_url': this.batchStartUrl,
             '$lib_version': Config.LIB_VERSION,
             'batch_start_time': batchStartTime / 1000,
-            'distinct_id': String(this._mixpanel.get_distinct_id()),
             'mp_lib': 'web',
             'replay_id': replayId,
             'replay_length_ms': replayLengthMs,
@@ -17415,16 +17552,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             'seq': this.seqNo
         };
         var eventsJson = JSON.stringify(data);
-
-        // send ID management props if they exist
-        var deviceId = this._mixpanel.get_property('$device_id');
-        if (deviceId) {
-            reqParams['$device_id'] = deviceId;
-        }
-        var userId = this._mixpanel.get_property('$user_id');
-        if (userId) {
-            reqParams['$user_id'] = userId;
-        }
+        Object.assign(reqParams, this.getUserIdInfo());
 
         if (CompressionStream) {
             var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
@@ -17460,10 +17588,15 @@ SessionRecording.prototype.reportError = function(msg, err) {
  * Makes sure that only one tab can be recording at a time.
  */
 var RecordingRegistry = function (options) {
+    /** @type {IDBStorageWrapper} */
     this.idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
     this.sharedLockStorage = options.sharedLockStorage;
+};
+
+RecordingRegistry.prototype.isPersistenceEnabled = function() {
+    return !this.mixpanelInstance.get_config('disable_persistence');
 };
 
 RecordingRegistry.prototype.handleError = function (err) {
@@ -17474,6 +17607,10 @@ RecordingRegistry.prototype.handleError = function (err) {
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
+    if (!this.isPersistenceEnabled()) {
+        return PromisePolyfill.resolve();
+    }
+
     var tabId = serializedRecording['tabId'];
     if (!tabId) {
         console.warn('No tab ID is set, cannot persist recording metadata.');
@@ -17491,6 +17628,10 @@ RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) 
  * @returns {Promise<import('./session-recording').SerializedRecording>}
  */
 RecordingRegistry.prototype.getActiveRecording = function () {
+    if (!this.isPersistenceEnabled()) {
+        return PromisePolyfill.resolve(null);
+    }
+
     return this.idb.init()
         .then(function () {
             return this.idb.getItem(this.mixpanelInstance.get_tab_id());
@@ -17502,8 +17643,16 @@ RecordingRegistry.prototype.getActiveRecording = function () {
 };
 
 RecordingRegistry.prototype.clearActiveRecording = function () {
-    // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
-    // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+    if (this.isPersistenceEnabled()) {
+        // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
+        // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+        return this.markActiveRecordingExpired();
+    } else {
+        return this.deleteActiveRecording();
+    }
+};
+
+RecordingRegistry.prototype.markActiveRecordingExpired = function () {
     return this.getActiveRecording()
         .then(function (serializedRecording) {
             if (serializedRecording) {
@@ -17514,11 +17663,25 @@ RecordingRegistry.prototype.clearActiveRecording = function () {
         .catch(this.handleError.bind(this));
 };
 
+RecordingRegistry.prototype.deleteActiveRecording = function () {
+    // avoid initializing IDB if this registry instance hasn't already written a recording
+    if (this.idb.isInitialized()) {
+        return this.idb.removeItem(this.mixpanelInstance.get_tab_id())
+            .catch(this.handleError.bind(this));
+    } else {
+        return PromisePolyfill.resolve();
+    }
+};
+
 /**
  * Flush any inactive recordings from the registry to minimize data loss.
  * The main idea here is that we can flush remaining rrweb events on the next page load if a tab is closed mid-batch.
  */
 RecordingRegistry.prototype.flushInactiveRecordings = function () {
+    if (!this.isPersistenceEnabled()) {
+        return PromisePolyfill.resolve([]);
+    }
+
     return this.idb.init()
         .then(function() {
             return this.idb.getAll();
@@ -17569,6 +17732,7 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
     this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
 
     this.activeRecording = null;
+    this.stopRecordingInProgress = false;
 };
 
 MixpanelRecorder.prototype.startRecording = function(options) {
@@ -17617,19 +17781,26 @@ MixpanelRecorder.prototype.startRecording = function(options) {
 };
 
 MixpanelRecorder.prototype.stopRecording = function() {
-    var stopPromise = this._stopCurrentRecording(false);
-    this.recordingRegistry.clearActiveRecording();
-    this.activeRecording = null;
-    return stopPromise;
+    // Prevents activeSerializedRecording from being reused when stopping the recording.
+    this.stopRecordingInProgress = true;
+    return this._stopCurrentRecording(false, true).then(function() {
+        return this.recordingRegistry.clearActiveRecording();
+    }.bind(this)).then(function() {
+        this.stopRecordingInProgress = false;
+    }.bind(this));
 };
 
 MixpanelRecorder.prototype.pauseRecording = function() {
     return this._stopCurrentRecording(false);
 };
 
-MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush) {
+MixpanelRecorder.prototype._stopCurrentRecording = function(skipFlush, disableActiveRecording) {
     if (this.activeRecording) {
-        return this.activeRecording.stopRecording(skipFlush);
+        var stopRecordingPromise = this.activeRecording.stopRecording(skipFlush);
+        if (disableActiveRecording) {
+            this.activeRecording = null;
+        }
+        return stopRecordingPromise;
     }
     return PromisePolyfill.resolve();
 };
@@ -17642,7 +17813,7 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
 
     return this.recordingRegistry.getActiveRecording()
         .then(function (activeSerializedRecording) {
-            if (activeSerializedRecording) {
+            if (activeSerializedRecording && !this.stopRecordingInProgress) {
                 return this.startRecording({activeSerializedRecording: activeSerializedRecording});
             } else if (startNewIfInactive) {
                 return this.startRecording({shouldStopBatcher: false});
@@ -18197,6 +18368,38 @@ function shouldTrackValue(value) {
     return true;
 }
 
+/** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
+/** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
+/** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
+
+function RageClickTracker() {
+    this.clicks = [];
+}
+
+RageClickTracker.prototype.isRageClick = function(x, y, options) {
+    options = options || {};
+    var thresholdPx = options['threshold_px'] || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
+    var timeoutMs = options['timeout_ms'] || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
+    var clickCount = options['click_count'] || DEFAULT_RAGE_CLICK_CLICK_COUNT;
+    var timestamp = Date.now();
+
+    var lastClick = this.clicks[this.clicks.length - 1];
+    if (
+        lastClick &&
+        timestamp - lastClick.timestamp < timeoutMs &&
+        Math.sqrt(Math.pow(x - lastClick.x, 2) + Math.pow(y - lastClick.y, 2)) < thresholdPx
+    ) {
+        this.clicks.push({ x: x, y: y, timestamp: timestamp });
+        if (this.clicks.length >= clickCount) {
+            this.clicks = [];
+            return true;
+        }
+    } else {
+        this.clicks = [{ x: x, y: y, timestamp: timestamp }];
+    }
+    return false;
+};
+
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
 
@@ -18218,6 +18421,7 @@ var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
+var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_SCROLL = 'scroll';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
@@ -18235,6 +18439,7 @@ CONFIG_DEFAULTS$1[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS$1[CONFIG_TRACK_CLICK] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_SCROLL] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_SUBMIT] = true;
 
@@ -18244,6 +18449,7 @@ var DEFAULT_PROPS = {
 
 var MP_EV_CLICK = '$mp_click';
 var MP_EV_INPUT = '$mp_input_change';
+var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_SCROLL = '$mp_scroll';
 var MP_EV_SUBMIT = '$mp_submit';
 
@@ -18266,6 +18472,7 @@ Autocapture.prototype.init = function() {
     this.initInputTracking();
     this.initScrollTracking();
     this.initSubmitTracking();
+    this.initRageClickTracking();
 };
 
 Autocapture.prototype.getFullConfig = function() {
@@ -18344,6 +18551,11 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         return;
     }
 
+    var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (
+        (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK)) ||
+        (mpEventName === MP_EV_RAGE_CLICK && !this._getRageClickConfig())
+    );
+
     var props = getPropsForDOMEvent(ev, {
         allowElementCallback: this.getConfig(CONFIG_ALLOW_ELEMENT_CALLBACK),
         allowSelectors: this.getConfig(CONFIG_ALLOW_SELECTORS),
@@ -18352,12 +18564,30 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
         blockSelectors: this.getConfig(CONFIG_BLOCK_SELECTORS),
         captureExtraAttrs: this.getConfig(CONFIG_CAPTURE_EXTRA_ATTRS),
         captureTextContent: this.getConfig(CONFIG_CAPTURE_TEXT_CONTENT),
-        capturedForHeatMap: mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK) && this.mp.is_recording_heatmap_data(),
+        capturedForHeatMap: isCapturedForHeatMap,
     });
     if (props) {
         _.extend(props, DEFAULT_PROPS);
         this.mp.track(mpEventName, props);
     }
+};
+
+Autocapture.prototype._getRageClickConfig = function() {
+    var config = this.getConfig(CONFIG_TRACK_RAGE_CLICK);
+
+    if (!config) {
+        return null; // rage click tracking disabled
+    }
+
+    if (config === true) {
+        return {}; // use defaults
+    }
+
+    if (typeof config === 'object') {
+        return config; // use custom configuration
+    }
+
+    return {}; // fallback to defaults for any other truthy value
 };
 
 Autocapture.prototype.initClickTracking = function() {
@@ -18461,6 +18691,36 @@ Autocapture.prototype.initPageviewTracking = function() {
     }.bind(this)));
 };
 
+Autocapture.prototype.initRageClickTracking = function() {
+    win.removeEventListener(EV_CLICK, this.listenerRageClick);
+
+    var rageClickConfig = this._getRageClickConfig();
+    if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    logger$1.log('Initializing rage click tracking');
+    if (!this._rageClickTracker) {
+        this._rageClickTracker = new RageClickTracker();
+    }
+
+    this.listenerRageClick = function(ev) {
+        var currentRageClickConfig = this._getRageClickConfig();
+        if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
+            return;
+        }
+
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+            this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
+        }
+    }.bind(this);
+    win.addEventListener(EV_CLICK, this.listenerRageClick);
+};
+
 Autocapture.prototype.initScrollTracking = function() {
     win.removeEventListener(EV_SCROLLEND, this.listenerScroll);
 
@@ -18545,8 +18805,10 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
+    this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
-    this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.setMpConfig = initOptions.setConfigFunc;
+    this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
 };
 
@@ -18583,6 +18845,23 @@ FeatureFlagManager.prototype.isSystemEnabled = function() {
     return !!this.getMpConfig(FLAGS_CONFIG_KEY);
 };
 
+FeatureFlagManager.prototype.updateContext = function(newContext, options) {
+    if (!this.isSystemEnabled()) {
+        logger.critical('Feature Flags not enabled, cannot update context');
+        return Promise.resolve();
+    }
+
+    var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+    if (!_.isObject(ffConfig)) {
+        ffConfig = {};
+    }
+    var oldContext = (options && options['replace']) ? {} : this.getConfig(CONFIG_CONTEXT);
+    ffConfig[CONFIG_CONTEXT] = _.extend({}, oldContext, newContext);
+
+    this.setMpConfig(FLAGS_CONFIG_KEY, ffConfig);
+    return this.fetchFlags();
+};
+
 FeatureFlagManager.prototype.areFlagsReady = function() {
     if (!this.isSystemEnabled()) {
         logger.error('Feature Flags not enabled');
@@ -18592,15 +18871,17 @@ FeatureFlagManager.prototype.areFlagsReady = function() {
 
 FeatureFlagManager.prototype.fetchFlags = function() {
     if (!this.isSystemEnabled()) {
-        return;
+        return Promise.resolve();
     }
 
-    var distinctId = this.getDistinctId();
+    var distinctId = this.getMpProperty('distinct_id');
+    var deviceId = this.getMpProperty('$device_id');
     logger.log('Fetching flags for distinct ID: ' + distinctId);
     var reqParams = {
-        'context': _.extend({'distinct_id': distinctId}, this.getConfig(CONFIG_CONTEXT))
+        'context': _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT))
     };
-    this.fetchPromise = win['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+    this._fetchInProgressStartTime = Date.now();
+    this.fetchPromise = win['fetch'](this.getFullApiRoute(), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
@@ -18608,6 +18889,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         },
         'body': JSON.stringify(reqParams)
     }).then(function(response) {
+        this.markFetchComplete();
         return response.json().then(function(responseBody) {
             var responseFlags = responseBody['flags'];
             if (!responseFlags) {
@@ -18622,9 +18904,26 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             });
             this.flags = flags;
         }.bind(this)).catch(function(error) {
+            this.markFetchComplete();
             logger.error(error);
-        });
-    }.bind(this)).catch(function() {});
+        }.bind(this));
+    }.bind(this)).catch(function(error) {
+        this.markFetchComplete();
+        logger.error(error);
+    }.bind(this));
+
+    return this.fetchPromise;
+};
+
+FeatureFlagManager.prototype.markFetchComplete = function() {
+    if (!this._fetchInProgressStartTime) {
+        logger.error('Fetch in progress started time not set, cannot mark fetch complete');
+        return;
+    }
+    this._fetchStartTime = this._fetchInProgressStartTime;
+    this._fetchCompleteTime = Date.now();
+    this._fetchLatency = this._fetchCompleteTime - this._fetchStartTime;
+    this._fetchInProgressStartTime = null;
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
@@ -18703,7 +19002,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
     this.track('$experiment_started', {
         'Experiment name': featureName,
         'Variant name': feature['key'],
-        '$experiment_type': 'feature_flag'
+        '$experiment_type': 'feature_flag',
+        'Variant fetch start time': new Date(this._fetchStartTime).toISOString(),
+        'Variant fetch complete time': new Date(this._fetchCompleteTime).toISOString(),
+        'Variant fetch latency (ms)': this._fetchLatency
     });
 };
 
@@ -18723,6 +19025,7 @@ FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
+FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.updateContext;
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
@@ -19144,7 +19447,7 @@ MixpanelGroup.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'groups',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/' +  this._get_config('api_routes')['groups'],
+        endpoint: this._mixpanel.get_api_host('groups') + '/' +  this._get_config('api_routes')['groups'],
         batcher: this._mixpanel.request_batchers.groups
     }, callback);
 };
@@ -19496,7 +19799,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     return this._mixpanel._track_or_batch({
         type: 'people',
         data: date_encoded_data,
-        endpoint: this._get_config('api_host') + '/' +  this._get_config('api_routes')['engage'],
+        endpoint: this._mixpanel.get_api_host('people') + '/' +  this._get_config('api_routes')['engage'],
         batcher: this._mixpanel.request_batchers.people
     }, callback);
 };
@@ -20133,6 +20436,7 @@ var DEFAULT_API_ROUTES = {
  */
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
+    'api_hosts':                         {},
     'api_routes':                        DEFAULT_API_ROUTES,
     'api_extra_query_params':            {},
     'api_method':                        'POST',
@@ -20182,7 +20486,7 @@ var DEFAULT_CONFIG = {
     'batch_autostart':                   true,
     'hooks':                             {},
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
-    'record_block_selector':             'img, video',
+    'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
     'record_heatmap_data':               false,
@@ -20402,8 +20706,12 @@ MixpanelLib.prototype._init = function(token, config, name) {
     }
 
     this.flags = new FeatureFlagManager({
+        getFullApiRoute: _.bind(function() {
+            return this.get_api_host('flags') + '/' + this.get_config('api_routes')['flags'];
+        }, this),
         getConfigFunc: _.bind(this.get_config, this),
-        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        setConfigFunc: _.bind(this.set_config, this),
+        getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this)
     });
     this.flags.init();
@@ -20421,7 +20729,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
  * This is primarily used for session recording, where data must be isolated to the current tab.
  */
 MixpanelLib.prototype._init_tab_id = function() {
-    if (_.sessionStorage.is_supported()) {
+    if (this.get_config('disable_persistence')) {
+        console$1.log('Tab ID initialization skipped due to disable_persistence config');
+    } else if (_.sessionStorage.is_supported()) {
         try {
             var key_suffix = this.get_config('name') + '_' + this.get_config('token');
             var tab_id_key = 'mp_tab_id_' + key_suffix;
@@ -20455,6 +20765,11 @@ MixpanelLib.prototype.get_tab_id = function () {
 };
 
 MixpanelLib.prototype._should_load_recorder = function () {
+    if (this.get_config('disable_persistence')) {
+        console$1.log('Load recorder check skipped due to disable_persistence config');
+        return Promise.resolve(false);
+    }
+
     var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     var tab_id = this.get_tab_id();
     return recording_registry_idb.init()
@@ -20518,20 +20833,23 @@ MixpanelLib.prototype.start_session_recording = function () {
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
-        this._recorder['stopRecording']();
+        return this._recorder['stopRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.pause_session_recording = function () {
     if (this._recorder) {
-        this._recorder['pauseRecording']();
+        return this._recorder['pauseRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.resume_session_recording = function () {
     if (this._recorder) {
-        this._recorder['resumeRecording']();
+        return this._recorder['resumeRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.is_recording_heatmap_data = function () {
@@ -20886,11 +21204,10 @@ MixpanelLib.prototype.are_batchers_initialized = function() {
 
 MixpanelLib.prototype.get_batcher_configs = function() {
     var queue_prefix = '__mpq_' + this.get_config('token');
-    var api_routes = this.get_config('api_routes');
     this._batcher_configs = this._batcher_configs || {
-        events: {type: 'events', endpoint: '/' + api_routes['track'], queue_key: queue_prefix + '_ev'},
-        people: {type: 'people', endpoint: '/' + api_routes['engage'], queue_key: queue_prefix + '_pp'},
-        groups: {type: 'groups', endpoint: '/' + api_routes['groups'], queue_key: queue_prefix + '_gr'}
+        events: {type: 'events', api_name: 'track', queue_key: queue_prefix + '_ev'},
+        people: {type: 'people', api_name: 'engage', queue_key: queue_prefix + '_pp'},
+        groups: {type: 'groups', api_name: 'groups', queue_key: queue_prefix + '_gr'}
     };
     return this._batcher_configs;
 };
@@ -20904,8 +21221,9 @@ MixpanelLib.prototype.init_batchers = function() {
                     libConfig: this['config'],
                     errorReporter: this.get_config('error_reporter'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
+                        var api_routes = this.get_config('api_routes');
                         this._send_request(
-                            this.get_config('api_host') + attrs.endpoint,
+                            this.get_api_host(attrs.api_name) + '/' + api_routes[attrs.api_name],
                             this._encode_data_for_request(data),
                             options,
                             this._prepare_callback(cb, data)
@@ -21131,7 +21449,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this.get_config('api_host') + '/' + this.get_config('api_routes')['track'],
+        endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
@@ -21633,6 +21951,7 @@ MixpanelLib.prototype.identify = function(
  * Useful for clearing data when a user logs out.
  */
 MixpanelLib.prototype.reset = function() {
+    this.stop_session_recording();
     this['persistence'].clear();
     this._flags.identify_called = false;
     var uuid = _.UUID();
@@ -21640,7 +21959,6 @@ MixpanelLib.prototype.reset = function() {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
-    this.stop_session_recording();
     this._check_and_start_session_recording();
 };
 
@@ -21952,6 +22270,16 @@ MixpanelLib.prototype.get_property = function(property_name) {
     return this['persistence'].load_prop([property_name]);
 };
 
+/**
+ * Get the API host for a specific endpoint type, falling back to the default api_host if not specified
+ *
+ * @param {String} endpoint_type The type of endpoint (e.g., "events", "people", "groups")
+ * @returns {String} The API host to use for this endpoint
+ */
+MixpanelLib.prototype.get_api_host = function(endpoint_type) {
+    return this.get_config('api_hosts')[endpoint_type] || this.get_config('api_host');
+};
+
 MixpanelLib.prototype.toString = function() {
     var name = this.get_config('name');
     if (name !== PRIMARY_INSTANCE_NAME) {
@@ -22247,6 +22575,7 @@ MixpanelLib.prototype['alias']                              = MixpanelLib.protot
 MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
 MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
 MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
+MixpanelLib.prototype['get_api_host']                       = MixpanelLib.prototype.get_api_host;
 MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
 MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
 MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;

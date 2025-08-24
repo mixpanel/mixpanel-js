@@ -1,5 +1,5 @@
 import { window } from '../window';
-import { IncrementalSource, EventType } from 'rrweb';
+import { IncrementalSource, EventType } from '@mixpanel/rrweb';
 import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _, localStorageSupported} from '../utils'; // eslint-disable-line camelcase
 import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
@@ -63,6 +63,13 @@ function isUserEvent(ev) {
  * @property {string} replayStartUrl
  */
 
+/**
+ * @typedef {Object} UserIdInfo
+ * @property {string} distinct_id
+ * @property {string} user_id
+ * @property {string} device_id
+ */
+
 
 /**
  * This class encapsulates a single session recording and its lifecycle.
@@ -94,10 +101,9 @@ var SessionRecording = function(options) {
 
     // disable persistence if localStorage is not supported
     // request-queue will automatically disable persistence if indexedDB fails to initialize
-    var usePersistence = localStorageSupported(options.sharedLockStorage, true);
+    var usePersistence = localStorageSupported(options.sharedLockStorage, true) && !this.getConfig('disable_persistence');
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
-    // this will be important when persistence is introduced
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
     this.queueStorage = new IDBStorageWrapper(RECORDING_EVENTS_STORE_NAME);
     this.batcher = new RequestBatcher(this.batcherKey, {
@@ -116,6 +122,30 @@ var SessionRecording = function(options) {
         enqueueThrottleMs: RECORD_ENQUEUE_THROTTLE_MS,
         sharedLockTimeoutMS: 10 * 1000,
     });
+};
+
+/**
+ * @returns {UserIdInfo}
+ */
+SessionRecording.prototype.getUserIdInfo = function () {
+    if (this.finalFlushUserIdInfo) {
+        return this.finalFlushUserIdInfo;
+    }
+
+    var userIdInfo = {
+        'distinct_id': String(this._mixpanel.get_distinct_id()),
+    };
+
+    // send ID management props if they exist
+    var deviceId = this._mixpanel.get_property('$device_id');
+    if (deviceId) {
+        userIdInfo['$device_id'] = deviceId;
+    }
+    var userId = this._mixpanel.get_property('$user_id');
+    if (userId) {
+        userIdInfo['$user_id'] = userId;
+    }
+    return userIdInfo;
 };
 
 SessionRecording.prototype.unloadPersistedData = function () {
@@ -242,6 +272,9 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 };
 
 SessionRecording.prototype.stopRecording = function (skipFlush) {
+    // store the user ID info in case this is getting called in mixpanel.reset()
+    this.finalFlushUserIdInfo = this.getUserIdInfo();
+
     if (!this.isRrwebStopped()) {
         try {
             this._stopRecording();
@@ -352,8 +385,8 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
             retryAfter: response.headers.get('Retry-After')
         });
     }.bind(this);
-
-    window['fetch'](this.getConfig('api_host') + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+    var apiHost = (this._mixpanel.get_api_host && this._mixpanel.get_api_host('record')) || this.getConfig('api_host');
+    window['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
@@ -407,7 +440,6 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             '$current_url': this.batchStartUrl,
             '$lib_version': Config.LIB_VERSION,
             'batch_start_time': batchStartTime / 1000,
-            'distinct_id': String(this._mixpanel.get_distinct_id()),
             'mp_lib': 'web',
             'replay_id': replayId,
             'replay_length_ms': replayLengthMs,
@@ -416,16 +448,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
             'seq': this.seqNo
         };
         var eventsJson = JSON.stringify(data);
-
-        // send ID management props if they exist
-        var deviceId = this._mixpanel.get_property('$device_id');
-        if (deviceId) {
-            reqParams['$device_id'] = deviceId;
-        }
-        var userId = this._mixpanel.get_property('$user_id');
-        if (userId) {
-            reqParams['$user_id'] = userId;
-        }
+        Object.assign(reqParams, this.getUserIdInfo());
 
         if (CompressionStream) {
             var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();

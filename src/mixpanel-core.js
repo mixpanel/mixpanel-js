@@ -106,6 +106,7 @@ var DEFAULT_API_ROUTES = {
  */
 var DEFAULT_CONFIG = {
     'api_host':                          'https://api-js.mixpanel.com',
+    'api_hosts':                         {},
     'api_routes':                        DEFAULT_API_ROUTES,
     'api_extra_query_params':            {},
     'api_method':                        'POST',
@@ -155,7 +156,7 @@ var DEFAULT_CONFIG = {
     'batch_autostart':                   true,
     'hooks':                             {},
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
-    'record_block_selector':             'img, video',
+    'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
     'record_heatmap_data':               false,
@@ -373,8 +374,12 @@ MixpanelLib.prototype._init = function(token, config, name) {
     }
 
     this.flags = new FeatureFlagManager({
+        getFullApiRoute: _.bind(function() {
+            return this.get_api_host('flags') + '/' + this.get_config('api_routes')['flags'];
+        }, this),
         getConfigFunc: _.bind(this.get_config, this),
-        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        setConfigFunc: _.bind(this.set_config, this),
+        getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this)
     });
     this.flags.init();
@@ -393,7 +398,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
  * This is primarily used for session recording, where data must be isolated to the current tab.
  */
 MixpanelLib.prototype._init_tab_id = function() {
-    if (_.sessionStorage.is_supported()) {
+    if (this.get_config('disable_persistence')) {
+        console.log('Tab ID initialization skipped due to disable_persistence config');
+    } else if (_.sessionStorage.is_supported()) {
         try {
             var key_suffix = this.get_config('name') + '_' + this.get_config('token');
             var tab_id_key = 'mp_tab_id_' + key_suffix;
@@ -427,6 +434,11 @@ MixpanelLib.prototype.get_tab_id = function () {
 };
 
 MixpanelLib.prototype._should_load_recorder = function () {
+    if (this.get_config('disable_persistence')) {
+        console.log('Load recorder check skipped due to disable_persistence config');
+        return Promise.resolve(false);
+    }
+
     var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
     var tab_id = this.get_tab_id();
     return recording_registry_idb.init()
@@ -490,20 +502,23 @@ MixpanelLib.prototype.start_session_recording = function () {
 
 MixpanelLib.prototype.stop_session_recording = function () {
     if (this._recorder) {
-        this._recorder['stopRecording']();
+        return this._recorder['stopRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.pause_session_recording = function () {
     if (this._recorder) {
-        this._recorder['pauseRecording']();
+        return this._recorder['pauseRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.resume_session_recording = function () {
     if (this._recorder) {
-        this._recorder['resumeRecording']();
+        return this._recorder['resumeRecording']();
     }
+    return Promise.resolve();
 };
 
 MixpanelLib.prototype.is_recording_heatmap_data = function () {
@@ -858,11 +873,10 @@ MixpanelLib.prototype.are_batchers_initialized = function() {
 
 MixpanelLib.prototype.get_batcher_configs = function() {
     var queue_prefix = '__mpq_' + this.get_config('token');
-    var api_routes = this.get_config('api_routes');
     this._batcher_configs = this._batcher_configs || {
-        events: {type: 'events', endpoint: '/' + api_routes['track'], queue_key: queue_prefix + '_ev'},
-        people: {type: 'people', endpoint: '/' + api_routes['engage'], queue_key: queue_prefix + '_pp'},
-        groups: {type: 'groups', endpoint: '/' + api_routes['groups'], queue_key: queue_prefix + '_gr'}
+        events: {type: 'events', api_name: 'track', queue_key: queue_prefix + '_ev'},
+        people: {type: 'people', api_name: 'engage', queue_key: queue_prefix + '_pp'},
+        groups: {type: 'groups', api_name: 'groups', queue_key: queue_prefix + '_gr'}
     };
     return this._batcher_configs;
 };
@@ -876,8 +890,9 @@ MixpanelLib.prototype.init_batchers = function() {
                     libConfig: this['config'],
                     errorReporter: this.get_config('error_reporter'),
                     sendRequestFunc: _.bind(function(data, options, cb) {
+                        var api_routes = this.get_config('api_routes');
                         this._send_request(
-                            this.get_config('api_host') + attrs.endpoint,
+                            this.get_api_host(attrs.api_name) + '/' + api_routes[attrs.api_name],
                             this._encode_data_for_request(data),
                             options,
                             this._prepare_callback(cb, data)
@@ -1103,7 +1118,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
-        endpoint: this.get_config('api_host') + '/' + this.get_config('api_routes')['track'],
+        endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
         should_send_immediately: should_send_immediately,
         send_request_options: options
@@ -2103,6 +2118,7 @@ MixpanelLib.prototype.identify = function(
  * Useful for clearing data when a user logs out.
  */
 MixpanelLib.prototype.reset = function() {
+    this.stop_session_recording();
     this['persistence'].clear();
     this._flags.identify_called = false;
     var uuid = _.UUID();
@@ -2110,7 +2126,6 @@ MixpanelLib.prototype.reset = function() {
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
-    this.stop_session_recording();
     this._check_and_start_session_recording();
 };
 
@@ -2423,6 +2438,16 @@ MixpanelLib.prototype.get_property = function(property_name) {
     return this['persistence'].load_prop([property_name]);
 };
 
+/**
+ * Get the API host for a specific endpoint type, falling back to the default api_host if not specified
+ *
+ * @param {String} endpoint_type The type of endpoint (e.g., "events", "people", "groups")
+ * @returns {String} The API host to use for this endpoint
+ */
+MixpanelLib.prototype.get_api_host = function(endpoint_type) {
+    return this.get_config('api_hosts')[endpoint_type] || this.get_config('api_host');
+};
+
 MixpanelLib.prototype.toString = function() {
     var name = this.get_config('name');
     if (name !== PRIMARY_INSTANCE_NAME) {
@@ -2718,6 +2743,7 @@ MixpanelLib.prototype['alias']                              = MixpanelLib.protot
 MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
 MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
 MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
+MixpanelLib.prototype['get_api_host']                       = MixpanelLib.prototype.get_api_host;
 MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
 MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
 MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;

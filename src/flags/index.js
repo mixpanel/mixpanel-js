@@ -15,8 +15,10 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
+    this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
-    this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.setMpConfig = initOptions.setConfigFunc;
+    this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
 };
 
@@ -53,6 +55,23 @@ FeatureFlagManager.prototype.isSystemEnabled = function() {
     return !!this.getMpConfig(FLAGS_CONFIG_KEY);
 };
 
+FeatureFlagManager.prototype.updateContext = function(newContext, options) {
+    if (!this.isSystemEnabled()) {
+        logger.critical('Feature Flags not enabled, cannot update context');
+        return Promise.resolve();
+    }
+
+    var ffConfig = this.getMpConfig(FLAGS_CONFIG_KEY);
+    if (!_.isObject(ffConfig)) {
+        ffConfig = {};
+    }
+    var oldContext = (options && options['replace']) ? {} : this.getConfig(CONFIG_CONTEXT);
+    ffConfig[CONFIG_CONTEXT] = _.extend({}, oldContext, newContext);
+
+    this.setMpConfig(FLAGS_CONFIG_KEY, ffConfig);
+    return this.fetchFlags();
+};
+
 FeatureFlagManager.prototype.areFlagsReady = function() {
     if (!this.isSystemEnabled()) {
         logger.error('Feature Flags not enabled');
@@ -62,15 +81,17 @@ FeatureFlagManager.prototype.areFlagsReady = function() {
 
 FeatureFlagManager.prototype.fetchFlags = function() {
     if (!this.isSystemEnabled()) {
-        return;
+        return Promise.resolve();
     }
 
-    var distinctId = this.getDistinctId();
+    var distinctId = this.getMpProperty('distinct_id');
+    var deviceId = this.getMpProperty('$device_id');
     logger.log('Fetching flags for distinct ID: ' + distinctId);
     var reqParams = {
-        'context': _.extend({'distinct_id': distinctId}, this.getConfig(CONFIG_CONTEXT))
+        'context': _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT))
     };
-    this.fetchPromise = window['fetch'](this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'], {
+    this._fetchInProgressStartTime = Date.now();
+    this.fetchPromise = window['fetch'](this.getFullApiRoute(), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
@@ -78,6 +99,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         },
         'body': JSON.stringify(reqParams)
     }).then(function(response) {
+        this.markFetchComplete();
         return response.json().then(function(responseBody) {
             var responseFlags = responseBody['flags'];
             if (!responseFlags) {
@@ -92,9 +114,26 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             });
             this.flags = flags;
         }.bind(this)).catch(function(error) {
+            this.markFetchComplete();
             logger.error(error);
-        });
-    }.bind(this)).catch(function() {});
+        }.bind(this));
+    }.bind(this)).catch(function(error) {
+        this.markFetchComplete();
+        logger.error(error);
+    }.bind(this));
+
+    return this.fetchPromise;
+};
+
+FeatureFlagManager.prototype.markFetchComplete = function() {
+    if (!this._fetchInProgressStartTime) {
+        logger.error('Fetch in progress started time not set, cannot mark fetch complete');
+        return;
+    }
+    this._fetchStartTime = this._fetchInProgressStartTime;
+    this._fetchCompleteTime = Date.now();
+    this._fetchLatency = this._fetchCompleteTime - this._fetchStartTime;
+    this._fetchInProgressStartTime = null;
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
@@ -173,7 +212,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
     this.track('$experiment_started', {
         'Experiment name': featureName,
         'Variant name': feature['key'],
-        '$experiment_type': 'feature_flag'
+        '$experiment_type': 'feature_flag',
+        'Variant fetch start time': new Date(this._fetchStartTime).toISOString(),
+        'Variant fetch complete time': new Date(this._fetchCompleteTime).toISOString(),
+        'Variant fetch latency (ms)': this._fetchLatency
     });
 };
 
@@ -193,6 +235,7 @@ FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
+FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.updateContext;
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;

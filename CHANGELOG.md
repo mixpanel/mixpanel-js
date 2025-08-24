@@ -1,3 +1,20 @@
+**2.68.0** (11 Aug 2025)
+- Initial rage-click detection support
+- Block `<audio>` tags by default in Session Recording
+- Add `flags.update_context()` method for updating context variables and refetching variants
+
+**2.67.0** (17 Jul 2025)
+- Use `get_api_host()` consistently across the SDK
+- Include `device_id` in default Feature Flag context
+- Track latency props in `$experiment_started` event
+- Fix async behavior in `mixpanel.reset()` when a session recording is active
+- Fix recorder integration test race conditions
+
+**2.66.0** (8 Jul 2025)
+- Add `api_host` configuration option to support different hosts/proxies for different endpoints (thanks @chrisknu)
+- Add types.d.ts from existing public repo
+- Fix race condition when calling `mixpanel.reset()` while a session recording is active
+
 **2.65.0** (20 May 2025)
 - `mixpanel.people.track_charge()` (deprecated) no longer sets profile property
 - Adds page height and width tracking to autocapture click tracking
