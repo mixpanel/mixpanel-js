@@ -87,17 +87,17 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var distinctId = this.getMpProperty('distinct_id');
     var deviceId = this.getMpProperty('$device_id');
     logger.log('Fetching flags for distinct ID: ' + distinctId);
-    var reqParams = {
-        'context': _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT))
-    };
+
+    var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
+    var queryString = 'context=' + encodeURIComponent(JSON.stringify(context)) + '&token=' + encodeURIComponent(this.getMpConfig('token'));
+    var url = this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'] + '?' + queryString;
+
     this._fetchInProgressStartTime = Date.now();
-    this.fetchPromise = window['fetch'](this.getFullApiRoute(), {
-        'method': 'POST',
+    this.fetchPromise = window['fetch'](url, {
+        'method': 'GET',
         'headers': {
-            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
-            'Content-Type': 'application/octet-stream'
-        },
-        'body': JSON.stringify(reqParams)
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':')
+        }
     }).then(function(response) {
         this.markFetchComplete();
         return response.json().then(function(responseBody) {
