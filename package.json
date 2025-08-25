@@ -79,7 +79,7 @@
     "rollup": "4.34.9",
     "rollup-plugin-esbuild": "6.2.1",
     "sinon": "8.1.1",
-    "sinon-chai": "3.5.0",
+    "sinon-chai": "4.0.1",
     "webpack": "1.12.2"
   },
   "dependencies": {
