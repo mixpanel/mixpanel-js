@@ -89,8 +89,10 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     logger.log('Fetching flags for distinct ID: ' + distinctId);
 
     var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
-    var queryString = 'context=' + encodeURIComponent(JSON.stringify(context)) + '&token=' + encodeURIComponent(this.getMpConfig('token'));
-    var url = this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'] + '?' + queryString;
+    var searchParams = new URLSearchParams();
+    searchParams.set('context', JSON.stringify(context));
+    searchParams.set('token', this.getMpConfig('token'));
+    var url = this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'] + '?' + searchParams.toString();
 
     this._fetchInProgressStartTime = Date.now();
     this.fetchPromise = window['fetch'](url, {
