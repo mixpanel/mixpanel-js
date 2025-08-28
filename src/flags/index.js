@@ -1,5 +1,6 @@
 import { _, console_with_prefix, safewrapClass } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
+import Config from '../config';
 
 var fetch = window['fetch'];
 var logger = console_with_prefix('flags');
@@ -92,6 +93,8 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var searchParams = new URLSearchParams();
     searchParams.set('context', JSON.stringify(context));
     searchParams.set('token', this.getMpConfig('token'));
+    searchParams.set('sdk', 'js');
+    searchParams.set('sdk_version', Config.LIB_VERSION);
     var url = this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'] + '?' + searchParams.toString();
 
     this._fetchInProgressStartTime = Date.now();

@@ -4,6 +4,7 @@ import sinonChai from "sinon-chai";
 
 import { FeatureFlagManager } from "../../src/flags/index";
 import { window } from "../../src/window";
+import Config from "../../src/config";
 
 chai.use(sinonChai);
 
@@ -88,6 +89,8 @@ describe(`FeatureFlagManager`, function () {
       expect(url).to.include(`https://api.mixpanel.com/flags?`);
       expect(url).to.include(`context=`);
       expect(url).to.include(`token=test-token`);
+      expect(url).to.include(`sdk=js`);
+      expect(url).to.include(`sdk_version=${Config.LIB_VERSION}`);
       expect(options.method).to.equal(`GET`);
       expect(options.headers[`Authorization`]).to.equal(
         `Basic ` + btoa(`test-token:`)
