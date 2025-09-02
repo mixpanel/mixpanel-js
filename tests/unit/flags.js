@@ -52,6 +52,7 @@ describe(`FeatureFlagManager`, function () {
     window[`fetch`] = mockFetch;
 
     initOptions = {
+      getFullApiRoute: sinon.stub().returns(`https://api.mixpanel.com/flags`),
       getConfigFunc: sinon.stub().callsFake((key) => mockConfig[key]),
       getPropertyFunc: sinon.stub().callsFake((key) => {
         if (key === `distinct_id`) return `test-distinct-id`;
@@ -70,7 +71,7 @@ describe(`FeatureFlagManager`, function () {
   });
 
   describe(`fetchFlags`, function () {
-    it(`should not fetch flags when system is disabled`, function () {
+    it(`does not fetch flags when system is disabled`, function () {
       initOptions.getConfigFunc.withArgs(`flags`).returns(null);
       flagManager = new FeatureFlagManager(initOptions);
       flagManager.flags = null;
@@ -80,7 +81,7 @@ describe(`FeatureFlagManager`, function () {
       expect(mockFetch).not.to.have.been.called;
     });
 
-    it(`should make GET request to correct endpoint with proper headers and query parameters`, function () {
+    it(`makes GET request to correct endpoint with proper headers and query parameters`, function () {
       flagManager.fetchFlags();
 
       expect(mockFetch).to.have.been.calledOnce;
@@ -89,8 +90,8 @@ describe(`FeatureFlagManager`, function () {
       expect(url).to.include(`https://api.mixpanel.com/flags?`);
       expect(url).to.include(`context=`);
       expect(url).to.include(`token=test-token`);
-      expect(url).to.include(`sdk=js`);
-      expect(url).to.include(`sdk_version=${Config.LIB_VERSION}`);
+      expect(url).to.include(`mp_lib=web`);
+      expect(url).to.include(`%24lib_version=${Config.LIB_VERSION}`);
       expect(options.method).to.equal(`GET`);
       expect(options.headers[`Authorization`]).to.equal(
         `Basic ` + btoa(`test-token:`)
@@ -98,7 +99,7 @@ describe(`FeatureFlagManager`, function () {
       expect(options.headers[`Content-Type`]).to.be.undefined;
     });
 
-    it(`should send correct parameters with distinct_id, device_id, and context in URL`, function () {
+    it(`sends correct parameters with distinct_id, device_id, and context in URL`, function () {
       flagManager.fetchFlags();
 
       const [url] = mockFetch.firstCall.args;
@@ -112,7 +113,7 @@ describe(`FeatureFlagManager`, function () {
       expect(context.group_id).to.equal(`test-group`);
     });
 
-    it(`should send parameters with only distinct_id and device_id when no additional context configured`, function () {
+    it(`sends parameters with only distinct_id and device_id when no additional context configured`, function () {
       mockConfig.flags = {};
 
       flagManager.fetchFlags();
@@ -128,59 +129,48 @@ describe(`FeatureFlagManager`, function () {
       expect(context.group_id).to.be.undefined;
     });
 
-    it(`should handle successful response and parse flags correctly`, function (done) {
+    it(`handles successful response and parses flags correctly`, async function () {
       flagManager.fetchFlags();
 
-      flagManager.fetchPromise
-        .then(function () {
-          expect(flagManager.flags).to.be.instanceOf(Map);
-          expect(flagManager.flags.size).to.equal(3);
+      await flagManager.fetchPromise;
 
-          const deepThoughtFlag = flagManager.flags.get(
-            `deepThoughtAnswerExperiment`
-          );
-          expect(deepThoughtFlag.key).to.equal(`fortyTwo`);
-          expect(deepThoughtFlag.value).to.equal(`42`);
+      expect(flagManager.flags).to.be.instanceOf(Map);
+      expect(flagManager.flags.size).to.equal(3);
 
-          const improbabilityFlag = flagManager.flags.get(`infiniteImprobabilityDrive`);
-          expect(improbabilityFlag.key).to.equal(`enabled`);
-          expect(improbabilityFlag.value).to.equal(`enabled`);
+      const deepThoughtFlag = flagManager.flags.get(
+        `deepThoughtAnswerExperiment`
+      );
+      expect(deepThoughtFlag.key).to.equal(`fortyTwo`);
+      expect(deepThoughtFlag.value).to.equal(`42`);
 
-          const babelFishFlag = flagManager.flags.get(`babelFishTranslation`);
-          expect(babelFishFlag.key).to.equal(`control`);
-          expect(babelFishFlag.value).to.equal(`disabled`);
+      const improbabilityFlag = flagManager.flags.get(
+        `infiniteImprobabilityDrive`
+      );
+      expect(improbabilityFlag.key).to.equal(`enabled`);
+      expect(improbabilityFlag.value).to.equal(`enabled`);
 
-          done();
-        })
-        .catch(done);
+      const babelFishFlag = flagManager.flags.get(`babelFishTranslation`);
+      expect(babelFishFlag.key).to.equal(`control`);
+      expect(babelFishFlag.value).to.equal(`disabled`);
     });
 
-    it(`should handle response with empty flags object`, function (done) {
+    it(`handles response with empty flags object`, async function () {
       mockResponse.json.resolves({ code: 200, flags: {} });
 
       flagManager.fetchFlags();
 
-      flagManager.fetchPromise
-        .then(function () {
-          expect(flagManager.flags).to.be.instanceOf(Map);
-          expect(flagManager.flags.size).to.equal(0);
-          done();
-        })
-        .catch(done);
+      await flagManager.fetchPromise;
+
+      expect(flagManager.flags).to.be.instanceOf(Map);
+      expect(flagManager.flags.size).to.equal(0);
     });
 
-    it(`should handle network fetch errors gracefully`, function (done) {
+    it(`handles network fetch errors gracefully`, async function () {
       mockFetch.rejects(new Error(`Network error`));
 
       flagManager.fetchFlags();
 
-      flagManager.fetchPromise
-        .then(function () {
-          done();
-        })
-        .catch(function () {
-          done();
-        });
+      await flagManager.fetchPromise;
     });
   });
 });

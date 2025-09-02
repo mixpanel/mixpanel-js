@@ -93,9 +93,9 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var searchParams = new URLSearchParams();
     searchParams.set('context', JSON.stringify(context));
     searchParams.set('token', this.getMpConfig('token'));
-    searchParams.set('sdk', 'js');
-    searchParams.set('sdk_version', Config.LIB_VERSION);
-    var url = this.getMpConfig('api_host') + '/' + this.getMpConfig('api_routes')['flags'] + '?' + searchParams.toString();
+    searchParams.set('mp_lib', 'web');
+    searchParams.set('$lib_version', Config.LIB_VERSION);
+    var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
     this._fetchInProgressStartTime = Date.now();
     this.fetchPromise = window['fetch'](url, {
