@@ -68,6 +68,7 @@ describe(`FeatureFlagManager`, function () {
 
   afterEach(function () {
     sinon.restore();
+    delete window[`fetch`];
   });
 
   describe(`fetchFlags`, function () {
