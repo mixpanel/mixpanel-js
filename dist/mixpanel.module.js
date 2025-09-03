@@ -14039,7 +14039,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.69.0'
+    LIB_VERSION: '2.70.0-rc1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -18875,17 +18875,21 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var distinctId = this.getMpProperty('distinct_id');
     var deviceId = this.getMpProperty('$device_id');
     logger.log('Fetching flags for distinct ID: ' + distinctId);
-    var reqParams = {
-        'context': _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT))
-    };
+
+    var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
+    var searchParams = new URLSearchParams();
+    searchParams.set('context', JSON.stringify(context));
+    searchParams.set('token', this.getMpConfig('token'));
+    searchParams.set('mp_lib', 'web');
+    searchParams.set('$lib_version', Config.LIB_VERSION);
+    var url = this.getFullApiRoute() + '?' + searchParams.toString();
+
     this._fetchInProgressStartTime = Date.now();
-    this.fetchPromise = win['fetch'](this.getFullApiRoute(), {
-        'method': 'POST',
+    this.fetchPromise = win['fetch'](url, {
+        'method': 'GET',
         'headers': {
-            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
-            'Content-Type': 'application/octet-stream'
-        },
-        'body': JSON.stringify(reqParams)
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':')
+        }
     }).then(function(response) {
         this.markFetchComplete();
         return response.json().then(function(responseBody) {

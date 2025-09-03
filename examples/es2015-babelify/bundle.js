@@ -20202,7 +20202,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.69.0'
+    LIB_VERSION: '2.70.0-rc1'
 };
 
 exports['default'] = Config;
@@ -20378,11 +20378,17 @@ Object.defineProperty(exports, '__esModule', {
     value: true
 });
 
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
 var _utils = require('../utils');
 
 // eslint-disable-line camelcase
 
 var _window = require('../window');
+
+var _config = require('../config');
+
+var _config2 = _interopRequireDefault(_config);
 
 var fetch = _window.window['fetch'];
 var logger = (0, _utils.console_with_prefix)('flags');
@@ -20470,17 +20476,21 @@ FeatureFlagManager.prototype.fetchFlags = function () {
     var distinctId = this.getMpProperty('distinct_id');
     var deviceId = this.getMpProperty('$device_id');
     logger.log('Fetching flags for distinct ID: ' + distinctId);
-    var reqParams = {
-        'context': _utils._.extend({ 'distinct_id': distinctId, 'device_id': deviceId }, this.getConfig(CONFIG_CONTEXT))
-    };
+
+    var context = _utils._.extend({ 'distinct_id': distinctId, 'device_id': deviceId }, this.getConfig(CONFIG_CONTEXT));
+    var searchParams = new URLSearchParams();
+    searchParams.set('context', JSON.stringify(context));
+    searchParams.set('token', this.getMpConfig('token'));
+    searchParams.set('mp_lib', 'web');
+    searchParams.set('$lib_version', _config2['default'].LIB_VERSION);
+    var url = this.getFullApiRoute() + '?' + searchParams.toString();
+
     this._fetchInProgressStartTime = Date.now();
-    this.fetchPromise = _window.window['fetch'](this.getFullApiRoute(), {
-        'method': 'POST',
+    this.fetchPromise = _window.window['fetch'](url, {
+        'method': 'GET',
         'headers': {
-            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
-            'Content-Type': 'application/octet-stream'
-        },
-        'body': JSON.stringify(reqParams)
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':')
+        }
     }).then((function (response) {
         this.markFetchComplete();
         return response.json().then((function (responseBody) {
@@ -20622,7 +20632,7 @@ FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.
 
 exports.FeatureFlagManager = FeatureFlagManager;
 
-},{"../utils":33,"../window":34}],15:[function(require,module,exports){
+},{"../config":12,"../utils":33,"../window":34}],15:[function(require,module,exports){
 /**
  * GDPR utils
  *
