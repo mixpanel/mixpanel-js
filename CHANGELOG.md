@@ -1,3 +1,6 @@
+**2.70.0** (4 Sep 2025)
+- Feature flags requests now send params on query string with GET instead of POST for easier caching
+
 **2.68.0** (11 Aug 2025)
 - Initial rage-click detection support
 - Block `<audio>` tags by default in Session Recording
