@@ -74,7 +74,7 @@
     "lodash": "4.17.21",
     "mocha": "7.1.1",
     "morgan": "1.9.1",
-    "rdme": "7.5.0",
+    "rdme": "10.5.2",
     "request": "2.88.0",
     "rollup": "4.34.9",
     "rollup-plugin-esbuild": "6.2.1",
