@@ -191,12 +191,12 @@ export interface Config {
   batch_size: number;
   batch_flush_interval_ms: number;
   batch_request_timeout_ms: number;
-  record_block_class: string;
+  record_block_class: string | RegExp;
   record_block_selector: string;
   record_collect_fonts: boolean;
   record_idle_timeout_ms: number;
   record_inline_images: boolean;
-  record_mask_text_class: string;
+  record_mask_text_class: string | RegExp;
   record_mask_text_selector: string;
   record_min_ms: number;
   record_max_ms: number;
