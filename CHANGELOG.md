@@ -1,3 +1,11 @@
+**2.71.0** (2 Oct 2025)
+- adds Dead Click ($mp_dead_click) autocapture event: when a click occurs but there is no DOM mutation afterwards
+- adds Page Leave ($mp_page_leave) autocapture event: when a page is "left" either by navigation or leaving the tab
+- adds additional properties to experiment exposure events for feature flags
+- upgrades rrweb fork to fix a hidden input masking issue
+- gets rid of package.json exports feature to be less restrictive of what can be imported
+- adds type definitions for each build option
+
 **2.70.0** (4 Sep 2025)
 - Feature flags requests now send params on query string with GET instead of POST for easier caching
 
