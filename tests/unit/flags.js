@@ -2,9 +2,10 @@ import chai, { expect } from "chai";
 import sinon from "sinon";
 import sinonChai from "sinon-chai";
 
-import { FeatureFlagManager } from "../../src/flags/index";
 import { window } from "../../src/window";
 import Config from "../../src/config";
+
+import { FeatureFlagManager } from "../../src/flags/index";
 
 chai.use(sinonChai);
 
@@ -35,6 +36,9 @@ describe(`FeatureFlagManager`, function () {
           deepThoughtAnswerExperiment: {
             variant_key: `fortyTwo`,
             variant_value: `42`,
+            experiment_id: `exp12345`,
+            is_experiment_active: true,
+            is_qa_tester: false,
           },
           infiniteImprobabilityDrive: {
             variant_key: `enabled`,
@@ -63,7 +67,6 @@ describe(`FeatureFlagManager`, function () {
     };
 
     flagManager = new FeatureFlagManager(initOptions);
-    flagManager.flags = null;
   });
 
   afterEach(function () {
@@ -71,19 +74,17 @@ describe(`FeatureFlagManager`, function () {
     delete window[`fetch`];
   });
 
-  describe(`fetchFlags`, function () {
+  describe(`init`, function () {
     it(`does not fetch flags when system is disabled`, function () {
       initOptions.getConfigFunc.withArgs(`flags`).returns(null);
-      flagManager = new FeatureFlagManager(initOptions);
-      flagManager.flags = null;
 
-      flagManager.fetchFlags();
+      flagManager.init();
 
       expect(mockFetch).not.to.have.been.called;
     });
 
     it(`makes GET request to correct endpoint with proper headers and query parameters`, function () {
-      flagManager.fetchFlags();
+      flagManager.init();
 
       expect(mockFetch).to.have.been.calledOnce;
 
@@ -101,7 +102,7 @@ describe(`FeatureFlagManager`, function () {
     });
 
     it(`sends correct parameters with distinct_id, device_id, and context in URL`, function () {
-      flagManager.fetchFlags();
+      flagManager.init();
 
       const [url] = mockFetch.firstCall.args;
       const urlObj = new URL(url);
@@ -117,7 +118,7 @@ describe(`FeatureFlagManager`, function () {
     it(`sends parameters with only distinct_id and device_id when no additional context configured`, function () {
       mockConfig.flags = {};
 
-      flagManager.fetchFlags();
+      flagManager.init();
 
       const [url] = mockFetch.firstCall.args;
       const urlObj = new URL(url);
@@ -131,7 +132,7 @@ describe(`FeatureFlagManager`, function () {
     });
 
     it(`handles successful response and parses flags correctly`, async function () {
-      flagManager.fetchFlags();
+      flagManager.init();
 
       await flagManager.fetchPromise;
 
@@ -158,7 +159,7 @@ describe(`FeatureFlagManager`, function () {
     it(`handles response with empty flags object`, async function () {
       mockResponse.json.resolves({ code: 200, flags: {} });
 
-      flagManager.fetchFlags();
+      flagManager.init();
 
       await flagManager.fetchPromise;
 
@@ -169,9 +170,36 @@ describe(`FeatureFlagManager`, function () {
     it(`handles network fetch errors gracefully`, async function () {
       mockFetch.rejects(new Error(`Network error`));
 
-      flagManager.fetchFlags();
+      flagManager.init();
 
       await flagManager.fetchPromise;
+    });
+  });
+
+  describe(`getVariantValue`, function() {
+    beforeEach(function () {
+      flagManager.init();
+    });
+
+    it(`tracks expected properties in exposure event`, async function () {
+      const result = await flagManager.getVariantValue(`deepThoughtAnswerExperiment`);
+
+      expect(initOptions.trackingFunc).to.have.been.calledOnce;
+      const [eventName, properties] = initOptions.trackingFunc.firstCall.args;
+
+      expect(eventName).to.equal(`$experiment_started`);
+
+      expect(properties[`Experiment name`]).to.equal(`deepThoughtAnswerExperiment`);
+      expect(properties[`Variant name`]).to.equal(`fortyTwo`);
+      expect(properties[`$experiment_type`]).to.equal(`feature_flag`);
+      expect(properties[`$experiment_id`]).to.equal(`exp12345`);
+      expect(properties[`$is_experiment_active`]).to.equal(true);
+      expect(properties[`$is_qa_tester`]).to.equal(false);
+      expect(properties[`Variant fetch start time`]).to.be.a(`string`);
+      expect(properties[`Variant fetch complete time`]).to.be.a(`string`);
+      expect(properties[`Variant fetch latency (ms)`]).to.be.a(`number`);
+
+      expect(result).to.equal(`42`);
     });
   });
 });

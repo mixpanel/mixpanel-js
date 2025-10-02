@@ -4,6 +4,7 @@ import sinon from 'sinon';
 import { _ } from '../../src/utils';
 import {
     getSafeText,
+    isDefinitelyNonInteractive,
     shouldTrackDomEvent,
     shouldTrackElementDetails,
     shouldTrackValue,
@@ -117,6 +118,113 @@ describe(`Autotrack utility functions`, function() {
       expect(getSafeText(el, null, null, [])).to.equal(`Benign text`);
       expect(getSafeText(el, null, el => el.innerHTML.startsWith(`Benign`), [])).to.equal(`Benign text`);
       expect(getSafeText(el, null, el => el.innerHTML.startsWith(`foo`), [])).to.equal(``);
+    });
+  });
+
+  describe(`isDefinitelyNonInteractive`, function() {
+    it(`returns false for button elements (not in always non-interactive tags)`, function() {
+      const button = {
+        tagName: `BUTTON`,
+        getAttribute: sinon.stub().returns(null),
+        hasAttribute: sinon.stub().returns(false),
+        isContentEditable: false,
+      };
+      expect(isDefinitelyNonInteractive(button)).to.be.false;
+    });
+
+    it(`returns true for definitely non-interactive elements like html`, function() {
+      const html = {
+        tagName: `HTML`,
+        getAttribute: sinon.stub().returns(null),
+        hasAttribute: sinon.stub().returns(false),
+        isContentEditable: false,
+      };
+      expect(isDefinitelyNonInteractive(html)).to.be.true;
+    });
+
+    it(`returns false for body elements (not in always non-interactive tags)`, function() {
+      const body = {
+        tagName: `BODY`,
+        getAttribute: sinon.stub().returns(null),
+        hasAttribute: sinon.stub().returns(false),
+        isContentEditable: false,
+      };
+      expect(isDefinitelyNonInteractive(body)).to.be.false;
+    });
+
+    it(`returns true for div elements without interactive indicators`, function() {
+      const div = {
+        tagName: `DIV`,
+        textContent: `Short text`,
+        getAttribute: sinon.stub().returns(null),
+        hasAttribute: sinon.stub().returns(false),
+        isContentEditable: false,
+      };
+      expect(isDefinitelyNonInteractive(div)).to.be.true;
+    });
+
+    it(`returns false for div elements with tabindex`, function() {
+      const div = {
+        tagName: `DIV`,
+        textContent: `Clickable div`,
+        getAttribute: sinon.stub().returns(null),
+        hasAttribute: sinon.stub().callsFake(attr => attr === `tabindex`),
+        isContentEditable: false,
+      };
+      expect(isDefinitelyNonInteractive(div)).to.be.false;
+    });
+
+    it(`returns false for div elements with interactive ARIA role`, function() {
+      const div = {
+        tagName: `DIV`,
+        textContent: `Button div`,
+        getAttribute: sinon.stub().callsFake(attr => attr === `role` ? `button` : null),
+        hasAttribute: sinon.stub().returns(false),
+        isContentEditable: false,
+      };
+      expect(isDefinitelyNonInteractive(div)).to.be.false;
+    });
+
+    it(`returns false for content editable elements`, function() {
+      const div = {
+        tagName: `DIV`,
+        textContent: `Editable content`,
+        getAttribute: sinon.stub().returns(null),
+        hasAttribute: sinon.stub().returns(false),
+        isContentEditable: true,
+      };
+      expect(isDefinitelyNonInteractive(div)).to.be.false;
+    });
+
+    it(`returns false for div elements with onclick`, function() {
+      const div = {
+        tagName: `DIV`,
+        textContent: `Clickable div`,
+        getAttribute: sinon.stub().returns(null),
+        hasAttribute: sinon.stub().callsFake(attr => attr === `onclick`),
+        isContentEditable: false,
+        onclick: function() { console.log(`clicked`); },
+      };
+      expect(isDefinitelyNonInteractive(div)).to.be.false;
+    });
+
+    it(`returns false for links with href`, function() {
+      const link = {
+        tagName: `A`,
+        getAttribute: sinon.stub().returns(null),
+        hasAttribute: sinon.stub().callsFake(attr => attr === `href`),
+        isContentEditable: false,
+      };
+      expect(isDefinitelyNonInteractive(link)).to.be.false;
+    });
+
+    it(`returns true for null elements`, function() {
+      expect(isDefinitelyNonInteractive(null)).to.be.true;
+    });
+
+    it(`returns true for elements without tagName`, function() {
+      const element = { getAttribute: sinon.stub().returns(null) };
+      expect(isDefinitelyNonInteractive(element)).to.be.true;
     });
   });
 

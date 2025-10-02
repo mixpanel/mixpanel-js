@@ -1593,7 +1593,8 @@ function snapshot(n2, options) {
         week: true,
         textarea: true,
         select: true,
-        password: true
+        password: true,
+        hidden: true
     } : maskAllInputs === false ? {
         password: true
     } : maskAllInputs;
@@ -13235,7 +13236,8 @@ function record(options) {
         week: true,
         textarea: true,
         select: true,
-        password: true
+        password: true,
+        hidden: true
     } : _maskInputOptions !== void 0 ? _maskInputOptions : {
         password: true
     };
@@ -14039,7 +14041,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.70.0'
+    LIB_VERSION: '2.71.0'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -15716,6 +15718,20 @@ var batchedThrottle = function (fn, waitMs) {
 var cheap_guid = function(maxlen) {
     var guid = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
     return maxlen ? guid.substring(0, maxlen) : guid;
+};
+
+/**
+ * Generates a W3C traceparent header for easy interop with distributed tracing systems i.e Open Telemetry
+ * https://www.w3.org/TR/trace-context/#traceparent-header
+*/
+var generateTraceparent = function() {
+    var traceID = _.UUID().replace(/-/g, '');
+    var parentID = _.UUID().replace(/-/g, '').substring(0, 16);
+
+    // Sampled trace
+    var traceFlags = '01';
+
+    return '00-' + traceID + '-' + parentID + '-' + traceFlags;
 };
 
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
@@ -17853,11 +17869,17 @@ win['__mp_recorder'] = MixpanelRecorder;
 var EV_CHANGE = 'change';
 var EV_CLICK = 'click';
 var EV_HASHCHANGE = 'hashchange';
+var EV_INPUT = 'input';
+var EV_LOAD = 'load';
 var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
 var EV_POPSTATE = 'popstate';
 // TODO scrollend isn't available in Safari: document or polyfill?
 var EV_SCROLLEND = 'scrollend';
+var EV_SCROLL = 'scroll';
+var EV_SELECT = 'select';
 var EV_SUBMIT = 'submit';
+var EV_TOGGLE = 'toggle';
+var EV_VISIBILITYCHANGE = 'visibilitychange';
 
 var CLICK_EVENT_PROPS = [
     'clientX', 'clientY',
@@ -17873,6 +17895,77 @@ var TRACKED_ATTRS = [
     'aria-label', 'aria-labelledby', 'aria-describedby',
     'href', 'name', 'role', 'title', 'type'
 ];
+
+var INTERACTIVE_ARIA_ROLES = {
+    'button': true,
+    'checkbox': true,
+    'combobox': true,
+    'grid': true,
+    'link': true,
+    'listbox': true,
+    'menu': true,
+    'menubar': true,
+    'menuitem': true,
+    'menuitemcheckbox': true,
+    'menuitemradio': true,
+    'navigation': true,
+    'option': true,
+    'radio': true,
+    'radiogroup': true,
+    'searchbox': true,
+    'slider': true,
+    'spinbutton': true,
+    'switch': true,
+    'tab': true,
+    'tablist': true,
+    'textbox': true,
+    'tree': true,
+    'treegrid': true,
+    'treeitem': true
+};
+
+var ALWAYS_NON_INTERACTIVE_TAGS = {
+    // Document metadata
+    'base': true,
+    'head': true,
+    'html': true,
+    'link': true,
+    'meta': true,
+    'script': true,
+    'style': true,
+    'title': true,
+    // Text formatting
+    'br': true,
+    'hr': true,
+    'wbr': true,
+    // Other
+    'noscript': true,
+    'picture': true,
+    'source': true,
+    'template': true,
+    'track': true
+};
+
+// Common container tags that need additional checks
+var TEXT_CONTAINER_TAGS = {
+    'article': true,
+    'div': true,
+    'h1': true,
+    'h2': true,
+    'h3': true,
+    'h4': true,
+    'h5': true,
+    'h6': true,
+    'p': true,
+    'section': true,
+    'span': true
+};
+
+var EVENT_HANDLER_ATTRIBUTES = [
+    'onclick', 'onmousedown', 'onmouseup', 'onpointerdown', 'onpointerup', 'ontouchend', 'ontouchstart'
+];
+
+var MAX_DEPTH = 5;
 
 var logger$1 = console_with_prefix('autocapture');
 
@@ -18241,6 +18334,10 @@ function minDOMApisSupported() {
     }
 }
 
+function weakSetSupported() {
+    return typeof WeakSet !== 'undefined';
+}
+
 /*
  * Check whether a DOM event should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
@@ -18366,6 +18463,149 @@ function shouldTrackValue(value) {
     return true;
 }
 
+/**
+ * Creates a cross-browser compatible scroll end function with appropriate event listener.
+ * For browsers that support scrollend, returns the original function with scrollend event.
+ * For browsers without scrollend support, returns a debounced function that triggers
+ * 100ms after the last scroll event to simulate scrollend behavior.
+ * @param {Function} originalFunction - The function to call when scrolling ends
+ * @returns {Object} Object containing listener function and eventType string
+ * @returns {Function} returns.listener - The wrapped function to use as event listener
+ * @returns {string} returns.eventType - The event type to listen for ('scrollend' or 'scroll')
+ */
+function getPolyfillScrollEndFunction(originalFunction) {
+    var supportsScrollEnd = 'onscrollend' in win;
+    var polyfillFunction = safewrap(originalFunction);
+    var polyfillEvent = EV_SCROLLEND;
+    if (!supportsScrollEnd) {
+        // Polyfill for browsers without scrollend support: wait 100ms after the last scroll event
+        // https://developer.chrome.com/blog/scrollend-a-new-javascript-event
+        var scrollTimer = null;
+        var scrollDelayMs = 100;
+
+        polyfillFunction = safewrap(function() {
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(originalFunction, scrollDelayMs);
+        });
+
+        polyfillEvent = EV_SCROLL;
+    }
+
+    return {
+        listener: polyfillFunction,
+        eventType: polyfillEvent
+    };
+}
+
+function hasInlineEventHandlers(element) {
+    for (var i = 0; i < EVENT_HANDLER_ATTRIBUTES.length; i++) {
+        if (element.hasAttribute(EVENT_HANDLER_ATTRIBUTES[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function hasInteractiveAriaRole(element) {
+    var role = element.getAttribute('role');
+    if (!role) return false;
+
+    // Handle invalid markup where multiple roles might be specified
+    // Only the first token is recognized per ARIA spec
+    var primaryRole = role.trim().split(/\s+/)[0].toLowerCase();
+
+    return INTERACTIVE_ARIA_ROLES[primaryRole];
+}
+
+function hasAnyInteractivityIndicators(element) {
+    var tagName = element.tagName.toLowerCase();
+
+    // Check for interactive HTML elements
+    if (tagName === 'button' ||
+        tagName === 'input' ||
+        tagName === 'select' ||
+        tagName === 'textarea' ||
+        tagName === 'details' ||
+        tagName === 'dialog') {
+        return true;
+    }
+
+    if (element.isContentEditable) {
+        return true;
+    }
+
+    if (element.onclick || element.onmousedown || element.onmouseup || element.ontouchstart || element.ontouchend) {
+        return true;
+    }
+
+    if (hasInlineEventHandlers(element)) {
+        return true;
+    }
+
+    if (hasInteractiveAriaRole(element)) {
+        return true;
+    }
+
+    if (tagName === 'a' && element.hasAttribute('href')) {
+        return true;
+    }
+
+    if (element.hasAttribute('tabindex')) {
+        return true;
+    }
+
+    return false;
+}
+
+
+function isDefinitelyNonInteractive(element) {
+    if (!element || !element.tagName) {
+        return true;
+    }
+
+    var tagName = element.tagName.toLowerCase();
+
+    // These tags are definitely non-interactive
+    if (ALWAYS_NON_INTERACTIVE_TAGS[tagName]) {
+        return true;
+    }
+
+    // For all other elements, we can only be certain they're non-interactive if they lack ALL indicators of interactivity
+    // Check for any signs of interactivity
+    if (hasAnyInteractivityIndicators(element)) {
+        return false;
+    }
+
+    // Check parent chain for interactive context
+    var parent = element.parentElement;
+    var depth = 0;
+
+    while (parent && depth < MAX_DEPTH) {
+        if (hasAnyInteractivityIndicators(parent)) {
+            return false; // Element is inside an interactive parent
+        }
+
+        if (parent.getRootNode && parent.getRootNode() !== document$1) {
+            var root = parent.getRootNode();
+            if (root.host && hasAnyInteractivityIndicators(root.host)) {
+                return false; // Inside an interactive shadow host
+            }
+        }
+
+        parent = parent.parentElement;
+        depth++;
+    }
+
+    // Pure text containers without any interactive context
+    if (TEXT_CONTAINER_TAGS[tagName]) {
+        // These are non-interactive ONLY if they have no interactive indicators (already checked as part of hasAnyInteractivityIndicators)
+        return true;
+    }
+
+    // Default: we can't be certain it's non-interactive
+    return false;
+}
+
 /** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
 /** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
 /** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
@@ -18398,6 +18638,350 @@ RageClickTracker.prototype.isRageClick = function(x, y, options) {
     return false;
 };
 
+function ShadowDOMObserver(changeCallback, observerConfig) {
+    this.changeCallback = changeCallback || function() {};
+    this.observerConfig = observerConfig;
+
+    this.observedShadowRoots = null;
+    this.shadowObservers = [];
+}
+
+ShadowDOMObserver.prototype.getEventTarget = function(event) {
+    if (!this.observedShadowRoots) {
+        return;
+    }
+    var path = this.getComposedPath(event);
+    if (path && path.length) {
+        return path[0];
+    }
+
+    return event['target'] || event['srcElement'];
+};
+
+
+ShadowDOMObserver.prototype.getComposedPath = function(event) {
+    if ('composedPath' in event) {
+        return event['composedPath']();
+    }
+
+    return [];
+};
+ShadowDOMObserver.prototype.observeFromEvent = function(event) {
+    if (!this.observedShadowRoots) {
+        return;
+    }
+
+    var path = this.getComposedPath(event);
+
+    // Check each element in path for shadow roots
+    for (var i = 0; i < path.length; i++) {
+        var element = path[i];
+
+        if (element && element.shadowRoot) {
+            this.observeShadowRoot(element.shadowRoot);
+        }
+    }
+};
+
+
+ShadowDOMObserver.prototype.observeShadowRoot = function(shadowRoot) {
+    if (!this.observedShadowRoots || this.observedShadowRoots.has(shadowRoot)) {
+        return;
+    }
+
+    var self = this;
+
+    try {
+        this.observedShadowRoots.add(shadowRoot);
+
+        var observer = new window.MutationObserver(function() {
+            self.changeCallback();
+        });
+
+        observer.observe(shadowRoot, this.observerConfig);
+        this.shadowObservers.push(observer);
+    } catch (e) {
+        logger$1.critical('Error while observing shadow root', e);
+    }
+};
+
+
+ShadowDOMObserver.prototype.start = function() {
+    if (this.observedShadowRoots) {
+        return;
+    }
+
+    if (!weakSetSupported()) {
+        logger$1.critical('Shadow DOM observation unavailable: WeakSet not supported');
+        return;
+    }
+
+    this.observedShadowRoots = new WeakSet();
+};
+
+ShadowDOMObserver.prototype.stop = function() {
+    if (!this.observedShadowRoots) {
+        return;
+    }
+
+    for (var i = 0; i < this.shadowObservers.length; i++) {
+        try {
+            this.shadowObservers[i].disconnect();
+        } catch (e) {
+            logger$1.critical('Error while disconnecting shadow DOM observer', e);
+        }
+    }
+    this.shadowObservers = [];
+    this.observedShadowRoots = null;
+};
+
+/** @const */ var DEFAULT_DEAD_CLICK_TIMEOUT_MS = 500;
+/** @const */ var INTERACTION_EVENTS = [EV_CHANGE, EV_INPUT, EV_SUBMIT, EV_SELECT, EV_TOGGLE];
+/** @const */ var LAYOUT_EVENTS = [EV_SCROLLEND];
+/** @const */ var NAVIGATION_EVENTS = [EV_HASHCHANGE];
+/** @const */ var MUTATION_OBSERVER_CONFIG = {
+    characterData: true,
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class', 'hidden', 'checked', 'selected', 'value', 'display', 'visibility']
+};
+
+
+function DeadClickTracker(onDeadClickCallback) {
+    this.eventListeners = [];
+    this.mutationObserver = null;
+    this.shadowDOMObserver = null;
+
+    this.isTracking = false;
+    this.lastChangeEventTimestamp = 0;
+    this.pendingClicks = [];
+    this.onDeadClickCallback = onDeadClickCallback;
+    this.processingActive = false;
+    this.processingTimeout = null;
+}
+
+
+DeadClickTracker.prototype.addClick = function(event) {
+    var element = this.shadowDOMObserver && this.shadowDOMObserver.getEventTarget(event);
+
+    if (!element) {
+        element = event['target'] || event['srcElement'];
+    }
+
+    if (!element || isDefinitelyNonInteractive(element)) {
+        return false;
+    }
+
+    if (this.shadowDOMObserver) {
+        this.shadowDOMObserver.observeFromEvent(event);
+    }
+    this.pendingClicks.push({
+        element: element,
+        event: event,
+        timestamp: Date.now()
+    });
+    return true;
+};
+
+DeadClickTracker.prototype.trackClick = function(event, config) {
+    if (!this.isTracking) {
+        return false;
+    }
+
+    var added = this.addClick(event);
+    if (added) {
+        this.triggerProcessing(config);
+    }
+    return added;
+};
+
+DeadClickTracker.prototype.getDeadClicks = function(config) {
+    if (this.pendingClicks.length === 0) {
+        return [];
+    }
+
+    var timeoutMs = config['timeout_ms'];
+    var now = Date.now();
+    var clicksToEvaluate = this.pendingClicks.slice(); // Copy array
+    this.pendingClicks = []; // Clear original
+
+    var deadClicks = [];
+
+    for (var i = 0; i < clicksToEvaluate.length; i++) {
+        var click = clicksToEvaluate[i];
+
+        if (now - click.timestamp >= timeoutMs) {
+            // Click has exceeded timeout, check if it's dead by looking for changes after this specific click
+            if (!this.hasChangesAfter(click.timestamp)) {
+                deadClicks.push(click);
+            }
+        } else {
+            // Still pending - add back
+            this.pendingClicks.push(click);
+        }
+    }
+
+    return deadClicks;
+};
+
+DeadClickTracker.prototype.hasChangesAfter = function(timestamp) {
+    // 100ms tolerance for race condition between when we record the click and the change event
+    return this.lastChangeEventTimestamp >= (timestamp - 100);
+};
+
+DeadClickTracker.prototype.recordChangeEvent = function() {
+    this.lastChangeEventTimestamp = Date.now();
+};
+
+DeadClickTracker.prototype.triggerProcessing = function(config) {
+    // Prevent multiple concurrent processing chains
+    if (this.processingActive) {
+        return;
+    }
+    this.processingActive = true;
+    this.processRecursively(config);
+};
+
+DeadClickTracker.prototype.processRecursively = function(config) {
+    if (!this.isTracking || !this.onDeadClickCallback) {
+        this.processingActive = false;
+        return;
+    }
+
+    var timeoutMs = config['timeout_ms'];
+    var self = this;
+
+    this.processingTimeout = setTimeout(function() {
+        if (!self.processingActive) {
+            return;
+        }
+
+        var deadClicks = self.getDeadClicks(config);
+
+        for (var i = 0; i < deadClicks.length; i++) {
+            self.onDeadClickCallback(deadClicks[i].event);
+        }
+
+        if (self.pendingClicks.length > 0) {
+            self.processRecursively(config);
+        } else {
+            self.processingActive = false;
+        }
+    }, timeoutMs);
+};
+
+DeadClickTracker.prototype.startTracking = function() {
+    if (this.isTracking) {
+        return;
+    }
+
+    this.isTracking = true;
+
+    var self = this;
+
+    INTERACTION_EVENTS.forEach(function(event) {
+        var handler = function() {
+            self.recordChangeEvent();
+        };
+        document.addEventListener(event, handler, { capture: true, passive: true });
+        self.eventListeners.push({ target: document, event: event, handler: handler, options: { capture: true, passive: true } });
+    });
+    NAVIGATION_EVENTS.forEach(function(event) {
+        var handler = function() {
+            self.recordChangeEvent();
+        };
+        window.addEventListener(event, handler);
+        self.eventListeners.push({ target: window, event: event, handler: handler });
+    });
+    LAYOUT_EVENTS.forEach(function(event) {
+        var handler = function() {
+            self.recordChangeEvent();
+        };
+        window.addEventListener(event, handler, { passive: true });
+        self.eventListeners.push({ target: window, event: event, handler: handler, options: { passive: true } });
+    });
+    var selectionHandler = function() {
+        self.recordChangeEvent();
+    };
+    document.addEventListener('selectionchange', selectionHandler);
+    self.eventListeners.push({ target: document, event: 'selectionchange', handler: selectionHandler });
+
+    // Set up MutationObserver
+    if (window.MutationObserver) {
+        try {
+            this.mutationObserver = new window.MutationObserver(function() {
+                self.recordChangeEvent();
+            });
+
+            this.mutationObserver.observe(document.body || document.documentElement, MUTATION_OBSERVER_CONFIG);
+        } catch (e) {
+            logger$1.critical('Error while setting up mutation observer', e);
+        }
+    }
+
+    // Set up Shadow DOM observer
+    if (window.customElements) {
+        try {
+            this.shadowDOMObserver = new ShadowDOMObserver(
+                function() {
+                    self.recordChangeEvent();
+                },
+                MUTATION_OBSERVER_CONFIG
+            );
+            this.shadowDOMObserver.start();
+        } catch (e) {
+            logger$1.critical('Error while setting up shadow DOM observer', e);
+            this.shadowDOMObserver = null;
+        }
+    }
+};
+
+DeadClickTracker.prototype.stopTracking = function() {
+    if (!this.isTracking) {
+        return;
+    }
+
+    this.isTracking = false;
+    this.pendingClicks = [];
+    this.lastChangeEventTimestamp = 0;
+    this.processingActive = false;
+
+    if (this.processingTimeout) {
+        clearTimeout(this.processingTimeout);
+        this.processingTimeout = null;
+    }
+
+    // Remove all event listeners
+    for (var i = 0; i < this.eventListeners.length; i++) {
+        var listener = this.eventListeners[i];
+        try {
+            listener.target.removeEventListener(listener.event, listener.handler, listener.options);
+        } catch (e) {
+            logger$1.critical('Error while removing event listener', e);
+        }
+    }
+    this.eventListeners = [];
+
+    if (this.mutationObserver) {
+        try {
+            this.mutationObserver.disconnect();
+        } catch (e) {
+            logger$1.critical('Error while disconnecting mutation observer', e);
+        }
+        this.mutationObserver = null;
+    }
+
+    if (this.shadowDOMObserver) {
+        try {
+            this.shadowDOMObserver.stop();
+        } catch (e) {
+            logger$1.critical('Error while stopping shadow DOM observer', e);
+        }
+        this.shadowDOMObserver = null;
+    }
+};
+
 var AUTOCAPTURE_CONFIG_KEY = 'autocapture';
 var LEGACY_PAGEVIEW_CONFIG_KEY = 'track_pageview';
 
@@ -18417,10 +19001,12 @@ var CONFIG_CAPTURE_TEXT_CONTENT = 'capture_text_content';
 var CONFIG_SCROLL_CAPTURE_ALL = 'scroll_capture_all';
 var CONFIG_SCROLL_CHECKPOINTS = 'scroll_depth_percent_checkpoints';
 var CONFIG_TRACK_CLICK = 'click';
+var CONFIG_TRACK_DEAD_CLICK = 'dead_click';
 var CONFIG_TRACK_INPUT = 'input';
 var CONFIG_TRACK_PAGEVIEW = 'pageview';
 var CONFIG_TRACK_RAGE_CLICK = 'rage_click';
 var CONFIG_TRACK_SCROLL = 'scroll';
+var CONFIG_TRACK_PAGE_LEAVE = 'page_leave';
 var CONFIG_TRACK_SUBMIT = 'submit';
 
 var CONFIG_DEFAULTS$1 = {};
@@ -18435,10 +19021,12 @@ CONFIG_DEFAULTS$1[CONFIG_CAPTURE_TEXT_CONTENT] = false;
 CONFIG_DEFAULTS$1[CONFIG_SCROLL_CAPTURE_ALL] = false;
 CONFIG_DEFAULTS$1[CONFIG_SCROLL_CHECKPOINTS] = [25, 50, 75, 100];
 CONFIG_DEFAULTS$1[CONFIG_TRACK_CLICK] = true;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_DEAD_CLICK] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_INPUT] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_PAGEVIEW] = PAGEVIEW_OPTION_FULL_URL;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_RAGE_CLICK] = true;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_SCROLL] = true;
+CONFIG_DEFAULTS$1[CONFIG_TRACK_PAGE_LEAVE] = false;
 CONFIG_DEFAULTS$1[CONFIG_TRACK_SUBMIT] = true;
 
 var DEFAULT_PROPS = {
@@ -18446,10 +19034,12 @@ var DEFAULT_PROPS = {
 };
 
 var MP_EV_CLICK = '$mp_click';
+var MP_EV_DEAD_CLICK = '$mp_dead_click';
 var MP_EV_INPUT = '$mp_input_change';
 var MP_EV_RAGE_CLICK = '$mp_rage_click';
 var MP_EV_SCROLL = '$mp_scroll';
 var MP_EV_SUBMIT = '$mp_submit';
+var MP_EV_PAGE_LEAVE = '$mp_page_leave';
 
 /**
  * Autocapture: manages automatic event tracking
@@ -18457,6 +19047,9 @@ var MP_EV_SUBMIT = '$mp_submit';
  */
 var Autocapture = function(mp) {
     this.mp = mp;
+    this.maxScrollViewDepth = 0;
+    this.hasTrackedScrollSession = false;
+    this.previousScrollHeight = 0;
 };
 
 Autocapture.prototype.init = function() {
@@ -18464,13 +19057,15 @@ Autocapture.prototype.init = function() {
         logger$1.critical('Autocapture unavailable: missing required DOM APIs');
         return;
     }
-
+    this.initPageListeners();
     this.initPageviewTracking();
     this.initClickTracking();
+    this.initDeadClickTracking();
     this.initInputTracking();
     this.initScrollTracking();
     this.initSubmitTracking();
     this.initRageClickTracking();
+    this.initPageLeaveTracking();
 };
 
 Autocapture.prototype.getFullConfig = function() {
@@ -18551,7 +19146,8 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
 
     var isCapturedForHeatMap = this.mp.is_recording_heatmap_data() && (
         (mpEventName === MP_EV_CLICK && !this.getConfig(CONFIG_TRACK_CLICK)) ||
-        (mpEventName === MP_EV_RAGE_CLICK && !this._getRageClickConfig())
+        (mpEventName === MP_EV_RAGE_CLICK && !this._getClickTrackingConfig(CONFIG_TRACK_RAGE_CLICK)) ||
+        (mpEventName === MP_EV_DEAD_CLICK && !this._getClickTrackingConfig(CONFIG_TRACK_DEAD_CLICK))
     );
 
     var props = getPropsForDOMEvent(ev, {
@@ -18570,11 +19166,45 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
     }
 };
 
-Autocapture.prototype._getRageClickConfig = function() {
-    var config = this.getConfig(CONFIG_TRACK_RAGE_CLICK);
+Autocapture.prototype.initPageListeners = function() {
+    win.removeEventListener(EV_POPSTATE, this.listenerPopstate);
+    win.removeEventListener(EV_HASHCHANGE, this.listenerHashchange);
+
+    if (!this.pageviewTrackingConfig() && !this.getConfig(CONFIG_TRACK_PAGE_LEAVE) && !this.mp.get_config('record_heatmap_data')) {
+        // These are all the configs that use these listeners
+        return;
+    }
+
+    this.listenerPopstate = function() {
+        win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+    };
+    this.listenerHashchange = function() {
+        win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+    };
+
+    win.addEventListener(EV_POPSTATE, this.listenerPopstate);
+    win.addEventListener(EV_HASHCHANGE, this.listenerHashchange);
+    var nativePushState = win.history.pushState;
+    if (typeof nativePushState === 'function') {
+        win.history.pushState = function(state, unused, url) {
+            nativePushState.call(win.history, state, unused, url);
+            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+        };
+    }
+    var nativeReplaceState = win.history.replaceState;
+    if (typeof nativeReplaceState === 'function') {
+        win.history.replaceState = function(state, unused, url) {
+            nativeReplaceState.call(win.history, state, unused, url);
+            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+        };
+    }
+};
+
+Autocapture.prototype._getClickTrackingConfig = function(configKey) {
+    var config = this.getConfig(configKey);
 
     if (!config) {
-        return null; // rage click tracking disabled
+        return null; // click tracking disabled
     }
 
     if (config === true) {
@@ -18588,6 +19218,68 @@ Autocapture.prototype._getRageClickConfig = function() {
     return {}; // fallback to defaults for any other truthy value
 };
 
+Autocapture.prototype._trackPageLeave = function(ev, currentUrl, currentScrollHeight) {
+    if (this.hasTrackedScrollSession) {
+        // User has navigated away already ending their impression.
+        return;
+    }
+    this.hasTrackedScrollSession = true;
+    var viewportHeight = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
+    var scrollPercentage = Math.round(Math.max(this.maxScrollViewDepth - viewportHeight, 0) / (currentScrollHeight - viewportHeight) * 100);
+    var foldLinePercentage = Math.round((viewportHeight / currentScrollHeight) * 100);
+    if (currentScrollHeight <= viewportHeight) {
+        // If the content fits within the viewport, consider it fully scrolled
+        scrollPercentage = 100;
+        foldLinePercentage = 100;
+    }
+
+    var props = _.extend({
+        '$max_scroll_view_depth': this.maxScrollViewDepth,
+        '$max_scroll_percentage': scrollPercentage,
+        '$fold_line_percentage': foldLinePercentage,
+        '$scroll_height':  currentScrollHeight,
+        '$event_type': ev.type,
+        '$current_url': currentUrl || _.info.currentUrl(),
+        '$viewportHeight': viewportHeight, // This is the fold line
+        '$viewportWidth':  Math.max(document$1.documentElement.clientWidth, win.innerWidth || 0),
+    }, DEFAULT_PROPS);
+
+    if (this.mp.is_recording_heatmap_data() && !this.getConfig(CONFIG_TRACK_PAGE_LEAVE)) {
+        props['$captured_for_heatmap'] = true;
+    }
+
+    // Send with beacon transport to ensure event is sent before unload
+    this.mp.track(MP_EV_PAGE_LEAVE, props, {transport: 'sendBeacon'});
+};
+
+Autocapture.prototype._initScrollDepthTracking = function() {
+    win.removeEventListener(EV_SCROLL, this.listenerScrollDepth);
+    win.removeEventListener(EV_SCROLLEND, this.listenerScrollDepth);
+
+    if (!this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    logger$1.log('Initializing scroll depth tracking');
+
+    this.maxScrollViewDepth = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
+
+    var updateScrollDepth = function() {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+        var scrollViewHeight = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0) + win.scrollY;
+        if (scrollViewHeight > this.maxScrollViewDepth) {
+            this.maxScrollViewDepth = scrollViewHeight;
+        }
+        this.previousScrollHeight = document$1.body.scrollHeight;
+    }.bind(this);
+
+    var scrollEndPolyfill = getPolyfillScrollEndFunction(updateScrollDepth);
+    this.listenerScrollDepth = scrollEndPolyfill.listener;
+    win.addEventListener(scrollEndPolyfill.eventType, this.listenerScrollDepth);
+};
+
 Autocapture.prototype.initClickTracking = function() {
     win.removeEventListener(EV_CLICK, this.listenerClick);
 
@@ -18596,12 +19288,49 @@ Autocapture.prototype.initClickTracking = function() {
     }
     logger$1.log('Initializing click tracking');
 
-    this.listenerClick = win.addEventListener(EV_CLICK, function(ev) {
+    this.listenerClick = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
             return;
         }
         this.trackDomEvent(ev, MP_EV_CLICK);
-    }.bind(this));
+    }.bind(this);
+    win.addEventListener(EV_CLICK, this.listenerClick);
+};
+
+Autocapture.prototype.initDeadClickTracking = function() {
+    var deadClickConfig = this._getClickTrackingConfig(CONFIG_TRACK_DEAD_CLICK);
+
+    if (!deadClickConfig && !this.mp.get_config('record_heatmap_data')) {
+        this.stopDeadClickTracking();
+        return;
+    }
+
+    logger$1.log('Initializing dead click tracking');
+    if (!this._deadClickTracker) {
+        this._deadClickTracker = new DeadClickTracker(function(deadClickEvent) {
+            this.trackDomEvent(deadClickEvent, MP_EV_DEAD_CLICK);
+        }.bind(this));
+        this._deadClickTracker.startTracking();
+    }
+
+    if (!this.listenerDeadClick) {
+        this.listenerDeadClick = function(ev) {
+            var currentDeadClickConfig = this._getClickTrackingConfig(CONFIG_TRACK_DEAD_CLICK);
+            if (!currentDeadClickConfig && !this.mp.is_recording_heatmap_data()) {
+                return;
+            }
+            if (this.currentUrlBlocked()) {
+                return;
+            }
+            // Normalize config to ensure timeout_ms is always set
+            var normalizedConfig = currentDeadClickConfig || {};
+            if (!normalizedConfig['timeout_ms']) {
+                normalizedConfig['timeout_ms'] = DEFAULT_DEAD_CLICK_TIMEOUT_MS;
+            }
+            this._deadClickTracker.trackClick(ev, normalizedConfig);
+        }.bind(this);
+        win.addEventListener(EV_CLICK, this.listenerDeadClick);
+    }
 };
 
 Autocapture.prototype.initInputTracking = function() {
@@ -18612,17 +19341,16 @@ Autocapture.prototype.initInputTracking = function() {
     }
     logger$1.log('Initializing input tracking');
 
-    this.listenerChange = win.addEventListener(EV_CHANGE, function(ev) {
+    this.listenerChange = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
             return;
         }
         this.trackDomEvent(ev, MP_EV_INPUT);
-    }.bind(this));
+    }.bind(this);
+    win.addEventListener(EV_CHANGE, this.listenerChange);
 };
 
 Autocapture.prototype.initPageviewTracking = function() {
-    win.removeEventListener(EV_POPSTATE, this.listenerPopstate);
-    win.removeEventListener(EV_HASHCHANGE, this.listenerHashchange);
     win.removeEventListener(EV_MP_LOCATION_CHANGE, this.listenerLocationchange);
 
     if (!this.pageviewTrackingConfig()) {
@@ -18639,27 +19367,7 @@ Autocapture.prototype.initPageviewTracking = function() {
         previousTrackedUrl = _.info.currentUrl();
     }
 
-    this.listenerPopstate = win.addEventListener(EV_POPSTATE, function() {
-        win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-    });
-    this.listenerHashchange = win.addEventListener(EV_HASHCHANGE, function() {
-        win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-    });
-    var nativePushState = win.history.pushState;
-    if (typeof nativePushState === 'function') {
-        win.history.pushState = function(state, unused, url) {
-            nativePushState.call(win.history, state, unused, url);
-            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-        };
-    }
-    var nativeReplaceState = win.history.replaceState;
-    if (typeof nativeReplaceState === 'function') {
-        win.history.replaceState = function(state, unused, url) {
-            nativeReplaceState.call(win.history, state, unused, url);
-            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-        };
-    }
-    this.listenerLocationchange = win.addEventListener(EV_MP_LOCATION_CHANGE, safewrap(function() {
+    this.listenerLocationchange = safewrap(function() {
         if (this.currentUrlBlocked()) {
             return;
         }
@@ -18686,13 +19394,14 @@ Autocapture.prototype.initPageviewTracking = function() {
                 logger$1.log('Path change: re-initializing scroll depth checkpoints');
             }
         }
-    }.bind(this)));
+    }.bind(this));
+    win.addEventListener(EV_MP_LOCATION_CHANGE, this.listenerLocationchange);
 };
 
 Autocapture.prototype.initRageClickTracking = function() {
     win.removeEventListener(EV_CLICK, this.listenerRageClick);
 
-    var rageClickConfig = this._getRageClickConfig();
+    var rageClickConfig = this._getClickTrackingConfig(CONFIG_TRACK_RAGE_CLICK);
     if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
@@ -18703,7 +19412,7 @@ Autocapture.prototype.initRageClickTracking = function() {
     }
 
     this.listenerRageClick = function(ev) {
-        var currentRageClickConfig = this._getRageClickConfig();
+        var currentRageClickConfig = this._getClickTrackingConfig(CONFIG_TRACK_RAGE_CLICK);
         if (!currentRageClickConfig && !this.mp.is_recording_heatmap_data()) {
             return;
         }
@@ -18721,6 +19430,8 @@ Autocapture.prototype.initRageClickTracking = function() {
 
 Autocapture.prototype.initScrollTracking = function() {
     win.removeEventListener(EV_SCROLLEND, this.listenerScroll);
+    win.removeEventListener(EV_SCROLL, this.listenerScroll);
+
 
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
@@ -18728,7 +19439,7 @@ Autocapture.prototype.initScrollTracking = function() {
     logger$1.log('Initializing scroll tracking');
     this.lastScrollCheckpoint = 0;
 
-    this.listenerScroll = win.addEventListener(EV_SCROLLEND, safewrap(function() {
+    var scrollTrackFunction = function() {
         if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
             return;
         }
@@ -18767,7 +19478,11 @@ Autocapture.prototype.initScrollTracking = function() {
         if (shouldTrack) {
             this.mp.track(MP_EV_SCROLL, props);
         }
-    }.bind(this)));
+    }.bind(this);
+
+    var scrollEndPolyfill = getPolyfillScrollEndFunction(scrollTrackFunction);
+    this.listenerScroll = scrollEndPolyfill.listener;
+    win.addEventListener(scrollEndPolyfill.eventType, this.listenerScroll);
 };
 
 Autocapture.prototype.initSubmitTracking = function() {
@@ -18778,18 +19493,81 @@ Autocapture.prototype.initSubmitTracking = function() {
     }
     logger$1.log('Initializing submit tracking');
 
-    this.listenerSubmit = win.addEventListener(EV_SUBMIT, function(ev) {
+    this.listenerSubmit = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
             return;
         }
         this.trackDomEvent(ev, MP_EV_SUBMIT);
+    }.bind(this);
+    win.addEventListener(EV_SUBMIT, this.listenerSubmit);
+};
+
+Autocapture.prototype.initPageLeaveTracking = function() {
+    // Capture page_leave both when the user navigates away from the page (visibilitychange) as well
+    // as when they navigate to a different page within the SPA (popstate/pushstate/hashchange).
+    document$1.removeEventListener(EV_VISIBILITYCHANGE, this.listenerPageLeaveVisibilitychange);
+    win.removeEventListener(EV_MP_LOCATION_CHANGE, this.listenerPageLeaveLocationchange);
+    win.removeEventListener(EV_LOAD, this.listenerPageLoad);
+
+    if (!this.getConfig(CONFIG_TRACK_PAGE_LEAVE) && !this.mp.get_config('record_heatmap_data')) {
+        return;
+    }
+
+    logger$1.log('Initializing page visibility tracking.');
+    this._initScrollDepthTracking();
+    var previousTrackedUrl = _.info.currentUrl();
+
+    // Initialize previousScrollHeight on `load` which handles async loading
+    // https://developer.mozilla.org/en-US/docs/Web/API/Window/load_event
+    this.listenerPageLoad = function() {
+        this.previousScrollHeight = document$1.body.scrollHeight;
+    }.bind(this);
+    win.addEventListener(EV_LOAD, this.listenerPageLoad);
+
+    // Track page navigation events similar to how initPageviewTracking does it
+    this.listenerPageLeaveLocationchange = safewrap(function(ev) {
+        if (this.currentUrlBlocked()) {
+            return;
+        }
+
+        var currentUrl = _.info.currentUrl();
+        // Track all URL changes including query string or fragment changes as separate scroll sessions
+        var shouldTrack = currentUrl !== previousTrackedUrl;
+
+        if (shouldTrack) {
+            this._trackPageLeave(ev, previousTrackedUrl, this.previousScrollHeight);
+            previousTrackedUrl = currentUrl;
+            // Fragment navigation should call scroll(end) and trigger listener, don't add window.scrollY here.
+            this.maxScrollViewDepth = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
+            this.previousScrollHeight = document$1.body.scrollHeight;
+            this.hasTrackedScrollSession = false;
+        }
     }.bind(this));
+    win.addEventListener(EV_MP_LOCATION_CHANGE, this.listenerPageLeaveLocationchange);
+
+    this.listenerPageLeaveVisibilitychange = function(ev) {
+        if (document$1.hidden) {
+            this._trackPageLeave(ev, previousTrackedUrl, this.previousScrollHeight);
+        }
+    }.bind(this);
+    document$1.addEventListener(EV_VISIBILITYCHANGE, this.listenerPageLeaveVisibilitychange);
+};
+
+Autocapture.prototype.stopDeadClickTracking = function() {
+    if (this.listenerDeadClick) {
+        win.removeEventListener(EV_CLICK, this.listenerDeadClick);
+        this.listenerDeadClick = null;
+    }
+
+    if (this._deadClickTracker) {
+        this._deadClickTracker.stopTracking();
+        this._deadClickTracker = null;
+    }
 };
 
 // TODO integrate error_reporter from mixpanel instance
 safewrapClass(Autocapture);
 
-var fetch = win['fetch'];
 var logger = console_with_prefix('flags');
 
 var FLAGS_CONFIG_KEY = 'flags';
@@ -18803,6 +19581,7 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
+    this.fetch = win['fetch'];
     this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
     this.setMpConfig = initOptions.setConfigFunc;
@@ -18811,7 +19590,7 @@ var FeatureFlagManager = function(initOptions) {
 };
 
 FeatureFlagManager.prototype.init = function() {
-    if (!minApisSupported()) {
+    if (!this.minApisSupported()) {
         logger.critical('Feature Flags unavailable: missing minimum required APIs');
         return;
     }
@@ -18874,6 +19653,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
 
     var distinctId = this.getMpProperty('distinct_id');
     var deviceId = this.getMpProperty('$device_id');
+    var traceparent = generateTraceparent();
     logger.log('Fetching flags for distinct ID: ' + distinctId);
 
     var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
@@ -18885,10 +19665,11 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
     this._fetchInProgressStartTime = Date.now();
-    this.fetchPromise = win['fetch'](url, {
+    this.fetchPromise = this.fetch.call(win, url, {
         'method': 'GET',
         'headers': {
-            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':')
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
+            'traceparent': traceparent
         }
     }).then(function(response) {
         this.markFetchComplete();
@@ -18901,10 +19682,14 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             _.each(responseFlags, function(data, key) {
                 flags.set(key, {
                     'key': data['variant_key'],
-                    'value': data['variant_value']
+                    'value': data['variant_value'],
+                    'experiment_id': data['experiment_id'],
+                    'is_experiment_active': data['is_experiment_active'],
+                    'is_qa_tester': data['is_qa_tester']
                 });
             });
             this.flags = flags;
+            this._traceparent = traceparent;
         }.bind(this)).catch(function(error) {
             this.markFetchComplete();
             logger.error(error);
@@ -19001,22 +19786,36 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
         return;
     }
     this.trackedFeatures.add(featureName);
-    this.track('$experiment_started', {
+
+    var trackingProperties = {
         'Experiment name': featureName,
         'Variant name': feature['key'],
         '$experiment_type': 'feature_flag',
         'Variant fetch start time': new Date(this._fetchStartTime).toISOString(),
         'Variant fetch complete time': new Date(this._fetchCompleteTime).toISOString(),
-        'Variant fetch latency (ms)': this._fetchLatency
-    });
+        'Variant fetch latency (ms)': this._fetchLatency,
+        'Variant fetch traceparent': this._traceparent,
+    };
+
+    if (feature['experiment_id'] !== 'undefined') {
+        trackingProperties['$experiment_id'] = feature['experiment_id'];
+    }
+    if (feature['is_experiment_active'] !== 'undefined') {
+        trackingProperties['$is_experiment_active'] = feature['is_experiment_active'];
+    }
+    if (feature['is_qa_tester'] !== 'undefined') {
+        trackingProperties['$is_qa_tester'] = feature['is_qa_tester'];
+    }
+
+    this.track('$experiment_started', trackingProperties);
 };
 
-function minApisSupported() {
-    return !!fetch &&
+FeatureFlagManager.prototype.minApisSupported = function() {
+    return !!this.fetch &&
       typeof Promise !== 'undefined' &&
       typeof Map !== 'undefined' &&
       typeof Set !== 'undefined';
-}
+};
 
 safewrapClass(FeatureFlagManager);
 

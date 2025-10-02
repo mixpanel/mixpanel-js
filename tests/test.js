@@ -89,6 +89,22 @@
         this.xhr.restore();
     }
 
+    /* sendBeacon recording - stubs navigator.sendBeacon for later assertion in tests
+     * usage:
+     *     mpmodule("module name", startRecordingSendBeaconRequests, stopRecordingSendBeaconRequests);
+     */
+    function startRecordingSendBeaconRequests() {
+        if (navigator.sendBeacon) {
+            this.sendBeaconStub = sinon.stub(navigator, 'sendBeacon').returns(true);
+        }
+    }
+
+    function stopRecordingSendBeaconRequests() {
+        if (this.sendBeaconStub) {
+            this.sendBeaconStub.restore();
+        }
+    }
+
     /* XMLHttpRequest recording - writes "fake" XHR request objects to this.requests for later assertion in tests
      * usage:
      *     // run from within a test module, `this` (QUnit test object) should be bound at callsite:
@@ -111,6 +127,19 @@
     function getRequestData(request, keyPath) {
         try {
             var data = JSON.parse(decodeURIComponent(request.requestBody.match(/data=([^&]+)/)[1]));
+            (keyPath || []).forEach(function(key) {
+                data = data[key];
+            });
+            return data;
+        } catch (err) {
+            console.error(err);
+            return null;
+        }
+    }
+
+    function getSendBeaconData(beaconRequest, keyPath) {
+        try {
+            var data = JSON.parse(decodeURIComponent(beaconRequest.match(/data=([^&]+)/)[1]));
             (keyPath || []).forEach(function(key) {
                 data = data[key];
             });
@@ -4471,6 +4500,198 @@
                 same(this.requests.length, 2, "click event should not have fired request");
             });
 
+            // (batch_requests: false) causes page_leave events to use sendBeacon transport
+            mpmodule("page leave", function() {
+                this.clock = sinon.useFakeTimers();
+                startRecordingSendBeaconRequests.call(this);
+            }, function() {
+                this.clock.restore();
+                stopRecordingSendBeaconRequests.call(this);
+            });
+
+            test("autocapture tracks max scroll depth on page leave for visibilitychange", 9, function() {
+                // Mock clientHeight before mixpanel initialization so scroll tracking captures it
+                Object.defineProperty(document.documentElement, 'clientHeight', {
+                    writable: true,
+                    value: 100,
+                });
+
+                Object.defineProperty(window, 'innerHeight', {
+                    writable: true,
+                    value: 100
+                });
+
+                mixpanel.init("scroll_depth_test", {
+                    record_heatmap_data: true,
+                    batch_requests: false
+                }, 'scrolltest');
+
+                // Mock scrollY for testing since scrollTo doesn't work in test environment
+                Object.defineProperty(window, 'scrollY', {
+                    writable: true,
+                    value: 600
+                });
+                Object.defineProperty(document.body, 'scrollHeight', {
+                    writable: true,
+                    value: 1100
+                });
+
+                var supportsScrollEnd = 'onscrollend' in window;
+                if (!supportsScrollEnd) {
+                    var scrollEvent1 = new Event('scroll');
+                    window.dispatchEvent(scrollEvent1);
+                    this.clock.tick(100);
+                } else {
+                    var scrollEvent1 = new Event('scrollend');
+                    window.dispatchEvent(scrollEvent1);
+                }
+
+                // Scroll back up to 400px (max depth should stay at 600px)
+                Object.defineProperty(window, 'scrollY', {
+                    writable: true,
+                    value: 400
+                });
+
+                if (!supportsScrollEnd) {
+                    var scrollEvent2 = new Event('scroll');
+                    window.dispatchEvent(scrollEvent2);
+                    this.clock.tick(100);
+                } else {
+                    var scrollEvent2 = new Event('scrollend');
+                    window.dispatchEvent(scrollEvent2);
+                }
+
+                this.sendBeaconStub.resetHistory();
+
+                // Simulate page leave by changing document visibility to hidden
+                Object.defineProperty(document, 'hidden', {
+                    writable: true,
+                    value: true
+                });
+                var visibilityChangeEvent = new Event('visibilitychange');
+                document.dispatchEvent(visibilityChangeEvent);
+                same(this.sendBeaconStub.getCalls().length, 1, "should send one scroll depth event on page leave");
+                var scrollDepthEvent = getSendBeaconData(this.sendBeaconStub.getCalls()[0].args[1]);
+                same(scrollDepthEvent.event, "$mp_page_leave", "should send $mp_page_leave event");
+                same(scrollDepthEvent.properties.$max_scroll_percentage, 60, "should send correct max scroll depth percentage");
+                same(scrollDepthEvent.properties.$max_scroll_view_depth, 700, "should send max scroll view position");
+                same(scrollDepthEvent.properties.$viewportHeight, 100, "should send fold line height");
+                same(scrollDepthEvent.properties.$scroll_height, 1100, "should send scroll height");
+                ok(scrollDepthEvent.properties.$event_type, "should have event_type property");
+                ok(scrollDepthEvent.properties.$current_url, "should have pathname property");
+
+                // Simulate coming back to the page (visibility becomes visible again)
+                Object.defineProperty(document, 'hidden', {
+                    writable: true,
+                    value: false
+                });
+                var visibilityBackEvent = new Event('visibilitychange');
+                document.dispatchEvent(visibilityBackEvent);
+
+                this.sendBeaconStub.resetHistory();
+
+                Object.defineProperty(document, 'hidden', {
+                    writable: true,
+                    value: true
+                });
+                var visibilityLeaveAgainEvent = new Event('visibilitychange');
+                document.dispatchEvent(visibilityLeaveAgainEvent);
+
+                // Verify that no additional scroll depth event is sent (no double tracking)
+                same(this.sendBeaconStub.getCalls().length, 0, "should not send scroll depth event again - no double tracking allowed");
+            });
+
+            test("autocapture tracks max scroll depth on mp_locationchange event correctly", 12, function() {
+                // Mock clientHeight before mixpanel initialization so scroll tracking captures it
+                Object.defineProperty(document.documentElement, 'clientHeight', {
+                    writable: true,
+                    value: 100,
+                });
+
+                Object.defineProperty(window, 'innerHeight', {
+                    writable: true,
+                    value: 100
+                });
+
+                mixpanel.init("scroll_depth_test", {
+                    record_heatmap_data: true,
+                    batch_requests: false,
+                    autocapture: { pageview: false }
+                }, 'scrolltest');
+
+                // Mock scrollY for testing since scrollTo doesn't work in test environment
+                Object.defineProperty(window, 'scrollY', {
+                    writable: true,
+                    value: 1000
+                });
+                Object.defineProperty(document.body, 'scrollHeight', {
+                    writable: true,
+                    value: 1100
+                });
+
+                var supportsScrollEnd = 'onscrollend' in window;
+                if (!supportsScrollEnd) {
+                    var scrollEvent1 = new Event('scroll');
+                    window.dispatchEvent(scrollEvent1);
+                    this.clock.tick(100);
+                } else {
+                    var scrollEvent1 = new Event('scrollend');
+                    window.dispatchEvent(scrollEvent1);
+                }
+
+                // Scroll back up to 400px (max depth should stay at 600px)
+                Object.defineProperty(window, 'scrollY', {
+                    writable: true,
+                    value: 400
+                });
+
+                if (!supportsScrollEnd) {
+                    var scrollEvent2 = new Event('scroll');
+                    window.dispatchEvent(scrollEvent2);
+                    this.clock.tick(100);
+                } else {
+                    var scrollEvent2 = new Event('scrollend');
+                    window.dispatchEvent(scrollEvent2);
+                }
+
+                this.sendBeaconStub.resetHistory();
+
+                var original_url = window.location.href;
+                window.history.pushState({ path: original_url }, '', original_url);
+                same(this.sendBeaconStub.getCalls().length, 0, "should not send scroll depth event since url stays the same");
+                var next_url = window.location.href + '#newfragment';
+                window.history.pushState({ path: next_url }, '', next_url);
+
+                same(this.sendBeaconStub.getCalls().length, 1, "should send one scroll depth event on mp_locationchange");
+                var scrollDepthEvent = getSendBeaconData(this.sendBeaconStub.getCalls()[0].args[1]);
+                same(scrollDepthEvent.event, "$mp_page_leave", "should send $mp_page_leave event");
+                same(scrollDepthEvent.properties.$max_scroll_percentage, 100, "should send correct max scroll depth percentage");
+                same(scrollDepthEvent.properties.$max_scroll_view_depth, 1100, "should send max scroll view position");
+                same(scrollDepthEvent.properties.$viewportHeight, 100, "should send fold line height");
+                same(scrollDepthEvent.properties.$scroll_height, 1100, "should send scroll height");
+                ok(scrollDepthEvent.properties.$event_type, "should have event_type property");
+                ok(next_url !== original_url, "urls should be different");
+                same(scrollDepthEvent.properties.$current_url, original_url, "should have the same current_url as prior to navigation");
+
+                this.sendBeaconStub.resetHistory();
+                Object.defineProperty(document, 'hidden', {
+                    writable: true,
+                    value: true
+                });
+                var visibilityChangeEvent = new Event('visibilitychange');
+                document.dispatchEvent(visibilityChangeEvent);
+
+                
+                same(getSendBeaconData(this.sendBeaconStub.getCalls()[0].args[1]).properties.$max_scroll_view_depth, 100, "fragment position should be handled by scrollend listener not on location change");
+
+
+                // Reset beacon requests to test double tracking prevention
+                this.sendBeaconStub.resetHistory();
+                window.history.pushState({ path: next_url }, '', next_url);
+                same(this.sendBeaconStub.getCalls().length, 0, "should not send scroll depth for the same url");
+                window.history.pushState({ path: original_url}, '', original_url);
+            });
+
             mpmodule("rage click", function() {
                 this.clock = sinon.useFakeTimers();
                 startRecordingXhrRequests.call(this);
@@ -4700,6 +4921,130 @@
                     }
                 }
                 ok(rageClickEvent !== null, "should detect rage click with 4 clicks when click_count=4");
+            });
+
+            mpmodule('dead click', function() {
+                this.clock = sinon.useFakeTimers();
+                startRecordingXhrRequests.call(this);
+            }, function() {
+                this.clock.restore();
+                stopRecordingXhrRequests.call(this);
+            });
+
+            test('autocapture tracks dead click events when enabled', 3, function() {
+                this.clock.tick(1000);
+                mixpanel.init('autocapture_test_token', {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        dead_click: true,
+                        capture_text_content: true
+                    },
+                    batch_requests: false
+                }, 'acdeadclick');
+
+                var anchor = ele_with_class('Click me button');
+
+                simulateMouseClick(anchor.e);
+                
+                // Wait for dead click timeout
+                this.clock.tick(500);
+                
+                // Should have 2 events: 1 regular click + 1 dead click
+                same(this.requests.length, 2, 'should have 1 click event + 1 dead click event');
+
+                var deadClickEvent = null;
+                for (var i = 0; i < this.requests.length; i++) {
+                    var event = getRequestData(this.requests[i]);
+                    if (event.event === '$mp_dead_click') {
+                        deadClickEvent = event;
+                        break;
+                    }
+                }
+
+                ok(deadClickEvent !== null, 'should have detected a dead click event');
+                same(deadClickEvent.properties.$el_text, 'Click me button', 'dead click event should include correct element text');
+            });
+
+            test('autocapture does not track dead clicks when disabled', 2, function() {
+                this.clock.tick(1000);
+                mixpanel.init('autocapture_test_token', {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        dead_click: false
+                    },
+                    batch_requests: false
+                }, 'acdeadclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; };
+
+                simulateMouseClick(anchor.e);
+
+                // Wait for dead click timeout
+                this.clock.tick(500);
+
+                same(this.requests.length, 1, 'should have 1 click event only');
+
+                var hasDeadClick = false;
+                for (var i = 0; i < this.requests.length; i++) {
+                    var event = getRequestData(this.requests[i]);
+                    if (event.event === '$mp_dead_click') {
+                        hasDeadClick = true;
+                        break;
+                    }
+                }
+
+                notOk(hasDeadClick, 'should not have detected any dead click events');
+            });
+
+            test('dead click uses custom timeout configuration', 2, function() {
+                this.clock.tick(1000);
+                mixpanel.init('autocapture_test_token', {
+                    autocapture: {
+                        pageview: false,
+                        click: true,
+                        dead_click: {
+                            timeout_ms: 1000
+                        }
+                    },
+                    batch_requests: false
+                }, 'acdeadclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; };
+
+                simulateMouseClick(anchor.e);
+
+                // Wait for 500ms timeout (should not trigger dead click yet)
+                this.clock.tick(500);
+                same(this.requests.length, 1, 'should have 1 click event only before custom timeout');
+
+                // Wait for custom timeout to complete
+                this.clock.tick(500);
+
+                // Should now have dead click event
+                same(this.requests.length, 2, 'should have click + dead click after custom timeout');
+            });
+
+            test('autocapture does not track dead clicks when autocapture is disabled', 1, function() {
+                this.clock.tick(1000);
+                mixpanel.init('autocapture_test_token', {
+                    autocapture: false,
+                    batch_requests: false
+                }, 'acdeadclick');
+
+                var anchor = ele_with_class();
+                anchor.e.onclick = function() { return false; };
+
+                simulateMouseClick(anchor.e);
+
+                // Wait for dead click timeout
+                this.clock.tick(2000);
+
+                // Should have no events since autocapture is disabled
+                same(this.requests.length, 0, 'should have no events when autocapture is disabled');
             });
         }
 

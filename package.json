@@ -23,23 +23,6 @@
     "validate": "npm ls"
   },
   "types": "./src/index.d.ts",
-  "exports": {
-    "./src/loaders/loader-module-core": {
-      "types": "./src/index.d.ts",
-      "import": "./src/loaders/loader-module-core.js",
-      "require": "./src/loaders/loader-module-core.js"
-    },
-    "./src/loaders/loader-module-with-async-recorder": {
-      "types": "./src/index.d.ts",
-      "import": "./src/loaders/loader-module-with-async-recorder.js",
-      "require": "./src/loaders/loader-module-with-async-recorder.js"
-    },
-    ".": {
-      "types": "./src/index.d.ts",
-      "import": "./dist/mixpanel.module.js",
-      "require": "./dist/mixpanel.cjs.js"
-    }
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/mixpanel/mixpanel-js.git"
@@ -83,6 +66,6 @@
     "webpack": "1.12.2"
   },
   "dependencies": {
-    "@mixpanel/rrweb": "2.0.0-alpha.18.1"
+    "@mixpanel/rrweb": "2.0.0-alpha.18.2"
   }
 }

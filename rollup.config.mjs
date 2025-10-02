@@ -3,6 +3,8 @@ import swc from '@rollup/plugin-swc';
 import esbuild from 'rollup-plugin-esbuild';
 import alias from '@rollup/plugin-alias';
 import closureCompiler from '@ampproject/rollup-plugin-closure-compiler';
+import fs from 'fs';
+import path from 'path';
 
 const COMPILED_RRWEB_PATH = 'build/rrweb-compiled.js';
 
@@ -10,6 +12,24 @@ const aliasRrweb = () => alias({
     entries: [
         { find: '@mixpanel/rrweb', replacement: COMPILED_RRWEB_PATH },
     ]
+});
+
+const copyTypes = () => ({
+    name: 'copy-types',
+    generateBundle(_options, bundle) {
+        try {
+            for (const builtFileName of Object.keys(bundle)) {
+                const buildDir = 'build';
+                const types = fs.readFileSync('src/index.d.ts', 'utf8');
+                const builtFile = path.basename(builtFileName, path.extname(builtFileName)) + '.d.ts';
+                fs.writeFileSync(path.join(buildDir, builtFile), types);
+            }
+
+        } catch (err) {
+            console.warn('Could not copy type files:', err.message);
+            throw err;
+        }
+    }
 });
 
 const COMMON_CLOSURE_FLAGS = {
@@ -140,7 +160,8 @@ const ALL_BUILDS = [
                 browser: true,
                 main: true,
                 jsnext: true,
-            })
+            }),
+            copyTypes(),
         ],
     },
 
@@ -176,7 +197,8 @@ const ALL_BUILDS = [
                 browser: true,
                 main: true,
                 jsnext: true,
-            })
+            }),
+            copyTypes(),
         ],
     },
 
@@ -197,7 +219,8 @@ const ALL_BUILDS = [
                 browser: true,
                 main: true,
                 jsnext: true,
-            })
+            }),
+            copyTypes(),
         ],
     },
     {
@@ -215,7 +238,8 @@ const ALL_BUILDS = [
                 browser: true,
                 main: true,
                 jsnext: true,
-            })
+            }),
+            copyTypes(),
         ],
     }
 ];

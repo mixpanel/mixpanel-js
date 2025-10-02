@@ -1,17 +1,23 @@
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
 
-import { _, console_with_prefix, document } from '../utils'; // eslint-disable-line camelcase
+import { _, console_with_prefix, document, safewrap } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
 
 var EV_CHANGE = 'change';
 var EV_CLICK = 'click';
 var EV_HASHCHANGE = 'hashchange';
+var EV_INPUT = 'input';
+var EV_LOAD = 'load';
 var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
 var EV_POPSTATE = 'popstate';
 // TODO scrollend isn't available in Safari: document or polyfill?
 var EV_SCROLLEND = 'scrollend';
+var EV_SCROLL = 'scroll';
+var EV_SELECT = 'select';
 var EV_SUBMIT = 'submit';
+var EV_TOGGLE = 'toggle';
+var EV_VISIBILITYCHANGE = 'visibilitychange';
 
 var CLICK_EVENT_PROPS = [
     'clientX', 'clientY',
@@ -27,6 +33,77 @@ var TRACKED_ATTRS = [
     'aria-label', 'aria-labelledby', 'aria-describedby',
     'href', 'name', 'role', 'title', 'type'
 ];
+
+var INTERACTIVE_ARIA_ROLES = {
+    'button': true,
+    'checkbox': true,
+    'combobox': true,
+    'grid': true,
+    'link': true,
+    'listbox': true,
+    'menu': true,
+    'menubar': true,
+    'menuitem': true,
+    'menuitemcheckbox': true,
+    'menuitemradio': true,
+    'navigation': true,
+    'option': true,
+    'radio': true,
+    'radiogroup': true,
+    'searchbox': true,
+    'slider': true,
+    'spinbutton': true,
+    'switch': true,
+    'tab': true,
+    'tablist': true,
+    'textbox': true,
+    'tree': true,
+    'treegrid': true,
+    'treeitem': true
+};
+
+var ALWAYS_NON_INTERACTIVE_TAGS = {
+    // Document metadata
+    'base': true,
+    'head': true,
+    'html': true,
+    'link': true,
+    'meta': true,
+    'script': true,
+    'style': true,
+    'title': true,
+    // Text formatting
+    'br': true,
+    'hr': true,
+    'wbr': true,
+    // Other
+    'noscript': true,
+    'picture': true,
+    'source': true,
+    'template': true,
+    'track': true
+};
+
+// Common container tags that need additional checks
+var TEXT_CONTAINER_TAGS = {
+    'article': true,
+    'div': true,
+    'h1': true,
+    'h2': true,
+    'h3': true,
+    'h4': true,
+    'h5': true,
+    'h6': true,
+    'p': true,
+    'section': true,
+    'span': true
+};
+
+var EVENT_HANDLER_ATTRIBUTES = [
+    'onclick', 'onmousedown', 'onmouseup', 'onpointerdown', 'onpointerup', 'ontouchend', 'ontouchstart'
+];
+
+var MAX_DEPTH = 5;
 
 var logger = console_with_prefix('autocapture');
 
@@ -395,6 +472,10 @@ function minDOMApisSupported() {
     }
 }
 
+function weakSetSupported() {
+    return typeof WeakSet !== 'undefined';
+}
+
 /*
  * Check whether a DOM event should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
@@ -520,12 +601,158 @@ function shouldTrackValue(value) {
     return true;
 }
 
+/**
+ * Creates a cross-browser compatible scroll end function with appropriate event listener.
+ * For browsers that support scrollend, returns the original function with scrollend event.
+ * For browsers without scrollend support, returns a debounced function that triggers
+ * 100ms after the last scroll event to simulate scrollend behavior.
+ * @param {Function} originalFunction - The function to call when scrolling ends
+ * @returns {Object} Object containing listener function and eventType string
+ * @returns {Function} returns.listener - The wrapped function to use as event listener
+ * @returns {string} returns.eventType - The event type to listen for ('scrollend' or 'scroll')
+ */
+function getPolyfillScrollEndFunction(originalFunction) {
+    var supportsScrollEnd = 'onscrollend' in window;
+    var polyfillFunction = safewrap(originalFunction);
+    var polyfillEvent = EV_SCROLLEND;
+    if (!supportsScrollEnd) {
+        // Polyfill for browsers without scrollend support: wait 100ms after the last scroll event
+        // https://developer.chrome.com/blog/scrollend-a-new-javascript-event
+        var scrollTimer = null;
+        var scrollDelayMs = 100;
+
+        polyfillFunction = safewrap(function() {
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(originalFunction, scrollDelayMs);
+        });
+
+        polyfillEvent = EV_SCROLL;
+    }
+
+    return {
+        listener: polyfillFunction,
+        eventType: polyfillEvent
+    };
+}
+
+function hasInlineEventHandlers(element) {
+    for (var i = 0; i < EVENT_HANDLER_ATTRIBUTES.length; i++) {
+        if (element.hasAttribute(EVENT_HANDLER_ATTRIBUTES[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function hasInteractiveAriaRole(element) {
+    var role = element.getAttribute('role');
+    if (!role) return false;
+
+    // Handle invalid markup where multiple roles might be specified
+    // Only the first token is recognized per ARIA spec
+    var primaryRole = role.trim().split(/\s+/)[0].toLowerCase();
+
+    return INTERACTIVE_ARIA_ROLES[primaryRole];
+}
+
+function hasAnyInteractivityIndicators(element) {
+    var tagName = element.tagName.toLowerCase();
+
+    // Check for interactive HTML elements
+    if (tagName === 'button' ||
+        tagName === 'input' ||
+        tagName === 'select' ||
+        tagName === 'textarea' ||
+        tagName === 'details' ||
+        tagName === 'dialog') {
+        return true;
+    }
+
+    if (element.isContentEditable) {
+        return true;
+    }
+
+    if (element.onclick || element.onmousedown || element.onmouseup || element.ontouchstart || element.ontouchend) {
+        return true;
+    }
+
+    if (hasInlineEventHandlers(element)) {
+        return true;
+    }
+
+    if (hasInteractiveAriaRole(element)) {
+        return true;
+    }
+
+    if (tagName === 'a' && element.hasAttribute('href')) {
+        return true;
+    }
+
+    if (element.hasAttribute('tabindex')) {
+        return true;
+    }
+
+    return false;
+}
+
+
+function isDefinitelyNonInteractive(element) {
+    if (!element || !element.tagName) {
+        return true;
+    }
+
+    var tagName = element.tagName.toLowerCase();
+
+    // These tags are definitely non-interactive
+    if (ALWAYS_NON_INTERACTIVE_TAGS[tagName]) {
+        return true;
+    }
+
+    // For all other elements, we can only be certain they're non-interactive if they lack ALL indicators of interactivity
+    // Check for any signs of interactivity
+    if (hasAnyInteractivityIndicators(element)) {
+        return false;
+    }
+
+    // Check parent chain for interactive context
+    var parent = element.parentElement;
+    var depth = 0;
+
+    while (parent && depth < MAX_DEPTH) {
+        if (hasAnyInteractivityIndicators(parent)) {
+            return false; // Element is inside an interactive parent
+        }
+
+        if (parent.getRootNode && parent.getRootNode() !== document) {
+            var root = parent.getRootNode();
+            if (root.host && hasAnyInteractivityIndicators(root.host)) {
+                return false; // Inside an interactive shadow host
+            }
+        }
+
+        parent = parent.parentElement;
+        depth++;
+    }
+
+    // Pure text containers without any interactive context
+    if (TEXT_CONTAINER_TAGS[tagName]) {
+        // These are non-interactive ONLY if they have no interactive indicators (already checked as part of hasAnyInteractivityIndicators)
+        return true;
+    }
+
+    // Default: we can't be certain it's non-interactive
+    return false;
+}
+
 export {
+    EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_INPUT, EV_LOAD,EV_MP_LOCATION_CHANGE, EV_POPSTATE,
+    EV_SCROLL, EV_SCROLLEND, EV_SELECT, EV_SUBMIT, EV_TOGGLE, EV_VISIBILITYCHANGE,
+    getPolyfillScrollEndFunction,
     getPropsForDOMEvent,
     getSafeText,
+    isDefinitelyNonInteractive,
     logger,
     minDOMApisSupported,
     shouldTrackDomEvent, shouldTrackElementDetails, shouldTrackValue,
-    EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_POPSTATE,
-    EV_SCROLLEND, EV_SUBMIT
+    weakSetSupported
 };

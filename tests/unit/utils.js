@@ -1,7 +1,8 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 
-import { batchedThrottle, extract_domain, _, document } from '../../src/utils';
+import { batchedThrottle, extract_domain, generateTraceparent, _, document } from '../../src/utils';
+import { isDefinitelyNonInteractive } from '../../src/autocapture/utils';
 import { window } from '../../src/window';
 
 describe(`extract_domain`, function() {
@@ -360,5 +361,18 @@ describe(`_.UUID`, function() {
       }
       expect(generatedIds.size).to.equal(100);
     });
+  });
+});
+
+describe(`generateTraceparent`, function() {
+  it(`generates a traceparent value in the correct string format`, function() {
+    const traceparentRegex = /^00-[a-f0-9]{32}-[a-f0-9]{16}-01$/;
+    const generatedTraceparents = new Set();
+    for (let i = 0; i < 100; i++) {
+      const traceparent = generateTraceparent();
+      expect(traceparent).to.match(traceparentRegex);
+      generatedTraceparents.add(traceparent);
+    }
+    expect(generatedTraceparents.size).to.equal(100);
   });
 });

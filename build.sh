@@ -23,6 +23,7 @@ if [ ! -z "$FULL" ]; then
     pushd examples/commonjs-browserify; npm install && npm run build; popd
     pushd examples/es2015-babelify; npm install && npm run build; popd
     pushd examples/umd-webpack; npm install && npm run build; popd
+    pushd examples/typescript; npm install && npm run build; popd
 fi
 
 if [ ! -z "$DIST" ]; then

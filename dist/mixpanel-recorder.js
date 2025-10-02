@@ -1596,7 +1596,8 @@
             week: true,
             textarea: true,
             select: true,
-            password: true
+            password: true,
+            hidden: true
         } : maskAllInputs === false ? {
             password: true
         } : maskAllInputs;
@@ -13238,7 +13239,8 @@
             week: true,
             textarea: true,
             select: true,
-            password: true
+            password: true,
+            hidden: true
         } : _maskInputOptions !== void 0 ? _maskInputOptions : {
             password: true
         };
@@ -14041,7 +14043,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.70.0'
+        LIB_VERSION: '2.71.0'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */

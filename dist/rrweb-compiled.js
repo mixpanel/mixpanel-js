@@ -1578,7 +1578,8 @@ function snapshot(n2, options) {
         week: true,
         textarea: true,
         select: true,
-        password: true
+        password: true,
+        hidden: true
     } : maskAllInputs === false ? {
         password: true
     } : maskAllInputs;
@@ -15194,7 +15195,8 @@ function record(options) {
         week: true,
         textarea: true,
         select: true,
-        password: true
+        password: true,
+        hidden: true
     } : _maskInputOptions !== void 0 ? _maskInputOptions : {
         password: true
     };

@@ -1677,6 +1677,20 @@ var cheap_guid = function(maxlen) {
     return maxlen ? guid.substring(0, maxlen) : guid;
 };
 
+/**
+ * Generates a W3C traceparent header for easy interop with distributed tracing systems i.e Open Telemetry
+ * https://www.w3.org/TR/trace-context/#traceparent-header
+*/
+var generateTraceparent = function() {
+    var traceID = _.UUID().replace(/-/g, '');
+    var parentID = _.UUID().replace(/-/g, '').substring(0, 16);
+
+    // Sampled trace
+    var traceFlags = '01';
+
+    return '00-' + traceID + '-' + parentID + '-' + traceFlags;
+};
+
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
 var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
@@ -1746,6 +1760,7 @@ export {
     console,
     document,
     extract_domain,
+    generateTraceparent,
     JSONParse,
     JSONStringify,
     isOnline,

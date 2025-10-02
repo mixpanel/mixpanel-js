@@ -1,8 +1,7 @@
-import { _, console_with_prefix, safewrapClass } from '../utils'; // eslint-disable-line camelcase
+import { _, console_with_prefix, generateTraceparent, safewrapClass } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
 import Config from '../config';
 
-var fetch = window['fetch'];
 var logger = console_with_prefix('flags');
 
 var FLAGS_CONFIG_KEY = 'flags';
@@ -16,6 +15,7 @@ CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
  * @constructor
  */
 var FeatureFlagManager = function(initOptions) {
+    this.fetch = window['fetch'];
     this.getFullApiRoute = initOptions.getFullApiRoute;
     this.getMpConfig = initOptions.getConfigFunc;
     this.setMpConfig = initOptions.setConfigFunc;
@@ -24,7 +24,7 @@ var FeatureFlagManager = function(initOptions) {
 };
 
 FeatureFlagManager.prototype.init = function() {
-    if (!minApisSupported()) {
+    if (!this.minApisSupported()) {
         logger.critical('Feature Flags unavailable: missing minimum required APIs');
         return;
     }
@@ -87,6 +87,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
 
     var distinctId = this.getMpProperty('distinct_id');
     var deviceId = this.getMpProperty('$device_id');
+    var traceparent = generateTraceparent();
     logger.log('Fetching flags for distinct ID: ' + distinctId);
 
     var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
@@ -98,10 +99,11 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
     this._fetchInProgressStartTime = Date.now();
-    this.fetchPromise = window['fetch'](url, {
+    this.fetchPromise = this.fetch.call(window, url, {
         'method': 'GET',
         'headers': {
-            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':')
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
+            'traceparent': traceparent
         }
     }).then(function(response) {
         this.markFetchComplete();
@@ -114,10 +116,14 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             _.each(responseFlags, function(data, key) {
                 flags.set(key, {
                     'key': data['variant_key'],
-                    'value': data['variant_value']
+                    'value': data['variant_value'],
+                    'experiment_id': data['experiment_id'],
+                    'is_experiment_active': data['is_experiment_active'],
+                    'is_qa_tester': data['is_qa_tester']
                 });
             });
             this.flags = flags;
+            this._traceparent = traceparent;
         }.bind(this)).catch(function(error) {
             this.markFetchComplete();
             logger.error(error);
@@ -214,22 +220,36 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
         return;
     }
     this.trackedFeatures.add(featureName);
-    this.track('$experiment_started', {
+
+    var trackingProperties = {
         'Experiment name': featureName,
         'Variant name': feature['key'],
         '$experiment_type': 'feature_flag',
         'Variant fetch start time': new Date(this._fetchStartTime).toISOString(),
         'Variant fetch complete time': new Date(this._fetchCompleteTime).toISOString(),
-        'Variant fetch latency (ms)': this._fetchLatency
-    });
+        'Variant fetch latency (ms)': this._fetchLatency,
+        'Variant fetch traceparent': this._traceparent,
+    };
+
+    if (feature['experiment_id'] !== 'undefined') {
+        trackingProperties['$experiment_id'] = feature['experiment_id'];
+    }
+    if (feature['is_experiment_active'] !== 'undefined') {
+        trackingProperties['$is_experiment_active'] = feature['is_experiment_active'];
+    }
+    if (feature['is_qa_tester'] !== 'undefined') {
+        trackingProperties['$is_qa_tester'] = feature['is_qa_tester'];
+    }
+
+    this.track('$experiment_started', trackingProperties);
 };
 
-function minApisSupported() {
-    return !!fetch &&
+FeatureFlagManager.prototype.minApisSupported = function() {
+    return !!this.fetch &&
       typeof Promise !== 'undefined' &&
       typeof Map !== 'undefined' &&
       typeof Set !== 'undefined';
-}
+};
 
 safewrapClass(FeatureFlagManager);
 
