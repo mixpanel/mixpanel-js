@@ -2010,6 +2010,7 @@ MixpanelLib.prototype._gdpr_update_persistence = function(options) {
 
     if (!this.get_config('disable_persistence') && this['persistence'].disabled !== disabled) {
         this['persistence'].set_disabled(disabled);
+        this['persistence'].save();
     }
 
     if (disabled) {
