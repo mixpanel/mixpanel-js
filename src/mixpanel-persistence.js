@@ -64,10 +64,16 @@ var MixpanelPersistence = function(config) {
         this.storage = _.cookie;
     }
 
-    this.load();
-    this.update_config(config);
-    this.upgrade();
-    this.save();
+    this.disabled = config['disable_persistence'];
+
+    if (!this.disabled) {
+        this.load();
+        this.update_config(config);
+        this.upgrade();
+        this.save();
+    } else {
+        this.update_config(config);
+    }
 };
 
 MixpanelPersistence.prototype.properties = function() {
@@ -224,7 +230,13 @@ MixpanelPersistence.prototype.get_referrer_info = function() {
 
 MixpanelPersistence.prototype.update_config = function(config) {
     this.default_expiry = this.expire_days = config['cookie_expiration'];
+    var was_disabled = this.disabled;
     this.set_disabled(config['disable_persistence']);
+    var is_disabled = this.disabled;
+    if (was_disabled && !is_disabled) {
+        this.save();
+    }
+
     this.set_cookie_domain(config['cookie_domain']);
     this.set_cross_site(config['cross_site_cookie']);
     this.set_cross_subdomain(config['cross_subdomain_cookie']);
@@ -235,8 +247,6 @@ MixpanelPersistence.prototype.set_disabled = function(disabled) {
     this.disabled = disabled;
     if (this.disabled) {
         this.remove();
-    } else {
-        this.save();
     }
 };
 
