@@ -254,6 +254,9 @@ var create_mplib = function(token, config, name) {
  * @param {String} [name]    The name for the new mixpanel instance that you want created
  */
 MixpanelLib.prototype.init = function (token, config, name) {
+    console.log('is this even working?')
+
+    this.report_error('Is this even connected?');
     if (_.isUndefined(name)) {
         this.report_error('You must name your new library: init(token, config, name)');
         return;
@@ -278,6 +281,11 @@ MixpanelLib.prototype.init = function (token, config, name) {
 // init(...) method sets up a new library and calls _init on it.
 //
 MixpanelLib.prototype._init = function(token, config, name) {
+    console.log('are we even getting there? I guess not')
+    window.postMessage(
+    { type: 'GREETING', text: 'Hello from the main window!' },
+    '*'
+    );
     config = config || {};
 
     this['__loaded'] = true;
@@ -362,7 +370,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         // There is no need to set the distinct id
         // or the device id if something was already stored
         // in the persitence
-        this.register_once({
+        this._register_once({
             'distinct_id': DEVICE_ID_PREFIX + uuid,
             '$device_id': uuid
         }, '');
@@ -569,7 +577,7 @@ MixpanelLib.prototype._loaded = function() {
         _.each(utm_params, function(_utm_value, utm_key) {
             // We need to unregister persisted UTM parameters so old values
             // are not mixed with the new UTM parameters
-            this.unregister(utm_key);
+            this._unregister(utm_key);
         }.bind(this));
     }
 };
@@ -579,7 +587,7 @@ MixpanelLib.prototype._set_default_superprops = function() {
     this['persistence'].update_search_keyword(document.referrer);
     // Registering super properties for UTM persistence by 'store_google' is deprecated.
     if (this.get_config('store_google') && !this.get_config('stop_utm_persistence')) {
-        this.register(_.info.campaignParams());
+        this._register(_.info.campaignParams());
     }
     if (this.get_config('save_referrer')) {
         this['persistence'].update_referrer_info(document.referrer);
@@ -1040,6 +1048,10 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
+    var original_properties = _.extend(
+        {},
+        properties
+    )
     if (!callback && typeof options === 'function') {
         callback = options;
         options = null;
@@ -1086,13 +1098,18 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     // properties object by passing in a new object
 
     // update properties with pageview info and super-properties
-    properties = _.extend(
+    var super_properties = _.extend(
         {},
         _.info.properties({'mp_loader': this.get_config('mp_loader')}),
         marketing_properties,
         this['persistence'].properties(),
         this.unpersisted_superprops,
-        this.get_session_recording_properties(),
+        this.get_session_recording_properties()
+    )
+
+    properties = _.extend(
+        {},
+        super_properties,
         properties
     );
 
@@ -1109,6 +1126,11 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         'event': event_name,
         'properties': properties
     };
+
+    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
+        detail: { type: "track", event: event_name, original_properties: original_properties, super_properties: super_properties }
+    }))
+
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
@@ -1141,7 +1163,7 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, 
     }
     var prop = {};
     prop[group_key] = group_ids;
-    this.register(prop);
+    this._register(prop);
     return this['people'].set(group_key, group_ids, callback);
 });
 
@@ -1161,12 +1183,12 @@ MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, 
     var prop = {};
     if (old_values === undefined) {
         prop[group_key] = [group_id];
-        this.register(prop);
+        this._register(prop);
     } else {
         if (old_values.indexOf(group_id) === -1) {
             old_values.push(group_id);
             prop[group_key] = old_values;
-            this.register(prop);
+            this._register(prop);
         }
     }
     return this['people'].union(group_key, group_id, callback);
@@ -1190,10 +1212,10 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_ke
         var idx = old_value.indexOf(group_id);
         if (idx > -1) {
             old_value.splice(idx, 1);
-            this.register({group_key: old_value});
+            this._register({group_key: old_value});
         }
         if (old_value.length === 0) {
-            this.unregister(group_key);
+            this._unregister(group_key);
         }
     }
     return this['people'].remove(group_key, group_id, callback);
@@ -1455,6 +1477,13 @@ var options_for_register = function(days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
+    this._register(props, days_or_options)
+    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
+        detail: { type: "register", properties: props }
+    }))
+};
+
+MixpanelLib.prototype._register = function(props, days_or_options) {
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
         this['persistence'].register(props, options['days']);
@@ -1491,6 +1520,13 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+    this._register_once(props, default_value, days_or_options)
+    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
+        detail: { type: "register_once", properties: props }
+    }))
+};
+
+MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
         this['persistence'].register_once(props, default_value, options['days']);
@@ -1514,6 +1550,13 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
+    this._unregister(property, options)
+    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
+        detail: { type: "unregister", properties: props }
+    }))
+};
+
+MixpanelLib.prototype._unregister = function(property, options) {
     options = options_for_register(options);
     if (options['persistent']) {
         this['persistence'].unregister(property);
@@ -1525,7 +1568,7 @@ MixpanelLib.prototype.unregister = function(property, options) {
 MixpanelLib.prototype._register_single = function(prop, value) {
     var props = {};
     props[prop] = value;
-    this.register(props);
+    this._register(props);
 };
 
 /**
@@ -1571,14 +1614,14 @@ MixpanelLib.prototype.identify = function(
             this.report_error('distinct_id cannot have $device: prefix');
             return -1;
         }
-        this.register({'$user_id': new_distinct_id});
+        this._register({'$user_id': new_distinct_id});
     }
 
     if (!this.get_property('$device_id')) {
         // The persisted distinct id might not actually be a device id at all
         // it might be a distinct id of the user from before
         var device_id = previous_distinct_id;
-        this.register_once({
+        this._register_once({
             '$had_persisted_distinct_id': true,
             '$device_id': device_id
         }, '');
@@ -1587,8 +1630,8 @@ MixpanelLib.prototype.identify = function(
     // identify only changes the distinct id if it doesn't match either the existing or the alias;
     // if it's new, blow away the alias as well.
     if (new_distinct_id !== previous_distinct_id && new_distinct_id !== this.get_property(ALIAS_ID_KEY)) {
-        this.unregister(ALIAS_ID_KEY);
-        this.register({'distinct_id': new_distinct_id});
+        this._unregister(ALIAS_ID_KEY);
+        this._register({'distinct_id': new_distinct_id});
     }
     this._flags.identify_called = true;
     // Flush any queued up people requests
@@ -1618,7 +1661,7 @@ MixpanelLib.prototype.reset = function() {
     this['persistence'].clear();
     this._flags.identify_called = false;
     var uuid = _.UUID();
-    this.register_once({
+    this._register_once({
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
