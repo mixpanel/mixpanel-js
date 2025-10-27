@@ -1720,6 +1720,16 @@ var extract_domain = function(hostname) {
 };
 
 /**
+ * Sends a message to the mixpanel inspector extension via a custom event
+ * @param {String} detail   The detail object to be sent to the extension
+ */
+var send_sdk_extension_message = function(detail) {
+    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
+        detail: detail
+    }));
+};
+
+/**
  * Check whether we have network connection. default to true for browsers that don't support navigator.onLine (IE)
  * @returns {boolean}
  */
@@ -1771,6 +1781,7 @@ export {
     NOOP_FUNC,
     safewrap,
     safewrapClass,
+    send_sdk_extension_message,
     slice,
     userAgent,
 };

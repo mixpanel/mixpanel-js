@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify, send_sdk_extension_message } from './utils';
 import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
@@ -1098,15 +1098,13 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     });
 
     // Then send extension event
-    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: {
-            type: 'track',
-            event: event_name,
-            original_properties: original_properties,
-            super_properties: super_properties,
-            full_properties: full_properties,
-        }
-    }));
+    send_sdk_extension_message({
+        type: 'track',
+        event: event_name,
+        original_properties: original_properties,
+        super_properties: super_properties,
+        full_properties: full_properties,
+    });
 
     return ret;
 });
@@ -1543,9 +1541,8 @@ var options_for_register = function(days_or_options) {
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
     this._register(props, days_or_options);
-    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: { type: 'register', properties: props }
-    }));
+    // Then send extension event
+    send_sdk_extension_message({ type: 'register', properties: props });
 };
 
 MixpanelLib.prototype._register = function(props, days_or_options) {
@@ -1586,9 +1583,7 @@ MixpanelLib.prototype._register = function(props, days_or_options) {
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
     this._register_once(props, default_value, days_or_options);
-    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: { type: 'register_once', properties: props }
-    }));
+    send_sdk_extension_message({ type: 'register_once', properties: props });
 };
 
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
@@ -1616,9 +1611,7 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  */
 MixpanelLib.prototype.unregister = function(property, options) {
     this._unregister(property, options);
-    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: { type: 'unregister', properties: property }
-    }));
+    send_sdk_extension_message({ type: 'unregister', property: property });
 };
 
 MixpanelLib.prototype._unregister = function(property, options) {
@@ -1661,6 +1654,13 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
 MixpanelLib.prototype.identify = function(
+    new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
+) {
+    this._identify(new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
+    send_sdk_extension_message({ type: 'identify', distinct_id: new_distinct_id });
+};
+
+MixpanelLib.prototype._identify = function(
     new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     // Optional Parameters
@@ -1794,6 +1794,11 @@ MixpanelLib.prototype.get_distinct_id = function() {
  * @param {String} [original] The current identifier being used for this user.
  */
 MixpanelLib.prototype.alias = function(alias, original) {
+    this._alias(alias, original);
+    send_sdk_extension_message({type: 'alias', alias: alias, original: original});
+};
+
+MixpanelLib.prototype._alias = function(alias, original) {
     // If the $people_distinct_id key exists in persistence, there has been a previous
     // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
     // this ID, as it will duplicate users.
@@ -1819,12 +1824,12 @@ MixpanelLib.prototype.alias = function(alias, original) {
             },
             callback: function() {
                 // Flush the people queue
-                _this.identify(alias);
+                _this._identify(alias);
             }
         });
     } else {
         this.report_error('alias matches current distinct_id - skipping api call.');
-        this.identify(alias);
+        this._identify(alias);
         return -1;
     }
 };
