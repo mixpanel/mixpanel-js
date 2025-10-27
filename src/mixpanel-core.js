@@ -254,8 +254,6 @@ var create_mplib = function(token, config, name) {
  * @param {String} [name]    The name for the new mixpanel instance that you want created
  */
 MixpanelLib.prototype.init = function (token, config, name) {
-    console.log('is this even working?')
-
     this.report_error('Is this even connected?');
     if (_.isUndefined(name)) {
         this.report_error('You must name your new library: init(token, config, name)');
@@ -281,11 +279,6 @@ MixpanelLib.prototype.init = function (token, config, name) {
 // init(...) method sets up a new library and calls _init on it.
 //
 MixpanelLib.prototype._init = function(token, config, name) {
-    console.log('are we even getting there? I guess not')
-    window.postMessage(
-    { type: 'GREETING', text: 'Hello from the main window!' },
-    '*'
-    );
     config = config || {};
 
     this['__loaded'] = true;
@@ -437,7 +430,6 @@ MixpanelLib.prototype.get_tab_id = function () {
 
 MixpanelLib.prototype._should_load_recorder = function () {
     if (this.get_config('disable_persistence')) {
-        console.log('Load recorder check skipped due to disable_persistence config');
         return Promise.resolve(false);
     }
 
@@ -996,8 +988,6 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
             truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
         }
         if (truncated_data) {
-            console.log('MIXPANEL REQUEST:');
-            console.log(truncated_data);
             return this._send_request(
                 endpoint,
                 this._encode_data_for_request(truncated_data),
@@ -1048,7 +1038,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
-    var original_properties = _.extend({}, properties)
+    var original_properties = _.extend({}, properties);
 
     // set defaults
     properties = _.extend({}, properties);
@@ -1085,7 +1075,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         {},
         super_properties,
         properties
-    )
+    );
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_.isArray(property_blacklist)) {
@@ -1096,7 +1086,7 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
 
-    var full_properties = _.extend({}, properties)
+    var full_properties = _.extend({}, properties);
 
     // Do the actual track first
     var ret = this._track({
@@ -1105,28 +1095,28 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         options: options,
         callback: callback,
         already_created_full_properties: properties,
-    })
+    });
 
     // Then send extension event
     window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
         detail: {
-            type: "track",
+            type: 'track',
             event: event_name,
             original_properties: original_properties,
             super_properties: super_properties,
             full_properties: full_properties,
         }
-    }))
+    }));
 
     return ret;
 });
 
 MixpanelLib.prototype._track = addOptOutCheckMixpanelLib(function(args) {
-    var event_name = args.event_name
-    var properties = args.properties
-    var options = args.options
-    var callback = args.callback
-    var already_created_full_properties = args.already_created_full_properties
+    var event_name = args.event_name;
+    var properties = args.properties;
+    var options = args.options;
+    var callback = args.callback;
+    var already_created_full_properties = args.already_created_full_properties;
 
     if (!callback && typeof options === 'function') {
         callback = options;
@@ -1153,7 +1143,7 @@ MixpanelLib.prototype._track = addOptOutCheckMixpanelLib(function(args) {
     }
 
     if (already_created_full_properties) {
-        properties = already_created_full_properties
+        properties = already_created_full_properties;
     } else {
         // set defaults
         properties = _.extend({}, properties);
@@ -1552,10 +1542,10 @@ var options_for_register = function(days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
-    this._register(props, days_or_options)
+    this._register(props, days_or_options);
     window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: { type: "register", properties: props }
-    }))
+        detail: { type: 'register', properties: props }
+    }));
 };
 
 MixpanelLib.prototype._register = function(props, days_or_options) {
@@ -1595,10 +1585,10 @@ MixpanelLib.prototype._register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
-    this._register_once(props, default_value, days_or_options)
+    this._register_once(props, default_value, days_or_options);
     window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: { type: "register_once", properties: props }
-    }))
+        detail: { type: 'register_once', properties: props }
+    }));
 };
 
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
@@ -1625,10 +1615,10 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
-    this._unregister(property, options)
+    this._unregister(property, options);
     window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: { type: "unregister", properties: property }
-    }))
+        detail: { type: 'unregister', properties: property }
+    }));
 };
 
 MixpanelLib.prototype._unregister = function(property, options) {
