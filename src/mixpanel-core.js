@@ -1048,33 +1048,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
-    var original_properties = _.extend(
-        {},
-        properties
-    )
-    if (!callback && typeof options === 'function') {
-        callback = options;
-        options = null;
-    }
-    options = options || {};
-    var transport = options['transport']; // external API, don't minify 'transport' prop
-    if (transport) {
-        options.transport = transport; // 'transport' prop name can be minified internally
-    }
-    var should_send_immediately = options['send_immediately'];
-    if (typeof callback !== 'function') {
-        callback = NOOP_FUNC;
-    }
-
-    if (_.isUndefined(event_name)) {
-        this.report_error('No event name provided to mixpanel.track');
-        return;
-    }
-
-    if (this._event_is_disabled(event_name)) {
-        callback(0);
-        return;
-    }
+    var original_properties = _.extend({}, properties)
 
     // set defaults
     properties = _.extend({}, properties);
@@ -1105,13 +1079,13 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         this['persistence'].properties(),
         this.unpersisted_superprops,
         this.get_session_recording_properties()
-    )
+    );
 
     properties = _.extend(
         {},
         super_properties,
         properties
-    );
+    )
 
     var property_blacklist = this.get_config('property_blacklist');
     if (_.isArray(property_blacklist)) {
@@ -1122,14 +1096,111 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
 
+    var full_properties = _.extend({}, properties)
+
+    // Do the actual track first
+    var ret = this._track({
+        event_name: event_name,
+        properties: original_properties,
+        options: options,
+        callback: callback,
+        already_created_full_properties: properties,
+    })
+
+    // Then send extension event
+    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
+        detail: {
+            type: "track",
+            event: event_name,
+            original_properties: original_properties,
+            super_properties: super_properties,
+            full_properties: full_properties,
+        }
+    }))
+
+    return ret;
+});
+
+MixpanelLib.prototype._track = addOptOutCheckMixpanelLib(function(args) {
+    var event_name = args.event_name
+    var properties = args.properties
+    var options = args.options
+    var callback = args.callback
+    var already_created_full_properties = args.already_created_full_properties
+
+    if (!callback && typeof options === 'function') {
+        callback = options;
+        options = null;
+    }
+    options = options || {};
+    var transport = options['transport']; // external API, don't minify 'transport' prop
+    if (transport) {
+        options.transport = transport; // 'transport' prop name can be minified internally
+    }
+    var should_send_immediately = options['send_immediately'];
+    if (typeof callback !== 'function') {
+        callback = NOOP_FUNC;
+    }
+
+    if (_.isUndefined(event_name)) {
+        this.report_error('No event name provided to mixpanel.track');
+        return;
+    }
+
+    if (this._event_is_disabled(event_name)) {
+        callback(0);
+        return;
+    }
+
+    if (already_created_full_properties) {
+        properties = already_created_full_properties
+    } else {
+        // set defaults
+        properties = _.extend({}, properties);
+        properties['token'] = this.get_config('token');
+
+        // set $duration if time_event was previously called for this event
+        var start_timestamp = this['persistence'].remove_event_timer(event_name);
+        if (!_.isUndefined(start_timestamp)) {
+            var duration_in_ms = new Date().getTime() - start_timestamp;
+            properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
+        }
+
+        this._set_default_superprops();
+
+        var marketing_properties = this.get_config('track_marketing')
+            ? _.info.marketingParams()
+            : {};
+
+        // note: extend writes to the first object, so lets make sure we
+        // don't write to the persistence properties object and info
+        // properties object by passing in a new object
+
+        // update properties with pageview info and super-properties
+        properties = _.extend(
+            {},
+            _.info.properties({'mp_loader': this.get_config('mp_loader')}),
+            marketing_properties,
+            this['persistence'].properties(),
+            this.unpersisted_superprops,
+            this.get_session_recording_properties(),
+            properties
+        );
+
+        var property_blacklist = this.get_config('property_blacklist');
+        if (_.isArray(property_blacklist)) {
+            _.each(property_blacklist, function(blacklisted_prop) {
+                delete properties[blacklisted_prop];
+            });
+        } else {
+            this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
+        }
+    }
+
     var data = {
         'event': event_name,
         'properties': properties
     };
-
-    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: { type: "track", event: event_name, original_properties: original_properties, super_properties: super_properties }
-    }))
 
     var ret = this._track_or_batch({
         type: 'events',
@@ -1240,7 +1311,11 @@ MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(function(eve
             tracking_props[k] = v;
         }
     });
-    return this.track(event_name, tracking_props, callback);
+    return this._track({
+        event_name: event_name,
+        properties: tracking_props,
+        callback: callback,
+    });
 });
 
 MixpanelLib.prototype._create_map_key = function (group_key, group_id) {
@@ -1336,7 +1411,7 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(proper
         properties
     );
 
-    return this.track(event_name, event_properties);
+    return this._track({event_name: event_name, properties: event_properties});
 });
 
 /**
@@ -1552,7 +1627,7 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
 MixpanelLib.prototype.unregister = function(property, options) {
     this._unregister(property, options)
     window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
-        detail: { type: "unregister", properties: props }
+        detail: { type: "unregister", properties: property }
     }))
 };
 
@@ -1640,10 +1715,14 @@ MixpanelLib.prototype.identify = function(
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
     if (new_distinct_id !== previous_distinct_id) {
-        this.track('$identify', {
-            'distinct_id': new_distinct_id,
-            '$anon_distinct_id': previous_distinct_id
-        }, {skip_hooks: true});
+        this._track({
+            event_name: '$identify',
+            properties: {
+                'distinct_id': new_distinct_id,
+                '$anon_distinct_id': previous_distinct_id
+            },
+            options: {skip_hooks: true}
+        });
     }
 
     // check feature flags again if distinct id has changed
@@ -1739,14 +1818,19 @@ MixpanelLib.prototype.alias = function(alias, original) {
     }
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
-        return this.track('$create_alias', {
-            'alias': alias,
-            'distinct_id': original
-        }, {
-            skip_hooks: true
-        }, function() {
-            // Flush the people queue
-            _this.identify(alias);
+        return this._track({
+            event_name: '$create_alias',
+            properties: {
+                'alias': alias,
+                'distinct_id': original
+            },
+            options: {
+                skip_hooks: true
+            },
+            callback: function() {
+                // Flush the people queue
+                _this.identify(alias);
+            }
         });
     } else {
         this.report_error('alias matches current distinct_id - skipping api call.');
