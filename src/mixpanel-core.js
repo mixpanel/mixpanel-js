@@ -254,7 +254,6 @@ var create_mplib = function(token, config, name) {
  * @param {String} [name]    The name for the new mixpanel instance that you want created
  */
 MixpanelLib.prototype.init = function (token, config, name) {
-    this.report_error('Is this even connected?');
     if (_.isUndefined(name)) {
         this.report_error('You must name your new library: init(token, config, name)');
         return;
@@ -430,6 +429,7 @@ MixpanelLib.prototype.get_tab_id = function () {
 
 MixpanelLib.prototype._should_load_recorder = function () {
     if (this.get_config('disable_persistence')) {
+        console.log('Load recorder check skipped due to disable_persistence config');
         return Promise.resolve(false);
     }
 
