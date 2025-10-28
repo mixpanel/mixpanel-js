@@ -177,7 +177,7 @@ var MixpanelLib = function() {};
 var extension_do_not_track = false;
 window.addEventListener('$mp_extension_to_sdk_event', function( event ) {
     if (event.detail && _.isBoolean(event.detail.value)) {
-        extension_do_not_track = event.detail.value
+        extension_do_not_track = event.detail.value;
     }
 });
 
@@ -272,7 +272,6 @@ var create_mplib = function(token, config, name) {
  * @param {String} [name]    The name for the new mixpanel instance that you want created
  */
 MixpanelLib.prototype.init = function (token, config, name) {
-    console.log('init first')
     if (_.isUndefined(name)) {
         this.report_error('You must name your new library: init(token, config, name)');
         return;
