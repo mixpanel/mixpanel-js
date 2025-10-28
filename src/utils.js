@@ -329,6 +329,10 @@ _.isNumber = function(obj) {
     return toString.call(obj) == '[object Number]';
 };
 
+_.isBoolean = function(obj) {
+    return toString.call(obj) == '[object Boolean]';
+};
+
 _.isElement = function(obj) {
     return !!(obj && obj.nodeType === 1);
 };
@@ -1724,7 +1728,7 @@ var extract_domain = function(hostname) {
  * @param {String} detail   The detail object to be sent to the extension
  */
 var send_sdk_extension_message = function(detail) {
-    window.dispatchEvent(new CustomEvent('$mp_sdk_extension_event', {
+    window.dispatchEvent(new CustomEvent('$mp_sdk_to_extension_event', {
         detail: detail
     }));
 };

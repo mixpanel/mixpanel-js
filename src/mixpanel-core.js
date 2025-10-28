@@ -172,6 +172,16 @@ var MixpanelLib = function() {};
 
 
 /**
+ * Tracks if the SDK should be sending track calls based on extension setting
+ */
+var extension_do_not_track = false;
+window.addEventListener('$mp_extension_to_sdk_event', function( event ) {
+    if (event.detail && _.isBoolean(event.detail.value)) {
+        extension_do_not_track = event.detail.value
+    }
+});
+
+/**
  * create_mplib(token:string, config:object, name:string)
  *
  * This function is used by the init method of MixpanelLib objects
@@ -232,6 +242,14 @@ var create_mplib = function(token, config, name) {
         instance._execute_array(target);
     }
 
+    var source = init_type === INIT_MODULE ? 'module' : 'snippet';
+
+    send_sdk_extension_message({
+        type: 'init',
+        source: source,
+        token: token,
+    });
+
     return instance;
 };
 
@@ -254,6 +272,7 @@ var create_mplib = function(token, config, name) {
  * @param {String} [name]    The name for the new mixpanel instance that you want created
  */
 MixpanelLib.prototype.init = function (token, config, name) {
+    console.log('init first')
     if (_.isUndefined(name)) {
         this.report_error('You must name your new library: init(token, config, name)');
         return;
@@ -1088,19 +1107,24 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
 
     var full_properties = _.extend({}, properties);
 
-    // Do the actual track first
-    var ret = this._track({
-        event_name: event_name,
-        properties: original_properties,
-        options: options,
-        callback: callback,
-        already_created_full_properties: properties,
-    });
+    var ret = null;
+
+    if (!extension_do_not_track) {
+        // Do the actual track first
+        ret = this._track({
+            event_name: event_name,
+            properties: original_properties,
+            options: options,
+            callback: callback,
+            already_created_full_properties: properties,
+        });
+    }
 
     // Then send extension event
     send_sdk_extension_message({
         type: 'track',
         event: event_name,
+        distinct_id: this.get_distinct_id(),
         original_properties: original_properties,
         super_properties: super_properties,
         full_properties: full_properties,
@@ -1586,7 +1610,7 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
     send_sdk_extension_message({ type: 'register_once', properties: props });
 };
 
-MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+MixpanelLib.prototype._register_once = function(props, default_value, days_or_options) {
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
         this['persistence'].register_once(props, default_value, options['days']);
