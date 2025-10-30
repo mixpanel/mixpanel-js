@@ -14045,7 +14045,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.71.0'
+    LIB_VERSION: '2.71.1'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -19227,6 +19227,11 @@ Autocapture.prototype._trackPageLeave = function(ev, currentUrl, currentScrollHe
         // User has navigated away already ending their impression.
         return;
     }
+
+    if (!this.getConfig(CONFIG_TRACK_PAGE_LEAVE) && !this.mp.is_recording_heatmap_data()) {
+        return;
+    }
+
     this.hasTrackedScrollSession = true;
     var viewportHeight = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
     var scrollPercentage = Math.round(Math.max(this.maxScrollViewDepth - viewportHeight, 0) / (currentScrollHeight - viewportHeight) * 100);
@@ -19246,11 +19251,8 @@ Autocapture.prototype._trackPageLeave = function(ev, currentUrl, currentScrollHe
         '$current_url': currentUrl || _.info.currentUrl(),
         '$viewportHeight': viewportHeight, // This is the fold line
         '$viewportWidth':  Math.max(document$1.documentElement.clientWidth, win.innerWidth || 0),
+        '$captured_for_heatmap': this.mp.is_recording_heatmap_data()
     }, DEFAULT_PROPS);
-
-    if (this.mp.is_recording_heatmap_data() && !this.getConfig(CONFIG_TRACK_PAGE_LEAVE)) {
-        props['$captured_for_heatmap'] = true;
-    }
 
     // Send with beacon transport to ensure event is sent before unload
     this.mp.track(MP_EV_PAGE_LEAVE, props, {transport: 'sendBeacon'});

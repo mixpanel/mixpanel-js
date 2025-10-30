@@ -4509,6 +4509,56 @@
                 stopRecordingSendBeaconRequests.call(this);
             });
 
+            test("does not track scroll depth when record_heatmap_data is on but session recording is not active", 1, function() {
+                // Initialize with record_heatmap_data ON but session recording OFF (record_sessions_percent: 0)
+                mixpanel.init("heatmap_no_recording_test", {
+                    record_heatmap_data: true,
+                    record_sessions_percent: 0,
+                    batch_requests: false
+                }, 'heatmaptest');
+
+                this.sendBeaconStub.resetHistory();
+
+                // Simulate page leave by changing document visibility to hidden
+                Object.defineProperty(document, 'hidden', {
+                    writable: true,
+                    value: true
+                });
+                var visibilityChangeEvent = new Event('visibilitychange');
+                document.dispatchEvent(visibilityChangeEvent);
+
+                // Should NOT send any scroll depth event because session recording is not active
+                same(this.sendBeaconStub.getCalls().length, 0, "should not send scroll depth event when session recording is not active");
+            });
+
+            asyncTest("tracks scroll depth when record_heatmap_data is on and session recording is active", 1, function() {
+                mixpanel.init("heatmap_recording_test", {
+                    record_heatmap_data: true,
+                    record_sessions_percent: 100,
+                    batch_requests: false
+                }, 'heatmaptest');
+                this.sendBeaconStub.resetHistory();
+
+                untilDonePromise(_.bind(function () {
+                    return Object.keys(mixpanel.heatmaptest.get_session_recording_properties()).length > 0;
+                }, this))
+                    .then(_.bind(function () {
+                        // Simulate page leave by changing document visibility to hidden
+                        Object.defineProperty(document, 'hidden', {
+                            writable: true,
+                            value: true
+                        });
+                        var visibilityChangeEvent = new Event('visibilitychange');
+                        document.dispatchEvent(visibilityChangeEvent);
+                        
+                        // Should send a scroll depth event because session recording is active
+                        same(this.sendBeaconStub.getCalls().length > 0, true, "should send scroll depth event when session recording is active");
+                        mixpanel.heatmaptest.stop_session_recording();
+                        start();
+                    }, this));
+
+            });
+
             test("autocapture tracks max scroll depth on page leave for visibilitychange", 9, function() {
                 // Mock clientHeight before mixpanel initialization so scroll tracking captures it
                 Object.defineProperty(document.documentElement, 'clientHeight', {
@@ -4523,7 +4573,8 @@
 
                 mixpanel.init("scroll_depth_test", {
                     record_heatmap_data: true,
-                    batch_requests: false
+                    batch_requests: false,
+                    autocapture: { page_leave: true }
                 }, 'scrolltest');
 
                 // Mock scrollY for testing since scrollTo doesn't work in test environment
@@ -4616,7 +4667,7 @@
                 mixpanel.init("scroll_depth_test", {
                     record_heatmap_data: true,
                     batch_requests: false,
-                    autocapture: { pageview: false }
+                    autocapture: { pageview: false, page_leave: true }
                 }, 'scrolltest');
 
                 // Mock scrollY for testing since scrollTo doesn't work in test environment
