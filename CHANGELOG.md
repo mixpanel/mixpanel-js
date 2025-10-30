@@ -1,3 +1,6 @@
+**2.71.1** (30 Oct 2025)
+- fixes issue with $mp_page_leave events getting tracked when `record_heatmap_data` is on and there was no session recording taking place.
+
 **2.71.0** (2 Oct 2025)
 - adds Dead Click ($mp_dead_click) autocapture event: when a click occurs but there is no DOM mutation afterwards
 - adds Page Leave ($mp_page_leave) autocapture event: when a page is "left" either by navigation or leaving the tab
