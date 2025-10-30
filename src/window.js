@@ -15,7 +15,8 @@ if (typeof(window) === 'undefined') {
         screen: { width: 0, height: 0 },
         location: loc,
         addEventListener: function() {},
-        removeEventListener: function() {}
+        removeEventListener: function() {},
+        dispatchEvent: function() {}
     };
 } else {
     win = window;
