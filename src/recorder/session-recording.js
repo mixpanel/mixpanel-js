@@ -1,5 +1,6 @@
 import { window } from '../window';
 import { IncrementalSource, EventType } from '@mixpanel/rrweb';
+import { getRecordConsolePlugin } from '@mixpanel/rrweb-plugin-console-record';
 import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _, localStorageSupported} from '../utils'; // eslint-disable-line camelcase
 import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
@@ -254,7 +255,16 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
             'recordCanvas': this.getConfig('record_canvas'),
             'sampling': {
                 'canvas': 15
-            }
+            },
+            'plugins': this.getConfig('record_console') ? [
+                getRecordConsolePlugin({
+                    stringifyOptions: {
+                        stringLengthLimit: 1000,
+                        numOfKeysLimit: 50,
+                        depthOfLimit: 2
+                    }
+                })
+            ] : []
         });
     } catch (err) {
         this.reportError('Unexpected error when starting rrweb recording.', err);

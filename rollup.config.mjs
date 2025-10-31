@@ -7,10 +7,17 @@ import fs from 'fs';
 import path from 'path';
 
 const COMPILED_RRWEB_PATH = 'build/rrweb-compiled.js';
+const COMPILED_RRWEB_CONSOLE_PATH = 'build/rrweb-console-compiled.js';
 
 const aliasRrweb = () => alias({
     entries: [
         { find: '@mixpanel/rrweb', replacement: COMPILED_RRWEB_PATH },
+    ]
+});
+
+const aliasRrwebConsole = () => alias({
+    entries: [
+        { find: '@mixpanel/rrweb-plugin-console-record', replacement: COMPILED_RRWEB_CONSOLE_PATH },
     ]
 });
 
@@ -52,6 +59,15 @@ const MAIN_BUILDS = [
         ],
         plugins: [nodeResolve({browser: true}), swc({swc: {jsc: {target: 'es5'}}})]
     },
+    {
+        'input': '@mixpanel/rrweb-plugin-console-record',
+        'output': [
+            {
+                file: COMPILED_RRWEB_CONSOLE_PATH,
+            }
+        ],
+        plugins: [nodeResolve({browser: true}), swc({swc: {jsc: {target: 'es5'}}})]
+    },
 
     // IIFE recorder bundle that is loaded asynchronously
     // rrweb uses esbuild to minify, so do that here as well
@@ -75,7 +91,7 @@ const MAIN_BUILDS = [
                   ]
                 : []),
         ],
-        plugins: [aliasRrweb()],
+        plugins: [aliasRrweb(), aliasRrwebConsole()],
     },
 
     // IIFE main mixpanel build
@@ -156,6 +172,7 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
+            aliasRrwebConsole(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -193,6 +210,7 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
+            aliasRrwebConsole(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -215,6 +233,7 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
+            aliasRrwebConsole(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -234,6 +253,7 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
+            aliasRrwebConsole(),
             nodeResolve({
                 browser: true,
                 main: true,
