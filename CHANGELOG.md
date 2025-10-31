@@ -1,5 +1,6 @@
 **2.72.0** (31 Oct 2025)
 - Adds interactive_elements_only rage click autocapture option to ignore clicks on non-interactive page elements, such as text.
+- Fixes an issue where closing and opening a page would upload a replay shorter than the configured minimum duration (`record_min_ms`).
 
 **2.71.1** (30 Oct 2025)
 - fixes issue with $mp_page_leave events getting tracked when `record_heatmap_data` is on and there was no session recording taking place.

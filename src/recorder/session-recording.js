@@ -39,6 +39,7 @@ function isUserEvent(ev) {
  * @property {number} idleExpires
  * @property {number} maxExpires
  * @property {number} replayStartTime
+ * @property {number} lastEventTimestamp
  * @property {number} seqNo
  * @property {string} batchStartUrl
  * @property {string} replayId
@@ -59,6 +60,7 @@ function isUserEvent(ev) {
  * @property {number} idleExpires
  * @property {number} maxExpires
  * @property {number} replayStartTime
+ * @property {number} lastEventTimestamp - the unix timestamp of the last recorded event from rrweb
  * @property {number} seqNo
  * @property {string} batchStartUrl
  * @property {string} replayStartUrl
@@ -92,6 +94,7 @@ var SessionRecording = function(options) {
     this.idleExpires = options.idleExpires || null;
     this.maxExpires = options.maxExpires || null;
     this.replayStartTime = options.replayStartTime || null;
+    this.lastEventTimestamp = options.lastEventTimestamp || null;
     this.seqNo = options.seqNo || 0;
 
     this.idleTimeoutId = null;
@@ -151,10 +154,20 @@ SessionRecording.prototype.getUserIdInfo = function () {
 
 SessionRecording.prototype.unloadPersistedData = function () {
     this.batcher.stop();
-    return this.batcher.flush()
-        .then(function () {
+
+    return this.queueStorage.init().catch(function () {
+        this.reportError('Error initializing IndexedDB storage for unloading persisted data.');
+    }.bind(this)).then(function () {
+        // if the recording is too short, just delete any stored events without flushing
+        if (this.getDurationMs() < this._getRecordMinMs()) {
             return this.queueStorage.removeItem(this.batcherKey);
-        }.bind(this));
+        }
+
+        return this.batcher.flush()
+            .then(function () {
+                return this.queueStorage.removeItem(this.batcherKey);
+            }.bind(this));
+    }.bind(this));
 };
 
 SessionRecording.prototype.getConfig = function(configVar) {
@@ -189,11 +202,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.maxExpires = new Date().getTime() + this.recordMaxMs;
     }
 
-    this.recordMinMs = this.getConfig('record_min_ms');
-    if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
-        this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
-        logger.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
-    }
+    this.recordMinMs = this._getRecordMinMs();
 
     if (!this.replayStartTime) {
         this.replayStartTime = new Date().getTime();
@@ -241,6 +250,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                 }
                 // promise only used to await during tests
                 this.__enqueuePromise = this.batcher.enqueue(ev);
+
+                // Capture the timestamp of the last event for duration calculation.
+                if (this.lastEventTimestamp === null || ev.timestamp > this.lastEventTimestamp) {
+                    this.lastEventTimestamp = ev.timestamp;
+                }
             }.bind(this),
             'blockClass': this.getConfig('record_block_class'),
             'blockSelector': blockSelector,
@@ -349,6 +363,7 @@ SessionRecording.prototype.serialize = function () {
         'replayStartTime': this.replayStartTime,
         'batchStartUrl': this.batchStartUrl,
         'replayStartUrl': this.replayStartUrl,
+        'lastEventTimestamp': this.lastEventTimestamp,
         'idleExpires': this.idleExpires,
         'maxExpires': this.maxExpires,
         'tabId': tabId,
@@ -370,6 +385,7 @@ SessionRecording.deserialize = function (serializedRecording, options) {
         idleExpires: serializedRecording['idleExpires'],
         maxExpires: serializedRecording['maxExpires'],
         replayStartTime: serializedRecording['replayStartTime'],
+        lastEventTimestamp: serializedRecording['lastEventTimestamp'],
         seqNo: serializedRecording['seqNo'],
         sharedLockStorage: options.sharedLockStorage,
     }));
@@ -487,6 +503,38 @@ SessionRecording.prototype.reportError = function(msg, err) {
     } catch(err) {
         logger.error(err);
     }
+};
+
+/**
+ * Calculates the duration of the recording in milliseconds, based on the start time and time of last recorded event.
+ * @returns {number} The duration of the recording in milliseconds. Returns 0 if recording hasn't started.
+ */
+SessionRecording.prototype.getDurationMs = function() {
+    if (this.replayStartTime === null) {
+        return 0;
+    }
+
+    // If the recording has no events, assume it is in progress and use the current time as the end time.
+    if (this.lastEventTimestamp === null) {
+        return new Date().getTime() - this.replayStartTime;
+    }
+
+    return this.lastEventTimestamp - this.replayStartTime;
+};
+
+/**
+ * Lazily loads the minimum recording length config in milliseconds, respecting the maximum limit.
+ * @returns {number} The minimum recording length in milliseconds.
+ */
+SessionRecording.prototype._getRecordMinMs = function() {
+    var configValue = this.getConfig('record_min_ms');
+
+    if (configValue > MAX_VALUE_FOR_MIN_RECORDING_MS) {
+        logger.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+        return MAX_VALUE_FOR_MIN_RECORDING_MS;
+    }
+
+    return configValue;
 };
 
 export { SessionRecording };
