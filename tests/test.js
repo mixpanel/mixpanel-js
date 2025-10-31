@@ -666,6 +666,148 @@
             same(data1.properties.time, 123456);
         });
 
+        mpmodule("mixpanel.heartbeat", function() {
+            this.clock = sinon.useFakeTimers();
+        }, function() {
+            this.clock.restore();
+        });
+
+        test("basic heartbeat functionality", 2, function() {
+            // Verify heartbeat method exists and is callable
+            ok(_.isFunction(mixpanel.test.heartbeat), "heartbeat method should exist");
+            
+            // Test basic heartbeat call doesn't throw errors
+            var result = mixpanel.test.heartbeat('test_event', 'test_content', { prop: 'value' });
+            same(result, undefined, "heartbeat should return undefined");
+        });
+
+        test("heartbeat return value", 1, function() {
+            var result1 = mixpanel.test.heartbeat('test_event', 'content_1', { prop: 'value' });
+            
+            same(result1, undefined, "heartbeat should return undefined (no chaining)");
+        });
+
+        test("heartbeat automatic properties", 2, function() {
+            // Call heartbeat a few times
+            mixpanel.test.heartbeat('duration_test', 'content_1', { custom_prop: 'value1' });
+            this.clock.tick(3000); // 3 seconds
+            mixpanel.test.heartbeat('duration_test', 'content_1', { custom_prop: 'value2' });
+            
+            // Force flush and capture the track call
+            var originalTrack = mixpanel.test.track;
+            var trackCalls = [];
+            mixpanel.test.track = function(eventName, props, options) {
+                trackCalls.push({eventName: eventName, props: props, options: options});
+                return originalTrack.call(this, eventName, props, options);
+            };
+            
+            // Use forceFlush option to trigger immediate flush
+            mixpanel.test.heartbeat('duration_test', 'content_1', { custom_prop: 'value3' }, { forceFlush: true });
+            
+            // Restore original track
+            mixpanel.test.track = originalTrack;
+            
+            // Verify the event was tracked with automatic properties
+            same(trackCalls.length, 1, "should have made one track call");
+            if (trackCalls.length > 0) {
+                var trackedProps = trackCalls[0].props;
+                same(trackedProps.$heartbeats, 3, "should track correct number of heartbeats");
+                // Note: Duration might be 3 due to timing, but we mainly want to verify it exists
+            }
+        });
+
+		test("heartbeat argument validation", 1, function() {
+			callsError(function(done) {
+				mixpanel.test.heartbeat('only_event_name');
+				done();
+			}, "eventName and contentId are required", "should report_error about missing contentId");
+		});
+
+        test("heartbeat timeout functionality", 1, function() {
+            var originalTrack = mixpanel.test.track;
+            var trackCalls = [];
+            mixpanel.test.track = function(eventName, props, options) {
+                trackCalls.push({eventName: eventName, props: props, options: options});
+                return originalTrack.call(this, eventName, props, options);
+            };
+            
+            // Call heartbeat with custom timeout
+            mixpanel.test.heartbeat('timeout_test', 'content_1', { progress: 25 }, { timeout: 5000 });
+            
+            // Advance time by 5 seconds
+            this.clock.tick(5000);
+            
+            // Restore original track
+            mixpanel.test.track = originalTrack;
+            
+            same(trackCalls.length, 1, "custom timeout should have triggered automatic flush");
+        });
+
+        test("heartbeat property aggregation", 4, function() {
+            var originalTrack = mixpanel.test.track;
+            var trackCalls = [];
+            mixpanel.test.track = function(eventName, props, options) {
+                trackCalls.push({eventName: eventName, props: props, options: options});
+                return originalTrack.call(this, eventName, props, options);
+            };
+            
+            // Test different property types get aggregated correctly
+            mixpanel.test.heartbeat('aggregate_test', 'content_1', { 
+                score: 10, 
+                level: 'easy', 
+                tags: ['action'], 
+                metadata: { version: 1 }
+            });
+            
+            mixpanel.test.heartbeat('aggregate_test', 'content_1', { 
+                score: 25, 
+                level: 'medium', 
+                tags: ['puzzle'], 
+                metadata: { difficulty: 'hard' }
+            });
+            
+            // Force flush to capture aggregated result
+            mixpanel.test.heartbeat('aggregate_test', 'content_1', {}, { forceFlush: true });
+            
+            // Restore original track
+            mixpanel.test.track = originalTrack;
+            
+            // Verify aggregation
+            same(trackCalls.length, 1, "should have made one track call");
+            if (trackCalls.length > 0) {
+                var props = trackCalls[0].props;
+                same(props.score, 25, "numbers should use latest value");
+                same(props.level, 'medium', "strings should use latest value");
+                deepEqual(props.tags, ['action', 'puzzle'], "arrays should be concatenated");
+            }
+        });
+
+        test("heartbeat different timeouts", 1, function() {
+            var originalTrack = mixpanel.test.track;
+            var trackCalls = [];
+            mixpanel.test.track = function(eventName, props, options) {
+                trackCalls.push({eventName: eventName, props: props, options: options});
+                return originalTrack.call(this, eventName, props, options);
+            };
+            
+            // Start with long timeout
+            mixpanel.test.heartbeat('timeout_override', 'content_1', { step: 1 }, { timeout: 10000 });
+            
+            // Advance halfway
+            this.clock.tick(5000);
+            
+            // Override with short timeout (should reset timer)
+            mixpanel.test.heartbeat('timeout_override', 'content_1', { step: 2 }, { timeout: 2000 });
+            
+            // Advance 2 seconds (should flush now, not wait for original 10s)
+            this.clock.tick(2000);
+            
+            // Restore original track
+            mixpanel.test.track = originalTrack;
+            
+            same(trackCalls.length, 1, "latest timeout should override previous timeout");
+        });
+
         mpmodule("mixpanel.time_event", function() {
             this.clock = sinon.useFakeTimers();
         }, function() {
