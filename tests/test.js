@@ -223,10 +223,20 @@
         return $(a).appendTo('#qunit-fixture');
     };
 
-    var ele_with_class = function(elText) {
+    /**
+     * Creates and attaches an element with a random class name to the DOM.
+     * @param {string} elText - The text content of the element.
+     * @param {string} elTag - The tag name of the element. Defaults to 'a'.
+     * @returns {object} - An object containing the element, its class name, and its name.
+     */
+    var ele_with_class = function(elText, elTag = 'a') {
         var name = rand_name();
         var class_name = "." + name;
-        var a = $("<a>" + (elText || "") + "</a>").attr("class", name).attr("href", "#");
+
+        var openTag = '<' + elTag + '>';
+        var closeTag = '</' + elTag + '>';
+
+        var a = $(openTag + (elText || "") + closeTag).attr("class", name).attr("href", "#");
         append_fixture(a);
         return {
             e: a.get(0),
@@ -378,6 +388,20 @@
             var evt = element.ownerDocument.createEvent('MouseEvents');
             evt.initMouseEvent('click', true, true, element.ownerDocument.defaultView, 1, x, y, x, y, false, false, false, false, 0, null);
             element.dispatchEvent(evt);
+        }
+    }
+
+    /**
+     * Simulates a series of rapid mouse clicks on an element to mimic a rage click.
+     * @param {Element} element - The element to click
+     * @param {sinon.SinonFakeTimers} clock - The clock timer to use for waiting between clicks
+     * @param {number} clickCount - How many clicks to simulate
+     * @param {number} intervalMs - Interval between clicks in milliseconds
+     */
+    function simulateRageClick(element, clock, clickCount = 4, intervalMs = 100) {
+        for (var i = 0; i < clickCount; i++) {
+            simulateMouseClick(element);
+            if (i < clickCount - 1) clock.tick(intervalMs);
         }
     }
 
@@ -4972,6 +4996,47 @@
                     }
                 }
                 ok(rageClickEvent !== null, "should detect rage click with 4 clicks when click_count=4");
+            });
+
+            test("ignores rage click on non-interactive elements when interactive_elements_only is true", 1, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: false,
+                        rage_click: {
+                            interactive_elements_only: true,
+                        }
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var element = ele_with_class("some text", "p").e;
+                
+                simulateRageClick(element, this.clock);
+
+                same(this.requests.length, 0, "should have no rage click");
+            });
+
+            test("captures rage click on interactive elements when interactive_elements_only is true", 2, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: false,
+                        rage_click: {
+                            interactive_elements_only: true,
+                        }
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var element = ele_with_class().e;
+                element.onclick = function() { return false; }
+
+                simulateRageClick(element, this.clock);
+
+                same(this.requests.length, 1, "should have 1 rage click");
+                var rageClickEvent = getRequestData(this.requests[0]);
+                ok(rageClickEvent.event === '$mp_rage_click', "should have detected a rage click event");
             });
 
             mpmodule('dead click', function() {
