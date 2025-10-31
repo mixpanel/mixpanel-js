@@ -2,6 +2,7 @@
 import Config from './config';
 import { NpoPromise, Promise } from './promise-polyfill';
 import { window } from './window';
+import { CustomEvent } from './custom-event';
 
 // Maximum allowed session recording length
 var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
