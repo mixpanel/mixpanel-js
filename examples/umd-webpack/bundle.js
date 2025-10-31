@@ -90,7 +90,7 @@
 	        win = window;
 	    }
 
-	    function _array_like_to_array(arr, len) {
+	    function _array_like_to_array$1(arr, len) {
 	        if (len == null || len > arr.length) len = arr.length;
 	        for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
 	        return arr2;
@@ -187,7 +187,7 @@
 	        });
 	        if (superClass) _set_prototype_of(subClass, superClass);
 	    }
-	    function _instanceof(left, right) {
+	    function _instanceof$1(left, right) {
 	        if (right != null && typeof Symbol !== "undefined" && right[Symbol.hasInstance]) {
 	            return !!right[Symbol.hasInstance](left);
 	        } else {
@@ -216,17 +216,17 @@
 	        };
 	        return _set_prototype_of(o, p);
 	    }
-	    function _type_of(obj) {
+	    function _type_of$1(obj) {
 	        "@swc/helpers - typeof";
 	        return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj;
 	    }
-	    function _unsupported_iterable_to_array(o, minLen) {
+	    function _unsupported_iterable_to_array$1(o, minLen) {
 	        if (!o) return;
-	        if (typeof o === "string") return _array_like_to_array(o, minLen);
+	        if (typeof o === "string") return _array_like_to_array$1(o, minLen);
 	        var n = Object.prototype.toString.call(o).slice(8, -1);
 	        if (n === "Object" && o.constructor) n = o.constructor.name;
 	        if (n === "Map" || n === "Set") return Array.from(n);
-	        if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _array_like_to_array(o, minLen);
+	        if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _array_like_to_array$1(o, minLen);
 	    }
 	    function _wrap_native_super(Class) {
 	        var _cache = typeof Map === "function" ? new Map() : undefined;
@@ -262,10 +262,10 @@
 	            return !!result;
 	        })();
 	    }
-	    function _create_for_of_iterator_helper_loose(o, allowArrayLike) {
+	    function _create_for_of_iterator_helper_loose$1(o, allowArrayLike) {
 	        var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"];
 	        if (it) return (it = it.call(o)).next.bind(it);
-	        if (Array.isArray(o) || (it = _unsupported_iterable_to_array(o)) || allowArrayLike) {
+	        if (Array.isArray(o) || (it = _unsupported_iterable_to_array$1(o)) || allowArrayLike) {
 	            if (it) o = it;
 	            var i = 0;
 	            return function() {
@@ -391,19 +391,6 @@
 	        };
 	        throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
 	    }
-	    var __defProp = Object.defineProperty;
-	    var __defNormalProp = function(obj, key, value) {
-	        return key in obj ? __defProp(obj, key, {
-	            enumerable: true,
-	            configurable: true,
-	            writable: true,
-	            value: value
-	        }) : obj[key] = value;
-	    };
-	    var __publicField = function(obj, key, value) {
-	        return __defNormalProp(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
-	    };
-	    var _a;
 	    var __defProp$1 = Object.defineProperty;
 	    var __defNormalProp$1 = function(obj, key, value) {
 	        return key in obj ? __defProp$1(obj, key, {
@@ -414,7 +401,20 @@
 	        }) : obj[key] = value;
 	    };
 	    var __publicField$1 = function(obj, key, value) {
-	        return __defNormalProp$1(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
+	        return __defNormalProp$1(obj, (typeof key === "undefined" ? "undefined" : _type_of$1(key)) !== "symbol" ? key + "" : key, value);
+	    };
+	    var _a;
+	    var __defProp$1$1 = Object.defineProperty;
+	    var __defNormalProp$1$1 = function(obj, key, value) {
+	        return key in obj ? __defProp$1$1(obj, key, {
+	            enumerable: true,
+	            configurable: true,
+	            writable: true,
+	            value: value
+	        }) : obj[key] = value;
+	    };
+	    var __publicField$1$1 = function(obj, key, value) {
+	        return __defNormalProp$1$1(obj, (typeof key === "undefined" ? "undefined" : _type_of$1(key)) !== "symbol" ? key + "" : key, value);
 	    };
 	    var NodeType$3 = /* @__PURE__ */ function(NodeType2) {
 	        NodeType2[NodeType2["Document"] = 0] = "Document";
@@ -684,8 +684,8 @@
 	    }
 	    var Mirror = /*#__PURE__*/ function() {
 	        function Mirror() {
-	            __publicField$1(this, "idNodeMap", /* @__PURE__ */ new Map());
-	            __publicField$1(this, "nodeMetaMap", /* @__PURE__ */ new WeakMap());
+	            __publicField$1$1(this, "idNodeMap", /* @__PURE__ */ new Map());
+	            __publicField$1$1(this, "nodeMetaMap", /* @__PURE__ */ new WeakMap());
 	        }
 	        var _proto = Mirror.prototype;
 	        _proto.getId = function getId(n2) {
@@ -827,7 +827,7 @@
 	            var stack = href.split("/");
 	            var parts = filePath.split("/");
 	            stack.pop();
-	            for(var _iterator = _create_for_of_iterator_helper_loose(parts), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(parts), _step; !(_step = _iterator()).done;){
 	                var part = _step.value;
 	                if (part === ".") {
 	                    continue;
@@ -937,7 +937,7 @@
 	        return _id++;
 	    }
 	    function getValidTagName$1(element) {
-	        if (_instanceof(element, HTMLFormElement)) {
+	        if (_instanceof$1(element, HTMLFormElement)) {
 	            return "form";
 	        }
 	        var processedTagName = toLowerCase(element.tagName);
@@ -1547,7 +1547,7 @@
 	                if (serializedNode.type === NodeType$3.Element && serializedNode.attributes._cssText !== void 0 && typeof serializedNode.attributes._cssText === "string") {
 	                    bypassOptions.cssCaptured = true;
 	                }
-	                for(var _iterator = _create_for_of_iterator_helper_loose(Array.from(index$1.childNodes(n2))), _step; !(_step = _iterator()).done;){
+	                for(var _iterator = _create_for_of_iterator_helper_loose$1(Array.from(index$1.childNodes(n2))), _step; !(_step = _iterator()).done;){
 	                    var childN = _step.value;
 	                    var serializedChildNode = serializeNodeWithId(childN, bypassOptions);
 	                    if (serializedChildNode) {
@@ -1557,7 +1557,7 @@
 	            }
 	            var shadowRootEl1 = null;
 	            if (isElement(n2) && (shadowRootEl1 = index$1.shadowRoot(n2))) {
-	                for(var _iterator1 = _create_for_of_iterator_helper_loose(Array.from(index$1.childNodes(shadowRootEl1))), _step1; !(_step1 = _iterator1()).done;){
+	                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(Array.from(index$1.childNodes(shadowRootEl1))), _step1; !(_step1 = _iterator1()).done;){
 	                    var childN1 = _step1.value;
 	                    var serializedChildNode1 = serializeNodeWithId(childN1, bypassOptions);
 	                    if (serializedChildNode1) {
@@ -1715,7 +1715,7 @@
 	        var f2 = n2.default;
 	        if (typeof f2 == "function") {
 	            var a2 = function a22() {
-	                if (_instanceof(this, a22)) {
+	                if (_instanceof$1(this, a22)) {
 	                    return Reflect.construct(f2, arguments, this.constructor);
 	                }
 	                return f2.apply(this, arguments);
@@ -2191,7 +2191,7 @@
 	            }
 	            if (i2 === "proxyCache") continue;
 	            var value = obj[i2];
-	            var type = typeof value === "undefined" ? "undefined" : _type_of(value);
+	            var type = typeof value === "undefined" ? "undefined" : _type_of$1(value);
 	            if (i2 === "parent" && type === "object") {
 	                if (parent) cloned[i2] = parent;
 	            } else if (i2 === "source") {
@@ -2216,7 +2216,7 @@
 	            for(var name in defaults){
 	                if (name === "nodes") {
 	                    this.nodes = [];
-	                    for(var _iterator = _create_for_of_iterator_helper_loose(defaults[name]), _step; !(_step = _iterator()).done;){
+	                    for(var _iterator = _create_for_of_iterator_helper_loose$1(defaults[name]), _step; !(_step = _iterator()).done;){
 	                        var node2 = _step.value;
 	                        if (typeof node2.clone === "function") {
 	                            this.append(node2.clone());
@@ -2430,7 +2430,7 @@
 	            if (this.parent) {
 	                var bookmark = this;
 	                var foundSelf = false;
-	                for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	                for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                    var node2 = _step.value;
 	                    if (node2 === this) {
 	                        foundSelf = true;
@@ -2467,13 +2467,13 @@
 	                var value = this[name];
 	                if (Array.isArray(value)) {
 	                    fixed[name] = value.map(function(i2) {
-	                        if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && i2.toJSON) {
+	                        if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && i2.toJSON) {
 	                            return i2.toJSON(null, inputs);
 	                        } else {
 	                            return i2;
 	                        }
 	                    });
-	                } else if ((typeof value === "undefined" ? "undefined" : _type_of(value)) === "object" && value.toJSON) {
+	                } else if ((typeof value === "undefined" ? "undefined" : _type_of$1(value)) === "object" && value.toJSON) {
 	                    fixed[name] = value.toJSON(null, inputs);
 	                } else if (name === "source") {
 	                    var inputId = inputs.get(value.input);
@@ -2618,7 +2618,7 @@
 	            return sourceMapString.replace(/^\/\*\s*# sourceMappingURL=/, "").trim();
 	        };
 	        _proto.isMap = function isMap(map) {
-	            if ((typeof map === "undefined" ? "undefined" : _type_of(map)) !== "object") return false;
+	            if ((typeof map === "undefined" ? "undefined" : _type_of$1(map)) !== "object") return false;
 	            return typeof map.mappings === "string" || typeof map._mappings === "string" || Array.isArray(map.sections);
 	        };
 	        _proto.loadAnnotation = function loadAnnotation(css) {
@@ -2651,9 +2651,9 @@
 	                        }
 	                        return map;
 	                    }
-	                } else if (_instanceof(prev, SourceMapConsumer$2$1)) {
+	                } else if (_instanceof$1(prev, SourceMapConsumer$2$1)) {
 	                    return SourceMapGenerator$2$1.fromSourceMap(prev).toString();
-	                } else if (_instanceof(prev, SourceMapGenerator$2$1)) {
+	                } else if (_instanceof$1(prev, SourceMapGenerator$2$1)) {
 	                    return prev.toString();
 	                } else if (this.isMap(prev)) {
 	                    return JSON.stringify(prev);
@@ -2692,7 +2692,7 @@
 	    var Input$4$1 = /*#__PURE__*/ function() {
 	        function Input(css, opts) {
 	            if (opts === void 0) opts = {};
-	            if (css === null || typeof css === "undefined" || (typeof css === "undefined" ? "undefined" : _type_of(css)) === "object" && !css.toString) {
+	            if (css === null || typeof css === "undefined" || (typeof css === "undefined" ? "undefined" : _type_of$1(css)) === "object" && !css.toString) {
 	                throw new Error("PostCSS received " + css + " instead of CSS string");
 	            }
 	            this.css = css.toString();
@@ -2726,7 +2726,7 @@
 	        _proto.error = function error(message, line, column, opts) {
 	            if (opts === void 0) opts = {};
 	            var result2, endLine, endColumn;
-	            if (line && (typeof line === "undefined" ? "undefined" : _type_of(line)) === "object") {
+	            if (line && (typeof line === "undefined" ? "undefined" : _type_of$1(line)) === "object") {
 	                var start = line;
 	                var end = column;
 	                if (typeof start.offset === "number") {
@@ -2938,7 +2938,7 @@
 	            this.css += eol + "/*# sourceMappingURL=" + content + " */";
 	        };
 	        _proto.applyPrevMaps = function applyPrevMaps() {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(this.previous()), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.previous()), _step; !(_step = _iterator()).done;){
 	                var prev = _step.value;
 	                var from = this.toUrl(this.path(prev.file));
 	                var root2 = prev.root || dirname$2(prev.file);
@@ -3271,7 +3271,7 @@
 	    function markDirtyUp$1(node2) {
 	        node2[isClean$1$1] = false;
 	        if (node2.proxyOf.nodes) {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(node2.proxyOf.nodes), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(node2.proxyOf.nodes), _step; !(_step = _iterator()).done;){
 	                var i2 = _step.value;
 	                markDirtyUp$1(i2);
 	            }
@@ -3287,10 +3287,10 @@
 	            for(var _len = arguments.length, children = new Array(_len), _key = 0; _key < _len; _key++){
 	                children[_key] = arguments[_key];
 	            }
-	            for(var _iterator = _create_for_of_iterator_helper_loose(children), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(children), _step; !(_step = _iterator()).done;){
 	                var child = _step.value;
 	                var nodes = this.normalize(child, this.last);
-	                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
+	                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
 	                    var node2 = _step1.value;
 	                    this.proxyOf.nodes.push(node2);
 	                }
@@ -3301,7 +3301,7 @@
 	        _proto.cleanRaws = function cleanRaws(keepBetween) {
 	            Node$1$1.prototype.cleanRaws.call(this, keepBetween);
 	            if (this.nodes) {
-	                for(var _iterator = _create_for_of_iterator_helper_loose(this.nodes), _step; !(_step = _iterator()).done;){
+	                for(var _iterator = _create_for_of_iterator_helper_loose$1(this.nodes), _step; !(_step = _iterator()).done;){
 	                    var node2 = _step.value;
 	                    node2.cleanRaws(keepBetween);
 	                }
@@ -3398,7 +3398,7 @@
 	            var existIndex = this.index(exist);
 	            var nodes = this.normalize(add, this.proxyOf.nodes[existIndex]).reverse();
 	            existIndex = this.index(exist);
-	            for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                var node2 = _step.value;
 	                this.proxyOf.nodes.splice(existIndex + 1, 0, node2);
 	            }
@@ -3417,7 +3417,7 @@
 	            var type = existIndex === 0 ? "prepend" : false;
 	            var nodes = this.normalize(add, this.proxyOf.nodes[existIndex], type).reverse();
 	            existIndex = this.index(exist);
-	            for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                var node2 = _step.value;
 	                this.proxyOf.nodes.splice(existIndex, 0, node2);
 	            }
@@ -3439,13 +3439,13 @@
 	                nodes = [];
 	            } else if (Array.isArray(nodes)) {
 	                nodes = nodes.slice(0);
-	                for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	                for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                    var i2 = _step.value;
 	                    if (i2.parent) i2.parent.removeChild(i2, "ignore");
 	                }
 	            } else if (nodes.type === "root" && this.type !== "document") {
 	                nodes = nodes.nodes.slice(0);
-	                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
+	                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
 	                    var i21 = _step1.value;
 	                    if (i21.parent) i21.parent.removeChild(i21, "ignore");
 	                }
@@ -3497,10 +3497,10 @@
 	                children[_key] = arguments[_key];
 	            }
 	            children = children.reverse();
-	            for(var _iterator = _create_for_of_iterator_helper_loose(children), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(children), _step; !(_step = _iterator()).done;){
 	                var child = _step.value;
 	                var nodes = this.normalize(child, this.first, "prepend").reverse();
-	                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
+	                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
 	                    var node2 = _step1.value;
 	                    this.proxyOf.nodes.unshift(node2);
 	                }
@@ -3517,7 +3517,7 @@
 	            return this;
 	        };
 	        _proto.removeAll = function removeAll() {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(this.proxyOf.nodes), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.proxyOf.nodes), _step; !(_step = _iterator()).done;){
 	                var node2 = _step.value;
 	                node2.parent = void 0;
 	            }
@@ -3578,7 +3578,7 @@
 	                    }
 	                });
 	            }
-	            if (_instanceof(name, RegExp)) {
+	            if (_instanceof$1(name, RegExp)) {
 	                return this.walk(function(child, i2) {
 	                    if (child.type === "atrule" && name.test(child.name)) {
 	                        return callback(child, i2);
@@ -3607,7 +3607,7 @@
 	                    }
 	                });
 	            }
-	            if (_instanceof(prop, RegExp)) {
+	            if (_instanceof$1(prop, RegExp)) {
 	                return this.walk(function(child, i2) {
 	                    if (child.type === "decl" && prop.test(child.prop)) {
 	                        return callback(child, i2);
@@ -3629,7 +3629,7 @@
 	                    }
 	                });
 	            }
-	            if (_instanceof(selector, RegExp)) {
+	            if (_instanceof$1(selector, RegExp)) {
 	                return this.walk(function(child, i2) {
 	                    if (child.type === "rule" && selector.test(child.selector)) {
 	                        return callback(child, i2);
@@ -4124,7 +4124,7 @@
 	                        delete sample.raws.before;
 	                    }
 	                } else if (this.first !== sample) {
-	                    for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	                    for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                        var node2 = _step.value;
 	                        node2.raws.before = sample.raws.before;
 	                    }
@@ -4177,7 +4177,7 @@
 	            var inQuote = false;
 	            var prevQuote = "";
 	            var escape = false;
-	            for(var _iterator = _create_for_of_iterator_helper_loose(string), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(string), _step; !(_step = _iterator()).done;){
 	                var letter = _step.value;
 	                if (escape) {
 	                    escape = false;
@@ -4370,7 +4370,7 @@
 	        _proto.colon = function colon(tokens) {
 	            var brackets = 0;
 	            var token, type, prev;
-	            for(var _iterator = _create_for_of_iterator_helper_loose(tokens.entries()), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(tokens.entries()), _step; !(_step = _iterator()).done;){
 	                var _step_value = _step.value, i2 = _step_value[0], element = _step_value[1];
 	                token = element;
 	                type = token[0];
@@ -4849,7 +4849,7 @@
 	    };
 	    var CHILDREN$1 = 0;
 	    function isPromise$1(obj) {
-	        return (typeof obj === "undefined" ? "undefined" : _type_of(obj)) === "object" && typeof obj.then === "function";
+	        return (typeof obj === "undefined" ? "undefined" : _type_of$1(obj)) === "object" && typeof obj.then === "function";
 	    }
 	    function getEvents$1(node2) {
 	        var key = false;
@@ -4927,9 +4927,9 @@
 	            this.stringified = false;
 	            this.processed = false;
 	            var root2;
-	            if ((typeof css === "undefined" ? "undefined" : _type_of(css)) === "object" && css !== null && (css.type === "root" || css.type === "document")) {
+	            if ((typeof css === "undefined" ? "undefined" : _type_of$1(css)) === "object" && css !== null && (css.type === "root" || css.type === "document")) {
 	                root2 = cleanMarks$1(css);
-	            } else if (_instanceof(css, LazyResult) || _instanceof(css, Result$2$1)) {
+	            } else if (_instanceof$1(css, LazyResult) || _instanceof$1(css, Result$2$1)) {
 	                root2 = cleanMarks$1(css.root);
 	                if (css.map) {
 	                    if (typeof opts.map === "undefined") opts.map = {};
@@ -4957,7 +4957,7 @@
 	                result: this.result
 	            });
 	            this.plugins = this.processor.plugins.map(function(plugin22) {
-	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object" && plugin22.prepare) {
+	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object" && plugin22.prepare) {
 	                    return _extends({}, plugin22, plugin22.prepare(_this.result));
 	                } else {
 	                    return plugin22;
@@ -5017,15 +5017,15 @@
 	                    cb
 	                ]);
 	            };
-	            for(var _iterator = _create_for_of_iterator_helper_loose(this.plugins), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.plugins), _step; !(_step = _iterator()).done;){
 	                var plugin22 = _step.value;
-	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object") {
+	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object") {
 	                    for(var event in plugin22){
 	                        if (!PLUGIN_PROPS$1[event] && /^[A-Z]/.test(event)) {
 	                            throw new Error("Unknown event " + event + " in " + plugin22.postcssPlugin + ". Try to update PostCSS (" + this.processor.version + " now).");
 	                        }
 	                        if (!NOT_VISITORS$1[event]) {
-	                            if (_type_of(plugin22[event]) === "object") {
+	                            if (_type_of$1(plugin22[event]) === "object") {
 	                                for(var filter in plugin22[event]){
 	                                    if (filter === "*") {
 	                                        add(plugin22, event, plugin22[event][filter]);
@@ -5210,7 +5210,7 @@
 	                                    }
 	                                });
 	                            };
-	                            _iterator = _create_for_of_iterator_helper_loose(_this.listeners.OnceExit);
+	                            _iterator = _create_for_of_iterator_helper_loose$1(_this.listeners.OnceExit);
 	                            _state.label = 15;
 	                        case 15:
 	                            if (!!(_step = _iterator()).done) return [
@@ -5243,7 +5243,7 @@
 	            var _this = this;
 	            this.result.lastPlugin = plugin22;
 	            try {
-	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object" && plugin22.Once) {
+	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object" && plugin22.Once) {
 	                    if (this.result.root.type === "document") {
 	                        var roots = this.result.root.nodes.map(function(root2) {
 	                            return plugin22.Once(root2, _this.helpers);
@@ -5284,7 +5284,7 @@
 	            if (this.processing) {
 	                throw this.getAsyncError();
 	            }
-	            for(var _iterator = _create_for_of_iterator_helper_loose(this.plugins), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.plugins), _step; !(_step = _iterator()).done;){
 	                var plugin22 = _step.value;
 	                var promise = this.runOnRoot(plugin22);
 	                if (isPromise$1(promise)) {
@@ -5300,7 +5300,7 @@
 	                }
 	                if (this.listeners.OnceExit) {
 	                    if (root2.type === "document") {
-	                        for(var _iterator1 = _create_for_of_iterator_helper_loose(root2.nodes), _step1; !(_step1 = _iterator1()).done;){
+	                        for(var _iterator1 = _create_for_of_iterator_helper_loose$1(root2.nodes), _step1; !(_step1 = _iterator1()).done;){
 	                            var subRoot = _step1.value;
 	                            this.visitSync(this.listeners.OnceExit, subRoot);
 	                        }
@@ -5323,7 +5323,7 @@
 	            return this.css;
 	        };
 	        _proto.visitSync = function visitSync(visitors, node2) {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(visitors), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(visitors), _step; !(_step = _iterator()).done;){
 	                var _step_value = _step.value, plugin22 = _step_value[0], visitor = _step_value[1];
 	                this.result.lastPlugin = plugin22;
 	                var promise = void 0;
@@ -5396,7 +5396,7 @@
 	            var _this = this;
 	            node2[isClean$3] = true;
 	            var events = getEvents$1(node2);
-	            for(var _iterator = _create_for_of_iterator_helper_loose(events), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(events), _step; !(_step = _iterator()).done;){
 	                var event = _step.value;
 	                if (event === CHILDREN$1) {
 	                    if (node2.nodes) {
@@ -5622,20 +5622,20 @@
 	        var _proto = Processor.prototype;
 	        _proto.normalize = function normalize(plugins) {
 	            var normalized = [];
-	            for(var _iterator = _create_for_of_iterator_helper_loose(plugins), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(plugins), _step; !(_step = _iterator()).done;){
 	                var i2 = _step.value;
 	                if (i2.postcss === true) {
 	                    i2 = i2();
 	                } else if (i2.postcss) {
 	                    i2 = i2.postcss;
 	                }
-	                if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && Array.isArray(i2.plugins)) {
+	                if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && Array.isArray(i2.plugins)) {
 	                    normalized = normalized.concat(i2.plugins);
-	                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && i2.postcssPlugin) {
+	                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && i2.postcssPlugin) {
 	                    normalized.push(i2);
 	                } else if (typeof i2 === "function") {
 	                    normalized.push(i2);
-	                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && (i2.parse || i2.stringify)) {
+	                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && (i2.parse || i2.stringify)) {
 	                    if (process.env.NODE_ENV !== "production") {
 	                        throw new Error("PostCSS syntaxes cannot be used as plugins. Instead, please use one of the syntax/parser/stringifier options as outlined in your PostCSS runner documentation.");
 	                    }
@@ -5681,7 +5681,7 @@
 	        ]);
 	        if (ownInputs) {
 	            inputs = [];
-	            for(var _iterator = _create_for_of_iterator_helper_loose(ownInputs), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(ownInputs), _step; !(_step = _iterator()).done;){
 	                var input2 = _step.value;
 	                var inputHydrated = _extends({}, input2, {
 	                    __proto__: Input$1$1.prototype
@@ -5856,7 +5856,7 @@
 	        }) : obj[key] = value;
 	    };
 	    var __publicField2 = function(obj, key, value) {
-	        return __defNormalProp2(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
+	        return __defNormalProp2(obj, (typeof key === "undefined" ? "undefined" : _type_of$1(key)) !== "symbol" ? key + "" : key, value);
 	    };
 	    function getDefaultExportFromCjs(x2) {
 	        return x2 && x2.__esModule && Object.prototype.hasOwnProperty.call(x2, "default") ? x2["default"] : x2;
@@ -5866,7 +5866,7 @@
 	        var f2 = n2.default;
 	        if (typeof f2 == "function") {
 	            var a2 = function a22() {
-	                if (_instanceof(this, a22)) {
+	                if (_instanceof$1(this, a22)) {
 	                    return Reflect.construct(f2, arguments, this.constructor);
 	                }
 	                return f2.apply(this, arguments);
@@ -6342,7 +6342,7 @@
 	            }
 	            if (i2 === "proxyCache") continue;
 	            var value = obj[i2];
-	            var type = typeof value === "undefined" ? "undefined" : _type_of(value);
+	            var type = typeof value === "undefined" ? "undefined" : _type_of$1(value);
 	            if (i2 === "parent" && type === "object") {
 	                if (parent) cloned[i2] = parent;
 	            } else if (i2 === "source") {
@@ -6367,7 +6367,7 @@
 	            for(var name in defaults){
 	                if (name === "nodes") {
 	                    this.nodes = [];
-	                    for(var _iterator = _create_for_of_iterator_helper_loose(defaults[name]), _step; !(_step = _iterator()).done;){
+	                    for(var _iterator = _create_for_of_iterator_helper_loose$1(defaults[name]), _step; !(_step = _iterator()).done;){
 	                        var node2 = _step.value;
 	                        if (typeof node2.clone === "function") {
 	                            this.append(node2.clone());
@@ -6581,7 +6581,7 @@
 	            if (this.parent) {
 	                var bookmark = this;
 	                var foundSelf = false;
-	                for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	                for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                    var node2 = _step.value;
 	                    if (node2 === this) {
 	                        foundSelf = true;
@@ -6618,13 +6618,13 @@
 	                var value = this[name];
 	                if (Array.isArray(value)) {
 	                    fixed[name] = value.map(function(i2) {
-	                        if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && i2.toJSON) {
+	                        if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && i2.toJSON) {
 	                            return i2.toJSON(null, inputs);
 	                        } else {
 	                            return i2;
 	                        }
 	                    });
-	                } else if ((typeof value === "undefined" ? "undefined" : _type_of(value)) === "object" && value.toJSON) {
+	                } else if ((typeof value === "undefined" ? "undefined" : _type_of$1(value)) === "object" && value.toJSON) {
 	                    fixed[name] = value.toJSON(null, inputs);
 	                } else if (name === "source") {
 	                    var inputId = inputs.get(value.input);
@@ -6769,7 +6769,7 @@
 	            return sourceMapString.replace(/^\/\*\s*# sourceMappingURL=/, "").trim();
 	        };
 	        _proto.isMap = function isMap(map) {
-	            if ((typeof map === "undefined" ? "undefined" : _type_of(map)) !== "object") return false;
+	            if ((typeof map === "undefined" ? "undefined" : _type_of$1(map)) !== "object") return false;
 	            return typeof map.mappings === "string" || typeof map._mappings === "string" || Array.isArray(map.sections);
 	        };
 	        _proto.loadAnnotation = function loadAnnotation(css) {
@@ -6802,9 +6802,9 @@
 	                        }
 	                        return map;
 	                    }
-	                } else if (_instanceof(prev, SourceMapConsumer$2)) {
+	                } else if (_instanceof$1(prev, SourceMapConsumer$2)) {
 	                    return SourceMapGenerator$2.fromSourceMap(prev).toString();
-	                } else if (_instanceof(prev, SourceMapGenerator$2)) {
+	                } else if (_instanceof$1(prev, SourceMapGenerator$2)) {
 	                    return prev.toString();
 	                } else if (this.isMap(prev)) {
 	                    return JSON.stringify(prev);
@@ -6843,7 +6843,7 @@
 	    var Input$4 = /*#__PURE__*/ function() {
 	        function Input2(css, opts) {
 	            if (opts === void 0) opts = {};
-	            if (css === null || typeof css === "undefined" || (typeof css === "undefined" ? "undefined" : _type_of(css)) === "object" && !css.toString) {
+	            if (css === null || typeof css === "undefined" || (typeof css === "undefined" ? "undefined" : _type_of$1(css)) === "object" && !css.toString) {
 	                throw new Error("PostCSS received " + css + " instead of CSS string");
 	            }
 	            this.css = css.toString();
@@ -6877,7 +6877,7 @@
 	        _proto.error = function error(message, line, column, opts) {
 	            if (opts === void 0) opts = {};
 	            var result2, endLine, endColumn;
-	            if (line && (typeof line === "undefined" ? "undefined" : _type_of(line)) === "object") {
+	            if (line && (typeof line === "undefined" ? "undefined" : _type_of$1(line)) === "object") {
 	                var start = line;
 	                var end = column;
 	                if (typeof start.offset === "number") {
@@ -7089,7 +7089,7 @@
 	            this.css += eol + "/*# sourceMappingURL=" + content + " */";
 	        };
 	        _proto.applyPrevMaps = function applyPrevMaps() {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(this.previous()), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.previous()), _step; !(_step = _iterator()).done;){
 	                var prev = _step.value;
 	                var from = this.toUrl(this.path(prev.file));
 	                var root2 = prev.root || dirname(prev.file);
@@ -7422,7 +7422,7 @@
 	    function markDirtyUp(node2) {
 	        node2[isClean$1] = false;
 	        if (node2.proxyOf.nodes) {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(node2.proxyOf.nodes), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(node2.proxyOf.nodes), _step; !(_step = _iterator()).done;){
 	                var i2 = _step.value;
 	                markDirtyUp(i2);
 	            }
@@ -7438,10 +7438,10 @@
 	            for(var _len = arguments.length, children = new Array(_len), _key = 0; _key < _len; _key++){
 	                children[_key] = arguments[_key];
 	            }
-	            for(var _iterator = _create_for_of_iterator_helper_loose(children), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(children), _step; !(_step = _iterator()).done;){
 	                var child = _step.value;
 	                var nodes = this.normalize(child, this.last);
-	                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
+	                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
 	                    var node2 = _step1.value;
 	                    this.proxyOf.nodes.push(node2);
 	                }
@@ -7452,7 +7452,7 @@
 	        _proto.cleanRaws = function cleanRaws(keepBetween) {
 	            Node$1.prototype.cleanRaws.call(this, keepBetween);
 	            if (this.nodes) {
-	                for(var _iterator = _create_for_of_iterator_helper_loose(this.nodes), _step; !(_step = _iterator()).done;){
+	                for(var _iterator = _create_for_of_iterator_helper_loose$1(this.nodes), _step; !(_step = _iterator()).done;){
 	                    var node2 = _step.value;
 	                    node2.cleanRaws(keepBetween);
 	                }
@@ -7549,7 +7549,7 @@
 	            var existIndex = this.index(exist);
 	            var nodes = this.normalize(add, this.proxyOf.nodes[existIndex]).reverse();
 	            existIndex = this.index(exist);
-	            for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                var node2 = _step.value;
 	                this.proxyOf.nodes.splice(existIndex + 1, 0, node2);
 	            }
@@ -7568,7 +7568,7 @@
 	            var type = existIndex === 0 ? "prepend" : false;
 	            var nodes = this.normalize(add, this.proxyOf.nodes[existIndex], type).reverse();
 	            existIndex = this.index(exist);
-	            for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                var node2 = _step.value;
 	                this.proxyOf.nodes.splice(existIndex, 0, node2);
 	            }
@@ -7590,13 +7590,13 @@
 	                nodes = [];
 	            } else if (Array.isArray(nodes)) {
 	                nodes = nodes.slice(0);
-	                for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	                for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                    var i2 = _step.value;
 	                    if (i2.parent) i2.parent.removeChild(i2, "ignore");
 	                }
 	            } else if (nodes.type === "root" && this.type !== "document") {
 	                nodes = nodes.nodes.slice(0);
-	                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
+	                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
 	                    var i21 = _step1.value;
 	                    if (i21.parent) i21.parent.removeChild(i21, "ignore");
 	                }
@@ -7648,10 +7648,10 @@
 	                children[_key] = arguments[_key];
 	            }
 	            children = children.reverse();
-	            for(var _iterator = _create_for_of_iterator_helper_loose(children), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(children), _step; !(_step = _iterator()).done;){
 	                var child = _step.value;
 	                var nodes = this.normalize(child, this.first, "prepend").reverse();
-	                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
+	                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
 	                    var node2 = _step1.value;
 	                    this.proxyOf.nodes.unshift(node2);
 	                }
@@ -7668,7 +7668,7 @@
 	            return this;
 	        };
 	        _proto.removeAll = function removeAll() {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(this.proxyOf.nodes), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.proxyOf.nodes), _step; !(_step = _iterator()).done;){
 	                var node2 = _step.value;
 	                node2.parent = void 0;
 	            }
@@ -7729,7 +7729,7 @@
 	                    }
 	                });
 	            }
-	            if (_instanceof(name, RegExp)) {
+	            if (_instanceof$1(name, RegExp)) {
 	                return this.walk(function(child, i2) {
 	                    if (child.type === "atrule" && name.test(child.name)) {
 	                        return callback(child, i2);
@@ -7758,7 +7758,7 @@
 	                    }
 	                });
 	            }
-	            if (_instanceof(prop, RegExp)) {
+	            if (_instanceof$1(prop, RegExp)) {
 	                return this.walk(function(child, i2) {
 	                    if (child.type === "decl" && prop.test(child.prop)) {
 	                        return callback(child, i2);
@@ -7780,7 +7780,7 @@
 	                    }
 	                });
 	            }
-	            if (_instanceof(selector, RegExp)) {
+	            if (_instanceof$1(selector, RegExp)) {
 	                return this.walk(function(child, i2) {
 	                    if (child.type === "rule" && selector.test(child.selector)) {
 	                        return callback(child, i2);
@@ -8275,7 +8275,7 @@
 	                        delete sample.raws.before;
 	                    }
 	                } else if (this.first !== sample) {
-	                    for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
+	                    for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
 	                        var node2 = _step.value;
 	                        node2.raws.before = sample.raws.before;
 	                    }
@@ -8328,7 +8328,7 @@
 	            var inQuote = false;
 	            var prevQuote = "";
 	            var escape = false;
-	            for(var _iterator = _create_for_of_iterator_helper_loose(string), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(string), _step; !(_step = _iterator()).done;){
 	                var letter = _step.value;
 	                if (escape) {
 	                    escape = false;
@@ -8521,7 +8521,7 @@
 	        _proto.colon = function colon(tokens) {
 	            var brackets = 0;
 	            var token, type, prev;
-	            for(var _iterator = _create_for_of_iterator_helper_loose(tokens.entries()), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(tokens.entries()), _step; !(_step = _iterator()).done;){
 	                var _step_value = _step.value, i2 = _step_value[0], element = _step_value[1];
 	                token = element;
 	                type = token[0];
@@ -9000,7 +9000,7 @@
 	    };
 	    var CHILDREN = 0;
 	    function isPromise(obj) {
-	        return (typeof obj === "undefined" ? "undefined" : _type_of(obj)) === "object" && typeof obj.then === "function";
+	        return (typeof obj === "undefined" ? "undefined" : _type_of$1(obj)) === "object" && typeof obj.then === "function";
 	    }
 	    function getEvents(node2) {
 	        var key = false;
@@ -9078,9 +9078,9 @@
 	            this.stringified = false;
 	            this.processed = false;
 	            var root2;
-	            if ((typeof css === "undefined" ? "undefined" : _type_of(css)) === "object" && css !== null && (css.type === "root" || css.type === "document")) {
+	            if ((typeof css === "undefined" ? "undefined" : _type_of$1(css)) === "object" && css !== null && (css.type === "root" || css.type === "document")) {
 	                root2 = cleanMarks(css);
-	            } else if (_instanceof(css, LazyResult2) || _instanceof(css, Result$2)) {
+	            } else if (_instanceof$1(css, LazyResult2) || _instanceof$1(css, Result$2)) {
 	                root2 = cleanMarks(css.root);
 	                if (css.map) {
 	                    if (typeof opts.map === "undefined") opts.map = {};
@@ -9108,7 +9108,7 @@
 	                result: this.result
 	            });
 	            this.plugins = this.processor.plugins.map(function(plugin22) {
-	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object" && plugin22.prepare) {
+	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object" && plugin22.prepare) {
 	                    return _extends({}, plugin22, plugin22.prepare(_this.result));
 	                } else {
 	                    return plugin22;
@@ -9168,15 +9168,15 @@
 	                    cb
 	                ]);
 	            };
-	            for(var _iterator = _create_for_of_iterator_helper_loose(this.plugins), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.plugins), _step; !(_step = _iterator()).done;){
 	                var plugin22 = _step.value;
-	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object") {
+	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object") {
 	                    for(var event in plugin22){
 	                        if (!PLUGIN_PROPS[event] && /^[A-Z]/.test(event)) {
 	                            throw new Error("Unknown event " + event + " in " + plugin22.postcssPlugin + ". Try to update PostCSS (" + this.processor.version + " now).");
 	                        }
 	                        if (!NOT_VISITORS[event]) {
-	                            if (_type_of(plugin22[event]) === "object") {
+	                            if (_type_of$1(plugin22[event]) === "object") {
 	                                for(var filter in plugin22[event]){
 	                                    if (filter === "*") {
 	                                        add(plugin22, event, plugin22[event][filter]);
@@ -9361,7 +9361,7 @@
 	                                    }
 	                                });
 	                            };
-	                            _iterator = _create_for_of_iterator_helper_loose(_this.listeners.OnceExit);
+	                            _iterator = _create_for_of_iterator_helper_loose$1(_this.listeners.OnceExit);
 	                            _state.label = 15;
 	                        case 15:
 	                            if (!!(_step = _iterator()).done) return [
@@ -9394,7 +9394,7 @@
 	            var _this = this;
 	            this.result.lastPlugin = plugin22;
 	            try {
-	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object" && plugin22.Once) {
+	                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object" && plugin22.Once) {
 	                    if (this.result.root.type === "document") {
 	                        var roots = this.result.root.nodes.map(function(root2) {
 	                            return plugin22.Once(root2, _this.helpers);
@@ -9435,7 +9435,7 @@
 	            if (this.processing) {
 	                throw this.getAsyncError();
 	            }
-	            for(var _iterator = _create_for_of_iterator_helper_loose(this.plugins), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.plugins), _step; !(_step = _iterator()).done;){
 	                var plugin22 = _step.value;
 	                var promise = this.runOnRoot(plugin22);
 	                if (isPromise(promise)) {
@@ -9451,7 +9451,7 @@
 	                }
 	                if (this.listeners.OnceExit) {
 	                    if (root2.type === "document") {
-	                        for(var _iterator1 = _create_for_of_iterator_helper_loose(root2.nodes), _step1; !(_step1 = _iterator1()).done;){
+	                        for(var _iterator1 = _create_for_of_iterator_helper_loose$1(root2.nodes), _step1; !(_step1 = _iterator1()).done;){
 	                            var subRoot = _step1.value;
 	                            this.visitSync(this.listeners.OnceExit, subRoot);
 	                        }
@@ -9474,7 +9474,7 @@
 	            return this.css;
 	        };
 	        _proto.visitSync = function visitSync(visitors, node2) {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(visitors), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(visitors), _step; !(_step = _iterator()).done;){
 	                var _step_value = _step.value, plugin22 = _step_value[0], visitor = _step_value[1];
 	                this.result.lastPlugin = plugin22;
 	                var promise = void 0;
@@ -9547,7 +9547,7 @@
 	            var _this = this;
 	            node2[isClean] = true;
 	            var events = getEvents(node2);
-	            for(var _iterator = _create_for_of_iterator_helper_loose(events), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(events), _step; !(_step = _iterator()).done;){
 	                var event = _step.value;
 	                if (event === CHILDREN) {
 	                    if (node2.nodes) {
@@ -9773,20 +9773,20 @@
 	        var _proto = Processor2.prototype;
 	        _proto.normalize = function normalize(plugins) {
 	            var normalized = [];
-	            for(var _iterator = _create_for_of_iterator_helper_loose(plugins), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(plugins), _step; !(_step = _iterator()).done;){
 	                var i2 = _step.value;
 	                if (i2.postcss === true) {
 	                    i2 = i2();
 	                } else if (i2.postcss) {
 	                    i2 = i2.postcss;
 	                }
-	                if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && Array.isArray(i2.plugins)) {
+	                if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && Array.isArray(i2.plugins)) {
 	                    normalized = normalized.concat(i2.plugins);
-	                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && i2.postcssPlugin) {
+	                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && i2.postcssPlugin) {
 	                    normalized.push(i2);
 	                } else if (typeof i2 === "function") {
 	                    normalized.push(i2);
-	                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && (i2.parse || i2.stringify)) {
+	                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && (i2.parse || i2.stringify)) {
 	                    if (process.env.NODE_ENV !== "production") {
 	                        throw new Error("PostCSS syntaxes cannot be used as plugins. Instead, please use one of the syntax/parser/stringifier options as outlined in your PostCSS runner documentation.");
 	                    }
@@ -9832,7 +9832,7 @@
 	        ]);
 	        if (ownInputs) {
 	            inputs = [];
-	            for(var _iterator = _create_for_of_iterator_helper_loose(ownInputs), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(ownInputs), _step; !(_step = _iterator()).done;){
 	                var input2 = _step.value;
 	                var inputHydrated = _extends({}, input2, {
 	                    __proto__: Input$1.prototype
@@ -9880,7 +9880,7 @@
 	    var LazyResult22 = lazyResult;
 	    var Container22 = container;
 	    var Processor22 = processor;
-	    var stringify = stringify_1;
+	    var stringify$6 = stringify_1;
 	    var fromJSON = fromJSON_1;
 	    var Document222 = document$1$2;
 	    var Warning22 = warning;
@@ -9934,7 +9934,7 @@
 	        };
 	        return creator;
 	    };
-	    postcss.stringify = stringify;
+	    postcss.stringify = stringify$6;
 	    postcss.parse = parse;
 	    postcss.fromJSON = fromJSON;
 	    postcss.list = list;
@@ -10017,7 +10017,7 @@
 	        }
 	        var _proto = BaseRRNode.prototype;
 	        _proto.contains = function contains(node2) {
-	            if (!_instanceof(node2, BaseRRNode)) return false;
+	            if (!_instanceof$1(node2, BaseRRNode)) return false;
 	            else if (node2.ownerDocument !== this.ownerDocument) return false;
 	            else if (node2 === this) return true;
 	            while(node2.parentNode){
@@ -10184,7 +10184,7 @@
 	    function mutationObserverCtor() {
 	        return getUntaintedPrototype("MutationObserver").constructor;
 	    }
-	    function patch(source, name, replacement) {
+	    function patch$2(source, name, replacement) {
 	        try {
 	            if (!(name in source)) {
 	                return function() {};
@@ -10221,7 +10221,7 @@
 	        querySelector: querySelector,
 	        querySelectorAll: querySelectorAll,
 	        mutationObserver: mutationObserverCtor,
-	        patch: patch
+	        patch: patch$2
 	    };
 	    function on(type, fn, target) {
 	        if (target === void 0) target = document;
@@ -10409,16 +10409,16 @@
 	    }
 	    function hasShadowRoot(n2) {
 	        if (!n2) return false;
-	        if (_instanceof(n2, BaseRRNode) && "shadowRoot" in n2) {
+	        if (_instanceof$1(n2, BaseRRNode) && "shadowRoot" in n2) {
 	            return Boolean(n2.shadowRoot);
 	        }
 	        return Boolean(index.shadowRoot(n2));
 	    }
 	    var StyleSheetMirror = /*#__PURE__*/ function() {
 	        function StyleSheetMirror() {
-	            __publicField(this, "id", 1);
-	            __publicField(this, "styleIDMap", /* @__PURE__ */ new WeakMap());
-	            __publicField(this, "idStyleMap", /* @__PURE__ */ new Map());
+	            __publicField$1(this, "id", 1);
+	            __publicField$1(this, "styleIDMap", /* @__PURE__ */ new WeakMap());
+	            __publicField$1(this, "idStyleMap", /* @__PURE__ */ new Map());
 	        }
 	        var _proto = StyleSheetMirror.prototype;
 	        _proto.getId = function getId(stylesheet) {
@@ -10554,9 +10554,9 @@
 	    }
 	    var DoubleLinkedList = /*#__PURE__*/ function() {
 	        function DoubleLinkedList() {
-	            __publicField(this, "length", 0);
-	            __publicField(this, "head", null);
-	            __publicField(this, "tail", null);
+	            __publicField$1(this, "length", 0);
+	            __publicField$1(this, "head", null);
+	            __publicField$1(this, "tail", null);
 	        }
 	        var _proto = DoubleLinkedList.prototype;
 	        _proto.get = function get(position) {
@@ -10637,14 +10637,14 @@
 	    var MutationBuffer = /*#__PURE__*/ function() {
 	        function MutationBuffer() {
 	            var _this = this;
-	            __publicField(this, "frozen", false);
-	            __publicField(this, "locked", false);
-	            __publicField(this, "texts", []);
-	            __publicField(this, "attributes", []);
-	            __publicField(this, "attributeMap", /* @__PURE__ */ new WeakMap());
-	            __publicField(this, "removes", []);
-	            __publicField(this, "mapRemoves", []);
-	            __publicField(this, "movedMap", {});
+	            __publicField$1(this, "frozen", false);
+	            __publicField$1(this, "locked", false);
+	            __publicField$1(this, "texts", []);
+	            __publicField$1(this, "attributes", []);
+	            __publicField$1(this, "attributeMap", /* @__PURE__ */ new WeakMap());
+	            __publicField$1(this, "removes", []);
+	            __publicField$1(this, "mapRemoves", []);
+	            __publicField$1(this, "movedMap", {});
 	            /**
 	         * the browser MutationObserver emits multiple mutations after
 	         * a delay for performance reasons, making tracing added nodes hard
@@ -10661,37 +10661,37 @@
 	         * collect added nodes from the Set which have no duplicate copy. But
 	         * this also causes newly added nodes will not be serialized with id ASAP,
 	         * which means all the id related calculation should be lazy too.
-	         */ __publicField(this, "addedSet", /* @__PURE__ */ new Set());
-	            __publicField(this, "movedSet", /* @__PURE__ */ new Set());
-	            __publicField(this, "droppedSet", /* @__PURE__ */ new Set());
-	            __publicField(this, "removesSubTreeCache", /* @__PURE__ */ new Set());
-	            __publicField(this, "mutationCb");
-	            __publicField(this, "blockClass");
-	            __publicField(this, "blockSelector");
-	            __publicField(this, "maskTextClass");
-	            __publicField(this, "maskTextSelector");
-	            __publicField(this, "inlineStylesheet");
-	            __publicField(this, "maskInputOptions");
-	            __publicField(this, "maskTextFn");
-	            __publicField(this, "maskInputFn");
-	            __publicField(this, "keepIframeSrcFn");
-	            __publicField(this, "recordCanvas");
-	            __publicField(this, "inlineImages");
-	            __publicField(this, "slimDOMOptions");
-	            __publicField(this, "dataURLOptions");
-	            __publicField(this, "doc");
-	            __publicField(this, "mirror");
-	            __publicField(this, "iframeManager");
-	            __publicField(this, "stylesheetManager");
-	            __publicField(this, "shadowDomManager");
-	            __publicField(this, "canvasManager");
-	            __publicField(this, "processedNodeManager");
-	            __publicField(this, "unattachedDoc");
-	            __publicField(this, "processMutations", function(mutations) {
+	         */ __publicField$1(this, "addedSet", /* @__PURE__ */ new Set());
+	            __publicField$1(this, "movedSet", /* @__PURE__ */ new Set());
+	            __publicField$1(this, "droppedSet", /* @__PURE__ */ new Set());
+	            __publicField$1(this, "removesSubTreeCache", /* @__PURE__ */ new Set());
+	            __publicField$1(this, "mutationCb");
+	            __publicField$1(this, "blockClass");
+	            __publicField$1(this, "blockSelector");
+	            __publicField$1(this, "maskTextClass");
+	            __publicField$1(this, "maskTextSelector");
+	            __publicField$1(this, "inlineStylesheet");
+	            __publicField$1(this, "maskInputOptions");
+	            __publicField$1(this, "maskTextFn");
+	            __publicField$1(this, "maskInputFn");
+	            __publicField$1(this, "keepIframeSrcFn");
+	            __publicField$1(this, "recordCanvas");
+	            __publicField$1(this, "inlineImages");
+	            __publicField$1(this, "slimDOMOptions");
+	            __publicField$1(this, "dataURLOptions");
+	            __publicField$1(this, "doc");
+	            __publicField$1(this, "mirror");
+	            __publicField$1(this, "iframeManager");
+	            __publicField$1(this, "stylesheetManager");
+	            __publicField$1(this, "shadowDomManager");
+	            __publicField$1(this, "canvasManager");
+	            __publicField$1(this, "processedNodeManager");
+	            __publicField$1(this, "unattachedDoc");
+	            __publicField$1(this, "processMutations", function(mutations) {
 	                mutations.forEach(_this.processMutation);
 	                _this.emit();
 	            });
-	            __publicField(this, "emit", function() {
+	            __publicField$1(this, "emit", function() {
 	                if (_this.frozen || _this.locked) {
 	                    return;
 	                }
@@ -10775,14 +10775,14 @@
 	                while(_this.mapRemoves.length){
 	                    _this.mirror.removeNodeFromMap(_this.mapRemoves.shift());
 	                }
-	                for(var _iterator = _create_for_of_iterator_helper_loose(_this.movedSet), _step; !(_step = _iterator()).done;){
+	                for(var _iterator = _create_for_of_iterator_helper_loose$1(_this.movedSet), _step; !(_step = _iterator()).done;){
 	                    var n2 = _step.value;
 	                    if (isParentRemoved(_this.removesSubTreeCache, n2, _this.mirror) && !_this.movedSet.has(index.parentNode(n2))) {
 	                        continue;
 	                    }
 	                    pushAdd(n2);
 	                }
-	                for(var _iterator1 = _create_for_of_iterator_helper_loose(_this.addedSet), _step1; !(_step1 = _iterator1()).done;){
+	                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(_this.addedSet), _step1; !(_step1 = _iterator1()).done;){
 	                    var n21 = _step1.value;
 	                    if (!isAncestorInSet(_this.droppedSet, n21) && !isParentRemoved(_this.removesSubTreeCache, n21, _this.mirror)) {
 	                        pushAdd(n21);
@@ -10892,7 +10892,7 @@
 	                _this.movedMap = {};
 	                _this.mutationCb(payload);
 	            });
-	            __publicField(this, "genTextAreaValueMutation", function(textarea) {
+	            __publicField$1(this, "genTextAreaValueMutation", function(textarea) {
 	                var item = _this.attributeMap.get(textarea);
 	                if (!item) {
 	                    item = {
@@ -10916,7 +10916,7 @@
 	                    maskInputFn: _this.maskInputFn
 	                });
 	            });
-	            __publicField(this, "processMutation", function(m) {
+	            __publicField$1(this, "processMutation", function(m) {
 	                if (isIgnored(m.target, _this.mirror, _this.slimDOMOptions)) {
 	                    return;
 	                }
@@ -10986,7 +10986,7 @@
 	                                    if (m.oldValue) {
 	                                        old.setAttribute("style", m.oldValue);
 	                                    }
-	                                    for(var _iterator = _create_for_of_iterator_helper_loose(Array.from(target.style)), _step; !(_step = _iterator()).done;){
+	                                    for(var _iterator = _create_for_of_iterator_helper_loose$1(Array.from(target.style)), _step; !(_step = _iterator()).done;){
 	                                        var pname = _step.value;
 	                                        var newValue = target.style.getPropertyValue(pname);
 	                                        var newPriority = target.style.getPropertyPriority(pname);
@@ -11006,7 +11006,7 @@
 	                                            ];
 	                                        }
 	                                    }
-	                                    for(var _iterator1 = _create_for_of_iterator_helper_loose(Array.from(old.style)), _step1; !(_step1 = _iterator1()).done;){
+	                                    for(var _iterator1 = _create_for_of_iterator_helper_loose$1(Array.from(old.style)), _step1; !(_step1 = _iterator1()).done;){
 	                                        var pname1 = _step1.value;
 	                                        if (target.style.getPropertyValue(pname1) === "") {
 	                                            item.styleDiff[pname1] = false;
@@ -11061,7 +11061,7 @@
 	            });
 	            /**
 	         * Make sure you check if `n`'s parent is blocked before calling this function
-	         * */ __publicField(this, "genAdds", function(n2, target) {
+	         * */ __publicField$1(this, "genAdds", function(n2, target) {
 	                if (_this.processedNodeManager.inOtherBuffer(n2, _this)) return;
 	                if (_this.addedSet.has(n2) || _this.movedSet.has(n2)) return;
 	                if (_this.mirror.hasNode(n2)) {
@@ -11277,7 +11277,7 @@
 	                id: mirror2.getId(target),
 	                timeOffset: nowTimestamp() - timeBaseline
 	            });
-	            wrappedCb(typeof DragEvent !== "undefined" && _instanceof(evt, DragEvent) ? IncrementalSource.Drag : _instanceof(evt, MouseEvent) ? IncrementalSource.MouseMove : IncrementalSource.TouchMove);
+	            wrappedCb(typeof DragEvent !== "undefined" && _instanceof$1(evt, DragEvent) ? IncrementalSource.Drag : _instanceof$1(evt, MouseEvent) ? IncrementalSource.MouseMove : IncrementalSource.TouchMove);
 	        }), threshold, {
 	            trailing: false
 	        }));
@@ -11561,7 +11561,7 @@
 	    function getNestedCSSRulePositions(rule2) {
 	        var positions = [];
 	        function recurse(childRule, pos) {
-	            if (hasNestedCSSRule("CSSGroupingRule") && _instanceof(childRule.parentRule, CSSGroupingRule) || hasNestedCSSRule("CSSMediaRule") && _instanceof(childRule.parentRule, CSSMediaRule) || hasNestedCSSRule("CSSSupportsRule") && _instanceof(childRule.parentRule, CSSSupportsRule) || hasNestedCSSRule("CSSConditionRule") && _instanceof(childRule.parentRule, CSSConditionRule)) {
+	            if (hasNestedCSSRule("CSSGroupingRule") && _instanceof$1(childRule.parentRule, CSSGroupingRule) || hasNestedCSSRule("CSSMediaRule") && _instanceof$1(childRule.parentRule, CSSMediaRule) || hasNestedCSSRule("CSSSupportsRule") && _instanceof$1(childRule.parentRule, CSSSupportsRule) || hasNestedCSSRule("CSSConditionRule") && _instanceof$1(childRule.parentRule, CSSConditionRule)) {
 	                var rules2 = Array.from(childRule.parentRule.cssRules);
 	                var index2 = rules2.indexOf(childRule);
 	                pos.unshift(index2);
@@ -11907,7 +11907,7 @@
 	            });
 	            return fontFace;
 	        };
-	        var restoreHandler = patch(doc.fonts, "add", function(original) {
+	        var restoreHandler = patch$2(doc.fonts, "add", function(original) {
 	            return function(fontFace) {
 	                setTimeout(callbackWrapper(function() {
 	                    var p = fontMap.get(fontFace);
@@ -11963,7 +11963,7 @@
 	        var doc = param.doc, customElementCb = param.customElementCb;
 	        var win = doc.defaultView;
 	        if (!win || !win.customElements) return function() {};
-	        var restoreHandler = patch(win.customElements, "define", function(original) {
+	        var restoreHandler = patch$2(win.customElements, "define", function(original) {
 	            return function(name, constructor, options) {
 	                try {
 	                    customElementCb({
@@ -12154,7 +12154,7 @@
 	        var selectionObserver = initSelectionObserver(o2);
 	        var customElementObserver = initCustomElementObserver(o2);
 	        var pluginHandlers = [];
-	        for(var _iterator = _create_for_of_iterator_helper_loose(o2.plugins), _step; !(_step = _iterator()).done;){
+	        for(var _iterator = _create_for_of_iterator_helper_loose$1(o2.plugins), _step; !(_step = _iterator()).done;){
 	            var plugin3 = _step.value;
 	            pluginHandlers.push(plugin3.observer(plugin3.callback, currentWindow, plugin3.options));
 	        }
@@ -12190,8 +12190,8 @@
 	    }
 	    var CrossOriginIframeMirror = /*#__PURE__*/ function() {
 	        function CrossOriginIframeMirror(generateIdFn) {
-	            __publicField(this, "iframeIdToRemoteIdMap", /* @__PURE__ */ new WeakMap());
-	            __publicField(this, "iframeRemoteIdToIdMap", /* @__PURE__ */ new WeakMap());
+	            __publicField$1(this, "iframeIdToRemoteIdMap", /* @__PURE__ */ new WeakMap());
+	            __publicField$1(this, "iframeRemoteIdToIdMap", /* @__PURE__ */ new WeakMap());
 	            this.generateIdFn = generateIdFn;
 	        }
 	        var _proto = CrossOriginIframeMirror.prototype;
@@ -12257,17 +12257,17 @@
 	    }();
 	    var IframeManager = /*#__PURE__*/ function() {
 	        function IframeManager(options) {
-	            __publicField(this, "iframes", /* @__PURE__ */ new WeakMap());
-	            __publicField(this, "crossOriginIframeMap", /* @__PURE__ */ new WeakMap());
-	            __publicField(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
-	            __publicField(this, "crossOriginIframeStyleMirror");
-	            __publicField(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
-	            __publicField(this, "mirror");
-	            __publicField(this, "mutationCb");
-	            __publicField(this, "wrappedEmit");
-	            __publicField(this, "loadListener");
-	            __publicField(this, "stylesheetManager");
-	            __publicField(this, "recordCrossOriginIframes");
+	            __publicField$1(this, "iframes", /* @__PURE__ */ new WeakMap());
+	            __publicField$1(this, "crossOriginIframeMap", /* @__PURE__ */ new WeakMap());
+	            __publicField$1(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
+	            __publicField$1(this, "crossOriginIframeStyleMirror");
+	            __publicField$1(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
+	            __publicField$1(this, "mirror");
+	            __publicField$1(this, "mutationCb");
+	            __publicField$1(this, "wrappedEmit");
+	            __publicField$1(this, "loadListener");
+	            __publicField$1(this, "stylesheetManager");
+	            __publicField$1(this, "recordCrossOriginIframes");
 	            this.mutationCb = options.mutationCb;
 	            this.wrappedEmit = options.wrappedEmit;
 	            this.stylesheetManager = options.stylesheetManager;
@@ -12472,7 +12472,7 @@
 	            return false;
 	        };
 	        _proto.replace = function replace(iframeMirror, obj, iframeEl, keys) {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(keys), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(keys), _step; !(_step = _iterator()).done;){
 	                var key = _step.value;
 	                if (!Array.isArray(obj[key]) && typeof obj[key] !== "number") continue;
 	                if (Array.isArray(obj[key])) {
@@ -12514,12 +12514,12 @@
 	    }();
 	    var ShadowDomManager = /*#__PURE__*/ function() {
 	        function ShadowDomManager(options) {
-	            __publicField(this, "shadowDoms", /* @__PURE__ */ new WeakSet());
-	            __publicField(this, "mutationCb");
-	            __publicField(this, "scrollCb");
-	            __publicField(this, "bypassOptions");
-	            __publicField(this, "mirror");
-	            __publicField(this, "restoreHandlers", []);
+	            __publicField$1(this, "shadowDoms", /* @__PURE__ */ new WeakSet());
+	            __publicField$1(this, "mutationCb");
+	            __publicField$1(this, "scrollCb");
+	            __publicField$1(this, "bypassOptions");
+	            __publicField$1(this, "mirror");
+	            __publicField$1(this, "restoreHandlers", []);
 	            this.mutationCb = options.mutationCb;
 	            this.scrollCb = options.scrollCb;
 	            this.bypassOptions = options.bypassOptions;
@@ -12570,7 +12570,7 @@
 	       * Patch 'attachShadow' to observe newly added shadow doms.
 	       */ _proto.patchAttachShadow = function patchAttachShadow(element, doc) {
 	            var manager = this;
-	            this.restoreHandlers.push(patch(element.prototype, "attachShadow", function(original) {
+	            this.restoreHandlers.push(patch$2(element.prototype, "attachShadow", function(original) {
 	                return function(option) {
 	                    var sRoot = original.call(this, option);
 	                    var shadowRootEl = index.shadowRoot(this);
@@ -12623,7 +12623,7 @@
 	        return contextMap.get(ctor);
 	    }
 	    var saveWebGLVar = function(value, win, ctx) {
-	        if (!value || !(isInstanceOfWebGLObject(value, win) || (typeof value === "undefined" ? "undefined" : _type_of(value)) === "object")) return;
+	        if (!value || !(isInstanceOfWebGLObject(value, win) || (typeof value === "undefined" ? "undefined" : _type_of$1(value)) === "object")) return;
 	        var name = value.constructor.name;
 	        var list2 = variableListFor$1(ctx, name);
 	        var index2 = list2.indexOf(value);
@@ -12634,13 +12634,13 @@
 	        return index2;
 	    };
 	    function serializeArg(value, win, ctx) {
-	        if (_instanceof(value, Array)) {
+	        if (_instanceof$1(value, Array)) {
 	            return value.map(function(arg) {
 	                return serializeArg(arg, win, ctx);
 	            });
 	        } else if (value === null) {
 	            return value;
-	        } else if (_instanceof(value, Float32Array) || _instanceof(value, Float64Array) || _instanceof(value, Int32Array) || _instanceof(value, Uint32Array) || _instanceof(value, Uint8Array) || _instanceof(value, Uint16Array) || _instanceof(value, Int16Array) || _instanceof(value, Int8Array) || _instanceof(value, Uint8ClampedArray)) {
+	        } else if (_instanceof$1(value, Float32Array) || _instanceof$1(value, Float64Array) || _instanceof$1(value, Int32Array) || _instanceof$1(value, Uint32Array) || _instanceof$1(value, Uint8Array) || _instanceof$1(value, Uint16Array) || _instanceof$1(value, Int16Array) || _instanceof$1(value, Int8Array) || _instanceof$1(value, Uint8ClampedArray)) {
 	            var name = value.constructor.name;
 	            return {
 	                rr_type: name,
@@ -12651,14 +12651,14 @@
 	        } else if (// SharedArrayBuffer disabled on most browsers due to spectre.
 	        // More info: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer/SharedArrayBuffer
 	        // value instanceof SharedArrayBuffer ||
-	        _instanceof(value, ArrayBuffer)) {
+	        _instanceof$1(value, ArrayBuffer)) {
 	            var name1 = value.constructor.name;
 	            var base64 = encode(value);
 	            return {
 	                rr_type: name1,
 	                base64: base64
 	            };
-	        } else if (_instanceof(value, DataView)) {
+	        } else if (_instanceof$1(value, DataView)) {
 	            var name2 = value.constructor.name;
 	            return {
 	                rr_type: name2,
@@ -12668,21 +12668,21 @@
 	                    value.byteLength
 	                ]
 	            };
-	        } else if (_instanceof(value, HTMLImageElement)) {
+	        } else if (_instanceof$1(value, HTMLImageElement)) {
 	            var name3 = value.constructor.name;
 	            var src = value.src;
 	            return {
 	                rr_type: name3,
 	                src: src
 	            };
-	        } else if (_instanceof(value, HTMLCanvasElement)) {
+	        } else if (_instanceof$1(value, HTMLCanvasElement)) {
 	            var name4 = "HTMLImageElement";
 	            var src1 = value.toDataURL();
 	            return {
 	                rr_type: name4,
 	                src: src1
 	            };
-	        } else if (_instanceof(value, ImageData)) {
+	        } else if (_instanceof$1(value, ImageData)) {
 	            var name5 = value.constructor.name;
 	            return {
 	                rr_type: name5,
@@ -12692,7 +12692,7 @@
 	                    value.height
 	                ]
 	            };
-	        } else if (isInstanceOfWebGLObject(value, win) || (typeof value === "undefined" ? "undefined" : _type_of(value)) === "object") {
+	        } else if (isInstanceOfWebGLObject(value, win) || (typeof value === "undefined" ? "undefined" : _type_of$1(value)) === "object") {
 	            var name6 = value.constructor.name;
 	            var index2 = saveWebGLVar(value, win, ctx);
 	            return {
@@ -12726,7 +12726,7 @@
 	            return typeof win[name] === "function";
 	        });
 	        return Boolean(supportedWebGLConstructorNames.find(function(name) {
-	            return _instanceof(value, win[name]);
+	            return _instanceof$1(value, win[name]);
 	        }));
 	    };
 	    function initCanvas2DMutationObserver(cb, win, blockClass, blockSelector) {
@@ -12736,7 +12736,7 @@
 	                if (typeof win.CanvasRenderingContext2D.prototype[prop] !== "function") {
 	                    return "continue";
 	                }
-	                var restoreHandler = patch(win.CanvasRenderingContext2D.prototype, prop, function(original) {
+	                var restoreHandler = patch$2(win.CanvasRenderingContext2D.prototype, prop, function(original) {
 	                    return function() {
 	                        var _this = this;
 	                        for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
@@ -12774,7 +12774,7 @@
 	        };
 	        var handlers = [];
 	        var props2D = Object.getOwnPropertyNames(win.CanvasRenderingContext2D.prototype);
-	        for(var _iterator = _create_for_of_iterator_helper_loose(props2D), _step; !(_step = _iterator()).done;)_loop();
+	        for(var _iterator = _create_for_of_iterator_helper_loose$1(props2D), _step; !(_step = _iterator()).done;)_loop();
 	        return function() {
 	            handlers.forEach(function(h) {
 	                return h();
@@ -12787,7 +12787,7 @@
 	    function initCanvasContextObserver(win, blockClass, blockSelector, setPreserveDrawingBufferToTrue) {
 	        var handlers = [];
 	        try {
-	            var restoreHandler = patch(win.HTMLCanvasElement.prototype, "getContext", function(original) {
+	            var restoreHandler = patch$2(win.HTMLCanvasElement.prototype, "getContext", function(original) {
 	                return function(contextType) {
 	                    for(var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++){
 	                        args[_key - 1] = arguments[_key];
@@ -12799,7 +12799,7 @@
 	                            "webgl",
 	                            "webgl2"
 	                        ].includes(ctxName)) {
-	                            if (args[0] && _type_of(args[0]) === "object") {
+	                            if (args[0] && _type_of$1(args[0]) === "object") {
 	                                var contextAttributes = args[0];
 	                                if (!contextAttributes.preserveDrawingBuffer) {
 	                                    contextAttributes.preserveDrawingBuffer = true;
@@ -12842,7 +12842,7 @@
 	                if (typeof prototype[prop] !== "function") {
 	                    return "continue";
 	                }
-	                var restoreHandler = patch(prototype, prop, function(original) {
+	                var restoreHandler = patch$2(prototype, prop, function(original) {
 	                    return function() {
 	                        for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
 	                            args[_key] = arguments[_key];
@@ -12880,7 +12880,7 @@
 	        };
 	        var handlers = [];
 	        var props = Object.getOwnPropertyNames(prototype);
-	        for(var _iterator = _create_for_of_iterator_helper_loose(props), _step; !(_step = _iterator()).done;)_loop();
+	        for(var _iterator = _create_for_of_iterator_helper_loose$1(props), _step; !(_step = _iterator()).done;)_loop();
 	        return handlers;
 	    }
 	    function initCanvasWebGLMutationObserver(cb, win, blockClass, blockSelector) {
@@ -12931,17 +12931,17 @@
 	    var CanvasManager = /*#__PURE__*/ function() {
 	        function CanvasManager(options) {
 	            var _this = this;
-	            __publicField(this, "pendingCanvasMutations", /* @__PURE__ */ new Map());
-	            __publicField(this, "rafStamps", {
+	            __publicField$1(this, "pendingCanvasMutations", /* @__PURE__ */ new Map());
+	            __publicField$1(this, "rafStamps", {
 	                latestId: 0,
 	                invokeId: null
 	            });
-	            __publicField(this, "mirror");
-	            __publicField(this, "mutationCb");
-	            __publicField(this, "resetObservers");
-	            __publicField(this, "frozen", false);
-	            __publicField(this, "locked", false);
-	            __publicField(this, "processMutation", function(target, mutation) {
+	            __publicField$1(this, "mirror");
+	            __publicField$1(this, "mutationCb");
+	            __publicField$1(this, "resetObservers");
+	            __publicField$1(this, "frozen", false);
+	            __publicField$1(this, "locked", false);
+	            __publicField$1(this, "processMutation", function(target, mutation) {
 	                var newFrame = _this.rafStamps.invokeId && _this.rafStamps.latestId !== _this.rafStamps.invokeId;
 	                if (newFrame || !_this.rafStamps.invokeId) _this.rafStamps.invokeId = _this.rafStamps.latestId;
 	                if (!_this.pendingCanvasMutations.has(target)) {
@@ -13154,10 +13154,10 @@
 	    }();
 	    var StylesheetManager = /*#__PURE__*/ function() {
 	        function StylesheetManager(options) {
-	            __publicField(this, "trackedLinkElements", /* @__PURE__ */ new WeakSet());
-	            __publicField(this, "mutationCb");
-	            __publicField(this, "adoptedStyleSheetCb");
-	            __publicField(this, "styleMirror", new StyleSheetMirror());
+	            __publicField$1(this, "trackedLinkElements", /* @__PURE__ */ new WeakSet());
+	            __publicField$1(this, "mutationCb");
+	            __publicField$1(this, "adoptedStyleSheetCb");
+	            __publicField$1(this, "styleMirror", new StyleSheetMirror());
 	            this.mutationCb = options.mutationCb;
 	            this.adoptedStyleSheetCb = options.adoptedStyleSheetCb;
 	        }
@@ -13205,7 +13205,7 @@
 	                styleIds: []
 	            };
 	            var styles = [];
-	            for(var _iterator = _create_for_of_iterator_helper_loose(sheets), _step; !(_step = _iterator()).done;)_this = this, _loop();
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(sheets), _step; !(_step = _iterator()).done;)_this = this, _loop();
 	            if (styles.length > 0) adoptedStyleSheetData.styles = styles;
 	            this.adoptedStyleSheetCb(adoptedStyleSheetData);
 	        };
@@ -13219,8 +13219,8 @@
 	    }();
 	    var ProcessedNodeManager = /*#__PURE__*/ function() {
 	        function ProcessedNodeManager() {
-	            __publicField(this, "nodeMap", /* @__PURE__ */ new WeakMap());
-	            __publicField(this, "active", false);
+	            __publicField$1(this, "nodeMap", /* @__PURE__ */ new WeakMap());
+	            __publicField$1(this, "active", false);
 	        }
 	        var _proto = ProcessedNodeManager.prototype;
 	        _proto.inOtherBuffer = function inOtherBuffer(node2, thisBuffer) {
@@ -13329,7 +13329,7 @@
 	        var lastFullSnapshotEvent;
 	        var incrementalSnapshotCount = 0;
 	        var eventProcessor = function(e2) {
-	            for(var _iterator = _create_for_of_iterator_helper_loose(plugins || []), _step; !(_step = _iterator()).done;){
+	            for(var _iterator = _create_for_of_iterator_helper_loose$1(plugins || []), _step; !(_step = _iterator()).done;){
 	                var plugin3 = _step.value;
 	                if (plugin3.eventProcessor) {
 	                    e2 = plugin3.eventProcessor(e2);
@@ -13419,7 +13419,7 @@
 	            recordCrossOriginIframes: recordCrossOriginIframes,
 	            wrappedEmit: wrappedEmit
 	        });
-	        for(var _iterator = _create_for_of_iterator_helper_loose(plugins || []), _step; !(_step = _iterator()).done;){
+	        for(var _iterator = _create_for_of_iterator_helper_loose$1(plugins || []), _step; !(_step = _iterator()).done;){
 	            var plugin3 = _step.value;
 	            if (plugin3.getMirror) plugin3.getMirror({
 	                nodeMirror: mirror,
@@ -14108,9 +14108,541 @@
 	        PromisePolyfill = NpoPromise;
 	    }
 
+	    function _array_like_to_array(arr, len) {
+	        if (len == null || len > arr.length) len = arr.length;
+	        for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
+	        return arr2;
+	    }
+	    function _instanceof(left, right) {
+	        if (right != null && typeof Symbol !== "undefined" && right[Symbol.hasInstance]) {
+	            return !!right[Symbol.hasInstance](left);
+	        } else {
+	            return left instanceof right;
+	        }
+	    }
+	    function _type_of(obj) {
+	        "@swc/helpers - typeof";
+	        return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj;
+	    }
+	    function _unsupported_iterable_to_array(o, minLen) {
+	        if (!o) return;
+	        if (typeof o === "string") return _array_like_to_array(o, minLen);
+	        var n = Object.prototype.toString.call(o).slice(8, -1);
+	        if (n === "Object" && o.constructor) n = o.constructor.name;
+	        if (n === "Map" || n === "Set") return Array.from(n);
+	        if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _array_like_to_array(o, minLen);
+	    }
+	    function _create_for_of_iterator_helper_loose(o, allowArrayLike) {
+	        var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"];
+	        if (it) return (it = it.call(o)).next.bind(it);
+	        if (Array.isArray(o) || (it = _unsupported_iterable_to_array(o)) || allowArrayLike) {
+	            if (it) o = it;
+	            var i = 0;
+	            return function() {
+	                if (i >= o.length) {
+	                    return {
+	                        done: true
+	                    };
+	                }
+	                return {
+	                    done: false,
+	                    value: o[i++]
+	                };
+	            };
+	        }
+	        throw new TypeError("Invalid attempt to iterate non-iterable instance.\\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+	    }
+	    var __defProp = Object.defineProperty;
+	    var __defNormalProp = function(obj, key, value) {
+	        return key in obj ? __defProp(obj, key, {
+	            enumerable: true,
+	            configurable: true,
+	            writable: true,
+	            value: value
+	        }) : obj[key] = value;
+	    };
+	    var __publicField = function(obj, key, value) {
+	        return __defNormalProp(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
+	    };
+	    function patch(source, name, replacement) {
+	        try {
+	            if (!(name in source)) {
+	                return function() {};
+	            }
+	            var original = source[name];
+	            var wrapped = replacement(original);
+	            if (typeof wrapped === "function") {
+	                wrapped.prototype = wrapped.prototype || {};
+	                Object.defineProperties(wrapped, {
+	                    __rrweb_original__: {
+	                        enumerable: false,
+	                        value: original
+	                    }
+	                });
+	            }
+	            source[name] = wrapped;
+	            return function() {
+	                source[name] = original;
+	            };
+	        } catch (e) {
+	            return function() {};
+	        }
+	    }
+	    var StackFrame = /*#__PURE__*/ function() {
+	        function StackFrame(obj) {
+	            __publicField(this, "fileName");
+	            __publicField(this, "functionName");
+	            __publicField(this, "lineNumber");
+	            __publicField(this, "columnNumber");
+	            this.fileName = obj.fileName || "";
+	            this.functionName = obj.functionName || "";
+	            this.lineNumber = obj.lineNumber;
+	            this.columnNumber = obj.columnNumber;
+	        }
+	        var _proto = StackFrame.prototype;
+	        _proto.toString = function toString() {
+	            var lineNumber = this.lineNumber || "";
+	            var columnNumber = this.columnNumber || "";
+	            if (this.functionName) return this.functionName + " (" + this.fileName + ":" + lineNumber + ":" + columnNumber + ")";
+	            return this.fileName + ":" + lineNumber + ":" + columnNumber;
+	        };
+	        return StackFrame;
+	    }();
+	    var FIREFOX_SAFARI_STACK_REGEXP = /(^|@)\S+:\d+/;
+	    var CHROME_IE_STACK_REGEXP = /^\s*at .*(\S+:\d+|\(native\))/m;
+	    var SAFARI_NATIVE_CODE_REGEXP = /^(eval@)?(\[native code])?$/;
+	    var ErrorStackParser = {
+	        /**
+	       * Given an Error object, extract the most information from it.
+	       */ parse: function parse(error) {
+	            if (!error) {
+	                return [];
+	            }
+	            if (// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	            // @ts-ignore
+	            typeof error.stacktrace !== "undefined" || // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	            // @ts-ignore
+	            typeof error["opera#sourceloc"] !== "undefined") {
+	                return this.parseOpera(error);
+	            } else if (error.stack && error.stack.match(CHROME_IE_STACK_REGEXP)) {
+	                return this.parseV8OrIE(error);
+	            } else if (error.stack) {
+	                return this.parseFFOrSafari(error);
+	            } else {
+	                console.warn("[console-record-plugin]: Failed to parse error object:", error);
+	                return [];
+	            }
+	        },
+	        // Separate line and column numbers from a string of the form: (URI:Line:Column)
+	        extractLocation: function extractLocation(urlLike) {
+	            if (urlLike.indexOf(":") === -1) {
+	                return [
+	                    urlLike
+	                ];
+	            }
+	            var regExp = /(.+?)(?::(\d+))?(?::(\d+))?$/;
+	            var parts = regExp.exec(urlLike.replace(/[()]/g, ""));
+	            if (!parts) throw new Error("Cannot parse given url: " + urlLike);
+	            return [
+	                parts[1],
+	                parts[2] || void 0,
+	                parts[3] || void 0
+	            ];
+	        },
+	        parseV8OrIE: function parseV8OrIE(error) {
+	            var filtered = error.stack.split("\n").filter(function(line) {
+	                return !!line.match(CHROME_IE_STACK_REGEXP);
+	            }, this);
+	            return filtered.map(function(line) {
+	                if (line.indexOf("(eval ") > -1) {
+	                    line = line.replace(/eval code/g, "eval").replace(/(\(eval at [^()]*)|(\),.*$)/g, "");
+	                }
+	                var sanitizedLine = line.replace(/^\s+/, "").replace(/\(eval code/g, "(");
+	                var location = sanitizedLine.match(/ (\((.+):(\d+):(\d+)\)$)/);
+	                sanitizedLine = location ? sanitizedLine.replace(location[0], "") : sanitizedLine;
+	                var tokens = sanitizedLine.split(/\s+/).slice(1);
+	                var locationParts = this.extractLocation(location ? location[1] : tokens.pop());
+	                var functionName = tokens.join(" ") || void 0;
+	                var fileName = [
+	                    "eval",
+	                    "<anonymous>"
+	                ].indexOf(locationParts[0]) > -1 ? void 0 : locationParts[0];
+	                return new StackFrame({
+	                    functionName: functionName,
+	                    fileName: fileName,
+	                    lineNumber: locationParts[1],
+	                    columnNumber: locationParts[2]
+	                });
+	            }, this);
+	        },
+	        parseFFOrSafari: function parseFFOrSafari(error) {
+	            var filtered = error.stack.split("\n").filter(function(line) {
+	                return !line.match(SAFARI_NATIVE_CODE_REGEXP);
+	            }, this);
+	            return filtered.map(function(line) {
+	                if (line.indexOf(" > eval") > -1) {
+	                    line = line.replace(/ line (\d+)(?: > eval line \d+)* > eval:\d+:\d+/g, ":$1");
+	                }
+	                if (line.indexOf("@") === -1 && line.indexOf(":") === -1) {
+	                    return new StackFrame({
+	                        functionName: line
+	                    });
+	                } else {
+	                    var functionNameRegex = /((.*".+"[^@]*)?[^@]*)(?:@)/;
+	                    var matches = line.match(functionNameRegex);
+	                    var functionName = matches && matches[1] ? matches[1] : void 0;
+	                    var locationParts = this.extractLocation(line.replace(functionNameRegex, ""));
+	                    return new StackFrame({
+	                        functionName: functionName,
+	                        fileName: locationParts[0],
+	                        lineNumber: locationParts[1],
+	                        columnNumber: locationParts[2]
+	                    });
+	                }
+	            }, this);
+	        },
+	        parseOpera: function parseOpera(e) {
+	            if (!e.stacktrace || e.message.indexOf("\n") > -1 && e.message.split("\n").length > e.stacktrace.split("\n").length) {
+	                return this.parseOpera9(e);
+	            } else if (!e.stack) {
+	                return this.parseOpera10(e);
+	            } else {
+	                return this.parseOpera11(e);
+	            }
+	        },
+	        parseOpera9: function parseOpera9(e) {
+	            var lineRE = /Line (\d+).*script (?:in )?(\S+)/i;
+	            var lines = e.message.split("\n");
+	            var result = [];
+	            for(var i = 2, len = lines.length; i < len; i += 2){
+	                var match = lineRE.exec(lines[i]);
+	                if (match) {
+	                    result.push(new StackFrame({
+	                        fileName: match[2],
+	                        lineNumber: parseFloat(match[1])
+	                    }));
+	                }
+	            }
+	            return result;
+	        },
+	        parseOpera10: function parseOpera10(e) {
+	            var lineRE = /Line (\d+).*script (?:in )?(\S+)(?:: In function (\S+))?$/i;
+	            var lines = e.stacktrace.split("\n");
+	            var result = [];
+	            for(var i = 0, len = lines.length; i < len; i += 2){
+	                var match = lineRE.exec(lines[i]);
+	                if (match) {
+	                    result.push(new StackFrame({
+	                        functionName: match[3] || void 0,
+	                        fileName: match[2],
+	                        lineNumber: parseFloat(match[1])
+	                    }));
+	                }
+	            }
+	            return result;
+	        },
+	        // Opera 10.65+ Error.stack very similar to FF/Safari
+	        parseOpera11: function parseOpera11(error) {
+	            var filtered = error.stack.split("\n").filter(function(line) {
+	                return !!line.match(FIREFOX_SAFARI_STACK_REGEXP) && !line.match(/^Error created at/);
+	            }, this);
+	            return filtered.map(function(line) {
+	                var tokens = line.split("@");
+	                var locationParts = this.extractLocation(tokens.pop());
+	                var functionCall = tokens.shift() || "";
+	                var functionName = functionCall.replace(/<anonymous function(: (\w+))?>/, "$2").replace(/\([^)]*\)/g, "") || void 0;
+	                return new StackFrame({
+	                    functionName: functionName,
+	                    fileName: locationParts[0],
+	                    lineNumber: locationParts[1],
+	                    columnNumber: locationParts[2]
+	                });
+	            }, this);
+	        }
+	    };
+	    function pathToSelector(node) {
+	        if (!node || !node.outerHTML) {
+	            return "";
+	        }
+	        var path = "";
+	        while(node.parentElement){
+	            var name = node.localName;
+	            if (!name) {
+	                break;
+	            }
+	            name = name.toLowerCase();
+	            var parent = node.parentElement;
+	            var domSiblings = [];
+	            if (parent.children && parent.children.length > 0) {
+	                for(var i = 0; i < parent.children.length; i++){
+	                    var sibling = parent.children[i];
+	                    if (sibling.localName && sibling.localName.toLowerCase) {
+	                        if (sibling.localName.toLowerCase() === name) {
+	                            domSiblings.push(sibling);
+	                        }
+	                    }
+	                }
+	            }
+	            if (domSiblings.length > 1) {
+	                name += ":eq(" + domSiblings.indexOf(node) + ")";
+	            }
+	            path = name + (path ? ">" + path : "");
+	            node = parent;
+	        }
+	        return path;
+	    }
+	    function isObject(obj) {
+	        return Object.prototype.toString.call(obj) === "[object Object]";
+	    }
+	    function isObjTooDeep(obj, limit) {
+	        if (limit === 0) {
+	            return true;
+	        }
+	        var keys = Object.keys(obj);
+	        for(var _iterator = _create_for_of_iterator_helper_loose(keys), _step; !(_step = _iterator()).done;){
+	            var key = _step.value;
+	            if (isObject(obj[key]) && isObjTooDeep(obj[key], limit - 1)) {
+	                return true;
+	            }
+	        }
+	        return false;
+	    }
+	    function stringify(obj, stringifyOptions) {
+	        var options = {
+	            numOfKeysLimit: 50,
+	            depthOfLimit: 4
+	        };
+	        Object.assign(options, stringifyOptions);
+	        var stack = [];
+	        var keys = [];
+	        return JSON.stringify(obj, function(key, value) {
+	            if (stack.length > 0) {
+	                var thisPos = stack.indexOf(this);
+	                ~thisPos ? stack.splice(thisPos + 1) : stack.push(this);
+	                ~thisPos ? keys.splice(thisPos, Infinity, key) : keys.push(key);
+	                if (~stack.indexOf(value)) {
+	                    if (stack[0] === value) {
+	                        value = "[Circular ~]";
+	                    } else {
+	                        value = "[Circular ~." + keys.slice(0, stack.indexOf(value)).join(".") + "]";
+	                    }
+	                }
+	            } else {
+	                stack.push(value);
+	            }
+	            if (value === null) return value;
+	            if (value === void 0) return "undefined";
+	            if (shouldIgnore(value)) {
+	                return toString(value);
+	            }
+	            if ((typeof value === "undefined" ? "undefined" : _type_of(value)) === "bigint") {
+	                return value.toString() + "n";
+	            }
+	            if (_instanceof(value, Event)) {
+	                var eventResult = {};
+	                for(var eventKey in value){
+	                    var eventValue = value[eventKey];
+	                    if (Array.isArray(eventValue)) {
+	                        eventResult[eventKey] = pathToSelector(eventValue.length ? eventValue[0] : null);
+	                    } else {
+	                        eventResult[eventKey] = eventValue;
+	                    }
+	                }
+	                return eventResult;
+	            } else if (_instanceof(value, Node)) {
+	                if (_instanceof(value, HTMLElement)) {
+	                    return value ? value.outerHTML : "";
+	                }
+	                return value.nodeName;
+	            } else if (_instanceof(value, Error)) {
+	                return value.stack ? value.stack + "\nEnd of stack for Error object" : value.name + ": " + value.message;
+	            }
+	            return value;
+	        });
+	        function shouldIgnore(_obj) {
+	            if (isObject(_obj) && Object.keys(_obj).length > options.numOfKeysLimit) {
+	                return true;
+	            }
+	            if (typeof _obj === "function") {
+	                return true;
+	            }
+	            if (isObject(_obj) && isObjTooDeep(_obj, options.depthOfLimit)) {
+	                return true;
+	            }
+	            return false;
+	        }
+	        function toString(_obj) {
+	            var str = _obj.toString();
+	            if (options.stringLengthLimit && str.length > options.stringLengthLimit) {
+	                str = "" + str.slice(0, options.stringLengthLimit) + "...";
+	            }
+	            return str;
+	        }
+	    }
+	    var defaultLogOptions = {
+	        level: [
+	            "assert",
+	            "clear",
+	            "count",
+	            "countReset",
+	            "debug",
+	            "dir",
+	            "dirxml",
+	            "error",
+	            "group",
+	            "groupCollapsed",
+	            "groupEnd",
+	            "info",
+	            "log",
+	            "table",
+	            "time",
+	            "timeEnd",
+	            "timeLog",
+	            "trace",
+	            "warn"
+	        ],
+	        lengthThreshold: 1e3,
+	        logger: "console"
+	    };
+	    function initLogObserver(cb, win, options) {
+	        var logOptions = options ? Object.assign({}, defaultLogOptions, options) : defaultLogOptions;
+	        var loggerType = logOptions.logger;
+	        if (!loggerType) {
+	            return function() {};
+	        }
+	        var logger;
+	        if (typeof loggerType === "string") {
+	            logger = win[loggerType];
+	        } else {
+	            logger = loggerType;
+	        }
+	        var logCount = 0;
+	        var inStack = false;
+	        var cancelHandlers = [];
+	        if (logOptions.level.includes("error")) {
+	            var errorHandler = function(event) {
+	                var message = event.message, error = event.error;
+	                var trace = ErrorStackParser.parse(error).map(function(stackFrame) {
+	                    return stackFrame.toString();
+	                });
+	                var payload = [
+	                    stringify(message, logOptions.stringifyOptions)
+	                ];
+	                cb({
+	                    level: "error",
+	                    trace: trace,
+	                    payload: payload
+	                });
+	            };
+	            win.addEventListener("error", errorHandler);
+	            cancelHandlers.push(function() {
+	                win.removeEventListener("error", errorHandler);
+	            });
+	            var unhandledrejectionHandler = function(event) {
+	                var error;
+	                var payload;
+	                if (_instanceof(event.reason, Error)) {
+	                    error = event.reason;
+	                    payload = [
+	                        stringify("Uncaught (in promise) " + error.name + ": " + error.message, logOptions.stringifyOptions)
+	                    ];
+	                } else {
+	                    error = new Error();
+	                    payload = [
+	                        stringify("Uncaught (in promise)", logOptions.stringifyOptions),
+	                        stringify(event.reason, logOptions.stringifyOptions)
+	                    ];
+	                }
+	                var trace = ErrorStackParser.parse(error).map(function(stackFrame) {
+	                    return stackFrame.toString();
+	                });
+	                cb({
+	                    level: "error",
+	                    trace: trace,
+	                    payload: payload
+	                });
+	            };
+	            win.addEventListener("unhandledrejection", unhandledrejectionHandler);
+	            cancelHandlers.push(function() {
+	                win.removeEventListener("unhandledrejection", unhandledrejectionHandler);
+	            });
+	        }
+	        for(var _iterator = _create_for_of_iterator_helper_loose(logOptions.level), _step; !(_step = _iterator()).done;){
+	            var levelType = _step.value;
+	            cancelHandlers.push(replace(logger, levelType));
+	        }
+	        return function() {
+	            cancelHandlers.forEach(function(h) {
+	                return h();
+	            });
+	        };
+	        function replace(_logger, level) {
+	            var _this = this;
+	            if (!_logger[level]) {
+	                return function() {};
+	            }
+	            return patch(_logger, level, function(original) {
+	                var _this1 = _this;
+	                return function() {
+	                    for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+	                        args[_key] = arguments[_key];
+	                    }
+	                    original.apply(_this1, args);
+	                    if (level === "assert" && !!args[0]) {
+	                        return;
+	                    }
+	                    if (inStack) {
+	                        return;
+	                    }
+	                    inStack = true;
+	                    try {
+	                        var trace = ErrorStackParser.parse(new Error()).map(function(stackFrame) {
+	                            return stackFrame.toString();
+	                        }).splice(1);
+	                        var argsForPayload = level === "assert" ? args.slice(1) : args;
+	                        var payload = argsForPayload.map(function(s) {
+	                            return stringify(s, logOptions.stringifyOptions);
+	                        });
+	                        logCount++;
+	                        if (logCount < logOptions.lengthThreshold) {
+	                            cb({
+	                                level: level,
+	                                trace: trace,
+	                                payload: payload
+	                            });
+	                        } else if (logCount === logOptions.lengthThreshold) {
+	                            cb({
+	                                level: "warn",
+	                                trace: [],
+	                                payload: [
+	                                    stringify("The number of log records reached the threshold.")
+	                                ]
+	                            });
+	                        }
+	                    } catch (error) {
+	                        original.apply(void 0, [].concat([
+	                            "rrweb logger error:",
+	                            error
+	                        ], args));
+	                    } finally{
+	                        inStack = false;
+	                    }
+	                };
+	            });
+	        }
+	    }
+	    var PLUGIN_NAME = "rrweb/console@1";
+	    var getRecordConsolePlugin = function(options) {
+	        return {
+	            name: PLUGIN_NAME,
+	            observer: initLogObserver,
+	            options: options
+	        };
+	    };
+
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.71.1'
+	        LIB_VERSION: '2.72.0'
 	    };
 
 	    /* eslint camelcase: "off", eqeqeq: "off" */
@@ -17225,6 +17757,7 @@
 	     * @property {number} idleExpires
 	     * @property {number} maxExpires
 	     * @property {number} replayStartTime
+	     * @property {number} lastEventTimestamp
 	     * @property {number} seqNo
 	     * @property {string} batchStartUrl
 	     * @property {string} replayId
@@ -17245,6 +17778,7 @@
 	     * @property {number} idleExpires
 	     * @property {number} maxExpires
 	     * @property {number} replayStartTime
+	     * @property {number} lastEventTimestamp - the unix timestamp of the last recorded event from rrweb
 	     * @property {number} seqNo
 	     * @property {string} batchStartUrl
 	     * @property {string} replayStartUrl
@@ -17278,6 +17812,7 @@
 	        this.idleExpires = options.idleExpires || null;
 	        this.maxExpires = options.maxExpires || null;
 	        this.replayStartTime = options.replayStartTime || null;
+	        this.lastEventTimestamp = options.lastEventTimestamp || null;
 	        this.seqNo = options.seqNo || 0;
 
 	        this.idleTimeoutId = null;
@@ -17337,10 +17872,20 @@
 
 	    SessionRecording.prototype.unloadPersistedData = function () {
 	        this.batcher.stop();
-	        return this.batcher.flush()
-	            .then(function () {
+
+	        return this.queueStorage.init().catch(function () {
+	            this.reportError('Error initializing IndexedDB storage for unloading persisted data.');
+	        }.bind(this)).then(function () {
+	            // if the recording is too short, just delete any stored events without flushing
+	            if (this.getDurationMs() < this._getRecordMinMs()) {
 	                return this.queueStorage.removeItem(this.batcherKey);
-	            }.bind(this));
+	            }
+
+	            return this.batcher.flush()
+	                .then(function () {
+	                    return this.queueStorage.removeItem(this.batcherKey);
+	                }.bind(this));
+	        }.bind(this));
 	    };
 
 	    SessionRecording.prototype.getConfig = function(configVar) {
@@ -17375,11 +17920,7 @@
 	            this.maxExpires = new Date().getTime() + this.recordMaxMs;
 	        }
 
-	        this.recordMinMs = this.getConfig('record_min_ms');
-	        if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
-	            this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
-	            logger$3.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
-	        }
+	        this.recordMinMs = this._getRecordMinMs();
 
 	        if (!this.replayStartTime) {
 	            this.replayStartTime = new Date().getTime();
@@ -17427,6 +17968,11 @@
 	                    }
 	                    // promise only used to await during tests
 	                    this.__enqueuePromise = this.batcher.enqueue(ev);
+
+	                    // Capture the timestamp of the last event for duration calculation.
+	                    if (this.lastEventTimestamp === null || ev.timestamp > this.lastEventTimestamp) {
+	                        this.lastEventTimestamp = ev.timestamp;
+	                    }
 	                }.bind(this),
 	                'blockClass': this.getConfig('record_block_class'),
 	                'blockSelector': blockSelector,
@@ -17441,7 +17987,16 @@
 	                'recordCanvas': this.getConfig('record_canvas'),
 	                'sampling': {
 	                    'canvas': 15
-	                }
+	                },
+	                'plugins': this.getConfig('record_console') ? [
+	                    getRecordConsolePlugin({
+	                        stringifyOptions: {
+	                            stringLengthLimit: 1000,
+	                            numOfKeysLimit: 50,
+	                            depthOfLimit: 2
+	                        }
+	                    })
+	                ] : []
 	            });
 	        } catch (err) {
 	            this.reportError('Unexpected error when starting rrweb recording.', err);
@@ -17526,6 +18081,7 @@
 	            'replayStartTime': this.replayStartTime,
 	            'batchStartUrl': this.batchStartUrl,
 	            'replayStartUrl': this.replayStartUrl,
+	            'lastEventTimestamp': this.lastEventTimestamp,
 	            'idleExpires': this.idleExpires,
 	            'maxExpires': this.maxExpires,
 	            'tabId': tabId,
@@ -17547,6 +18103,7 @@
 	            idleExpires: serializedRecording['idleExpires'],
 	            maxExpires: serializedRecording['maxExpires'],
 	            replayStartTime: serializedRecording['replayStartTime'],
+	            lastEventTimestamp: serializedRecording['lastEventTimestamp'],
 	            seqNo: serializedRecording['seqNo'],
 	            sharedLockStorage: options.sharedLockStorage,
 	        }));
@@ -17664,6 +18221,38 @@
 	        } catch(err) {
 	            logger$3.error(err);
 	        }
+	    };
+
+	    /**
+	     * Calculates the duration of the recording in milliseconds, based on the start time and time of last recorded event.
+	     * @returns {number} The duration of the recording in milliseconds. Returns 0 if recording hasn't started.
+	     */
+	    SessionRecording.prototype.getDurationMs = function() {
+	        if (this.replayStartTime === null) {
+	            return 0;
+	        }
+
+	        // If the recording has no events, assume it is in progress and use the current time as the end time.
+	        if (this.lastEventTimestamp === null) {
+	            return new Date().getTime() - this.replayStartTime;
+	        }
+
+	        return this.lastEventTimestamp - this.replayStartTime;
+	    };
+
+	    /**
+	     * Lazily loads the minimum recording length config in milliseconds, respecting the maximum limit.
+	     * @returns {number} The minimum recording length in milliseconds.
+	     */
+	    SessionRecording.prototype._getRecordMinMs = function() {
+	        var configValue = this.getConfig('record_min_ms');
+
+	        if (configValue > MAX_VALUE_FOR_MIN_RECORDING_MS) {
+	            logger$3.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+	            return MAX_VALUE_FOR_MIN_RECORDING_MS;
+	        }
+
+	        return configValue;
 	    };
 
 	    /**
@@ -18675,20 +19264,65 @@
 	        return false;
 	    }
 
+	    /**
+	     * Get the composed path of a click event for elements embedded in shadow DOM.
+	     * @param {Event} event - event to get the composed path from
+	     * @returns {Array} the composed path of the click event
+	    */
+	    function getClickEventComposedPath(event) {
+	        if ('composedPath' in event) {
+	            return event['composedPath']();
+	        }
+
+	        return [];
+	    }
+
+	    /**
+	     * Get the element from a click event, accounting for elements embedded in shadow DOM.
+	     * @param {Event} event - event to get the target from
+	     * @returns {Element | null} the element that was the target of the click event
+	     */
+	    function getClickEventTargetElement(event) {
+	        var path = getClickEventComposedPath(event);
+
+	        if (path && path.length > 0) {
+	            return path[0];
+	        }
+
+	        return event['target'] || event['srcElement'];
+	    }
+
 	    /** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
 	    /** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
 	    /** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
+	    /** @const */ var DEFAULT_RAGE_CLICK_INTERACTIVE_ELEMENTS_ONLY = false;
 
 	    function RageClickTracker() {
 	        this.clicks = [];
 	    }
 
-	    RageClickTracker.prototype.isRageClick = function(x, y, options) {
+	    /**
+	     * Determines if a click event is part of a rage click sequence.
+	     * @param {Event} event - the original click event.
+	     * @param {import('../index.d.ts').RageClickConfig} options - configuration options for rage click detection.
+	     * @returns {boolean} - true if the click is considered a rage click, false otherwise.
+	     */
+	    RageClickTracker.prototype.isRageClick = function(event, options) {
 	        options = options || {};
 	        var thresholdPx = options['threshold_px'] || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
 	        var timeoutMs = options['timeout_ms'] || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
 	        var clickCount = options['click_count'] || DEFAULT_RAGE_CLICK_CLICK_COUNT;
+	        var interactiveElementsOnly = options['interactive_elements_only'] || DEFAULT_RAGE_CLICK_INTERACTIVE_ELEMENTS_ONLY;
+
+	        if (interactiveElementsOnly) {
+	            var target = getClickEventTargetElement(event);
+	            if (!target || isDefinitelyNonInteractive(target)) {
+	                return false;
+	            }
+	        }
+
 	        var timestamp = Date.now();
+	        var x = event['pageX'], y = event['pageY'];
 
 	        var lastClick = this.clicks[this.clicks.length - 1];
 	        if (
@@ -18719,28 +19353,16 @@
 	        if (!this.observedShadowRoots) {
 	            return;
 	        }
-	        var path = this.getComposedPath(event);
-	        if (path && path.length) {
-	            return path[0];
-	        }
 
-	        return event['target'] || event['srcElement'];
+	        return getClickEventTargetElement(event);
 	    };
 
-
-	    ShadowDOMObserver.prototype.getComposedPath = function(event) {
-	        if ('composedPath' in event) {
-	            return event['composedPath']();
-	        }
-
-	        return [];
-	    };
 	    ShadowDOMObserver.prototype.observeFromEvent = function(event) {
 	        if (!this.observedShadowRoots) {
 	            return;
 	        }
 
-	        var path = this.getComposedPath(event);
+	        var path = getClickEventComposedPath(event);
 
 	        // Check each element in path for shadow roots
 	        for (var i = 0; i < path.length; i++) {
@@ -19492,7 +20114,7 @@
 	                return;
 	            }
 
-	            if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+	            if (this._rageClickTracker.isRageClick(ev, currentRageClickConfig)) {
 	                this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
 	            }
 	        }.bind(this);
@@ -21361,6 +21983,7 @@
 	        'record_block_selector':             'img, video, audio',
 	        'record_canvas':                     false,
 	        'record_collect_fonts':              false,
+	        'record_console':                    true,
 	        'record_heatmap_data':               false,
 	        'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
 	        'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),

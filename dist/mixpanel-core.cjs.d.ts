@@ -49,6 +49,8 @@ export type RageClickConfig =
     timeout_ms?: number;
     /** Number of clicks required to trigger a rage click event (default: 3) */
     click_count?: number;
+    /** Whether to only track rage clicks on interactive elements like buttons, links, inputs (default: false) */
+    interactive_elements_only?: boolean;
   };
 
 export type DeadClickConfig =

@@ -17,7 +17,7 @@ _srcLoadersLoaderModule2['default'].init("FAKE_TOKEN", {
 
 _srcLoadersLoaderModule2['default'].track('Tracking after mixpanel.init');
 
-},{"../../src/loaders/loader-module":19}],2:[function(require,module,exports){
+},{"../../src/loaders/loader-module":20}],2:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -1975,6 +1975,528 @@ process.chdir = function (dir) {
 process.umask = function() { return 0; };
 
 },{}],7:[function(require,module,exports){
+(function (g, f) {
+    if ("object" == typeof exports && "object" == typeof module) {
+      module.exports = f();
+    } else if ("function" == typeof define && define.amd) {
+      define("rrwebPluginConsoleRecord", [], f);
+    } else if ("object" == typeof exports) {
+      exports["rrwebPluginConsoleRecord"] = f();
+    } else {
+      g["rrwebPluginConsoleRecord"] = f();
+    }
+  }(this, () => {
+var exports = {};
+var module = { exports };
+"use strict";
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+function patch(source, name, replacement) {
+  try {
+    if (!(name in source)) {
+      return () => {
+      };
+    }
+    const original = source[name];
+    const wrapped = replacement(original);
+    if (typeof wrapped === "function") {
+      wrapped.prototype = wrapped.prototype || {};
+      Object.defineProperties(wrapped, {
+        __rrweb_original__: {
+          enumerable: false,
+          value: original
+        }
+      });
+    }
+    source[name] = wrapped;
+    return () => {
+      source[name] = original;
+    };
+  } catch (e) {
+    return () => {
+    };
+  }
+}
+class StackFrame {
+  constructor(obj) {
+    __publicField(this, "fileName");
+    __publicField(this, "functionName");
+    __publicField(this, "lineNumber");
+    __publicField(this, "columnNumber");
+    this.fileName = obj.fileName || "";
+    this.functionName = obj.functionName || "";
+    this.lineNumber = obj.lineNumber;
+    this.columnNumber = obj.columnNumber;
+  }
+  toString() {
+    const lineNumber = this.lineNumber || "";
+    const columnNumber = this.columnNumber || "";
+    if (this.functionName)
+      return `${this.functionName} (${this.fileName}:${lineNumber}:${columnNumber})`;
+    return `${this.fileName}:${lineNumber}:${columnNumber}`;
+  }
+}
+const FIREFOX_SAFARI_STACK_REGEXP = /(^|@)\S+:\d+/;
+const CHROME_IE_STACK_REGEXP = /^\s*at .*(\S+:\d+|\(native\))/m;
+const SAFARI_NATIVE_CODE_REGEXP = /^(eval@)?(\[native code])?$/;
+const ErrorStackParser = {
+  /**
+   * Given an Error object, extract the most information from it.
+   */
+  parse: function(error) {
+    if (!error) {
+      return [];
+    }
+    if (
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      typeof error.stacktrace !== "undefined" || // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      typeof error["opera#sourceloc"] !== "undefined"
+    ) {
+      return this.parseOpera(
+        error
+      );
+    } else if (error.stack && error.stack.match(CHROME_IE_STACK_REGEXP)) {
+      return this.parseV8OrIE(error);
+    } else if (error.stack) {
+      return this.parseFFOrSafari(error);
+    } else {
+      console.warn(
+        "[console-record-plugin]: Failed to parse error object:",
+        error
+      );
+      return [];
+    }
+  },
+  // Separate line and column numbers from a string of the form: (URI:Line:Column)
+  extractLocation: function(urlLike) {
+    if (urlLike.indexOf(":") === -1) {
+      return [urlLike];
+    }
+    const regExp = /(.+?)(?::(\d+))?(?::(\d+))?$/;
+    const parts = regExp.exec(urlLike.replace(/[()]/g, ""));
+    if (!parts) throw new Error(`Cannot parse given url: ${urlLike}`);
+    return [parts[1], parts[2] || void 0, parts[3] || void 0];
+  },
+  parseV8OrIE: function(error) {
+    const filtered = error.stack.split("\n").filter(function(line) {
+      return !!line.match(CHROME_IE_STACK_REGEXP);
+    }, this);
+    return filtered.map(function(line) {
+      if (line.indexOf("(eval ") > -1) {
+        line = line.replace(/eval code/g, "eval").replace(/(\(eval at [^()]*)|(\),.*$)/g, "");
+      }
+      let sanitizedLine = line.replace(/^\s+/, "").replace(/\(eval code/g, "(");
+      const location = sanitizedLine.match(/ (\((.+):(\d+):(\d+)\)$)/);
+      sanitizedLine = location ? sanitizedLine.replace(location[0], "") : sanitizedLine;
+      const tokens = sanitizedLine.split(/\s+/).slice(1);
+      const locationParts = this.extractLocation(
+        location ? location[1] : tokens.pop()
+      );
+      const functionName = tokens.join(" ") || void 0;
+      const fileName = ["eval", "<anonymous>"].indexOf(locationParts[0]) > -1 ? void 0 : locationParts[0];
+      return new StackFrame({
+        functionName,
+        fileName,
+        lineNumber: locationParts[1],
+        columnNumber: locationParts[2]
+      });
+    }, this);
+  },
+  parseFFOrSafari: function(error) {
+    const filtered = error.stack.split("\n").filter(function(line) {
+      return !line.match(SAFARI_NATIVE_CODE_REGEXP);
+    }, this);
+    return filtered.map(function(line) {
+      if (line.indexOf(" > eval") > -1) {
+        line = line.replace(
+          / line (\d+)(?: > eval line \d+)* > eval:\d+:\d+/g,
+          ":$1"
+        );
+      }
+      if (line.indexOf("@") === -1 && line.indexOf(":") === -1) {
+        return new StackFrame({
+          functionName: line
+        });
+      } else {
+        const functionNameRegex = /((.*".+"[^@]*)?[^@]*)(?:@)/;
+        const matches = line.match(functionNameRegex);
+        const functionName = matches && matches[1] ? matches[1] : void 0;
+        const locationParts = this.extractLocation(
+          line.replace(functionNameRegex, "")
+        );
+        return new StackFrame({
+          functionName,
+          fileName: locationParts[0],
+          lineNumber: locationParts[1],
+          columnNumber: locationParts[2]
+        });
+      }
+    }, this);
+  },
+  parseOpera: function(e) {
+    if (!e.stacktrace || e.message.indexOf("\n") > -1 && e.message.split("\n").length > e.stacktrace.split("\n").length) {
+      return this.parseOpera9(e);
+    } else if (!e.stack) {
+      return this.parseOpera10(e);
+    } else {
+      return this.parseOpera11(e);
+    }
+  },
+  parseOpera9: function(e) {
+    const lineRE = /Line (\d+).*script (?:in )?(\S+)/i;
+    const lines = e.message.split("\n");
+    const result = [];
+    for (let i = 2, len = lines.length; i < len; i += 2) {
+      const match = lineRE.exec(lines[i]);
+      if (match) {
+        result.push(
+          new StackFrame({
+            fileName: match[2],
+            lineNumber: parseFloat(match[1])
+          })
+        );
+      }
+    }
+    return result;
+  },
+  parseOpera10: function(e) {
+    const lineRE = /Line (\d+).*script (?:in )?(\S+)(?:: In function (\S+))?$/i;
+    const lines = e.stacktrace.split("\n");
+    const result = [];
+    for (let i = 0, len = lines.length; i < len; i += 2) {
+      const match = lineRE.exec(lines[i]);
+      if (match) {
+        result.push(
+          new StackFrame({
+            functionName: match[3] || void 0,
+            fileName: match[2],
+            lineNumber: parseFloat(match[1])
+          })
+        );
+      }
+    }
+    return result;
+  },
+  // Opera 10.65+ Error.stack very similar to FF/Safari
+  parseOpera11: function(error) {
+    const filtered = error.stack.split("\n").filter(function(line) {
+      return !!line.match(FIREFOX_SAFARI_STACK_REGEXP) && !line.match(/^Error created at/);
+    }, this);
+    return filtered.map(function(line) {
+      const tokens = line.split("@");
+      const locationParts = this.extractLocation(tokens.pop());
+      const functionCall = tokens.shift() || "";
+      const functionName = functionCall.replace(/<anonymous function(: (\w+))?>/, "$2").replace(/\([^)]*\)/g, "") || void 0;
+      return new StackFrame({
+        functionName,
+        fileName: locationParts[0],
+        lineNumber: locationParts[1],
+        columnNumber: locationParts[2]
+      });
+    }, this);
+  }
+};
+function pathToSelector(node) {
+  if (!node || !node.outerHTML) {
+    return "";
+  }
+  let path = "";
+  while (node.parentElement) {
+    let name = node.localName;
+    if (!name) {
+      break;
+    }
+    name = name.toLowerCase();
+    const parent = node.parentElement;
+    const domSiblings = [];
+    if (parent.children && parent.children.length > 0) {
+      for (let i = 0; i < parent.children.length; i++) {
+        const sibling = parent.children[i];
+        if (sibling.localName && sibling.localName.toLowerCase) {
+          if (sibling.localName.toLowerCase() === name) {
+            domSiblings.push(sibling);
+          }
+        }
+      }
+    }
+    if (domSiblings.length > 1) {
+      name += `:eq(${domSiblings.indexOf(node)})`;
+    }
+    path = name + (path ? ">" + path : "");
+    node = parent;
+  }
+  return path;
+}
+function isObject(obj) {
+  return Object.prototype.toString.call(obj) === "[object Object]";
+}
+function isObjTooDeep(obj, limit) {
+  if (limit === 0) {
+    return true;
+  }
+  const keys = Object.keys(obj);
+  for (const key of keys) {
+    if (isObject(obj[key]) && isObjTooDeep(obj[key], limit - 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+function stringify(obj, stringifyOptions) {
+  const options = {
+    numOfKeysLimit: 50,
+    depthOfLimit: 4
+  };
+  Object.assign(options, stringifyOptions);
+  const stack = [];
+  const keys = [];
+  return JSON.stringify(
+    obj,
+    function(key, value) {
+      if (stack.length > 0) {
+        const thisPos = stack.indexOf(this);
+        ~thisPos ? stack.splice(thisPos + 1) : stack.push(this);
+        ~thisPos ? keys.splice(thisPos, Infinity, key) : keys.push(key);
+        if (~stack.indexOf(value)) {
+          if (stack[0] === value) {
+            value = "[Circular ~]";
+          } else {
+            value = "[Circular ~." + keys.slice(0, stack.indexOf(value)).join(".") + "]";
+          }
+        }
+      } else {
+        stack.push(value);
+      }
+      if (value === null) return value;
+      if (value === void 0) return "undefined";
+      if (shouldIgnore(value)) {
+        return toString(value);
+      }
+      if (typeof value === "bigint") {
+        return value.toString() + "n";
+      }
+      if (value instanceof Event) {
+        const eventResult = {};
+        for (const eventKey in value) {
+          const eventValue = value[eventKey];
+          if (Array.isArray(eventValue)) {
+            eventResult[eventKey] = pathToSelector(
+              eventValue.length ? eventValue[0] : null
+            );
+          } else {
+            eventResult[eventKey] = eventValue;
+          }
+        }
+        return eventResult;
+      } else if (value instanceof Node) {
+        if (value instanceof HTMLElement) {
+          return value ? value.outerHTML : "";
+        }
+        return value.nodeName;
+      } else if (value instanceof Error) {
+        return value.stack ? value.stack + "\nEnd of stack for Error object" : value.name + ": " + value.message;
+      }
+      return value;
+    }
+  );
+  function shouldIgnore(_obj) {
+    if (isObject(_obj) && Object.keys(_obj).length > options.numOfKeysLimit) {
+      return true;
+    }
+    if (typeof _obj === "function") {
+      return true;
+    }
+    if (isObject(_obj) && isObjTooDeep(_obj, options.depthOfLimit)) {
+      return true;
+    }
+    return false;
+  }
+  function toString(_obj) {
+    let str = _obj.toString();
+    if (options.stringLengthLimit && str.length > options.stringLengthLimit) {
+      str = `${str.slice(0, options.stringLengthLimit)}...`;
+    }
+    return str;
+  }
+}
+const defaultLogOptions = {
+  level: [
+    "assert",
+    "clear",
+    "count",
+    "countReset",
+    "debug",
+    "dir",
+    "dirxml",
+    "error",
+    "group",
+    "groupCollapsed",
+    "groupEnd",
+    "info",
+    "log",
+    "table",
+    "time",
+    "timeEnd",
+    "timeLog",
+    "trace",
+    "warn"
+  ],
+  lengthThreshold: 1e3,
+  logger: "console"
+};
+function initLogObserver(cb, win, options) {
+  const logOptions = options ? Object.assign({}, defaultLogOptions, options) : defaultLogOptions;
+  const loggerType = logOptions.logger;
+  if (!loggerType) {
+    return () => {
+    };
+  }
+  let logger;
+  if (typeof loggerType === "string") {
+    logger = win[loggerType];
+  } else {
+    logger = loggerType;
+  }
+  let logCount = 0;
+  let inStack = false;
+  const cancelHandlers = [];
+  if (logOptions.level.includes("error")) {
+    const errorHandler = (event) => {
+      const message = event.message, error = event.error;
+      const trace = ErrorStackParser.parse(error).map(
+        (stackFrame) => stackFrame.toString()
+      );
+      const payload = [stringify(message, logOptions.stringifyOptions)];
+      cb({
+        level: "error",
+        trace,
+        payload
+      });
+    };
+    win.addEventListener("error", errorHandler);
+    cancelHandlers.push(() => {
+      win.removeEventListener("error", errorHandler);
+    });
+    const unhandledrejectionHandler = (event) => {
+      let error;
+      let payload;
+      if (event.reason instanceof Error) {
+        error = event.reason;
+        payload = [
+          stringify(
+            `Uncaught (in promise) ${error.name}: ${error.message}`,
+            logOptions.stringifyOptions
+          )
+        ];
+      } else {
+        error = new Error();
+        payload = [
+          stringify("Uncaught (in promise)", logOptions.stringifyOptions),
+          stringify(event.reason, logOptions.stringifyOptions)
+        ];
+      }
+      const trace = ErrorStackParser.parse(error).map(
+        (stackFrame) => stackFrame.toString()
+      );
+      cb({
+        level: "error",
+        trace,
+        payload
+      });
+    };
+    win.addEventListener("unhandledrejection", unhandledrejectionHandler);
+    cancelHandlers.push(() => {
+      win.removeEventListener("unhandledrejection", unhandledrejectionHandler);
+    });
+  }
+  for (const levelType of logOptions.level) {
+    cancelHandlers.push(replace(logger, levelType));
+  }
+  return () => {
+    cancelHandlers.forEach((h) => h());
+  };
+  function replace(_logger, level) {
+    if (!_logger[level]) {
+      return () => {
+      };
+    }
+    return patch(
+      _logger,
+      level,
+      (original) => {
+        return (...args) => {
+          original.apply(this, args);
+          if (level === "assert" && !!args[0]) {
+            return;
+          }
+          if (inStack) {
+            return;
+          }
+          inStack = true;
+          try {
+            const trace = ErrorStackParser.parse(new Error()).map((stackFrame) => stackFrame.toString()).splice(1);
+            const argsForPayload = level === "assert" ? args.slice(1) : args;
+            const payload = argsForPayload.map(
+              (s) => stringify(s, logOptions.stringifyOptions)
+            );
+            logCount++;
+            if (logCount < logOptions.lengthThreshold) {
+              cb({
+                level,
+                trace,
+                payload
+              });
+            } else if (logCount === logOptions.lengthThreshold) {
+              cb({
+                level: "warn",
+                trace: [],
+                payload: [
+                  stringify("The number of log records reached the threshold.")
+                ]
+              });
+            }
+          } catch (error) {
+            original("rrweb logger error:", error, ...args);
+          } finally {
+            inStack = false;
+          }
+        };
+      }
+    );
+  }
+}
+const PLUGIN_NAME = "rrweb/console@1";
+const getRecordConsolePlugin = (options) => ({
+  name: PLUGIN_NAME,
+  observer: initLogObserver,
+  options
+});
+exports.PLUGIN_NAME = PLUGIN_NAME;
+exports.getRecordConsolePlugin = getRecordConsolePlugin;
+if (typeof module.exports == "object" && typeof exports == "object") {
+  var __cp = (to, from, except, desc) => {
+    if ((from && typeof from === "object") || typeof from === "function") {
+      for (let key of Object.getOwnPropertyNames(from)) {
+        if (!Object.prototype.hasOwnProperty.call(to, key) && key !== except)
+        Object.defineProperty(to, key, {
+          get: () => from[key],
+          enumerable: !(desc = Object.getOwnPropertyDescriptor(from, key)) || desc.enumerable,
+        });
+      }
+    }
+    return to;
+  };
+  module.exports = __cp(module.exports, exports);
+}
+return module.exports;
+}))
+
+
+},{}],8:[function(require,module,exports){
 (function (process,Buffer){
 (function (g, f) {
     if ("object" == typeof exports && "object" == typeof module) {
@@ -19093,7 +19615,7 @@ return module.exports;
 
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"_process":6,"buffer":3}],8:[function(require,module,exports){
+},{"_process":6,"buffer":3}],9:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -19231,7 +19753,7 @@ exports.REMOVE_ACTION = REMOVE_ACTION;
 exports.DELETE_ACTION = DELETE_ACTION;
 exports.apiActions = apiActions;
 
-},{"./utils":35}],9:[function(require,module,exports){
+},{"./utils":36}],10:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -19487,7 +20009,7 @@ DeadClickTracker.prototype.stopTracking = function () {
 exports.DeadClickTracker = DeadClickTracker;
 exports.DEFAULT_DEAD_CLICK_TIMEOUT_MS = DEFAULT_DEAD_CLICK_TIMEOUT_MS;
 
-},{"./shadow-dom-observer":12,"./utils":13}],10:[function(require,module,exports){
+},{"./shadow-dom-observer":13,"./utils":14}],11:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -19941,7 +20463,7 @@ Autocapture.prototype.initRageClickTracking = function () {
             return;
         }
 
-        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+        if (this._rageClickTracker.isRageClick(ev, currentRageClickConfig)) {
             this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
         }
     }).bind(this);
@@ -20086,26 +20608,47 @@ Autocapture.prototype.stopDeadClickTracking = function () {
 
 exports.Autocapture = Autocapture;
 
-},{"../utils":35,"../window":36,"./deadclick":9,"./rageclick":11,"./utils":13}],11:[function(require,module,exports){
-/** @const */'use strict';
+},{"../utils":36,"../window":37,"./deadclick":10,"./rageclick":12,"./utils":14}],12:[function(require,module,exports){
+'use strict';
 
 Object.defineProperty(exports, '__esModule', {
     value: true
 });
-var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
+
+var _utils = require('./utils');
+
+/** @const */var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
 /** @const */var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
 /** @const */var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
+/** @const */var DEFAULT_RAGE_CLICK_INTERACTIVE_ELEMENTS_ONLY = false;
 
 function RageClickTracker() {
     this.clicks = [];
 }
 
-RageClickTracker.prototype.isRageClick = function (x, y, options) {
+/**
+ * Determines if a click event is part of a rage click sequence.
+ * @param {Event} event - the original click event.
+ * @param {import('../index.d.ts').RageClickConfig} options - configuration options for rage click detection.
+ * @returns {boolean} - true if the click is considered a rage click, false otherwise.
+ */
+RageClickTracker.prototype.isRageClick = function (event, options) {
     options = options || {};
     var thresholdPx = options['threshold_px'] || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
     var timeoutMs = options['timeout_ms'] || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
     var clickCount = options['click_count'] || DEFAULT_RAGE_CLICK_CLICK_COUNT;
+    var interactiveElementsOnly = options['interactive_elements_only'] || DEFAULT_RAGE_CLICK_INTERACTIVE_ELEMENTS_ONLY;
+
+    if (interactiveElementsOnly) {
+        var target = (0, _utils.getClickEventTargetElement)(event);
+        if (!target || (0, _utils.isDefinitelyNonInteractive)(target)) {
+            return false;
+        }
+    }
+
     var timestamp = Date.now();
+    var x = event['pageX'],
+        y = event['pageY'];
 
     var lastClick = this.clicks[this.clicks.length - 1];
     if (lastClick && timestamp - lastClick.timestamp < timeoutMs && Math.sqrt(Math.pow(x - lastClick.x, 2) + Math.pow(y - lastClick.y, 2)) < thresholdPx) {
@@ -20125,7 +20668,7 @@ exports.DEFAULT_RAGE_CLICK_THRESHOLD_PX = DEFAULT_RAGE_CLICK_THRESHOLD_PX;
 exports.DEFAULT_RAGE_CLICK_TIMEOUT_MS = DEFAULT_RAGE_CLICK_TIMEOUT_MS;
 exports.DEFAULT_RAGE_CLICK_CLICK_COUNT = DEFAULT_RAGE_CLICK_CLICK_COUNT;
 
-},{}],12:[function(require,module,exports){
+},{"./utils":14}],13:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -20146,27 +20689,16 @@ ShadowDOMObserver.prototype.getEventTarget = function (event) {
     if (!this.observedShadowRoots) {
         return;
     }
-    var path = this.getComposedPath(event);
-    if (path && path.length) {
-        return path[0];
-    }
 
-    return event['target'] || event['srcElement'];
+    return (0, _utils.getClickEventTargetElement)(event);
 };
 
-ShadowDOMObserver.prototype.getComposedPath = function (event) {
-    if ('composedPath' in event) {
-        return event['composedPath']();
-    }
-
-    return [];
-};
 ShadowDOMObserver.prototype.observeFromEvent = function (event) {
     if (!this.observedShadowRoots) {
         return;
     }
 
-    var path = this.getComposedPath(event);
+    var path = (0, _utils.getClickEventComposedPath)(event);
 
     // Check each element in path for shadow roots
     for (var i = 0; i < path.length; i++) {
@@ -20230,7 +20762,7 @@ ShadowDOMObserver.prototype.stop = function () {
 
 exports.ShadowDOMObserver = ShadowDOMObserver;
 
-},{"./utils":13}],13:[function(require,module,exports){
+},{"./utils":14}],14:[function(require,module,exports){
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
 
@@ -20955,6 +21487,34 @@ function isDefinitelyNonInteractive(element) {
     return false;
 }
 
+/**
+ * Get the composed path of a click event for elements embedded in shadow DOM.
+ * @param {Event} event - event to get the composed path from
+ * @returns {Array} the composed path of the click event
+*/
+function getClickEventComposedPath(event) {
+    if ('composedPath' in event) {
+        return event['composedPath']();
+    }
+
+    return [];
+}
+
+/**
+ * Get the element from a click event, accounting for elements embedded in shadow DOM.
+ * @param {Event} event - event to get the target from
+ * @returns {Element | null} the element that was the target of the click event
+ */
+function getClickEventTargetElement(event) {
+    var path = getClickEventComposedPath(event);
+
+    if (path && path.length > 0) {
+        return path[0];
+    }
+
+    return event['target'] || event['srcElement'];
+}
+
 exports.EV_CHANGE = EV_CHANGE;
 exports.EV_CLICK = EV_CLICK;
 exports.EV_HASHCHANGE = EV_HASHCHANGE;
@@ -20968,6 +21528,8 @@ exports.EV_SELECT = EV_SELECT;
 exports.EV_SUBMIT = EV_SUBMIT;
 exports.EV_TOGGLE = EV_TOGGLE;
 exports.EV_VISIBILITYCHANGE = EV_VISIBILITYCHANGE;
+exports.getClickEventComposedPath = getClickEventComposedPath;
+exports.getClickEventTargetElement = getClickEventTargetElement;
 exports.getPolyfillScrollEndFunction = getPolyfillScrollEndFunction;
 exports.getPropsForDOMEvent = getPropsForDOMEvent;
 exports.getSafeText = getSafeText;
@@ -20979,7 +21541,7 @@ exports.shouldTrackElementDetails = shouldTrackElementDetails;
 exports.shouldTrackValue = shouldTrackValue;
 exports.weakSetSupported = weakSetSupported;
 
-},{"../utils":35,"../window":36}],14:[function(require,module,exports){
+},{"../utils":36,"../window":37}],15:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -20987,13 +21549,13 @@ Object.defineProperty(exports, '__esModule', {
 });
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.71.1'
+    LIB_VERSION: '2.72.0'
 };
 
 exports['default'] = Config;
 module.exports = exports['default'];
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -21156,7 +21718,7 @@ FormTracker.prototype.after_track_handler = function (props, options) {
 exports.FormTracker = FormTracker;
 exports.LinkTracker = LinkTracker;
 
-},{"./utils":35}],16:[function(require,module,exports){
+},{"./utils":36}],17:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -21437,7 +21999,7 @@ FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.
 
 exports.FeatureFlagManager = FeatureFlagManager;
 
-},{"../config":14,"../utils":35,"../window":36}],17:[function(require,module,exports){
+},{"../config":15,"../utils":36,"../window":37}],18:[function(require,module,exports){
 /**
  * GDPR utils
  *
@@ -21752,7 +22314,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-},{"./utils":35,"./window":36}],18:[function(require,module,exports){
+},{"./utils":36,"./window":37}],19:[function(require,module,exports){
 // For loading separate bundles asynchronously via script tag
 // so that we don't load them until they are needed at runtime.
 'use strict';
@@ -21787,7 +22349,7 @@ function loadThrowError(src, _onload) {
     throw new Error('This build of Mixpanel only includes core SDK functionality, could not load ' + src);
 }
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -21806,7 +22368,7 @@ var mixpanel = (0, _mixpanelCore.init_as_module)(_bundleLoaders.loadNoop);
 exports['default'] = mixpanel;
 module.exports = exports['default'];
 
-},{"../mixpanel-core":20,"../recorder":25,"./bundle-loaders":18}],20:[function(require,module,exports){
+},{"../mixpanel-core":21,"../recorder":26,"./bundle-loaders":19}],21:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -21975,6 +22537,7 @@ var DEFAULT_CONFIG = {
     'record_block_selector': 'img, video, audio',
     'record_canvas': false,
     'record_collect_fonts': false,
+    'record_console': true,
     'record_heatmap_data': false,
     'record_idle_timeout_ms': 30 * 60 * 1000, // 30 minutes
     'record_mask_text_class': new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
@@ -24220,7 +24783,7 @@ function init_as_module(bundle_loader) {
     return mixpanel_master;
 }
 
-},{"./autocapture":10,"./config":14,"./dom-trackers":15,"./flags":16,"./gdpr-utils":17,"./mixpanel-group":21,"./mixpanel-people":22,"./mixpanel-persistence":23,"./recorder/utils":29,"./request-batcher":30,"./storage/indexed-db":33,"./utils":35,"./window":36}],21:[function(require,module,exports){
+},{"./autocapture":11,"./config":15,"./dom-trackers":16,"./flags":17,"./gdpr-utils":18,"./mixpanel-group":22,"./mixpanel-people":23,"./mixpanel-persistence":24,"./recorder/utils":30,"./request-batcher":31,"./storage/indexed-db":34,"./utils":36,"./window":37}],22:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -24404,7 +24967,7 @@ MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 exports.MixpanelGroup = MixpanelGroup;
 
-},{"./api-actions":8,"./gdpr-utils":17,"./utils":35}],22:[function(require,module,exports){
+},{"./api-actions":9,"./gdpr-utils":18,"./utils":36}],23:[function(require,module,exports){
 /* eslint camelcase: "off" */
 'use strict';
 
@@ -24874,7 +25437,7 @@ MixpanelPeople.prototype['toString'] = MixpanelPeople.prototype.toString;
 
 exports.MixpanelPeople = MixpanelPeople;
 
-},{"./api-actions":8,"./gdpr-utils":17,"./utils":35}],23:[function(require,module,exports){
+},{"./api-actions":9,"./gdpr-utils":18,"./utils":36}],24:[function(require,module,exports){
 /* eslint camelcase: "off" */
 
 'use strict';
@@ -25308,7 +25871,7 @@ exports.PEOPLE_DISTINCT_ID_KEY = PEOPLE_DISTINCT_ID_KEY;
 exports.ALIAS_ID_KEY = ALIAS_ID_KEY;
 exports.EVENT_TIMERS_KEY = EVENT_TIMERS_KEY;
 
-},{"./api-actions":8,"./utils":35}],24:[function(require,module,exports){
+},{"./api-actions":9,"./utils":36}],25:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25684,7 +26247,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 exports.Promise = PromisePolyfill;
 exports.NpoPromise = NpoPromise;
 
-},{"./window":36}],25:[function(require,module,exports){
+},{"./window":37}],26:[function(require,module,exports){
 'use strict';
 
 var _window = require('../window');
@@ -25693,7 +26256,7 @@ var _recorder = require('./recorder');
 
 _window.window['__mp_recorder'] = _recorder.MixpanelRecorder;
 
-},{"../window":36,"./recorder":26}],26:[function(require,module,exports){
+},{"../window":37,"./recorder":27}],27:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25848,7 +26411,7 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
 
 exports.MixpanelRecorder = MixpanelRecorder;
 
-},{"../promise-polyfill":24,"../utils":35,"./recording-registry":27,"./session-recording":28,"@mixpanel/rrweb":7}],27:[function(require,module,exports){
+},{"../promise-polyfill":25,"../utils":36,"./recording-registry":28,"./session-recording":29,"@mixpanel/rrweb":8}],28:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25977,7 +26540,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
 
 exports.RecordingRegistry = RecordingRegistry;
 
-},{"../promise-polyfill":24,"../storage/indexed-db":33,"./session-recording":28,"./utils":29}],28:[function(require,module,exports){
+},{"../promise-polyfill":25,"../storage/indexed-db":34,"./session-recording":29,"./utils":30}],29:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -25989,6 +26552,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'd
 var _window = require('../window');
 
 var _mixpanelRrweb = require('@mixpanel/rrweb');
+
+var _mixpanelRrwebPluginConsoleRecord = require('@mixpanel/rrweb-plugin-console-record');
 
 var _utils = require('../utils');
 
@@ -26027,6 +26592,7 @@ function isUserEvent(ev) {
  * @property {number} idleExpires
  * @property {number} maxExpires
  * @property {number} replayStartTime
+ * @property {number} lastEventTimestamp
  * @property {number} seqNo
  * @property {string} batchStartUrl
  * @property {string} replayId
@@ -26047,6 +26613,7 @@ function isUserEvent(ev) {
  * @property {number} idleExpires
  * @property {number} maxExpires
  * @property {number} replayStartTime
+ * @property {number} lastEventTimestamp - the unix timestamp of the last recorded event from rrweb
  * @property {number} seqNo
  * @property {string} batchStartUrl
  * @property {string} replayStartUrl
@@ -26079,6 +26646,7 @@ var SessionRecording = function SessionRecording(options) {
     this.idleExpires = options.idleExpires || null;
     this.maxExpires = options.maxExpires || null;
     this.replayStartTime = options.replayStartTime || null;
+    this.lastEventTimestamp = options.lastEventTimestamp || null;
     this.seqNo = options.seqNo || 0;
 
     this.idleTimeoutId = null;
@@ -26138,8 +26706,18 @@ SessionRecording.prototype.getUserIdInfo = function () {
 
 SessionRecording.prototype.unloadPersistedData = function () {
     this.batcher.stop();
-    return this.batcher.flush().then((function () {
-        return this.queueStorage.removeItem(this.batcherKey);
+
+    return this.queueStorage.init()['catch']((function () {
+        this.reportError('Error initializing IndexedDB storage for unloading persisted data.');
+    }).bind(this)).then((function () {
+        // if the recording is too short, just delete any stored events without flushing
+        if (this.getDurationMs() < this._getRecordMinMs()) {
+            return this.queueStorage.removeItem(this.batcherKey);
+        }
+
+        return this.batcher.flush().then((function () {
+            return this.queueStorage.removeItem(this.batcherKey);
+        }).bind(this));
     }).bind(this));
 };
 
@@ -26175,11 +26753,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.maxExpires = new Date().getTime() + this.recordMaxMs;
     }
 
-    this.recordMinMs = this.getConfig('record_min_ms');
-    if (this.recordMinMs > _utils.MAX_VALUE_FOR_MIN_RECORDING_MS) {
-        this.recordMinMs = _utils.MAX_VALUE_FOR_MIN_RECORDING_MS;
-        logger.critical('record_min_ms cannot be greater than ' + _utils.MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
-    }
+    this.recordMinMs = this._getRecordMinMs();
 
     if (!this.replayStartTime) {
         this.replayStartTime = new Date().getTime();
@@ -26227,6 +26801,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                 }
                 // promise only used to await during tests
                 this.__enqueuePromise = this.batcher.enqueue(ev);
+
+                // Capture the timestamp of the last event for duration calculation.
+                if (this.lastEventTimestamp === null || ev.timestamp > this.lastEventTimestamp) {
+                    this.lastEventTimestamp = ev.timestamp;
+                }
             }).bind(this),
             'blockClass': this.getConfig('record_block_class'),
             'blockSelector': blockSelector,
@@ -26241,7 +26820,14 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
             'recordCanvas': this.getConfig('record_canvas'),
             'sampling': {
                 'canvas': 15
-            }
+            },
+            'plugins': this.getConfig('record_console') ? [(0, _mixpanelRrwebPluginConsoleRecord.getRecordConsolePlugin)({
+                stringifyOptions: {
+                    stringLengthLimit: 1000,
+                    numOfKeysLimit: 50,
+                    depthOfLimit: 2
+                }
+            })] : []
         });
     } catch (err) {
         this.reportError('Unexpected error when starting rrweb recording.', err);
@@ -26325,6 +26911,7 @@ SessionRecording.prototype.serialize = function () {
         'replayStartTime': this.replayStartTime,
         'batchStartUrl': this.batchStartUrl,
         'replayStartUrl': this.replayStartUrl,
+        'lastEventTimestamp': this.lastEventTimestamp,
         'idleExpires': this.idleExpires,
         'maxExpires': this.maxExpires,
         'tabId': tabId
@@ -26345,6 +26932,7 @@ SessionRecording.deserialize = function (serializedRecording, options) {
         idleExpires: serializedRecording['idleExpires'],
         maxExpires: serializedRecording['maxExpires'],
         replayStartTime: serializedRecording['replayStartTime'],
+        lastEventTimestamp: serializedRecording['lastEventTimestamp'],
         seqNo: serializedRecording['seqNo'],
         sharedLockStorage: options.sharedLockStorage
     }));
@@ -26461,9 +27049,41 @@ SessionRecording.prototype.reportError = function (msg, err) {
     }
 };
 
+/**
+ * Calculates the duration of the recording in milliseconds, based on the start time and time of last recorded event.
+ * @returns {number} The duration of the recording in milliseconds. Returns 0 if recording hasn't started.
+ */
+SessionRecording.prototype.getDurationMs = function () {
+    if (this.replayStartTime === null) {
+        return 0;
+    }
+
+    // If the recording has no events, assume it is in progress and use the current time as the end time.
+    if (this.lastEventTimestamp === null) {
+        return new Date().getTime() - this.replayStartTime;
+    }
+
+    return this.lastEventTimestamp - this.replayStartTime;
+};
+
+/**
+ * Lazily loads the minimum recording length config in milliseconds, respecting the maximum limit.
+ * @returns {number} The minimum recording length in milliseconds.
+ */
+SessionRecording.prototype._getRecordMinMs = function () {
+    var configValue = this.getConfig('record_min_ms');
+
+    if (configValue > _utils.MAX_VALUE_FOR_MIN_RECORDING_MS) {
+        logger.critical('record_min_ms cannot be greater than ' + _utils.MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+        return _utils.MAX_VALUE_FOR_MIN_RECORDING_MS;
+    }
+
+    return configValue;
+};
+
 exports.SessionRecording = SessionRecording;
 
-},{"../config":14,"../gdpr-utils":17,"../request-batcher":30,"../storage/indexed-db":33,"../utils":35,"../window":36,"./utils":29,"@mixpanel/rrweb":7}],29:[function(require,module,exports){
+},{"../config":15,"../gdpr-utils":18,"../request-batcher":31,"../storage/indexed-db":34,"../utils":36,"../window":37,"./utils":30,"@mixpanel/rrweb":8,"@mixpanel/rrweb-plugin-console-record":7}],30:[function(require,module,exports){
 /**
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  * @returns {boolean}
@@ -26483,7 +27103,7 @@ var RECORD_ENQUEUE_THROTTLE_MS = 250;
 exports.isRecordingExpired = isRecordingExpired;
 exports.RECORD_ENQUEUE_THROTTLE_MS = RECORD_ENQUEUE_THROTTLE_MS;
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -26818,7 +27438,7 @@ RequestBatcher.prototype.reportError = function (msg, err) {
 
 exports.RequestBatcher = RequestBatcher;
 
-},{"./config":14,"./promise-polyfill":24,"./request-queue":31,"./utils":35}],31:[function(require,module,exports){
+},{"./config":15,"./promise-polyfill":25,"./request-queue":32,"./utils":36}],32:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -27166,7 +27786,7 @@ RequestQueue.prototype.clear = function () {
 
 exports.RequestQueue = RequestQueue;
 
-},{"./promise-polyfill":24,"./shared-lock":32,"./storage/local-storage":34,"./utils":35,"./window":36}],32:[function(require,module,exports){
+},{"./promise-polyfill":25,"./shared-lock":33,"./storage/local-storage":35,"./utils":36,"./window":37}],33:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -27332,7 +27952,7 @@ SharedLock.prototype.withLock = function (lockedCB, pid) {
 
 exports.SharedLock = SharedLock;
 
-},{"./promise-polyfill":24,"./utils":35,"./window":36}],33:[function(require,module,exports){
+},{"./promise-polyfill":25,"./utils":36,"./window":37}],34:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -27471,7 +28091,7 @@ exports.IDBStorageWrapper = IDBStorageWrapper;
 exports.RECORDING_EVENTS_STORE_NAME = RECORDING_EVENTS_STORE_NAME;
 exports.RECORDING_REGISTRY_STORE_NAME = RECORDING_REGISTRY_STORE_NAME;
 
-},{"../promise-polyfill":24,"../window":36}],34:[function(require,module,exports){
+},{"../promise-polyfill":25,"../window":37}],35:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -27537,7 +28157,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
 
 exports.LocalStorageWrapper = LocalStorageWrapper;
 
-},{"../promise-polyfill":24,"../utils":35,"../window":36}],35:[function(require,module,exports){
+},{"../promise-polyfill":25,"../utils":36,"../window":37}],36:[function(require,module,exports){
 /* eslint camelcase: "off", eqeqeq: "off" */
 'use strict';
 
@@ -29298,7 +29918,7 @@ exports.safewrapClass = safewrapClass;
 exports.slice = slice;
 exports.userAgent = userAgent;
 
-},{"./config":14,"./promise-polyfill":24,"./window":36}],36:[function(require,module,exports){
+},{"./config":15,"./promise-polyfill":25,"./window":37}],37:[function(require,module,exports){
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 'use strict';
 

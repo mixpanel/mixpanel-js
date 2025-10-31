@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.71.1'
+        LIB_VERSION: '2.72.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -2893,20 +2893,65 @@
         return false;
     }
 
+    /**
+     * Get the composed path of a click event for elements embedded in shadow DOM.
+     * @param {Event} event - event to get the composed path from
+     * @returns {Array} the composed path of the click event
+    */
+    function getClickEventComposedPath(event) {
+        if ('composedPath' in event) {
+            return event['composedPath']();
+        }
+
+        return [];
+    }
+
+    /**
+     * Get the element from a click event, accounting for elements embedded in shadow DOM.
+     * @param {Event} event - event to get the target from
+     * @returns {Element | null} the element that was the target of the click event
+     */
+    function getClickEventTargetElement(event) {
+        var path = getClickEventComposedPath(event);
+
+        if (path && path.length > 0) {
+            return path[0];
+        }
+
+        return event['target'] || event['srcElement'];
+    }
+
     /** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
     /** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
     /** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
+    /** @const */ var DEFAULT_RAGE_CLICK_INTERACTIVE_ELEMENTS_ONLY = false;
 
     function RageClickTracker() {
         this.clicks = [];
     }
 
-    RageClickTracker.prototype.isRageClick = function(x, y, options) {
+    /**
+     * Determines if a click event is part of a rage click sequence.
+     * @param {Event} event - the original click event.
+     * @param {import('../index.d.ts').RageClickConfig} options - configuration options for rage click detection.
+     * @returns {boolean} - true if the click is considered a rage click, false otherwise.
+     */
+    RageClickTracker.prototype.isRageClick = function(event, options) {
         options = options || {};
         var thresholdPx = options['threshold_px'] || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
         var timeoutMs = options['timeout_ms'] || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
         var clickCount = options['click_count'] || DEFAULT_RAGE_CLICK_CLICK_COUNT;
+        var interactiveElementsOnly = options['interactive_elements_only'] || DEFAULT_RAGE_CLICK_INTERACTIVE_ELEMENTS_ONLY;
+
+        if (interactiveElementsOnly) {
+            var target = getClickEventTargetElement(event);
+            if (!target || isDefinitelyNonInteractive(target)) {
+                return false;
+            }
+        }
+
         var timestamp = Date.now();
+        var x = event['pageX'], y = event['pageY'];
 
         var lastClick = this.clicks[this.clicks.length - 1];
         if (
@@ -2937,28 +2982,16 @@
         if (!this.observedShadowRoots) {
             return;
         }
-        var path = this.getComposedPath(event);
-        if (path && path.length) {
-            return path[0];
-        }
 
-        return event['target'] || event['srcElement'];
+        return getClickEventTargetElement(event);
     };
 
-
-    ShadowDOMObserver.prototype.getComposedPath = function(event) {
-        if ('composedPath' in event) {
-            return event['composedPath']();
-        }
-
-        return [];
-    };
     ShadowDOMObserver.prototype.observeFromEvent = function(event) {
         if (!this.observedShadowRoots) {
             return;
         }
 
-        var path = this.getComposedPath(event);
+        var path = getClickEventComposedPath(event);
 
         // Check each element in path for shadow roots
         for (var i = 0; i < path.length; i++) {
@@ -3710,7 +3743,7 @@
                 return;
             }
 
-            if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+            if (this._rageClickTracker.isRageClick(ev, currentRageClickConfig)) {
                 this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
             }
         }.bind(this);
@@ -6898,6 +6931,7 @@
         'record_block_selector':             'img, video, audio',
         'record_canvas':                     false,
         'record_collect_fonts':              false,
+        'record_console':                    true,
         'record_heatmap_data':               false,
         'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
         'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
