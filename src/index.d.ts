@@ -216,6 +216,7 @@ export interface Config {
   record_sessions_percent: number;
   record_canvas: boolean;
   record_heatmap_data: boolean;
+  flags: string;
 }
 
 export type VerboseResponse =
