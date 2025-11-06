@@ -6,11 +6,8 @@
  */
 
 import mixpanel from '../../src/loaders/loader-module';
-import jsdomSetup from './jsdom-setup';
 
 describe(`Module-based loader in Node env`, function() {
-  jsdomSetup()
-
   it(`supports init() with options`, function(done) {
     mixpanel.init(`test-token`, {
       debug: true,
