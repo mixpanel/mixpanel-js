@@ -1006,6 +1006,8 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
             truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
         }
         if (truncated_data) {
+            console.log('MIXPANEL REQUEST:');
+            console.log(truncated_data);
             return this._send_request(
                 endpoint,
                 this._encode_data_for_request(truncated_data),
