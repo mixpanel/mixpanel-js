@@ -1050,6 +1050,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
+    this._run_hook('before_track', {event_name: event_name, properties: properties, options: options})
     if (!callback && typeof options === 'function') {
         callback = options;
         options = null;
@@ -1465,6 +1466,9 @@ var options_for_register = function(days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
+    // Check and run any installed hooks for before_register
+    this._run_hook('before_register', {properties: props, days_or_options: days_or_options})
+
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
         this['persistence'].register(props, options['days']);
@@ -1501,6 +1505,9 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+    // Check and run any installed hooks for before_register
+    this._run_hook('before_register_once', {properties: props, default_value: default_value, days_or_options: days_or_options})
+
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
         this['persistence'].register_once(props, default_value, options['days']);
@@ -1524,6 +1531,7 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
+    this._run_hook('before_unregister', {property: property, options: options})
     options = options_for_register(options);
     if (options['persistent']) {
         this['persistence'].unregister(property);
@@ -1572,6 +1580,7 @@ MixpanelLib.prototype.identify = function(
     //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
+    this._run_hook('before_identify', {distinct_id: new_distinct_id})
 
     var previous_distinct_id = this.get_distinct_id();
     if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
@@ -1913,7 +1922,7 @@ MixpanelLib.prototype.get_config = function(prop_name) {
  * @returns {any|null} return value of user-provided hook, or null if nothing was returned
  */
 MixpanelLib.prototype._run_hook = function(hook_name) {
-    var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, slice.call(arguments, 1));
+    var ret = (this['config']['hooks'][hook_name] || this['custom_hooks'][hook_name] || IDENTITY_FUNC).apply(this, slice.call(arguments, 1));
     if (typeof ret === 'undefined') {
         this.report_error(hook_name + ' hook did not return a value');
         ret = null;
