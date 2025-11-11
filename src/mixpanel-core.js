@@ -170,17 +170,6 @@ var DOM_LOADED = false;
  */
 var MixpanelLib = function() {};
 
-
-/**
- * Tracks if the SDK should be sending track calls based on extension setting
- */
-var extension_do_not_track = false;
-window.addEventListener('$mp_extension_to_sdk_event', function( event ) {
-    if (event.detail && _.isBoolean(event.detail.value)) {
-        extension_do_not_track = event.detail.value;
-    }
-});
-
 /**
  * create_mplib(token:string, config:object, name:string)
  *
@@ -1344,7 +1333,7 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(proper
         properties
     );
 
-    return this.track({event_name: event_name, properties: event_properties});
+    return this.track(event_name, event_properties);
 });
 
 /**
@@ -1585,13 +1574,6 @@ MixpanelLib.prototype._register_single = function(prop, value) {
 MixpanelLib.prototype.identify = function(
     new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
-    this._identify(new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback);
-    send_sdk_extension_message({ type: 'identify', distinct_id: new_distinct_id });
-};
-
-MixpanelLib.prototype._identify = function(
-    new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
-) {
     // Optional Parameters
     //  _set_callback:function  A callback to be run if and when the People set queue is flushed
     //  _add_callback:function  A callback to be run if and when the People add queue is flushed
@@ -1634,14 +1616,11 @@ MixpanelLib.prototype._identify = function(
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
     if (new_distinct_id !== previous_distinct_id) {
-        this.track({
-            event_name: '$identify',
-            properties: {
+        this.track('$identify', {
                 'distinct_id': new_distinct_id,
                 '$anon_distinct_id': previous_distinct_id
-            },
-            options: {skip_hooks: true}
-        });
+            }, {skip_hooks: true}
+        );
     }
 
     // check feature flags again if distinct id has changed
@@ -1742,23 +1721,18 @@ MixpanelLib.prototype._alias = function(alias, original) {
     }
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
-        return this.track({
-            event_name: '$create_alias',
-            properties: {
+        return this.track('$create_alias', {
                 'alias': alias,
                 'distinct_id': original
-            },
-            options: {
+            }, {
                 skip_hooks: true
-            },
-            callback: function() {
+            }, function() {
                 // Flush the people queue
-                _this._identify(alias);
-            }
+                _this.identify(alias);
         });
     } else {
         this.report_error('alias matches current distinct_id - skipping api call.');
-        this._identify(alias);
+        this.identify(alias);
         return -1;
     }
 };
