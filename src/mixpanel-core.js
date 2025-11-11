@@ -243,9 +243,8 @@ var create_mplib = function(token, config, name) {
     }
 
     var source = init_type === INIT_MODULE ? 'module' : 'snippet';
-
     send_sdk_extension_message({
-        type: 'init',
+        instance: mixpanel_master,
         source: source,
         token: token,
     });
@@ -380,7 +379,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         // There is no need to set the distinct id
         // or the device id if something was already stored
         // in the persitence
-        this._register_once({
+        this.register_once({
             'distinct_id': DEVICE_ID_PREFIX + uuid,
             '$device_id': uuid
         }, '');
@@ -403,6 +402,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     this._init_tab_id();
     this._check_and_start_session_recording();
+
+    this.custom_hooks = {}
+    this['custom_hooks'] = this.custom_hooks
 };
 
 /**
@@ -587,7 +589,7 @@ MixpanelLib.prototype._loaded = function() {
         _.each(utm_params, function(_utm_value, utm_key) {
             // We need to unregister persisted UTM parameters so old values
             // are not mixed with the new UTM parameters
-            this._unregister(utm_key);
+            this.unregister(utm_key);
         }.bind(this));
     }
 };
@@ -597,7 +599,7 @@ MixpanelLib.prototype._set_default_superprops = function() {
     this['persistence'].update_search_keyword(document.referrer);
     // Registering super properties for UTM persistence by 'store_google' is deprecated.
     if (this.get_config('store_google') && !this.get_config('stop_utm_persistence')) {
-        this._register(_.info.campaignParams());
+        this.register(_.info.campaignParams());
     }
     if (this.get_config('save_referrer')) {
         this['persistence'].update_referrer_info(document.referrer);
@@ -1057,89 +1059,11 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
-MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
-    var original_properties = _.extend({}, properties);
-
-    // set defaults
-    properties = _.extend({}, properties);
-    properties['token'] = this.get_config('token');
-
-    // set $duration if time_event was previously called for this event
-    var start_timestamp = this['persistence'].remove_event_timer(event_name);
-    if (!_.isUndefined(start_timestamp)) {
-        var duration_in_ms = new Date().getTime() - start_timestamp;
-        properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
-    }
-
-    this._set_default_superprops();
-
-    var marketing_properties = this.get_config('track_marketing')
-        ? _.info.marketingParams()
-        : {};
-
-    // note: extend writes to the first object, so lets make sure we
-    // don't write to the persistence properties object and info
-    // properties object by passing in a new object
-
-    // update properties with pageview info and super-properties
-    var super_properties = _.extend(
-        {},
-        _.info.properties({'mp_loader': this.get_config('mp_loader')}),
-        marketing_properties,
-        this['persistence'].properties(),
-        this.unpersisted_superprops,
-        this.get_session_recording_properties()
-    );
-
-    properties = _.extend(
-        {},
-        super_properties,
-        properties
-    );
-
-    var property_blacklist = this.get_config('property_blacklist');
-    if (_.isArray(property_blacklist)) {
-        _.each(property_blacklist, function(blacklisted_prop) {
-            delete properties[blacklisted_prop];
-        });
-    } else {
-        this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
-    }
-
-    var full_properties = _.extend({}, properties);
-
-    var ret = null;
-
-    if (!extension_do_not_track) {
-        // Do the actual track first
-        ret = this._track({
-            event_name: event_name,
-            properties: original_properties,
-            options: options,
-            callback: callback,
-            already_created_full_properties: properties,
-        });
-    }
-
-    // Then send extension event
-    send_sdk_extension_message({
-        type: 'track',
-        event: event_name,
-        distinct_id: this.get_distinct_id(),
-        original_properties: original_properties,
-        super_properties: super_properties,
-        full_properties: full_properties,
-    });
-
-    return ret;
-});
-
-MixpanelLib.prototype._track = addOptOutCheckMixpanelLib(function(args) {
+MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(args) {
     var event_name = args.event_name;
     var properties = args.properties;
     var options = args.options;
     var callback = args.callback;
-    var already_created_full_properties = args.already_created_full_properties;
 
     if (!callback && typeof options === 'function') {
         callback = options;
@@ -1165,49 +1089,45 @@ MixpanelLib.prototype._track = addOptOutCheckMixpanelLib(function(args) {
         return;
     }
 
-    if (already_created_full_properties) {
-        properties = already_created_full_properties;
+    // set defaults
+    properties = _.extend({}, properties);
+    properties['token'] = this.get_config('token');
+
+    // set $duration if time_event was previously called for this event
+    var start_timestamp = this['persistence'].remove_event_timer(event_name);
+    if (!_.isUndefined(start_timestamp)) {
+        var duration_in_ms = new Date().getTime() - start_timestamp;
+        properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
+    }
+
+    this._set_default_superprops();
+
+    var marketing_properties = this.get_config('track_marketing')
+        ? _.info.marketingParams()
+        : {};
+
+    // note: extend writes to the first object, so lets make sure we
+    // don't write to the persistence properties object and info
+    // properties object by passing in a new object
+
+    // update properties with pageview info and super-properties
+    properties = _.extend(
+        {},
+        _.info.properties({'mp_loader': this.get_config('mp_loader')}),
+        marketing_properties,
+        this['persistence'].properties(),
+        this.unpersisted_superprops,
+        this.get_session_recording_properties(),
+        properties
+    );
+
+    var property_blacklist = this.get_config('property_blacklist');
+    if (_.isArray(property_blacklist)) {
+        _.each(property_blacklist, function(blacklisted_prop) {
+            delete properties[blacklisted_prop];
+        });
     } else {
-        // set defaults
-        properties = _.extend({}, properties);
-        properties['token'] = this.get_config('token');
-
-        // set $duration if time_event was previously called for this event
-        var start_timestamp = this['persistence'].remove_event_timer(event_name);
-        if (!_.isUndefined(start_timestamp)) {
-            var duration_in_ms = new Date().getTime() - start_timestamp;
-            properties['$duration'] = parseFloat((duration_in_ms / 1000).toFixed(3));
-        }
-
-        this._set_default_superprops();
-
-        var marketing_properties = this.get_config('track_marketing')
-            ? _.info.marketingParams()
-            : {};
-
-        // note: extend writes to the first object, so lets make sure we
-        // don't write to the persistence properties object and info
-        // properties object by passing in a new object
-
-        // update properties with pageview info and super-properties
-        properties = _.extend(
-            {},
-            _.info.properties({'mp_loader': this.get_config('mp_loader')}),
-            marketing_properties,
-            this['persistence'].properties(),
-            this.unpersisted_superprops,
-            this.get_session_recording_properties(),
-            properties
-        );
-
-        var property_blacklist = this.get_config('property_blacklist');
-        if (_.isArray(property_blacklist)) {
-            _.each(property_blacklist, function(blacklisted_prop) {
-                delete properties[blacklisted_prop];
-            });
-        } else {
-            this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
-        }
+        this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
 
     var data = {
@@ -1247,7 +1167,7 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, 
     }
     var prop = {};
     prop[group_key] = group_ids;
-    this._register(prop);
+    this.register(prop);
     return this['people'].set(group_key, group_ids, callback);
 });
 
@@ -1267,12 +1187,12 @@ MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, 
     var prop = {};
     if (old_values === undefined) {
         prop[group_key] = [group_id];
-        this._register(prop);
+        this.register(prop);
     } else {
         if (old_values.indexOf(group_id) === -1) {
             old_values.push(group_id);
             prop[group_key] = old_values;
-            this._register(prop);
+            this.register(prop);
         }
     }
     return this['people'].union(group_key, group_id, callback);
@@ -1296,10 +1216,10 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_ke
         var idx = old_value.indexOf(group_id);
         if (idx > -1) {
             old_value.splice(idx, 1);
-            this._register({group_key: old_value});
+            this.register({group_key: old_value});
         }
         if (old_value.length === 0) {
-            this._unregister(group_key);
+            this.unregister(group_key);
         }
     }
     return this['people'].remove(group_key, group_id, callback);
@@ -1324,7 +1244,7 @@ MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(function(eve
             tracking_props[k] = v;
         }
     });
-    return this._track({
+    return this.track({
         event_name: event_name,
         properties: tracking_props,
         callback: callback,
@@ -1424,7 +1344,7 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(proper
         properties
     );
 
-    return this._track({event_name: event_name, properties: event_properties});
+    return this.track({event_name: event_name, properties: event_properties});
 });
 
 /**
@@ -1565,12 +1485,6 @@ var options_for_register = function(days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
-    this._register(props, days_or_options);
-    // Then send extension event
-    send_sdk_extension_message({ type: 'register', properties: props });
-};
-
-MixpanelLib.prototype._register = function(props, days_or_options) {
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
         this['persistence'].register(props, options['days']);
@@ -1607,11 +1521,6 @@ MixpanelLib.prototype._register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
-    this._register_once(props, default_value, days_or_options);
-    send_sdk_extension_message({ type: 'register_once', properties: props });
-};
-
-MixpanelLib.prototype._register_once = function(props, default_value, days_or_options) {
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
         this['persistence'].register_once(props, default_value, options['days']);
@@ -1635,11 +1544,6 @@ MixpanelLib.prototype._register_once = function(props, default_value, days_or_op
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
-    this._unregister(property, options);
-    send_sdk_extension_message({ type: 'unregister', property: property });
-};
-
-MixpanelLib.prototype._unregister = function(property, options) {
     options = options_for_register(options);
     if (options['persistent']) {
         this['persistence'].unregister(property);
@@ -1651,7 +1555,7 @@ MixpanelLib.prototype._unregister = function(property, options) {
 MixpanelLib.prototype._register_single = function(prop, value) {
     var props = {};
     props[prop] = value;
-    this._register(props);
+    this.register(props);
 };
 
 /**
@@ -1704,14 +1608,14 @@ MixpanelLib.prototype._identify = function(
             this.report_error('distinct_id cannot have $device: prefix');
             return -1;
         }
-        this._register({'$user_id': new_distinct_id});
+        this.register({'$user_id': new_distinct_id});
     }
 
     if (!this.get_property('$device_id')) {
         // The persisted distinct id might not actually be a device id at all
         // it might be a distinct id of the user from before
         var device_id = previous_distinct_id;
-        this._register_once({
+        this.register_once({
             '$had_persisted_distinct_id': true,
             '$device_id': device_id
         }, '');
@@ -1720,8 +1624,8 @@ MixpanelLib.prototype._identify = function(
     // identify only changes the distinct id if it doesn't match either the existing or the alias;
     // if it's new, blow away the alias as well.
     if (new_distinct_id !== previous_distinct_id && new_distinct_id !== this.get_property(ALIAS_ID_KEY)) {
-        this._unregister(ALIAS_ID_KEY);
-        this._register({'distinct_id': new_distinct_id});
+        this.unregister(ALIAS_ID_KEY);
+        this.register({'distinct_id': new_distinct_id});
     }
     this._flags.identify_called = true;
     // Flush any queued up people requests
@@ -1730,7 +1634,7 @@ MixpanelLib.prototype._identify = function(
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
     if (new_distinct_id !== previous_distinct_id) {
-        this._track({
+        this.track({
             event_name: '$identify',
             properties: {
                 'distinct_id': new_distinct_id,
@@ -1755,7 +1659,7 @@ MixpanelLib.prototype.reset = function() {
     this['persistence'].clear();
     this._flags.identify_called = false;
     var uuid = _.UUID();
-    this._register_once({
+    this.register_once({
         'distinct_id': DEVICE_ID_PREFIX + uuid,
         '$device_id': uuid
     }, '');
@@ -1838,7 +1742,7 @@ MixpanelLib.prototype._alias = function(alias, original) {
     }
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
-        return this._track({
+        return this.track({
             event_name: '$create_alias',
             properties: {
                 'alias': alias,
@@ -2366,6 +2270,18 @@ MixpanelLib.prototype.report_error = function(msg, err) {
     }
 };
 
+MixpanelLib.prototype.add_hook = function(hook_name, hook_fn) {
+    if (this.custom_hooks) {
+        this.custom_hooks[hook_name] = hook_fn
+    }
+};
+
+MixpanelLib.prototype.remove_hook = function(hook_name) {
+    if (this.custom_hooks) {
+        delete this.custom_hooks[hook_name]
+    }
+};
+
 // EXPORTS (for closure compiler)
 
 // MixpanelLib Exports
@@ -2398,6 +2314,8 @@ MixpanelLib.prototype['get_group']                          = MixpanelLib.protot
 MixpanelLib.prototype['set_group']                          = MixpanelLib.prototype.set_group;
 MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
 MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
+MixpanelLib.prototype['add_hook']                           = MixpanelLib.prototype.add_hook;
+MixpanelLib.prototype['remove_hook']                        = MixpanelLib.prototype.remove_hook;
 MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
 MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
 MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
