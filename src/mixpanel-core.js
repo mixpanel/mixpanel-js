@@ -170,6 +170,7 @@ var DOM_LOADED = false;
  */
 var MixpanelLib = function() {};
 
+
 /**
  * create_mplib(token:string, config:object, name:string)
  *
@@ -1048,12 +1049,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
-MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(args) {
-    var event_name = args.event_name;
-    var properties = args.properties;
-    var options = args.options;
-    var callback = args.callback;
-
+MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
     if (!callback && typeof options === 'function') {
         callback = options;
         options = null;
@@ -1123,7 +1119,6 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(args) {
         'event': event_name,
         'properties': properties
     };
-
     var ret = this._track_or_batch({
         type: 'events',
         data: data,
@@ -1233,11 +1228,7 @@ MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(function(eve
             tracking_props[k] = v;
         }
     });
-    return this.track({
-        event_name: event_name,
-        properties: tracking_props,
-        callback: callback,
-    });
+    return this.track(event_name, tracking_props, callback);
 });
 
 MixpanelLib.prototype._create_map_key = function (group_key, group_id) {
@@ -1617,10 +1608,9 @@ MixpanelLib.prototype.identify = function(
     // will determine whether or not to do anything with it.
     if (new_distinct_id !== previous_distinct_id) {
         this.track('$identify', {
-                'distinct_id': new_distinct_id,
-                '$anon_distinct_id': previous_distinct_id
-            }, {skip_hooks: true}
-        );
+            'distinct_id': new_distinct_id,
+            '$anon_distinct_id': previous_distinct_id
+        }, {skip_hooks: true});
     }
 
     // check feature flags again if distinct id has changed
@@ -1702,11 +1692,6 @@ MixpanelLib.prototype.get_distinct_id = function() {
  * @param {String} [original] The current identifier being used for this user.
  */
 MixpanelLib.prototype.alias = function(alias, original) {
-    this._alias(alias, original);
-    send_sdk_extension_message({type: 'alias', alias: alias, original: original});
-};
-
-MixpanelLib.prototype._alias = function(alias, original) {
     // If the $people_distinct_id key exists in persistence, there has been a previous
     // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
     // this ID, as it will duplicate users.
@@ -1722,13 +1707,13 @@ MixpanelLib.prototype._alias = function(alias, original) {
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
         return this.track('$create_alias', {
-                'alias': alias,
-                'distinct_id': original
-            }, {
-                skip_hooks: true
-            }, function() {
-                // Flush the people queue
-                _this.identify(alias);
+            'alias': alias,
+            'distinct_id': original
+        }, {
+            skip_hooks: true
+        }, function() {
+            // Flush the people queue
+            _this.identify(alias);
         });
     } else {
         this.report_error('alias matches current distinct_id - skipping api call.');
