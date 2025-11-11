@@ -4,7 +4,6 @@ var ce;
 function NewCustomEvent() {}
 
 if (typeof(CustomEvent) === 'undefined') {
-    console.log('whats here bro')
     ce = NewCustomEvent;
 } else {
     ce = CustomEvent;

@@ -393,8 +393,8 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this._init_tab_id();
     this._check_and_start_session_recording();
 
-    this.custom_hooks = {}
-    this['custom_hooks'] = this.custom_hooks
+    this.custom_hooks = {};
+    this['custom_hooks'] = this.custom_hooks;
 };
 
 /**
@@ -2231,13 +2231,13 @@ MixpanelLib.prototype.report_error = function(msg, err) {
 
 MixpanelLib.prototype.add_hook = function(hook_name, hook_fn) {
     if (this.custom_hooks) {
-        this.custom_hooks[hook_name] = hook_fn
+        this.custom_hooks[hook_name] = hook_fn;
     }
 };
 
 MixpanelLib.prototype.remove_hook = function(hook_name) {
     if (this.custom_hooks) {
-        delete this.custom_hooks[hook_name]
+        delete this.custom_hooks[hook_name];
     }
 };
 
