@@ -1,6 +1,5 @@
 import { window } from '../window';
-import { IncrementalSource, EventType } from '@mixpanel/rrweb';
-import { getRecordConsolePlugin } from '@mixpanel/rrweb-plugin-console-record';
+import { IncrementalSource, EventType, getRecordConsolePlugin } from './rrweb-entrypoint';
 import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _, localStorageSupported} from '../utils'; // eslint-disable-line camelcase
 import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';

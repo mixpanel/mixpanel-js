@@ -24,7 +24,7 @@
         win = window;
     }
 
-    function _array_like_to_array$1(arr, len) {
+    function _array_like_to_array(arr, len) {
         if (len == null || len > arr.length) len = arr.length;
         for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
         return arr2;
@@ -121,7 +121,7 @@
         });
         if (superClass) _set_prototype_of(subClass, superClass);
     }
-    function _instanceof$1(left, right) {
+    function _instanceof(left, right) {
         if (right != null && typeof Symbol !== "undefined" && right[Symbol.hasInstance]) {
             return !!right[Symbol.hasInstance](left);
         } else {
@@ -150,17 +150,17 @@
         };
         return _set_prototype_of(o, p);
     }
-    function _type_of$1(obj) {
+    function _type_of(obj) {
         "@swc/helpers - typeof";
         return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj;
     }
-    function _unsupported_iterable_to_array$1(o, minLen) {
+    function _unsupported_iterable_to_array(o, minLen) {
         if (!o) return;
-        if (typeof o === "string") return _array_like_to_array$1(o, minLen);
+        if (typeof o === "string") return _array_like_to_array(o, minLen);
         var n = Object.prototype.toString.call(o).slice(8, -1);
         if (n === "Object" && o.constructor) n = o.constructor.name;
         if (n === "Map" || n === "Set") return Array.from(n);
-        if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _array_like_to_array$1(o, minLen);
+        if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _array_like_to_array(o, minLen);
     }
     function _wrap_native_super(Class) {
         var _cache = typeof Map === "function" ? new Map() : undefined;
@@ -196,10 +196,10 @@
             return !!result;
         })();
     }
-    function _create_for_of_iterator_helper_loose$1(o, allowArrayLike) {
+    function _create_for_of_iterator_helper_loose(o, allowArrayLike) {
         var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"];
         if (it) return (it = it.call(o)).next.bind(it);
-        if (Array.isArray(o) || (it = _unsupported_iterable_to_array$1(o)) || allowArrayLike) {
+        if (Array.isArray(o) || (it = _unsupported_iterable_to_array(o)) || allowArrayLike) {
             if (it) o = it;
             var i = 0;
             return function() {
@@ -335,7 +335,7 @@
         }) : obj[key] = value;
     };
     var __publicField$1 = function(obj, key, value) {
-        return __defNormalProp$1(obj, (typeof key === "undefined" ? "undefined" : _type_of$1(key)) !== "symbol" ? key + "" : key, value);
+        return __defNormalProp$1(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
     };
     var _a;
     var __defProp$1$1 = Object.defineProperty;
@@ -348,7 +348,7 @@
         }) : obj[key] = value;
     };
     var __publicField$1$1 = function(obj, key, value) {
-        return __defNormalProp$1$1(obj, (typeof key === "undefined" ? "undefined" : _type_of$1(key)) !== "symbol" ? key + "" : key, value);
+        return __defNormalProp$1$1(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
     };
     var NodeType$3 = /* @__PURE__ */ function(NodeType2) {
         NodeType2[NodeType2["Document"] = 0] = "Document";
@@ -761,7 +761,7 @@
             var stack = href.split("/");
             var parts = filePath.split("/");
             stack.pop();
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(parts), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(parts), _step; !(_step = _iterator()).done;){
                 var part = _step.value;
                 if (part === ".") {
                     continue;
@@ -871,7 +871,7 @@
         return _id++;
     }
     function getValidTagName$1(element) {
-        if (_instanceof$1(element, HTMLFormElement)) {
+        if (_instanceof(element, HTMLFormElement)) {
             return "form";
         }
         var processedTagName = toLowerCase(element.tagName);
@@ -1481,7 +1481,7 @@
                 if (serializedNode.type === NodeType$3.Element && serializedNode.attributes._cssText !== void 0 && typeof serializedNode.attributes._cssText === "string") {
                     bypassOptions.cssCaptured = true;
                 }
-                for(var _iterator = _create_for_of_iterator_helper_loose$1(Array.from(index$1.childNodes(n2))), _step; !(_step = _iterator()).done;){
+                for(var _iterator = _create_for_of_iterator_helper_loose(Array.from(index$1.childNodes(n2))), _step; !(_step = _iterator()).done;){
                     var childN = _step.value;
                     var serializedChildNode = serializeNodeWithId(childN, bypassOptions);
                     if (serializedChildNode) {
@@ -1491,7 +1491,7 @@
             }
             var shadowRootEl1 = null;
             if (isElement(n2) && (shadowRootEl1 = index$1.shadowRoot(n2))) {
-                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(Array.from(index$1.childNodes(shadowRootEl1))), _step1; !(_step1 = _iterator1()).done;){
+                for(var _iterator1 = _create_for_of_iterator_helper_loose(Array.from(index$1.childNodes(shadowRootEl1))), _step1; !(_step1 = _iterator1()).done;){
                     var childN1 = _step1.value;
                     var serializedChildNode1 = serializeNodeWithId(childN1, bypassOptions);
                     if (serializedChildNode1) {
@@ -1649,7 +1649,7 @@
         var f2 = n2.default;
         if (typeof f2 == "function") {
             var a2 = function a22() {
-                if (_instanceof$1(this, a22)) {
+                if (_instanceof(this, a22)) {
                     return Reflect.construct(f2, arguments, this.constructor);
                 }
                 return f2.apply(this, arguments);
@@ -2125,7 +2125,7 @@
             }
             if (i2 === "proxyCache") continue;
             var value = obj[i2];
-            var type = typeof value === "undefined" ? "undefined" : _type_of$1(value);
+            var type = typeof value === "undefined" ? "undefined" : _type_of(value);
             if (i2 === "parent" && type === "object") {
                 if (parent) cloned[i2] = parent;
             } else if (i2 === "source") {
@@ -2150,7 +2150,7 @@
             for(var name in defaults){
                 if (name === "nodes") {
                     this.nodes = [];
-                    for(var _iterator = _create_for_of_iterator_helper_loose$1(defaults[name]), _step; !(_step = _iterator()).done;){
+                    for(var _iterator = _create_for_of_iterator_helper_loose(defaults[name]), _step; !(_step = _iterator()).done;){
                         var node2 = _step.value;
                         if (typeof node2.clone === "function") {
                             this.append(node2.clone());
@@ -2364,7 +2364,7 @@
             if (this.parent) {
                 var bookmark = this;
                 var foundSelf = false;
-                for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+                for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                     var node2 = _step.value;
                     if (node2 === this) {
                         foundSelf = true;
@@ -2401,13 +2401,13 @@
                 var value = this[name];
                 if (Array.isArray(value)) {
                     fixed[name] = value.map(function(i2) {
-                        if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && i2.toJSON) {
+                        if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && i2.toJSON) {
                             return i2.toJSON(null, inputs);
                         } else {
                             return i2;
                         }
                     });
-                } else if ((typeof value === "undefined" ? "undefined" : _type_of$1(value)) === "object" && value.toJSON) {
+                } else if ((typeof value === "undefined" ? "undefined" : _type_of(value)) === "object" && value.toJSON) {
                     fixed[name] = value.toJSON(null, inputs);
                 } else if (name === "source") {
                     var inputId = inputs.get(value.input);
@@ -2503,7 +2503,8 @@
         return id;
     };
     var nonSecure$1 = {
-        nanoid: nanoid$1$1};
+        nanoid: nanoid$1$1
+    };
     var SourceMapConsumer$2$1 = require$$2$1.SourceMapConsumer, SourceMapGenerator$2$1 = require$$2$1.SourceMapGenerator;
     var existsSync$1 = require$$2$1.existsSync, readFileSync$1 = require$$2$1.readFileSync;
     var dirname$1$1 = require$$2$1.dirname, join$1 = require$$2$1.join;
@@ -2552,7 +2553,7 @@
             return sourceMapString.replace(/^\/\*\s*# sourceMappingURL=/, "").trim();
         };
         _proto.isMap = function isMap(map) {
-            if ((typeof map === "undefined" ? "undefined" : _type_of$1(map)) !== "object") return false;
+            if ((typeof map === "undefined" ? "undefined" : _type_of(map)) !== "object") return false;
             return typeof map.mappings === "string" || typeof map._mappings === "string" || Array.isArray(map.sections);
         };
         _proto.loadAnnotation = function loadAnnotation(css) {
@@ -2585,9 +2586,9 @@
                         }
                         return map;
                     }
-                } else if (_instanceof$1(prev, SourceMapConsumer$2$1)) {
+                } else if (_instanceof(prev, SourceMapConsumer$2$1)) {
                     return SourceMapGenerator$2$1.fromSourceMap(prev).toString();
-                } else if (_instanceof$1(prev, SourceMapGenerator$2$1)) {
+                } else if (_instanceof(prev, SourceMapGenerator$2$1)) {
                     return prev.toString();
                 } else if (this.isMap(prev)) {
                     return JSON.stringify(prev);
@@ -2626,7 +2627,7 @@
     var Input$4$1 = /*#__PURE__*/ function() {
         function Input(css, opts) {
             if (opts === void 0) opts = {};
-            if (css === null || typeof css === "undefined" || (typeof css === "undefined" ? "undefined" : _type_of$1(css)) === "object" && !css.toString) {
+            if (css === null || typeof css === "undefined" || (typeof css === "undefined" ? "undefined" : _type_of(css)) === "object" && !css.toString) {
                 throw new Error("PostCSS received " + css + " instead of CSS string");
             }
             this.css = css.toString();
@@ -2660,7 +2661,7 @@
         _proto.error = function error(message, line, column, opts) {
             if (opts === void 0) opts = {};
             var result2, endLine, endColumn;
-            if (line && (typeof line === "undefined" ? "undefined" : _type_of$1(line)) === "object") {
+            if (line && (typeof line === "undefined" ? "undefined" : _type_of(line)) === "object") {
                 var start = line;
                 var end = column;
                 if (typeof start.offset === "number") {
@@ -2872,7 +2873,7 @@
             this.css += eol + "/*# sourceMappingURL=" + content + " */";
         };
         _proto.applyPrevMaps = function applyPrevMaps() {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.previous()), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(this.previous()), _step; !(_step = _iterator()).done;){
                 var prev = _step.value;
                 var from = this.toUrl(this.path(prev.file));
                 var root2 = prev.root || dirname$2(prev.file);
@@ -3205,7 +3206,7 @@
     function markDirtyUp$1(node2) {
         node2[isClean$1$1] = false;
         if (node2.proxyOf.nodes) {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(node2.proxyOf.nodes), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(node2.proxyOf.nodes), _step; !(_step = _iterator()).done;){
                 var i2 = _step.value;
                 markDirtyUp$1(i2);
             }
@@ -3221,10 +3222,10 @@
             for(var _len = arguments.length, children = new Array(_len), _key = 0; _key < _len; _key++){
                 children[_key] = arguments[_key];
             }
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(children), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(children), _step; !(_step = _iterator()).done;){
                 var child = _step.value;
                 var nodes = this.normalize(child, this.last);
-                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
+                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
                     var node2 = _step1.value;
                     this.proxyOf.nodes.push(node2);
                 }
@@ -3235,7 +3236,7 @@
         _proto.cleanRaws = function cleanRaws(keepBetween) {
             Node$1$1.prototype.cleanRaws.call(this, keepBetween);
             if (this.nodes) {
-                for(var _iterator = _create_for_of_iterator_helper_loose$1(this.nodes), _step; !(_step = _iterator()).done;){
+                for(var _iterator = _create_for_of_iterator_helper_loose(this.nodes), _step; !(_step = _iterator()).done;){
                     var node2 = _step.value;
                     node2.cleanRaws(keepBetween);
                 }
@@ -3332,7 +3333,7 @@
             var existIndex = this.index(exist);
             var nodes = this.normalize(add, this.proxyOf.nodes[existIndex]).reverse();
             existIndex = this.index(exist);
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                 var node2 = _step.value;
                 this.proxyOf.nodes.splice(existIndex + 1, 0, node2);
             }
@@ -3351,7 +3352,7 @@
             var type = existIndex === 0 ? "prepend" : false;
             var nodes = this.normalize(add, this.proxyOf.nodes[existIndex], type).reverse();
             existIndex = this.index(exist);
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                 var node2 = _step.value;
                 this.proxyOf.nodes.splice(existIndex, 0, node2);
             }
@@ -3373,13 +3374,13 @@
                 nodes = [];
             } else if (Array.isArray(nodes)) {
                 nodes = nodes.slice(0);
-                for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+                for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                     var i2 = _step.value;
                     if (i2.parent) i2.parent.removeChild(i2, "ignore");
                 }
             } else if (nodes.type === "root" && this.type !== "document") {
                 nodes = nodes.nodes.slice(0);
-                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
+                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
                     var i21 = _step1.value;
                     if (i21.parent) i21.parent.removeChild(i21, "ignore");
                 }
@@ -3431,10 +3432,10 @@
                 children[_key] = arguments[_key];
             }
             children = children.reverse();
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(children), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(children), _step; !(_step = _iterator()).done;){
                 var child = _step.value;
                 var nodes = this.normalize(child, this.first, "prepend").reverse();
-                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
+                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
                     var node2 = _step1.value;
                     this.proxyOf.nodes.unshift(node2);
                 }
@@ -3451,7 +3452,7 @@
             return this;
         };
         _proto.removeAll = function removeAll() {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.proxyOf.nodes), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(this.proxyOf.nodes), _step; !(_step = _iterator()).done;){
                 var node2 = _step.value;
                 node2.parent = void 0;
             }
@@ -3512,7 +3513,7 @@
                     }
                 });
             }
-            if (_instanceof$1(name, RegExp)) {
+            if (_instanceof(name, RegExp)) {
                 return this.walk(function(child, i2) {
                     if (child.type === "atrule" && name.test(child.name)) {
                         return callback(child, i2);
@@ -3541,7 +3542,7 @@
                     }
                 });
             }
-            if (_instanceof$1(prop, RegExp)) {
+            if (_instanceof(prop, RegExp)) {
                 return this.walk(function(child, i2) {
                     if (child.type === "decl" && prop.test(child.prop)) {
                         return callback(child, i2);
@@ -3563,7 +3564,7 @@
                     }
                 });
             }
-            if (_instanceof$1(selector, RegExp)) {
+            if (_instanceof(selector, RegExp)) {
                 return this.walk(function(child, i2) {
                     if (child.type === "rule" && selector.test(child.selector)) {
                         return callback(child, i2);
@@ -4058,7 +4059,7 @@
                         delete sample.raws.before;
                     }
                 } else if (this.first !== sample) {
-                    for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+                    for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                         var node2 = _step.value;
                         node2.raws.before = sample.raws.before;
                     }
@@ -4111,7 +4112,7 @@
             var inQuote = false;
             var prevQuote = "";
             var escape = false;
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(string), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(string), _step; !(_step = _iterator()).done;){
                 var letter = _step.value;
                 if (escape) {
                     escape = false;
@@ -4304,7 +4305,7 @@
         _proto.colon = function colon(tokens) {
             var brackets = 0;
             var token, type, prev;
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(tokens.entries()), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(tokens.entries()), _step; !(_step = _iterator()).done;){
                 var _step_value = _step.value, i2 = _step_value[0], element = _step_value[1];
                 token = element;
                 type = token[0];
@@ -4783,7 +4784,7 @@
     };
     var CHILDREN$1 = 0;
     function isPromise$1(obj) {
-        return (typeof obj === "undefined" ? "undefined" : _type_of$1(obj)) === "object" && typeof obj.then === "function";
+        return (typeof obj === "undefined" ? "undefined" : _type_of(obj)) === "object" && typeof obj.then === "function";
     }
     function getEvents$1(node2) {
         var key = false;
@@ -4861,9 +4862,9 @@
             this.stringified = false;
             this.processed = false;
             var root2;
-            if ((typeof css === "undefined" ? "undefined" : _type_of$1(css)) === "object" && css !== null && (css.type === "root" || css.type === "document")) {
+            if ((typeof css === "undefined" ? "undefined" : _type_of(css)) === "object" && css !== null && (css.type === "root" || css.type === "document")) {
                 root2 = cleanMarks$1(css);
-            } else if (_instanceof$1(css, LazyResult) || _instanceof$1(css, Result$2$1)) {
+            } else if (_instanceof(css, LazyResult) || _instanceof(css, Result$2$1)) {
                 root2 = cleanMarks$1(css.root);
                 if (css.map) {
                     if (typeof opts.map === "undefined") opts.map = {};
@@ -4891,7 +4892,7 @@
                 result: this.result
             });
             this.plugins = this.processor.plugins.map(function(plugin22) {
-                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object" && plugin22.prepare) {
+                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object" && plugin22.prepare) {
                     return _extends({}, plugin22, plugin22.prepare(_this.result));
                 } else {
                     return plugin22;
@@ -4951,15 +4952,15 @@
                     cb
                 ]);
             };
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.plugins), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(this.plugins), _step; !(_step = _iterator()).done;){
                 var plugin22 = _step.value;
-                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object") {
+                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object") {
                     for(var event in plugin22){
                         if (!PLUGIN_PROPS$1[event] && /^[A-Z]/.test(event)) {
                             throw new Error("Unknown event " + event + " in " + plugin22.postcssPlugin + ". Try to update PostCSS (" + this.processor.version + " now).");
                         }
                         if (!NOT_VISITORS$1[event]) {
-                            if (_type_of$1(plugin22[event]) === "object") {
+                            if (_type_of(plugin22[event]) === "object") {
                                 for(var filter in plugin22[event]){
                                     if (filter === "*") {
                                         add(plugin22, event, plugin22[event][filter]);
@@ -5144,7 +5145,7 @@
                                     }
                                 });
                             };
-                            _iterator = _create_for_of_iterator_helper_loose$1(_this.listeners.OnceExit);
+                            _iterator = _create_for_of_iterator_helper_loose(_this.listeners.OnceExit);
                             _state.label = 15;
                         case 15:
                             if (!!(_step = _iterator()).done) return [
@@ -5177,7 +5178,7 @@
             var _this = this;
             this.result.lastPlugin = plugin22;
             try {
-                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object" && plugin22.Once) {
+                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object" && plugin22.Once) {
                     if (this.result.root.type === "document") {
                         var roots = this.result.root.nodes.map(function(root2) {
                             return plugin22.Once(root2, _this.helpers);
@@ -5218,7 +5219,7 @@
             if (this.processing) {
                 throw this.getAsyncError();
             }
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.plugins), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(this.plugins), _step; !(_step = _iterator()).done;){
                 var plugin22 = _step.value;
                 var promise = this.runOnRoot(plugin22);
                 if (isPromise$1(promise)) {
@@ -5234,7 +5235,7 @@
                 }
                 if (this.listeners.OnceExit) {
                     if (root2.type === "document") {
-                        for(var _iterator1 = _create_for_of_iterator_helper_loose$1(root2.nodes), _step1; !(_step1 = _iterator1()).done;){
+                        for(var _iterator1 = _create_for_of_iterator_helper_loose(root2.nodes), _step1; !(_step1 = _iterator1()).done;){
                             var subRoot = _step1.value;
                             this.visitSync(this.listeners.OnceExit, subRoot);
                         }
@@ -5257,7 +5258,7 @@
             return this.css;
         };
         _proto.visitSync = function visitSync(visitors, node2) {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(visitors), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(visitors), _step; !(_step = _iterator()).done;){
                 var _step_value = _step.value, plugin22 = _step_value[0], visitor = _step_value[1];
                 this.result.lastPlugin = plugin22;
                 var promise = void 0;
@@ -5330,7 +5331,7 @@
             var _this = this;
             node2[isClean$3] = true;
             var events = getEvents$1(node2);
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(events), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(events), _step; !(_step = _iterator()).done;){
                 var event = _step.value;
                 if (event === CHILDREN$1) {
                     if (node2.nodes) {
@@ -5556,20 +5557,20 @@
         var _proto = Processor.prototype;
         _proto.normalize = function normalize(plugins) {
             var normalized = [];
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(plugins), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(plugins), _step; !(_step = _iterator()).done;){
                 var i2 = _step.value;
                 if (i2.postcss === true) {
                     i2 = i2();
                 } else if (i2.postcss) {
                     i2 = i2.postcss;
                 }
-                if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && Array.isArray(i2.plugins)) {
+                if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && Array.isArray(i2.plugins)) {
                     normalized = normalized.concat(i2.plugins);
-                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && i2.postcssPlugin) {
+                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && i2.postcssPlugin) {
                     normalized.push(i2);
                 } else if (typeof i2 === "function") {
                     normalized.push(i2);
-                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && (i2.parse || i2.stringify)) {
+                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && (i2.parse || i2.stringify)) {
                     if (process.env.NODE_ENV !== "production") {
                         throw new Error("PostCSS syntaxes cannot be used as plugins. Instead, please use one of the syntax/parser/stringifier options as outlined in your PostCSS runner documentation.");
                     }
@@ -5615,7 +5616,7 @@
         ]);
         if (ownInputs) {
             inputs = [];
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(ownInputs), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(ownInputs), _step; !(_step = _iterator()).done;){
                 var input2 = _step.value;
                 var inputHydrated = _extends({}, input2, {
                     __proto__: Input$1$1.prototype
@@ -5790,7 +5791,7 @@
         }) : obj[key] = value;
     };
     var __publicField2 = function(obj, key, value) {
-        return __defNormalProp2(obj, (typeof key === "undefined" ? "undefined" : _type_of$1(key)) !== "symbol" ? key + "" : key, value);
+        return __defNormalProp2(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
     };
     function getDefaultExportFromCjs(x2) {
         return x2 && x2.__esModule && Object.prototype.hasOwnProperty.call(x2, "default") ? x2["default"] : x2;
@@ -5800,7 +5801,7 @@
         var f2 = n2.default;
         if (typeof f2 == "function") {
             var a2 = function a22() {
-                if (_instanceof$1(this, a22)) {
+                if (_instanceof(this, a22)) {
                     return Reflect.construct(f2, arguments, this.constructor);
                 }
                 return f2.apply(this, arguments);
@@ -6276,7 +6277,7 @@
             }
             if (i2 === "proxyCache") continue;
             var value = obj[i2];
-            var type = typeof value === "undefined" ? "undefined" : _type_of$1(value);
+            var type = typeof value === "undefined" ? "undefined" : _type_of(value);
             if (i2 === "parent" && type === "object") {
                 if (parent) cloned[i2] = parent;
             } else if (i2 === "source") {
@@ -6301,7 +6302,7 @@
             for(var name in defaults){
                 if (name === "nodes") {
                     this.nodes = [];
-                    for(var _iterator = _create_for_of_iterator_helper_loose$1(defaults[name]), _step; !(_step = _iterator()).done;){
+                    for(var _iterator = _create_for_of_iterator_helper_loose(defaults[name]), _step; !(_step = _iterator()).done;){
                         var node2 = _step.value;
                         if (typeof node2.clone === "function") {
                             this.append(node2.clone());
@@ -6515,7 +6516,7 @@
             if (this.parent) {
                 var bookmark = this;
                 var foundSelf = false;
-                for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+                for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                     var node2 = _step.value;
                     if (node2 === this) {
                         foundSelf = true;
@@ -6552,13 +6553,13 @@
                 var value = this[name];
                 if (Array.isArray(value)) {
                     fixed[name] = value.map(function(i2) {
-                        if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && i2.toJSON) {
+                        if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && i2.toJSON) {
                             return i2.toJSON(null, inputs);
                         } else {
                             return i2;
                         }
                     });
-                } else if ((typeof value === "undefined" ? "undefined" : _type_of$1(value)) === "object" && value.toJSON) {
+                } else if ((typeof value === "undefined" ? "undefined" : _type_of(value)) === "object" && value.toJSON) {
                     fixed[name] = value.toJSON(null, inputs);
                 } else if (name === "source") {
                     var inputId = inputs.get(value.input);
@@ -6654,7 +6655,8 @@
         return id;
     };
     var nonSecure = {
-        nanoid: nanoid$1};
+        nanoid: nanoid$1
+    };
     var SourceMapConsumer$2 = require$$2.SourceMapConsumer, SourceMapGenerator$2 = require$$2.SourceMapGenerator;
     var existsSync = require$$2.existsSync, readFileSync = require$$2.readFileSync;
     var dirname$1 = require$$2.dirname, join = require$$2.join;
@@ -6703,7 +6705,7 @@
             return sourceMapString.replace(/^\/\*\s*# sourceMappingURL=/, "").trim();
         };
         _proto.isMap = function isMap(map) {
-            if ((typeof map === "undefined" ? "undefined" : _type_of$1(map)) !== "object") return false;
+            if ((typeof map === "undefined" ? "undefined" : _type_of(map)) !== "object") return false;
             return typeof map.mappings === "string" || typeof map._mappings === "string" || Array.isArray(map.sections);
         };
         _proto.loadAnnotation = function loadAnnotation(css) {
@@ -6736,9 +6738,9 @@
                         }
                         return map;
                     }
-                } else if (_instanceof$1(prev, SourceMapConsumer$2)) {
+                } else if (_instanceof(prev, SourceMapConsumer$2)) {
                     return SourceMapGenerator$2.fromSourceMap(prev).toString();
-                } else if (_instanceof$1(prev, SourceMapGenerator$2)) {
+                } else if (_instanceof(prev, SourceMapGenerator$2)) {
                     return prev.toString();
                 } else if (this.isMap(prev)) {
                     return JSON.stringify(prev);
@@ -6777,7 +6779,7 @@
     var Input$4 = /*#__PURE__*/ function() {
         function Input2(css, opts) {
             if (opts === void 0) opts = {};
-            if (css === null || typeof css === "undefined" || (typeof css === "undefined" ? "undefined" : _type_of$1(css)) === "object" && !css.toString) {
+            if (css === null || typeof css === "undefined" || (typeof css === "undefined" ? "undefined" : _type_of(css)) === "object" && !css.toString) {
                 throw new Error("PostCSS received " + css + " instead of CSS string");
             }
             this.css = css.toString();
@@ -6811,7 +6813,7 @@
         _proto.error = function error(message, line, column, opts) {
             if (opts === void 0) opts = {};
             var result2, endLine, endColumn;
-            if (line && (typeof line === "undefined" ? "undefined" : _type_of$1(line)) === "object") {
+            if (line && (typeof line === "undefined" ? "undefined" : _type_of(line)) === "object") {
                 var start = line;
                 var end = column;
                 if (typeof start.offset === "number") {
@@ -7023,7 +7025,7 @@
             this.css += eol + "/*# sourceMappingURL=" + content + " */";
         };
         _proto.applyPrevMaps = function applyPrevMaps() {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.previous()), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(this.previous()), _step; !(_step = _iterator()).done;){
                 var prev = _step.value;
                 var from = this.toUrl(this.path(prev.file));
                 var root2 = prev.root || dirname(prev.file);
@@ -7356,7 +7358,7 @@
     function markDirtyUp(node2) {
         node2[isClean$1] = false;
         if (node2.proxyOf.nodes) {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(node2.proxyOf.nodes), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(node2.proxyOf.nodes), _step; !(_step = _iterator()).done;){
                 var i2 = _step.value;
                 markDirtyUp(i2);
             }
@@ -7372,10 +7374,10 @@
             for(var _len = arguments.length, children = new Array(_len), _key = 0; _key < _len; _key++){
                 children[_key] = arguments[_key];
             }
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(children), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(children), _step; !(_step = _iterator()).done;){
                 var child = _step.value;
                 var nodes = this.normalize(child, this.last);
-                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
+                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
                     var node2 = _step1.value;
                     this.proxyOf.nodes.push(node2);
                 }
@@ -7386,7 +7388,7 @@
         _proto.cleanRaws = function cleanRaws(keepBetween) {
             Node$1.prototype.cleanRaws.call(this, keepBetween);
             if (this.nodes) {
-                for(var _iterator = _create_for_of_iterator_helper_loose$1(this.nodes), _step; !(_step = _iterator()).done;){
+                for(var _iterator = _create_for_of_iterator_helper_loose(this.nodes), _step; !(_step = _iterator()).done;){
                     var node2 = _step.value;
                     node2.cleanRaws(keepBetween);
                 }
@@ -7483,7 +7485,7 @@
             var existIndex = this.index(exist);
             var nodes = this.normalize(add, this.proxyOf.nodes[existIndex]).reverse();
             existIndex = this.index(exist);
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                 var node2 = _step.value;
                 this.proxyOf.nodes.splice(existIndex + 1, 0, node2);
             }
@@ -7502,7 +7504,7 @@
             var type = existIndex === 0 ? "prepend" : false;
             var nodes = this.normalize(add, this.proxyOf.nodes[existIndex], type).reverse();
             existIndex = this.index(exist);
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                 var node2 = _step.value;
                 this.proxyOf.nodes.splice(existIndex, 0, node2);
             }
@@ -7524,13 +7526,13 @@
                 nodes = [];
             } else if (Array.isArray(nodes)) {
                 nodes = nodes.slice(0);
-                for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+                for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                     var i2 = _step.value;
                     if (i2.parent) i2.parent.removeChild(i2, "ignore");
                 }
             } else if (nodes.type === "root" && this.type !== "document") {
                 nodes = nodes.nodes.slice(0);
-                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
+                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
                     var i21 = _step1.value;
                     if (i21.parent) i21.parent.removeChild(i21, "ignore");
                 }
@@ -7582,10 +7584,10 @@
                 children[_key] = arguments[_key];
             }
             children = children.reverse();
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(children), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(children), _step; !(_step = _iterator()).done;){
                 var child = _step.value;
                 var nodes = this.normalize(child, this.first, "prepend").reverse();
-                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(nodes), _step1; !(_step1 = _iterator1()).done;){
+                for(var _iterator1 = _create_for_of_iterator_helper_loose(nodes), _step1; !(_step1 = _iterator1()).done;){
                     var node2 = _step1.value;
                     this.proxyOf.nodes.unshift(node2);
                 }
@@ -7602,7 +7604,7 @@
             return this;
         };
         _proto.removeAll = function removeAll() {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.proxyOf.nodes), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(this.proxyOf.nodes), _step; !(_step = _iterator()).done;){
                 var node2 = _step.value;
                 node2.parent = void 0;
             }
@@ -7663,7 +7665,7 @@
                     }
                 });
             }
-            if (_instanceof$1(name, RegExp)) {
+            if (_instanceof(name, RegExp)) {
                 return this.walk(function(child, i2) {
                     if (child.type === "atrule" && name.test(child.name)) {
                         return callback(child, i2);
@@ -7692,7 +7694,7 @@
                     }
                 });
             }
-            if (_instanceof$1(prop, RegExp)) {
+            if (_instanceof(prop, RegExp)) {
                 return this.walk(function(child, i2) {
                     if (child.type === "decl" && prop.test(child.prop)) {
                         return callback(child, i2);
@@ -7714,7 +7716,7 @@
                     }
                 });
             }
-            if (_instanceof$1(selector, RegExp)) {
+            if (_instanceof(selector, RegExp)) {
                 return this.walk(function(child, i2) {
                     if (child.type === "rule" && selector.test(child.selector)) {
                         return callback(child, i2);
@@ -8209,7 +8211,7 @@
                         delete sample.raws.before;
                     }
                 } else if (this.first !== sample) {
-                    for(var _iterator = _create_for_of_iterator_helper_loose$1(nodes), _step; !(_step = _iterator()).done;){
+                    for(var _iterator = _create_for_of_iterator_helper_loose(nodes), _step; !(_step = _iterator()).done;){
                         var node2 = _step.value;
                         node2.raws.before = sample.raws.before;
                     }
@@ -8262,7 +8264,7 @@
             var inQuote = false;
             var prevQuote = "";
             var escape = false;
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(string), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(string), _step; !(_step = _iterator()).done;){
                 var letter = _step.value;
                 if (escape) {
                     escape = false;
@@ -8455,7 +8457,7 @@
         _proto.colon = function colon(tokens) {
             var brackets = 0;
             var token, type, prev;
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(tokens.entries()), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(tokens.entries()), _step; !(_step = _iterator()).done;){
                 var _step_value = _step.value, i2 = _step_value[0], element = _step_value[1];
                 token = element;
                 type = token[0];
@@ -8934,7 +8936,7 @@
     };
     var CHILDREN = 0;
     function isPromise(obj) {
-        return (typeof obj === "undefined" ? "undefined" : _type_of$1(obj)) === "object" && typeof obj.then === "function";
+        return (typeof obj === "undefined" ? "undefined" : _type_of(obj)) === "object" && typeof obj.then === "function";
     }
     function getEvents(node2) {
         var key = false;
@@ -9012,9 +9014,9 @@
             this.stringified = false;
             this.processed = false;
             var root2;
-            if ((typeof css === "undefined" ? "undefined" : _type_of$1(css)) === "object" && css !== null && (css.type === "root" || css.type === "document")) {
+            if ((typeof css === "undefined" ? "undefined" : _type_of(css)) === "object" && css !== null && (css.type === "root" || css.type === "document")) {
                 root2 = cleanMarks(css);
-            } else if (_instanceof$1(css, LazyResult2) || _instanceof$1(css, Result$2)) {
+            } else if (_instanceof(css, LazyResult2) || _instanceof(css, Result$2)) {
                 root2 = cleanMarks(css.root);
                 if (css.map) {
                     if (typeof opts.map === "undefined") opts.map = {};
@@ -9042,7 +9044,7 @@
                 result: this.result
             });
             this.plugins = this.processor.plugins.map(function(plugin22) {
-                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object" && plugin22.prepare) {
+                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object" && plugin22.prepare) {
                     return _extends({}, plugin22, plugin22.prepare(_this.result));
                 } else {
                     return plugin22;
@@ -9102,15 +9104,15 @@
                     cb
                 ]);
             };
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.plugins), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(this.plugins), _step; !(_step = _iterator()).done;){
                 var plugin22 = _step.value;
-                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object") {
+                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object") {
                     for(var event in plugin22){
                         if (!PLUGIN_PROPS[event] && /^[A-Z]/.test(event)) {
                             throw new Error("Unknown event " + event + " in " + plugin22.postcssPlugin + ". Try to update PostCSS (" + this.processor.version + " now).");
                         }
                         if (!NOT_VISITORS[event]) {
-                            if (_type_of$1(plugin22[event]) === "object") {
+                            if (_type_of(plugin22[event]) === "object") {
                                 for(var filter in plugin22[event]){
                                     if (filter === "*") {
                                         add(plugin22, event, plugin22[event][filter]);
@@ -9295,7 +9297,7 @@
                                     }
                                 });
                             };
-                            _iterator = _create_for_of_iterator_helper_loose$1(_this.listeners.OnceExit);
+                            _iterator = _create_for_of_iterator_helper_loose(_this.listeners.OnceExit);
                             _state.label = 15;
                         case 15:
                             if (!!(_step = _iterator()).done) return [
@@ -9328,7 +9330,7 @@
             var _this = this;
             this.result.lastPlugin = plugin22;
             try {
-                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of$1(plugin22)) === "object" && plugin22.Once) {
+                if ((typeof plugin22 === "undefined" ? "undefined" : _type_of(plugin22)) === "object" && plugin22.Once) {
                     if (this.result.root.type === "document") {
                         var roots = this.result.root.nodes.map(function(root2) {
                             return plugin22.Once(root2, _this.helpers);
@@ -9369,7 +9371,7 @@
             if (this.processing) {
                 throw this.getAsyncError();
             }
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(this.plugins), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(this.plugins), _step; !(_step = _iterator()).done;){
                 var plugin22 = _step.value;
                 var promise = this.runOnRoot(plugin22);
                 if (isPromise(promise)) {
@@ -9385,7 +9387,7 @@
                 }
                 if (this.listeners.OnceExit) {
                     if (root2.type === "document") {
-                        for(var _iterator1 = _create_for_of_iterator_helper_loose$1(root2.nodes), _step1; !(_step1 = _iterator1()).done;){
+                        for(var _iterator1 = _create_for_of_iterator_helper_loose(root2.nodes), _step1; !(_step1 = _iterator1()).done;){
                             var subRoot = _step1.value;
                             this.visitSync(this.listeners.OnceExit, subRoot);
                         }
@@ -9408,7 +9410,7 @@
             return this.css;
         };
         _proto.visitSync = function visitSync(visitors, node2) {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(visitors), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(visitors), _step; !(_step = _iterator()).done;){
                 var _step_value = _step.value, plugin22 = _step_value[0], visitor = _step_value[1];
                 this.result.lastPlugin = plugin22;
                 var promise = void 0;
@@ -9481,7 +9483,7 @@
             var _this = this;
             node2[isClean] = true;
             var events = getEvents(node2);
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(events), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(events), _step; !(_step = _iterator()).done;){
                 var event = _step.value;
                 if (event === CHILDREN) {
                     if (node2.nodes) {
@@ -9707,20 +9709,20 @@
         var _proto = Processor2.prototype;
         _proto.normalize = function normalize(plugins) {
             var normalized = [];
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(plugins), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(plugins), _step; !(_step = _iterator()).done;){
                 var i2 = _step.value;
                 if (i2.postcss === true) {
                     i2 = i2();
                 } else if (i2.postcss) {
                     i2 = i2.postcss;
                 }
-                if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && Array.isArray(i2.plugins)) {
+                if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && Array.isArray(i2.plugins)) {
                     normalized = normalized.concat(i2.plugins);
-                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && i2.postcssPlugin) {
+                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && i2.postcssPlugin) {
                     normalized.push(i2);
                 } else if (typeof i2 === "function") {
                     normalized.push(i2);
-                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of$1(i2)) === "object" && (i2.parse || i2.stringify)) {
+                } else if ((typeof i2 === "undefined" ? "undefined" : _type_of(i2)) === "object" && (i2.parse || i2.stringify)) {
                     if (process.env.NODE_ENV !== "production") {
                         throw new Error("PostCSS syntaxes cannot be used as plugins. Instead, please use one of the syntax/parser/stringifier options as outlined in your PostCSS runner documentation.");
                     }
@@ -9766,7 +9768,7 @@
         ]);
         if (ownInputs) {
             inputs = [];
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(ownInputs), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(ownInputs), _step; !(_step = _iterator()).done;){
                 var input2 = _step.value;
                 var inputHydrated = _extends({}, input2, {
                     __proto__: Input$1.prototype
@@ -9951,7 +9953,7 @@
         }
         var _proto = BaseRRNode.prototype;
         _proto.contains = function contains(node2) {
-            if (!_instanceof$1(node2, BaseRRNode)) return false;
+            if (!_instanceof(node2, BaseRRNode)) return false;
             else if (node2.ownerDocument !== this.ownerDocument) return false;
             else if (node2 === this) return true;
             while(node2.parentNode){
@@ -10343,7 +10345,7 @@
     }
     function hasShadowRoot(n2) {
         if (!n2) return false;
-        if (_instanceof$1(n2, BaseRRNode) && "shadowRoot" in n2) {
+        if (_instanceof(n2, BaseRRNode) && "shadowRoot" in n2) {
             return Boolean(n2.shadowRoot);
         }
         return Boolean(index.shadowRoot(n2));
@@ -10709,14 +10711,14 @@
                 while(_this.mapRemoves.length){
                     _this.mirror.removeNodeFromMap(_this.mapRemoves.shift());
                 }
-                for(var _iterator = _create_for_of_iterator_helper_loose$1(_this.movedSet), _step; !(_step = _iterator()).done;){
+                for(var _iterator = _create_for_of_iterator_helper_loose(_this.movedSet), _step; !(_step = _iterator()).done;){
                     var n2 = _step.value;
                     if (isParentRemoved(_this.removesSubTreeCache, n2, _this.mirror) && !_this.movedSet.has(index.parentNode(n2))) {
                         continue;
                     }
                     pushAdd(n2);
                 }
-                for(var _iterator1 = _create_for_of_iterator_helper_loose$1(_this.addedSet), _step1; !(_step1 = _iterator1()).done;){
+                for(var _iterator1 = _create_for_of_iterator_helper_loose(_this.addedSet), _step1; !(_step1 = _iterator1()).done;){
                     var n21 = _step1.value;
                     if (!isAncestorInSet(_this.droppedSet, n21) && !isParentRemoved(_this.removesSubTreeCache, n21, _this.mirror)) {
                         pushAdd(n21);
@@ -10920,7 +10922,7 @@
                                     if (m.oldValue) {
                                         old.setAttribute("style", m.oldValue);
                                     }
-                                    for(var _iterator = _create_for_of_iterator_helper_loose$1(Array.from(target.style)), _step; !(_step = _iterator()).done;){
+                                    for(var _iterator = _create_for_of_iterator_helper_loose(Array.from(target.style)), _step; !(_step = _iterator()).done;){
                                         var pname = _step.value;
                                         var newValue = target.style.getPropertyValue(pname);
                                         var newPriority = target.style.getPropertyPriority(pname);
@@ -10940,7 +10942,7 @@
                                             ];
                                         }
                                     }
-                                    for(var _iterator1 = _create_for_of_iterator_helper_loose$1(Array.from(old.style)), _step1; !(_step1 = _iterator1()).done;){
+                                    for(var _iterator1 = _create_for_of_iterator_helper_loose(Array.from(old.style)), _step1; !(_step1 = _iterator1()).done;){
                                         var pname1 = _step1.value;
                                         if (target.style.getPropertyValue(pname1) === "") {
                                             item.styleDiff[pname1] = false;
@@ -11211,7 +11213,7 @@
                 id: mirror2.getId(target),
                 timeOffset: nowTimestamp() - timeBaseline
             });
-            wrappedCb(typeof DragEvent !== "undefined" && _instanceof$1(evt, DragEvent) ? IncrementalSource.Drag : _instanceof$1(evt, MouseEvent) ? IncrementalSource.MouseMove : IncrementalSource.TouchMove);
+            wrappedCb(typeof DragEvent !== "undefined" && _instanceof(evt, DragEvent) ? IncrementalSource.Drag : _instanceof(evt, MouseEvent) ? IncrementalSource.MouseMove : IncrementalSource.TouchMove);
         }), threshold, {
             trailing: false
         }));
@@ -11495,7 +11497,7 @@
     function getNestedCSSRulePositions(rule2) {
         var positions = [];
         function recurse(childRule, pos) {
-            if (hasNestedCSSRule("CSSGroupingRule") && _instanceof$1(childRule.parentRule, CSSGroupingRule) || hasNestedCSSRule("CSSMediaRule") && _instanceof$1(childRule.parentRule, CSSMediaRule) || hasNestedCSSRule("CSSSupportsRule") && _instanceof$1(childRule.parentRule, CSSSupportsRule) || hasNestedCSSRule("CSSConditionRule") && _instanceof$1(childRule.parentRule, CSSConditionRule)) {
+            if (hasNestedCSSRule("CSSGroupingRule") && _instanceof(childRule.parentRule, CSSGroupingRule) || hasNestedCSSRule("CSSMediaRule") && _instanceof(childRule.parentRule, CSSMediaRule) || hasNestedCSSRule("CSSSupportsRule") && _instanceof(childRule.parentRule, CSSSupportsRule) || hasNestedCSSRule("CSSConditionRule") && _instanceof(childRule.parentRule, CSSConditionRule)) {
                 var rules2 = Array.from(childRule.parentRule.cssRules);
                 var index2 = rules2.indexOf(childRule);
                 pos.unshift(index2);
@@ -12088,7 +12090,7 @@
         var selectionObserver = initSelectionObserver(o2);
         var customElementObserver = initCustomElementObserver(o2);
         var pluginHandlers = [];
-        for(var _iterator = _create_for_of_iterator_helper_loose$1(o2.plugins), _step; !(_step = _iterator()).done;){
+        for(var _iterator = _create_for_of_iterator_helper_loose(o2.plugins), _step; !(_step = _iterator()).done;){
             var plugin3 = _step.value;
             pluginHandlers.push(plugin3.observer(plugin3.callback, currentWindow, plugin3.options));
         }
@@ -12406,7 +12408,7 @@
             return false;
         };
         _proto.replace = function replace(iframeMirror, obj, iframeEl, keys) {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(keys), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(keys), _step; !(_step = _iterator()).done;){
                 var key = _step.value;
                 if (!Array.isArray(obj[key]) && typeof obj[key] !== "number") continue;
                 if (Array.isArray(obj[key])) {
@@ -12557,7 +12559,7 @@
         return contextMap.get(ctor);
     }
     var saveWebGLVar = function(value, win, ctx) {
-        if (!value || !(isInstanceOfWebGLObject(value, win) || (typeof value === "undefined" ? "undefined" : _type_of$1(value)) === "object")) return;
+        if (!value || !(isInstanceOfWebGLObject(value, win) || (typeof value === "undefined" ? "undefined" : _type_of(value)) === "object")) return;
         var name = value.constructor.name;
         var list2 = variableListFor$1(ctx, name);
         var index2 = list2.indexOf(value);
@@ -12568,13 +12570,13 @@
         return index2;
     };
     function serializeArg(value, win, ctx) {
-        if (_instanceof$1(value, Array)) {
+        if (_instanceof(value, Array)) {
             return value.map(function(arg) {
                 return serializeArg(arg, win, ctx);
             });
         } else if (value === null) {
             return value;
-        } else if (_instanceof$1(value, Float32Array) || _instanceof$1(value, Float64Array) || _instanceof$1(value, Int32Array) || _instanceof$1(value, Uint32Array) || _instanceof$1(value, Uint8Array) || _instanceof$1(value, Uint16Array) || _instanceof$1(value, Int16Array) || _instanceof$1(value, Int8Array) || _instanceof$1(value, Uint8ClampedArray)) {
+        } else if (_instanceof(value, Float32Array) || _instanceof(value, Float64Array) || _instanceof(value, Int32Array) || _instanceof(value, Uint32Array) || _instanceof(value, Uint8Array) || _instanceof(value, Uint16Array) || _instanceof(value, Int16Array) || _instanceof(value, Int8Array) || _instanceof(value, Uint8ClampedArray)) {
             var name = value.constructor.name;
             return {
                 rr_type: name,
@@ -12585,14 +12587,14 @@
         } else if (// SharedArrayBuffer disabled on most browsers due to spectre.
         // More info: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer/SharedArrayBuffer
         // value instanceof SharedArrayBuffer ||
-        _instanceof$1(value, ArrayBuffer)) {
+        _instanceof(value, ArrayBuffer)) {
             var name1 = value.constructor.name;
             var base64 = encode(value);
             return {
                 rr_type: name1,
                 base64: base64
             };
-        } else if (_instanceof$1(value, DataView)) {
+        } else if (_instanceof(value, DataView)) {
             var name2 = value.constructor.name;
             return {
                 rr_type: name2,
@@ -12602,21 +12604,21 @@
                     value.byteLength
                 ]
             };
-        } else if (_instanceof$1(value, HTMLImageElement)) {
+        } else if (_instanceof(value, HTMLImageElement)) {
             var name3 = value.constructor.name;
             var src = value.src;
             return {
                 rr_type: name3,
                 src: src
             };
-        } else if (_instanceof$1(value, HTMLCanvasElement)) {
+        } else if (_instanceof(value, HTMLCanvasElement)) {
             var name4 = "HTMLImageElement";
             var src1 = value.toDataURL();
             return {
                 rr_type: name4,
                 src: src1
             };
-        } else if (_instanceof$1(value, ImageData)) {
+        } else if (_instanceof(value, ImageData)) {
             var name5 = value.constructor.name;
             return {
                 rr_type: name5,
@@ -12626,7 +12628,7 @@
                     value.height
                 ]
             };
-        } else if (isInstanceOfWebGLObject(value, win) || (typeof value === "undefined" ? "undefined" : _type_of$1(value)) === "object") {
+        } else if (isInstanceOfWebGLObject(value, win) || (typeof value === "undefined" ? "undefined" : _type_of(value)) === "object") {
             var name6 = value.constructor.name;
             var index2 = saveWebGLVar(value, win, ctx);
             return {
@@ -12660,7 +12662,7 @@
             return typeof win[name] === "function";
         });
         return Boolean(supportedWebGLConstructorNames.find(function(name) {
-            return _instanceof$1(value, win[name]);
+            return _instanceof(value, win[name]);
         }));
     };
     function initCanvas2DMutationObserver(cb, win, blockClass, blockSelector) {
@@ -12708,7 +12710,7 @@
         };
         var handlers = [];
         var props2D = Object.getOwnPropertyNames(win.CanvasRenderingContext2D.prototype);
-        for(var _iterator = _create_for_of_iterator_helper_loose$1(props2D), _step; !(_step = _iterator()).done;)_loop();
+        for(var _iterator = _create_for_of_iterator_helper_loose(props2D), _step; !(_step = _iterator()).done;)_loop();
         return function() {
             handlers.forEach(function(h) {
                 return h();
@@ -12733,7 +12735,7 @@
                             "webgl",
                             "webgl2"
                         ].includes(ctxName)) {
-                            if (args[0] && _type_of$1(args[0]) === "object") {
+                            if (args[0] && _type_of(args[0]) === "object") {
                                 var contextAttributes = args[0];
                                 if (!contextAttributes.preserveDrawingBuffer) {
                                     contextAttributes.preserveDrawingBuffer = true;
@@ -12814,7 +12816,7 @@
         };
         var handlers = [];
         var props = Object.getOwnPropertyNames(prototype);
-        for(var _iterator = _create_for_of_iterator_helper_loose$1(props), _step; !(_step = _iterator()).done;)_loop();
+        for(var _iterator = _create_for_of_iterator_helper_loose(props), _step; !(_step = _iterator()).done;)_loop();
         return handlers;
     }
     function initCanvasWebGLMutationObserver(cb, win, blockClass, blockSelector) {
@@ -13139,7 +13141,7 @@
                 styleIds: []
             };
             var styles = [];
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(sheets), _step; !(_step = _iterator()).done;)_this = this, _loop();
+            for(var _iterator = _create_for_of_iterator_helper_loose(sheets), _step; !(_step = _iterator()).done;)_this = this, _loop();
             if (styles.length > 0) adoptedStyleSheetData.styles = styles;
             this.adoptedStyleSheetCb(adoptedStyleSheetData);
         };
@@ -13263,7 +13265,7 @@
         var lastFullSnapshotEvent;
         var incrementalSnapshotCount = 0;
         var eventProcessor = function(e2) {
-            for(var _iterator = _create_for_of_iterator_helper_loose$1(plugins || []), _step; !(_step = _iterator()).done;){
+            for(var _iterator = _create_for_of_iterator_helper_loose(plugins || []), _step; !(_step = _iterator()).done;){
                 var plugin3 = _step.value;
                 if (plugin3.eventProcessor) {
                     e2 = plugin3.eventProcessor(e2);
@@ -13353,7 +13355,7 @@
             recordCrossOriginIframes: recordCrossOriginIframes,
             wrappedEmit: wrappedEmit
         });
-        for(var _iterator = _create_for_of_iterator_helper_loose$1(plugins || []), _step; !(_step = _iterator()).done;){
+        for(var _iterator = _create_for_of_iterator_helper_loose(plugins || []), _step; !(_step = _iterator()).done;){
             var plugin3 = _step.value;
             if (plugin3.getMirror) plugin3.getMirror({
                 nodeMirror: mirror,
@@ -13679,413 +13681,6 @@
     record.addCustomEvent;
     record.freezePage;
     record.takeFullSnapshot;
-
-    var setImmediate = win['setImmediate'];
-    var builtInProp, cycle, schedulingQueue,
-        ToString = Object.prototype.toString,
-        timer = (typeof setImmediate !== 'undefined') ?
-            function timer(fn) { return setImmediate(fn); } :
-            setTimeout;
-
-    // dammit, IE8.
-    try {
-        Object.defineProperty({},'x',{});
-        builtInProp = function builtInProp(obj,name,val,config) {
-            return Object.defineProperty(obj,name,{
-                value: val,
-                writable: true,
-                configurable: config !== false
-            });
-        };
-    }
-    catch (err) {
-        builtInProp = function builtInProp(obj,name,val) {
-            obj[name] = val;
-            return obj;
-        };
-    }
-
-    // Note: using a queue instead of array for efficiency
-    schedulingQueue = (function Queue() {
-        var first, last, item;
-
-        function Item(fn,self) {
-            this.fn = fn;
-            this.self = self;
-            this.next = void 0;
-        }
-
-        return {
-            add: function add(fn,self) {
-                item = new Item(fn,self);
-                if (last) {
-                    last.next = item;
-                }
-                else {
-                    first = item;
-                }
-                last = item;
-                item = void 0;
-            },
-            drain: function drain() {
-                var f = first;
-                first = last = cycle = void 0;
-
-                while (f) {
-                    f.fn.call(f.self);
-                    f = f.next;
-                }
-            }
-        };
-    })();
-
-    function schedule(fn,self) {
-        schedulingQueue.add(fn,self);
-        if (!cycle) {
-            cycle = timer(schedulingQueue.drain);
-        }
-    }
-
-    // promise duck typing
-    function isThenable(o) {
-        var _then, oType = typeof o;
-
-        if (o !== null && (oType === 'object' || oType === 'function')) {
-            _then = o.then;
-        }
-        return typeof _then === 'function' ? _then : false;
-    }
-
-    function notify() {
-        for (var i=0; i<this.chain.length; i++) {
-            notifyIsolated(
-                this,
-                (this.state === 1) ? this.chain[i].success : this.chain[i].failure,
-                this.chain[i]
-            );
-        }
-        this.chain.length = 0;
-    }
-
-    // NOTE: This is a separate function to isolate
-    // the `try..catch` so that other code can be
-    // optimized better
-    function notifyIsolated(self,cb,chain) {
-        var ret, _then;
-        try {
-            if (cb === false) {
-                chain.reject(self.msg);
-            }
-            else {
-                if (cb === true) {
-                    ret = self.msg;
-                }
-                else {
-                    ret = cb.call(void 0,self.msg);
-                }
-
-                if (ret === chain.promise) {
-                    chain.reject(TypeError('Promise-chain cycle'));
-                }
-                // eslint-disable-next-line no-cond-assign
-                else if (_then = isThenable(ret)) {
-                    _then.call(ret,chain.resolve,chain.reject);
-                }
-                else {
-                    chain.resolve(ret);
-                }
-            }
-        }
-        catch (err) {
-            chain.reject(err);
-        }
-    }
-
-    function resolve(msg) {
-        var _then, self = this;
-
-        // already triggered?
-        if (self.triggered) { return; }
-
-        self.triggered = true;
-
-        // unwrap
-        if (self.def) {
-            self = self.def;
-        }
-
-        try {
-            // eslint-disable-next-line no-cond-assign
-            if (_then = isThenable(msg)) {
-                schedule(function(){
-                    var defWrapper = new MakeDefWrapper(self);
-                    try {
-                        _then.call(msg,
-                            function $resolve$(){ resolve.apply(defWrapper,arguments); },
-                            function $reject$(){ reject.apply(defWrapper,arguments); }
-                        );
-                    }
-                    catch (err) {
-                        reject.call(defWrapper,err);
-                    }
-                });
-            }
-            else {
-                self.msg = msg;
-                self.state = 1;
-                if (self.chain.length > 0) {
-                    schedule(notify,self);
-                }
-            }
-        }
-        catch (err) {
-            reject.call(new MakeDefWrapper(self),err);
-        }
-    }
-
-    function reject(msg) {
-        var self = this;
-
-        // already triggered?
-        if (self.triggered) { return; }
-
-        self.triggered = true;
-
-        // unwrap
-        if (self.def) {
-            self = self.def;
-        }
-
-        self.msg = msg;
-        self.state = 2;
-        if (self.chain.length > 0) {
-            schedule(notify,self);
-        }
-    }
-
-    function iteratePromises(Constructor,arr,resolver,rejecter) {
-        for (var idx=0; idx<arr.length; idx++) {
-            (function IIFE(idx){
-                Constructor.resolve(arr[idx])
-                    .then(
-                        function $resolver$(msg){
-                            resolver(idx,msg);
-                        },
-                        rejecter
-                    );
-            })(idx);
-        }
-    }
-
-    function MakeDefWrapper(self) {
-        this.def = self;
-        this.triggered = false;
-    }
-
-    function MakeDef(self) {
-        this.promise = self;
-        this.state = 0;
-        this.triggered = false;
-        this.chain = [];
-        this.msg = void 0;
-    }
-
-    function NpoPromise(executor) {
-        if (typeof executor !== 'function') {
-            throw TypeError('Not a function');
-        }
-
-        if (this['__NPO__'] !== 0) {
-            throw TypeError('Not a promise');
-        }
-
-        // instance shadowing the inherited "brand"
-        // to signal an already "initialized" promise
-        this['__NPO__'] = 1;
-
-        var def = new MakeDef(this);
-
-        this['then'] = function then(success,failure) {
-            var o = {
-                success: typeof success === 'function' ? success : true,
-                failure: typeof failure === 'function' ? failure : false
-            };
-                // Note: `then(..)` itself can be borrowed to be used against
-                // a different promise constructor for making the chained promise,
-                // by substituting a different `this` binding.
-            o.promise = new this.constructor(function extractChain(resolve,reject) {
-                if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                    throw TypeError('Not a function');
-                }
-
-                o.resolve = resolve;
-                o.reject = reject;
-            });
-            def.chain.push(o);
-
-            if (def.state !== 0) {
-                schedule(notify,def);
-            }
-
-            return o.promise;
-        };
-        this['catch'] = function $catch$(failure) {
-            return this.then(void 0,failure);
-        };
-
-        try {
-            executor.call(
-                void 0,
-                function publicResolve(msg){
-                    resolve.call(def,msg);
-                },
-                function publicReject(msg) {
-                    reject.call(def,msg);
-                }
-            );
-        }
-        catch (err) {
-            reject.call(def,err);
-        }
-    }
-
-    var PromisePrototype = builtInProp({},'constructor',NpoPromise,
-        /*configurable=*/false
-    );
-
-        // Note: Android 4 cannot use `Object.defineProperty(..)` here
-    NpoPromise.prototype = PromisePrototype;
-
-    // built-in "brand" to signal an "uninitialized" promise
-    builtInProp(PromisePrototype,'__NPO__',0,
-        /*configurable=*/false
-    );
-
-    builtInProp(NpoPromise,'resolve',function Promise$resolve(msg) {
-        var Constructor = this;
-
-        // spec mandated checks
-        // note: best "isPromise" check that's practical for now
-        if (msg && typeof msg === 'object' && msg['__NPO__'] === 1) {
-            return msg;
-        }
-
-        return new Constructor(function executor(resolve,reject){
-            if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                throw TypeError('Not a function');
-            }
-
-            resolve(msg);
-        });
-    });
-
-    builtInProp(NpoPromise,'reject',function Promise$reject(msg) {
-        return new this(function executor(resolve,reject){
-            if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                throw TypeError('Not a function');
-            }
-
-            reject(msg);
-        });
-    });
-
-    builtInProp(NpoPromise,'all',function Promise$all(arr) {
-        var Constructor = this;
-
-        // spec mandated checks
-        if (ToString.call(arr) !== '[object Array]') {
-            return Constructor.reject(TypeError('Not an array'));
-        }
-        if (arr.length === 0) {
-            return Constructor.resolve([]);
-        }
-
-        return new Constructor(function executor(resolve,reject){
-            if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                throw TypeError('Not a function');
-            }
-
-            var len = arr.length, msgs = Array(len), count = 0;
-
-            iteratePromises(Constructor,arr,function resolver(idx,msg) {
-                msgs[idx] = msg;
-                if (++count === len) {
-                    resolve(msgs);
-                }
-            },reject);
-        });
-    });
-
-    builtInProp(NpoPromise,'race',function Promise$race(arr) {
-        var Constructor = this;
-
-        // spec mandated checks
-        if (ToString.call(arr) !== '[object Array]') {
-            return Constructor.reject(TypeError('Not an array'));
-        }
-
-        return new Constructor(function executor(resolve,reject){
-            if (typeof resolve !== 'function' || typeof reject !== 'function') {
-                throw TypeError('Not a function');
-            }
-
-            iteratePromises(Constructor,arr,function resolver(idx,msg){
-                resolve(msg);
-            },reject);
-        });
-    });
-
-    var PromisePolyfill;
-    if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
-        PromisePolyfill = Promise;
-    } else {
-        PromisePolyfill = NpoPromise;
-    }
-
-    function _array_like_to_array(arr, len) {
-        if (len == null || len > arr.length) len = arr.length;
-        for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
-        return arr2;
-    }
-    function _instanceof(left, right) {
-        if (right != null && typeof Symbol !== "undefined" && right[Symbol.hasInstance]) {
-            return !!right[Symbol.hasInstance](left);
-        } else {
-            return left instanceof right;
-        }
-    }
-    function _type_of(obj) {
-        "@swc/helpers - typeof";
-        return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj;
-    }
-    function _unsupported_iterable_to_array(o, minLen) {
-        if (!o) return;
-        if (typeof o === "string") return _array_like_to_array(o, minLen);
-        var n = Object.prototype.toString.call(o).slice(8, -1);
-        if (n === "Object" && o.constructor) n = o.constructor.name;
-        if (n === "Map" || n === "Set") return Array.from(n);
-        if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _array_like_to_array(o, minLen);
-    }
-    function _create_for_of_iterator_helper_loose(o, allowArrayLike) {
-        var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"];
-        if (it) return (it = it.call(o)).next.bind(it);
-        if (Array.isArray(o) || (it = _unsupported_iterable_to_array(o)) || allowArrayLike) {
-            if (it) o = it;
-            var i = 0;
-            return function() {
-                if (i >= o.length) {
-                    return {
-                        done: true
-                    };
-                }
-                return {
-                    done: false,
-                    value: o[i++]
-                };
-            };
-        }
-        throw new TypeError("Invalid attempt to iterate non-iterable instance.\\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
-    }
     var __defProp = Object.defineProperty;
     var __defNormalProp = function(obj, key, value) {
         return key in obj ? __defProp(obj, key, {
@@ -14573,6 +14168,368 @@
             options: options
         };
     };
+
+    var setImmediate = win['setImmediate'];
+    var builtInProp, cycle, schedulingQueue,
+        ToString = Object.prototype.toString,
+        timer = (typeof setImmediate !== 'undefined') ?
+            function timer(fn) { return setImmediate(fn); } :
+            setTimeout;
+
+    // dammit, IE8.
+    try {
+        Object.defineProperty({},'x',{});
+        builtInProp = function builtInProp(obj,name,val,config) {
+            return Object.defineProperty(obj,name,{
+                value: val,
+                writable: true,
+                configurable: config !== false
+            });
+        };
+    }
+    catch (err) {
+        builtInProp = function builtInProp(obj,name,val) {
+            obj[name] = val;
+            return obj;
+        };
+    }
+
+    // Note: using a queue instead of array for efficiency
+    schedulingQueue = (function Queue() {
+        var first, last, item;
+
+        function Item(fn,self) {
+            this.fn = fn;
+            this.self = self;
+            this.next = void 0;
+        }
+
+        return {
+            add: function add(fn,self) {
+                item = new Item(fn,self);
+                if (last) {
+                    last.next = item;
+                }
+                else {
+                    first = item;
+                }
+                last = item;
+                item = void 0;
+            },
+            drain: function drain() {
+                var f = first;
+                first = last = cycle = void 0;
+
+                while (f) {
+                    f.fn.call(f.self);
+                    f = f.next;
+                }
+            }
+        };
+    })();
+
+    function schedule(fn,self) {
+        schedulingQueue.add(fn,self);
+        if (!cycle) {
+            cycle = timer(schedulingQueue.drain);
+        }
+    }
+
+    // promise duck typing
+    function isThenable(o) {
+        var _then, oType = typeof o;
+
+        if (o !== null && (oType === 'object' || oType === 'function')) {
+            _then = o.then;
+        }
+        return typeof _then === 'function' ? _then : false;
+    }
+
+    function notify() {
+        for (var i=0; i<this.chain.length; i++) {
+            notifyIsolated(
+                this,
+                (this.state === 1) ? this.chain[i].success : this.chain[i].failure,
+                this.chain[i]
+            );
+        }
+        this.chain.length = 0;
+    }
+
+    // NOTE: This is a separate function to isolate
+    // the `try..catch` so that other code can be
+    // optimized better
+    function notifyIsolated(self,cb,chain) {
+        var ret, _then;
+        try {
+            if (cb === false) {
+                chain.reject(self.msg);
+            }
+            else {
+                if (cb === true) {
+                    ret = self.msg;
+                }
+                else {
+                    ret = cb.call(void 0,self.msg);
+                }
+
+                if (ret === chain.promise) {
+                    chain.reject(TypeError('Promise-chain cycle'));
+                }
+                // eslint-disable-next-line no-cond-assign
+                else if (_then = isThenable(ret)) {
+                    _then.call(ret,chain.resolve,chain.reject);
+                }
+                else {
+                    chain.resolve(ret);
+                }
+            }
+        }
+        catch (err) {
+            chain.reject(err);
+        }
+    }
+
+    function resolve(msg) {
+        var _then, self = this;
+
+        // already triggered?
+        if (self.triggered) { return; }
+
+        self.triggered = true;
+
+        // unwrap
+        if (self.def) {
+            self = self.def;
+        }
+
+        try {
+            // eslint-disable-next-line no-cond-assign
+            if (_then = isThenable(msg)) {
+                schedule(function(){
+                    var defWrapper = new MakeDefWrapper(self);
+                    try {
+                        _then.call(msg,
+                            function $resolve$(){ resolve.apply(defWrapper,arguments); },
+                            function $reject$(){ reject.apply(defWrapper,arguments); }
+                        );
+                    }
+                    catch (err) {
+                        reject.call(defWrapper,err);
+                    }
+                });
+            }
+            else {
+                self.msg = msg;
+                self.state = 1;
+                if (self.chain.length > 0) {
+                    schedule(notify,self);
+                }
+            }
+        }
+        catch (err) {
+            reject.call(new MakeDefWrapper(self),err);
+        }
+    }
+
+    function reject(msg) {
+        var self = this;
+
+        // already triggered?
+        if (self.triggered) { return; }
+
+        self.triggered = true;
+
+        // unwrap
+        if (self.def) {
+            self = self.def;
+        }
+
+        self.msg = msg;
+        self.state = 2;
+        if (self.chain.length > 0) {
+            schedule(notify,self);
+        }
+    }
+
+    function iteratePromises(Constructor,arr,resolver,rejecter) {
+        for (var idx=0; idx<arr.length; idx++) {
+            (function IIFE(idx){
+                Constructor.resolve(arr[idx])
+                    .then(
+                        function $resolver$(msg){
+                            resolver(idx,msg);
+                        },
+                        rejecter
+                    );
+            })(idx);
+        }
+    }
+
+    function MakeDefWrapper(self) {
+        this.def = self;
+        this.triggered = false;
+    }
+
+    function MakeDef(self) {
+        this.promise = self;
+        this.state = 0;
+        this.triggered = false;
+        this.chain = [];
+        this.msg = void 0;
+    }
+
+    function NpoPromise(executor) {
+        if (typeof executor !== 'function') {
+            throw TypeError('Not a function');
+        }
+
+        if (this['__NPO__'] !== 0) {
+            throw TypeError('Not a promise');
+        }
+
+        // instance shadowing the inherited "brand"
+        // to signal an already "initialized" promise
+        this['__NPO__'] = 1;
+
+        var def = new MakeDef(this);
+
+        this['then'] = function then(success,failure) {
+            var o = {
+                success: typeof success === 'function' ? success : true,
+                failure: typeof failure === 'function' ? failure : false
+            };
+                // Note: `then(..)` itself can be borrowed to be used against
+                // a different promise constructor for making the chained promise,
+                // by substituting a different `this` binding.
+            o.promise = new this.constructor(function extractChain(resolve,reject) {
+                if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                    throw TypeError('Not a function');
+                }
+
+                o.resolve = resolve;
+                o.reject = reject;
+            });
+            def.chain.push(o);
+
+            if (def.state !== 0) {
+                schedule(notify,def);
+            }
+
+            return o.promise;
+        };
+        this['catch'] = function $catch$(failure) {
+            return this.then(void 0,failure);
+        };
+
+        try {
+            executor.call(
+                void 0,
+                function publicResolve(msg){
+                    resolve.call(def,msg);
+                },
+                function publicReject(msg) {
+                    reject.call(def,msg);
+                }
+            );
+        }
+        catch (err) {
+            reject.call(def,err);
+        }
+    }
+
+    var PromisePrototype = builtInProp({},'constructor',NpoPromise,
+        /*configurable=*/false
+    );
+
+        // Note: Android 4 cannot use `Object.defineProperty(..)` here
+    NpoPromise.prototype = PromisePrototype;
+
+    // built-in "brand" to signal an "uninitialized" promise
+    builtInProp(PromisePrototype,'__NPO__',0,
+        /*configurable=*/false
+    );
+
+    builtInProp(NpoPromise,'resolve',function Promise$resolve(msg) {
+        var Constructor = this;
+
+        // spec mandated checks
+        // note: best "isPromise" check that's practical for now
+        if (msg && typeof msg === 'object' && msg['__NPO__'] === 1) {
+            return msg;
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            resolve(msg);
+        });
+    });
+
+    builtInProp(NpoPromise,'reject',function Promise$reject(msg) {
+        return new this(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            reject(msg);
+        });
+    });
+
+    builtInProp(NpoPromise,'all',function Promise$all(arr) {
+        var Constructor = this;
+
+        // spec mandated checks
+        if (ToString.call(arr) !== '[object Array]') {
+            return Constructor.reject(TypeError('Not an array'));
+        }
+        if (arr.length === 0) {
+            return Constructor.resolve([]);
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            var len = arr.length, msgs = Array(len), count = 0;
+
+            iteratePromises(Constructor,arr,function resolver(idx,msg) {
+                msgs[idx] = msg;
+                if (++count === len) {
+                    resolve(msgs);
+                }
+            },reject);
+        });
+    });
+
+    builtInProp(NpoPromise,'race',function Promise$race(arr) {
+        var Constructor = this;
+
+        // spec mandated checks
+        if (ToString.call(arr) !== '[object Array]') {
+            return Constructor.reject(TypeError('Not an array'));
+        }
+
+        return new Constructor(function executor(resolve,reject){
+            if (typeof resolve !== 'function' || typeof reject !== 'function') {
+                throw TypeError('Not a function');
+            }
+
+            iteratePromises(Constructor,arr,function resolver(idx,msg){
+                resolve(msg);
+            },reject);
+        });
+    });
+
+    var PromisePolyfill;
+    if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]') !== -1) {
+        PromisePolyfill = Promise;
+    } else {
+        PromisePolyfill = NpoPromise;
+    }
 
     var Config = {
         DEBUG: false,

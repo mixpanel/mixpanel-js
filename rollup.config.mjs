@@ -7,17 +7,11 @@ import fs from 'fs';
 import path from 'path';
 
 const COMPILED_RRWEB_PATH = 'build/rrweb-compiled.js';
-const COMPILED_RRWEB_CONSOLE_PATH = 'build/rrweb-console-compiled.js';
+const BUNDLED_RRWEB_PATH = 'build/rrweb-bundled.js';
 
 const aliasRrweb = () => alias({
     entries: [
-        { find: '@mixpanel/rrweb', replacement: COMPILED_RRWEB_PATH },
-    ]
-});
-
-const aliasRrwebConsole = () => alias({
-    entries: [
-        { find: '@mixpanel/rrweb-plugin-console-record', replacement: COMPILED_RRWEB_CONSOLE_PATH },
+        { find: /rrweb-entrypoint(?:\.js)?$/, replacement: COMPILED_RRWEB_PATH },
     ]
 });
 
@@ -49,24 +43,25 @@ const MINIFY = process.env.MINIFY || process.env.FULL;
 
 // Main builds used to develop / iterate quickly
 const MAIN_BUILDS = [
-    // compile rrweb first to es5 with swc, we'll replace the import later on
     {
-        'input': '@mixpanel/rrweb',
+        'input': 'src/recorder/rrweb-entrypoint.js',
+        'output': [
+            {
+                file: BUNDLED_RRWEB_PATH,
+                format: 'es',
+            }
+        ],
+        plugins: [nodeResolve({browser: true})]
+    },
+    {
+        'input': BUNDLED_RRWEB_PATH,
         'output': [
             {
                 file: COMPILED_RRWEB_PATH,
+                format: 'es',
             }
         ],
-        plugins: [nodeResolve({browser: true}), swc({swc: {jsc: {target: 'es5'}}})]
-    },
-    {
-        'input': '@mixpanel/rrweb-plugin-console-record',
-        'output': [
-            {
-                file: COMPILED_RRWEB_CONSOLE_PATH,
-            }
-        ],
-        plugins: [nodeResolve({browser: true}), swc({swc: {jsc: {target: 'es5'}}})]
+        plugins: [swc({swc: {jsc: {target: 'es5'}}})]
     },
 
     // IIFE recorder bundle that is loaded asynchronously
@@ -91,7 +86,7 @@ const MAIN_BUILDS = [
                   ]
                 : []),
         ],
-        plugins: [aliasRrweb(), aliasRrwebConsole()],
+        plugins: [aliasRrweb()],
     },
 
     // IIFE main mixpanel build
@@ -172,7 +167,6 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
-            aliasRrwebConsole(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -210,7 +204,6 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
-            aliasRrwebConsole(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -233,7 +226,6 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
-            aliasRrwebConsole(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -253,7 +245,6 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
-            aliasRrwebConsole(),
             nodeResolve({
                 browser: true,
                 main: true,

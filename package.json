@@ -67,6 +67,6 @@
   },
   "dependencies": {
     "@mixpanel/rrweb": "2.0.0-alpha.18.2",
-    "@mixpanel/rrweb-plugin-console-record": "^2.0.0-alpha.18.2"
+    "@mixpanel/rrweb-plugin-console-record": "2.0.0-alpha.18.2"
   }
 }
