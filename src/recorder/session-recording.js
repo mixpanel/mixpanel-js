@@ -1,6 +1,6 @@
 import { window } from '../window';
 import { IncrementalSource, EventType, getRecordConsolePlugin } from './rrweb-entrypoint';
-import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _, localStorageSupported, canUseCompressionStream} from '../utils'; // eslint-disable-line camelcase
+import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _, localStorageSupported, canUseCompressionStream, navigator, userAgent, windowOpera} from '../utils'; // eslint-disable-line camelcase
 import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
@@ -475,7 +475,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
         var eventsJson = JSON.stringify(data);
         Object.assign(reqParams, this.getUserIdInfo());
 
-        if (canUseCompressionStream()) {
+        if (canUseCompressionStream(userAgent, navigator.vendor, windowOpera)) {
             var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
             new Response(gzipStream)

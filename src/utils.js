@@ -1796,4 +1796,5 @@ export {
     safewrapClass,
     slice,
     userAgent,
+    windowOpera,
 };

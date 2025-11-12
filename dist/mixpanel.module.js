@@ -14530,7 +14530,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.72.0'
+    LIB_VERSION: '2.72.0-rc2'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -16269,6 +16269,28 @@ if (typeof JSON !== 'undefined') {
 }
 JSONStringify = JSONStringify || _.JSONEncode;
 JSONParse = JSONParse || _.JSONDecode;
+
+/**
+ * Determines if CompressionStream API should be used.
+ * Returns false for Safari 16.4 and 16.5 which have breaking CompressionStream bugs.
+ * https://bugs.webkit.org/show_bug.cgi?id=254021
+ * fixed in 16.6 https://developer.apple.com/documentation/safari-release-notes/safari-16_6-release-notes
+ */
+var canUseCompressionStream = function(userAgent, vendor, opera) {
+    if (!win.CompressionStream) {
+        return false;
+    }
+
+    var browser = _.info.browser(userAgent, vendor, opera);
+    var version = _.info.browserVersion(userAgent, vendor, opera);
+    if (browser === 'Safari' || browser === 'Mobile Safari') {
+        if (version >= 16.4 && version < 16.6) {
+            return false;
+        }
+    }
+
+    return true;
+};
 
 // UNMINIFIED EXPORTS (for closure compiler)
 _['info']                   = _.info;
@@ -18082,7 +18104,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
         var eventsJson = JSON.stringify(data);
         Object.assign(reqParams, this.getUserIdInfo());
 
-        if (CompressionStream) {
+        if (canUseCompressionStream(userAgent, navigator.vendor, windowOpera)) {
             var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
             new Response(gzipStream)
