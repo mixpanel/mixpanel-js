@@ -290,6 +290,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this['__loaded'] = true;
     this['config'] = {};
 
+    this.custom_hooks = {};
+    this['custom_hooks'] = this.custom_hooks;
+
     var variable_features = {};
 
     // default to JSON payload for standard mixpanel.com API hosts
@@ -393,8 +396,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this._init_tab_id();
     this._check_and_start_session_recording();
 
-    this.custom_hooks = {};
-    this['custom_hooks'] = this.custom_hooks;
+
 };
 
 /**
@@ -1050,7 +1052,8 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
-    this._run_hook('before_track', {event_name: event_name, properties: properties, options: options})
+    var mixpanel_properties = _.info.properties({'mp_loader': this.get_config('mp_loader')})
+    this._run_hook('before_track', {event_name: event_name, properties: properties, mixpanel_properties: mixpanel_properties })
     if (!callback && typeof options === 'function') {
         callback = options;
         options = null;
@@ -1467,7 +1470,7 @@ var options_for_register = function(days_or_options) {
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
     // Check and run any installed hooks for before_register
-    this._run_hook('before_register', {properties: props, days_or_options: days_or_options})
+    this._run_hook('before_register', {properties: props})
 
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
@@ -1506,7 +1509,7 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
     // Check and run any installed hooks for before_register
-    this._run_hook('before_register_once', {properties: props, default_value: default_value, days_or_options: days_or_options})
+    this._run_hook('before_register_once', {properties: props, default_value: default_value})
 
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
@@ -1531,7 +1534,7 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
-    this._run_hook('before_unregister', {property: property, options: options})
+    this._run_hook('before_unregister', {property: property})
     options = options_for_register(options);
     if (options['persistent']) {
         this['persistence'].unregister(property);
