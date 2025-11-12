@@ -330,10 +330,6 @@ _.isNumber = function(obj) {
     return toString.call(obj) == '[object Number]';
 };
 
-_.isBoolean = function(obj) {
-    return toString.call(obj) == '[object Boolean]';
-};
-
 _.isElement = function(obj) {
     return !!(obj && obj.nodeType === 1);
 };
