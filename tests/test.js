@@ -7652,8 +7652,8 @@
                         }
                     }, this))
                     .then(_.bind(function () {
-                        // Wait 24 hours for the recording to be considered expired
-                        return this.clock.tickAsync(24 * 60 * 60 * 1000);
+                        // Wait 31 minutes for the recording to be considered expired
+                        return this.clock.tickAsync(31 * 60 * 1000);
                     }, this))
                     .then(_.bind(function () {
                         // Re-initialize the SDK which should reload and attempt to flush the expired recording
