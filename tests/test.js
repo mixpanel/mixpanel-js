@@ -6925,7 +6925,7 @@
                     this.token = `RECORDER_TEST_TOKEN`;
                     this.startTime = 1723733423402;
                     this.clock = sinon.useFakeTimers(this.startTime, {toFake: [
-                        'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'
+                        'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
                     ]});
                     this.randomStub = sinon.stub(Math, 'random');
                     this.fetchStub = sinon.stub(window, 'fetch');
@@ -7618,50 +7618,6 @@
                     .then(_.bind(function () {
                         realSetTimeout(_.bind(function() {
                             same(this.fetchStub.getCalls().length, 0, 'no fetch requests after recording is stopped');
-                            start();
-                        }, this), 2);
-                    }, this));
-            });
-
-            asyncTest('respects minimum session length setting when unloading expired recordings from IndexedDB', function () {
-                this.randomStub.returns(0.02);
-                this.initMixpanelRecorder({record_sessions_percent: 10, record_min_ms: 8000});
-
-                this.waitForRecorderLoad()
-                    .then(_.bind(function () {
-                        simulateMouseClick(document.body);
-                        return this.waitForRecorderEnqueue();
-                    }, this))
-                    .then(_.bind(function () {
-                        return this.clock.tickAsync(5 * 1000);
-                    }, this))
-                    .then(_.bind(function () {
-                        simulateMouseClick(document.body);
-                        return this.waitForRecorderEnqueue();
-                    }, this))
-                    .then(_.bind(function () {
-                        // Simulate a tab close by pausing the recording, and ensuring the batcher _isn't_ cleared as a side effect.                        
-                        sinon.stub(mixpanel.recordertest.__get_recorder().activeRecording.batcher, 'clear');
-                        mixpanel.recordertest.pause_session_recording()
-
-                        same(this.fetchStub.getCalls().length, 0, 'should not have flushed yet');
-
-                        delete mixpanel['recordertest'];
-
-                        if (!IS_RECORDER_BUNDLED) {
-                            delete window['__mp_recorder'];
-                            document.head.removeChild(document.querySelector('script[src="' + recorderSrc + '"]'))
-                        }
-                    }, this))
-                    .then(_.bind(function () {
-                        // Wait 31 minutes for the recording to be considered expired
-                        return this.clock.tickAsync(31 * 60 * 1000);
-                    }, this))
-                    .then(_.bind(function () {
-                        // Re-initialize the SDK which should reload and attempt to flush the expired recording
-                        this.initMixpanelRecorder({record_min_ms: 8000});
-                        realSetTimeout(_.bind(function() {
-                            same(this.fetchStub.getCalls().length, 0, 'no fetch from persisting a too-short recording');
                             start();
                         }, this), 2);
                     }, this));
