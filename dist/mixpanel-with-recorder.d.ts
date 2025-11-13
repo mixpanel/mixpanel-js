@@ -290,6 +290,10 @@ export interface FlagsVariant {
   is_qa_tester?: boolean;
 }
 
+export interface FlagsUpdateContextOptions {
+  replace?: boolean;
+}
+
 export interface FlagsManager {
   are_flags_ready(): boolean;
   get_variant(
@@ -301,7 +305,10 @@ export interface FlagsManager {
   get_variant_value_sync(featureName: string, fallbackValue: any): any;
   is_enabled(featureName: string, fallbackValue?: boolean): Promise<boolean>;
   is_enabled_sync(featureName: string, fallbackValue?: boolean): boolean;
-  update_context(context: Dict): Promise<void>;
+  update_context(
+    context: Dict,
+    options?: FlagsUpdateContextOptions
+  ): Promise<void>;
 }
 
 export interface Mixpanel {
