@@ -6924,7 +6924,7 @@
                 setup: function () {
                     this.token = `RECORDER_TEST_TOKEN`;
                     this.startTime = 1723733423402;
-                    this.clock = sinon.useFakeTimers(this.startTime, {toFake: [
+                    this.clock = sinon.useFakeTimers({toFake: [
                         'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'
                     ]});
                     this.randomStub = sinon.stub(Math, 'random');
@@ -6949,6 +6949,7 @@
                         var config = Object.assign({
                             debug: true,
                             record_sessions_percent: 0,
+                            record_console: false,
                             recorder_src: recorderSrc
                         }, extraConfig);
                         mixpanel.init(this.token, config, 'recordertest')
@@ -7199,7 +7200,7 @@
                 // set hash to test $current_url logic without reloading test page
                 window.location.hash = 'my-url-1';
                 this.randomStub.returns(0.02);
-                this.initMixpanelRecorder({record_sessions_percent: 10});
+                this.initMixpanelRecorder({record_sessions_percent: 10, record_console: true});
                 this.blobConstructorSpy = sinon.spy(window, 'Blob')
 
                 this.waitForRecorderLoad()
@@ -7249,6 +7250,7 @@
                         ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
                         ok(urlParams2.get("replay_start_url").endsWith('#my-url-1'), 'start url does not change in later batches');
 
+                        this.blobConstructorSpy.restore();
                         return mixpanel.recordertest.stop_session_recording();
                     }, this))
                     .then(function () {
