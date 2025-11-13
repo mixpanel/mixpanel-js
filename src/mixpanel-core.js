@@ -2277,6 +2277,10 @@ MixpanelLib.prototype.remove_hook = function(hook_name) {
     }
 };
 
+MixpanelLib.prototype._info_properties = function() {
+    return _.info.properties({'mp_loader': this.get_config('mp_loader')});
+};
+
 // EXPORTS (for closure compiler)
 
 // MixpanelLib Exports
