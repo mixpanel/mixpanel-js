@@ -7195,6 +7195,67 @@
                     });
             });
 
+            asyncTest('sends recording console payload to server', 26, function () {
+                // set hash to test $current_url logic without reloading test page
+                window.location.hash = 'my-url-1';
+                this.randomStub.returns(0.02);
+                this.initMixpanelRecorder({record_sessions_percent: 10});
+                this.blobConstructorSpy = sinon.spy(window, 'Blob')
+
+                this.waitForRecorderLoad()
+                    .then(_.bind(function () {
+                        window.location.hash = 'my-url-2';
+                        simulateMouseClick(document.body);
+                        document.defaultView.console.log('test console log message');
+                        return this.waitForRecorderEnqueue();
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(this.waitForFetchCalls(1))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds')
+                        var fetchCall1 = this.fetchStub.getCall(0);
+
+                        var events = JSON.parse(this.blobConstructorSpy.lastCall.args[0][0])
+                        same(events.length, 4, 'one event in the batch');
+                        same(events[0].type, 4, 'meta event');
+                        same(events[1].type, 2, 'full snapshot event');
+                        same(events[2].type, 3, 'incremental snapshot event for mouse click');
+                        same(events[3].type, 6, 'console plugin event');
+                        ok(events[3].data.plugin.includes('console'), 'console event is from console plugin');
+                        same(events[3].data.payload.level, 'log', 'console event has the correct level');
+                        same(events[3].data.payload.payload, ['\"test console log message\"'], 'console event has the correct message');
+                        same(events[3].data.payload.trace.length, 1, 'console event has a trace');
+                        var urlParams1 = validateAndGetUrlParams(fetchCall1)
+                        same(urlParams1.get("seq"), "0")
+                        ok(urlParams1.get("$current_url").endsWith('#my-url-1'), 'includes the current url from when we started recording');
+                        ok(urlParams1.get("replay_start_url").endsWith('#my-url-1'), 'includes the start url from when we started recording');
+                        same(urlParams1.get("mp_lib"), "web");
+
+                        simulateMouseClick(document.body);
+                        return this.waitForRecorderEnqueue(1);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(this.waitForFetchCalls(2))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
+                        var fetchCall2 = this.fetchStub.getCall(1);
+                        
+                        var urlParams2 = validateAndGetUrlParams(fetchCall2)
+                        same(urlParams2.get("seq"), "1")
+                        ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
+                        ok(urlParams2.get("replay_start_url").endsWith('#my-url-1'), 'start url does not change in later batches');
+
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
+                        start();
+                    });
+            });
+
             asyncTest('can get replay properties when recording is active', 4, function () {
                 this.randomStub.restore();
                 this.initMixpanelRecorder();
