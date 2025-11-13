@@ -23,12 +23,18 @@ mixpanel.flags.get_variant_sync(`new-feature`, {
   value: `blue`,
 });
 
-await mixpanel.flags.update_context({
-  company_id: `Y`,
-  custom_properties: {
-    platform: `mobile`,
+await mixpanel.flags.update_context(
+  {
+    company_id: `Y`,
+    custom_properties: {
+      platform: `mobile`,
+    },
   },
-});
+  {
+    replace: true,
+  }
+);
+await mixpanel.flags.update_context({ company_id: `Z` });
 
 await mixpanel.flags.get_variant_value(`new-feature`, `blue`);
 const color: string = mixpanel.flags.get_variant_value_sync(

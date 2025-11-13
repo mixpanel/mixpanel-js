@@ -20,7 +20,10 @@ await mixpanel.flags.update_context({
     custom_properties: {
         platform: `mobile`,
     },
+}, {
+    replace: true,
 });
+await mixpanel.flags.update_context({ company_id: `Z` });
 await mixpanel.flags.get_variant_value(`new-feature`, `blue`);
 const color = mixpanel.flags.get_variant_value_sync(`new-feature`, `blue`);
 console.log(`Variant color: ${color}`);
