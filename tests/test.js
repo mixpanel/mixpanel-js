@@ -4556,6 +4556,7 @@
             });
 
             asyncTest("tracks scroll depth when record_heatmap_data is on and session recording is active", 1, function() {
+                this.clock.restore(); // fake timers mess with SR initialization
                 mixpanel.init("heatmap_recording_test", {
                     record_heatmap_data: true,
                     record_sessions_percent: 100,
@@ -7419,7 +7420,8 @@
                 this.fetchStub.onFirstCall()
                     .returns(makeFakeFetchResponse(200))
                     .onSecondCall()
-                    .returns(makeFakeFetchResponse(500));
+                    .returns(makeFakeFetchResponse(500))
+                    .callThrough();
 
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
