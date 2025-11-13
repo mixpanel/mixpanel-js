@@ -2,7 +2,6 @@
 import Config from './config';
 import { NpoPromise, Promise } from './promise-polyfill';
 import { window } from './window';
-import { CustomEvent } from './custom-event';
 
 // Maximum allowed session recording length
 var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -1725,7 +1724,7 @@ var extract_domain = function(hostname) {
  * @param {String} detail   The detail object to be sent to the extension
  */
 var send_sdk_extension_message = function(detail) {
-    window.dispatchEvent(new CustomEvent('$mp_sdk_to_extension_event', {
+    window.dispatchEvent(new window.CustomEvent('$mp_sdk_to_extension_event', {
         detail: detail
     }));
 };

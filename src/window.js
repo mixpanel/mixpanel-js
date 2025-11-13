@@ -1,4 +1,3 @@
-// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 var win;
 if (typeof(window) === 'undefined') {
     var loc = {
@@ -16,7 +15,8 @@ if (typeof(window) === 'undefined') {
         location: loc,
         addEventListener: function() {},
         removeEventListener: function() {},
-        dispatchEvent: function() {}
+        dispatchEvent: function() {},
+        CustomEvent: function () {},
     };
 } else {
     win = window;
