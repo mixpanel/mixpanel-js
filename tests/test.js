@@ -223,10 +223,20 @@
         return $(a).appendTo('#qunit-fixture');
     };
 
-    var ele_with_class = function(elText) {
+    /**
+     * Creates and attaches an element with a random class name to the DOM.
+     * @param {string} elText - The text content of the element.
+     * @param {string} elTag - The tag name of the element. Defaults to 'a'.
+     * @returns {object} - An object containing the element, its class name, and its name.
+     */
+    var ele_with_class = function(elText, elTag = 'a') {
         var name = rand_name();
         var class_name = "." + name;
-        var a = $("<a>" + (elText || "") + "</a>").attr("class", name).attr("href", "#");
+
+        var openTag = '<' + elTag + '>';
+        var closeTag = '</' + elTag + '>';
+
+        var a = $(openTag + (elText || "") + closeTag).attr("class", name).attr("href", "#");
         append_fixture(a);
         return {
             e: a.get(0),
@@ -378,6 +388,20 @@
             var evt = element.ownerDocument.createEvent('MouseEvents');
             evt.initMouseEvent('click', true, true, element.ownerDocument.defaultView, 1, x, y, x, y, false, false, false, false, 0, null);
             element.dispatchEvent(evt);
+        }
+    }
+
+    /**
+     * Simulates a series of rapid mouse clicks on an element to mimic a rage click.
+     * @param {Element} element - The element to click
+     * @param {sinon.SinonFakeTimers} clock - The clock timer to use for waiting between clicks
+     * @param {number} clickCount - How many clicks to simulate
+     * @param {number} intervalMs - Interval between clicks in milliseconds
+     */
+    function simulateRageClick(element, clock, clickCount = 4, intervalMs = 100) {
+        for (var i = 0; i < clickCount; i++) {
+            simulateMouseClick(element);
+            if (i < clickCount - 1) clock.tick(intervalMs);
         }
     }
 
@@ -4532,6 +4556,7 @@
             });
 
             asyncTest("tracks scroll depth when record_heatmap_data is on and session recording is active", 1, function() {
+                this.clock.restore(); // fake timers mess with SR initialization
                 mixpanel.init("heatmap_recording_test", {
                     record_heatmap_data: true,
                     record_sessions_percent: 100,
@@ -4972,6 +4997,47 @@
                     }
                 }
                 ok(rageClickEvent !== null, "should detect rage click with 4 clicks when click_count=4");
+            });
+
+            test("ignores rage click on non-interactive elements when interactive_elements_only is true", 1, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: false,
+                        rage_click: {
+                            interactive_elements_only: true,
+                        }
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var element = ele_with_class("some text", "p").e;
+                
+                simulateRageClick(element, this.clock);
+
+                same(this.requests.length, 0, "should have no rage click");
+            });
+
+            test("captures rage click on interactive elements when interactive_elements_only is true", 2, function() {
+                mixpanel.init("autocapture_test_token", {
+                    autocapture: {
+                        pageview: false,
+                        click: false,
+                        rage_click: {
+                            interactive_elements_only: true,
+                        }
+                    },
+                    batch_requests: false
+                }, 'acrageclick');
+
+                var element = ele_with_class().e;
+                element.onclick = function() { return false; }
+
+                simulateRageClick(element, this.clock);
+
+                same(this.requests.length, 1, "should have 1 rage click");
+                var rageClickEvent = getRequestData(this.requests[0]);
+                ok(rageClickEvent.event === '$mp_rage_click', "should have detected a rage click event");
             });
 
             mpmodule('dead click', function() {
@@ -6883,6 +6949,7 @@
                         var config = Object.assign({
                             debug: true,
                             record_sessions_percent: 0,
+                            record_console: false,
                             recorder_src: recorderSrc
                         }, extraConfig);
                         mixpanel.init(this.token, config, 'recordertest')
@@ -7129,6 +7196,68 @@
                     });
             });
 
+            asyncTest('sends recording console payload to server', 26, function () {
+                // set hash to test $current_url logic without reloading test page
+                window.location.hash = 'my-url-1';
+                this.randomStub.returns(0.02);
+                this.initMixpanelRecorder({record_sessions_percent: 10, record_console: true});
+                this.blobConstructorSpy = sinon.spy(window, 'Blob')
+
+                this.waitForRecorderLoad()
+                    .then(_.bind(function () {
+                        window.location.hash = 'my-url-2';
+                        simulateMouseClick(document.body);
+                        document.defaultView.console.log('test console log message');
+                        return this.waitForRecorderEnqueue();
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(this.waitForFetchCalls(1))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 1, 'one batch fetch request made every ten seconds')
+                        var fetchCall1 = this.fetchStub.getCall(0);
+
+                        var events = JSON.parse(this.blobConstructorSpy.lastCall.args[0][0])
+                        same(events.length, 4, 'one event in the batch');
+                        same(events[0].type, 4, 'meta event');
+                        same(events[1].type, 2, 'full snapshot event');
+                        same(events[2].type, 3, 'incremental snapshot event for mouse click');
+                        same(events[3].type, 6, 'console plugin event');
+                        ok(events[3].data.plugin.includes('console'), 'console event is from console plugin');
+                        same(events[3].data.payload.level, 'log', 'console event has the correct level');
+                        same(events[3].data.payload.payload, ['\"test console log message\"'], 'console event has the correct message');
+                        same(events[3].data.payload.trace.length, 1, 'console event has a trace');
+                        var urlParams1 = validateAndGetUrlParams(fetchCall1)
+                        same(urlParams1.get("seq"), "0")
+                        ok(urlParams1.get("$current_url").endsWith('#my-url-1'), 'includes the current url from when we started recording');
+                        ok(urlParams1.get("replay_start_url").endsWith('#my-url-1'), 'includes the start url from when we started recording');
+                        same(urlParams1.get("mp_lib"), "web");
+
+                        simulateMouseClick(document.body);
+                        return this.waitForRecorderEnqueue(1);
+                    }, this))
+                    .then(_.bind(function () {
+                        return this.clock.tickAsync(10 * 1000);
+                    }, this))
+                    .then(this.waitForFetchCalls(2))
+                    .then(_.bind(function () {
+                        same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
+                        var fetchCall2 = this.fetchStub.getCall(1);
+                        
+                        var urlParams2 = validateAndGetUrlParams(fetchCall2)
+                        same(urlParams2.get("seq"), "1")
+                        ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
+                        ok(urlParams2.get("replay_start_url").endsWith('#my-url-1'), 'start url does not change in later batches');
+
+                        this.blobConstructorSpy.restore();
+                        return mixpanel.recordertest.stop_session_recording();
+                    }, this))
+                    .then(function () {
+                        start();
+                    });
+            });
+
             asyncTest('can get replay properties when recording is active', 4, function () {
                 this.randomStub.restore();
                 this.initMixpanelRecorder();
@@ -7354,7 +7483,8 @@
                 this.fetchStub.onFirstCall()
                     .returns(makeFakeFetchResponse(200))
                     .onSecondCall()
-                    .returns(makeFakeFetchResponse(500));
+                    .returns(makeFakeFetchResponse(500))
+                    .callThrough();
 
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
@@ -7526,10 +7656,9 @@
                     }, this));
             });
 
-            asyncTest('respects minimum session length setting', function () {
+            asyncTest('respects minimum session length setting when stopping recording', function () {
                 this.randomStub.returns(0.02);
                 this.initMixpanelRecorder({record_sessions_percent: 10, record_min_ms: 8000});
-
                 this.waitForRecorderLoad()
                     .then(_.bind(function () {
                         simulateMouseClick(document.body);
@@ -7537,6 +7666,10 @@
                     }, this))
                     .then(_.bind(function () {
                         return this.clock.tickAsync(5 * 1000);
+                    }, this))
+                    .then(_.bind(function () {
+                        simulateMouseClick(document.body);
+                        return this.waitForRecorderEnqueue();
                     }, this))
                     .then(_.bind(function () {
                         return mixpanel.recordertest.stop_session_recording();

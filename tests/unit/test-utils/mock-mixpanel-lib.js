@@ -2,12 +2,11 @@
 
 // stubbable mixpanel lib mock with some reasonable defaults
 export class MockMixpanelLib {
-  get_distinct_id() {
-    return `test-distinct-id`;
-  }
-
-  get_config(configVar) {
-    return {
+  /**
+   * @param {import('../../../src/index').Config} config
+   */
+  constructor(config) {
+    this._config = Object.assign({
       token: `test-token`,
       'record_sessions_percent': 100,
       'record_min_ms': 0,
@@ -21,7 +20,15 @@ export class MockMixpanelLib {
       'opt_out_tracking_persistence_type': `localStorage`,
       // helpful for some debugging, commented out for noise
       // 'error_reporter': console.error
-    }[configVar];
+    }, config || {});
+  }
+
+  get_distinct_id() {
+    return `test-distinct-id`;
+  }
+
+  get_config(configVar) {
+    return this._config[configVar];
   }
 
   get_api_host() {

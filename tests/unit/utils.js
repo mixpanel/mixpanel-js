@@ -1,8 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 
-import { batchedThrottle, extract_domain, generateTraceparent, _, document } from '../../src/utils';
-import { isDefinitelyNonInteractive } from '../../src/autocapture/utils';
+import { batchedThrottle, canUseCompressionStream, extract_domain, generateTraceparent, _, document } from '../../src/utils';
 import { window } from '../../src/window';
 
 describe(`extract_domain`, function() {
@@ -164,7 +163,7 @@ describe(`_.info helper methods`, function() {
       // note it would be very unlikely for more than one click ID to be present on a URL
       document.URL = `https://www.example.com/?utm_source=google&gclid=some-gclid`;
       var marketingParams = _.info.marketingParams();
-      expect(marketingParams.utm_source).to.equal(`google`)
+      expect(marketingParams.utm_source).to.equal(`google`);
 
       expect(marketingParams.utm_campaign).to.be.undefined;
       expect(marketingParams.utm_term).to.be.undefined;
@@ -187,7 +186,7 @@ describe(`_.info helper methods`, function() {
   describe(`_.info.mpPageViewProperties`, function() {
     it(`pulls page view properties from window and document`, function() {
       document.title = `Pricing - Mixpanel`;
-      document.URL = `https://www.example.com/pricing?utm_source=google`
+      document.URL = `https://www.example.com/pricing?utm_source=google`;
       window.location = {
         hostname: `www.example.com`,
         pathname: `/pricing`,
@@ -206,36 +205,36 @@ describe(`_.info helper methods`, function() {
   });
 });
 
-describe('_.isBlockedUA', function() {
+describe(`_.isBlockedUA`, function() {
   [
-    'Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)',
-    'Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)',
-    'Mozilla/5.0 (compatible; AhrefsSiteAudit/6.1; +http://ahrefs.com/robot/site-audit)', // Desktop
-    'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.128 Mobile Safari/537.36 (compatible; AhrefsSiteAudit/6.1; +http://ahrefs.com/robot/site-audit)', // Mobile
-    'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
-    'Mozilla/5.0 (Windows Phone 8.1; ARM; Trident/7.0; Touch; rv:11.0; IEMobile/11.0; NOKIA; Lumia 530) like Gecko (compatible; adidxbot/2.0; +http://www.bing.com/bingbot.htm)',
-    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/534+ (KHTML, like Gecko) BingPreview/1.0b',
-    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-    'Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)',
-    'Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)',
-    'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
-    'facebookexternalhit/1.1',
-    'Mozilla/5.0 (compatible;PetalBot;+http://aspiegel.com/petalbot)',
-    'Mozilla/5.0(Linux;Android7.0;) AppleWebKit/537.36(KHTML,likeGecko) MobileSafari/537.36(compatible;PetalBot;+http://aspiegel.com/petalbot)',
-    'Mozilla/5.0 (compatible; Pinterestbot/1.0; +http://www.pinterest.com/bot.html)',
-    'APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)',
-    'Mediapartners-Google',
-    'Mozilla/5.0 (Linux; Android 5.0; SM-G920A) AppleWebKit (KHTML, like Gecko) Chrome Mobile Safari (compatible; AdsBot-Google-Mobile; +http://www.google.com/mobile/adsbot.html)',
-    'FeedFetcher-Google; (+http://www.google.com/feedfetcher.html)',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36 (compatible; Google-Read-Aloud; +/search/docs/advanced/crawling/overview-google-crawlers)',
-    'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012; DuplexWeb-Google/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Mobile Safari/537.36',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.75 Safari/537.36 Google Favicon',
-    'Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko; googleweblight) Chrome/38.0.1025.166 Mobile Safari/535.19',
-    'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012; Storebot-Google/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Mobile Safari/537.36',
-    'Screaming Frog SEO Spider/12.3',
-    'Mozilla/5.0 (Linux; Android 7.0; Moto G (4)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4695.0 Mobile Safari/537.36 Chrome-Lighthouse',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.2.5 (KHTML\, like Gecko) Version/8.0.2 Safari/600.2.5 (Amazonbot/0.1; +https://developer.amazon.com/support/amazonbot)',
-    'Mozilla/5.0 (compatible; YandexRenderResourcesBot/1.0; +http://yandex.com/bots)',
+    `Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)`,
+    `Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)`,
+    `Mozilla/5.0 (compatible; AhrefsSiteAudit/6.1; +http://ahrefs.com/robot/site-audit)`, // Desktop
+    `Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.128 Mobile Safari/537.36 (compatible; AhrefsSiteAudit/6.1; +http://ahrefs.com/robot/site-audit)`, // Mobile
+    `Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)`,
+    `Mozilla/5.0 (Windows Phone 8.1; ARM; Trident/7.0; Touch; rv:11.0; IEMobile/11.0; NOKIA; Lumia 530) like Gecko (compatible; adidxbot/2.0; +http://www.bing.com/bingbot.htm)`,
+    `Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/534+ (KHTML, like Gecko) BingPreview/1.0b`,
+    `Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)`,
+    `Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)`,
+    `Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)`,
+    `facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)`,
+    `facebookexternalhit/1.1`,
+    `Mozilla/5.0 (compatible;PetalBot;+http://aspiegel.com/petalbot)`,
+    `Mozilla/5.0(Linux;Android7.0;) AppleWebKit/537.36(KHTML,likeGecko) MobileSafari/537.36(compatible;PetalBot;+http://aspiegel.com/petalbot)`,
+    `Mozilla/5.0 (compatible; Pinterestbot/1.0; +http://www.pinterest.com/bot.html)`,
+    `APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)`,
+    `Mediapartners-Google`,
+    `Mozilla/5.0 (Linux; Android 5.0; SM-G920A) AppleWebKit (KHTML, like Gecko) Chrome Mobile Safari (compatible; AdsBot-Google-Mobile; +http://www.google.com/mobile/adsbot.html)`,
+    `FeedFetcher-Google; (+http://www.google.com/feedfetcher.html)`,
+    `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36 (compatible; Google-Read-Aloud; +/search/docs/advanced/crawling/overview-google-crawlers)`,
+    `Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012; DuplexWeb-Google/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Mobile Safari/537.36`,
+    `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.75 Safari/537.36 Google Favicon`,
+    `Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko; googleweblight) Chrome/38.0.1025.166 Mobile Safari/535.19`,
+    `Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012; Storebot-Google/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Mobile Safari/537.36`,
+    `Screaming Frog SEO Spider/12.3`,
+    `Mozilla/5.0 (Linux; Android 7.0; Moto G (4)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4695.0 Mobile Safari/537.36 Chrome-Lighthouse`,
+    `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.2.5 (KHTML\, like Gecko) Version/8.0.2 Safari/600.2.5 (Amazonbot/0.1; +https://developer.amazon.com/support/amazonbot)`,
+    `Mozilla/5.0 (compatible; YandexRenderResourcesBot/1.0; +http://yandex.com/bots)`,
   ].forEach((ua) => {
     it(`should block bot user agent: ${ua}`, () => {
       expect(_.isBlockedUA(ua)).to.be.true;
@@ -243,7 +242,7 @@ describe('_.isBlockedUA', function() {
   });
 });
 
-describe('batchedThrottle', function () {
+describe(`batchedThrottle`, function () {
   let clock = null;
 
   beforeEach(function() {
@@ -279,7 +278,7 @@ describe('batchedThrottle', function () {
 
   it(`throttled fn returns a promise that resolves to the return value of the callback`, async function () {
     const callback = sinon.spy((args) => {
-      return `resolved ${args.join(',')}`;
+      return `resolved ${args.join(`,`)}`;
     });
     const throttledCallback = batchedThrottle(callback, 100);
 
@@ -299,7 +298,7 @@ describe('batchedThrottle', function () {
 
   it(`supports a callback that returns a promise`, async function () {
     const callback = sinon.spy((args) => {
-      return Promise.resolve(`resolved ${args.join(',')}`);
+      return Promise.resolve(`resolved ${args.join(`,`)}`);
     });
     const throttledCallback = batchedThrottle(callback, 100);
 
@@ -318,7 +317,7 @@ describe('batchedThrottle', function () {
 
   it(`can chain a callback that returns a rejected promise`, async function () {
     const callback = sinon.spy((args) => {
-      return Promise.reject(`rejected ${args.join(',')}`);
+      return Promise.reject(`rejected ${args.join(`,`)}`);
     });
     const throttledCallback = batchedThrottle(callback, 100);
 
@@ -374,5 +373,56 @@ describe(`generateTraceparent`, function() {
       generatedTraceparents.add(traceparent);
     }
     expect(generatedTraceparents.size).to.equal(100);
+  });
+});
+
+describe(`canUseCompressionStream`, function() {
+  let originalCompressionStream;
+
+  beforeEach(function() {
+    originalCompressionStream = window.CompressionStream;
+  });
+
+  afterEach(function() {
+    window.CompressionStream = originalCompressionStream;
+  });
+
+  it(`returns false when CompressionStream is not available`, function() {
+    window.CompressionStream = undefined;
+    const userAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15`;
+    const vendor = `Apple Computer, Inc.`;
+    const opera = undefined;
+
+    expect(canUseCompressionStream(userAgent, vendor, opera)).to.be.false;
+  });
+
+  [
+    { browser: `Safari 16.4`, userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15` },
+    { browser: `Safari 16.5`, userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15` },
+    { browser: `Mobile Safari 16.4`, userAgent: `Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Mobile/15E148 Safari/604.1` },
+    { browser: `Mobile Safari 16.5`, userAgent: `Mozilla/5.0 (iPad; CPU OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1` },
+  ].forEach(({ browser, userAgent }) => {
+    it(`returns false for ${browser}, userAgent: ${userAgent}`, function() {
+      window.CompressionStream = function() {};
+      const vendor = `Apple Computer, Inc.`;
+      const opera = undefined;
+
+      expect(canUseCompressionStream(userAgent, vendor, opera)).to.be.false;
+    });
+  });
+
+  [
+    { browser: `Safari 16.6 (bug fixed)`, userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15`, vendor: `Apple Computer, Inc.` },
+    { browser: `Safari 17.0`, userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15`, vendor: `Apple Computer, Inc.` },
+    { browser: `Chrome`, userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36`, vendor: `Google Inc.` },
+    { browser: `Firefox`, userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0`, vendor: `` },
+    { browser: `Edge`, userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0`, vendor: `Google Inc.` },
+  ].forEach(({ browser, userAgent, vendor }) => {
+    it(`returns true for ${browser}, userAgent: ${userAgent}, vendor: ${vendor}`, function() {
+      window.CompressionStream = function() {};
+      const opera = undefined;
+
+      expect(canUseCompressionStream(userAgent, vendor, opera)).to.be.true;
+    });
   });
 });

@@ -299,19 +299,6 @@ function _ts_values(o) {
     };
     throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
 }
-var __defProp = Object.defineProperty;
-var __defNormalProp = function(obj, key, value) {
-    return key in obj ? __defProp(obj, key, {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: value
-    }) : obj[key] = value;
-};
-var __publicField = function(obj, key, value) {
-    return __defNormalProp(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
-};
-var _a;
 var __defProp$1 = Object.defineProperty;
 var __defNormalProp$1 = function(obj, key, value) {
     return key in obj ? __defProp$1(obj, key, {
@@ -323,6 +310,19 @@ var __defNormalProp$1 = function(obj, key, value) {
 };
 var __publicField$1 = function(obj, key, value) {
     return __defNormalProp$1(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
+};
+var _a;
+var __defProp$1$1 = Object.defineProperty;
+var __defNormalProp$1$1 = function(obj, key, value) {
+    return key in obj ? __defProp$1$1(obj, key, {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: value
+    }) : obj[key] = value;
+};
+var __publicField$1$1 = function(obj, key, value) {
+    return __defNormalProp$1$1(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
 };
 var NodeType$3 = /* @__PURE__ */ function(NodeType2) {
     NodeType2[NodeType2["Document"] = 0] = "Document";
@@ -592,8 +592,8 @@ function isCSSStyleRule(rule2) {
 }
 var Mirror = /*#__PURE__*/ function() {
     function Mirror() {
-        __publicField$1(this, "idNodeMap", /* @__PURE__ */ new Map());
-        __publicField$1(this, "nodeMetaMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1$1(this, "idNodeMap", /* @__PURE__ */ new Map());
+        __publicField$1$1(this, "nodeMetaMap", /* @__PURE__ */ new WeakMap());
     }
     var _proto = Mirror.prototype;
     _proto.getId = function getId(n2) {
@@ -684,14 +684,6 @@ function is2DCanvasBlank(canvas) {
         }
     }
     return true;
-}
-function isNodeMetaEqual(a2, b) {
-    if (!a2 || !b || a2.type !== b.type) return false;
-    if (a2.type === NodeType$3.Document) return a2.compatMode === b.compatMode;
-    else if (a2.type === NodeType$3.DocumentType) return a2.name === b.name && a2.publicId === b.publicId && a2.systemId === b.systemId;
-    else if (a2.type === NodeType$3.Comment || a2.type === NodeType$3.Text || a2.type === NodeType$3.CDATA) return a2.textContent === b.textContent;
-    else if (a2.type === NodeType$3.Element) return a2.tagName === b.tagName && JSON.stringify(a2.attributes) === JSON.stringify(b.attributes) && a2.isSVG === b.isSVG && a2.needBlock === b.needBlock;
-    return false;
 }
 function getInputType(element) {
     var type = element.type;
@@ -1623,40 +1615,6 @@ function snapshot(n2, options) {
         newlyAddedElement: false
     });
 }
-var MEDIA_SELECTOR = /(max|min)-device-(width|height)/;
-var MEDIA_SELECTOR_GLOBAL = new RegExp(MEDIA_SELECTOR.source, "g");
-var mediaSelectorPlugin = {
-    postcssPlugin: "postcss-custom-selectors",
-    prepare: function prepare() {
-        return {
-            postcssPlugin: "postcss-custom-selectors",
-            AtRule: function AtRule(atrule) {
-                if (atrule.params.match(MEDIA_SELECTOR_GLOBAL)) {
-                    atrule.params = atrule.params.replace(MEDIA_SELECTOR_GLOBAL, "$1-$2");
-                }
-            }
-        };
-    }
-};
-var pseudoClassPlugin = {
-    postcssPlugin: "postcss-hover-classes",
-    prepare: function prepare() {
-        var fixed = [];
-        return {
-            Rule: function Rule(rule2) {
-                if (fixed.indexOf(rule2) !== -1) {
-                    return;
-                }
-                fixed.push(rule2);
-                rule2.selectors.forEach(function(selector) {
-                    if (selector.includes(":hover")) {
-                        rule2.selector += ",\n" + selector.replace(/:hover/g, ".\\:hover");
-                    }
-                });
-            }
-        };
-    }
-};
 function getDefaultExportFromCjs$1(x2) {
     return x2 && x2.__esModule && Object.prototype.hasOwnProperty.call(x2, "default") ? x2["default"] : x2;
 }
@@ -2519,7 +2477,8 @@ var nanoid$1$1 = function(size) {
     return id;
 };
 var nonSecure$1 = {
-    nanoid: nanoid$1$1};
+    nanoid: nanoid$1$1
+};
 var SourceMapConsumer$2$1 = require$$2$1.SourceMapConsumer, SourceMapGenerator$2$1 = require$$2$1.SourceMapGenerator;
 var existsSync$1 = require$$2$1.existsSync, readFileSync$1 = require$$2$1.readFileSync;
 var dirname$1$1 = require$$2$1.dirname, join$1 = require$$2$1.join;
@@ -5796,397 +5755,6 @@ postcss$1$1.Input;
 postcss$1$1.Rule;
 postcss$1$1.Root;
 postcss$1$1.Node;
-var tagMap = {
-    script: "noscript",
-    // camel case svg element tag names
-    altglyph: "altGlyph",
-    altglyphdef: "altGlyphDef",
-    altglyphitem: "altGlyphItem",
-    animatecolor: "animateColor",
-    animatemotion: "animateMotion",
-    animatetransform: "animateTransform",
-    clippath: "clipPath",
-    feblend: "feBlend",
-    fecolormatrix: "feColorMatrix",
-    fecomponenttransfer: "feComponentTransfer",
-    fecomposite: "feComposite",
-    feconvolvematrix: "feConvolveMatrix",
-    fediffuselighting: "feDiffuseLighting",
-    fedisplacementmap: "feDisplacementMap",
-    fedistantlight: "feDistantLight",
-    fedropshadow: "feDropShadow",
-    feflood: "feFlood",
-    fefunca: "feFuncA",
-    fefuncb: "feFuncB",
-    fefuncg: "feFuncG",
-    fefuncr: "feFuncR",
-    fegaussianblur: "feGaussianBlur",
-    feimage: "feImage",
-    femerge: "feMerge",
-    femergenode: "feMergeNode",
-    femorphology: "feMorphology",
-    feoffset: "feOffset",
-    fepointlight: "fePointLight",
-    fespecularlighting: "feSpecularLighting",
-    fespotlight: "feSpotLight",
-    fetile: "feTile",
-    feturbulence: "feTurbulence",
-    foreignobject: "foreignObject",
-    glyphref: "glyphRef",
-    lineargradient: "linearGradient",
-    radialgradient: "radialGradient"
-};
-function getTagName(n2) {
-    var tagName = tagMap[n2.tagName] ? tagMap[n2.tagName] : n2.tagName;
-    if (tagName === "link" && n2.attributes._cssText) {
-        tagName = "style";
-    }
-    return tagName;
-}
-function adaptCssForReplay(cssText, cache) {
-    var cachedStyle = cache == null ? void 0 : cache.stylesWithHoverClass.get(cssText);
-    if (cachedStyle) return cachedStyle;
-    var result2 = cssText;
-    try {
-        var ast = postcss$1$1([
-            mediaSelectorPlugin,
-            pseudoClassPlugin
-        ]).process(cssText);
-        result2 = ast.css;
-    } catch (error) {
-        console.warn("Failed to adapt css for replay", error);
-    }
-    cache == null ? void 0 : cache.stylesWithHoverClass.set(cssText, result2);
-    return result2;
-}
-function createCache() {
-    var stylesWithHoverClass = /* @__PURE__ */ new Map();
-    return {
-        stylesWithHoverClass: stylesWithHoverClass
-    };
-}
-function applyCssSplits(n2, cssText, hackCss, cache) {
-    var childTextNodes = [];
-    for(var _iterator = _create_for_of_iterator_helper_loose(n2.childNodes), _step; !(_step = _iterator()).done;){
-        var scn = _step.value;
-        if (scn.type === NodeType$3.Text) {
-            childTextNodes.push(scn);
-        }
-    }
-    var cssTextSplits = cssText.split("/* rr_split */");
-    while(cssTextSplits.length > 1 && cssTextSplits.length > childTextNodes.length){
-        cssTextSplits.splice(-2, 2, cssTextSplits.slice(-2).join(""));
-    }
-    var adaptedCss = "";
-    if (hackCss) {
-        adaptedCss = adaptCssForReplay(cssTextSplits.join(""), cache);
-    }
-    var startIndex = 0;
-    for(var i2 = 0; i2 < childTextNodes.length; i2++){
-        if (i2 === cssTextSplits.length) {
-            break;
-        }
-        var childTextNode = childTextNodes[i2];
-        if (!hackCss) {
-            childTextNode.textContent = cssTextSplits[i2];
-        } else if (i2 < cssTextSplits.length - 1) {
-            var endIndex = startIndex;
-            var endSearch = cssTextSplits[i2 + 1].length;
-            endSearch = Math.min(endSearch, 30);
-            var found = false;
-            for(; endSearch > 2; endSearch--){
-                var searchBit = cssTextSplits[i2 + 1].substring(0, endSearch);
-                var searchIndex = adaptedCss.substring(startIndex).indexOf(searchBit);
-                found = searchIndex !== -1;
-                if (found) {
-                    endIndex += searchIndex;
-                    break;
-                }
-            }
-            if (!found) {
-                endIndex += cssTextSplits[i2].length;
-            }
-            childTextNode.textContent = adaptedCss.substring(startIndex, endIndex);
-            startIndex = endIndex;
-        } else {
-            childTextNode.textContent = adaptedCss.substring(startIndex);
-        }
-    }
-}
-function buildStyleNode(n2, styleEl, cssText, options) {
-    var doc = options.doc, hackCss = options.hackCss, cache = options.cache;
-    if (n2.childNodes.length) {
-        applyCssSplits(n2, cssText, hackCss, cache);
-    } else {
-        if (hackCss) {
-            cssText = adaptCssForReplay(cssText, cache);
-        }
-        styleEl.appendChild(doc.createTextNode(cssText));
-    }
-}
-function buildNode(n2, options) {
-    var _a2;
-    var doc = options.doc, hackCss = options.hackCss, cache = options.cache;
-    switch(n2.type){
-        case NodeType$3.Document:
-            return doc.implementation.createDocument(null, "", null);
-        case NodeType$3.DocumentType:
-            return doc.implementation.createDocumentType(n2.name || "html", n2.publicId, n2.systemId);
-        case NodeType$3.Element:
-            {
-                var _loop = function(name1) {
-                    var value = specialAttributes[name1];
-                    if (tagName === "canvas" && name1 === "rr_dataURL") {
-                        var image = doc.createElement("img");
-                        image.onload = function() {
-                            var ctx = node2.getContext("2d");
-                            if (ctx) {
-                                ctx.drawImage(image, 0, 0, image.width, image.height);
-                            }
-                        };
-                        image.src = value.toString();
-                        if (node2.RRNodeType) node2.rr_dataURL = value.toString();
-                    } else if (tagName === "img" && name1 === "rr_dataURL") {
-                        var image1 = node2;
-                        if (!image1.currentSrc.startsWith("data:")) {
-                            image1.setAttribute("rrweb-original-src", n2.attributes.src);
-                            image1.src = value.toString();
-                        }
-                    }
-                    if (name1 === "rr_width") {
-                        node2.style.setProperty("width", value.toString());
-                    } else if (name1 === "rr_height") {
-                        node2.style.setProperty("height", value.toString());
-                    } else if (name1 === "rr_mediaCurrentTime" && typeof value === "number") {
-                        node2.currentTime = value;
-                    } else if (name1 === "rr_mediaState") {
-                        switch(value){
-                            case "played":
-                                node2.play().catch(function(e2) {
-                                    return console.warn("media playback error", e2);
-                                });
-                                break;
-                            case "paused":
-                                node2.pause();
-                                break;
-                        }
-                    } else if (name1 === "rr_mediaPlaybackRate" && typeof value === "number") {
-                        node2.playbackRate = value;
-                    } else if (name1 === "rr_mediaMuted" && typeof value === "boolean") {
-                        node2.muted = value;
-                    } else if (name1 === "rr_mediaLoop" && typeof value === "boolean") {
-                        node2.loop = value;
-                    } else if (name1 === "rr_mediaVolume" && typeof value === "number") {
-                        node2.volume = value;
-                    } else if (name1 === "rr_open_mode") {
-                        node2.setAttribute("rr_open_mode", value);
-                    }
-                };
-                var tagName = getTagName(n2);
-                var node2;
-                if (n2.isSVG) {
-                    node2 = doc.createElementNS("http://www.w3.org/2000/svg", tagName);
-                } else {
-                    if (// If the tag name is a custom element name
-                    n2.isCustom && // If the browser supports custom elements
-                    ((_a2 = doc.defaultView) == null ? void 0 : _a2.customElements) && // If the custom element hasn't been defined yet
-                    !doc.defaultView.customElements.get(n2.tagName)) doc.defaultView.customElements.define(n2.tagName, /*#__PURE__*/ function(_doc_defaultView_HTMLElement) {
-                        _inherits(_class, _doc_defaultView_HTMLElement);
-                        function _class() {
-                            return _doc_defaultView_HTMLElement.apply(this, arguments) || this;
-                        }
-                        return _class;
-                    }(doc.defaultView.HTMLElement));
-                    node2 = doc.createElement(tagName);
-                }
-                var specialAttributes = {};
-                for(var name in n2.attributes){
-                    if (!Object.prototype.hasOwnProperty.call(n2.attributes, name)) {
-                        continue;
-                    }
-                    var value = n2.attributes[name];
-                    if (tagName === "option" && name === "selected" && value === false) {
-                        continue;
-                    }
-                    if (value === null) {
-                        continue;
-                    }
-                    if (value === true) value = "";
-                    if (name.startsWith("rr_")) {
-                        specialAttributes[name] = value;
-                        continue;
-                    }
-                    if (typeof value !== "string") ;
-                    else if (tagName === "style" && name === "_cssText") {
-                        buildStyleNode(n2, node2, value, options);
-                        continue;
-                    } else if (tagName === "textarea" && name === "value") {
-                        node2.appendChild(doc.createTextNode(value));
-                        n2.childNodes = [];
-                        continue;
-                    }
-                    try {
-                        if (n2.isSVG && name === "xlink:href") {
-                            node2.setAttributeNS("http://www.w3.org/1999/xlink", name, value.toString());
-                        } else if (name === "onload" || name === "onclick" || name.substring(0, 7) === "onmouse") {
-                            node2.setAttribute("_" + name, value.toString());
-                        } else if (tagName === "meta" && n2.attributes["http-equiv"] === "Content-Security-Policy" && name === "content") {
-                            node2.setAttribute("csp-content", value.toString());
-                            continue;
-                        } else if (tagName === "link" && (n2.attributes.rel === "preload" && n2.attributes.as === "script" || n2.attributes.rel === "modulepreload")) {} else if (tagName === "link" && n2.attributes.rel === "prefetch" && typeof n2.attributes.href === "string" && extractFileExtension(n2.attributes.href) === "js") {} else if (tagName === "img" && n2.attributes.srcset && n2.attributes.rr_dataURL) {
-                            node2.setAttribute("rrweb-original-srcset", n2.attributes.srcset);
-                        } else {
-                            node2.setAttribute(name, value.toString());
-                        }
-                    } catch (error) {}
-                }
-                for(var name1 in specialAttributes)_loop(name1);
-                if (n2.isShadowHost) {
-                    if (!node2.shadowRoot) {
-                        node2.attachShadow({
-                            mode: "open"
-                        });
-                    } else {
-                        while(node2.shadowRoot.firstChild){
-                            node2.shadowRoot.removeChild(node2.shadowRoot.firstChild);
-                        }
-                    }
-                }
-                return node2;
-            }
-        case NodeType$3.Text:
-            if (n2.isStyle && hackCss) {
-                return doc.createTextNode(adaptCssForReplay(n2.textContent, cache));
-            }
-            return doc.createTextNode(n2.textContent);
-        case NodeType$3.CDATA:
-            return doc.createCDATASection(n2.textContent);
-        case NodeType$3.Comment:
-            return doc.createComment(n2.textContent);
-        default:
-            return null;
-    }
-}
-function buildNodeWithSN(n2, options) {
-    var doc = options.doc, mirror2 = options.mirror, _options_skipChild = options.skipChild, skipChild = _options_skipChild === void 0 ? false : _options_skipChild, _options_hackCss = options.hackCss, hackCss = _options_hackCss === void 0 ? true : _options_hackCss, afterAppend = options.afterAppend, cache = options.cache;
-    if (mirror2.has(n2.id)) {
-        var nodeInMirror = mirror2.getNode(n2.id);
-        var meta = mirror2.getMeta(nodeInMirror);
-        if (isNodeMetaEqual(meta, n2)) return mirror2.getNode(n2.id);
-    }
-    var node2 = buildNode(n2, {
-        doc: doc,
-        hackCss: hackCss,
-        cache: cache
-    });
-    if (!node2) {
-        return null;
-    }
-    if (n2.rootId && mirror2.getNode(n2.rootId) !== doc) {
-        mirror2.replace(n2.rootId, doc);
-    }
-    if (n2.type === NodeType$3.Document) {
-        doc.close();
-        doc.open();
-        if (n2.compatMode === "BackCompat" && n2.childNodes && n2.childNodes[0].type !== NodeType$3.DocumentType) {
-            if (n2.childNodes[0].type === NodeType$3.Element && "xmlns" in n2.childNodes[0].attributes && n2.childNodes[0].attributes.xmlns === "http://www.w3.org/1999/xhtml") {
-                doc.write('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "">');
-            } else {
-                doc.write('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "">');
-            }
-        }
-        node2 = doc;
-    }
-    mirror2.add(node2, n2);
-    if ((n2.type === NodeType$3.Document || n2.type === NodeType$3.Element) && !skipChild) {
-        var _loop = function() {
-            var childN = _step.value;
-            var childNode = buildNodeWithSN(childN, {
-                doc: doc,
-                mirror: mirror2,
-                skipChild: false,
-                hackCss: hackCss,
-                afterAppend: afterAppend,
-                cache: cache
-            });
-            if (!childNode) {
-                console.warn("Failed to rebuild", childN);
-                return "continue";
-            }
-            if (childN.isShadow && isElement(node2) && node2.shadowRoot) {
-                node2.shadowRoot.appendChild(childNode);
-            } else if (n2.type === NodeType$3.Document && childN.type == NodeType$3.Element) {
-                var htmlElement = childNode;
-                var body = null;
-                htmlElement.childNodes.forEach(function(child) {
-                    if (child.nodeName === "BODY") body = child;
-                });
-                if (body) {
-                    htmlElement.removeChild(body);
-                    node2.appendChild(childNode);
-                    htmlElement.appendChild(body);
-                } else {
-                    node2.appendChild(childNode);
-                }
-            } else {
-                node2.appendChild(childNode);
-            }
-            if (afterAppend) {
-                afterAppend(childNode, childN.id);
-            }
-        };
-        for(var _iterator = _create_for_of_iterator_helper_loose(n2.childNodes), _step; !(_step = _iterator()).done;)_loop();
-    }
-    return node2;
-}
-function visit(mirror2, onVisit) {
-    function walk(node2) {
-        onVisit(node2);
-    }
-    for(var _iterator = _create_for_of_iterator_helper_loose(mirror2.getIds()), _step; !(_step = _iterator()).done;){
-        var id = _step.value;
-        if (mirror2.has(id)) {
-            walk(mirror2.getNode(id));
-        }
-    }
-}
-function handleScroll(node2, mirror2) {
-    var n2 = mirror2.getMeta(node2);
-    if ((n2 == null ? void 0 : n2.type) !== NodeType$3.Element) {
-        return;
-    }
-    var el = node2;
-    for(var name in n2.attributes){
-        if (!(Object.prototype.hasOwnProperty.call(n2.attributes, name) && name.startsWith("rr_"))) {
-            continue;
-        }
-        var value = n2.attributes[name];
-        if (name === "rr_scrollLeft") {
-            el.scrollLeft = value;
-        }
-        if (name === "rr_scrollTop") {
-            el.scrollTop = value;
-        }
-    }
-}
-function rebuild(n2, options) {
-    var doc = options.doc, onVisit = options.onVisit, _options_hackCss = options.hackCss, hackCss = _options_hackCss === void 0 ? true : _options_hackCss, afterAppend = options.afterAppend, cache = options.cache, tmp = options.mirror, mirror2 = tmp === void 0 ? new Mirror() : tmp;
-    var node2 = buildNodeWithSN(n2, {
-        doc: doc,
-        mirror: mirror2,
-        skipChild: false,
-        hackCss: hackCss,
-        afterAppend: afterAppend,
-        cache: cache
-    });
-    visit(mirror2, function(visitedNode) {
-        if (onVisit) {
-            onVisit(visitedNode);
-        }
-        handleScroll(visitedNode, mirror2);
-    });
-    return node2;
-}
 var __defProp2 = Object.defineProperty;
 var __defNormalProp2 = function(obj, key, value) {
     return key in obj ? __defProp2(obj, key, {
@@ -6199,79 +5767,6 @@ var __defNormalProp2 = function(obj, key, value) {
 var __publicField2 = function(obj, key, value) {
     return __defNormalProp2(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
 };
-var __defProp22 = Object.defineProperty;
-var __defNormalProp22 = function(obj, key, value) {
-    return key in obj ? __defProp22(obj, key, {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: value
-    }) : obj[key] = value;
-};
-var __publicField22 = function(obj, key, value) {
-    return __defNormalProp22(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
-};
-var Mirror$1 = /*#__PURE__*/ function() {
-    function Mirror2() {
-        __publicField22(this, "idNodeMap", /* @__PURE__ */ new Map());
-        __publicField22(this, "nodeMetaMap", /* @__PURE__ */ new WeakMap());
-    }
-    var _proto = Mirror2.prototype;
-    _proto.getId = function getId(n2) {
-        var _a2;
-        if (!n2) return -1;
-        var id = (_a2 = this.getMeta(n2)) == null ? void 0 : _a2.id;
-        return id != null ? id : -1;
-    };
-    _proto.getNode = function getNode(id) {
-        return this.idNodeMap.get(id) || null;
-    };
-    _proto.getIds = function getIds() {
-        return Array.from(this.idNodeMap.keys());
-    };
-    _proto.getMeta = function getMeta(n2) {
-        return this.nodeMetaMap.get(n2) || null;
-    };
-    // removes the node from idNodeMap
-    // doesn't remove the node from nodeMetaMap
-    _proto.removeNodeFromMap = function removeNodeFromMap(n2) {
-        var _this = this;
-        var id = this.getId(n2);
-        this.idNodeMap.delete(id);
-        if (n2.childNodes) {
-            n2.childNodes.forEach(function(childNode) {
-                return _this.removeNodeFromMap(childNode);
-            });
-        }
-    };
-    _proto.has = function has(id) {
-        return this.idNodeMap.has(id);
-    };
-    _proto.hasNode = function hasNode(node2) {
-        return this.nodeMetaMap.has(node2);
-    };
-    _proto.add = function add(n2, meta) {
-        var id = meta.id;
-        this.idNodeMap.set(id, n2);
-        this.nodeMetaMap.set(n2, meta);
-    };
-    _proto.replace = function replace(id, n2) {
-        var oldNode = this.getNode(id);
-        if (oldNode) {
-            var meta = this.nodeMetaMap.get(oldNode);
-            if (meta) this.nodeMetaMap.set(n2, meta);
-        }
-        this.idNodeMap.set(id, n2);
-    };
-    _proto.reset = function reset() {
-        this.idNodeMap = /* @__PURE__ */ new Map();
-        this.nodeMetaMap = /* @__PURE__ */ new WeakMap();
-    };
-    return Mirror2;
-}();
-function createMirror$1() {
-    return new Mirror$1();
-}
 function getDefaultExportFromCjs(x2) {
     return x2 && x2.__esModule && Object.prototype.hasOwnProperty.call(x2, "default") ? x2["default"] : x2;
 }
@@ -7134,7 +6629,8 @@ var nanoid$1 = function(size) {
     return id;
 };
 var nonSecure = {
-    nanoid: nanoid$1};
+    nanoid: nanoid$1
+};
 var SourceMapConsumer$2 = require$$2.SourceMapConsumer, SourceMapGenerator$2 = require$$2.SourceMapGenerator;
 var existsSync = require$$2.existsSync, readFileSync = require$$2.readFileSync;
 var dirname$1 = require$$2.dirname, join = require$$2.join;
@@ -10294,7 +9790,7 @@ var Declaration22 = declaration;
 var LazyResult22 = lazyResult;
 var Container22 = container;
 var Processor22 = processor;
-var stringify = stringify_1;
+var stringify$6 = stringify_1;
 var fromJSON = fromJSON_1;
 var Document222 = document$1;
 var Warning22 = warning;
@@ -10348,7 +9844,7 @@ postcss.plugin = function plugin2(name, initializer) {
     };
     return creator;
 };
-postcss.stringify = stringify;
+postcss.stringify = stringify$6;
 postcss.parse = parse;
 postcss.fromJSON = fromJSON;
 postcss.list = list;
@@ -10411,50 +9907,6 @@ postcss$1.Input;
 postcss$1.Rule;
 postcss$1.Root;
 postcss$1.Node;
-var NodeType$1 = /* @__PURE__ */ function(NodeType2) {
-    NodeType2[NodeType2["Document"] = 0] = "Document";
-    NodeType2[NodeType2["DocumentType"] = 1] = "DocumentType";
-    NodeType2[NodeType2["Element"] = 2] = "Element";
-    NodeType2[NodeType2["Text"] = 3] = "Text";
-    NodeType2[NodeType2["CDATA"] = 4] = "CDATA";
-    NodeType2[NodeType2["Comment"] = 5] = "Comment";
-    return NodeType2;
-}(NodeType$1 || {});
-function parseCSSText(cssText) {
-    var res = {};
-    var listDelimiter = /;(?![^(]*\))/g;
-    var propertyDelimiter = /:(.+)/;
-    var comment2 = /\/\*.*?\*\//g;
-    cssText.replace(comment2, "").split(listDelimiter).forEach(function(item) {
-        if (item) {
-            var tmp = item.split(propertyDelimiter);
-            tmp.length > 1 && (res[camelize(tmp[0].trim())] = tmp[1].trim());
-        }
-    });
-    return res;
-}
-function toCSSText(style) {
-    var properties = [];
-    for(var name in style){
-        var value = style[name];
-        if (typeof value !== "string") continue;
-        var normalizedName = hyphenate(name);
-        properties.push(normalizedName + ": " + value + ";");
-    }
-    return properties.join(" ");
-}
-var camelizeRE = /-([a-z])/g;
-var CUSTOM_PROPERTY_REGEX = /^--[a-zA-Z0-9-]+$/;
-var camelize = function(str) {
-    if (CUSTOM_PROPERTY_REGEX.test(str)) return str;
-    return str.replace(camelizeRE, function(_, c2) {
-        return c2 ? c2.toUpperCase() : "";
-    });
-};
-var hyphenateRE = /\B([A-Z])/g;
-var hyphenate = function(str) {
-    return str.replace(hyphenateRE, "-$1").toLowerCase();
-};
 var BaseRRNode = /*#__PURE__*/ function() {
     function BaseRRNode() {
         for(var _len = arguments.length, _args = new Array(_len), _key = 0; _key < _len; _key++){
@@ -10515,1270 +9967,6 @@ var BaseRRNode = /*#__PURE__*/ function() {
     ]);
     return BaseRRNode;
 }();
-var BaseRRDocument = /*#__PURE__*/ function(BaseRRNode) {
-    _inherits(BaseRRDocument, BaseRRNode);
-    function BaseRRDocument() {
-        for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
-            args[_key] = arguments[_key];
-        }
-        var _this;
-        _this = BaseRRNode.call(this, args) || this;
-        __publicField2(_this, "nodeType", 9);
-        __publicField2(_this, "nodeName", "#document");
-        __publicField2(_this, "compatMode", "CSS1Compat");
-        __publicField2(_this, "RRNodeType", NodeType$1.Document);
-        __publicField2(_this, "textContent", null);
-        _this.ownerDocument = _this;
-        return _this;
-    }
-    var _proto = BaseRRDocument.prototype;
-    _proto.appendChild = function appendChild1(newChild) {
-        var nodeType = newChild.RRNodeType;
-        if (nodeType === NodeType$1.Element || nodeType === NodeType$1.DocumentType) {
-            if (this.childNodes.some(function(s2) {
-                return s2.RRNodeType === nodeType;
-            })) {
-                throw new Error("RRDomException: Failed to execute 'appendChild' on 'RRNode': Only one " + (nodeType === NodeType$1.Element ? "RRElement" : "RRDoctype") + " on RRDocument allowed.");
-            }
-        }
-        var child = appendChild(this, newChild);
-        child.parentElement = null;
-        return child;
-    };
-    _proto.insertBefore = function insertBefore1(newChild, refChild) {
-        var nodeType = newChild.RRNodeType;
-        if (nodeType === NodeType$1.Element || nodeType === NodeType$1.DocumentType) {
-            if (this.childNodes.some(function(s2) {
-                return s2.RRNodeType === nodeType;
-            })) {
-                throw new Error("RRDomException: Failed to execute 'insertBefore' on 'RRNode': Only one " + (nodeType === NodeType$1.Element ? "RRElement" : "RRDoctype") + " on RRDocument allowed.");
-            }
-        }
-        var child = insertBefore(this, newChild, refChild);
-        child.parentElement = null;
-        return child;
-    };
-    _proto.removeChild = function removeChild1(node2) {
-        return removeChild(this, node2);
-    };
-    _proto.open = function open() {
-        this.firstChild = null;
-        this.lastChild = null;
-    };
-    _proto.close = function close() {};
-    /**
-   * Adhoc implementation for setting xhtml namespace in rebuilt.ts (rrweb-snapshot).
-   * There are two lines used this function:
-   * 1. doc.write('\<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" ""\>')
-   * 2. doc.write('\<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" ""\>')
-   */ _proto.write = function write(content) {
-        var publicId;
-        if (content === '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "">') publicId = "-//W3C//DTD XHTML 1.0 Transitional//EN";
-        else if (content === '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "">') publicId = "-//W3C//DTD HTML 4.0 Transitional//EN";
-        if (publicId) {
-            var doctype = this.createDocumentType("html", publicId, "");
-            this.open();
-            this.appendChild(doctype);
-        }
-    };
-    _proto.createDocument = function createDocument(_namespace, _qualifiedName, _doctype) {
-        return new BaseRRDocument();
-    };
-    _proto.createDocumentType = function createDocumentType(qualifiedName, publicId, systemId) {
-        var doctype = new BaseRRDocumentType(qualifiedName, publicId, systemId);
-        doctype.ownerDocument = this;
-        return doctype;
-    };
-    _proto.createElement = function createElement(tagName) {
-        var element = new BaseRRElement(tagName);
-        element.ownerDocument = this;
-        return element;
-    };
-    _proto.createElementNS = function createElementNS(_namespaceURI, qualifiedName) {
-        return this.createElement(qualifiedName);
-    };
-    _proto.createTextNode = function createTextNode(data) {
-        var text = new BaseRRText(data);
-        text.ownerDocument = this;
-        return text;
-    };
-    _proto.createComment = function createComment(data) {
-        var comment2 = new BaseRRComment(data);
-        comment2.ownerDocument = this;
-        return comment2;
-    };
-    _proto.createCDATASection = function createCDATASection(data) {
-        var CDATASection = new BaseRRCDATASection(data);
-        CDATASection.ownerDocument = this;
-        return CDATASection;
-    };
-    _proto.toString = function toString() {
-        return "RRDocument";
-    };
-    _create_class(BaseRRDocument, [
-        {
-            key: "documentElement",
-            get: function get() {
-                return this.childNodes.find(function(node2) {
-                    return node2.RRNodeType === NodeType$1.Element && node2.tagName === "HTML";
-                }) || null;
-            }
-        },
-        {
-            key: "body",
-            get: function get() {
-                var _a2;
-                return ((_a2 = this.documentElement) == null ? void 0 : _a2.childNodes.find(function(node2) {
-                    return node2.RRNodeType === NodeType$1.Element && node2.tagName === "BODY";
-                })) || null;
-            }
-        },
-        {
-            key: "head",
-            get: function get() {
-                var _a2;
-                return ((_a2 = this.documentElement) == null ? void 0 : _a2.childNodes.find(function(node2) {
-                    return node2.RRNodeType === NodeType$1.Element && node2.tagName === "HEAD";
-                })) || null;
-            }
-        },
-        {
-            key: "implementation",
-            get: function get() {
-                return this;
-            }
-        },
-        {
-            key: "firstElementChild",
-            get: function get() {
-                return this.documentElement;
-            }
-        }
-    ]);
-    return BaseRRDocument;
-}(BaseRRNode);
-var BaseRRDocumentType = /*#__PURE__*/ function(BaseRRNode) {
-    _inherits(BaseRRDocumentType, BaseRRNode);
-    function BaseRRDocumentType(qualifiedName, publicId, systemId) {
-        var _this;
-        _this = BaseRRNode.call(this) || this;
-        __publicField2(_this, "nodeType", 10);
-        __publicField2(_this, "RRNodeType", NodeType$1.DocumentType);
-        __publicField2(_this, "name");
-        __publicField2(_this, "publicId");
-        __publicField2(_this, "systemId");
-        __publicField2(_this, "textContent", null);
-        _this.name = qualifiedName;
-        _this.publicId = publicId;
-        _this.systemId = systemId;
-        _this.nodeName = qualifiedName;
-        return _this;
-    }
-    var _proto = BaseRRDocumentType.prototype;
-    _proto.toString = function toString() {
-        return "RRDocumentType";
-    };
-    return BaseRRDocumentType;
-}(BaseRRNode);
-var BaseRRElement = /*#__PURE__*/ function(BaseRRNode) {
-    _inherits(BaseRRElement, BaseRRNode);
-    function BaseRRElement(tagName) {
-        var _this;
-        _this = BaseRRNode.call(this) || this;
-        __publicField2(_this, "nodeType", 1);
-        __publicField2(_this, "RRNodeType", NodeType$1.Element);
-        __publicField2(_this, "tagName");
-        __publicField2(_this, "attributes", {});
-        __publicField2(_this, "shadowRoot", null);
-        __publicField2(_this, "scrollLeft");
-        __publicField2(_this, "scrollTop");
-        _this.tagName = tagName.toUpperCase();
-        _this.nodeName = tagName.toUpperCase();
-        return _this;
-    }
-    var _proto = BaseRRElement.prototype;
-    _proto.getAttribute = function getAttribute(name) {
-        if (this.attributes[name] === void 0) return null;
-        return this.attributes[name];
-    };
-    _proto.setAttribute = function setAttribute(name, attribute) {
-        this.attributes[name] = attribute;
-    };
-    _proto.setAttributeNS = function setAttributeNS(_namespace, qualifiedName, value) {
-        this.setAttribute(qualifiedName, value);
-    };
-    _proto.removeAttribute = function removeAttribute(name) {
-        delete this.attributes[name];
-    };
-    _proto.appendChild = function appendChild1(newChild) {
-        return appendChild(this, newChild);
-    };
-    _proto.insertBefore = function insertBefore1(newChild, refChild) {
-        return insertBefore(this, newChild, refChild);
-    };
-    _proto.removeChild = function removeChild1(node2) {
-        return removeChild(this, node2);
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _proto.attachShadow = function attachShadow(_init) {
-        var shadowRoot2 = this.ownerDocument.createElement("SHADOWROOT");
-        this.shadowRoot = shadowRoot2;
-        return shadowRoot2;
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _proto.dispatchEvent = function dispatchEvent(_event) {
-        return true;
-    };
-    _proto.toString = function toString() {
-        var attributeString = "";
-        for(var attribute in this.attributes){
-            attributeString += attribute + '="' + this.attributes[attribute] + '" ';
-        }
-        return this.tagName + " " + attributeString;
-    };
-    _create_class(BaseRRElement, [
-        {
-            key: "textContent",
-            get: function get() {
-                var result2 = "";
-                this.childNodes.forEach(function(node2) {
-                    return result2 += node2.textContent;
-                });
-                return result2;
-            },
-            set: function set(textContent2) {
-                this.firstChild = null;
-                this.lastChild = null;
-                this.appendChild(this.ownerDocument.createTextNode(textContent2));
-            }
-        },
-        {
-            key: "classList",
-            get: function get() {
-                var _this = this;
-                return new ClassList(this.attributes.class, function(newClassName) {
-                    _this.attributes.class = newClassName;
-                });
-            }
-        },
-        {
-            key: "id",
-            get: function get() {
-                return this.attributes.id || "";
-            }
-        },
-        {
-            key: "className",
-            get: function get() {
-                return this.attributes.class || "";
-            }
-        },
-        {
-            key: "style",
-            get: function get() {
-                var _this = this;
-                var style = this.attributes.style ? parseCSSText(this.attributes.style) : {};
-                var hyphenateRE2 = /\B([A-Z])/g;
-                style.setProperty = function(name, value, priority) {
-                    if (hyphenateRE2.test(name)) return;
-                    var normalizedName = camelize(name);
-                    if (!value) delete style[normalizedName];
-                    else style[normalizedName] = value;
-                    if (priority === "important") style[normalizedName] += " !important";
-                    _this.attributes.style = toCSSText(style);
-                };
-                style.removeProperty = function(name) {
-                    if (hyphenateRE2.test(name)) return "";
-                    var normalizedName = camelize(name);
-                    var value = style[normalizedName] || "";
-                    delete style[normalizedName];
-                    _this.attributes.style = toCSSText(style);
-                    return value;
-                };
-                return style;
-            }
-        }
-    ]);
-    return BaseRRElement;
-}(BaseRRNode);
-var BaseRRMediaElement = /*#__PURE__*/ function(BaseRRElement) {
-    _inherits(BaseRRMediaElement, BaseRRElement);
-    function BaseRRMediaElement() {
-        var _this;
-        _this = BaseRRElement.apply(this, arguments) || this;
-        __publicField2(_this, "currentTime");
-        __publicField2(_this, "volume");
-        __publicField2(_this, "paused");
-        __publicField2(_this, "muted");
-        __publicField2(_this, "playbackRate");
-        __publicField2(_this, "loop");
-        return _this;
-    }
-    var _proto = BaseRRMediaElement.prototype;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _proto.attachShadow = function attachShadow(_init) {
-        throw new Error("RRDomException: Failed to execute 'attachShadow' on 'RRElement': This RRElement does not support attachShadow");
-    };
-    _proto.play = function play() {
-        this.paused = false;
-    };
-    _proto.pause = function pause() {
-        this.paused = true;
-    };
-    return BaseRRMediaElement;
-}(BaseRRElement);
-var BaseRRDialogElement = /*#__PURE__*/ function(BaseRRElement) {
-    _inherits(BaseRRDialogElement, BaseRRElement);
-    function BaseRRDialogElement() {
-        var _this;
-        _this = BaseRRElement.apply(this, arguments) || this;
-        __publicField2(_this, "tagName", "DIALOG");
-        __publicField2(_this, "nodeName", "DIALOG");
-        return _this;
-    }
-    var _proto = BaseRRDialogElement.prototype;
-    _proto.close = function close() {
-        this.removeAttribute("open");
-        this.removeAttribute("rr_open_mode");
-    };
-    _proto.show = function show() {
-        this.setAttribute("open", "");
-        this.setAttribute("rr_open_mode", "non-modal");
-    };
-    _proto.showModal = function showModal() {
-        this.setAttribute("open", "");
-        this.setAttribute("rr_open_mode", "modal");
-    };
-    _create_class(BaseRRDialogElement, [
-        {
-            key: "isModal",
-            get: function get() {
-                return this.getAttribute("rr_open_mode") === "modal";
-            }
-        },
-        {
-            key: "open",
-            get: function get() {
-                return this.getAttribute("open") !== null;
-            }
-        }
-    ]);
-    return BaseRRDialogElement;
-}(BaseRRElement);
-var BaseRRText = /*#__PURE__*/ function(BaseRRNode) {
-    _inherits(BaseRRText, BaseRRNode);
-    function BaseRRText(data) {
-        var _this;
-        _this = BaseRRNode.call(this) || this;
-        __publicField2(_this, "nodeType", 3);
-        __publicField2(_this, "nodeName", "#text");
-        __publicField2(_this, "RRNodeType", NodeType$1.Text);
-        __publicField2(_this, "data");
-        _this.data = data;
-        return _this;
-    }
-    var _proto = BaseRRText.prototype;
-    _proto.toString = function toString() {
-        return "RRText text=" + JSON.stringify(this.data);
-    };
-    _create_class(BaseRRText, [
-        {
-            key: "textContent",
-            get: function get() {
-                return this.data;
-            },
-            set: function set(textContent2) {
-                this.data = textContent2;
-            }
-        }
-    ]);
-    return BaseRRText;
-}(BaseRRNode);
-var BaseRRComment = /*#__PURE__*/ function(BaseRRNode) {
-    _inherits(BaseRRComment, BaseRRNode);
-    function BaseRRComment(data) {
-        var _this;
-        _this = BaseRRNode.call(this) || this;
-        __publicField2(_this, "nodeType", 8);
-        __publicField2(_this, "nodeName", "#comment");
-        __publicField2(_this, "RRNodeType", NodeType$1.Comment);
-        __publicField2(_this, "data");
-        _this.data = data;
-        return _this;
-    }
-    var _proto = BaseRRComment.prototype;
-    _proto.toString = function toString() {
-        return "RRComment text=" + JSON.stringify(this.data);
-    };
-    _create_class(BaseRRComment, [
-        {
-            key: "textContent",
-            get: function get() {
-                return this.data;
-            },
-            set: function set(textContent2) {
-                this.data = textContent2;
-            }
-        }
-    ]);
-    return BaseRRComment;
-}(BaseRRNode);
-var BaseRRCDATASection = /*#__PURE__*/ function(BaseRRNode) {
-    _inherits(BaseRRCDATASection, BaseRRNode);
-    function BaseRRCDATASection(data) {
-        var _this;
-        _this = BaseRRNode.call(this) || this;
-        __publicField2(_this, "nodeName", "#cdata-section");
-        __publicField2(_this, "nodeType", 4);
-        __publicField2(_this, "RRNodeType", NodeType$1.CDATA);
-        __publicField2(_this, "data");
-        _this.data = data;
-        return _this;
-    }
-    var _proto = BaseRRCDATASection.prototype;
-    _proto.toString = function toString() {
-        return "RRCDATASection data=" + JSON.stringify(this.data);
-    };
-    _create_class(BaseRRCDATASection, [
-        {
-            key: "textContent",
-            get: function get() {
-                return this.data;
-            },
-            set: function set(textContent2) {
-                this.data = textContent2;
-            }
-        }
-    ]);
-    return BaseRRCDATASection;
-}(BaseRRNode);
-var ClassList = function ClassList(classText, onChange) {
-    var _this = this;
-    __publicField2(this, "onChange");
-    __publicField2(this, "classes", []);
-    __publicField2(this, "add", function() {
-        for(var _len = arguments.length, classNames = new Array(_len), _key = 0; _key < _len; _key++){
-            classNames[_key] = arguments[_key];
-        }
-        for(var _iterator = _create_for_of_iterator_helper_loose(classNames), _step; !(_step = _iterator()).done;){
-            var item = _step.value;
-            var className = String(item);
-            if (_this.classes.indexOf(className) >= 0) continue;
-            _this.classes.push(className);
-        }
-        _this.onChange && _this.onChange(_this.classes.join(" "));
-    });
-    __publicField2(this, "remove", function() {
-        for(var _len = arguments.length, classNames = new Array(_len), _key = 0; _key < _len; _key++){
-            classNames[_key] = arguments[_key];
-        }
-        _this.classes = _this.classes.filter(function(item) {
-            return classNames.indexOf(item) === -1;
-        });
-        _this.onChange && _this.onChange(_this.classes.join(" "));
-    });
-    if (classText) {
-        var _this_classes;
-        var classes = classText.trim().split(/\s+/);
-        (_this_classes = this.classes).push.apply(_this_classes, [].concat(classes));
-    }
-    this.onChange = onChange;
-};
-function appendChild(parent, newChild) {
-    if (newChild.parentNode) newChild.parentNode.removeChild(newChild);
-    if (parent.lastChild) {
-        parent.lastChild.nextSibling = newChild;
-        newChild.previousSibling = parent.lastChild;
-    } else {
-        parent.firstChild = newChild;
-        newChild.previousSibling = null;
-    }
-    parent.lastChild = newChild;
-    newChild.nextSibling = null;
-    newChild.parentNode = parent;
-    newChild.parentElement = parent;
-    newChild.ownerDocument = parent.ownerDocument;
-    return newChild;
-}
-function insertBefore(parent, newChild, refChild) {
-    if (!refChild) return appendChild(parent, newChild);
-    if (refChild.parentNode !== parent) throw new Error("Failed to execute 'insertBefore' on 'RRNode': The RRNode before which the new node is to be inserted is not a child of this RRNode.");
-    if (newChild === refChild) return newChild;
-    if (newChild.parentNode) newChild.parentNode.removeChild(newChild);
-    newChild.previousSibling = refChild.previousSibling;
-    refChild.previousSibling = newChild;
-    newChild.nextSibling = refChild;
-    if (newChild.previousSibling) newChild.previousSibling.nextSibling = newChild;
-    else parent.firstChild = newChild;
-    newChild.parentElement = parent;
-    newChild.parentNode = parent;
-    newChild.ownerDocument = parent.ownerDocument;
-    return newChild;
-}
-function removeChild(parent, child) {
-    if (child.parentNode !== parent) throw new Error("Failed to execute 'removeChild' on 'RRNode': The RRNode to be removed is not a child of this RRNode.");
-    if (child.previousSibling) child.previousSibling.nextSibling = child.nextSibling;
-    else parent.firstChild = child.nextSibling;
-    if (child.nextSibling) child.nextSibling.previousSibling = child.previousSibling;
-    else parent.lastChild = child.previousSibling;
-    child.previousSibling = null;
-    child.nextSibling = null;
-    child.parentElement = null;
-    child.parentNode = null;
-    return child;
-}
-var NodeType$2 = /* @__PURE__ */ function(NodeType2) {
-    NodeType2[NodeType2["PLACEHOLDER"] = 0] = "PLACEHOLDER";
-    NodeType2[NodeType2["ELEMENT_NODE"] = 1] = "ELEMENT_NODE";
-    NodeType2[NodeType2["ATTRIBUTE_NODE"] = 2] = "ATTRIBUTE_NODE";
-    NodeType2[NodeType2["TEXT_NODE"] = 3] = "TEXT_NODE";
-    NodeType2[NodeType2["CDATA_SECTION_NODE"] = 4] = "CDATA_SECTION_NODE";
-    NodeType2[NodeType2["ENTITY_REFERENCE_NODE"] = 5] = "ENTITY_REFERENCE_NODE";
-    NodeType2[NodeType2["ENTITY_NODE"] = 6] = "ENTITY_NODE";
-    NodeType2[NodeType2["PROCESSING_INSTRUCTION_NODE"] = 7] = "PROCESSING_INSTRUCTION_NODE";
-    NodeType2[NodeType2["COMMENT_NODE"] = 8] = "COMMENT_NODE";
-    NodeType2[NodeType2["DOCUMENT_NODE"] = 9] = "DOCUMENT_NODE";
-    NodeType2[NodeType2["DOCUMENT_TYPE_NODE"] = 10] = "DOCUMENT_TYPE_NODE";
-    NodeType2[NodeType2["DOCUMENT_FRAGMENT_NODE"] = 11] = "DOCUMENT_FRAGMENT_NODE";
-    return NodeType2;
-}(NodeType$2 || {});
-var NAMESPACES = {
-    svg: "http://www.w3.org/2000/svg",
-    "xlink:href": "http://www.w3.org/1999/xlink",
-    xmlns: "http://www.w3.org/2000/xmlns/"
-};
-var SVGTagMap = {
-    altglyph: "altGlyph",
-    altglyphdef: "altGlyphDef",
-    altglyphitem: "altGlyphItem",
-    animatecolor: "animateColor",
-    animatemotion: "animateMotion",
-    animatetransform: "animateTransform",
-    clippath: "clipPath",
-    feblend: "feBlend",
-    fecolormatrix: "feColorMatrix",
-    fecomponenttransfer: "feComponentTransfer",
-    fecomposite: "feComposite",
-    feconvolvematrix: "feConvolveMatrix",
-    fediffuselighting: "feDiffuseLighting",
-    fedisplacementmap: "feDisplacementMap",
-    fedistantlight: "feDistantLight",
-    fedropshadow: "feDropShadow",
-    feflood: "feFlood",
-    fefunca: "feFuncA",
-    fefuncb: "feFuncB",
-    fefuncg: "feFuncG",
-    fefuncr: "feFuncR",
-    fegaussianblur: "feGaussianBlur",
-    feimage: "feImage",
-    femerge: "feMerge",
-    femergenode: "feMergeNode",
-    femorphology: "feMorphology",
-    feoffset: "feOffset",
-    fepointlight: "fePointLight",
-    fespecularlighting: "feSpecularLighting",
-    fespotlight: "feSpotLight",
-    fetile: "feTile",
-    feturbulence: "feTurbulence",
-    foreignobject: "foreignObject",
-    glyphref: "glyphRef",
-    lineargradient: "linearGradient",
-    radialgradient: "radialGradient"
-};
-var createdNodeSet = null;
-function diff(oldTree, newTree, replayer, rrnodeMirror) {
-    if (rrnodeMirror === void 0) rrnodeMirror = newTree.mirror || newTree.ownerDocument.mirror;
-    oldTree = diffBeforeUpdatingChildren(oldTree, newTree, replayer, rrnodeMirror);
-    diffChildren(oldTree, newTree, replayer, rrnodeMirror);
-    diffAfterUpdatingChildren(oldTree, newTree, replayer);
-}
-function diffBeforeUpdatingChildren(oldTree, newTree, replayer, rrnodeMirror) {
-    var _a2;
-    if (replayer.afterAppend && !createdNodeSet) {
-        createdNodeSet = /* @__PURE__ */ new WeakSet();
-        setTimeout(function() {
-            createdNodeSet = null;
-        }, 0);
-    }
-    if (!sameNodeType(oldTree, newTree)) {
-        var calibratedOldTree = createOrGetNode(newTree, replayer.mirror, rrnodeMirror);
-        (_a2 = oldTree.parentNode) == null ? void 0 : _a2.replaceChild(calibratedOldTree, oldTree);
-        oldTree = calibratedOldTree;
-    }
-    switch(newTree.RRNodeType){
-        case NodeType$1.Document:
-            {
-                if (!nodeMatching(oldTree, newTree, replayer.mirror, rrnodeMirror)) {
-                    var newMeta = rrnodeMirror.getMeta(newTree);
-                    if (newMeta) {
-                        replayer.mirror.removeNodeFromMap(oldTree);
-                        oldTree.close();
-                        oldTree.open();
-                        replayer.mirror.add(oldTree, newMeta);
-                        createdNodeSet == null ? void 0 : createdNodeSet.add(oldTree);
-                    }
-                }
-                break;
-            }
-        case NodeType$1.Element:
-            {
-                var oldElement = oldTree;
-                var newRRElement = newTree;
-                switch(newRRElement.tagName){
-                    case "IFRAME":
-                        {
-                            var oldContentDocument = oldTree.contentDocument;
-                            if (!oldContentDocument) break;
-                            diff(oldContentDocument, newTree.contentDocument, replayer, rrnodeMirror);
-                            break;
-                        }
-                }
-                if (newRRElement.shadowRoot) {
-                    if (!oldElement.shadowRoot) oldElement.attachShadow({
-                        mode: "open"
-                    });
-                    diffChildren(// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    oldElement.shadowRoot, newRRElement.shadowRoot, replayer, rrnodeMirror);
-                }
-                diffProps(oldElement, newRRElement, rrnodeMirror);
-                break;
-            }
-    }
-    return oldTree;
-}
-function diffAfterUpdatingChildren(oldTree, newTree, replayer) {
-    var _a2;
-    switch(newTree.RRNodeType){
-        case NodeType$1.Document:
-            {
-                var scrollData = newTree.scrollData;
-                scrollData && replayer.applyScroll(scrollData, true);
-                break;
-            }
-        case NodeType$1.Element:
-            {
-                var oldElement = oldTree;
-                var newRRElement = newTree;
-                newRRElement.scrollData && replayer.applyScroll(newRRElement.scrollData, true);
-                newRRElement.inputData && replayer.applyInput(newRRElement.inputData);
-                switch(newRRElement.tagName){
-                    case "AUDIO":
-                    case "VIDEO":
-                        {
-                            var oldMediaElement = oldTree;
-                            var newMediaRRElement = newRRElement;
-                            if (newMediaRRElement.paused !== void 0) newMediaRRElement.paused ? void oldMediaElement.pause() : void oldMediaElement.play();
-                            if (newMediaRRElement.muted !== void 0) oldMediaElement.muted = newMediaRRElement.muted;
-                            if (newMediaRRElement.volume !== void 0) oldMediaElement.volume = newMediaRRElement.volume;
-                            if (newMediaRRElement.currentTime !== void 0) oldMediaElement.currentTime = newMediaRRElement.currentTime;
-                            if (newMediaRRElement.playbackRate !== void 0) oldMediaElement.playbackRate = newMediaRRElement.playbackRate;
-                            if (newMediaRRElement.loop !== void 0) oldMediaElement.loop = newMediaRRElement.loop;
-                            break;
-                        }
-                    case "CANVAS":
-                        {
-                            var rrCanvasElement = newTree;
-                            if (rrCanvasElement.rr_dataURL !== null) {
-                                var image = document.createElement("img");
-                                image.onload = function() {
-                                    var ctx = oldElement.getContext("2d");
-                                    if (ctx) {
-                                        ctx.drawImage(image, 0, 0, image.width, image.height);
-                                    }
-                                };
-                                image.src = rrCanvasElement.rr_dataURL;
-                            }
-                            rrCanvasElement.canvasMutations.forEach(function(canvasMutation2) {
-                                return replayer.applyCanvas(canvasMutation2.event, canvasMutation2.mutation, oldTree);
-                            });
-                            break;
-                        }
-                    case "STYLE":
-                        {
-                            var styleSheet = oldElement.sheet;
-                            styleSheet && newTree.rules.forEach(function(data) {
-                                return replayer.applyStyleSheetMutation(data, styleSheet);
-                            });
-                            break;
-                        }
-                    case "DIALOG":
-                        {
-                            var dialog = oldElement;
-                            var rrDialog = newRRElement;
-                            var wasOpen = dialog.open;
-                            var wasModal = dialog.matches("dialog:modal");
-                            var shouldBeOpen = rrDialog.open;
-                            var shouldBeModal = rrDialog.isModal;
-                            var modalChanged = wasModal !== shouldBeModal;
-                            var openChanged = wasOpen !== shouldBeOpen;
-                            if (modalChanged || wasOpen && openChanged) dialog.close();
-                            if (shouldBeOpen && (openChanged || modalChanged)) {
-                                try {
-                                    if (shouldBeModal) dialog.showModal();
-                                    else dialog.show();
-                                } catch (e2) {
-                                    console.warn(e2);
-                                }
-                            }
-                            break;
-                        }
-                }
-                break;
-            }
-        case NodeType$1.Text:
-        case NodeType$1.Comment:
-        case NodeType$1.CDATA:
-            {
-                if (oldTree.textContent !== newTree.data) oldTree.textContent = newTree.data;
-                break;
-            }
-    }
-    if (createdNodeSet == null ? void 0 : createdNodeSet.has(oldTree)) {
-        createdNodeSet.delete(oldTree);
-        (_a2 = replayer.afterAppend) == null ? void 0 : _a2.call(replayer, oldTree, replayer.mirror.getId(oldTree));
-    }
-}
-function diffProps(oldTree, newTree, rrnodeMirror) {
-    var _loop = function(name) {
-        var newValue = newAttributes[name];
-        var sn = rrnodeMirror.getMeta(newTree);
-        if ((sn == null ? void 0 : sn.isSVG) && NAMESPACES[name]) oldTree.setAttributeNS(NAMESPACES[name], name, newValue);
-        else if (newTree.tagName === "CANVAS" && name === "rr_dataURL") {
-            var image = document.createElement("img");
-            image.src = newValue;
-            image.onload = function() {
-                var ctx = oldTree.getContext("2d");
-                if (ctx) {
-                    ctx.drawImage(image, 0, 0, image.width, image.height);
-                }
-            };
-        } else if (newTree.tagName === "IFRAME" && name === "srcdoc") return "continue";
-        else {
-            try {
-                oldTree.setAttribute(name, newValue);
-            } catch (err) {
-                console.warn(err);
-            }
-        }
-    };
-    var oldAttributes = oldTree.attributes;
-    var newAttributes = newTree.attributes;
-    for(var name in newAttributes)_loop(name);
-    for(var _iterator = _create_for_of_iterator_helper_loose(Array.from(oldAttributes)), _step; !(_step = _iterator()).done;){
-        var name1 = _step.value.name;
-        if (!(name1 in newAttributes)) oldTree.removeAttribute(name1);
-    }
-    newTree.scrollLeft && (oldTree.scrollLeft = newTree.scrollLeft);
-    newTree.scrollTop && (oldTree.scrollTop = newTree.scrollTop);
-}
-function diffChildren(oldTree, newTree, replayer, rrnodeMirror) {
-    var oldChildren = Array.from(oldTree.childNodes);
-    var newChildren = newTree.childNodes;
-    if (oldChildren.length === 0 && newChildren.length === 0) return;
-    var oldStartIndex = 0, oldEndIndex = oldChildren.length - 1, newStartIndex = 0, newEndIndex = newChildren.length - 1;
-    var oldStartNode = oldChildren[oldStartIndex], oldEndNode = oldChildren[oldEndIndex], newStartNode = newChildren[newStartIndex], newEndNode = newChildren[newEndIndex];
-    var oldIdToIndex = void 0, indexInOld = void 0;
-    while(oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex){
-        if (oldStartNode === void 0) {
-            oldStartNode = oldChildren[++oldStartIndex];
-        } else if (oldEndNode === void 0) {
-            oldEndNode = oldChildren[--oldEndIndex];
-        } else if (// same first node?
-        nodeMatching(oldStartNode, newStartNode, replayer.mirror, rrnodeMirror)) {
-            oldStartNode = oldChildren[++oldStartIndex];
-            newStartNode = newChildren[++newStartIndex];
-        } else if (// same last node?
-        nodeMatching(oldEndNode, newEndNode, replayer.mirror, rrnodeMirror)) {
-            oldEndNode = oldChildren[--oldEndIndex];
-            newEndNode = newChildren[--newEndIndex];
-        } else if (// is the first old node the same as the last new node?
-        nodeMatching(oldStartNode, newEndNode, replayer.mirror, rrnodeMirror)) {
-            try {
-                oldTree.insertBefore(oldStartNode, oldEndNode.nextSibling);
-            } catch (e2) {
-                console.warn(e2);
-            }
-            oldStartNode = oldChildren[++oldStartIndex];
-            newEndNode = newChildren[--newEndIndex];
-        } else if (// is the last old node the same as the first new node?
-        nodeMatching(oldEndNode, newStartNode, replayer.mirror, rrnodeMirror)) {
-            try {
-                oldTree.insertBefore(oldEndNode, oldStartNode);
-            } catch (e2) {
-                console.warn(e2);
-            }
-            oldEndNode = oldChildren[--oldEndIndex];
-            newStartNode = newChildren[++newStartIndex];
-        } else {
-            if (!oldIdToIndex) {
-                oldIdToIndex = {};
-                for(var i2 = oldStartIndex; i2 <= oldEndIndex; i2++){
-                    var oldChild2 = oldChildren[i2];
-                    if (oldChild2 && replayer.mirror.hasNode(oldChild2)) oldIdToIndex[replayer.mirror.getId(oldChild2)] = i2;
-                }
-            }
-            indexInOld = oldIdToIndex[rrnodeMirror.getId(newStartNode)];
-            var nodeToMove = oldChildren[indexInOld];
-            if (indexInOld !== void 0 && nodeToMove && nodeMatching(nodeToMove, newStartNode, replayer.mirror, rrnodeMirror)) {
-                try {
-                    oldTree.insertBefore(nodeToMove, oldStartNode);
-                } catch (e2) {
-                    console.warn(e2);
-                }
-                oldChildren[indexInOld] = void 0;
-            } else {
-                var newNode = createOrGetNode(newStartNode, replayer.mirror, rrnodeMirror);
-                if (oldTree.nodeName === "#document" && oldStartNode && /**
-        * Special case 1: one document isn't allowed to have two doctype nodes at the same time, so we need to remove the old one first before inserting the new one.
-        * How this case happens: A parent document in the old tree already has a doctype node with an id e.g. #1. A new full snapshot rebuilds the replayer with a new doctype node with another id #2. According to the algorithm, the new doctype node will be inserted before the old one, which is not allowed by the Document standard.
-        */ (newNode.nodeType === newNode.DOCUMENT_TYPE_NODE && oldStartNode.nodeType === oldStartNode.DOCUMENT_TYPE_NODE || /**
-        * Special case 2: one document isn't allowed to have two HTMLElements at the same time, so we need to remove the old one first before inserting the new one.
-        * How this case happens: A mounted iframe element has an automatically created HTML element. We should delete it before inserting a serialized one. Otherwise, an error 'Only one element on document allowed' will be thrown.
-        */ newNode.nodeType === newNode.ELEMENT_NODE && oldStartNode.nodeType === oldStartNode.ELEMENT_NODE)) {
-                    oldTree.removeChild(oldStartNode);
-                    replayer.mirror.removeNodeFromMap(oldStartNode);
-                    oldStartNode = oldChildren[++oldStartIndex];
-                }
-                try {
-                    oldTree.insertBefore(newNode, oldStartNode || null);
-                } catch (e2) {
-                    console.warn(e2);
-                }
-            }
-            newStartNode = newChildren[++newStartIndex];
-        }
-    }
-    if (oldStartIndex > oldEndIndex) {
-        var referenceRRNode = newChildren[newEndIndex + 1];
-        var referenceNode = null;
-        if (referenceRRNode) referenceNode = replayer.mirror.getNode(rrnodeMirror.getId(referenceRRNode));
-        for(; newStartIndex <= newEndIndex; ++newStartIndex){
-            var newNode1 = createOrGetNode(newChildren[newStartIndex], replayer.mirror, rrnodeMirror);
-            try {
-                oldTree.insertBefore(newNode1, referenceNode);
-            } catch (e2) {
-                console.warn(e2);
-            }
-        }
-    } else if (newStartIndex > newEndIndex) {
-        for(; oldStartIndex <= oldEndIndex; oldStartIndex++){
-            var node2 = oldChildren[oldStartIndex];
-            if (!node2 || node2.parentNode !== oldTree) continue;
-            try {
-                oldTree.removeChild(node2);
-                replayer.mirror.removeNodeFromMap(node2);
-            } catch (e2) {
-                console.warn(e2);
-            }
-        }
-    }
-    var oldChild = oldTree.firstChild;
-    var newChild = newTree.firstChild;
-    while(oldChild !== null && newChild !== null){
-        diff(oldChild, newChild, replayer, rrnodeMirror);
-        oldChild = oldChild.nextSibling;
-        newChild = newChild.nextSibling;
-    }
-}
-function createOrGetNode(rrNode, domMirror, rrnodeMirror) {
-    var nodeId = rrnodeMirror.getId(rrNode);
-    var sn = rrnodeMirror.getMeta(rrNode);
-    var node2 = null;
-    if (nodeId > -1) node2 = domMirror.getNode(nodeId);
-    if (node2 !== null && sameNodeType(node2, rrNode)) return node2;
-    switch(rrNode.RRNodeType){
-        case NodeType$1.Document:
-            node2 = new Document();
-            break;
-        case NodeType$1.DocumentType:
-            node2 = document.implementation.createDocumentType(rrNode.name, rrNode.publicId, rrNode.systemId);
-            break;
-        case NodeType$1.Element:
-            {
-                var tagName = rrNode.tagName.toLowerCase();
-                tagName = SVGTagMap[tagName] || tagName;
-                if (sn && "isSVG" in sn && (sn == null ? void 0 : sn.isSVG)) {
-                    node2 = document.createElementNS(NAMESPACES["svg"], tagName);
-                } else node2 = document.createElement(rrNode.tagName);
-                break;
-            }
-        case NodeType$1.Text:
-            node2 = document.createTextNode(rrNode.data);
-            break;
-        case NodeType$1.Comment:
-            node2 = document.createComment(rrNode.data);
-            break;
-        case NodeType$1.CDATA:
-            node2 = document.createCDATASection(rrNode.data);
-            break;
-    }
-    if (sn) domMirror.add(node2, _extends({}, sn));
-    try {
-        createdNodeSet == null ? void 0 : createdNodeSet.add(node2);
-    } catch (e2) {}
-    return node2;
-}
-function sameNodeType(node1, node2) {
-    if (node1.nodeType !== node2.nodeType) return false;
-    return node1.nodeType !== node1.ELEMENT_NODE || node1.tagName.toUpperCase() === node2.tagName;
-}
-function nodeMatching(node1, node2, domMirror, rrdomMirror) {
-    var node1Id = domMirror.getId(node1);
-    var node2Id = rrdomMirror.getId(node2);
-    if (node1Id === -1 || node1Id !== node2Id) return false;
-    return sameNodeType(node1, node2);
-}
-var RRDocument = /*#__PURE__*/ function(BaseRRDocument) {
-    _inherits(RRDocument, BaseRRDocument);
-    function RRDocument(mirror2) {
-        var _this;
-        _this = BaseRRDocument.call(this) || this;
-        __publicField2(_this, "UNSERIALIZED_STARTING_ID", -2);
-        __publicField2(_this, "_unserializedId", _this.UNSERIALIZED_STARTING_ID);
-        __publicField2(_this, "mirror", createMirror());
-        __publicField2(_this, "scrollData", null);
-        if (mirror2) {
-            _this.mirror = mirror2;
-        }
-        return _this;
-    }
-    var _proto = RRDocument.prototype;
-    _proto.createDocument = function createDocument(_namespace, _qualifiedName, _doctype) {
-        return new RRDocument();
-    };
-    _proto.createDocumentType = function createDocumentType(qualifiedName, publicId, systemId) {
-        var documentTypeNode = new RRDocumentType(qualifiedName, publicId, systemId);
-        documentTypeNode.ownerDocument = this;
-        return documentTypeNode;
-    };
-    _proto.createElement = function createElement(tagName) {
-        var upperTagName = tagName.toUpperCase();
-        var element;
-        switch(upperTagName){
-            case "AUDIO":
-            case "VIDEO":
-                element = new RRMediaElement(upperTagName);
-                break;
-            case "IFRAME":
-                element = new RRIFrameElement(upperTagName, this.mirror);
-                break;
-            case "CANVAS":
-                element = new RRCanvasElement(upperTagName);
-                break;
-            case "STYLE":
-                element = new RRStyleElement(upperTagName);
-                break;
-            case "DIALOG":
-                element = new RRDialogElement(upperTagName);
-                break;
-            default:
-                element = new RRElement(upperTagName);
-                break;
-        }
-        element.ownerDocument = this;
-        return element;
-    };
-    _proto.createComment = function createComment(data) {
-        var commentNode = new RRComment(data);
-        commentNode.ownerDocument = this;
-        return commentNode;
-    };
-    _proto.createCDATASection = function createCDATASection(data) {
-        var sectionNode = new RRCDATASection(data);
-        sectionNode.ownerDocument = this;
-        return sectionNode;
-    };
-    _proto.createTextNode = function createTextNode(data) {
-        var textNode = new RRText(data);
-        textNode.ownerDocument = this;
-        return textNode;
-    };
-    _proto.destroyTree = function destroyTree() {
-        this.firstChild = null;
-        this.lastChild = null;
-        this.mirror.reset();
-    };
-    _proto.open = function open() {
-        BaseRRDocument.prototype.open.call(this);
-        this._unserializedId = this.UNSERIALIZED_STARTING_ID;
-    };
-    _create_class(RRDocument, [
-        {
-            key: "unserializedId",
-            get: /**
-   * Every time the id is used, it will minus 1 automatically to avoid collisions.
-   */ function get() {
-                return this._unserializedId--;
-            }
-        }
-    ]);
-    return RRDocument;
-}(BaseRRDocument);
-var RRDocumentType = BaseRRDocumentType;
-var RRElement = /*#__PURE__*/ function(BaseRRElement) {
-    _inherits(RRElement, BaseRRElement);
-    function RRElement() {
-        var _this;
-        _this = BaseRRElement.apply(this, arguments) || this;
-        __publicField2(_this, "inputData", null);
-        __publicField2(_this, "scrollData", null);
-        return _this;
-    }
-    return RRElement;
-}(BaseRRElement);
-var RRMediaElement = /*#__PURE__*/ function(BaseRRMediaElement) {
-    _inherits(RRMediaElement, BaseRRMediaElement);
-    function RRMediaElement() {
-        return BaseRRMediaElement.apply(this, arguments) || this;
-    }
-    return RRMediaElement;
-}(BaseRRMediaElement);
-var RRDialogElement = /*#__PURE__*/ function(BaseRRDialogElement) {
-    _inherits(RRDialogElement, BaseRRDialogElement);
-    function RRDialogElement() {
-        return BaseRRDialogElement.apply(this, arguments) || this;
-    }
-    return RRDialogElement;
-}(BaseRRDialogElement);
-var RRCanvasElement = /*#__PURE__*/ function(RRElement) {
-    _inherits(RRCanvasElement, RRElement);
-    function RRCanvasElement() {
-        var _this;
-        _this = RRElement.apply(this, arguments) || this;
-        __publicField2(_this, "rr_dataURL", null);
-        __publicField2(_this, "canvasMutations", []);
-        return _this;
-    }
-    var _proto = RRCanvasElement.prototype;
-    /**
-   * This is a dummy implementation to distinguish RRCanvasElement from real HTMLCanvasElement.
-   */ _proto.getContext = function getContext() {
-        return null;
-    };
-    return RRCanvasElement;
-}(RRElement);
-var RRStyleElement = /*#__PURE__*/ function(RRElement) {
-    _inherits(RRStyleElement, RRElement);
-    function RRStyleElement() {
-        var _this;
-        _this = RRElement.apply(this, arguments) || this;
-        __publicField2(_this, "rules", []);
-        return _this;
-    }
-    return RRStyleElement;
-}(RRElement);
-var RRIFrameElement = /*#__PURE__*/ function(RRElement) {
-    _inherits(RRIFrameElement, RRElement);
-    function RRIFrameElement(upperTagName, mirror2) {
-        var _this;
-        _this = RRElement.call(this, upperTagName) || this;
-        __publicField2(_this, "contentDocument", new RRDocument());
-        _this.contentDocument.mirror = mirror2;
-        return _this;
-    }
-    return RRIFrameElement;
-}(RRElement);
-var RRText = BaseRRText;
-var RRComment = BaseRRComment;
-var RRCDATASection = BaseRRCDATASection;
-function getValidTagName(element) {
-    if (_instanceof(element, HTMLFormElement)) {
-        return "FORM";
-    }
-    return element.tagName.toUpperCase();
-}
-function buildFromNode(node2, rrdom, domMirror, parentRRNode) {
-    var rrNode;
-    switch(node2.nodeType){
-        case NodeType$2.DOCUMENT_NODE:
-            if (parentRRNode && parentRRNode.nodeName === "IFRAME") rrNode = parentRRNode.contentDocument;
-            else {
-                rrNode = rrdom;
-                rrNode.compatMode = node2.compatMode;
-            }
-            break;
-        case NodeType$2.DOCUMENT_TYPE_NODE:
-            {
-                var documentType = node2;
-                rrNode = rrdom.createDocumentType(documentType.name, documentType.publicId, documentType.systemId);
-                break;
-            }
-        case NodeType$2.ELEMENT_NODE:
-            {
-                var elementNode = node2;
-                var tagName = getValidTagName(elementNode);
-                rrNode = rrdom.createElement(tagName);
-                var rrElement = rrNode;
-                for(var _iterator = _create_for_of_iterator_helper_loose(Array.from(elementNode.attributes)), _step; !(_step = _iterator()).done;){
-                    var _step_value = _step.value, name = _step_value.name, value = _step_value.value;
-                    rrElement.attributes[name] = value;
-                }
-                elementNode.scrollLeft && (rrElement.scrollLeft = elementNode.scrollLeft);
-                elementNode.scrollTop && (rrElement.scrollTop = elementNode.scrollTop);
-                break;
-            }
-        case NodeType$2.TEXT_NODE:
-            rrNode = rrdom.createTextNode(node2.textContent || "");
-            break;
-        case NodeType$2.CDATA_SECTION_NODE:
-            rrNode = rrdom.createCDATASection(node2.data);
-            break;
-        case NodeType$2.COMMENT_NODE:
-            rrNode = rrdom.createComment(node2.textContent || "");
-            break;
-        case NodeType$2.DOCUMENT_FRAGMENT_NODE:
-            rrNode = parentRRNode.attachShadow({
-                mode: "open"
-            });
-            break;
-        default:
-            return null;
-    }
-    var sn = domMirror.getMeta(node2);
-    if (_instanceof(rrdom, RRDocument)) {
-        if (!sn) {
-            sn = getDefaultSN(rrNode, rrdom.unserializedId);
-            domMirror.add(node2, sn);
-        }
-        rrdom.mirror.add(rrNode, _extends({}, sn));
-    }
-    return rrNode;
-}
-function buildFromDom(dom, domMirror, rrdom) {
-    if (domMirror === void 0) domMirror = createMirror$1();
-    if (rrdom === void 0) rrdom = new RRDocument();
-    function walk2(node2, parentRRNode) {
-        var rrNode = buildFromNode(node2, rrdom, domMirror, parentRRNode);
-        if (rrNode === null) return;
-        if (// if the parentRRNode isn't a RRIFrameElement
-        (parentRRNode == null ? void 0 : parentRRNode.nodeName) !== "IFRAME" && // if node isn't a shadow root
-        node2.nodeType !== NodeType$2.DOCUMENT_FRAGMENT_NODE) {
-            parentRRNode == null ? void 0 : parentRRNode.appendChild(rrNode);
-            rrNode.parentNode = parentRRNode;
-            rrNode.parentElement = parentRRNode;
-        }
-        if (node2.nodeName === "IFRAME") {
-            var iframeDoc = node2.contentDocument;
-            iframeDoc && walk2(iframeDoc, rrNode);
-        } else if (node2.nodeType === NodeType$2.DOCUMENT_NODE || node2.nodeType === NodeType$2.ELEMENT_NODE || node2.nodeType === NodeType$2.DOCUMENT_FRAGMENT_NODE) {
-            if (node2.nodeType === NodeType$2.ELEMENT_NODE && node2.shadowRoot) walk2(node2.shadowRoot, rrNode);
-            node2.childNodes.forEach(function(childNode) {
-                return walk2(childNode, rrNode);
-            });
-        }
-    }
-    walk2(dom, null);
-    return rrdom;
-}
-function createMirror() {
-    return new Mirror22();
-}
-var Mirror22 = /*#__PURE__*/ function() {
-    function Mirror22() {
-        __publicField2(this, "idNodeMap", /* @__PURE__ */ new Map());
-        __publicField2(this, "nodeMetaMap", /* @__PURE__ */ new WeakMap());
-    }
-    var _proto = Mirror22.prototype;
-    _proto.getId = function getId(n2) {
-        var _a2;
-        if (!n2) return -1;
-        var id = (_a2 = this.getMeta(n2)) == null ? void 0 : _a2.id;
-        return id != null ? id : -1;
-    };
-    _proto.getNode = function getNode(id) {
-        return this.idNodeMap.get(id) || null;
-    };
-    _proto.getIds = function getIds() {
-        return Array.from(this.idNodeMap.keys());
-    };
-    _proto.getMeta = function getMeta(n2) {
-        return this.nodeMetaMap.get(n2) || null;
-    };
-    // removes the node from idNodeMap
-    // doesn't remove the node from nodeMetaMap
-    _proto.removeNodeFromMap = function removeNodeFromMap(n2) {
-        var _this = this;
-        var id = this.getId(n2);
-        this.idNodeMap.delete(id);
-        if (n2.childNodes) {
-            n2.childNodes.forEach(function(childNode) {
-                return _this.removeNodeFromMap(childNode);
-            });
-        }
-    };
-    _proto.has = function has(id) {
-        return this.idNodeMap.has(id);
-    };
-    _proto.hasNode = function hasNode(node2) {
-        return this.nodeMetaMap.has(node2);
-    };
-    _proto.add = function add(n2, meta) {
-        var id = meta.id;
-        this.idNodeMap.set(id, n2);
-        this.nodeMetaMap.set(n2, meta);
-    };
-    _proto.replace = function replace(id, n2) {
-        var oldNode = this.getNode(id);
-        if (oldNode) {
-            var meta = this.nodeMetaMap.get(oldNode);
-            if (meta) this.nodeMetaMap.set(n2, meta);
-        }
-        this.idNodeMap.set(id, n2);
-    };
-    _proto.reset = function reset() {
-        this.idNodeMap = /* @__PURE__ */ new Map();
-        this.nodeMetaMap = /* @__PURE__ */ new WeakMap();
-    };
-    return Mirror22;
-}();
-function getDefaultSN(node2, id) {
-    switch(node2.RRNodeType){
-        case NodeType$1.Document:
-            return {
-                id: id,
-                type: node2.RRNodeType,
-                childNodes: []
-            };
-        case NodeType$1.DocumentType:
-            {
-                var doctype = node2;
-                return {
-                    id: id,
-                    type: node2.RRNodeType,
-                    name: doctype.name,
-                    publicId: doctype.publicId,
-                    systemId: doctype.systemId
-                };
-            }
-        case NodeType$1.Element:
-            return {
-                id: id,
-                type: node2.RRNodeType,
-                tagName: node2.tagName.toLowerCase(),
-                // In rrweb data, all tagNames are lowercase.
-                attributes: {},
-                childNodes: []
-            };
-        case NodeType$1.Text:
-            return {
-                id: id,
-                type: node2.RRNodeType,
-                textContent: node2.textContent || ""
-            };
-        case NodeType$1.Comment:
-            return {
-                id: id,
-                type: node2.RRNodeType,
-                textContent: node2.textContent || ""
-            };
-        case NodeType$1.CDATA:
-            return {
-                id: id,
-                type: node2.RRNodeType,
-                textContent: ""
-            };
-    }
-}
 var testableAccessors = {
     Node: [
         "childNodes",
@@ -11906,7 +10094,7 @@ function querySelectorAll(n2, selectors) {
 function mutationObserverCtor() {
     return getUntaintedPrototype("MutationObserver").constructor;
 }
-function patch(source, name, replacement) {
+function patch$2(source, name, replacement) {
     try {
         if (!(name in source)) {
             return function() {};
@@ -11943,7 +10131,7 @@ var index = {
     querySelector: querySelector,
     querySelectorAll: querySelectorAll,
     mutationObserver: mutationObserverCtor,
-    patch: patch
+    patch: patch$2
 };
 function on(type, fn, target) {
     if (target === void 0) target = document;
@@ -12123,73 +10311,11 @@ function polyfill$1(win) {
         win.DOMTokenList.prototype.forEach = Array.prototype.forEach;
     }
 }
-function queueToResolveTrees(queue) {
-    var queueNodeMap = {};
-    var putIntoMap = function(m, parent) {
-        var nodeInTree = {
-            value: m,
-            parent: parent,
-            children: []
-        };
-        queueNodeMap[m.node.id] = nodeInTree;
-        return nodeInTree;
-    };
-    var queueNodeTrees = [];
-    for(var _iterator = _create_for_of_iterator_helper_loose(queue), _step; !(_step = _iterator()).done;){
-        var mutation = _step.value;
-        var nextId = mutation.nextId, parentId = mutation.parentId;
-        if (nextId && nextId in queueNodeMap) {
-            var nextInTree = queueNodeMap[nextId];
-            if (nextInTree.parent) {
-                var idx = nextInTree.parent.children.indexOf(nextInTree);
-                nextInTree.parent.children.splice(idx, 0, putIntoMap(mutation, nextInTree.parent));
-            } else {
-                var idx1 = queueNodeTrees.indexOf(nextInTree);
-                queueNodeTrees.splice(idx1, 0, putIntoMap(mutation, null));
-            }
-            continue;
-        }
-        if (parentId in queueNodeMap) {
-            var parentInTree = queueNodeMap[parentId];
-            parentInTree.children.push(putIntoMap(mutation, parentInTree));
-            continue;
-        }
-        queueNodeTrees.push(putIntoMap(mutation, null));
-    }
-    return queueNodeTrees;
-}
-function iterateResolveTree(tree, cb) {
-    cb(tree.value);
-    for(var i2 = tree.children.length - 1; i2 >= 0; i2--){
-        iterateResolveTree(tree.children[i2], cb);
-    }
-}
 function isSerializedIframe(n2, mirror2) {
     return Boolean(n2.nodeName === "IFRAME" && mirror2.getMeta(n2));
 }
 function isSerializedStylesheet(n2, mirror2) {
     return Boolean(n2.nodeName === "LINK" && n2.nodeType === n2.ELEMENT_NODE && n2.getAttribute && n2.getAttribute("rel") === "stylesheet" && mirror2.getMeta(n2));
-}
-function getBaseDimension(node2, rootIframe) {
-    var _a2, _b;
-    var frameElement = (_b = (_a2 = node2.ownerDocument) == null ? void 0 : _a2.defaultView) == null ? void 0 : _b.frameElement;
-    if (!frameElement || frameElement === rootIframe) {
-        return {
-            x: 0,
-            y: 0,
-            relativeScale: 1,
-            absoluteScale: 1
-        };
-    }
-    var frameDimension = frameElement.getBoundingClientRect();
-    var frameBaseDimension = getBaseDimension(frameElement, rootIframe);
-    var relativeScale = frameDimension.height / frameElement.clientHeight;
-    return {
-        x: frameDimension.x * frameBaseDimension.relativeScale + frameBaseDimension.x,
-        y: frameDimension.y * frameBaseDimension.relativeScale + frameBaseDimension.y,
-        relativeScale: relativeScale,
-        absoluteScale: frameBaseDimension.absoluteScale * relativeScale
-    };
 }
 function hasShadowRoot(n2) {
     if (!n2) return false;
@@ -12198,39 +10324,11 @@ function hasShadowRoot(n2) {
     }
     return Boolean(index.shadowRoot(n2));
 }
-function getNestedRule(rules2, position) {
-    var rule2 = rules2[position[0]];
-    if (position.length === 1) {
-        return rule2;
-    } else {
-        return getNestedRule(rule2.cssRules[position[1]].cssRules, position.slice(2));
-    }
-}
-function getPositionsAndIndex(nestedIndex) {
-    var positions = [].concat(nestedIndex);
-    var index2 = positions.pop();
-    return {
-        positions: positions,
-        index: index2
-    };
-}
-function uniqueTextMutations(mutations) {
-    var idSet = /* @__PURE__ */ new Set();
-    var uniqueMutations = [];
-    for(var i2 = mutations.length; i2--;){
-        var mutation = mutations[i2];
-        if (!idSet.has(mutation.id)) {
-            uniqueMutations.push(mutation);
-            idSet.add(mutation.id);
-        }
-    }
-    return uniqueMutations;
-}
 var StyleSheetMirror = /*#__PURE__*/ function() {
     function StyleSheetMirror() {
-        __publicField(this, "id", 1);
-        __publicField(this, "styleIDMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "idStyleMap", /* @__PURE__ */ new Map());
+        __publicField$1(this, "id", 1);
+        __publicField$1(this, "styleIDMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "idStyleMap", /* @__PURE__ */ new Map());
     }
     var _proto = StyleSheetMirror.prototype;
     _proto.getId = function getId(stylesheet) {
@@ -12288,44 +10386,6 @@ function inDom(n2) {
     if (!doc) return false;
     return index.contains(doc, n2) || shadowHostInDom(n2);
 }
-var utils = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-    __proto__: null,
-    StyleSheetMirror: StyleSheetMirror,
-    get _mirror () {
-        return _mirror;
-    },
-    closestElementOfNode: closestElementOfNode,
-    getBaseDimension: getBaseDimension,
-    getNestedRule: getNestedRule,
-    getPositionsAndIndex: getPositionsAndIndex,
-    getRootShadowHost: getRootShadowHost,
-    getShadowHost: getShadowHost,
-    getWindowHeight: getWindowHeight,
-    getWindowScroll: getWindowScroll,
-    getWindowWidth: getWindowWidth,
-    hasShadowRoot: hasShadowRoot,
-    hookSetter: hookSetter,
-    inDom: inDom,
-    isAncestorRemoved: isAncestorRemoved,
-    isBlocked: isBlocked,
-    isIgnored: isIgnored,
-    isSerialized: isSerialized,
-    isSerializedIframe: isSerializedIframe,
-    isSerializedStylesheet: isSerializedStylesheet,
-    iterateResolveTree: iterateResolveTree,
-    legacy_isTouchEvent: legacy_isTouchEvent,
-    get nowTimestamp () {
-        return nowTimestamp;
-    },
-    on: on,
-    polyfill: polyfill$1,
-    queueToResolveTrees: queueToResolveTrees,
-    shadowHostInDom: shadowHostInDom,
-    throttle: throttle,
-    uniqueTextMutations: uniqueTextMutations
-}, Symbol.toStringTag, {
-    value: "Module"
-}));
 var EventType = /* @__PURE__ */ function(EventType2) {
     EventType2[EventType2["DomContentLoaded"] = 0] = "DomContentLoaded";
     EventType2[EventType2["Load"] = 1] = "Load";
@@ -12390,26 +10450,6 @@ var MediaInteractions = /* @__PURE__ */ function(MediaInteractions2) {
     MediaInteractions2[MediaInteractions2["RateChange"] = 4] = "RateChange";
     return MediaInteractions2;
 }(MediaInteractions || {});
-var ReplayerEvents = /* @__PURE__ */ function(ReplayerEvents2) {
-    ReplayerEvents2["Start"] = "start";
-    ReplayerEvents2["Pause"] = "pause";
-    ReplayerEvents2["Resume"] = "resume";
-    ReplayerEvents2["Resize"] = "resize";
-    ReplayerEvents2["Finish"] = "finish";
-    ReplayerEvents2["FullsnapshotRebuilded"] = "fullsnapshot-rebuilded";
-    ReplayerEvents2["LoadStylesheetStart"] = "load-stylesheet-start";
-    ReplayerEvents2["LoadStylesheetEnd"] = "load-stylesheet-end";
-    ReplayerEvents2["SkipStart"] = "skip-start";
-    ReplayerEvents2["SkipEnd"] = "skip-end";
-    ReplayerEvents2["MouseInteraction"] = "mouse-interaction";
-    ReplayerEvents2["EventCast"] = "event-cast";
-    ReplayerEvents2["CustomEvent"] = "custom-event";
-    ReplayerEvents2["Flush"] = "flush";
-    ReplayerEvents2["StateChange"] = "state-change";
-    ReplayerEvents2["PlayBack"] = "play-back";
-    ReplayerEvents2["Destroy"] = "destroy";
-    return ReplayerEvents2;
-}(ReplayerEvents || {});
 var NodeType = /* @__PURE__ */ function(NodeType2) {
     NodeType2[NodeType2["Document"] = 0] = "Document";
     NodeType2[NodeType2["DocumentType"] = 1] = "DocumentType";
@@ -12424,9 +10464,9 @@ function isNodeInLinkedList(n2) {
 }
 var DoubleLinkedList = /*#__PURE__*/ function() {
     function DoubleLinkedList() {
-        __publicField(this, "length", 0);
-        __publicField(this, "head", null);
-        __publicField(this, "tail", null);
+        __publicField$1(this, "length", 0);
+        __publicField$1(this, "head", null);
+        __publicField$1(this, "tail", null);
     }
     var _proto = DoubleLinkedList.prototype;
     _proto.get = function get(position) {
@@ -12507,14 +10547,14 @@ var moveKey = function(id, parentId) {
 var MutationBuffer = /*#__PURE__*/ function() {
     function MutationBuffer() {
         var _this = this;
-        __publicField(this, "frozen", false);
-        __publicField(this, "locked", false);
-        __publicField(this, "texts", []);
-        __publicField(this, "attributes", []);
-        __publicField(this, "attributeMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "removes", []);
-        __publicField(this, "mapRemoves", []);
-        __publicField(this, "movedMap", {});
+        __publicField$1(this, "frozen", false);
+        __publicField$1(this, "locked", false);
+        __publicField$1(this, "texts", []);
+        __publicField$1(this, "attributes", []);
+        __publicField$1(this, "attributeMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "removes", []);
+        __publicField$1(this, "mapRemoves", []);
+        __publicField$1(this, "movedMap", {});
         /**
      * the browser MutationObserver emits multiple mutations after
      * a delay for performance reasons, making tracing added nodes hard
@@ -12531,37 +10571,37 @@ var MutationBuffer = /*#__PURE__*/ function() {
      * collect added nodes from the Set which have no duplicate copy. But
      * this also causes newly added nodes will not be serialized with id ASAP,
      * which means all the id related calculation should be lazy too.
-     */ __publicField(this, "addedSet", /* @__PURE__ */ new Set());
-        __publicField(this, "movedSet", /* @__PURE__ */ new Set());
-        __publicField(this, "droppedSet", /* @__PURE__ */ new Set());
-        __publicField(this, "removesSubTreeCache", /* @__PURE__ */ new Set());
-        __publicField(this, "mutationCb");
-        __publicField(this, "blockClass");
-        __publicField(this, "blockSelector");
-        __publicField(this, "maskTextClass");
-        __publicField(this, "maskTextSelector");
-        __publicField(this, "inlineStylesheet");
-        __publicField(this, "maskInputOptions");
-        __publicField(this, "maskTextFn");
-        __publicField(this, "maskInputFn");
-        __publicField(this, "keepIframeSrcFn");
-        __publicField(this, "recordCanvas");
-        __publicField(this, "inlineImages");
-        __publicField(this, "slimDOMOptions");
-        __publicField(this, "dataURLOptions");
-        __publicField(this, "doc");
-        __publicField(this, "mirror");
-        __publicField(this, "iframeManager");
-        __publicField(this, "stylesheetManager");
-        __publicField(this, "shadowDomManager");
-        __publicField(this, "canvasManager");
-        __publicField(this, "processedNodeManager");
-        __publicField(this, "unattachedDoc");
-        __publicField(this, "processMutations", function(mutations) {
+     */ __publicField$1(this, "addedSet", /* @__PURE__ */ new Set());
+        __publicField$1(this, "movedSet", /* @__PURE__ */ new Set());
+        __publicField$1(this, "droppedSet", /* @__PURE__ */ new Set());
+        __publicField$1(this, "removesSubTreeCache", /* @__PURE__ */ new Set());
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "blockClass");
+        __publicField$1(this, "blockSelector");
+        __publicField$1(this, "maskTextClass");
+        __publicField$1(this, "maskTextSelector");
+        __publicField$1(this, "inlineStylesheet");
+        __publicField$1(this, "maskInputOptions");
+        __publicField$1(this, "maskTextFn");
+        __publicField$1(this, "maskInputFn");
+        __publicField$1(this, "keepIframeSrcFn");
+        __publicField$1(this, "recordCanvas");
+        __publicField$1(this, "inlineImages");
+        __publicField$1(this, "slimDOMOptions");
+        __publicField$1(this, "dataURLOptions");
+        __publicField$1(this, "doc");
+        __publicField$1(this, "mirror");
+        __publicField$1(this, "iframeManager");
+        __publicField$1(this, "stylesheetManager");
+        __publicField$1(this, "shadowDomManager");
+        __publicField$1(this, "canvasManager");
+        __publicField$1(this, "processedNodeManager");
+        __publicField$1(this, "unattachedDoc");
+        __publicField$1(this, "processMutations", function(mutations) {
             mutations.forEach(_this.processMutation);
             _this.emit();
         });
-        __publicField(this, "emit", function() {
+        __publicField$1(this, "emit", function() {
             if (_this.frozen || _this.locked) {
                 return;
             }
@@ -12762,7 +10802,7 @@ var MutationBuffer = /*#__PURE__*/ function() {
             _this.movedMap = {};
             _this.mutationCb(payload);
         });
-        __publicField(this, "genTextAreaValueMutation", function(textarea) {
+        __publicField$1(this, "genTextAreaValueMutation", function(textarea) {
             var item = _this.attributeMap.get(textarea);
             if (!item) {
                 item = {
@@ -12786,7 +10826,7 @@ var MutationBuffer = /*#__PURE__*/ function() {
                 maskInputFn: _this.maskInputFn
             });
         });
-        __publicField(this, "processMutation", function(m) {
+        __publicField$1(this, "processMutation", function(m) {
             if (isIgnored(m.target, _this.mirror, _this.slimDOMOptions)) {
                 return;
             }
@@ -12931,7 +10971,7 @@ var MutationBuffer = /*#__PURE__*/ function() {
         });
         /**
      * Make sure you check if `n`'s parent is blocked before calling this function
-     * */ __publicField(this, "genAdds", function(n2, target) {
+     * */ __publicField$1(this, "genAdds", function(n2, target) {
             if (_this.processedNodeManager.inOtherBuffer(n2, _this)) return;
             if (_this.addedSet.has(n2) || _this.movedSet.has(n2)) return;
             if (_this.mirror.hasNode(n2)) {
@@ -13777,7 +11817,7 @@ function initFontObserver(param) {
         });
         return fontFace;
     };
-    var restoreHandler = patch(doc.fonts, "add", function(original) {
+    var restoreHandler = patch$2(doc.fonts, "add", function(original) {
         return function(fontFace) {
             setTimeout(callbackWrapper(function() {
                 var p = fontMap.get(fontFace);
@@ -13833,7 +11873,7 @@ function initCustomElementObserver(param) {
     var doc = param.doc, customElementCb = param.customElementCb;
     var win = doc.defaultView;
     if (!win || !win.customElements) return function() {};
-    var restoreHandler = patch(win.customElements, "define", function(original) {
+    var restoreHandler = patch$2(win.customElements, "define", function(original) {
         return function(name, constructor, options) {
             try {
                 customElementCb({
@@ -14060,8 +12100,8 @@ function canMonkeyPatchNestedCSSRule(prop) {
 }
 var CrossOriginIframeMirror = /*#__PURE__*/ function() {
     function CrossOriginIframeMirror(generateIdFn) {
-        __publicField(this, "iframeIdToRemoteIdMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "iframeRemoteIdToIdMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "iframeIdToRemoteIdMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "iframeRemoteIdToIdMap", /* @__PURE__ */ new WeakMap());
         this.generateIdFn = generateIdFn;
     }
     var _proto = CrossOriginIframeMirror.prototype;
@@ -14127,17 +12167,17 @@ var CrossOriginIframeMirror = /*#__PURE__*/ function() {
 }();
 var IframeManager = /*#__PURE__*/ function() {
     function IframeManager(options) {
-        __publicField(this, "iframes", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "crossOriginIframeMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
-        __publicField(this, "crossOriginIframeStyleMirror");
-        __publicField(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "mirror");
-        __publicField(this, "mutationCb");
-        __publicField(this, "wrappedEmit");
-        __publicField(this, "loadListener");
-        __publicField(this, "stylesheetManager");
-        __publicField(this, "recordCrossOriginIframes");
+        __publicField$1(this, "iframes", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "crossOriginIframeMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
+        __publicField$1(this, "crossOriginIframeStyleMirror");
+        __publicField$1(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "mirror");
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "wrappedEmit");
+        __publicField$1(this, "loadListener");
+        __publicField$1(this, "stylesheetManager");
+        __publicField$1(this, "recordCrossOriginIframes");
         this.mutationCb = options.mutationCb;
         this.wrappedEmit = options.wrappedEmit;
         this.stylesheetManager = options.stylesheetManager;
@@ -14384,12 +12424,12 @@ var IframeManager = /*#__PURE__*/ function() {
 }();
 var ShadowDomManager = /*#__PURE__*/ function() {
     function ShadowDomManager(options) {
-        __publicField(this, "shadowDoms", /* @__PURE__ */ new WeakSet());
-        __publicField(this, "mutationCb");
-        __publicField(this, "scrollCb");
-        __publicField(this, "bypassOptions");
-        __publicField(this, "mirror");
-        __publicField(this, "restoreHandlers", []);
+        __publicField$1(this, "shadowDoms", /* @__PURE__ */ new WeakSet());
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "scrollCb");
+        __publicField$1(this, "bypassOptions");
+        __publicField$1(this, "mirror");
+        __publicField$1(this, "restoreHandlers", []);
         this.mutationCb = options.mutationCb;
         this.scrollCb = options.scrollCb;
         this.bypassOptions = options.bypassOptions;
@@ -14440,7 +12480,7 @@ var ShadowDomManager = /*#__PURE__*/ function() {
    * Patch 'attachShadow' to observe newly added shadow doms.
    */ _proto.patchAttachShadow = function patchAttachShadow(element, doc) {
         var manager = this;
-        this.restoreHandlers.push(patch(element.prototype, "attachShadow", function(original) {
+        this.restoreHandlers.push(patch$2(element.prototype, "attachShadow", function(original) {
             return function(option) {
                 var sRoot = original.call(this, option);
                 var shadowRootEl = index.shadowRoot(this);
@@ -14479,26 +12519,6 @@ var encode = function encode(arraybuffer) {
         base64 = base64.substring(0, base64.length - 2) + "==";
     }
     return base64;
-};
-var decode = function decode(base64) {
-    var bufferLength = base64.length * 0.75, len = base64.length, i2, p = 0, encoded1, encoded2, encoded3, encoded4;
-    if (base64[base64.length - 1] === "=") {
-        bufferLength--;
-        if (base64[base64.length - 2] === "=") {
-            bufferLength--;
-        }
-    }
-    var arraybuffer = new ArrayBuffer(bufferLength), bytes = new Uint8Array(arraybuffer);
-    for(i2 = 0; i2 < len; i2 += 4){
-        encoded1 = lookup[base64.charCodeAt(i2)];
-        encoded2 = lookup[base64.charCodeAt(i2 + 1)];
-        encoded3 = lookup[base64.charCodeAt(i2 + 2)];
-        encoded4 = lookup[base64.charCodeAt(i2 + 3)];
-        bytes[p++] = encoded1 << 2 | encoded2 >> 4;
-        bytes[p++] = (encoded2 & 15) << 4 | encoded3 >> 2;
-        bytes[p++] = (encoded3 & 3) << 6 | encoded4 & 63;
-    }
-    return arraybuffer;
 };
 var canvasVarMap = /* @__PURE__ */ new Map();
 function variableListFor$1(ctx, ctor) {
@@ -14626,7 +12646,7 @@ function initCanvas2DMutationObserver(cb, win, blockClass, blockSelector) {
             if (typeof win.CanvasRenderingContext2D.prototype[prop] !== "function") {
                 return "continue";
             }
-            var restoreHandler = patch(win.CanvasRenderingContext2D.prototype, prop, function(original) {
+            var restoreHandler = patch$2(win.CanvasRenderingContext2D.prototype, prop, function(original) {
                 return function() {
                     var _this = this;
                     for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
@@ -14677,7 +12697,7 @@ function getNormalizedContextName(contextType) {
 function initCanvasContextObserver(win, blockClass, blockSelector, setPreserveDrawingBufferToTrue) {
     var handlers = [];
     try {
-        var restoreHandler = patch(win.HTMLCanvasElement.prototype, "getContext", function(original) {
+        var restoreHandler = patch$2(win.HTMLCanvasElement.prototype, "getContext", function(original) {
             return function(contextType) {
                 for(var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++){
                     args[_key - 1] = arguments[_key];
@@ -14732,7 +12752,7 @@ function patchGLPrototype(prototype, type, cb, blockClass, blockSelector, win) {
             if (typeof prototype[prop] !== "function") {
                 return "continue";
             }
-            var restoreHandler = patch(prototype, prop, function(original) {
+            var restoreHandler = patch$2(prototype, prop, function(original) {
                 return function() {
                     for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
                         args[_key] = arguments[_key];
@@ -14821,17 +12841,17 @@ function WorkerWrapper(options) {
 var CanvasManager = /*#__PURE__*/ function() {
     function CanvasManager(options) {
         var _this = this;
-        __publicField(this, "pendingCanvasMutations", /* @__PURE__ */ new Map());
-        __publicField(this, "rafStamps", {
+        __publicField$1(this, "pendingCanvasMutations", /* @__PURE__ */ new Map());
+        __publicField$1(this, "rafStamps", {
             latestId: 0,
             invokeId: null
         });
-        __publicField(this, "mirror");
-        __publicField(this, "mutationCb");
-        __publicField(this, "resetObservers");
-        __publicField(this, "frozen", false);
-        __publicField(this, "locked", false);
-        __publicField(this, "processMutation", function(target, mutation) {
+        __publicField$1(this, "mirror");
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "resetObservers");
+        __publicField$1(this, "frozen", false);
+        __publicField$1(this, "locked", false);
+        __publicField$1(this, "processMutation", function(target, mutation) {
             var newFrame = _this.rafStamps.invokeId && _this.rafStamps.latestId !== _this.rafStamps.invokeId;
             if (newFrame || !_this.rafStamps.invokeId) _this.rafStamps.invokeId = _this.rafStamps.latestId;
             if (!_this.pendingCanvasMutations.has(target)) {
@@ -15044,10 +13064,10 @@ var CanvasManager = /*#__PURE__*/ function() {
 }();
 var StylesheetManager = /*#__PURE__*/ function() {
     function StylesheetManager(options) {
-        __publicField(this, "trackedLinkElements", /* @__PURE__ */ new WeakSet());
-        __publicField(this, "mutationCb");
-        __publicField(this, "adoptedStyleSheetCb");
-        __publicField(this, "styleMirror", new StyleSheetMirror());
+        __publicField$1(this, "trackedLinkElements", /* @__PURE__ */ new WeakSet());
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "adoptedStyleSheetCb");
+        __publicField$1(this, "styleMirror", new StyleSheetMirror());
         this.mutationCb = options.mutationCb;
         this.adoptedStyleSheetCb = options.adoptedStyleSheetCb;
     }
@@ -15109,8 +13129,8 @@ var StylesheetManager = /*#__PURE__*/ function() {
 }();
 var ProcessedNodeManager = /*#__PURE__*/ function() {
     function ProcessedNodeManager() {
-        __publicField(this, "nodeMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "active", false);
+        __publicField$1(this, "nodeMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "active", false);
     }
     var _proto = ProcessedNodeManager.prototype;
     _proto.inOtherBuffer = function inOtherBuffer(node2, thisBuffer) {
@@ -15628,3199 +13648,499 @@ record.takeFullSnapshot = function(isCheckout) {
     takeFullSnapshot$1(isCheckout);
 };
 record.mirror = mirror;
-function mitt$1(n2) {
-    return {
-        all: n2 = n2 || /* @__PURE__ */ new Map(),
-        on: function on(t2, e2) {
-            var i2 = n2.get(t2);
-            i2 ? i2.push(e2) : n2.set(t2, [
-                e2
-            ]);
-        },
-        off: function off(t2, e2) {
-            var i2 = n2.get(t2);
-            i2 && (e2 ? i2.splice(i2.indexOf(e2) >>> 0, 1) : n2.set(t2, []));
-        },
-        emit: function emit(t2, e2) {
-            var i2 = n2.get(t2);
-            i2 && i2.slice().map(function(n3) {
-                n3(e2);
-            }), (i2 = n2.get("*")) && i2.slice().map(function(n3) {
-                n3(t2, e2);
-            });
-        }
-    };
-}
-var mittProxy = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-    __proto__: null,
-    default: mitt$1
-}, Symbol.toStringTag, {
-    value: "Module"
-}));
-function polyfill(w, d) {
-    if (w === void 0) w = window;
-    if (d === void 0) d = document;
-    if ("scrollBehavior" in d.documentElement.style && w.__forceSmoothScrollPolyfill__ !== true) {
-        return;
-    }
-    var Element2 = w.HTMLElement || w.Element;
-    var SCROLL_TIME = 468;
-    var original = {
-        scroll: w.scroll || w.scrollTo,
-        scrollBy: w.scrollBy,
-        elementScroll: Element2.prototype.scroll || scrollElement,
-        scrollIntoView: Element2.prototype.scrollIntoView
-    };
-    var now = w.performance && w.performance.now ? w.performance.now.bind(w.performance) : Date.now;
-    function isMicrosoftBrowser(userAgent) {
-        var userAgentPatterns = [
-            "MSIE ",
-            "Trident/",
-            "Edge/"
-        ];
-        return new RegExp(userAgentPatterns.join("|")).test(userAgent);
-    }
-    var ROUNDING_TOLERANCE = isMicrosoftBrowser(w.navigator.userAgent) ? 1 : 0;
-    function scrollElement(x2, y) {
-        this.scrollLeft = x2;
-        this.scrollTop = y;
-    }
-    function ease(k) {
-        return 0.5 * (1 - Math.cos(Math.PI * k));
-    }
-    function shouldBailOut(firstArg) {
-        if (firstArg === null || (typeof firstArg === "undefined" ? "undefined" : _type_of(firstArg)) !== "object" || firstArg.behavior === void 0 || firstArg.behavior === "auto" || firstArg.behavior === "instant") {
-            return true;
-        }
-        if ((typeof firstArg === "undefined" ? "undefined" : _type_of(firstArg)) === "object" && firstArg.behavior === "smooth") {
-            return false;
-        }
-        throw new TypeError("behavior member of ScrollOptions " + firstArg.behavior + " is not a valid value for enumeration ScrollBehavior.");
-    }
-    function hasScrollableSpace(el, axis) {
-        if (axis === "Y") {
-            return el.clientHeight + ROUNDING_TOLERANCE < el.scrollHeight;
-        }
-        if (axis === "X") {
-            return el.clientWidth + ROUNDING_TOLERANCE < el.scrollWidth;
-        }
-    }
-    function canOverflow(el, axis) {
-        var overflowValue = w.getComputedStyle(el, null)["overflow" + axis];
-        return overflowValue === "auto" || overflowValue === "scroll";
-    }
-    function isScrollable(el) {
-        var isScrollableY = hasScrollableSpace(el, "Y") && canOverflow(el, "Y");
-        var isScrollableX = hasScrollableSpace(el, "X") && canOverflow(el, "X");
-        return isScrollableY || isScrollableX;
-    }
-    function findScrollableParent(el) {
-        while(el !== d.body && isScrollable(el) === false){
-            el = el.parentNode || el.host;
-        }
-        return el;
-    }
-    function step(context) {
-        var time = now();
-        var value;
-        var currentX;
-        var currentY;
-        var elapsed = (time - context.startTime) / SCROLL_TIME;
-        elapsed = elapsed > 1 ? 1 : elapsed;
-        value = ease(elapsed);
-        currentX = context.startX + (context.x - context.startX) * value;
-        currentY = context.startY + (context.y - context.startY) * value;
-        context.method.call(context.scrollable, currentX, currentY);
-        if (currentX !== context.x || currentY !== context.y) {
-            w.requestAnimationFrame(step.bind(w, context));
-        }
-    }
-    function smoothScroll(el, x2, y) {
-        var scrollable;
-        var startX;
-        var startY;
-        var method;
-        var startTime = now();
-        if (el === d.body) {
-            scrollable = w;
-            startX = w.scrollX || w.pageXOffset;
-            startY = w.scrollY || w.pageYOffset;
-            method = original.scroll;
-        } else {
-            scrollable = el;
-            startX = el.scrollLeft;
-            startY = el.scrollTop;
-            method = scrollElement;
-        }
-        step({
-            scrollable: scrollable,
-            method: method,
-            startTime: startTime,
-            startX: startX,
-            startY: startY,
-            x: x2,
-            y: y
-        });
-    }
-    w.scroll = w.scrollTo = function() {
-        if (arguments[0] === void 0) {
-            return;
-        }
-        if (shouldBailOut(arguments[0]) === true) {
-            original.scroll.call(w, arguments[0].left !== void 0 ? arguments[0].left : _type_of(arguments[0]) !== "object" ? arguments[0] : w.scrollX || w.pageXOffset, // use top prop, second argument if present or fallback to scrollY
-            arguments[0].top !== void 0 ? arguments[0].top : arguments[1] !== void 0 ? arguments[1] : w.scrollY || w.pageYOffset);
-            return;
-        }
-        smoothScroll.call(w, d.body, arguments[0].left !== void 0 ? ~~arguments[0].left : w.scrollX || w.pageXOffset, arguments[0].top !== void 0 ? ~~arguments[0].top : w.scrollY || w.pageYOffset);
-    };
-    w.scrollBy = function() {
-        if (arguments[0] === void 0) {
-            return;
-        }
-        if (shouldBailOut(arguments[0])) {
-            original.scrollBy.call(w, arguments[0].left !== void 0 ? arguments[0].left : _type_of(arguments[0]) !== "object" ? arguments[0] : 0, arguments[0].top !== void 0 ? arguments[0].top : arguments[1] !== void 0 ? arguments[1] : 0);
-            return;
-        }
-        smoothScroll.call(w, d.body, ~~arguments[0].left + (w.scrollX || w.pageXOffset), ~~arguments[0].top + (w.scrollY || w.pageYOffset));
-    };
-    Element2.prototype.scroll = Element2.prototype.scrollTo = function() {
-        if (arguments[0] === void 0) {
-            return;
-        }
-        if (shouldBailOut(arguments[0]) === true) {
-            if (typeof arguments[0] === "number" && arguments[1] === void 0) {
-                throw new SyntaxError("Value could not be converted");
-            }
-            original.elementScroll.call(this, // use left prop, first number argument or fallback to scrollLeft
-            arguments[0].left !== void 0 ? ~~arguments[0].left : _type_of(arguments[0]) !== "object" ? ~~arguments[0] : this.scrollLeft, // use top prop, second argument or fallback to scrollTop
-            arguments[0].top !== void 0 ? ~~arguments[0].top : arguments[1] !== void 0 ? ~~arguments[1] : this.scrollTop);
-            return;
-        }
-        var left = arguments[0].left;
-        var top = arguments[0].top;
-        smoothScroll.call(this, this, typeof left === "undefined" ? this.scrollLeft : ~~left, typeof top === "undefined" ? this.scrollTop : ~~top);
-    };
-    Element2.prototype.scrollBy = function() {
-        if (arguments[0] === void 0) {
-            return;
-        }
-        if (shouldBailOut(arguments[0]) === true) {
-            original.elementScroll.call(this, arguments[0].left !== void 0 ? ~~arguments[0].left + this.scrollLeft : ~~arguments[0] + this.scrollLeft, arguments[0].top !== void 0 ? ~~arguments[0].top + this.scrollTop : ~~arguments[1] + this.scrollTop);
-            return;
-        }
-        this.scroll({
-            left: ~~arguments[0].left + this.scrollLeft,
-            top: ~~arguments[0].top + this.scrollTop,
-            behavior: arguments[0].behavior
-        });
-    };
-    Element2.prototype.scrollIntoView = function() {
-        if (shouldBailOut(arguments[0]) === true) {
-            original.scrollIntoView.call(this, arguments[0] === void 0 ? true : arguments[0]);
-            return;
-        }
-        var scrollableParent = findScrollableParent(this);
-        var parentRects = scrollableParent.getBoundingClientRect();
-        var clientRects = this.getBoundingClientRect();
-        if (scrollableParent !== d.body) {
-            smoothScroll.call(this, scrollableParent, scrollableParent.scrollLeft + clientRects.left - parentRects.left, scrollableParent.scrollTop + clientRects.top - parentRects.top);
-            if (w.getComputedStyle(scrollableParent).position !== "fixed") {
-                w.scrollBy({
-                    left: parentRects.left,
-                    top: parentRects.top,
-                    behavior: "smooth"
-                });
-            }
-        } else {
-            w.scrollBy({
-                left: clientRects.left,
-                top: clientRects.top,
-                behavior: "smooth"
-            });
-        }
-    };
-}
-var Timer = /*#__PURE__*/ function() {
-    function Timer(actions, config) {
-        if (actions === void 0) actions = [];
-        __publicField(this, "timeOffset", 0);
-        __publicField(this, "speed");
-        __publicField(this, "actions");
-        __publicField(this, "raf", null);
-        __publicField(this, "lastTimestamp");
-        this.actions = actions;
-        this.speed = config.speed;
-    }
-    var _proto = Timer.prototype;
-    /**
-   * Add an action, possibly after the timer starts.
-   */ _proto.addAction = function addAction(action) {
-        var rafWasActive = this.raf === true;
-        if (!this.actions.length || this.actions[this.actions.length - 1].delay <= action.delay) {
-            this.actions.push(action);
-        } else {
-            var index2 = this.findActionIndex(action);
-            this.actions.splice(index2, 0, action);
-        }
-        if (rafWasActive) {
-            this.raf = requestAnimationFrame(this.rafCheck.bind(this));
-        }
-    };
-    _proto.start = function start() {
-        this.timeOffset = 0;
-        this.lastTimestamp = performance.now();
-        this.raf = requestAnimationFrame(this.rafCheck.bind(this));
-    };
-    _proto.rafCheck = function rafCheck() {
-        var time = performance.now();
-        this.timeOffset += (time - this.lastTimestamp) * this.speed;
-        this.lastTimestamp = time;
-        while(this.actions.length){
-            var action = this.actions[0];
-            if (this.timeOffset >= action.delay) {
-                this.actions.shift();
-                action.doAction();
-            } else {
-                break;
-            }
-        }
-        if (this.actions.length > 0) {
-            this.raf = requestAnimationFrame(this.rafCheck.bind(this));
-        } else {
-            this.raf = true;
-        }
-    };
-    _proto.clear = function clear() {
-        if (this.raf) {
-            if (this.raf !== true) {
-                cancelAnimationFrame(this.raf);
-            }
-            this.raf = null;
-        }
-        this.actions.length = 0;
-    };
-    _proto.setSpeed = function setSpeed(speed) {
-        this.speed = speed;
-    };
-    _proto.isActive = function isActive() {
-        return this.raf !== null;
-    };
-    _proto.findActionIndex = function findActionIndex(action) {
-        var start = 0;
-        var end = this.actions.length - 1;
-        while(start <= end){
-            var mid = Math.floor((start + end) / 2);
-            if (this.actions[mid].delay < action.delay) {
-                start = mid + 1;
-            } else if (this.actions[mid].delay > action.delay) {
-                end = mid - 1;
-            } else {
-                return mid + 1;
-            }
-        }
-        return start;
-    };
-    return Timer;
-}();
-function addDelay(event, baselineTime) {
-    if (event.type === EventType.IncrementalSnapshot && event.data.source === IncrementalSource.MouseMove && event.data.positions && event.data.positions.length) {
-        var firstOffset = event.data.positions[0].timeOffset;
-        var firstTimestamp = event.timestamp + firstOffset;
-        event.delay = firstTimestamp - baselineTime;
-        return firstTimestamp - baselineTime;
-    }
-    event.delay = event.timestamp - baselineTime;
-    return event.delay;
-}
-/*! *****************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */ function t(t2, n2) {
-    var e2 = "function" == typeof Symbol && t2[Symbol.iterator];
-    if (!e2) return t2;
-    var r2, o2, i2 = e2.call(t2), a2 = [];
-    try {
-        for(; (void 0 === n2 || n2-- > 0) && !(r2 = i2.next()).done;)a2.push(r2.value);
-    } catch (t3) {
-        o2 = {
-            error: t3
-        };
-    } finally{
-        try {
-            r2 && !r2.done && (e2 = i2.return) && e2.call(i2);
-        } finally{
-            if (o2) throw o2.error;
-        }
-    }
-    return a2;
-}
 var n;
 !function(t2) {
     t2[t2.NotStarted = 0] = "NotStarted", t2[t2.Running = 1] = "Running", t2[t2.Stopped = 2] = "Stopped";
 }(n || (n = {}));
-var e = {
-    type: "xstate.init"
+record.addCustomEvent;
+record.freezePage;
+record.takeFullSnapshot;
+var __defProp = Object.defineProperty;
+var __defNormalProp = function(obj, key, value) {
+    return key in obj ? __defProp(obj, key, {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: value
+    }) : obj[key] = value;
 };
-function r(t2) {
-    return void 0 === t2 ? [] : [].concat(t2);
-}
-function o(t2) {
-    return {
-        type: "xstate.assign",
-        assignment: t2
-    };
-}
-function i(t2, n2) {
-    return "string" == typeof (t2 = "string" == typeof t2 && n2 && n2[t2] ? n2[t2] : t2) ? {
-        type: t2
-    } : "function" == typeof t2 ? {
-        type: t2.name,
-        exec: t2
-    } : t2;
-}
-function a(t2) {
-    return function(n2) {
-        return t2 === n2;
-    };
-}
-function u(t2) {
-    return "string" == typeof t2 ? {
-        type: t2
-    } : t2;
-}
-function c(t2, n2) {
-    return {
-        value: t2,
-        context: n2,
-        actions: [],
-        changed: false,
-        matches: a(t2)
-    };
-}
-function f(t2, n2, e2) {
-    var r2 = n2, o2 = false;
-    return [
-        t2.filter(function(t3) {
-            if ("xstate.assign" === t3.type) {
-                o2 = true;
-                var n3 = Object.assign({}, r2);
-                return "function" == typeof t3.assignment ? n3 = t3.assignment(r2, e2) : Object.keys(t3.assignment).forEach(function(o3) {
-                    n3[o3] = "function" == typeof t3.assignment[o3] ? t3.assignment[o3](r2, e2) : t3.assignment[o3];
-                }), r2 = n3, false;
-            }
-            return true;
-        }),
-        r2,
-        o2
-    ];
-}
-function s(n2, o2) {
-    void 0 === o2 && (o2 = {});
-    var s2 = t(f(r(n2.states[n2.initial].entry).map(function(t2) {
-        return i(t2, o2.actions);
-    }), n2.context, e), 2), l2 = s2[0], v2 = s2[1], y = {
-        config: n2,
-        _options: o2,
-        initialState: {
-            value: n2.initial,
-            actions: l2,
-            context: v2,
-            matches: a(n2.initial)
-        },
-        transition: function transition(e2, o3) {
-            var s3, l3, v3 = "string" == typeof e2 ? {
-                value: e2,
-                context: n2.context
-            } : e2, p = v3.value, g = v3.context, d = u(o3), x2 = n2.states[p];
-            if (x2.on) {
-                var m = r(x2.on[d.type]);
-                try {
-                    for(var h = function(t2) {
-                        var n3 = "function" == typeof Symbol && Symbol.iterator, e3 = n3 && t2[n3], r2 = 0;
-                        if (e3) return e3.call(t2);
-                        if (t2 && "number" == typeof t2.length) return {
-                            next: function next() {
-                                return t2 && r2 >= t2.length && (t2 = void 0), {
-                                    value: t2 && t2[r2++],
-                                    done: !t2
-                                };
-                            }
-                        };
-                        throw new TypeError(n3 ? "Object is not iterable." : "Symbol.iterator is not defined.");
-                    }(m), b = h.next(); !b.done; b = h.next()){
-                        var S = b.value;
-                        if (void 0 === S) return c(p, g);
-                        var w = "string" == typeof S ? {
-                            target: S
-                        } : S, j = w.target, E = w.actions, R = void 0 === E ? [] : E, N = w.cond, O = void 0 === N ? function O() {
-                            return true;
-                        } : N, _ = void 0 === j, k = null != j ? j : p, T = n2.states[k];
-                        if (O(g, d)) {
-                            var q = t(f((_ ? r(R) : [].concat(x2.exit, R, T.entry).filter(function(t2) {
-                                return t2;
-                            })).map(function(t2) {
-                                return i(t2, y._options.actions);
-                            }), g, d), 3), z = q[0], A = q[1], B = q[2], C = null != j ? j : p;
-                            return {
-                                value: C,
-                                context: A,
-                                actions: z,
-                                changed: j !== p || z.length > 0 || B,
-                                matches: a(C)
-                            };
-                        }
-                    }
-                } catch (t2) {
-                    s3 = {
-                        error: t2
-                    };
-                } finally{
-                    try {
-                        b && !b.done && (l3 = h.return) && l3.call(h);
-                    } finally{
-                        if (s3) throw s3.error;
-                    }
-                }
-            }
-            return c(p, g);
-        }
-    };
-    return y;
-}
-var l = function l(t2, n2) {
-    return t2.actions.forEach(function(e2) {
-        var r2 = e2.exec;
-        return r2 && r2(t2.context, n2);
-    });
+var __publicField = function(obj, key, value) {
+    return __defNormalProp(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
 };
-function v(t2) {
-    var r2 = t2.initialState, o2 = n.NotStarted, i2 = /* @__PURE__ */ new Set(), c2 = {
-        _machine: t2,
-        send: function send(e2) {
-            o2 === n.Running && (r2 = t2.transition(r2, e2), l(r2, u(e2)), i2.forEach(function(t3) {
-                return t3(r2);
-            }));
-        },
-        subscribe: function subscribe(t3) {
-            return i2.add(t3), t3(r2), {
-                unsubscribe: function unsubscribe() {
-                    return i2.delete(t3);
-                }
-            };
-        },
-        start: function start(i3) {
-            if (i3) {
-                var u2 = "object" == (typeof i3 === "undefined" ? "undefined" : _type_of(i3)) ? i3 : {
-                    context: t2.config.context,
-                    value: i3
-                };
-                r2 = {
-                    value: u2.value,
-                    actions: [],
-                    context: u2.context,
-                    matches: a(u2.value)
-                };
-            }
-            return o2 = n.Running, l(r2, e), c2;
-        },
-        stop: function stop() {
-            return o2 = n.Stopped, i2.clear(), c2;
-        },
-        get state () {
-            return r2;
-        },
-        get status () {
-            return o2;
-        }
-    };
-    return c2;
-}
-function discardPriorSnapshots(events, baselineTime) {
-    for(var idx = events.length - 1; idx >= 0; idx--){
-        var event = events[idx];
-        if (event.type === EventType.Meta) {
-            if (event.timestamp <= baselineTime) {
-                return events.slice(idx);
-            }
-        }
-    }
-    return events;
-}
-function createPlayerService(context, param) {
-    var getCastFn = param.getCastFn, applyEventsSynchronously = param.applyEventsSynchronously, emitter = param.emitter;
-    var playerMachine = s({
-        id: "player",
-        context: context,
-        initial: "paused",
-        states: {
-            playing: {
-                on: {
-                    PAUSE: {
-                        target: "paused",
-                        actions: [
-                            "pause"
-                        ]
-                    },
-                    CAST_EVENT: {
-                        target: "playing",
-                        actions: "castEvent"
-                    },
-                    END: {
-                        target: "paused",
-                        actions: [
-                            "resetLastPlayedEvent",
-                            "pause"
-                        ]
-                    },
-                    ADD_EVENT: {
-                        target: "playing",
-                        actions: [
-                            "addEvent"
-                        ]
-                    }
-                }
-            },
-            paused: {
-                on: {
-                    PLAY: {
-                        target: "playing",
-                        actions: [
-                            "recordTimeOffset",
-                            "play"
-                        ]
-                    },
-                    CAST_EVENT: {
-                        target: "paused",
-                        actions: "castEvent"
-                    },
-                    TO_LIVE: {
-                        target: "live",
-                        actions: [
-                            "startLive"
-                        ]
-                    },
-                    ADD_EVENT: {
-                        target: "paused",
-                        actions: [
-                            "addEvent"
-                        ]
-                    }
-                }
-            },
-            live: {
-                on: {
-                    ADD_EVENT: {
-                        target: "live",
-                        actions: [
-                            "addEvent"
-                        ]
-                    },
-                    CAST_EVENT: {
-                        target: "live",
-                        actions: [
-                            "castEvent"
-                        ]
-                    }
-                }
-            }
-        }
-    }, {
-        actions: {
-            castEvent: o({
-                lastPlayedEvent: function(ctx, event) {
-                    if (event.type === "CAST_EVENT") {
-                        return event.payload.event;
-                    }
-                    return ctx.lastPlayedEvent;
-                }
-            }),
-            recordTimeOffset: o(function(ctx, event) {
-                var timeOffset = ctx.timeOffset;
-                if ("payload" in event && "timeOffset" in event.payload) {
-                    timeOffset = event.payload.timeOffset;
-                }
-                return _extends({}, ctx, {
-                    timeOffset: timeOffset,
-                    baselineTime: ctx.events[0].timestamp + timeOffset
-                });
-            }),
-            play: function play(ctx) {
-                var _loop = function() {
-                    var event = _step1.value;
-                    if (lastPlayedTimestamp && lastPlayedTimestamp < baselineTime && (event.timestamp <= lastPlayedTimestamp || event === lastPlayedEvent)) {
-                        return "continue";
-                    }
-                    if (event.timestamp < baselineTime) {
-                        syncEvents.push(event);
-                    } else {
-                        var castFn = getCastFn(event, false);
-                        timer.addAction({
-                            doAction: function() {
-                                castFn();
-                            },
-                            delay: event.delay
-                        });
-                    }
-                };
-                var _a2;
-                var timer = ctx.timer, events = ctx.events, baselineTime = ctx.baselineTime, lastPlayedEvent = ctx.lastPlayedEvent;
-                timer.clear();
-                for(var _iterator = _create_for_of_iterator_helper_loose(events), _step; !(_step = _iterator()).done;){
-                    var event = _step.value;
-                    addDelay(event, baselineTime);
-                }
-                var neededEvents = discardPriorSnapshots(events, baselineTime);
-                var lastPlayedTimestamp = lastPlayedEvent == null ? void 0 : lastPlayedEvent.timestamp;
-                if ((lastPlayedEvent == null ? void 0 : lastPlayedEvent.type) === EventType.IncrementalSnapshot && lastPlayedEvent.data.source === IncrementalSource.MouseMove) {
-                    lastPlayedTimestamp = lastPlayedEvent.timestamp + ((_a2 = lastPlayedEvent.data.positions[0]) == null ? void 0 : _a2.timeOffset);
-                }
-                if (baselineTime < (lastPlayedTimestamp || 0)) {
-                    emitter.emit(ReplayerEvents.PlayBack);
-                }
-                var syncEvents = new Array();
-                for(var _iterator1 = _create_for_of_iterator_helper_loose(neededEvents), _step1; !(_step1 = _iterator1()).done;)_loop();
-                applyEventsSynchronously(syncEvents);
-                emitter.emit(ReplayerEvents.Flush);
-                timer.start();
-            },
-            pause: function pause(ctx) {
-                ctx.timer.clear();
-            },
-            resetLastPlayedEvent: o(function(ctx) {
-                return _extends({}, ctx, {
-                    lastPlayedEvent: null
-                });
-            }),
-            startLive: o({
-                baselineTime: function(ctx, event) {
-                    ctx.timer.start();
-                    if (event.type === "TO_LIVE" && event.payload.baselineTime) {
-                        return event.payload.baselineTime;
-                    }
-                    return Date.now();
-                }
-            }),
-            addEvent: o(function(ctx, machineEvent) {
-                var baselineTime = ctx.baselineTime, timer = ctx.timer, events = ctx.events;
-                if (machineEvent.type === "ADD_EVENT") {
-                    var event = machineEvent.payload.event;
-                    addDelay(event, baselineTime);
-                    var end = events.length - 1;
-                    if (!events[end] || events[end].timestamp <= event.timestamp) {
-                        events.push(event);
-                    } else {
-                        var insertionIndex = -1;
-                        var start = 0;
-                        while(start <= end){
-                            var mid = Math.floor((start + end) / 2);
-                            if (events[mid].timestamp <= event.timestamp) {
-                                start = mid + 1;
-                            } else {
-                                end = mid - 1;
-                            }
-                        }
-                        if (insertionIndex === -1) {
-                            insertionIndex = start;
-                        }
-                        events.splice(insertionIndex, 0, event);
-                    }
-                    var isSync = event.timestamp < baselineTime;
-                    var castFn = getCastFn(event, isSync);
-                    if (isSync) {
-                        castFn();
-                    } else if (timer.isActive()) {
-                        timer.addAction({
-                            doAction: function() {
-                                castFn();
-                            },
-                            delay: event.delay
-                        });
-                    }
-                }
-                return _extends({}, ctx, {
-                    events: events
-                });
-            })
-        }
-    });
-    return v(playerMachine);
-}
-function createSpeedService(context) {
-    var speedMachine = s({
-        id: "speed",
-        context: context,
-        initial: "normal",
-        states: {
-            normal: {
-                on: {
-                    FAST_FORWARD: {
-                        target: "skipping",
-                        actions: [
-                            "recordSpeed",
-                            "setSpeed"
-                        ]
-                    },
-                    SET_SPEED: {
-                        target: "normal",
-                        actions: [
-                            "setSpeed"
-                        ]
-                    }
-                }
-            },
-            skipping: {
-                on: {
-                    BACK_TO_NORMAL: {
-                        target: "normal",
-                        actions: [
-                            "restoreSpeed"
-                        ]
-                    },
-                    SET_SPEED: {
-                        target: "normal",
-                        actions: [
-                            "setSpeed"
-                        ]
-                    }
-                }
-            }
-        }
-    }, {
-        actions: {
-            setSpeed: function(ctx, event) {
-                if ("payload" in event) {
-                    ctx.timer.setSpeed(event.payload.speed);
-                }
-            },
-            recordSpeed: o({
-                normalSpeed: function(ctx) {
-                    return ctx.timer.speed;
-                }
-            }),
-            restoreSpeed: function(ctx) {
-                ctx.timer.setSpeed(ctx.normalSpeed);
-            }
-        }
-    });
-    return v(speedMachine);
-}
-var rules = function(blockClass) {
-    return [
-        "." + blockClass + " { background: currentColor }",
-        "noscript { display: none !important; }"
-    ];
-};
-var webGLVarMap = /* @__PURE__ */ new Map();
-function variableListFor(ctx, ctor) {
-    var contextMap = webGLVarMap.get(ctx);
-    if (!contextMap) {
-        contextMap = /* @__PURE__ */ new Map();
-        webGLVarMap.set(ctx, contextMap);
-    }
-    if (!contextMap.has(ctor)) {
-        contextMap.set(ctor, []);
-    }
-    return contextMap.get(ctor);
-}
-function deserializeArg(imageMap, ctx, preload) {
-    return /*#__PURE__*/ _async_to_generator(function(arg) {
-        var args, name, index2, name1, args1, ctor, _tmp, _, _1, image, image2, blobContents, blob2, result2;
-        return _ts_generator(this, function(_state) {
-            switch(_state.label){
-                case 0:
-                    if (!(arg && (typeof arg === "undefined" ? "undefined" : _type_of(arg)) === "object" && "rr_type" in arg)) return [
-                        3,
-                        11
-                    ];
-                    if (preload) preload.isUnchanged = false;
-                    if (!(arg.rr_type === "ImageBitmap" && "args" in arg)) return [
-                        3,
-                        3
-                    ];
-                    return [
-                        4,
-                        deserializeArg(imageMap, ctx, preload)(arg.args)
-                    ];
-                case 1:
-                    args = _state.sent();
-                    return [
-                        4,
-                        createImageBitmap.apply(null, args)
-                    ];
-                case 2:
-                    return [
-                        2,
-                        _state.sent()
-                    ];
-                case 3:
-                    if (!("index" in arg)) return [
-                        3,
-                        4
-                    ];
-                    if (preload || ctx === null) return [
-                        2,
-                        arg
-                    ];
-                    name = arg.rr_type, index2 = arg.index;
-                    return [
-                        2,
-                        variableListFor(ctx, name)[index2]
-                    ];
-                case 4:
-                    if (!("args" in arg)) return [
-                        3,
-                        6
-                    ];
-                    name1 = arg.rr_type, args1 = arg.args;
-                    ctor = window[name1];
-                    _tmp = [
-                        ctor
-                    ];
-                    _1 = (_ = []).concat;
-                    return [
-                        4,
-                        Promise.all(args1.map(deserializeArg(imageMap, ctx, preload)))
-                    ];
-                case 5:
-                    return [
-                        2,
-                        _construct.apply(void 0, _tmp.concat([
-                            _1.apply(_, [
-                                _state.sent()
-                            ])
-                        ]))
-                    ];
-                case 6:
-                    if (!("base64" in arg)) return [
-                        3,
-                        7
-                    ];
-                    return [
-                        2,
-                        decode(arg.base64)
-                    ];
-                case 7:
-                    if (!("src" in arg)) return [
-                        3,
-                        8
-                    ];
-                    image = imageMap.get(arg.src);
-                    if (image) {
-                        return [
-                            2,
-                            image
-                        ];
-                    } else {
-                        image2 = new Image();
-                        image2.src = arg.src;
-                        imageMap.set(arg.src, image2);
-                        return [
-                            2,
-                            image2
-                        ];
-                    }
-                case 8:
-                    if (!("data" in arg && arg.rr_type === "Blob")) return [
-                        3,
-                        10
-                    ];
-                    return [
-                        4,
-                        Promise.all(arg.data.map(deserializeArg(imageMap, ctx, preload)))
-                    ];
-                case 9:
-                    blobContents = _state.sent();
-                    blob2 = new Blob(blobContents, {
-                        type: arg.type
-                    });
-                    return [
-                        2,
-                        blob2
-                    ];
-                case 10:
-                    return [
-                        3,
-                        13
-                    ];
-                case 11:
-                    if (!Array.isArray(arg)) return [
-                        3,
-                        13
-                    ];
-                    return [
-                        4,
-                        Promise.all(arg.map(deserializeArg(imageMap, ctx, preload)))
-                    ];
-                case 12:
-                    result2 = _state.sent();
-                    return [
-                        2,
-                        result2
-                    ];
-                case 13:
-                    return [
-                        2,
-                        arg
-                    ];
-            }
-        });
-    });
-}
-function getContext(target, type) {
+function patch(source, name, replacement) {
     try {
-        if (type === CanvasContext.WebGL) {
-            return target.getContext("webgl") || target.getContext("experimental-webgl");
+        if (!(name in source)) {
+            return function() {};
         }
-        return target.getContext("webgl2");
-    } catch (e2) {
-        return null;
+        var original = source[name];
+        var wrapped = replacement(original);
+        if (typeof wrapped === "function") {
+            wrapped.prototype = wrapped.prototype || {};
+            Object.defineProperties(wrapped, {
+                __rrweb_original__: {
+                    enumerable: false,
+                    value: original
+                }
+            });
+        }
+        source[name] = wrapped;
+        return function() {
+            source[name] = original;
+        };
+    } catch (e) {
+        return function() {};
     }
 }
-var WebGLVariableConstructorsNames = [
-    "WebGLActiveInfo",
-    "WebGLBuffer",
-    "WebGLFramebuffer",
-    "WebGLProgram",
-    "WebGLRenderbuffer",
-    "WebGLShader",
-    "WebGLShaderPrecisionFormat",
-    "WebGLTexture",
-    "WebGLUniformLocation",
-    "WebGLVertexArrayObject"
-];
-function saveToWebGLVarMap(ctx, result2) {
-    if (!(result2 == null ? void 0 : result2.constructor)) return;
-    var name = result2.constructor.name;
-    if (!WebGLVariableConstructorsNames.includes(name)) return;
-    var variables = variableListFor(ctx, name);
-    if (!variables.includes(result2)) variables.push(result2);
-}
-function webglMutation(_) {
-    return _webglMutation.apply(this, arguments);
-}
-function _webglMutation() {
-    _webglMutation = _async_to_generator(function(param) {
-        var mutation, target, type, imageMap, errorHandler2, ctx, original, args, result2, error;
-        return _ts_generator(this, function(_state) {
-            switch(_state.label){
-                case 0:
-                    mutation = param.mutation, target = param.target, type = param.type, imageMap = param.imageMap, errorHandler2 = param.errorHandler;
-                    _state.label = 1;
-                case 1:
-                    _state.trys.push([
-                        1,
-                        3,
-                        ,
-                        4
-                    ]);
-                    ctx = getContext(target, type);
-                    if (!ctx) return [
-                        2
-                    ];
-                    if (mutation.setter) {
-                        ctx[mutation.property] = mutation.args[0];
-                        return [
-                            2
-                        ];
-                    }
-                    original = ctx[mutation.property];
-                    return [
-                        4,
-                        Promise.all(mutation.args.map(deserializeArg(imageMap, ctx)))
-                    ];
-                case 2:
-                    args = _state.sent();
-                    result2 = original.apply(ctx, args);
-                    saveToWebGLVarMap(ctx, result2);
-                    return [
-                        3,
-                        4
-                    ];
-                case 3:
-                    error = _state.sent();
-                    errorHandler2(mutation, error);
-                    return [
-                        3,
-                        4
-                    ];
-                case 4:
-                    return [
-                        2
-                    ];
-            }
-        });
-    });
-    return _webglMutation.apply(this, arguments);
-}
-function canvasMutation$1(_) {
-    return _canvasMutation$1.apply(this, arguments);
-}
-function _canvasMutation$1() {
-    _canvasMutation$1 = _async_to_generator(function(param) {
-        var event, mutations, target, imageMap, errorHandler2, ctx, mutationArgsPromises, args;
-        return _ts_generator(this, function(_state) {
-            switch(_state.label){
-                case 0:
-                    event = param.event, mutations = param.mutations, target = param.target, imageMap = param.imageMap, errorHandler2 = param.errorHandler;
-                    ctx = target.getContext("2d");
-                    if (!ctx) {
-                        errorHandler2(mutations[0], new Error("Canvas context is null"));
-                        return [
-                            2
-                        ];
-                    }
-                    mutationArgsPromises = mutations.map(/*#__PURE__*/ _async_to_generator(function(mutation) {
-                        return _ts_generator(this, function(_state) {
-                            return [
-                                2,
-                                Promise.all(mutation.args.map(deserializeArg(imageMap, ctx)))
-                            ];
-                        });
-                    }));
-                    return [
-                        4,
-                        Promise.all(mutationArgsPromises)
-                    ];
-                case 1:
-                    args = _state.sent();
-                    args.forEach(function(args2, index2) {
-                        var mutation = mutations[index2];
-                        try {
-                            if (mutation.setter) {
-                                ctx[mutation.property] = mutation.args[0];
-                                return;
-                            }
-                            var original = ctx[mutation.property];
-                            if (mutation.property === "drawImage" && typeof mutation.args[0] === "string") {
-                                imageMap.get(event);
-                                original.apply(ctx, mutation.args);
-                            } else {
-                                original.apply(ctx, args2);
-                            }
-                        } catch (error) {
-                            errorHandler2(mutation, error);
-                        }
-                        return;
-                    });
-                    return [
-                        2
-                    ];
-            }
-        });
-    });
-    return _canvasMutation$1.apply(this, arguments);
-}
-function canvasMutation(_) {
-    return _canvasMutation.apply(this, arguments);
-}
-function _canvasMutation() {
-    _canvasMutation = _async_to_generator(function(param) {
-        var event, mutation, target, imageMap, canvasEventMap, errorHandler2, precomputedMutation, commands, i2, command, error;
-        return _ts_generator(this, function(_state) {
-            switch(_state.label){
-                case 0:
-                    event = param.event, mutation = param.mutation, target = param.target, imageMap = param.imageMap, canvasEventMap = param.canvasEventMap, errorHandler2 = param.errorHandler;
-                    _state.label = 1;
-                case 1:
-                    _state.trys.push([
-                        1,
-                        8,
-                        ,
-                        9
-                    ]);
-                    precomputedMutation = canvasEventMap.get(event) || mutation;
-                    commands = "commands" in precomputedMutation ? precomputedMutation.commands : [
-                        precomputedMutation
-                    ];
-                    if (![
-                        CanvasContext.WebGL,
-                        CanvasContext.WebGL2
-                    ].includes(mutation.type)) return [
-                        3,
-                        6
-                    ];
-                    i2 = 0;
-                    _state.label = 2;
-                case 2:
-                    if (!(i2 < commands.length)) return [
-                        3,
-                        5
-                    ];
-                    command = commands[i2];
-                    return [
-                        4,
-                        webglMutation({
-                            mutation: command,
-                            type: mutation.type,
-                            target: target,
-                            imageMap: imageMap,
-                            errorHandler: errorHandler2
-                        })
-                    ];
-                case 3:
-                    _state.sent();
-                    _state.label = 4;
-                case 4:
-                    i2++;
-                    return [
-                        3,
-                        2
-                    ];
-                case 5:
-                    return [
-                        2
-                    ];
-                case 6:
-                    return [
-                        4,
-                        canvasMutation$1({
-                            event: event,
-                            mutations: commands,
-                            target: target,
-                            imageMap: imageMap,
-                            errorHandler: errorHandler2
-                        })
-                    ];
-                case 7:
-                    _state.sent();
-                    return [
-                        3,
-                        9
-                    ];
-                case 8:
-                    error = _state.sent();
-                    errorHandler2(mutation, error);
-                    return [
-                        3,
-                        9
-                    ];
-                case 9:
-                    return [
-                        2
-                    ];
-            }
-        });
-    });
-    return _canvasMutation.apply(this, arguments);
-}
-var MediaManager = /*#__PURE__*/ function() {
-    function MediaManager(options) {
-        var _this = this;
-        __publicField(this, "mediaMap", /* @__PURE__ */ new Map());
-        __publicField(this, "warn");
-        __publicField(this, "service");
-        __publicField(this, "speedService");
-        __publicField(this, "emitter");
-        __publicField(this, "getCurrentTime");
-        __publicField(this, "metadataCallbackMap", /* @__PURE__ */ new Map());
-        this.warn = options.warn;
-        this.service = options.service;
-        this.speedService = options.speedService;
-        this.emitter = options.emitter;
-        this.getCurrentTime = options.getCurrentTime;
-        this.emitter.on(ReplayerEvents.Start, this.start.bind(this));
-        this.emitter.on(ReplayerEvents.SkipStart, this.start.bind(this));
-        this.emitter.on(ReplayerEvents.Pause, this.pause.bind(this));
-        this.emitter.on(ReplayerEvents.Finish, this.pause.bind(this));
-        this.speedService.subscribe(function() {
-            _this.syncAllMediaElements();
-        });
+var StackFrame = /*#__PURE__*/ function() {
+    function StackFrame(obj) {
+        __publicField(this, "fileName");
+        __publicField(this, "functionName");
+        __publicField(this, "lineNumber");
+        __publicField(this, "columnNumber");
+        this.fileName = obj.fileName || "";
+        this.functionName = obj.functionName || "";
+        this.lineNumber = obj.lineNumber;
+        this.columnNumber = obj.columnNumber;
     }
-    var _proto = MediaManager.prototype;
-    _proto.syncAllMediaElements = function syncAllMediaElements(options) {
-        var _this = this;
-        if (options === void 0) options = {
-            pause: false
-        };
-        this.mediaMap.forEach(function(_mediaState, target) {
-            _this.syncTargetWithState(target);
-            if (options.pause) {
-                target.pause();
-            }
-        });
+    var _proto = StackFrame.prototype;
+    _proto.toString = function toString() {
+        var lineNumber = this.lineNumber || "";
+        var columnNumber = this.columnNumber || "";
+        if (this.functionName) return this.functionName + " (" + this.fileName + ":" + lineNumber + ":" + columnNumber + ")";
+        return this.fileName + ":" + lineNumber + ":" + columnNumber;
     };
-    _proto.start = function start() {
-        this.syncAllMediaElements();
-    };
-    _proto.pause = function pause() {
-        this.syncAllMediaElements({
-            pause: true
-        });
-    };
-    _proto.seekTo = function seekTo(param) {
-        var time = param.time, target = param.target, mediaState = param.mediaState;
-        if (mediaState.isPlaying) {
-            var differenceBetweenCurrentTimeAndMediaMutationTimestamp = time - mediaState.lastInteractionTimeOffset;
-            var mediaPlaybackOffset = differenceBetweenCurrentTimeAndMediaMutationTimestamp / 1e3 * mediaState.playbackRate;
-            var duration = "duration" in target && target.duration;
-            if (Number.isNaN(duration)) {
-                this.waitForMetadata(target);
-                return;
-            }
-            var seekToTime = mediaState.currentTimeAtLastInteraction + mediaPlaybackOffset;
-            if (target.loop && // RRMediaElement doesn't have a duration property
-            duration !== false) {
-                seekToTime = seekToTime % duration;
-            }
-            target.currentTime = seekToTime;
+    return StackFrame;
+}();
+var FIREFOX_SAFARI_STACK_REGEXP = /(^|@)\S+:\d+/;
+var CHROME_IE_STACK_REGEXP = /^\s*at .*(\S+:\d+|\(native\))/m;
+var SAFARI_NATIVE_CODE_REGEXP = /^(eval@)?(\[native code])?$/;
+var ErrorStackParser = {
+    /**
+   * Given an Error object, extract the most information from it.
+   */ parse: function parse(error) {
+        if (!error) {
+            return [];
+        }
+        if (// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        typeof error.stacktrace !== "undefined" || // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        typeof error["opera#sourceloc"] !== "undefined") {
+            return this.parseOpera(error);
+        } else if (error.stack && error.stack.match(CHROME_IE_STACK_REGEXP)) {
+            return this.parseV8OrIE(error);
+        } else if (error.stack) {
+            return this.parseFFOrSafari(error);
         } else {
-            target.pause();
-            target.currentTime = mediaState.currentTimeAtLastInteraction;
+            console.warn("[console-record-plugin]: Failed to parse error object:", error);
+            return [];
         }
-    };
-    _proto.waitForMetadata = function waitForMetadata(target) {
-        var _this = this;
-        if (this.metadataCallbackMap.has(target)) return;
-        if (!("addEventListener" in target)) return;
-        var onLoadedMetadata = function() {
-            _this.metadataCallbackMap.delete(target);
-            var mediaState = _this.mediaMap.get(target);
-            if (!mediaState) return;
-            _this.seekTo({
-                time: _this.getCurrentTime(),
-                target: target,
-                mediaState: mediaState
-            });
-        };
-        this.metadataCallbackMap.set(target, onLoadedMetadata);
-        target.addEventListener("loadedmetadata", onLoadedMetadata, {
-            once: true
-        });
-    };
-    _proto.getMediaStateFromMutation = function getMediaStateFromMutation(param) {
-        var target = param.target, timeOffset = param.timeOffset, mutation = param.mutation;
-        var lastState = this.mediaMap.get(target);
-        var type = mutation.type, playbackRate = mutation.playbackRate, currentTime = mutation.currentTime, muted = mutation.muted, volume = mutation.volume, loop = mutation.loop;
-        var isPlaying = type === MediaInteractions.Play || type !== MediaInteractions.Pause && ((lastState == null ? void 0 : lastState.isPlaying) || target.getAttribute("autoplay") !== null);
-        var _ref, _ref1, _ref2, _ref3, _ref4;
-        var mediaState = {
-            isPlaying: isPlaying,
-            currentTimeAtLastInteraction: (_ref = currentTime != null ? currentTime : lastState == null ? void 0 : lastState.currentTimeAtLastInteraction) != null ? _ref : 0,
-            lastInteractionTimeOffset: timeOffset,
-            playbackRate: (_ref1 = playbackRate != null ? playbackRate : lastState == null ? void 0 : lastState.playbackRate) != null ? _ref1 : 1,
-            volume: (_ref2 = volume != null ? volume : lastState == null ? void 0 : lastState.volume) != null ? _ref2 : 1,
-            muted: (_ref3 = muted != null ? muted : lastState == null ? void 0 : lastState.muted) != null ? _ref3 : target.getAttribute("muted") === null,
-            loop: (_ref4 = loop != null ? loop : lastState == null ? void 0 : lastState.loop) != null ? _ref4 : target.getAttribute("loop") === null
-        };
-        return mediaState;
-    };
-    _proto.syncTargetWithState = function syncTargetWithState(target) {
-        var mediaState = this.mediaMap.get(target);
-        if (!mediaState) return;
-        var muted = mediaState.muted, loop = mediaState.loop, volume = mediaState.volume, isPlaying = mediaState.isPlaying;
-        var playerIsPaused = this.service.state.matches("paused");
-        var playbackRate = mediaState.playbackRate * this.speedService.state.context.timer.speed;
-        try {
-            this.seekTo({
-                time: this.getCurrentTime(),
-                target: target,
-                mediaState: mediaState
-            });
-            if (target.volume !== volume) {
-                target.volume = volume;
-            }
-            target.muted = muted;
-            target.loop = loop;
-            if (target.playbackRate !== playbackRate) {
-                target.playbackRate = playbackRate;
-            }
-            if (isPlaying && !playerIsPaused) {
-                void target.play();
-            } else {
-                target.pause();
-            }
-        } catch (error) {
-            this.warn(// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
-            "Failed to replay media interactions: " + (error.message || error));
+    },
+    // Separate line and column numbers from a string of the form: (URI:Line:Column)
+    extractLocation: function extractLocation(urlLike) {
+        if (urlLike.indexOf(":") === -1) {
+            return [
+                urlLike
+            ];
         }
-    };
-    _proto.addMediaElements = function addMediaElements(node2, timeOffset, mirror2) {
-        if (![
-            "AUDIO",
-            "VIDEO"
-        ].includes(node2.nodeName)) return;
-        var target = node2;
-        var serializedNode = mirror2.getMeta(target);
-        if (!serializedNode || !("attributes" in serializedNode)) return;
-        var playerIsPaused = this.service.state.matches("paused");
-        var mediaAttributes = serializedNode.attributes;
-        var isPlaying = false;
-        if (mediaAttributes.rr_mediaState) {
-            isPlaying = mediaAttributes.rr_mediaState === "played";
-        } else {
-            isPlaying = target.getAttribute("autoplay") !== null;
-        }
-        if (isPlaying && playerIsPaused) target.pause();
-        var playbackRate = 1;
-        if (typeof mediaAttributes.rr_mediaPlaybackRate === "number") {
-            playbackRate = mediaAttributes.rr_mediaPlaybackRate;
-        }
-        var muted = false;
-        if (typeof mediaAttributes.rr_mediaMuted === "boolean") {
-            muted = mediaAttributes.rr_mediaMuted;
-        } else {
-            muted = target.getAttribute("muted") !== null;
-        }
-        var loop = false;
-        if (typeof mediaAttributes.rr_mediaLoop === "boolean") {
-            loop = mediaAttributes.rr_mediaLoop;
-        } else {
-            loop = target.getAttribute("loop") !== null;
-        }
-        var volume = 1;
-        if (typeof mediaAttributes.rr_mediaVolume === "number") {
-            volume = mediaAttributes.rr_mediaVolume;
-        }
-        var currentTimeAtLastInteraction = 0;
-        if (typeof mediaAttributes.rr_mediaCurrentTime === "number") {
-            currentTimeAtLastInteraction = mediaAttributes.rr_mediaCurrentTime;
-        }
-        this.mediaMap.set(target, {
-            isPlaying: isPlaying,
-            currentTimeAtLastInteraction: currentTimeAtLastInteraction,
-            lastInteractionTimeOffset: timeOffset,
-            playbackRate: playbackRate,
-            volume: volume,
-            muted: muted,
-            loop: loop
-        });
-        this.syncTargetWithState(target);
-    };
-    _proto.mediaMutation = function mediaMutation(param) {
-        var target = param.target, timeOffset = param.timeOffset, mutation = param.mutation;
-        this.mediaMap.set(target, this.getMediaStateFromMutation({
-            target: target,
-            timeOffset: timeOffset,
-            mutation: mutation
-        }));
-        this.syncTargetWithState(target);
-    };
-    _proto.isSupportedMediaElement = function isSupportedMediaElement(node2) {
+        var regExp = /(.+?)(?::(\d+))?(?::(\d+))?$/;
+        var parts = regExp.exec(urlLike.replace(/[()]/g, ""));
+        if (!parts) throw new Error("Cannot parse given url: " + urlLike);
         return [
-            "AUDIO",
-            "VIDEO"
-        ].includes(node2.nodeName);
-    };
-    _proto.reset = function reset() {
-        this.mediaMap.clear();
-    };
-    return MediaManager;
-}();
-function applyDialogToTopLevel(node2, attributeMutation) {
-    if (node2.nodeName !== "DIALOG" || _instanceof(node2, BaseRRNode)) return;
-    var dialog = node2;
-    var oldIsOpen = dialog.open;
-    var oldIsModalState = oldIsOpen && dialog.matches("dialog:modal");
-    var rrOpenMode = dialog.getAttribute("rr_open_mode");
-    var newIsOpen = typeof (attributeMutation == null ? void 0 : attributeMutation.attributes.open) === "string" || typeof dialog.getAttribute("open") === "string";
-    var newIsModalState = rrOpenMode === "modal";
-    var newIsNonModalState = rrOpenMode === "non-modal";
-    var modalStateChanged = oldIsModalState && newIsNonModalState || !oldIsModalState && newIsModalState;
-    if (oldIsOpen && !modalStateChanged) return;
-    if (!dialog.isConnected) {
-        console.warn("dialog is not attached to the dom", dialog);
-        return;
-    }
-    if (oldIsOpen) dialog.close();
-    if (!newIsOpen) return;
-    if (newIsModalState) dialog.showModal();
-    else dialog.show();
-}
-function removeDialogFromTopLevel(node2, attributeMutation) {
-    if (node2.nodeName !== "DIALOG" || _instanceof(node2, BaseRRNode)) return;
-    var dialog = node2;
-    if (!dialog.isConnected) {
-        console.warn("dialog is not attached to the dom", dialog);
-        return;
-    }
-    if (attributeMutation.attributes.open === null) {
-        dialog.removeAttribute("open");
-        dialog.removeAttribute("rr_open_mode");
-    }
-}
-var SKIP_TIME_INTERVAL = 5 * 1e3;
-var mitt = mitt$1 || mittProxy;
-var REPLAY_CONSOLE_PREFIX = "[replayer]";
-var defaultMouseTailConfig = {
-    duration: 500,
-    lineCap: "round",
-    lineWidth: 3,
-    strokeStyle: "red"
-};
-function indicatesTouchDevice(e2) {
-    return e2.type == EventType.IncrementalSnapshot && (e2.data.source == IncrementalSource.TouchMove || e2.data.source == IncrementalSource.MouseInteraction && e2.data.type == MouseInteractions.TouchStart);
-}
-var Replayer = /*#__PURE__*/ function() {
-    function Replayer(events, config) {
-        var _this = this;
-        __publicField(this, "wrapper");
-        __publicField(this, "iframe");
-        __publicField(this, "service");
-        __publicField(this, "speedService");
-        __publicField(this, "config");
-        // In the fast-forward process, if the virtual-dom optimization is used, this flag value is true.
-        __publicField(this, "usingVirtualDom", false);
-        __publicField(this, "virtualDom", new RRDocument());
-        __publicField(this, "mouse");
-        __publicField(this, "mouseTail", null);
-        __publicField(this, "tailPositions", []);
-        __publicField(this, "emitter", mitt());
-        __publicField(this, "nextUserInteractionEvent");
-        __publicField(this, "legacy_missingNodeRetryMap", {});
-        // The replayer uses the cache to speed up replay and scrubbing.
-        __publicField(this, "cache", createCache());
-        __publicField(this, "imageMap", /* @__PURE__ */ new Map());
-        __publicField(this, "canvasEventMap", /* @__PURE__ */ new Map());
-        __publicField(this, "mirror", createMirror$2());
-        // Used to track StyleSheetObjects adopted on multiple document hosts.
-        __publicField(this, "styleMirror", new StyleSheetMirror());
-        // Used to track video & audio elements, and keep them in sync with general playback.
-        __publicField(this, "mediaManager");
-        __publicField(this, "firstFullSnapshot", null);
-        __publicField(this, "newDocumentQueue", []);
-        __publicField(this, "mousePos", null);
-        __publicField(this, "touchActive", null);
-        __publicField(this, "lastMouseDownEvent", null);
-        // Keep the rootNode of the last hovered element. So  when hovering a new element, we can remove the last hovered element's :hover style.
-        __publicField(this, "lastHoveredRootNode");
-        // In the fast-forward mode, only the last selection data needs to be applied.
-        __publicField(this, "lastSelectionData", null);
-        // In the fast-forward mode using VirtualDom optimization, all stylesheetRule, and styleDeclaration events on constructed StyleSheets will be delayed to get applied until the flush stage.
-        __publicField(this, "constructedStyleMutations", []);
-        // Similar to the reason for constructedStyleMutations.
-        __publicField(this, "adoptedStyleSheets", []);
-        __publicField(this, "handleResize", function(dimension) {
-            _this.iframe.style.display = "inherit";
-            for(var _i = 0, _iter = [
-                _this.mouseTail,
-                _this.iframe
-            ]; _i < _iter.length; _i++){
-                var el = _iter[_i];
-                if (!el) {
-                    continue;
-                }
-                el.setAttribute("width", String(dimension.width));
-                el.setAttribute("height", String(dimension.height));
-            }
-        });
-        __publicField(this, "applyEventsSynchronously", function(events) {
-            for(var _iterator = _create_for_of_iterator_helper_loose(events), _step; !(_step = _iterator()).done;){
-                var event = _step.value;
-                switch(event.type){
-                    case EventType.DomContentLoaded:
-                    case EventType.Load:
-                    case EventType.Custom:
-                        continue;
-                    case EventType.FullSnapshot:
-                    case EventType.Meta:
-                    case EventType.Plugin:
-                    case EventType.IncrementalSnapshot:
-                        break;
-                }
-                var castFn = _this.getCastFn(event, true);
-                castFn();
-            }
-        });
-        __publicField(this, "getCastFn", function(event, isSync) {
-            if (isSync === void 0) isSync = false;
-            var castFn;
-            switch(event.type){
-                case EventType.DomContentLoaded:
-                case EventType.Load:
-                    break;
-                case EventType.Custom:
-                    castFn = function() {
-                        _this.emitter.emit(ReplayerEvents.CustomEvent, event);
-                    };
-                    break;
-                case EventType.Meta:
-                    castFn = function() {
-                        return _this.emitter.emit(ReplayerEvents.Resize, {
-                            width: event.data.width,
-                            height: event.data.height
-                        });
-                    };
-                    break;
-                case EventType.FullSnapshot:
-                    castFn = function() {
-                        var _a2;
-                        if (_this.firstFullSnapshot) {
-                            if (_this.firstFullSnapshot === event) {
-                                _this.firstFullSnapshot = true;
-                                return;
-                            }
-                        } else {
-                            _this.firstFullSnapshot = true;
-                        }
-                        _this.mediaManager.reset();
-                        _this.styleMirror.reset();
-                        _this.rebuildFullSnapshot(event, isSync);
-                        (_a2 = _this.iframe.contentWindow) == null ? void 0 : _a2.scrollTo(event.data.initialOffset);
-                    };
-                    break;
-                case EventType.IncrementalSnapshot:
-                    castFn = function() {
-                        _this.applyIncremental(event, isSync);
-                        if (isSync) {
-                            return;
-                        }
-                        if (event === _this.nextUserInteractionEvent) {
-                            _this.nextUserInteractionEvent = null;
-                            _this.backToNormal();
-                        }
-                        if (_this.config.skipInactive && !_this.nextUserInteractionEvent) {
-                            for(var _iterator = _create_for_of_iterator_helper_loose(_this.service.state.context.events), _step; !(_step = _iterator()).done;){
-                                var _event = _step.value;
-                                if (_event.timestamp <= event.timestamp) {
-                                    continue;
-                                }
-                                if (_this.isUserInteraction(_event)) {
-                                    if (// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                                    _event.delay - event.delay > _this.config.inactivePeriodThreshold * _this.speedService.state.context.timer.speed) {
-                                        _this.nextUserInteractionEvent = _event;
-                                    }
-                                    break;
-                                }
-                            }
-                            if (_this.nextUserInteractionEvent) {
-                                var skipTime = // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                                _this.nextUserInteractionEvent.delay - event.delay;
-                                var payload = {
-                                    speed: Math.min(Math.round(skipTime / SKIP_TIME_INTERVAL), _this.config.maxSpeed)
-                                };
-                                _this.speedService.send({
-                                    type: "FAST_FORWARD",
-                                    payload: payload
-                                });
-                                _this.emitter.emit(ReplayerEvents.SkipStart, payload);
-                            }
-                        }
-                    };
-                    break;
-            }
-            var wrappedCastFn = function() {
-                if (castFn) {
-                    castFn();
-                }
-                for(var _iterator = _create_for_of_iterator_helper_loose(_this.config.plugins || []), _step; !(_step = _iterator()).done;){
-                    var plugin3 = _step.value;
-                    if (plugin3.handler) plugin3.handler(event, isSync, {
-                        replayer: _this
-                    });
-                }
-                _this.service.send({
-                    type: "CAST_EVENT",
-                    payload: {
-                        event: event
-                    }
-                });
-                var lastIndex = _this.service.state.context.events.length - 1;
-                if (!_this.config.liveMode && event === _this.service.state.context.events[lastIndex]) {
-                    var finish = function() {
-                        if (lastIndex < _this.service.state.context.events.length - 1) {
-                            return;
-                        }
-                        _this.backToNormal();
-                        _this.service.send("END");
-                        _this.emitter.emit(ReplayerEvents.Finish);
-                    };
-                    var finishBuffer = 50;
-                    if (event.type === EventType.IncrementalSnapshot && event.data.source === IncrementalSource.MouseMove && event.data.positions.length) {
-                        finishBuffer += Math.max(0, -event.data.positions[0].timeOffset);
-                    }
-                    setTimeout(finish, finishBuffer);
-                }
-                _this.emitter.emit(ReplayerEvents.EventCast, event);
-            };
-            return wrappedCastFn;
-        });
-        if (!(config == null ? void 0 : config.liveMode) && events.length < 2) {
-            throw new Error("Replayer need at least 2 events.");
-        }
-        var defaultConfig = {
-            speed: 1,
-            maxSpeed: 360,
-            root: document.body,
-            loadTimeout: 0,
-            skipInactive: false,
-            inactivePeriodThreshold: 10 * 1e3,
-            showWarning: true,
-            showDebug: false,
-            blockClass: "rr-block",
-            liveMode: false,
-            insertStyleRules: [],
-            triggerFocus: true,
-            UNSAFE_replayCanvas: false,
-            pauseAnimation: true,
-            mouseTail: defaultMouseTailConfig,
-            useVirtualDom: true,
-            // Virtual-dom optimization is enabled by default.
-            logger: console
-        };
-        this.config = Object.assign({}, defaultConfig, config);
-        this.handleResize = this.handleResize.bind(this);
-        this.getCastFn = this.getCastFn.bind(this);
-        this.applyEventsSynchronously = this.applyEventsSynchronously.bind(this);
-        this.emitter.on(ReplayerEvents.Resize, this.handleResize);
-        this.setupDom();
-        for(var _iterator = _create_for_of_iterator_helper_loose(this.config.plugins || []), _step; !(_step = _iterator()).done;){
-            var plugin3 = _step.value;
-            if (plugin3.getMirror) plugin3.getMirror({
-                nodeMirror: this.mirror
-            });
-        }
-        this.emitter.on(ReplayerEvents.Flush, function() {
-            if (_this.usingVirtualDom) {
-                var replayerHandler = {
-                    mirror: _this.mirror,
-                    applyCanvas: function(canvasEvent, canvasMutationData, target) {
-                        void canvasMutation({
-                            event: canvasEvent,
-                            mutation: canvasMutationData,
-                            target: target,
-                            imageMap: _this.imageMap,
-                            canvasEventMap: _this.canvasEventMap,
-                            errorHandler: _this.warnCanvasMutationFailed.bind(_this)
-                        });
-                    },
-                    applyInput: _this.applyInput.bind(_this),
-                    applyScroll: _this.applyScroll.bind(_this),
-                    applyStyleSheetMutation: function(data, styleSheet) {
-                        if (data.source === IncrementalSource.StyleSheetRule) _this.applyStyleSheetRule(data, styleSheet);
-                        else if (data.source === IncrementalSource.StyleDeclaration) _this.applyStyleDeclaration(data, styleSheet);
-                    },
-                    afterAppend: function(node2, id) {
-                        for(var _iterator = _create_for_of_iterator_helper_loose(_this.config.plugins || []), _step; !(_step = _iterator()).done;){
-                            var plugin3 = _step.value;
-                            if (plugin3.onBuild) plugin3.onBuild(node2, {
-                                id: id,
-                                replayer: _this
-                            });
-                        }
-                    }
-                };
-                if (_this.iframe.contentDocument) try {
-                    diff(_this.iframe.contentDocument, _this.virtualDom, replayerHandler, _this.virtualDom.mirror);
-                } catch (e2) {
-                    console.warn(e2);
-                }
-                _this.virtualDom.destroyTree();
-                _this.usingVirtualDom = false;
-                if (Object.keys(_this.legacy_missingNodeRetryMap).length) {
-                    for(var key in _this.legacy_missingNodeRetryMap){
-                        try {
-                            var value = _this.legacy_missingNodeRetryMap[key];
-                            var realNode = createOrGetNode(value.node, _this.mirror, _this.virtualDom.mirror);
-                            diff(realNode, value.node, replayerHandler, _this.virtualDom.mirror);
-                            value.node = realNode;
-                        } catch (error) {
-                            _this.warn(error);
-                        }
-                    }
-                }
-                _this.constructedStyleMutations.forEach(function(data) {
-                    _this.applyStyleSheetMutation(data);
-                });
-                _this.constructedStyleMutations = [];
-                _this.adoptedStyleSheets.forEach(function(data) {
-                    _this.applyAdoptedStyleSheet(data);
-                });
-                _this.adoptedStyleSheets = [];
-            }
-            if (_this.mousePos) {
-                _this.moveAndHover(_this.mousePos.x, _this.mousePos.y, _this.mousePos.id, true, _this.mousePos.debugData);
-                _this.mousePos = null;
-            }
-            if (_this.touchActive === true) {
-                _this.mouse.classList.add("touch-active");
-            } else if (_this.touchActive === false) {
-                _this.mouse.classList.remove("touch-active");
-            }
-            _this.touchActive = null;
-            if (_this.lastMouseDownEvent) {
-                var _this_lastMouseDownEvent = _this.lastMouseDownEvent, target = _this_lastMouseDownEvent[0], event = _this_lastMouseDownEvent[1];
-                target.dispatchEvent(event);
-            }
-            _this.lastMouseDownEvent = null;
-            if (_this.lastSelectionData) {
-                _this.applySelection(_this.lastSelectionData);
-                _this.lastSelectionData = null;
-            }
-        });
-        this.emitter.on(ReplayerEvents.PlayBack, function() {
-            _this.firstFullSnapshot = null;
-            _this.mirror.reset();
-            _this.styleMirror.reset();
-            _this.mediaManager.reset();
-        });
-        var timer = new Timer([], {
-            speed: this.config.speed
-        });
-        this.service = createPlayerService({
-            events: events.map(function(e2) {
-                if (config && config.unpackFn) {
-                    return config.unpackFn(e2);
-                }
-                return e2;
-            }).sort(function(a1, a2) {
-                return a1.timestamp - a2.timestamp;
-            }),
-            timer: timer,
-            timeOffset: 0,
-            baselineTime: 0,
-            lastPlayedEvent: null
-        }, {
-            getCastFn: this.getCastFn,
-            applyEventsSynchronously: this.applyEventsSynchronously,
-            emitter: this.emitter
-        });
-        this.service.start();
-        this.service.subscribe(function(state) {
-            _this.emitter.emit(ReplayerEvents.StateChange, {
-                player: state
-            });
-        });
-        this.speedService = createSpeedService({
-            normalSpeed: -1,
-            timer: timer
-        });
-        this.speedService.start();
-        this.speedService.subscribe(function(state) {
-            _this.emitter.emit(ReplayerEvents.StateChange, {
-                speed: state
-            });
-        });
-        this.mediaManager = new MediaManager({
-            warn: this.warn.bind(this),
-            service: this.service,
-            speedService: this.speedService,
-            emitter: this.emitter,
-            getCurrentTime: this.getCurrentTime.bind(this)
-        });
-        var firstMeta = this.service.state.context.events.find(function(e2) {
-            return e2.type === EventType.Meta;
-        });
-        var firstFullsnapshot = this.service.state.context.events.find(function(e2) {
-            return e2.type === EventType.FullSnapshot;
-        });
-        if (firstMeta) {
-            var _firstMeta_data = firstMeta.data, width = _firstMeta_data.width, height = _firstMeta_data.height;
-            setTimeout(function() {
-                _this.emitter.emit(ReplayerEvents.Resize, {
-                    width: width,
-                    height: height
-                });
-            }, 0);
-        }
-        if (firstFullsnapshot) {
-            setTimeout(function() {
-                var _a2;
-                if (_this.firstFullSnapshot) {
-                    return;
-                }
-                _this.firstFullSnapshot = firstFullsnapshot;
-                _this.rebuildFullSnapshot(firstFullsnapshot);
-                (_a2 = _this.iframe.contentWindow) == null ? void 0 : _a2.scrollTo(firstFullsnapshot.data.initialOffset);
-            }, 1);
-        }
-        if (this.service.state.context.events.find(indicatesTouchDevice)) {
-            this.mouse.classList.add("touch-device");
-        }
-    }
-    var _proto = Replayer.prototype;
-    _proto.on = function on(event, handler) {
-        this.emitter.on(event, handler);
-        return this;
-    };
-    _proto.off = function off(event, handler) {
-        this.emitter.off(event, handler);
-        return this;
-    };
-    _proto.setConfig = function setConfig(config) {
-        var _this = this;
-        Object.keys(config).forEach(function(key) {
-            config[key];
-            _this.config[key] = config[key];
-        });
-        if (!this.config.skipInactive) {
-            this.backToNormal();
-        }
-        if (typeof config.speed !== "undefined") {
-            this.speedService.send({
-                type: "SET_SPEED",
-                payload: {
-                    speed: config.speed
-                }
-            });
-        }
-        if (typeof config.mouseTail !== "undefined") {
-            if (config.mouseTail === false) {
-                if (this.mouseTail) {
-                    this.mouseTail.style.display = "none";
-                }
-            } else {
-                if (!this.mouseTail) {
-                    this.mouseTail = document.createElement("canvas");
-                    this.mouseTail.width = Number.parseFloat(this.iframe.width);
-                    this.mouseTail.height = Number.parseFloat(this.iframe.height);
-                    this.mouseTail.classList.add("replayer-mouse-tail");
-                    this.wrapper.insertBefore(this.mouseTail, this.iframe);
-                }
-                this.mouseTail.style.display = "inherit";
-            }
-        }
-    };
-    _proto.getMetaData = function getMetaData() {
-        var firstEvent = this.service.state.context.events[0];
-        var lastEvent = this.service.state.context.events[this.service.state.context.events.length - 1];
-        return {
-            startTime: firstEvent.timestamp,
-            endTime: lastEvent.timestamp,
-            totalTime: lastEvent.timestamp - firstEvent.timestamp
-        };
-    };
-    /**
-   * Get the actual time offset the player is at now compared to the first event.
-   */ _proto.getCurrentTime = function getCurrentTime() {
-        return this.timer.timeOffset + this.getTimeOffset();
-    };
-    /**
-   * Get the time offset the player is at now compared to the first event, but without regard for the timer.
-   */ _proto.getTimeOffset = function getTimeOffset() {
-        var _this_service_state_context = this.service.state.context, baselineTime = _this_service_state_context.baselineTime, events = _this_service_state_context.events;
-        return baselineTime - events[0].timestamp;
-    };
-    _proto.getMirror = function getMirror() {
-        return this.mirror;
-    };
-    /**
-   * This API was designed to be used as play at any time offset.
-   * Since we minimized the data collected from recorder, we do not
-   * have the ability of undo an event.
-   * So the implementation of play at any time offset will always iterate
-   * all of the events, cast event before the offset synchronously
-   * and cast event after the offset asynchronously with timer.
-   * @param timeOffset - number
-   */ _proto.play = function play(timeOffset) {
-        if (timeOffset === void 0) timeOffset = 0;
-        var _a2, _b;
-        if (this.service.state.matches("paused")) {
-            this.service.send({
-                type: "PLAY",
-                payload: {
-                    timeOffset: timeOffset
-                }
-            });
-        } else {
-            this.service.send({
-                type: "PAUSE"
-            });
-            this.service.send({
-                type: "PLAY",
-                payload: {
-                    timeOffset: timeOffset
-                }
-            });
-        }
-        (_b = (_a2 = this.iframe.contentDocument) == null ? void 0 : _a2.getElementsByTagName("html")[0]) == null ? void 0 : _b.classList.remove("rrweb-paused");
-        this.emitter.emit(ReplayerEvents.Start);
-    };
-    _proto.pause = function pause(timeOffset) {
-        var _a2, _b;
-        if (timeOffset === void 0 && this.service.state.matches("playing")) {
-            this.service.send({
-                type: "PAUSE"
-            });
-        }
-        if (typeof timeOffset === "number") {
-            this.play(timeOffset);
-            this.service.send({
-                type: "PAUSE"
-            });
-        }
-        (_b = (_a2 = this.iframe.contentDocument) == null ? void 0 : _a2.getElementsByTagName("html")[0]) == null ? void 0 : _b.classList.add("rrweb-paused");
-        this.emitter.emit(ReplayerEvents.Pause);
-    };
-    _proto.resume = function resume(timeOffset) {
-        if (timeOffset === void 0) timeOffset = 0;
-        this.warn("The 'resume' was deprecated in 1.0. Please use 'play' method which has the same interface.");
-        this.play(timeOffset);
-        this.emitter.emit(ReplayerEvents.Resume);
-    };
-    /**
-   * Totally destroy this replayer and please be careful that this operation is irreversible.
-   * Memory occupation can be released by removing all references to this replayer.
-   */ _proto.destroy = function destroy() {
-        this.pause();
-        this.mirror.reset();
-        this.styleMirror.reset();
-        this.mediaManager.reset();
-        this.config.root.removeChild(this.wrapper);
-        this.emitter.emit(ReplayerEvents.Destroy);
-    };
-    _proto.startLive = function startLive(baselineTime) {
-        this.service.send({
-            type: "TO_LIVE",
-            payload: {
-                baselineTime: baselineTime
-            }
-        });
-    };
-    _proto.addEvent = function addEvent(rawEvent) {
-        var _this = this;
-        var event = this.config.unpackFn ? this.config.unpackFn(rawEvent) : rawEvent;
-        if (indicatesTouchDevice(event)) {
-            this.mouse.classList.add("touch-device");
-        }
-        void Promise.resolve().then(function() {
-            return _this.service.send({
-                type: "ADD_EVENT",
-                payload: {
-                    event: event
-                }
-            });
-        });
-    };
-    _proto.enableInteract = function enableInteract() {
-        this.iframe.setAttribute("scrolling", "auto");
-        this.iframe.style.pointerEvents = "auto";
-    };
-    _proto.disableInteract = function disableInteract() {
-        this.iframe.setAttribute("scrolling", "no");
-        this.iframe.style.pointerEvents = "none";
-    };
-    /**
-   * Empties the replayer's cache and reclaims memory.
-   * The replayer will use this cache to speed up the playback.
-   */ _proto.resetCache = function resetCache() {
-        this.cache = createCache();
-    };
-    _proto.setupDom = function setupDom() {
-        this.wrapper = document.createElement("div");
-        this.wrapper.classList.add("replayer-wrapper");
-        this.config.root.appendChild(this.wrapper);
-        this.mouse = document.createElement("div");
-        this.mouse.classList.add("replayer-mouse");
-        this.wrapper.appendChild(this.mouse);
-        if (this.config.mouseTail !== false) {
-            this.mouseTail = document.createElement("canvas");
-            this.mouseTail.classList.add("replayer-mouse-tail");
-            this.mouseTail.style.display = "inherit";
-            this.wrapper.appendChild(this.mouseTail);
-        }
-        this.iframe = document.createElement("iframe");
-        var attributes = [
-            "allow-same-origin"
+            parts[1],
+            parts[2] || void 0,
+            parts[3] || void 0
         ];
-        if (this.config.UNSAFE_replayCanvas) {
-            attributes.push("allow-scripts");
-        }
-        this.iframe.style.display = "none";
-        this.iframe.setAttribute("sandbox", attributes.join(" "));
-        this.disableInteract();
-        this.wrapper.appendChild(this.iframe);
-        if (this.iframe.contentWindow && this.iframe.contentDocument) {
-            polyfill(this.iframe.contentWindow, this.iframe.contentDocument);
-            polyfill$1(this.iframe.contentWindow);
-        }
-    };
-    _proto.rebuildFullSnapshot = function rebuildFullSnapshot(event, isSync) {
-        var _this, _loop = function() {
-            var _step_value = _step.value, mutationInQueue = _step_value.mutationInQueue, builtNode = _step_value.builtNode;
-            _this.attachDocumentToIframe(mutationInQueue, builtNode);
-            _this.newDocumentQueue = _this.newDocumentQueue.filter(function(m) {
-                return m !== mutationInQueue;
-            });
-        };
-        var _this1 = this;
-        if (isSync === void 0) isSync = false;
-        if (!this.iframe.contentDocument) {
-            return this.warn("Looks like your replayer has been destroyed.");
-        }
-        if (Object.keys(this.legacy_missingNodeRetryMap).length) {
-            this.warn("Found unresolved missing node map", this.legacy_missingNodeRetryMap);
-        }
-        this.legacy_missingNodeRetryMap = {};
-        var collectedIframes = [];
-        var collectedDialogs = /* @__PURE__ */ new Set();
-        var afterAppend = function(builtNode, id) {
-            if (builtNode.nodeName === "DIALOG") collectedDialogs.add(builtNode);
-            _this1.collectIframeAndAttachDocument(collectedIframes, builtNode);
-            if (_this1.mediaManager.isSupportedMediaElement(builtNode)) {
-                var events = _this1.service.state.context.events;
-                _this1.mediaManager.addMediaElements(builtNode, event.timestamp - events[0].timestamp, _this1.mirror);
+    },
+    parseV8OrIE: function parseV8OrIE(error) {
+        var filtered = error.stack.split("\n").filter(function(line) {
+            return !!line.match(CHROME_IE_STACK_REGEXP);
+        }, this);
+        return filtered.map(function(line) {
+            if (line.indexOf("(eval ") > -1) {
+                line = line.replace(/eval code/g, "eval").replace(/(\(eval at [^()]*)|(\),.*$)/g, "");
             }
-            for(var _iterator = _create_for_of_iterator_helper_loose(_this1.config.plugins || []), _step; !(_step = _iterator()).done;){
-                var plugin3 = _step.value;
-                if (plugin3.onBuild) plugin3.onBuild(builtNode, {
-                    id: id,
-                    replayer: _this1
+            var sanitizedLine = line.replace(/^\s+/, "").replace(/\(eval code/g, "(");
+            var location = sanitizedLine.match(/ (\((.+):(\d+):(\d+)\)$)/);
+            sanitizedLine = location ? sanitizedLine.replace(location[0], "") : sanitizedLine;
+            var tokens = sanitizedLine.split(/\s+/).slice(1);
+            var locationParts = this.extractLocation(location ? location[1] : tokens.pop());
+            var functionName = tokens.join(" ") || void 0;
+            var fileName = [
+                "eval",
+                "<anonymous>"
+            ].indexOf(locationParts[0]) > -1 ? void 0 : locationParts[0];
+            return new StackFrame({
+                functionName: functionName,
+                fileName: fileName,
+                lineNumber: locationParts[1],
+                columnNumber: locationParts[2]
+            });
+        }, this);
+    },
+    parseFFOrSafari: function parseFFOrSafari(error) {
+        var filtered = error.stack.split("\n").filter(function(line) {
+            return !line.match(SAFARI_NATIVE_CODE_REGEXP);
+        }, this);
+        return filtered.map(function(line) {
+            if (line.indexOf(" > eval") > -1) {
+                line = line.replace(/ line (\d+)(?: > eval line \d+)* > eval:\d+:\d+/g, ":$1");
+            }
+            if (line.indexOf("@") === -1 && line.indexOf(":") === -1) {
+                return new StackFrame({
+                    functionName: line
+                });
+            } else {
+                var functionNameRegex = /((.*".+"[^@]*)?[^@]*)(?:@)/;
+                var matches = line.match(functionNameRegex);
+                var functionName = matches && matches[1] ? matches[1] : void 0;
+                var locationParts = this.extractLocation(line.replace(functionNameRegex, ""));
+                return new StackFrame({
+                    functionName: functionName,
+                    fileName: locationParts[0],
+                    lineNumber: locationParts[1],
+                    columnNumber: locationParts[2]
                 });
             }
-        };
-        if (this.usingVirtualDom) {
-            this.virtualDom.destroyTree();
-            this.usingVirtualDom = false;
-        }
-        this.mirror.reset();
-        rebuild(event.data.node, {
-            doc: this.iframe.contentDocument,
-            afterAppend: afterAppend,
-            cache: this.cache,
-            mirror: this.mirror
-        });
-        afterAppend(this.iframe.contentDocument, event.data.node.id);
-        for(var _iterator = _create_for_of_iterator_helper_loose(collectedIframes), _step; !(_step = _iterator()).done;)_this = this, _loop();
-        var _this_iframe_contentDocument = this.iframe.contentDocument, documentElement = _this_iframe_contentDocument.documentElement, head = _this_iframe_contentDocument.head;
-        this.insertStyleRules(documentElement, head);
-        collectedDialogs.forEach(function(d) {
-            return applyDialogToTopLevel(d);
-        });
-        if (!this.service.state.matches("playing")) {
-            this.iframe.contentDocument.getElementsByTagName("html")[0].classList.add("rrweb-paused");
-        }
-        this.emitter.emit(ReplayerEvents.FullsnapshotRebuilded, event);
-        if (!isSync) {
-            this.waitForStylesheetLoad();
-        }
-        if (this.config.UNSAFE_replayCanvas) {
-            void this.preloadAllImages();
-        }
-    };
-    _proto.insertStyleRules = function insertStyleRules(documentElement, head) {
-        var _a2;
-        var injectStylesRules = rules(this.config.blockClass).concat(this.config.insertStyleRules);
-        if (this.config.pauseAnimation) {
-            injectStylesRules.push("html.rrweb-paused *, html.rrweb-paused *:before, html.rrweb-paused *:after { animation-play-state: paused !important; }");
-        }
-        if (!injectStylesRules.length) {
-            return;
-        }
-        if (this.usingVirtualDom) {
-            var styleEl = this.virtualDom.createElement("style");
-            this.virtualDom.mirror.add(styleEl, getDefaultSN(styleEl, this.virtualDom.unserializedId));
-            documentElement.insertBefore(styleEl, head);
-            styleEl.rules.push({
-                source: IncrementalSource.StyleSheetRule,
-                adds: injectStylesRules.map(function(cssText, index2) {
-                    return {
-                        rule: cssText,
-                        index: index2
-                    };
-                })
-            });
+        }, this);
+    },
+    parseOpera: function parseOpera(e) {
+        if (!e.stacktrace || e.message.indexOf("\n") > -1 && e.message.split("\n").length > e.stacktrace.split("\n").length) {
+            return this.parseOpera9(e);
+        } else if (!e.stack) {
+            return this.parseOpera10(e);
         } else {
-            var styleEl1 = document.createElement("style");
-            documentElement.insertBefore(styleEl1, head);
-            for(var idx = 0; idx < injectStylesRules.length; idx++){
-                (_a2 = styleEl1.sheet) == null ? void 0 : _a2.insertRule(injectStylesRules[idx], idx);
+            return this.parseOpera11(e);
+        }
+    },
+    parseOpera9: function parseOpera9(e) {
+        var lineRE = /Line (\d+).*script (?:in )?(\S+)/i;
+        var lines = e.message.split("\n");
+        var result = [];
+        for(var i = 2, len = lines.length; i < len; i += 2){
+            var match = lineRE.exec(lines[i]);
+            if (match) {
+                result.push(new StackFrame({
+                    fileName: match[2],
+                    lineNumber: parseFloat(match[1])
+                }));
             }
         }
-    };
-    _proto.attachDocumentToIframe = function attachDocumentToIframe(mutation, iframeEl) {
-        var _this, _loop = function() {
-            var _step_value = _step.value, mutationInQueue = _step_value.mutationInQueue, builtNode = _step_value.builtNode;
-            _this.attachDocumentToIframe(mutationInQueue, builtNode);
-            _this.newDocumentQueue = _this.newDocumentQueue.filter(function(m) {
-                return m !== mutationInQueue;
+        return result;
+    },
+    parseOpera10: function parseOpera10(e) {
+        var lineRE = /Line (\d+).*script (?:in )?(\S+)(?:: In function (\S+))?$/i;
+        var lines = e.stacktrace.split("\n");
+        var result = [];
+        for(var i = 0, len = lines.length; i < len; i += 2){
+            var match = lineRE.exec(lines[i]);
+            if (match) {
+                result.push(new StackFrame({
+                    functionName: match[3] || void 0,
+                    fileName: match[2],
+                    lineNumber: parseFloat(match[1])
+                }));
+            }
+        }
+        return result;
+    },
+    // Opera 10.65+ Error.stack very similar to FF/Safari
+    parseOpera11: function parseOpera11(error) {
+        var filtered = error.stack.split("\n").filter(function(line) {
+            return !!line.match(FIREFOX_SAFARI_STACK_REGEXP) && !line.match(/^Error created at/);
+        }, this);
+        return filtered.map(function(line) {
+            var tokens = line.split("@");
+            var locationParts = this.extractLocation(tokens.pop());
+            var functionCall = tokens.shift() || "";
+            var functionName = functionCall.replace(/<anonymous function(: (\w+))?>/, "$2").replace(/\([^)]*\)/g, "") || void 0;
+            return new StackFrame({
+                functionName: functionName,
+                fileName: locationParts[0],
+                lineNumber: locationParts[1],
+                columnNumber: locationParts[2]
             });
-        };
-        var _this1 = this;
-        var mirror2 = this.usingVirtualDom ? this.virtualDom.mirror : this.mirror;
-        var collectedIframes = [];
-        var collectedDialogs = /* @__PURE__ */ new Set();
-        var afterAppend = function(builtNode, id) {
-            if (builtNode.nodeName === "DIALOG") collectedDialogs.add(builtNode);
-            _this1.collectIframeAndAttachDocument(collectedIframes, builtNode);
-            var sn = mirror2.getMeta(builtNode);
-            if ((sn == null ? void 0 : sn.type) === NodeType.Element && (sn == null ? void 0 : sn.tagName.toUpperCase()) === "HTML") {
-                var _iframeEl_contentDocument = iframeEl.contentDocument, documentElement = _iframeEl_contentDocument.documentElement, head = _iframeEl_contentDocument.head;
-                _this1.insertStyleRules(documentElement, head);
-            }
-            if (_this1.usingVirtualDom) return;
-            for(var _iterator = _create_for_of_iterator_helper_loose(_this1.config.plugins || []), _step; !(_step = _iterator()).done;){
-                var plugin3 = _step.value;
-                if (plugin3.onBuild) plugin3.onBuild(builtNode, {
-                    id: id,
-                    replayer: _this1
-                });
-            }
-        };
-        buildNodeWithSN(mutation.node, {
-            doc: iframeEl.contentDocument,
-            mirror: mirror2,
-            hackCss: true,
-            skipChild: false,
-            afterAppend: afterAppend,
-            cache: this.cache
-        });
-        afterAppend(iframeEl.contentDocument, mutation.node.id);
-        for(var _iterator = _create_for_of_iterator_helper_loose(collectedIframes), _step; !(_step = _iterator()).done;)_this = this, _loop();
-        collectedDialogs.forEach(function(d) {
-            return applyDialogToTopLevel(d);
-        });
-    };
-    _proto.collectIframeAndAttachDocument = function collectIframeAndAttachDocument(collected, builtNode) {
-        var _this = this;
-        if (isSerializedIframe(builtNode, this.mirror)) {
-            var mutationInQueue = this.newDocumentQueue.find(function(m) {
-                return m.parentId === _this.mirror.getId(builtNode);
-            });
-            if (mutationInQueue) {
-                collected.push({
-                    mutationInQueue: mutationInQueue,
-                    builtNode: builtNode
-                });
-            }
+        }, this);
+    }
+};
+function pathToSelector(node) {
+    if (!node || !node.outerHTML) {
+        return "";
+    }
+    var path = "";
+    while(node.parentElement){
+        var name = node.localName;
+        if (!name) {
+            break;
         }
-    };
-    /**
-   * pause when loading style sheet, resume when loaded all timeout exceed
-   */ _proto.waitForStylesheetLoad = function waitForStylesheetLoad() {
-        var _this = this;
-        var _a2;
-        var head = (_a2 = this.iframe.contentDocument) == null ? void 0 : _a2.head;
-        if (head) {
-            var unloadSheets = /* @__PURE__ */ new Set();
-            var timer;
-            var beforeLoadState = this.service.state;
-            var stateHandler = function() {
-                beforeLoadState = _this.service.state;
-            };
-            this.emitter.on(ReplayerEvents.Start, stateHandler);
-            this.emitter.on(ReplayerEvents.Pause, stateHandler);
-            var unsubscribe = function() {
-                _this.emitter.off(ReplayerEvents.Start, stateHandler);
-                _this.emitter.off(ReplayerEvents.Pause, stateHandler);
-            };
-            head.querySelectorAll('link[rel="stylesheet"]').forEach(function(css) {
-                if (!css.sheet) {
-                    unloadSheets.add(css);
-                    css.addEventListener("load", function() {
-                        unloadSheets.delete(css);
-                        if (unloadSheets.size === 0 && timer !== -1) {
-                            if (beforeLoadState.matches("playing")) {
-                                _this.play(_this.getCurrentTime());
-                            }
-                            _this.emitter.emit(ReplayerEvents.LoadStylesheetEnd);
-                            if (timer) {
-                                clearTimeout(timer);
-                            }
-                            unsubscribe();
-                        }
-                    });
-                }
-            });
-            if (unloadSheets.size > 0) {
-                this.service.send({
-                    type: "PAUSE"
-                });
-                this.emitter.emit(ReplayerEvents.LoadStylesheetStart);
-                timer = setTimeout(function() {
-                    if (beforeLoadState.matches("playing")) {
-                        _this.play(_this.getCurrentTime());
-                    }
-                    timer = -1;
-                    unsubscribe();
-                }, this.config.loadTimeout);
-            }
-        }
-    };
-    /**
-   * pause when there are some canvas drawImage args need to be loaded
-   */ _proto.preloadAllImages = function preloadAllImages() {
-        var _this = this;
-        return _async_to_generator(function() {
-            var _loop, promises, _iterator, _step;
-            return _ts_generator(this, function(_state) {
-                _loop = function() {
-                    var event = _step.value;
-                    if (event.type === EventType.IncrementalSnapshot && event.data.source === IncrementalSource.CanvasMutation) {
-                        promises.push(_this.deserializeAndPreloadCanvasEvents(event.data, event));
-                        var commands = "commands" in event.data ? event.data.commands : [
-                            event.data
-                        ];
-                        commands.forEach(function(c2) {
-                            _this.preloadImages(c2, event);
-                        });
-                    }
-                };
-                promises = [];
-                for(_iterator = _create_for_of_iterator_helper_loose(_this.service.state.context.events); !(_step = _iterator()).done;)_loop();
-                return [
-                    2,
-                    Promise.all(promises)
-                ];
-            });
-        })();
-    };
-    _proto.preloadImages = function preloadImages(data, event) {
-        if (data.property === "drawImage" && typeof data.args[0] === "string" && !this.imageMap.has(event)) {
-            var canvas = document.createElement("canvas");
-            var ctx = canvas.getContext("2d");
-            var imgd = ctx == null ? void 0 : ctx.createImageData(canvas.width, canvas.height);
-            ctx == null ? void 0 : ctx.putImageData(imgd, 0, 0);
-        }
-    };
-    _proto.deserializeAndPreloadCanvasEvents = function deserializeAndPreloadCanvasEvents(data, event) {
-        var _this = this;
-        return _async_to_generator(function() {
-            var status, commands, args;
-            return _ts_generator(this, function(_state) {
-                switch(_state.label){
-                    case 0:
-                        if (!!_this.canvasEventMap.has(event)) return [
-                            3,
-                            4
-                        ];
-                        status = {
-                            isUnchanged: true
-                        };
-                        if (!("commands" in data)) return [
-                            3,
-                            2
-                        ];
-                        return [
-                            4,
-                            Promise.all(data.commands.map(/*#__PURE__*/ _async_to_generator(function(c2) {
-                                var args;
-                                return _ts_generator(this, function(_state) {
-                                    switch(_state.label){
-                                        case 0:
-                                            return [
-                                                4,
-                                                Promise.all(c2.args.map(deserializeArg(_this.imageMap, null, status)))
-                                            ];
-                                        case 1:
-                                            args = _state.sent();
-                                            return [
-                                                2,
-                                                _extends({}, c2, {
-                                                    args: args
-                                                })
-                                            ];
-                                    }
-                                });
-                            })))
-                        ];
-                    case 1:
-                        commands = _state.sent();
-                        if (status.isUnchanged === false) _this.canvasEventMap.set(event, _extends({}, data, {
-                            commands: commands
-                        }));
-                        return [
-                            3,
-                            4
-                        ];
-                    case 2:
-                        return [
-                            4,
-                            Promise.all(data.args.map(deserializeArg(_this.imageMap, null, status)))
-                        ];
-                    case 3:
-                        args = _state.sent();
-                        if (status.isUnchanged === false) _this.canvasEventMap.set(event, _extends({}, data, {
-                            args: args
-                        }));
-                        _state.label = 4;
-                    case 4:
-                        return [
-                            2
-                        ];
-                }
-            });
-        })();
-    };
-    _proto.applyIncremental = function applyIncremental(e2, isSync) {
-        var _this = this;
-        var _a2, _b, _c;
-        var d = e2.data;
-        switch(d.source){
-            case IncrementalSource.Mutation:
-                {
-                    try {
-                        this.applyMutation(d, isSync);
-                    } catch (error) {
-                        this.warn("Exception in mutation " + (error.message || error), d);
-                    }
-                    break;
-                }
-            case IncrementalSource.Drag:
-            case IncrementalSource.TouchMove:
-            case IncrementalSource.MouseMove:
-                if (isSync) {
-                    var lastPosition = d.positions[d.positions.length - 1];
-                    this.mousePos = {
-                        x: lastPosition.x,
-                        y: lastPosition.y,
-                        id: lastPosition.id,
-                        debugData: d
-                    };
-                } else {
-                    d.positions.forEach(function(p) {
-                        var action = {
-                            doAction: function() {
-                                _this.moveAndHover(p.x, p.y, p.id, isSync, d);
-                            },
-                            delay: p.timeOffset + e2.timestamp - _this.service.state.context.baselineTime
-                        };
-                        _this.timer.addAction(action);
-                    });
-                    this.timer.addAction({
-                        doAction: function doAction() {},
-                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                        delay: e2.delay - ((_a2 = d.positions[0]) == null ? void 0 : _a2.timeOffset)
-                    });
-                }
-                break;
-            case IncrementalSource.MouseInteraction:
-                {
-                    if (d.id === -1) {
-                        break;
-                    }
-                    var event = new Event(toLowerCase(MouseInteractions[d.type]));
-                    var target = this.mirror.getNode(d.id);
-                    if (!target) {
-                        return this.debugNodeNotFound(d, d.id);
-                    }
-                    this.emitter.emit(ReplayerEvents.MouseInteraction, {
-                        type: d.type,
-                        target: target
-                    });
-                    var triggerFocus = this.config.triggerFocus;
-                    switch(d.type){
-                        case MouseInteractions.Blur:
-                            if ("blur" in target) {
-                                target.blur();
-                            }
-                            break;
-                        case MouseInteractions.Focus:
-                            if (triggerFocus && target.focus) {
-                                target.focus({
-                                    preventScroll: true
-                                });
-                            }
-                            break;
-                        case MouseInteractions.Click:
-                        case MouseInteractions.TouchStart:
-                        case MouseInteractions.TouchEnd:
-                        case MouseInteractions.MouseDown:
-                        case MouseInteractions.MouseUp:
-                            if (isSync) {
-                                if (d.type === MouseInteractions.TouchStart) {
-                                    this.touchActive = true;
-                                } else if (d.type === MouseInteractions.TouchEnd) {
-                                    this.touchActive = false;
-                                }
-                                if (d.type === MouseInteractions.MouseDown) {
-                                    this.lastMouseDownEvent = [
-                                        target,
-                                        event
-                                    ];
-                                } else if (d.type === MouseInteractions.MouseUp) {
-                                    this.lastMouseDownEvent = null;
-                                }
-                                this.mousePos = {
-                                    x: d.x || 0,
-                                    y: d.y || 0,
-                                    id: d.id,
-                                    debugData: d
-                                };
-                            } else {
-                                if (d.type === MouseInteractions.TouchStart) {
-                                    this.tailPositions.length = 0;
-                                }
-                                this.moveAndHover(d.x || 0, d.y || 0, d.id, isSync, d);
-                                if (d.type === MouseInteractions.Click) {
-                                    this.mouse.classList.remove("active");
-                                    void this.mouse.offsetWidth;
-                                    this.mouse.classList.add("active");
-                                } else if (d.type === MouseInteractions.TouchStart) {
-                                    void this.mouse.offsetWidth;
-                                    this.mouse.classList.add("touch-active");
-                                } else if (d.type === MouseInteractions.TouchEnd) {
-                                    this.mouse.classList.remove("touch-active");
-                                } else {
-                                    target.dispatchEvent(event);
-                                }
-                            }
-                            break;
-                        case MouseInteractions.TouchCancel:
-                            if (isSync) {
-                                this.touchActive = false;
-                            } else {
-                                this.mouse.classList.remove("touch-active");
-                            }
-                            break;
-                        default:
-                            target.dispatchEvent(event);
-                    }
-                    break;
-                }
-            case IncrementalSource.Scroll:
-                {
-                    if (d.id === -1) {
-                        break;
-                    }
-                    if (this.usingVirtualDom) {
-                        var target1 = this.virtualDom.mirror.getNode(d.id);
-                        if (!target1) {
-                            return this.debugNodeNotFound(d, d.id);
-                        }
-                        target1.scrollData = d;
-                        break;
-                    }
-                    this.applyScroll(d, isSync);
-                    break;
-                }
-            case IncrementalSource.ViewportResize:
-                this.emitter.emit(ReplayerEvents.Resize, {
-                    width: d.width,
-                    height: d.height
-                });
-                break;
-            case IncrementalSource.Input:
-                {
-                    if (d.id === -1) {
-                        break;
-                    }
-                    if (this.usingVirtualDom) {
-                        var target2 = this.virtualDom.mirror.getNode(d.id);
-                        if (!target2) {
-                            return this.debugNodeNotFound(d, d.id);
-                        }
-                        target2.inputData = d;
-                        break;
-                    }
-                    this.applyInput(d);
-                    break;
-                }
-            case IncrementalSource.MediaInteraction:
-                {
-                    var target3 = this.usingVirtualDom ? this.virtualDom.mirror.getNode(d.id) : this.mirror.getNode(d.id);
-                    if (!target3) {
-                        return this.debugNodeNotFound(d, d.id);
-                    }
-                    var mediaEl = target3;
-                    var events = this.service.state.context.events;
-                    this.mediaManager.mediaMutation({
-                        target: mediaEl,
-                        timeOffset: e2.timestamp - events[0].timestamp,
-                        mutation: d
-                    });
-                    break;
-                }
-            case IncrementalSource.StyleSheetRule:
-            case IncrementalSource.StyleDeclaration:
-                {
-                    if (this.usingVirtualDom) {
-                        if (d.styleId) this.constructedStyleMutations.push(d);
-                        else if (d.id) (_b = this.virtualDom.mirror.getNode(d.id)) == null ? void 0 : _b.rules.push(d);
-                    } else this.applyStyleSheetMutation(d);
-                    break;
-                }
-            case IncrementalSource.CanvasMutation:
-                {
-                    if (!this.config.UNSAFE_replayCanvas) {
-                        return;
-                    }
-                    if (this.usingVirtualDom) {
-                        var target4 = this.virtualDom.mirror.getNode(d.id);
-                        if (!target4) {
-                            return this.debugNodeNotFound(d, d.id);
-                        }
-                        target4.canvasMutations.push({
-                            event: e2,
-                            mutation: d
-                        });
-                    } else {
-                        var target5 = this.mirror.getNode(d.id);
-                        if (!target5) {
-                            return this.debugNodeNotFound(d, d.id);
-                        }
-                        void canvasMutation({
-                            event: e2,
-                            mutation: d,
-                            target: target5,
-                            imageMap: this.imageMap,
-                            canvasEventMap: this.canvasEventMap,
-                            errorHandler: this.warnCanvasMutationFailed.bind(this)
-                        });
-                    }
-                    break;
-                }
-            case IncrementalSource.Font:
-                {
-                    try {
-                        var fontFace = new FontFace(d.family, d.buffer ? new Uint8Array(JSON.parse(d.fontSource)) : d.fontSource, d.descriptors);
-                        (_c = this.iframe.contentDocument) == null ? void 0 : _c.fonts.add(fontFace);
-                    } catch (error) {
-                        this.warn(error);
-                    }
-                    break;
-                }
-            case IncrementalSource.Selection:
-                {
-                    if (isSync) {
-                        this.lastSelectionData = d;
-                        break;
-                    }
-                    this.applySelection(d);
-                    break;
-                }
-            case IncrementalSource.AdoptedStyleSheet:
-                {
-                    if (this.usingVirtualDom) this.adoptedStyleSheets.push(d);
-                    else this.applyAdoptedStyleSheet(d);
-                    break;
-                }
-        }
-    };
-    /**
-   * Apply the mutation to the virtual dom or the real dom.
-   * @param d - The mutation data.
-   * @param isSync - Whether the mutation should be applied synchronously (while fast-forwarding).
-   */ _proto.applyMutation = function applyMutation(d, isSync) {
-        var _this = this;
-        if (this.config.useVirtualDom && !this.usingVirtualDom && isSync) {
-            this.usingVirtualDom = true;
-            buildFromDom(this.iframe.contentDocument, this.mirror, this.virtualDom);
-            if (Object.keys(this.legacy_missingNodeRetryMap).length) {
-                for(var key in this.legacy_missingNodeRetryMap){
-                    try {
-                        var value = this.legacy_missingNodeRetryMap[key];
-                        var virtualNode = buildFromNode(value.node, this.virtualDom, this.mirror);
-                        if (virtualNode) value.node = virtualNode;
-                    } catch (error) {
-                        this.warn(error);
+        name = name.toLowerCase();
+        var parent = node.parentElement;
+        var domSiblings = [];
+        if (parent.children && parent.children.length > 0) {
+            for(var i = 0; i < parent.children.length; i++){
+                var sibling = parent.children[i];
+                if (sibling.localName && sibling.localName.toLowerCase) {
+                    if (sibling.localName.toLowerCase() === name) {
+                        domSiblings.push(sibling);
                     }
                 }
             }
         }
-        var mirror2 = this.usingVirtualDom ? this.virtualDom.mirror : this.mirror;
-        d.removes = d.removes.filter(function(mutation) {
-            if (!mirror2.getNode(mutation.id)) {
-                _this.warnNodeNotFound(d, mutation.id);
-                return false;
-            }
+        if (domSiblings.length > 1) {
+            name += ":eq(" + domSiblings.indexOf(node) + ")";
+        }
+        path = name + (path ? ">" + path : "");
+        node = parent;
+    }
+    return path;
+}
+function isObject(obj) {
+    return Object.prototype.toString.call(obj) === "[object Object]";
+}
+function isObjTooDeep(obj, limit) {
+    if (limit === 0) {
+        return true;
+    }
+    var keys = Object.keys(obj);
+    for(var _iterator = _create_for_of_iterator_helper_loose(keys), _step; !(_step = _iterator()).done;){
+        var key = _step.value;
+        if (isObject(obj[key]) && isObjTooDeep(obj[key], limit - 1)) {
             return true;
-        });
-        d.removes.forEach(function(mutation) {
-            var _a2;
-            var target = mirror2.getNode(mutation.id);
-            if (!target) {
-                return;
-            }
-            var parent = mirror2.getNode(mutation.parentId);
-            if (!parent) {
-                return _this.warnNodeNotFound(d, mutation.parentId);
-            }
-            if (mutation.isShadow && hasShadowRoot(parent)) {
-                parent = parent.shadowRoot;
-            }
-            mirror2.removeNodeFromMap(target);
-            if (parent) try {
-                parent.removeChild(target);
-                if (_this.usingVirtualDom && target.nodeName === "#text" && parent.nodeName === "STYLE" && ((_a2 = parent.rules) == null ? void 0 : _a2.length) > 0) parent.rules = [];
-            } catch (error) {
-                if (_instanceof(error, DOMException)) {
-                    _this.warn("parent could not remove child in mutation", parent, target, d);
-                } else {
-                    throw error;
-                }
-            }
-        });
-        var legacy_missingNodeMap = _extends({}, this.legacy_missingNodeRetryMap);
-        var queue = [];
-        var nextNotInDOM = function(mutation) {
-            var next = null;
-            if (mutation.nextId) {
-                next = mirror2.getNode(mutation.nextId);
-            }
-            if (mutation.nextId !== null && mutation.nextId !== void 0 && mutation.nextId !== -1 && !next) {
-                return true;
-            }
-            return false;
-        };
-        var appendNode = function(mutation) {
-            var _a2, _b;
-            if (!_this.iframe.contentDocument) {
-                return _this.warn("Looks like your replayer has been destroyed.");
-            }
-            var parent = mirror2.getNode(mutation.parentId);
-            if (!parent) {
-                if (mutation.node.type === NodeType.Document) {
-                    return _this.newDocumentQueue.push(mutation);
-                }
-                return queue.push(mutation);
-            }
-            if (mutation.node.isShadow) {
-                if (!hasShadowRoot(parent)) {
-                    parent.attachShadow({
-                        mode: "open"
-                    });
-                    parent = parent.shadowRoot;
-                } else parent = parent.shadowRoot;
-            }
-            var previous = null;
-            var next = null;
-            if (mutation.previousId) {
-                previous = mirror2.getNode(mutation.previousId);
-            }
-            if (mutation.nextId) {
-                next = mirror2.getNode(mutation.nextId);
-            }
-            if (nextNotInDOM(mutation)) {
-                return queue.push(mutation);
-            }
-            if (mutation.node.rootId && !mirror2.getNode(mutation.node.rootId)) {
-                return;
-            }
-            var targetDoc = mutation.node.rootId ? mirror2.getNode(mutation.node.rootId) : _this.usingVirtualDom ? _this.virtualDom : _this.iframe.contentDocument;
-            if (isSerializedIframe(parent, mirror2)) {
-                _this.attachDocumentToIframe(mutation, parent);
-                return;
-            }
-            var afterAppend = function(node2, id) {
-                if (_this.usingVirtualDom) return;
-                applyDialogToTopLevel(node2);
-                for(var _iterator = _create_for_of_iterator_helper_loose(_this.config.plugins || []), _step; !(_step = _iterator()).done;){
-                    var plugin3 = _step.value;
-                    if (plugin3.onBuild) plugin3.onBuild(node2, {
-                        id: id,
-                        replayer: _this
-                    });
-                }
-            };
-            var target = buildNodeWithSN(mutation.node, {
-                doc: targetDoc,
-                // can be Document or RRDocument
-                mirror: mirror2,
-                // can be this.mirror or virtualDom.mirror
-                skipChild: true,
-                hackCss: true,
-                cache: _this.cache,
-                /**
-         * caveat: `afterAppend` only gets called on child nodes of target
-         * we have to call it again below when this target was added to the DOM
-         */ afterAppend: afterAppend
-            });
-            if (mutation.previousId === -1 || mutation.nextId === -1) {
-                legacy_missingNodeMap[mutation.node.id] = {
-                    node: target,
-                    mutation: mutation
-                };
-                return;
-            }
-            var parentSn = mirror2.getMeta(parent);
-            if (parentSn && parentSn.type === NodeType.Element && mutation.node.type === NodeType.Text) {
-                var prospectiveSiblings = Array.isArray(parent.childNodes) ? parent.childNodes : Array.from(parent.childNodes);
-                if (parentSn.tagName === "textarea") {
-                    for(var _iterator = _create_for_of_iterator_helper_loose(prospectiveSiblings), _step; !(_step = _iterator()).done;){
-                        var c2 = _step.value;
-                        if (c2.nodeType === parent.TEXT_NODE) {
-                            parent.removeChild(c2);
-                        }
-                    }
-                } else if (parentSn.tagName === "style" && prospectiveSiblings.length === 1) {
-                    for(var _iterator1 = _create_for_of_iterator_helper_loose(prospectiveSiblings), _step1; !(_step1 = _iterator1()).done;){
-                        var cssText = _step1.value;
-                        if (cssText.nodeType === parent.TEXT_NODE && !mirror2.hasNode(cssText)) {
-                            target.textContent = cssText.textContent;
-                            parent.removeChild(cssText);
-                        }
-                    }
-                }
-            } else if ((parentSn == null ? void 0 : parentSn.type) === NodeType.Document) {
-                var parentDoc = parent;
-                if (mutation.node.type === NodeType.DocumentType && ((_a2 = parentDoc.childNodes[0]) == null ? void 0 : _a2.nodeType) === Node.DOCUMENT_TYPE_NODE) parentDoc.removeChild(parentDoc.childNodes[0]);
-                if (target.nodeName === "HTML" && parentDoc.documentElement) parentDoc.removeChild(parentDoc.documentElement);
-            }
-            if (previous && previous.nextSibling && previous.nextSibling.parentNode) {
-                parent.insertBefore(target, previous.nextSibling);
-            } else if (next && next.parentNode) {
-                parent.contains(next) ? parent.insertBefore(target, next) : parent.insertBefore(target, null);
-            } else {
-                parent.appendChild(target);
-            }
-            afterAppend(target, mutation.node.id);
-            if (_this.usingVirtualDom && target.nodeName === "#text" && parent.nodeName === "STYLE" && ((_b = parent.rules) == null ? void 0 : _b.length) > 0) parent.rules = [];
-            if (isSerializedIframe(target, _this.mirror)) {
-                var targetId = _this.mirror.getId(target);
-                var mutationInQueue = _this.newDocumentQueue.find(function(m) {
-                    return m.parentId === targetId;
-                });
-                if (mutationInQueue) {
-                    _this.attachDocumentToIframe(mutationInQueue, target);
-                    _this.newDocumentQueue = _this.newDocumentQueue.filter(function(m) {
-                        return m !== mutationInQueue;
-                    });
-                }
-            }
-            if (mutation.previousId || mutation.nextId) {
-                _this.legacy_resolveMissingNode(legacy_missingNodeMap, parent, target, mutation);
-            }
-        };
-        d.adds.forEach(function(mutation) {
-            appendNode(mutation);
-        });
-        var startTime = Date.now();
-        while(queue.length){
-            var resolveTrees = queueToResolveTrees(queue);
-            queue.length = 0;
-            if (Date.now() - startTime > 500) {
-                this.warn("Timeout in the loop, please check the resolve tree data:", resolveTrees);
-                break;
-            }
-            for(var _iterator = _create_for_of_iterator_helper_loose(resolveTrees), _step; !(_step = _iterator()).done;){
-                var tree = _step.value;
-                var parent = mirror2.getNode(tree.value.parentId);
-                if (!parent) {
-                    this.debug("Drop resolve tree since there is no parent for the root node.", tree);
-                } else {
-                    iterateResolveTree(tree, function(mutation) {
-                        appendNode(mutation);
-                    });
-                }
-            }
         }
-        if (Object.keys(legacy_missingNodeMap).length) {
-            Object.assign(this.legacy_missingNodeRetryMap, legacy_missingNodeMap);
-        }
-        uniqueTextMutations(d.texts).forEach(function(mutation) {
-            var _a2;
-            var target = mirror2.getNode(mutation.id);
-            if (!target) {
-                if (d.removes.find(function(r2) {
-                    return r2.id === mutation.id;
-                })) {
-                    return;
-                }
-                return _this.warnNodeNotFound(d, mutation.id);
-            }
-            var parentEl = target.parentElement;
-            if (mutation.value && parentEl && parentEl.tagName === "STYLE") {
-                target.textContent = adaptCssForReplay(mutation.value, _this.cache);
-            } else {
-                target.textContent = mutation.value;
-            }
-            if (_this.usingVirtualDom) {
-                var parent = target.parentNode;
-                if (((_a2 = parent == null ? void 0 : parent.rules) == null ? void 0 : _a2.length) > 0) parent.rules = [];
-            }
-        });
-        d.attributes.forEach(function(mutation) {
-            var _loop = function(attributeName) {
-                if (typeof attributeName === "string") {
-                    var value = mutation.attributes[attributeName];
-                    if (value === null) {
-                        target.removeAttribute(attributeName);
-                        if (attributeName === "open") removeDialogFromTopLevel(target, mutation);
-                    } else if (typeof value === "string") {
-                        try {
-                            if (attributeName === "_cssText" && (target.nodeName === "LINK" || target.nodeName === "STYLE")) {
-                                try {
-                                    var newSn = mirror2.getMeta(target);
-                                    var newNode = buildNodeWithSN(_extends({}, newSn, {
-                                        attributes: _extends({}, newSn.attributes, mutation.attributes)
-                                    }), {
-                                        doc: target.ownerDocument,
-                                        // can be Document or RRDocument
-                                        mirror: mirror2,
-                                        skipChild: true,
-                                        hackCss: true,
-                                        cache: _this.cache
-                                    });
-                                    Object.assign(newSn.attributes, mutation.attributes);
-                                    var siblingNode = target.nextSibling;
-                                    var parentNode2 = target.parentNode;
-                                    if (newNode && parentNode2) {
-                                        parentNode2.removeChild(target);
-                                        parentNode2.insertBefore(newNode, siblingNode);
-                                        mirror2.replace(mutation.id, newNode);
-                                        return "break";
-                                    }
-                                } catch (e2) {}
-                            }
-                            if (attributeName === "value" && target.nodeName === "TEXTAREA") {
-                                var textarea = target;
-                                textarea.childNodes.forEach(function(c2) {
-                                    return textarea.removeChild(c2);
-                                });
-                                var tn = (_a2 = target.ownerDocument) == null ? void 0 : _a2.createTextNode(value);
-                                if (tn) {
-                                    textarea.appendChild(tn);
-                                }
-                            } else {
-                                target.setAttribute(attributeName, value);
-                            }
-                            if (attributeName === "rr_open_mode" && target.nodeName === "DIALOG") {
-                                applyDialogToTopLevel(target, mutation);
-                            }
-                        } catch (error) {
-                            _this.warn("An error occurred may due to the checkout feature.", error);
-                        }
-                    } else if (attributeName === "style") {
-                        var styleValues = value;
-                        var targetEl = target;
-                        for(var s2 in styleValues){
-                            if (styleValues[s2] === false) {
-                                targetEl.style.removeProperty(s2);
-                            } else if (_instanceof(styleValues[s2], Array)) {
-                                var svp = styleValues[s2];
-                                targetEl.style.setProperty(s2, svp[0], svp[1]);
-                            } else {
-                                var svs = styleValues[s2];
-                                targetEl.style.setProperty(s2, svs);
-                            }
-                        }
-                    }
-                }
-            };
-            var _a2;
-            var target = mirror2.getNode(mutation.id);
-            if (!target) {
-                if (d.removes.find(function(r2) {
-                    return r2.id === mutation.id;
-                })) {
-                    return;
-                }
-                return _this.warnNodeNotFound(d, mutation.id);
-            }
-            for(var attributeName in mutation.attributes){
-                var _ret = _loop(attributeName);
-                if (_ret === "break") break;
-            }
-        });
+    }
+    return false;
+}
+function stringify(obj, stringifyOptions) {
+    var options = {
+        numOfKeysLimit: 50,
+        depthOfLimit: 4
     };
-    /**
-   * Apply the scroll data on real elements.
-   * If the replayer is in sync mode, smooth scroll behavior should be disabled.
-   * @param d - the scroll data
-   * @param isSync - whether the replayer is in sync mode(fast-forward)
-   */ _proto.applyScroll = function applyScroll(d, isSync) {
-        var _a2, _b;
-        var target = this.mirror.getNode(d.id);
-        if (!target) {
-            return this.debugNodeNotFound(d, d.id);
-        }
-        var sn = this.mirror.getMeta(target);
-        if (target === this.iframe.contentDocument) {
-            (_a2 = this.iframe.contentWindow) == null ? void 0 : _a2.scrollTo({
-                top: d.y,
-                left: d.x,
-                behavior: isSync ? "auto" : "smooth"
-            });
-        } else if ((sn == null ? void 0 : sn.type) === NodeType.Document) {
-            (_b = target.defaultView) == null ? void 0 : _b.scrollTo({
-                top: d.y,
-                left: d.x,
-                behavior: isSync ? "auto" : "smooth"
-            });
+    Object.assign(options, stringifyOptions);
+    var stack = [];
+    var keys = [];
+    return JSON.stringify(obj, function(key, value) {
+        if (stack.length > 0) {
+            var thisPos = stack.indexOf(this);
+            ~thisPos ? stack.splice(thisPos + 1) : stack.push(this);
+            ~thisPos ? keys.splice(thisPos, Infinity, key) : keys.push(key);
+            if (~stack.indexOf(value)) {
+                if (stack[0] === value) {
+                    value = "[Circular ~]";
+                } else {
+                    value = "[Circular ~." + keys.slice(0, stack.indexOf(value)).join(".") + "]";
+                }
+            }
         } else {
-            try {
-                target.scrollTo({
-                    top: d.y,
-                    left: d.x,
-                    behavior: isSync ? "auto" : "smooth"
-                });
-            } catch (error) {}
+            stack.push(value);
         }
-    };
-    _proto.applyInput = function applyInput(d) {
-        var target = this.mirror.getNode(d.id);
-        if (!target) {
-            return this.debugNodeNotFound(d, d.id);
+        if (value === null) return value;
+        if (value === void 0) return "undefined";
+        if (shouldIgnore(value)) {
+            return toString(value);
         }
-        try {
-            target.checked = d.isChecked;
-            target.value = d.text;
-        } catch (error) {}
-    };
-    _proto.applySelection = function applySelection(d) {
-        var _this = this;
-        try {
-            var selectionSet = /* @__PURE__ */ new Set();
-            var ranges = d.ranges.map(function(param) {
-                var start = param.start, startOffset = param.startOffset, end = param.end, endOffset = param.endOffset;
-                var startContainer = _this.mirror.getNode(start);
-                var endContainer = _this.mirror.getNode(end);
-                if (!startContainer || !endContainer) return;
-                var result2 = new Range();
-                result2.setStart(startContainer, startOffset);
-                result2.setEnd(endContainer, endOffset);
-                var doc = startContainer.ownerDocument;
-                var selection = doc == null ? void 0 : doc.getSelection();
-                selection && selectionSet.add(selection);
-                return {
-                    range: result2,
-                    selection: selection
-                };
-            });
-            selectionSet.forEach(function(s2) {
-                return s2.removeAllRanges();
-            });
-            ranges.forEach(function(r2) {
-                var _a2;
-                return r2 && ((_a2 = r2.selection) == null ? void 0 : _a2.addRange(r2.range));
-            });
-        } catch (error) {}
-    };
-    _proto.applyStyleSheetMutation = function applyStyleSheetMutation(data) {
-        var _a2;
-        var styleSheet = null;
-        if (data.styleId) styleSheet = this.styleMirror.getStyle(data.styleId);
-        else if (data.id) styleSheet = ((_a2 = this.mirror.getNode(data.id)) == null ? void 0 : _a2.sheet) || null;
-        if (!styleSheet) return;
-        if (data.source === IncrementalSource.StyleSheetRule) this.applyStyleSheetRule(data, styleSheet);
-        else if (data.source === IncrementalSource.StyleDeclaration) this.applyStyleDeclaration(data, styleSheet);
-    };
-    _proto.applyStyleSheetRule = function applyStyleSheetRule(data, styleSheet) {
-        var _a2, _b, _c, _d;
-        (_a2 = data.adds) == null ? void 0 : _a2.forEach(function(param) {
-            var rule2 = param.rule, nestedIndex = param.index;
-            try {
-                if (Array.isArray(nestedIndex)) {
-                    var _getPositionsAndIndex = getPositionsAndIndex(nestedIndex), positions = _getPositionsAndIndex.positions, index2 = _getPositionsAndIndex.index;
-                    var nestedRule = getNestedRule(styleSheet.cssRules, positions);
-                    nestedRule.insertRule(rule2, index2);
+        if ((typeof value === "undefined" ? "undefined" : _type_of(value)) === "bigint") {
+            return value.toString() + "n";
+        }
+        if (_instanceof(value, Event)) {
+            var eventResult = {};
+            for(var eventKey in value){
+                var eventValue = value[eventKey];
+                if (Array.isArray(eventValue)) {
+                    eventResult[eventKey] = pathToSelector(eventValue.length ? eventValue[0] : null);
                 } else {
-                    var index21 = nestedIndex === void 0 ? void 0 : Math.min(nestedIndex, styleSheet.cssRules.length);
-                    styleSheet == null ? void 0 : styleSheet.insertRule(rule2, index21);
+                    eventResult[eventKey] = eventValue;
                 }
-            } catch (e2) {}
+            }
+            return eventResult;
+        } else if (_instanceof(value, Node)) {
+            if (_instanceof(value, HTMLElement)) {
+                return value ? value.outerHTML : "";
+            }
+            return value.nodeName;
+        } else if (_instanceof(value, Error)) {
+            return value.stack ? value.stack + "\nEnd of stack for Error object" : value.name + ": " + value.message;
+        }
+        return value;
+    });
+    function shouldIgnore(_obj) {
+        if (isObject(_obj) && Object.keys(_obj).length > options.numOfKeysLimit) {
+            return true;
+        }
+        if (typeof _obj === "function") {
+            return true;
+        }
+        if (isObject(_obj) && isObjTooDeep(_obj, options.depthOfLimit)) {
+            return true;
+        }
+        return false;
+    }
+    function toString(_obj) {
+        var str = _obj.toString();
+        if (options.stringLengthLimit && str.length > options.stringLengthLimit) {
+            str = "" + str.slice(0, options.stringLengthLimit) + "...";
+        }
+        return str;
+    }
+}
+var defaultLogOptions = {
+    level: [
+        "assert",
+        "clear",
+        "count",
+        "countReset",
+        "debug",
+        "dir",
+        "dirxml",
+        "error",
+        "group",
+        "groupCollapsed",
+        "groupEnd",
+        "info",
+        "log",
+        "table",
+        "time",
+        "timeEnd",
+        "timeLog",
+        "trace",
+        "warn"
+    ],
+    lengthThreshold: 1e3,
+    logger: "console"
+};
+function initLogObserver(cb, win, options) {
+    var logOptions = options ? Object.assign({}, defaultLogOptions, options) : defaultLogOptions;
+    var loggerType = logOptions.logger;
+    if (!loggerType) {
+        return function() {};
+    }
+    var logger;
+    if (typeof loggerType === "string") {
+        logger = win[loggerType];
+    } else {
+        logger = loggerType;
+    }
+    var logCount = 0;
+    var inStack = false;
+    var cancelHandlers = [];
+    if (logOptions.level.includes("error")) {
+        var errorHandler = function(event) {
+            var message = event.message, error = event.error;
+            var trace = ErrorStackParser.parse(error).map(function(stackFrame) {
+                return stackFrame.toString();
+            });
+            var payload = [
+                stringify(message, logOptions.stringifyOptions)
+            ];
+            cb({
+                level: "error",
+                trace: trace,
+                payload: payload
+            });
+        };
+        win.addEventListener("error", errorHandler);
+        cancelHandlers.push(function() {
+            win.removeEventListener("error", errorHandler);
         });
-        (_b = data.removes) == null ? void 0 : _b.forEach(function(param) {
-            var nestedIndex = param.index;
-            try {
-                if (Array.isArray(nestedIndex)) {
-                    var _getPositionsAndIndex = getPositionsAndIndex(nestedIndex), positions = _getPositionsAndIndex.positions, index2 = _getPositionsAndIndex.index;
-                    var nestedRule = getNestedRule(styleSheet.cssRules, positions);
-                    nestedRule.deleteRule(index2 || 0);
-                } else {
-                    styleSheet == null ? void 0 : styleSheet.deleteRule(nestedIndex);
+        var unhandledrejectionHandler = function(event) {
+            var error;
+            var payload;
+            if (_instanceof(event.reason, Error)) {
+                error = event.reason;
+                payload = [
+                    stringify("Uncaught (in promise) " + error.name + ": " + error.message, logOptions.stringifyOptions)
+                ];
+            } else {
+                error = new Error();
+                payload = [
+                    stringify("Uncaught (in promise)", logOptions.stringifyOptions),
+                    stringify(event.reason, logOptions.stringifyOptions)
+                ];
+            }
+            var trace = ErrorStackParser.parse(error).map(function(stackFrame) {
+                return stackFrame.toString();
+            });
+            cb({
+                level: "error",
+                trace: trace,
+                payload: payload
+            });
+        };
+        win.addEventListener("unhandledrejection", unhandledrejectionHandler);
+        cancelHandlers.push(function() {
+            win.removeEventListener("unhandledrejection", unhandledrejectionHandler);
+        });
+    }
+    for(var _iterator = _create_for_of_iterator_helper_loose(logOptions.level), _step; !(_step = _iterator()).done;){
+        var levelType = _step.value;
+        cancelHandlers.push(replace(logger, levelType));
+    }
+    return function() {
+        cancelHandlers.forEach(function(h) {
+            return h();
+        });
+    };
+    function replace(_logger, level) {
+        var _this = this;
+        if (!_logger[level]) {
+            return function() {};
+        }
+        return patch(_logger, level, function(original) {
+            var _this1 = _this;
+            return function() {
+                for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+                    args[_key] = arguments[_key];
                 }
-            } catch (e2) {}
+                original.apply(_this1, args);
+                if (level === "assert" && !!args[0]) {
+                    return;
+                }
+                if (inStack) {
+                    return;
+                }
+                inStack = true;
+                try {
+                    var trace = ErrorStackParser.parse(new Error()).map(function(stackFrame) {
+                        return stackFrame.toString();
+                    }).splice(1);
+                    var argsForPayload = level === "assert" ? args.slice(1) : args;
+                    var payload = argsForPayload.map(function(s) {
+                        return stringify(s, logOptions.stringifyOptions);
+                    });
+                    logCount++;
+                    if (logCount < logOptions.lengthThreshold) {
+                        cb({
+                            level: level,
+                            trace: trace,
+                            payload: payload
+                        });
+                    } else if (logCount === logOptions.lengthThreshold) {
+                        cb({
+                            level: "warn",
+                            trace: [],
+                            payload: [
+                                stringify("The number of log records reached the threshold.")
+                            ]
+                        });
+                    }
+                } catch (error) {
+                    original.apply(void 0, [].concat([
+                        "rrweb logger error:",
+                        error
+                    ], args));
+                } finally{
+                    inStack = false;
+                }
+            };
         });
-        if (data.replace) try {
-            void ((_c = styleSheet.replace) == null ? void 0 : _c.call(styleSheet, data.replace));
-        } catch (e2) {}
-        if (data.replaceSync) try {
-            (_d = styleSheet.replaceSync) == null ? void 0 : _d.call(styleSheet, data.replaceSync);
-        } catch (e2) {}
+    }
+}
+var PLUGIN_NAME = "rrweb/console@1";
+var getRecordConsolePlugin = function(options) {
+    return {
+        name: PLUGIN_NAME,
+        observer: initLogObserver,
+        options: options
     };
-    _proto.applyStyleDeclaration = function applyStyleDeclaration(data, styleSheet) {
-        if (data.set) {
-            var rule2 = getNestedRule(styleSheet.rules, data.index);
-            rule2.style.setProperty(data.set.property, data.set.value, data.set.priority);
-        }
-        if (data.remove) {
-            var rule21 = getNestedRule(styleSheet.rules, data.index);
-            rule21.style.removeProperty(data.remove.property);
-        }
-    };
-    _proto.applyAdoptedStyleSheet = function applyAdoptedStyleSheet(data) {
-        var _this = this;
-        var _a2;
-        var targetHost = this.mirror.getNode(data.id);
-        if (!targetHost) return;
-        (_a2 = data.styles) == null ? void 0 : _a2.forEach(function(style) {
-            var _a3;
-            var newStyleSheet = null;
-            var hostWindow = null;
-            if (hasShadowRoot(targetHost)) hostWindow = ((_a3 = targetHost.ownerDocument) == null ? void 0 : _a3.defaultView) || null;
-            else if (targetHost.nodeName === "#document") hostWindow = targetHost.defaultView;
-            if (!hostWindow) return;
-            try {
-                newStyleSheet = new hostWindow.CSSStyleSheet();
-                _this.styleMirror.add(newStyleSheet, style.styleId);
-                _this.applyStyleSheetRule({
-                    source: IncrementalSource.StyleSheetRule,
-                    adds: style.rules
-                }, newStyleSheet);
-            } catch (e2) {}
-        });
-        var MAX_RETRY_TIME = 10;
-        var count = 0;
-        var adoptStyleSheets = function(targetHost2, styleIds) {
-            var stylesToAdopt = styleIds.map(function(styleId) {
-                return _this.styleMirror.getStyle(styleId);
-            }).filter(function(style) {
-                return style !== null;
-            });
-            if (hasShadowRoot(targetHost2)) targetHost2.shadowRoot.adoptedStyleSheets = stylesToAdopt;
-            else if (targetHost2.nodeName === "#document") targetHost2.adoptedStyleSheets = stylesToAdopt;
-            if (stylesToAdopt.length !== styleIds.length && count < MAX_RETRY_TIME) {
-                setTimeout(function() {
-                    return adoptStyleSheets(targetHost2, styleIds);
-                }, 0 + 100 * count);
-                count++;
-            }
-        };
-        adoptStyleSheets(targetHost, data.styleIds);
-    };
-    _proto.legacy_resolveMissingNode = function legacy_resolveMissingNode(map, parent, target, targetMutation) {
-        var previousId = targetMutation.previousId, nextId = targetMutation.nextId;
-        var previousInMap = previousId && map[previousId];
-        var nextInMap = nextId && map[nextId];
-        if (previousInMap) {
-            var node2 = previousInMap.node, mutation = previousInMap.mutation;
-            parent.insertBefore(node2, target);
-            delete map[mutation.node.id];
-            delete this.legacy_missingNodeRetryMap[mutation.node.id];
-            if (mutation.previousId || mutation.nextId) {
-                this.legacy_resolveMissingNode(map, parent, node2, mutation);
-            }
-        }
-        if (nextInMap) {
-            var node21 = nextInMap.node, mutation1 = nextInMap.mutation;
-            parent.insertBefore(node21, target.nextSibling);
-            delete map[mutation1.node.id];
-            delete this.legacy_missingNodeRetryMap[mutation1.node.id];
-            if (mutation1.previousId || mutation1.nextId) {
-                this.legacy_resolveMissingNode(map, parent, node21, mutation1);
-            }
-        }
-    };
-    _proto.moveAndHover = function moveAndHover(x2, y, id, isSync, debugData) {
-        var target = this.mirror.getNode(id);
-        if (!target) {
-            return this.debugNodeNotFound(debugData, id);
-        }
-        var base = getBaseDimension(target, this.iframe);
-        var _x = x2 * base.absoluteScale + base.x;
-        var _y = y * base.absoluteScale + base.y;
-        this.mouse.style.left = "" + _x + "px";
-        this.mouse.style.top = "" + _y + "px";
-        if (!isSync) {
-            this.drawMouseTail({
-                x: _x,
-                y: _y
-            });
-        }
-        this.hoverElements(target);
-    };
-    _proto.drawMouseTail = function drawMouseTail(position) {
-        var _this = this;
-        if (!this.mouseTail) {
-            return;
-        }
-        var _ref = this.config.mouseTail === true ? defaultMouseTailConfig : Object.assign({}, defaultMouseTailConfig, this.config.mouseTail), lineCap = _ref.lineCap, lineWidth = _ref.lineWidth, strokeStyle = _ref.strokeStyle, duration = _ref.duration;
-        var draw = function() {
-            if (!_this.mouseTail) {
-                return;
-            }
-            var ctx = _this.mouseTail.getContext("2d");
-            if (!ctx || !_this.tailPositions.length) {
-                return;
-            }
-            ctx.clearRect(0, 0, _this.mouseTail.width, _this.mouseTail.height);
-            ctx.beginPath();
-            ctx.lineWidth = lineWidth;
-            ctx.lineCap = lineCap;
-            ctx.strokeStyle = strokeStyle;
-            ctx.moveTo(_this.tailPositions[0].x, _this.tailPositions[0].y);
-            _this.tailPositions.forEach(function(p) {
-                return ctx.lineTo(p.x, p.y);
-            });
-            ctx.stroke();
-        };
-        this.tailPositions.push(position);
-        draw();
-        setTimeout(function() {
-            _this.tailPositions = _this.tailPositions.filter(function(p) {
-                return p !== position;
-            });
-            draw();
-        }, duration / this.speedService.state.context.timer.speed);
-    };
-    _proto.hoverElements = function hoverElements(el) {
-        var _a2;
-        (_a2 = this.lastHoveredRootNode || this.iframe.contentDocument) == null ? void 0 : _a2.querySelectorAll(".\\:hover").forEach(function(hoveredEl) {
-            hoveredEl.classList.remove(":hover");
-        });
-        this.lastHoveredRootNode = el.getRootNode();
-        var currentEl = el;
-        while(currentEl){
-            if (currentEl.classList) {
-                currentEl.classList.add(":hover");
-            }
-            currentEl = currentEl.parentElement;
-        }
-    };
-    _proto.isUserInteraction = function isUserInteraction(event) {
-        if (event.type !== EventType.IncrementalSnapshot) {
-            return false;
-        }
-        return event.data.source > IncrementalSource.Mutation && event.data.source <= IncrementalSource.Input;
-    };
-    _proto.backToNormal = function backToNormal() {
-        this.nextUserInteractionEvent = null;
-        if (this.speedService.state.matches("normal")) {
-            return;
-        }
-        this.speedService.send({
-            type: "BACK_TO_NORMAL"
-        });
-        this.emitter.emit(ReplayerEvents.SkipEnd, {
-            speed: this.speedService.state.context.normalSpeed
-        });
-    };
-    _proto.warnNodeNotFound = function warnNodeNotFound(d, id) {
-        this.warn("Node with id '" + id + "' not found. ", d);
-    };
-    _proto.warnCanvasMutationFailed = function warnCanvasMutationFailed(d, error) {
-        this.warn("Has error on canvas update", error, "canvas mutation:", d);
-    };
-    _proto.debugNodeNotFound = function debugNodeNotFound(d, id) {
-        this.debug("Node with id '" + id + "' not found. ", d);
-    };
-    _proto.warn = function warn() {
-        for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
-            args[_key] = arguments[_key];
-        }
-        var _this_config_logger;
-        if (!this.config.showWarning) {
-            return;
-        }
-        (_this_config_logger = this.config.logger).warn.apply(_this_config_logger, [].concat([
-            REPLAY_CONSOLE_PREFIX
-        ], args));
-    };
-    _proto.debug = function debug() {
-        for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
-            args[_key] = arguments[_key];
-        }
-        var _this_config_logger;
-        if (!this.config.showDebug) {
-            return;
-        }
-        (_this_config_logger = this.config.logger).log.apply(_this_config_logger, [].concat([
-            REPLAY_CONSOLE_PREFIX
-        ], args));
-    };
-    _create_class(Replayer, [
-        {
-            key: "timer",
-            get: function get() {
-                return this.service.state.context.timer;
-            }
-        }
-    ]);
-    return Replayer;
-}();
-var addCustomEvent = record.addCustomEvent;
-var freezePage = record.freezePage;
-var takeFullSnapshot = record.takeFullSnapshot;
+};
 
-export { EventType, IncrementalSource, MouseInteractions, Replayer, ReplayerEvents, addCustomEvent, canvasMutation, freezePage, _mirror as mirror, record, takeFullSnapshot, utils };
+export { EventType, IncrementalSource, getRecordConsolePlugin, record };

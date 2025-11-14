@@ -43,20 +43,22 @@ export interface OutTrackingOptions extends ClearOptOutInOutOptions {
 export type RageClickConfig =
   | boolean
   | {
-    /** Distance threshold in pixels for clicks to be considered within the same area (default: 30) */
-    threshold_px?: number;
-    /** Time window in milliseconds for clicks to be considered rapid (default: 1000) */
-    timeout_ms?: number;
-    /** Number of clicks required to trigger a rage click event (default: 3) */
-    click_count?: number;
-  };
+      /** Distance threshold in pixels for clicks to be considered within the same area (default: 30) */
+      threshold_px?: number;
+      /** Time window in milliseconds for clicks to be considered rapid (default: 1000) */
+      timeout_ms?: number;
+      /** Number of clicks required to trigger a rage click event (default: 3) */
+      click_count?: number;
+      /** Whether to only track rage clicks on interactive elements like buttons, links, inputs (default: false) */
+      interactive_elements_only?: boolean;
+    };
 
 export type DeadClickConfig =
   | boolean
   | {
-    /** Time in milliseconds to wait after a click before qualifying it as dead (default: 500) */
-    timeout_ms?: number;
-  };
+      /** Time in milliseconds to wait after a click before qualifying it as dead (default: 500) */
+      timeout_ms?: number;
+    };
 
 export interface RegisterOptions {
   persistent: boolean;
@@ -149,6 +151,10 @@ export interface AutocaptureConfig {
   block_element_callback?: (element: Element, event: Event) => boolean;
 }
 
+export interface FlagsConfig {
+  context: Dict;
+}
+
 export interface Config {
   api_host: string;
   api_routes: {
@@ -165,6 +171,7 @@ export interface Config {
   cookie_domain: string;
   cross_site_cookie: boolean;
   cross_subdomain_cookie: boolean;
+  flags: boolean | FlagsConfig;
   persistence: Persistence;
   persistence_name: string;
   cookie_name: string;
@@ -277,11 +284,41 @@ export interface Group {
   unset(prop: string, callback?: Callback): void;
 }
 
+export interface FlagsVariant {
+  key: string;
+  value: any;
+  experiment_id?: string;
+  is_experiment_active?: boolean;
+  is_qa_tester?: boolean;
+}
+
+export interface FlagsUpdateContextOptions {
+  replace?: boolean;
+}
+
+export interface FlagsManager {
+  are_flags_ready(): boolean;
+  get_variant(
+    featureName: string,
+    fallback: FlagsVariant
+  ): Promise<FlagsVariant>;
+  get_variant_sync(featureName: string, fallback: FlagsVariant): FlagsVariant;
+  get_variant_value(featureName: string, fallbackValue: any): Promise<any>;
+  get_variant_value_sync(featureName: string, fallbackValue: any): any;
+  is_enabled(featureName: string, fallbackValue?: boolean): Promise<boolean>;
+  is_enabled_sync(featureName: string, fallbackValue?: boolean): boolean;
+  update_context(
+    context: Dict,
+    options?: FlagsUpdateContextOptions
+  ): Promise<void>;
+}
+
 export interface Mixpanel {
   add_group(group_key: string, group_id: string, callback?: Callback): void;
   alias(alias: string, original?: string): void;
   clear_opt_in_out_tracking(options?: Partial<ClearOptOutInOutOptions>): void;
   disable(events?: string[]): void;
+  flags: FlagsManager;
   get_config(prop_name?: string): any;
   get_distinct_id(): any;
   get_group(group_key: string, group_id: string): Group;

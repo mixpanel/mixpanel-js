@@ -1,4 +1,4 @@
-import { logger, weakSetSupported } from './utils';
+import { getClickEventComposedPath, getClickEventTargetElement, logger, weakSetSupported } from './utils';
 
 function ShadowDOMObserver(changeCallback, observerConfig) {
     this.changeCallback = changeCallback || function() {};
@@ -12,28 +12,16 @@ ShadowDOMObserver.prototype.getEventTarget = function(event) {
     if (!this.observedShadowRoots) {
         return;
     }
-    var path = this.getComposedPath(event);
-    if (path && path.length) {
-        return path[0];
-    }
 
-    return event['target'] || event['srcElement'];
+    return getClickEventTargetElement(event);
 };
 
-
-ShadowDOMObserver.prototype.getComposedPath = function(event) {
-    if ('composedPath' in event) {
-        return event['composedPath']();
-    }
-
-    return [];
-};
 ShadowDOMObserver.prototype.observeFromEvent = function(event) {
     if (!this.observedShadowRoots) {
         return;
     }
 
-    var path = this.getComposedPath(event);
+    var path = getClickEventComposedPath(event);
 
     // Check each element in path for shadow roots
     for (var i = 0; i < path.length; i++) {
