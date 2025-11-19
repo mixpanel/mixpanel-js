@@ -223,9 +223,10 @@ var create_mplib = function(token, config, name) {
 
     var source = init_type === INIT_MODULE ? 'module' : 'snippet';
     send_sdk_extension_message({
-        instance: mixpanel_master,
+        instance: instance,
         source: source,
         token: token,
+        name: name,
     });
 
     // if target is not defined, we called init after the lib already
@@ -299,7 +300,6 @@ MixpanelLib.prototype._init = function(token, config, name) {
     }
 
     this.hooks = {};
-    this['hooks'] = this.hooks;
 
     this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
         'name': name,
@@ -1907,7 +1907,7 @@ MixpanelLib.prototype.set_config = function(config) {
         if (_.isObject(config['hooks'])) {
             this.hooks = {};
             for (var hook_name in config['hooks']) {
-                if (config['hooks'].hasOwnProperty(hook_name)) {
+                if (Object.prototype.hasOwnProperty.call(config['hooks'], hook_name)) {
                     var hook_value = config['hooks'][hook_name];
                     if (_.isFunction(hook_value)) {
                         this.hooks[hook_name] = [hook_value];
@@ -1940,16 +1940,17 @@ MixpanelLib.prototype.get_config = function(prop_name) {
  */
 MixpanelLib.prototype._run_hook = function(hook_name) {
     var ret = slice.call(arguments, 1);
-    var hooks = this['hooks'][hook_name];
-    if (_.isArray(hooks)) {
-        for (var i = 0; i < hooks.length; i++) {
-            ret = hooks[i].apply(this, ret);
+    _.each(this.hooks[hook_name], function(hook) {
+        if(ret === null) {
+            return ret;
         }
-    }
-    if (typeof ret === 'undefined') {
-        this.report_error(hook_name + ' hook did not return a value');
-        ret = null;
-    }
+        ret = hook.apply(this, ret);
+        if (typeof ret === 'undefined') {
+            this.report_error(hook_name + ' hook did not return a value');
+            ret = null;
+        }
+    }, this);
+
     return ret;
 };
 
@@ -2275,10 +2276,6 @@ MixpanelLib.prototype.remove_hook = function(hook_name) {
     if (this.hooks) {
         delete this.hooks[hook_name];
     }
-};
-
-MixpanelLib.prototype._info_properties = function() {
-    return _.info.properties({'mp_loader': this.get_config('mp_loader')});
 };
 
 // EXPORTS (for closure compiler)
