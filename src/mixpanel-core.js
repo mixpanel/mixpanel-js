@@ -1048,7 +1048,8 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
-    this._run_hook('before_track', arguments);
+    const run_hook_args = ['before_track'].concat(Array.prototype.slice.call(arguments));
+    this._run_hook.apply(this, run_hook_args);
 
     if (!callback && typeof options === 'function') {
         callback = options;
