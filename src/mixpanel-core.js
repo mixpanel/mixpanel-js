@@ -1466,7 +1466,8 @@ var options_for_register = function(days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
-    this._run_hook('before_register', arguments);
+    const run_hook_args = ['before_register'].concat(Array.prototype.slice.call(arguments));
+    this._run_hook.apply(this, run_hook_args);
 
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
@@ -1504,7 +1505,8 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
-    this._run_hook('before_register_once', arguments);
+    const run_hook_args = ['before_register_once'].concat(Array.prototype.slice.call(arguments));
+    this._run_hook.apply(this, run_hook_args);
 
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
@@ -1529,7 +1531,8 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
-    this._run_hook('before_unregister', arguments);
+    const run_hook_args = ['before_unregister'].concat(Array.prototype.slice.call(arguments));
+    this._run_hook.apply(this, run_hook_args);
 
     options = options_for_register(options);
     if (options['persistent']) {
@@ -1579,7 +1582,8 @@ MixpanelLib.prototype.identify = function(
     //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
-    this._run_hook('before_identify', arguments);
+    const run_hook_args = ['before_identify'].concat(Array.prototype.slice.call(arguments));
+    this._run_hook.apply(this, run_hook_args);
 
     var previous_distinct_id = this.get_distinct_id();
     if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
