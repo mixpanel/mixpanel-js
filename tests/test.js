@@ -5165,6 +5165,7 @@
                 }, 'acrageclick');
 
                 var element = ele_with_class("some text", "p").e;
+
                 simulateRageClick(element, this.clock);
 
                 same(this.requests.length, 0, "should have no rage click");
@@ -7396,6 +7397,7 @@
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
                         var fetchCall2 = this.fetchStub.getCall(1);
+
                         var urlParams2 = validateAndGetUrlParams(fetchCall2)
                         same(urlParams2.get("seq"), "1")
                         ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
