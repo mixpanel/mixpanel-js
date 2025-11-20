@@ -371,7 +371,7 @@
         options = options || {};
         var x = options.x || 0;
         var y = options.y || 0;
-        
+
         if (element.click && options.x === undefined && options.y === undefined) {
             element.click();
         } else {
@@ -1179,21 +1179,21 @@
         }
 
         mpmodule("disable_persistence")
-            
+
         function testNoCallsToBrowserStorage(persistenceType) {
-            test(persistenceType + " persistence type should make no calls to browser storage APIs", 4, function() {            
+            test(persistenceType + " persistence type should make no calls to browser storage APIs", 4, function() {
                 var idbOpenSpy = sinon.spy(window.indexedDB, `open`);
                 var localStorageSetItemSpy = sinon.spy(window.localStorage, `setItem`);
                 var sessionStorageSetItemSpy = sinon.spy(window.sessionStorage, `setItem`);
                 var originalCookie = document.cookie;
-    
+
                 mixpanel.init('persistence_lib', {
                     persistence: persistenceType,
                     persistence_name: name,
                     batch_requests: false,
                     disable_persistence: true
                 }, 'persistence_lib');
-    
+
                 stop();
                 setTimeout(function() {
                     same(idbOpenSpy.callCount, 0, "IDB should not be opened");
@@ -1677,6 +1677,159 @@
             });
             var data = mixpanel.test.track('my event', {'foo': 'bar'});
             same(data, null);
+        });
+
+        test("before_track hook", 1, function() {
+            mixpanel.test.add_hook('before_track', function(event_data) {
+                return {
+                    event_name: event_data.event_name + ' before_tracked!',
+                };
+            })
+            var data = mixpanel.test.track('testing', {});
+            same(data.event, 'testing before_tracked!', 'should transform tracked event name with hook');
+        });
+
+        test("before_identify hook", 2, function() {
+            mixpanel.test.identify('old unique id!');
+            var track1 = mixpanel.test.track('haha');
+            same(track1.properties.distinct_id, 'old unique id!', 'identify should set distinct id');
+
+            mixpanel.test.add_hook('before_identify', function(identify_data) {
+                return {
+                    unique_id: "new unique id!",
+                };
+            })
+            mixpanel.test.identify('old unique id!');
+            var track2 = mixpanel.test.track('haha');
+            same(track2.properties.distinct_id, 'new unique id!', 'hook should override distinct id');
+        });
+
+        test("before_register hook", 1, function() {
+            mixpanel.test.add_hook('before_register', function(register_data) {
+                return {
+                    properties: {
+                        old_property_key: false
+                    },
+                };
+            })
+            mixpanel.test.register({old_property_key: true});
+            var track2 = mixpanel.test.track('haha', { has_properties: true});
+            same(track2.properties.old_property_key, false, 'hook should override super property value');
+        });
+
+        test("before_register_once hook", 2, function() {
+            mixpanel.test.register_once({old_property_key: true});
+            mixpanel.test.add_hook('before_register_once', function(register_once_data) {
+                return {
+                    properties: {
+                        old_property_key: false
+                    },
+                };
+            })
+            mixpanel.test.register_once({new_property_key: true});
+            var track = mixpanel.test.track('haha');
+            same(track.properties.new_property_key, undefined, 'hook should override register property');
+            same(track.properties.old_property_key, true, 'register_once should mean nothing changed');
+        });
+
+        test("before_unregister hook", 1, function() {
+            mixpanel.test.register({old_property_key: true});
+            mixpanel.test.add_hook('before_register_once', function(register_once_data) {
+                return {
+                    property: "dont unregister anything"
+                };
+            })
+            mixpanel.test.unregister({property: "old_property_key"});
+            var track = mixpanel.test.track('haha');
+            same(track.properties.old_property_key, true, 'hook should override unregister property');
+        });
+
+        test("hooks change arguments for sdk function", 1, function() {
+            mixpanel.test.add_hook('before_track', function(event_data) {
+                // No longer returning any properties
+                return {
+                    event_name: event_data.event_name,
+                };
+            })
+
+            var data = mixpanel.test.track('haha', { has_properties: true});
+            same(data.properties.has_properties, undefined, 'original tracked property dropped');
+        });
+
+        test("add_hook and remove_hook multiple hooks", 4, function() {
+            mixpanel.test.add_hook('before_track', function(event_data) {
+                event_data.properties.hook1 = true
+                return {
+                    event_name: event_data.event_name + '6',
+                    properties: event_data.properties
+                };
+            })
+            mixpanel.test.add_hook('before_track', function(event_data) {
+                event_data.properties.hook2 = true
+                return {
+                    event_name: event_data.event_name + '7',
+                    properties: event_data.properties
+                };
+            })
+            var data = mixpanel.test.track('haha', {});
+            same(data.event, 'haha67', 'should transform tracked event name with hook');
+            ok(data.properties.hook1);
+            ok(data.properties.hook2);
+
+            mixpanel.test.remove_hook('before_track')
+            data = mixpanel.test.track('haha', {});
+            same(data.event, 'haha', 'tracked event name should stay the same');
+        });
+
+        test("add_hook works ontop of set_config hooks", 3, function() {
+            mixpanel.test.set_config({
+                hooks: {
+                    before_track: function hook1(event_data) {
+                        event_data.properties.hook1 = true
+                        return {
+                            event_name: event_data.event_name + '6',
+                            properties: event_data.properties
+                        };
+                    }
+                }
+            });
+            mixpanel.test.add_hook('before_track', function(event_data) {
+                event_data.properties.hook2 = true
+                return {
+                    event_name: event_data.event_name + '7',
+                    properties: event_data.properties
+                };
+            })
+            var data = mixpanel.test.track('haha', {});
+            same(data.event, 'haha67', 'should transform tracked event name with hook');
+            ok(data.properties.hook1);
+            ok(data.properties.hook2);
+        });
+
+        test("set_config is destructive of existing hooks", 3, function() {
+            mixpanel.test.add_hook('before_track', function(event_data) {
+                event_data.properties.hook1 = true
+                return {
+                    event_name: event_data.event_name + '6',
+                    properties: event_data.properties
+                };
+            })
+            mixpanel.test.set_config({
+                hooks: {
+                    before_track: function hook2(event_data) {
+                        event_data.properties.hook2 = true
+                        return {
+                            event_name: event_data.event_name + '7',
+                            properties: event_data.properties
+                        };
+                    }
+                }
+            });
+
+            var data = mixpanel.test.track('haha', {});
+            same(data.event, 'haha7', 'should transform tracked only with set_config hook');
+            same(data.properties.hook1, undefined, 'hook1 should be erased');
+            ok(data.properties.hook2);
         });
 
         mpmodule("mixpanel.track_links");
@@ -4681,7 +4834,7 @@
                 var visibilityChangeEvent = new Event('visibilitychange');
                 document.dispatchEvent(visibilityChangeEvent);
 
-                
+
                 same(getSendBeaconData(this.sendBeaconStub.getCalls()[0].args[1]).properties.$max_scroll_view_depth, 100, "fragment position should be handled by scrollend listener not on location change");
 
 
@@ -4713,7 +4866,7 @@
 
                 var anchor = ele_with_class("Click me button");
                 anchor.e.onclick = function() { return false; }
-                
+
                 // Simulate 4 rapid clicks within threshold (5px apart each) - now needs 4 clicks
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
@@ -4725,7 +4878,7 @@
 
                 // Should have 5 events: 4 regular clicks + 1 rage click
                 same(this.requests.length, 5, "should have 4 click events + 1 rage click event");
-                
+
                 var rageClickEvent = null;
                 for (var i = 0; i < this.requests.length; i++) {
                     var event = getRequestData(this.requests[i]);
@@ -4734,7 +4887,7 @@
                         break;
                     }
                 }
-                
+
                 ok(rageClickEvent !== null, "should have detected a rage click event");
                 same(rageClickEvent.properties.$el_text, "Click me button", "rage click event should include correct element text");
             });
@@ -4760,7 +4913,7 @@
 
                 // Should only have 4 regular click events, no rage click
                 same(this.requests.length, 4, "should have 4 click events only");
-                
+
                 var hasRageClick = false;
                 for (var i = 0; i < this.requests.length; i++) {
                     var event = getRequestData(this.requests[i]);
@@ -4769,7 +4922,7 @@
                         break;
                     }
                 }
-                
+
                 notOk(hasRageClick, "should not have detected any rage click events");
                 same(getRequestData(this.requests[0]).event, "$mp_click", "all events should be regular clicks");
                 same(getRequestData(this.requests[1]).event, "$mp_click", "all events should be regular clicks");
@@ -4789,7 +4942,7 @@
 
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
-                
+
                 // Simulate 4 clicks far apart (beyond threshold)
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
@@ -4801,7 +4954,7 @@
 
                 // Should only have 4 regular click events, no rage click due to distance
                 same(this.requests.length, 4, "should have 4 click events only");
-                
+
                 var hasRageClick = false;
                 for (var i = 0; i < this.requests.length; i++) {
                     var event = getRequestData(this.requests[i]);
@@ -4810,7 +4963,7 @@
                         break;
                     }
                 }
-                
+
                 notOk(hasRageClick, "should not detect rage click when clicks are too far apart");
             });
 
@@ -4822,7 +4975,7 @@
 
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
-                
+
                 // Simulate 4 rapid clicks within threshold (5px apart each)
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
@@ -4850,7 +5003,7 @@
 
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
-                
+
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(100);
                 simulateMouseClick(anchor.e, {x: 105, y: 105});
@@ -4858,7 +5011,7 @@
                 simulateMouseClick(anchor.e, {x: 110, y: 110});
 
                 same(this.requests.length, 3, "should have 3 click events only with custom click_count=4, no rage clicks");
-                
+
                 var hasRageClick = false;
                 for (var i = 0; i < this.requests.length; i++) {
                     var event = getRequestData(this.requests[i]);
@@ -4867,7 +5020,7 @@
                         break;
                     }
                 }
-                
+
                 notOk(hasRageClick, "should not detect rage click with only 3 clicks when click_count=4");
 
                 this.clock.tick(100);
@@ -4901,17 +5054,17 @@
 
                 var anchor = ele_with_class();
                 anchor.e.onclick = function() { return false; }
-                
+
                 simulateMouseClick(anchor.e, {x: 100, y: 100});
                 this.clock.tick(1000);
                 simulateMouseClick(anchor.e, {x: 105, y: 105});
                 this.clock.tick(100);
-                simulateMouseClick(anchor.e, {x: 110, y: 110});                
+                simulateMouseClick(anchor.e, {x: 110, y: 110});
                 this.clock.tick(100);
                 simulateMouseClick(anchor.e, {x: 145, y: 145});
-                
+
                 same(this.requests.length, 5, "should have 4 click events + 1 rage click event with custom config");
-                
+
                 var rageClickEvent = null;
                 for (var i = 0; i < this.requests.length; i++) {
                     var event = getRequestData(this.requests[i]);
@@ -4946,10 +5099,10 @@
                 var anchor = ele_with_class('Click me button');
 
                 simulateMouseClick(anchor.e);
-                
+
                 // Wait for dead click timeout
                 this.clock.tick(500);
-                
+
                 // Should have 2 events: 1 regular click + 1 dead click
                 same(this.requests.length, 2, 'should have 1 click event + 1 dead click event');
 
@@ -5115,7 +5268,7 @@
             asyncTest('tracking sends request after flush interval', 5, function() {
                 mixpanel.batchtest.track('queued event 1');
                 mixpanel.batchtest.track('queued event 2');
-                
+
                 // default batch_flush_interval_ms is 5000
                 return this.clock.tickAsync(7000).then(_.bind(function() {
                     same(this.requests.length, 1, "batch should have sent a single request");
@@ -5125,7 +5278,7 @@
                     same(tracked_events[0].event, 'queued event 1');
                     same(tracked_events[1].event, 'queued event 2');
                     start();
-                }, this)); 
+                }, this));
             });
 
             asyncTest('flush interval is configurable', 2, function() {
@@ -5169,7 +5322,7 @@
             asyncTest('batched requests get queued in localStorage', 6, function() {
                 mixpanel.batchtest.track('storagetest 1');
                 mixpanel.batchtest.track('storagetest 2');
-                
+
                 this.clock.tickAsync(2500).then(_.bind(function() {
                     var stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
                     same(stored_requests.length, 2, "both events should be in localStorage");
@@ -5198,7 +5351,7 @@
                     .then(_.bind(function() {
                         stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
                         same(stored_requests.length, 0, "both events should have been removed from localStorage");
-                        
+
                         // try again with '0' response
                         mixpanel.batchtest.track('storagetest 1');
                         return this.clock.tickAsync(1000);
@@ -5223,7 +5376,7 @@
             asyncTest('requests are not cleared from localStorage after 50x response', 3, function() {
                 mixpanel.batchtest.track('storagetest 1');
                 mixpanel.batchtest.track('storagetest 2');
-                
+
                 this.clock.tickAsync(1000)
                     .then(_.bind(function() {
                         stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
@@ -5244,7 +5397,7 @@
                         start();
                     }, this))
             });
-            
+
             asyncTest('requests are not cleared from localStorage when offline', 3, function() {
                 var onlineStub = sinon.stub(window.navigator, 'onLine').value(false);
 
@@ -5288,7 +5441,7 @@
                             }}
                         ]));
                         same(JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY)).length, 2);
-    
+
                         initBatchLibInstance();
                         return this.clock.tickAsync(1000);
                     }, this))
@@ -5325,7 +5478,7 @@
                         same(this.requests.length, 1, "request should have been made immediately upon storage failure");
                         var request_data = getRequestData(this.requests[0]);
                         same(request_data.event, 'failure event', "should have sent event that failed to queue");
-                        
+
                         return this.clock.tickAsync(30000);
                     }, this))
                     .then(_.bind(function() {
@@ -5359,7 +5512,7 @@
 
                 asyncTest('queued requests are flushed via sendBeacon before page pagehide - pagehide event', 3, function() {
                     mixpanel.batchtest.track('queued event');
-                    
+
                     this.clock.tickAsync(50)
                         .then(_.bind(function() {
                                 var event = new Event('pagehide');
@@ -5477,7 +5630,7 @@
                             Object.defineProperty(document, 'visibilityState', {value: 'hidden', writable: true});
                             Object.defineProperty(document, 'hidden', {value: true, writable: true});
                             window.dispatchEvent(new Event('visibilitychange'));
-                            
+
                             return this.clock.tickAsync(100);
                         }, this))
                         .then(_.bind(function() {
@@ -5485,7 +5638,7 @@
                             var request_data = getBatchSendBeaconRequestData(this.sendBeaconSpy)[0];
                             same(request_data.length, 1, "sendBeacon should have sent a single event");
                             same(request_data[0].event, 'queued event (transformed)', "before_send hook should be applied to event on visibilitychange");
-    
+
                             stored_requests = JSON.parse(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY));
                             same(stored_requests.length, 1, "event should still be in localStorage");
                             same(stored_requests[0].payload.event, 'queued event (transformed)', "before_send hook should be applied to persisted queue before visibilitychange");
@@ -5596,7 +5749,7 @@
 
             asyncTest('with batch_autostart=false, requests are not sent until explicit start', 6, function() {
                 clearLibInstance(mixpanel.batchtest);
-                
+
                 // tick first to make sure previous batchers are stopped and cleared
                 this.clock.tickAsync(1000)
                     .then(_.bind(function() {
@@ -5645,7 +5798,7 @@
                                 'event': 'orphaned event 2'
                             }}
                         ]));
-    
+
                         initBatchLibInstance({batch_autostart: false});
                         return this.clock.tickAsync(1000);
                     }, this))
@@ -5677,7 +5830,7 @@
                                 'event': 'orphaned event 2'
                             }}
                         ]));
-    
+
                         initBatchLibInstance({
                             batch_autostart: false,
                             hooks: {
@@ -5749,7 +5902,7 @@
 
             asyncTest('people updates send request after flush interval', 9, function() {
                 mixpanel.batchtest.identify('pat');
-                
+
                 this.clock.tickAsync(100)
                     .then(_.bind(function() {
                         mixpanel.batchtest.people.set('foo', 'bar');
@@ -5793,10 +5946,10 @@
                 this.clock.tickAsync(7000)
                     .then(_.bind(function() {
                         same(this.requests.length, 1, "group updates should have made request");
-    
+
                         var group_updates = getRequestData(this.requests[0]);
                         same(group_updates.length, 2, "should have sent both updates in batch");
-    
+
                         ok(contains_obj(group_updates[0], {
                             $group_key: 'font',
                             $group_id: 'Times'
@@ -6880,7 +7033,7 @@
                     };
 
                     this.assertRecorderScript(false);
-                    
+
                     if (IS_RECORDER_BUNDLED) {
                         this.waitForRecorderLoad = function () {
                             this.randomStub.restore();
@@ -6923,7 +7076,7 @@
                             var allStores = ['mixpanelRecordingEvents', 'mixpanelRecordingRegistry'];
                             // need to increment that version number as our schema changes, maybe set up some consts
                             var openRequest = window.indexedDB.open('mixpanelBrowserDb', 1);
-    
+
                             var isFresh = false;
                             openRequest.onsuccess = function () {
                                 if (isFresh) {
@@ -7011,7 +7164,7 @@
                             start();
                         })
                 });
-    
+
                 asyncTest('does not add script tag when not sampled', 2, function () {
                     this.randomStub.returns(0.02);
                     this.initMixpanelRecorder({record_sessions_percent: 1});
@@ -7065,7 +7218,7 @@
                         var callArgs = fetchCall2.args;
                         var body = callArgs[1].body;
                         same(body.constructor, Blob, 'request body is a Blob');
-                        
+
                         var urlParams2 = validateAndGetUrlParams(fetchCall2)
                         same(urlParams2.get("seq"), "1")
                         ok(urlParams2.get("$current_url").endsWith('#my-url-2'), 'url is updated at the start of this batch');
@@ -7123,7 +7276,7 @@
                 this.randomStub.returns(0.02);
                 this.initMixpanelRecorder({record_sessions_percent: 1});
                 this.assertRecorderScript(false);
-                
+
                 this.clock.tickAsync(20 * 1000)
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 0, 'no /record call has been made since the user did not fall into the sample.');
@@ -7296,7 +7449,7 @@
             asyncTest('retries record request after a 500', 17, function () {
                 this.randomStub.returns(0.02);
                 this.initMixpanelRecorder({record_sessions_percent: 10});
-                
+
                 // fake the fetch / response promises since we're testing callback logic
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
@@ -7348,17 +7501,17 @@
                 var onlineStub = sinon.stub(window.navigator, 'onLine').value(false);
                 // pretend we can't compress so we can compare the events in the fetch request
                 var compressionStreamStub = sinon.stub(window, 'CompressionStream').value(undefined);
-                
+
                 this.randomStub.returns(0.02);
                 this.initMixpanelRecorder({record_sessions_percent: 10});
-                
+
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
                 this.fetchStub.onCall(0)
                     .returns(new Promise(function (_resolve, reject) {
                         // simulate offline
                         reject(new TypeError('Failed to fetch'));
-                    })) 
+                    }))
                     .onCall(1)
                     .returns(makeFakeFetchResponse(200))
 
@@ -7399,7 +7552,7 @@
 
             asyncTest('halves batch size and retries record request after a 413', 25, function () {
                 this.randomStub.returns(0.02);
-                
+
                 this.blobConstructorSpy = sinon.spy(window, 'Blob')
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
@@ -7412,7 +7565,7 @@
                     .returns(makeFakeFetchResponse(200))
                     .onCall(3)
                     .returns(makeFakeFetchResponse(200))
-                
+
                 this.initMixpanelRecorder({record_sessions_percent: 10});
 
                 this.waitForRecorderLoad()
@@ -7451,7 +7604,7 @@
                     .then(this.waitForFetchCalls(4))
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 4, 'record request is retried after a 413 and subsequently flushes the rest of events');
-                    
+
                         urlParams = validateAndGetUrlParams(this.fetchStub.getCall(2));
                         same(urlParams.get("seq"), "1");
 
@@ -7563,7 +7716,7 @@
                     .then(_.bind(function () {
                         same(this.fetchStub.getCalls().length, 2, 'one batch fetch request made every ten seconds')
                         var fetchCall2 = this.fetchStub.getCall(1);
-                        
+
                         var urlParams2 = validateAndGetUrlParams(fetchCall2);
                         same(urlParams2.get("seq"), "1");
                         same(replayId, urlParams2.get("replay_id"));
@@ -7579,7 +7732,7 @@
                 this.randomStub.restore();
                 this.initMixpanelRecorder({record_idle_timeout_ms: 60 * 1000});
                 mixpanel.recordertest.start_session_recording();
-                
+
                 // fake the fetch / response promises since we're testing callback logic
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
@@ -7673,7 +7826,7 @@
                         same(this.fetchStub.getCalls().length, 1, 'flushed events after stopping recording');
                         var urlParams = validateAndGetUrlParams(this.fetchStub.getCall(0));
                         same(urlParams.get('seq'), '0', 'sends first sequence');
-                        
+
                         if (!IS_RECORDER_BUNDLED) {
                             same(urlParams.get('replay_start_time'), (this.startTime / 1000).toString(), 'sends the right start time');
                         } else {
@@ -7715,11 +7868,11 @@
                         start();
                     });
             });
-            
+
             asyncTest('mixpanel.reset() changes replay_id', 10, function () {
                 this.randomStub.restore();
                 this.initMixpanelRecorder({record_sessions_percent: 100});
-                
+
                 var distinctId = mixpanel.recordertest.get_distinct_id();
                 this.responseBlobStub = sinon.stub(window.Response.prototype, 'blob');
                 this.responseBlobStub.returns(Promise.resolve(new Blob()));
@@ -7775,4 +7928,3 @@
         }
     };
 })();
- 
