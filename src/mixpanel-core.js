@@ -1985,7 +1985,6 @@ MixpanelLib.prototype.get_config = function(prop_name) {
  */
 MixpanelLib.prototype._run_hook = function(hook_name, hook_args) {
     var ret = hook_args;
-    console.log('what happened to this.hooks', this.hooks)
     _.each(this.hooks[hook_name], function(hook) {
         if(ret === null) {
             return null;
