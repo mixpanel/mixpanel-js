@@ -160,6 +160,9 @@ describe(`SessionRecording`, function() {
     expect(sessionRecording.maxExpires).to.equal(NOW_MS + 24 * 60 * 60 * 1000);
     expect(sessionRecording.seqNo).to.equal(0);
 
+    // simulate some rrweb events occurring
+    sessionRecording.lastEventTimestamp = NOW_MS + 100;
+
     const serializedRecording = sessionRecording.serialize();
 
     expect(serializedRecording).to.deep.equal({
@@ -168,6 +171,7 @@ describe(`SessionRecording`, function() {
       replayStartTime: NOW_MS,
       batchStartUrl: undefined,
       replayStartUrl: undefined,
+      lastEventTimestamp: NOW_MS + 100,
       idleExpires: NOW_MS + 30 * 60 * 1000,
       maxExpires: NOW_MS + 24 * 60 * 60 * 1000,
       tabId: `test-tab-id`,
@@ -179,6 +183,7 @@ describe(`SessionRecording`, function() {
     const deserializedRecording = SessionRecording.deserialize(serializedRecording, {mixpanelInstance: mockMixpanelInstance});
     expect(deserializedRecording.replayId).to.equal(replayId);
     expect(deserializedRecording.replayStartTime).to.equal(NOW_MS);
+    expect(deserializedRecording.lastEventTimestamp).to.equal(NOW_MS + 100);
     expect(deserializedRecording.idleExpires).to.equal(NOW_MS + 30 * 60 * 1000);
     expect(deserializedRecording.maxExpires).to.equal(NOW_MS + 24 * 60 * 60 * 1000);
     expect(deserializedRecording.seqNo).to.equal(0);
@@ -266,6 +271,49 @@ describe(`SessionRecording`, function() {
 
     const queueAfterFlush = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
     expect(queueAfterFlush).to.not.be.ok;
+  });
+
+  it(`does not unload persisted rrweb data and cleans up IndexedDB items if the recording is too short`, async function() {
+    await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingEvents`]);
+    const startTime = 1737870254055;
+    const recordMinMs = 2000;
+    const lastEventTimestamp = startTime + recordMinMs - 1;
+    const mockMixpanelInstance = new MockMixpanelLib({ 'record_min_ms': recordMinMs });
+
+    const recordingToUnload = SessionRecording.deserialize({
+      replayId: `some-other-replay-id`,
+      seqNo: 5,
+      replayStartTime: startTime,
+      batchStartUrl: `https://foobar.com/login`,
+      replayStartUrl: `https://foobar.com/`,
+      idleExpires: startTime + 30 * 60 * 1000,
+      maxExpires: startTime + 24 * 60 * 60 * 1000,
+      tabId: `test-some-other-tab-id`,
+      lastEventTimestamp: lastEventTimestamp,
+    }, {mixpanelInstance: mockMixpanelInstance, sharedLockStorage: localStorage});
+
+    const persistedEvents = [
+      {timestamp: startTime + 10, data: {source: IncrementalSource.MouseInteraction}},
+      {timestamp: startTime + 15, data: {source: IncrementalSource.MouseMove}},
+      {timestamp: lastEventTimestamp, data: {source: IncrementalSource.Mutation}},
+    ].map(ev => {
+      return {
+        type: EventType.IncrementalSnapshot,
+        id: ev.timestamp - startTime,
+        payload: ev,
+        flushAfter: startTime,
+      };
+    });
+
+    const batcherKey = `__mprec_mp_test_test-token_some-other-replay-id`;
+
+    await idbSetItem(`mixpanelRecordingEvents`, batcherKey, persistedEvents);
+
+    await recordingToUnload.unloadPersistedData();
+    expect(fetchStub.calledOnce).to.be.false;
+
+    const queueAfterFlush = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
+    expect(queueAfterFlush).to.be.undefined;
   });
 
   it(`aborts recording and doesn't flush if there is no full snapshot on the first sequence`, async function() {

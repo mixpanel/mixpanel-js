@@ -1748,6 +1748,28 @@ if (typeof JSON !== 'undefined') {
 JSONStringify = JSONStringify || _.JSONEncode;
 JSONParse = JSONParse || _.JSONDecode;
 
+/**
+ * Determines if CompressionStream API should be used.
+ * Returns false for Safari 16.4 and 16.5 which have breaking CompressionStream bugs.
+ * https://bugs.webkit.org/show_bug.cgi?id=254021
+ * fixed in 16.6 https://developer.apple.com/documentation/safari-release-notes/safari-16_6-release-notes
+ */
+var canUseCompressionStream = function(userAgent, vendor, opera) {
+    if (!window.CompressionStream) {
+        return false;
+    }
+
+    var browser = _.info.browser(userAgent, vendor, opera);
+    var version = _.info.browserVersion(userAgent, vendor, opera);
+    if (browser === 'Safari' || browser === 'Mobile Safari') {
+        if (version >= 16.4 && version < 16.6) {
+            return false;
+        }
+    }
+
+    return true;
+};
+
 // UNMINIFIED EXPORTS (for closure compiler)
 _['info']                   = _.info;
 _['info']['browser']        = _.info.browser;
@@ -1765,6 +1787,7 @@ _['NPO']                    = NpoPromise;
 export {
     _,
     batchedThrottle,
+    canUseCompressionStream,
     cheap_guid,
     console_with_prefix,
     console,
@@ -1784,4 +1807,5 @@ export {
     send_sdk_extension_message,
     slice,
     userAgent,
+    windowOpera,
 };

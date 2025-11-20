@@ -150,6 +150,7 @@ var DEFAULT_CONFIG = {
     'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
+    'record_console':                    true,
     'record_heatmap_data':               false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),

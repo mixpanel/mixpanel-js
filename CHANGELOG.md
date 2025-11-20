@@ -1,3 +1,13 @@
+**2.72.0** (14 Nov 2025)
+- Adds Autocapture rage-click configuration option `interactive_elements_only`, to ignore clicks on non-interactive page elements such as text. Configure with: `mixpanel.init('<TOKEN>', {autocapture: {rage_click: {interactive_elements_only: true}}})`
+- Adds TypeScript types for Feature Flags subsystem (`mixpanel.flags`)
+- Adds JS console data to Session Recordings, enabled by default but configurable via the `record_console` initialization option.
+- Fixes an issue in session recording where closing and opening a page would upload a replay shorter than the configured minimum duration (`record_min_ms`)
+- Fixes an issue in session recording where payloads get truncated on old Safari versions due to a bug in their CompressionStream implementation
+
+**2.71.1** (30 Oct 2025)
+- fixes issue with $mp_page_leave events getting tracked when `record_heatmap_data` is on and there was no session recording taking place.
+
 **2.71.0** (2 Oct 2025)
 - adds Dead Click ($mp_dead_click) autocapture event: when a click occurs but there is no DOM mutation afterwards
 - adds Page Leave ($mp_page_leave) autocapture event: when a page is "left" either by navigation or leaving the tab

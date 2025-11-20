@@ -324,19 +324,6 @@ function _ts_values(o) {
     };
     throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
 }
-var __defProp = Object.defineProperty;
-var __defNormalProp = function(obj, key, value) {
-    return key in obj ? __defProp(obj, key, {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: value
-    }) : obj[key] = value;
-};
-var __publicField = function(obj, key, value) {
-    return __defNormalProp(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
-};
-var _a;
 var __defProp$1 = Object.defineProperty;
 var __defNormalProp$1 = function(obj, key, value) {
     return key in obj ? __defProp$1(obj, key, {
@@ -348,6 +335,19 @@ var __defNormalProp$1 = function(obj, key, value) {
 };
 var __publicField$1 = function(obj, key, value) {
     return __defNormalProp$1(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
+};
+var _a;
+var __defProp$1$1 = Object.defineProperty;
+var __defNormalProp$1$1 = function(obj, key, value) {
+    return key in obj ? __defProp$1$1(obj, key, {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: value
+    }) : obj[key] = value;
+};
+var __publicField$1$1 = function(obj, key, value) {
+    return __defNormalProp$1$1(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
 };
 var NodeType$3 = /* @__PURE__ */ function(NodeType2) {
     NodeType2[NodeType2["Document"] = 0] = "Document";
@@ -617,8 +617,8 @@ function isCSSStyleRule(rule2) {
 }
 var Mirror = /*#__PURE__*/ function() {
     function Mirror() {
-        __publicField$1(this, "idNodeMap", /* @__PURE__ */ new Map());
-        __publicField$1(this, "nodeMetaMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1$1(this, "idNodeMap", /* @__PURE__ */ new Map());
+        __publicField$1$1(this, "nodeMetaMap", /* @__PURE__ */ new WeakMap());
     }
     var _proto = Mirror.prototype;
     _proto.getId = function getId(n2) {
@@ -2502,7 +2502,8 @@ var nanoid$1$1 = function(size) {
     return id;
 };
 var nonSecure$1 = {
-    nanoid: nanoid$1$1};
+    nanoid: nanoid$1$1
+};
 var SourceMapConsumer$2$1 = require$$2$1.SourceMapConsumer, SourceMapGenerator$2$1 = require$$2$1.SourceMapGenerator;
 var existsSync$1 = require$$2$1.existsSync, readFileSync$1 = require$$2$1.readFileSync;
 var dirname$1$1 = require$$2$1.dirname, join$1 = require$$2$1.join;
@@ -6653,7 +6654,8 @@ var nanoid$1 = function(size) {
     return id;
 };
 var nonSecure = {
-    nanoid: nanoid$1};
+    nanoid: nanoid$1
+};
 var SourceMapConsumer$2 = require$$2.SourceMapConsumer, SourceMapGenerator$2 = require$$2.SourceMapGenerator;
 var existsSync = require$$2.existsSync, readFileSync = require$$2.readFileSync;
 var dirname$1 = require$$2.dirname, join = require$$2.join;
@@ -9813,7 +9815,7 @@ var Declaration22 = declaration;
 var LazyResult22 = lazyResult;
 var Container22 = container;
 var Processor22 = processor;
-var stringify = stringify_1;
+var stringify$6 = stringify_1;
 var fromJSON = fromJSON_1;
 var Document222 = document$1$2;
 var Warning22 = warning;
@@ -9867,7 +9869,7 @@ postcss.plugin = function plugin2(name, initializer) {
     };
     return creator;
 };
-postcss.stringify = stringify;
+postcss.stringify = stringify$6;
 postcss.parse = parse;
 postcss.fromJSON = fromJSON;
 postcss.list = list;
@@ -10117,7 +10119,7 @@ function querySelectorAll(n2, selectors) {
 function mutationObserverCtor() {
     return getUntaintedPrototype("MutationObserver").constructor;
 }
-function patch(source, name, replacement) {
+function patch$2(source, name, replacement) {
     try {
         if (!(name in source)) {
             return function() {};
@@ -10154,7 +10156,7 @@ var index = {
     querySelector: querySelector,
     querySelectorAll: querySelectorAll,
     mutationObserver: mutationObserverCtor,
-    patch: patch
+    patch: patch$2
 };
 function on(type, fn, target) {
     if (target === void 0) target = document;
@@ -10349,9 +10351,9 @@ function hasShadowRoot(n2) {
 }
 var StyleSheetMirror = /*#__PURE__*/ function() {
     function StyleSheetMirror() {
-        __publicField(this, "id", 1);
-        __publicField(this, "styleIDMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "idStyleMap", /* @__PURE__ */ new Map());
+        __publicField$1(this, "id", 1);
+        __publicField$1(this, "styleIDMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "idStyleMap", /* @__PURE__ */ new Map());
     }
     var _proto = StyleSheetMirror.prototype;
     _proto.getId = function getId(stylesheet) {
@@ -10487,9 +10489,9 @@ function isNodeInLinkedList(n2) {
 }
 var DoubleLinkedList = /*#__PURE__*/ function() {
     function DoubleLinkedList() {
-        __publicField(this, "length", 0);
-        __publicField(this, "head", null);
-        __publicField(this, "tail", null);
+        __publicField$1(this, "length", 0);
+        __publicField$1(this, "head", null);
+        __publicField$1(this, "tail", null);
     }
     var _proto = DoubleLinkedList.prototype;
     _proto.get = function get(position) {
@@ -10570,14 +10572,14 @@ var moveKey = function(id, parentId) {
 var MutationBuffer = /*#__PURE__*/ function() {
     function MutationBuffer() {
         var _this = this;
-        __publicField(this, "frozen", false);
-        __publicField(this, "locked", false);
-        __publicField(this, "texts", []);
-        __publicField(this, "attributes", []);
-        __publicField(this, "attributeMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "removes", []);
-        __publicField(this, "mapRemoves", []);
-        __publicField(this, "movedMap", {});
+        __publicField$1(this, "frozen", false);
+        __publicField$1(this, "locked", false);
+        __publicField$1(this, "texts", []);
+        __publicField$1(this, "attributes", []);
+        __publicField$1(this, "attributeMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "removes", []);
+        __publicField$1(this, "mapRemoves", []);
+        __publicField$1(this, "movedMap", {});
         /**
      * the browser MutationObserver emits multiple mutations after
      * a delay for performance reasons, making tracing added nodes hard
@@ -10594,37 +10596,37 @@ var MutationBuffer = /*#__PURE__*/ function() {
      * collect added nodes from the Set which have no duplicate copy. But
      * this also causes newly added nodes will not be serialized with id ASAP,
      * which means all the id related calculation should be lazy too.
-     */ __publicField(this, "addedSet", /* @__PURE__ */ new Set());
-        __publicField(this, "movedSet", /* @__PURE__ */ new Set());
-        __publicField(this, "droppedSet", /* @__PURE__ */ new Set());
-        __publicField(this, "removesSubTreeCache", /* @__PURE__ */ new Set());
-        __publicField(this, "mutationCb");
-        __publicField(this, "blockClass");
-        __publicField(this, "blockSelector");
-        __publicField(this, "maskTextClass");
-        __publicField(this, "maskTextSelector");
-        __publicField(this, "inlineStylesheet");
-        __publicField(this, "maskInputOptions");
-        __publicField(this, "maskTextFn");
-        __publicField(this, "maskInputFn");
-        __publicField(this, "keepIframeSrcFn");
-        __publicField(this, "recordCanvas");
-        __publicField(this, "inlineImages");
-        __publicField(this, "slimDOMOptions");
-        __publicField(this, "dataURLOptions");
-        __publicField(this, "doc");
-        __publicField(this, "mirror");
-        __publicField(this, "iframeManager");
-        __publicField(this, "stylesheetManager");
-        __publicField(this, "shadowDomManager");
-        __publicField(this, "canvasManager");
-        __publicField(this, "processedNodeManager");
-        __publicField(this, "unattachedDoc");
-        __publicField(this, "processMutations", function(mutations) {
+     */ __publicField$1(this, "addedSet", /* @__PURE__ */ new Set());
+        __publicField$1(this, "movedSet", /* @__PURE__ */ new Set());
+        __publicField$1(this, "droppedSet", /* @__PURE__ */ new Set());
+        __publicField$1(this, "removesSubTreeCache", /* @__PURE__ */ new Set());
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "blockClass");
+        __publicField$1(this, "blockSelector");
+        __publicField$1(this, "maskTextClass");
+        __publicField$1(this, "maskTextSelector");
+        __publicField$1(this, "inlineStylesheet");
+        __publicField$1(this, "maskInputOptions");
+        __publicField$1(this, "maskTextFn");
+        __publicField$1(this, "maskInputFn");
+        __publicField$1(this, "keepIframeSrcFn");
+        __publicField$1(this, "recordCanvas");
+        __publicField$1(this, "inlineImages");
+        __publicField$1(this, "slimDOMOptions");
+        __publicField$1(this, "dataURLOptions");
+        __publicField$1(this, "doc");
+        __publicField$1(this, "mirror");
+        __publicField$1(this, "iframeManager");
+        __publicField$1(this, "stylesheetManager");
+        __publicField$1(this, "shadowDomManager");
+        __publicField$1(this, "canvasManager");
+        __publicField$1(this, "processedNodeManager");
+        __publicField$1(this, "unattachedDoc");
+        __publicField$1(this, "processMutations", function(mutations) {
             mutations.forEach(_this.processMutation);
             _this.emit();
         });
-        __publicField(this, "emit", function() {
+        __publicField$1(this, "emit", function() {
             if (_this.frozen || _this.locked) {
                 return;
             }
@@ -10825,7 +10827,7 @@ var MutationBuffer = /*#__PURE__*/ function() {
             _this.movedMap = {};
             _this.mutationCb(payload);
         });
-        __publicField(this, "genTextAreaValueMutation", function(textarea) {
+        __publicField$1(this, "genTextAreaValueMutation", function(textarea) {
             var item = _this.attributeMap.get(textarea);
             if (!item) {
                 item = {
@@ -10849,7 +10851,7 @@ var MutationBuffer = /*#__PURE__*/ function() {
                 maskInputFn: _this.maskInputFn
             });
         });
-        __publicField(this, "processMutation", function(m) {
+        __publicField$1(this, "processMutation", function(m) {
             if (isIgnored(m.target, _this.mirror, _this.slimDOMOptions)) {
                 return;
             }
@@ -10994,7 +10996,7 @@ var MutationBuffer = /*#__PURE__*/ function() {
         });
         /**
      * Make sure you check if `n`'s parent is blocked before calling this function
-     * */ __publicField(this, "genAdds", function(n2, target) {
+     * */ __publicField$1(this, "genAdds", function(n2, target) {
             if (_this.processedNodeManager.inOtherBuffer(n2, _this)) return;
             if (_this.addedSet.has(n2) || _this.movedSet.has(n2)) return;
             if (_this.mirror.hasNode(n2)) {
@@ -11840,7 +11842,7 @@ function initFontObserver(param) {
         });
         return fontFace;
     };
-    var restoreHandler = patch(doc.fonts, "add", function(original) {
+    var restoreHandler = patch$2(doc.fonts, "add", function(original) {
         return function(fontFace) {
             setTimeout(callbackWrapper(function() {
                 var p = fontMap.get(fontFace);
@@ -11896,7 +11898,7 @@ function initCustomElementObserver(param) {
     var doc = param.doc, customElementCb = param.customElementCb;
     var win = doc.defaultView;
     if (!win || !win.customElements) return function() {};
-    var restoreHandler = patch(win.customElements, "define", function(original) {
+    var restoreHandler = patch$2(win.customElements, "define", function(original) {
         return function(name, constructor, options) {
             try {
                 customElementCb({
@@ -12123,8 +12125,8 @@ function canMonkeyPatchNestedCSSRule(prop) {
 }
 var CrossOriginIframeMirror = /*#__PURE__*/ function() {
     function CrossOriginIframeMirror(generateIdFn) {
-        __publicField(this, "iframeIdToRemoteIdMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "iframeRemoteIdToIdMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "iframeIdToRemoteIdMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "iframeRemoteIdToIdMap", /* @__PURE__ */ new WeakMap());
         this.generateIdFn = generateIdFn;
     }
     var _proto = CrossOriginIframeMirror.prototype;
@@ -12190,17 +12192,17 @@ var CrossOriginIframeMirror = /*#__PURE__*/ function() {
 }();
 var IframeManager = /*#__PURE__*/ function() {
     function IframeManager(options) {
-        __publicField(this, "iframes", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "crossOriginIframeMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
-        __publicField(this, "crossOriginIframeStyleMirror");
-        __publicField(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "mirror");
-        __publicField(this, "mutationCb");
-        __publicField(this, "wrappedEmit");
-        __publicField(this, "loadListener");
-        __publicField(this, "stylesheetManager");
-        __publicField(this, "recordCrossOriginIframes");
+        __publicField$1(this, "iframes", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "crossOriginIframeMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
+        __publicField$1(this, "crossOriginIframeStyleMirror");
+        __publicField$1(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "mirror");
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "wrappedEmit");
+        __publicField$1(this, "loadListener");
+        __publicField$1(this, "stylesheetManager");
+        __publicField$1(this, "recordCrossOriginIframes");
         this.mutationCb = options.mutationCb;
         this.wrappedEmit = options.wrappedEmit;
         this.stylesheetManager = options.stylesheetManager;
@@ -12447,12 +12449,12 @@ var IframeManager = /*#__PURE__*/ function() {
 }();
 var ShadowDomManager = /*#__PURE__*/ function() {
     function ShadowDomManager(options) {
-        __publicField(this, "shadowDoms", /* @__PURE__ */ new WeakSet());
-        __publicField(this, "mutationCb");
-        __publicField(this, "scrollCb");
-        __publicField(this, "bypassOptions");
-        __publicField(this, "mirror");
-        __publicField(this, "restoreHandlers", []);
+        __publicField$1(this, "shadowDoms", /* @__PURE__ */ new WeakSet());
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "scrollCb");
+        __publicField$1(this, "bypassOptions");
+        __publicField$1(this, "mirror");
+        __publicField$1(this, "restoreHandlers", []);
         this.mutationCb = options.mutationCb;
         this.scrollCb = options.scrollCb;
         this.bypassOptions = options.bypassOptions;
@@ -12503,7 +12505,7 @@ var ShadowDomManager = /*#__PURE__*/ function() {
    * Patch 'attachShadow' to observe newly added shadow doms.
    */ _proto.patchAttachShadow = function patchAttachShadow(element, doc) {
         var manager = this;
-        this.restoreHandlers.push(patch(element.prototype, "attachShadow", function(original) {
+        this.restoreHandlers.push(patch$2(element.prototype, "attachShadow", function(original) {
             return function(option) {
                 var sRoot = original.call(this, option);
                 var shadowRootEl = index.shadowRoot(this);
@@ -12669,7 +12671,7 @@ function initCanvas2DMutationObserver(cb, win, blockClass, blockSelector) {
             if (typeof win.CanvasRenderingContext2D.prototype[prop] !== "function") {
                 return "continue";
             }
-            var restoreHandler = patch(win.CanvasRenderingContext2D.prototype, prop, function(original) {
+            var restoreHandler = patch$2(win.CanvasRenderingContext2D.prototype, prop, function(original) {
                 return function() {
                     var _this = this;
                     for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
@@ -12720,7 +12722,7 @@ function getNormalizedContextName(contextType) {
 function initCanvasContextObserver(win, blockClass, blockSelector, setPreserveDrawingBufferToTrue) {
     var handlers = [];
     try {
-        var restoreHandler = patch(win.HTMLCanvasElement.prototype, "getContext", function(original) {
+        var restoreHandler = patch$2(win.HTMLCanvasElement.prototype, "getContext", function(original) {
             return function(contextType) {
                 for(var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++){
                     args[_key - 1] = arguments[_key];
@@ -12775,7 +12777,7 @@ function patchGLPrototype(prototype, type, cb, blockClass, blockSelector, win) {
             if (typeof prototype[prop] !== "function") {
                 return "continue";
             }
-            var restoreHandler = patch(prototype, prop, function(original) {
+            var restoreHandler = patch$2(prototype, prop, function(original) {
                 return function() {
                     for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
                         args[_key] = arguments[_key];
@@ -12864,17 +12866,17 @@ function WorkerWrapper(options) {
 var CanvasManager = /*#__PURE__*/ function() {
     function CanvasManager(options) {
         var _this = this;
-        __publicField(this, "pendingCanvasMutations", /* @__PURE__ */ new Map());
-        __publicField(this, "rafStamps", {
+        __publicField$1(this, "pendingCanvasMutations", /* @__PURE__ */ new Map());
+        __publicField$1(this, "rafStamps", {
             latestId: 0,
             invokeId: null
         });
-        __publicField(this, "mirror");
-        __publicField(this, "mutationCb");
-        __publicField(this, "resetObservers");
-        __publicField(this, "frozen", false);
-        __publicField(this, "locked", false);
-        __publicField(this, "processMutation", function(target, mutation) {
+        __publicField$1(this, "mirror");
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "resetObservers");
+        __publicField$1(this, "frozen", false);
+        __publicField$1(this, "locked", false);
+        __publicField$1(this, "processMutation", function(target, mutation) {
             var newFrame = _this.rafStamps.invokeId && _this.rafStamps.latestId !== _this.rafStamps.invokeId;
             if (newFrame || !_this.rafStamps.invokeId) _this.rafStamps.invokeId = _this.rafStamps.latestId;
             if (!_this.pendingCanvasMutations.has(target)) {
@@ -13087,10 +13089,10 @@ var CanvasManager = /*#__PURE__*/ function() {
 }();
 var StylesheetManager = /*#__PURE__*/ function() {
     function StylesheetManager(options) {
-        __publicField(this, "trackedLinkElements", /* @__PURE__ */ new WeakSet());
-        __publicField(this, "mutationCb");
-        __publicField(this, "adoptedStyleSheetCb");
-        __publicField(this, "styleMirror", new StyleSheetMirror());
+        __publicField$1(this, "trackedLinkElements", /* @__PURE__ */ new WeakSet());
+        __publicField$1(this, "mutationCb");
+        __publicField$1(this, "adoptedStyleSheetCb");
+        __publicField$1(this, "styleMirror", new StyleSheetMirror());
         this.mutationCb = options.mutationCb;
         this.adoptedStyleSheetCb = options.adoptedStyleSheetCb;
     }
@@ -13152,8 +13154,8 @@ var StylesheetManager = /*#__PURE__*/ function() {
 }();
 var ProcessedNodeManager = /*#__PURE__*/ function() {
     function ProcessedNodeManager() {
-        __publicField(this, "nodeMap", /* @__PURE__ */ new WeakMap());
-        __publicField(this, "active", false);
+        __publicField$1(this, "nodeMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "active", false);
     }
     var _proto = ProcessedNodeManager.prototype;
     _proto.inOtherBuffer = function inOtherBuffer(node2, thisBuffer) {
@@ -13678,6 +13680,493 @@ var n;
 record.addCustomEvent;
 record.freezePage;
 record.takeFullSnapshot;
+var __defProp = Object.defineProperty;
+var __defNormalProp = function(obj, key, value) {
+    return key in obj ? __defProp(obj, key, {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: value
+    }) : obj[key] = value;
+};
+var __publicField = function(obj, key, value) {
+    return __defNormalProp(obj, (typeof key === "undefined" ? "undefined" : _type_of(key)) !== "symbol" ? key + "" : key, value);
+};
+function patch(source, name, replacement) {
+    try {
+        if (!(name in source)) {
+            return function() {};
+        }
+        var original = source[name];
+        var wrapped = replacement(original);
+        if (typeof wrapped === "function") {
+            wrapped.prototype = wrapped.prototype || {};
+            Object.defineProperties(wrapped, {
+                __rrweb_original__: {
+                    enumerable: false,
+                    value: original
+                }
+            });
+        }
+        source[name] = wrapped;
+        return function() {
+            source[name] = original;
+        };
+    } catch (e) {
+        return function() {};
+    }
+}
+var StackFrame = /*#__PURE__*/ function() {
+    function StackFrame(obj) {
+        __publicField(this, "fileName");
+        __publicField(this, "functionName");
+        __publicField(this, "lineNumber");
+        __publicField(this, "columnNumber");
+        this.fileName = obj.fileName || "";
+        this.functionName = obj.functionName || "";
+        this.lineNumber = obj.lineNumber;
+        this.columnNumber = obj.columnNumber;
+    }
+    var _proto = StackFrame.prototype;
+    _proto.toString = function toString() {
+        var lineNumber = this.lineNumber || "";
+        var columnNumber = this.columnNumber || "";
+        if (this.functionName) return this.functionName + " (" + this.fileName + ":" + lineNumber + ":" + columnNumber + ")";
+        return this.fileName + ":" + lineNumber + ":" + columnNumber;
+    };
+    return StackFrame;
+}();
+var FIREFOX_SAFARI_STACK_REGEXP = /(^|@)\S+:\d+/;
+var CHROME_IE_STACK_REGEXP = /^\s*at .*(\S+:\d+|\(native\))/m;
+var SAFARI_NATIVE_CODE_REGEXP = /^(eval@)?(\[native code])?$/;
+var ErrorStackParser = {
+    /**
+   * Given an Error object, extract the most information from it.
+   */ parse: function parse(error) {
+        if (!error) {
+            return [];
+        }
+        if (// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        typeof error.stacktrace !== "undefined" || // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        typeof error["opera#sourceloc"] !== "undefined") {
+            return this.parseOpera(error);
+        } else if (error.stack && error.stack.match(CHROME_IE_STACK_REGEXP)) {
+            return this.parseV8OrIE(error);
+        } else if (error.stack) {
+            return this.parseFFOrSafari(error);
+        } else {
+            console.warn("[console-record-plugin]: Failed to parse error object:", error);
+            return [];
+        }
+    },
+    // Separate line and column numbers from a string of the form: (URI:Line:Column)
+    extractLocation: function extractLocation(urlLike) {
+        if (urlLike.indexOf(":") === -1) {
+            return [
+                urlLike
+            ];
+        }
+        var regExp = /(.+?)(?::(\d+))?(?::(\d+))?$/;
+        var parts = regExp.exec(urlLike.replace(/[()]/g, ""));
+        if (!parts) throw new Error("Cannot parse given url: " + urlLike);
+        return [
+            parts[1],
+            parts[2] || void 0,
+            parts[3] || void 0
+        ];
+    },
+    parseV8OrIE: function parseV8OrIE(error) {
+        var filtered = error.stack.split("\n").filter(function(line) {
+            return !!line.match(CHROME_IE_STACK_REGEXP);
+        }, this);
+        return filtered.map(function(line) {
+            if (line.indexOf("(eval ") > -1) {
+                line = line.replace(/eval code/g, "eval").replace(/(\(eval at [^()]*)|(\),.*$)/g, "");
+            }
+            var sanitizedLine = line.replace(/^\s+/, "").replace(/\(eval code/g, "(");
+            var location = sanitizedLine.match(/ (\((.+):(\d+):(\d+)\)$)/);
+            sanitizedLine = location ? sanitizedLine.replace(location[0], "") : sanitizedLine;
+            var tokens = sanitizedLine.split(/\s+/).slice(1);
+            var locationParts = this.extractLocation(location ? location[1] : tokens.pop());
+            var functionName = tokens.join(" ") || void 0;
+            var fileName = [
+                "eval",
+                "<anonymous>"
+            ].indexOf(locationParts[0]) > -1 ? void 0 : locationParts[0];
+            return new StackFrame({
+                functionName: functionName,
+                fileName: fileName,
+                lineNumber: locationParts[1],
+                columnNumber: locationParts[2]
+            });
+        }, this);
+    },
+    parseFFOrSafari: function parseFFOrSafari(error) {
+        var filtered = error.stack.split("\n").filter(function(line) {
+            return !line.match(SAFARI_NATIVE_CODE_REGEXP);
+        }, this);
+        return filtered.map(function(line) {
+            if (line.indexOf(" > eval") > -1) {
+                line = line.replace(/ line (\d+)(?: > eval line \d+)* > eval:\d+:\d+/g, ":$1");
+            }
+            if (line.indexOf("@") === -1 && line.indexOf(":") === -1) {
+                return new StackFrame({
+                    functionName: line
+                });
+            } else {
+                var functionNameRegex = /((.*".+"[^@]*)?[^@]*)(?:@)/;
+                var matches = line.match(functionNameRegex);
+                var functionName = matches && matches[1] ? matches[1] : void 0;
+                var locationParts = this.extractLocation(line.replace(functionNameRegex, ""));
+                return new StackFrame({
+                    functionName: functionName,
+                    fileName: locationParts[0],
+                    lineNumber: locationParts[1],
+                    columnNumber: locationParts[2]
+                });
+            }
+        }, this);
+    },
+    parseOpera: function parseOpera(e) {
+        if (!e.stacktrace || e.message.indexOf("\n") > -1 && e.message.split("\n").length > e.stacktrace.split("\n").length) {
+            return this.parseOpera9(e);
+        } else if (!e.stack) {
+            return this.parseOpera10(e);
+        } else {
+            return this.parseOpera11(e);
+        }
+    },
+    parseOpera9: function parseOpera9(e) {
+        var lineRE = /Line (\d+).*script (?:in )?(\S+)/i;
+        var lines = e.message.split("\n");
+        var result = [];
+        for(var i = 2, len = lines.length; i < len; i += 2){
+            var match = lineRE.exec(lines[i]);
+            if (match) {
+                result.push(new StackFrame({
+                    fileName: match[2],
+                    lineNumber: parseFloat(match[1])
+                }));
+            }
+        }
+        return result;
+    },
+    parseOpera10: function parseOpera10(e) {
+        var lineRE = /Line (\d+).*script (?:in )?(\S+)(?:: In function (\S+))?$/i;
+        var lines = e.stacktrace.split("\n");
+        var result = [];
+        for(var i = 0, len = lines.length; i < len; i += 2){
+            var match = lineRE.exec(lines[i]);
+            if (match) {
+                result.push(new StackFrame({
+                    functionName: match[3] || void 0,
+                    fileName: match[2],
+                    lineNumber: parseFloat(match[1])
+                }));
+            }
+        }
+        return result;
+    },
+    // Opera 10.65+ Error.stack very similar to FF/Safari
+    parseOpera11: function parseOpera11(error) {
+        var filtered = error.stack.split("\n").filter(function(line) {
+            return !!line.match(FIREFOX_SAFARI_STACK_REGEXP) && !line.match(/^Error created at/);
+        }, this);
+        return filtered.map(function(line) {
+            var tokens = line.split("@");
+            var locationParts = this.extractLocation(tokens.pop());
+            var functionCall = tokens.shift() || "";
+            var functionName = functionCall.replace(/<anonymous function(: (\w+))?>/, "$2").replace(/\([^)]*\)/g, "") || void 0;
+            return new StackFrame({
+                functionName: functionName,
+                fileName: locationParts[0],
+                lineNumber: locationParts[1],
+                columnNumber: locationParts[2]
+            });
+        }, this);
+    }
+};
+function pathToSelector(node) {
+    if (!node || !node.outerHTML) {
+        return "";
+    }
+    var path = "";
+    while(node.parentElement){
+        var name = node.localName;
+        if (!name) {
+            break;
+        }
+        name = name.toLowerCase();
+        var parent = node.parentElement;
+        var domSiblings = [];
+        if (parent.children && parent.children.length > 0) {
+            for(var i = 0; i < parent.children.length; i++){
+                var sibling = parent.children[i];
+                if (sibling.localName && sibling.localName.toLowerCase) {
+                    if (sibling.localName.toLowerCase() === name) {
+                        domSiblings.push(sibling);
+                    }
+                }
+            }
+        }
+        if (domSiblings.length > 1) {
+            name += ":eq(" + domSiblings.indexOf(node) + ")";
+        }
+        path = name + (path ? ">" + path : "");
+        node = parent;
+    }
+    return path;
+}
+function isObject(obj) {
+    return Object.prototype.toString.call(obj) === "[object Object]";
+}
+function isObjTooDeep(obj, limit) {
+    if (limit === 0) {
+        return true;
+    }
+    var keys = Object.keys(obj);
+    for(var _iterator = _create_for_of_iterator_helper_loose(keys), _step; !(_step = _iterator()).done;){
+        var key = _step.value;
+        if (isObject(obj[key]) && isObjTooDeep(obj[key], limit - 1)) {
+            return true;
+        }
+    }
+    return false;
+}
+function stringify(obj, stringifyOptions) {
+    var options = {
+        numOfKeysLimit: 50,
+        depthOfLimit: 4
+    };
+    Object.assign(options, stringifyOptions);
+    var stack = [];
+    var keys = [];
+    return JSON.stringify(obj, function(key, value) {
+        if (stack.length > 0) {
+            var thisPos = stack.indexOf(this);
+            ~thisPos ? stack.splice(thisPos + 1) : stack.push(this);
+            ~thisPos ? keys.splice(thisPos, Infinity, key) : keys.push(key);
+            if (~stack.indexOf(value)) {
+                if (stack[0] === value) {
+                    value = "[Circular ~]";
+                } else {
+                    value = "[Circular ~." + keys.slice(0, stack.indexOf(value)).join(".") + "]";
+                }
+            }
+        } else {
+            stack.push(value);
+        }
+        if (value === null) return value;
+        if (value === void 0) return "undefined";
+        if (shouldIgnore(value)) {
+            return toString(value);
+        }
+        if ((typeof value === "undefined" ? "undefined" : _type_of(value)) === "bigint") {
+            return value.toString() + "n";
+        }
+        if (_instanceof(value, Event)) {
+            var eventResult = {};
+            for(var eventKey in value){
+                var eventValue = value[eventKey];
+                if (Array.isArray(eventValue)) {
+                    eventResult[eventKey] = pathToSelector(eventValue.length ? eventValue[0] : null);
+                } else {
+                    eventResult[eventKey] = eventValue;
+                }
+            }
+            return eventResult;
+        } else if (_instanceof(value, Node)) {
+            if (_instanceof(value, HTMLElement)) {
+                return value ? value.outerHTML : "";
+            }
+            return value.nodeName;
+        } else if (_instanceof(value, Error)) {
+            return value.stack ? value.stack + "\nEnd of stack for Error object" : value.name + ": " + value.message;
+        }
+        return value;
+    });
+    function shouldIgnore(_obj) {
+        if (isObject(_obj) && Object.keys(_obj).length > options.numOfKeysLimit) {
+            return true;
+        }
+        if (typeof _obj === "function") {
+            return true;
+        }
+        if (isObject(_obj) && isObjTooDeep(_obj, options.depthOfLimit)) {
+            return true;
+        }
+        return false;
+    }
+    function toString(_obj) {
+        var str = _obj.toString();
+        if (options.stringLengthLimit && str.length > options.stringLengthLimit) {
+            str = "" + str.slice(0, options.stringLengthLimit) + "...";
+        }
+        return str;
+    }
+}
+var defaultLogOptions = {
+    level: [
+        "assert",
+        "clear",
+        "count",
+        "countReset",
+        "debug",
+        "dir",
+        "dirxml",
+        "error",
+        "group",
+        "groupCollapsed",
+        "groupEnd",
+        "info",
+        "log",
+        "table",
+        "time",
+        "timeEnd",
+        "timeLog",
+        "trace",
+        "warn"
+    ],
+    lengthThreshold: 1e3,
+    logger: "console"
+};
+function initLogObserver(cb, win, options) {
+    var logOptions = options ? Object.assign({}, defaultLogOptions, options) : defaultLogOptions;
+    var loggerType = logOptions.logger;
+    if (!loggerType) {
+        return function() {};
+    }
+    var logger;
+    if (typeof loggerType === "string") {
+        logger = win[loggerType];
+    } else {
+        logger = loggerType;
+    }
+    var logCount = 0;
+    var inStack = false;
+    var cancelHandlers = [];
+    if (logOptions.level.includes("error")) {
+        var errorHandler = function(event) {
+            var message = event.message, error = event.error;
+            var trace = ErrorStackParser.parse(error).map(function(stackFrame) {
+                return stackFrame.toString();
+            });
+            var payload = [
+                stringify(message, logOptions.stringifyOptions)
+            ];
+            cb({
+                level: "error",
+                trace: trace,
+                payload: payload
+            });
+        };
+        win.addEventListener("error", errorHandler);
+        cancelHandlers.push(function() {
+            win.removeEventListener("error", errorHandler);
+        });
+        var unhandledrejectionHandler = function(event) {
+            var error;
+            var payload;
+            if (_instanceof(event.reason, Error)) {
+                error = event.reason;
+                payload = [
+                    stringify("Uncaught (in promise) " + error.name + ": " + error.message, logOptions.stringifyOptions)
+                ];
+            } else {
+                error = new Error();
+                payload = [
+                    stringify("Uncaught (in promise)", logOptions.stringifyOptions),
+                    stringify(event.reason, logOptions.stringifyOptions)
+                ];
+            }
+            var trace = ErrorStackParser.parse(error).map(function(stackFrame) {
+                return stackFrame.toString();
+            });
+            cb({
+                level: "error",
+                trace: trace,
+                payload: payload
+            });
+        };
+        win.addEventListener("unhandledrejection", unhandledrejectionHandler);
+        cancelHandlers.push(function() {
+            win.removeEventListener("unhandledrejection", unhandledrejectionHandler);
+        });
+    }
+    for(var _iterator = _create_for_of_iterator_helper_loose(logOptions.level), _step; !(_step = _iterator()).done;){
+        var levelType = _step.value;
+        cancelHandlers.push(replace(logger, levelType));
+    }
+    return function() {
+        cancelHandlers.forEach(function(h) {
+            return h();
+        });
+    };
+    function replace(_logger, level) {
+        var _this = this;
+        if (!_logger[level]) {
+            return function() {};
+        }
+        return patch(_logger, level, function(original) {
+            var _this1 = _this;
+            return function() {
+                for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+                    args[_key] = arguments[_key];
+                }
+                original.apply(_this1, args);
+                if (level === "assert" && !!args[0]) {
+                    return;
+                }
+                if (inStack) {
+                    return;
+                }
+                inStack = true;
+                try {
+                    var trace = ErrorStackParser.parse(new Error()).map(function(stackFrame) {
+                        return stackFrame.toString();
+                    }).splice(1);
+                    var argsForPayload = level === "assert" ? args.slice(1) : args;
+                    var payload = argsForPayload.map(function(s) {
+                        return stringify(s, logOptions.stringifyOptions);
+                    });
+                    logCount++;
+                    if (logCount < logOptions.lengthThreshold) {
+                        cb({
+                            level: level,
+                            trace: trace,
+                            payload: payload
+                        });
+                    } else if (logCount === logOptions.lengthThreshold) {
+                        cb({
+                            level: "warn",
+                            trace: [],
+                            payload: [
+                                stringify("The number of log records reached the threshold.")
+                            ]
+                        });
+                    }
+                } catch (error) {
+                    original.apply(void 0, [].concat([
+                        "rrweb logger error:",
+                        error
+                    ], args));
+                } finally{
+                    inStack = false;
+                }
+            };
+        });
+    }
+}
+var PLUGIN_NAME = "rrweb/console@1";
+var getRecordConsolePlugin = function(options) {
+    return {
+        name: PLUGIN_NAME,
+        observer: initLogObserver,
+        options: options
+    };
+};
 
 var setImmediate = win['setImmediate'];
 var builtInProp, cycle, schedulingQueue,
@@ -14043,7 +14532,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.71.0'
+    LIB_VERSION: '2.72.0'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -15783,6 +16272,28 @@ if (typeof JSON !== 'undefined') {
 JSONStringify = JSONStringify || _.JSONEncode;
 JSONParse = JSONParse || _.JSONDecode;
 
+/**
+ * Determines if CompressionStream API should be used.
+ * Returns false for Safari 16.4 and 16.5 which have breaking CompressionStream bugs.
+ * https://bugs.webkit.org/show_bug.cgi?id=254021
+ * fixed in 16.6 https://developer.apple.com/documentation/safari-release-notes/safari-16_6-release-notes
+ */
+var canUseCompressionStream = function(userAgent, vendor, opera) {
+    if (!win.CompressionStream) {
+        return false;
+    }
+
+    var browser = _.info.browser(userAgent, vendor, opera);
+    var version = _.info.browserVersion(userAgent, vendor, opera);
+    if (browser === 'Safari' || browser === 'Mobile Safari') {
+        if (version >= 16.4 && version < 16.6) {
+            return false;
+        }
+    }
+
+    return true;
+};
+
 // UNMINIFIED EXPORTS (for closure compiler)
 _['info']                   = _.info;
 _['info']['browser']        = _.info.browser;
@@ -17158,6 +17669,7 @@ function isUserEvent(ev) {
  * @property {number} idleExpires
  * @property {number} maxExpires
  * @property {number} replayStartTime
+ * @property {number} lastEventTimestamp
  * @property {number} seqNo
  * @property {string} batchStartUrl
  * @property {string} replayId
@@ -17178,6 +17690,7 @@ function isUserEvent(ev) {
  * @property {number} idleExpires
  * @property {number} maxExpires
  * @property {number} replayStartTime
+ * @property {number} lastEventTimestamp - the unix timestamp of the last recorded event from rrweb
  * @property {number} seqNo
  * @property {string} batchStartUrl
  * @property {string} replayStartUrl
@@ -17211,6 +17724,7 @@ var SessionRecording = function(options) {
     this.idleExpires = options.idleExpires || null;
     this.maxExpires = options.maxExpires || null;
     this.replayStartTime = options.replayStartTime || null;
+    this.lastEventTimestamp = options.lastEventTimestamp || null;
     this.seqNo = options.seqNo || 0;
 
     this.idleTimeoutId = null;
@@ -17270,10 +17784,20 @@ SessionRecording.prototype.getUserIdInfo = function () {
 
 SessionRecording.prototype.unloadPersistedData = function () {
     this.batcher.stop();
-    return this.batcher.flush()
-        .then(function () {
+
+    return this.queueStorage.init().catch(function () {
+        this.reportError('Error initializing IndexedDB storage for unloading persisted data.');
+    }.bind(this)).then(function () {
+        // if the recording is too short, just delete any stored events without flushing
+        if (this.getDurationMs() < this._getRecordMinMs()) {
             return this.queueStorage.removeItem(this.batcherKey);
-        }.bind(this));
+        }
+
+        return this.batcher.flush()
+            .then(function () {
+                return this.queueStorage.removeItem(this.batcherKey);
+            }.bind(this));
+    }.bind(this));
 };
 
 SessionRecording.prototype.getConfig = function(configVar) {
@@ -17308,11 +17832,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         this.maxExpires = new Date().getTime() + this.recordMaxMs;
     }
 
-    this.recordMinMs = this.getConfig('record_min_ms');
-    if (this.recordMinMs > MAX_VALUE_FOR_MIN_RECORDING_MS) {
-        this.recordMinMs = MAX_VALUE_FOR_MIN_RECORDING_MS;
-        logger$3.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
-    }
+    this.recordMinMs = this._getRecordMinMs();
 
     if (!this.replayStartTime) {
         this.replayStartTime = new Date().getTime();
@@ -17360,6 +17880,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                 }
                 // promise only used to await during tests
                 this.__enqueuePromise = this.batcher.enqueue(ev);
+
+                // Capture the timestamp of the last event for duration calculation.
+                if (this.lastEventTimestamp === null || ev.timestamp > this.lastEventTimestamp) {
+                    this.lastEventTimestamp = ev.timestamp;
+                }
             }.bind(this),
             'blockClass': this.getConfig('record_block_class'),
             'blockSelector': blockSelector,
@@ -17374,7 +17899,16 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
             'recordCanvas': this.getConfig('record_canvas'),
             'sampling': {
                 'canvas': 15
-            }
+            },
+            'plugins': this.getConfig('record_console') ? [
+                getRecordConsolePlugin({
+                    stringifyOptions: {
+                        stringLengthLimit: 1000,
+                        numOfKeysLimit: 50,
+                        depthOfLimit: 2
+                    }
+                })
+            ] : []
         });
     } catch (err) {
         this.reportError('Unexpected error when starting rrweb recording.', err);
@@ -17459,6 +17993,7 @@ SessionRecording.prototype.serialize = function () {
         'replayStartTime': this.replayStartTime,
         'batchStartUrl': this.batchStartUrl,
         'replayStartUrl': this.replayStartUrl,
+        'lastEventTimestamp': this.lastEventTimestamp,
         'idleExpires': this.idleExpires,
         'maxExpires': this.maxExpires,
         'tabId': tabId,
@@ -17480,6 +18015,7 @@ SessionRecording.deserialize = function (serializedRecording, options) {
         idleExpires: serializedRecording['idleExpires'],
         maxExpires: serializedRecording['maxExpires'],
         replayStartTime: serializedRecording['replayStartTime'],
+        lastEventTimestamp: serializedRecording['lastEventTimestamp'],
         seqNo: serializedRecording['seqNo'],
         sharedLockStorage: options.sharedLockStorage,
     }));
@@ -17570,7 +18106,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
         var eventsJson = JSON.stringify(data);
         Object.assign(reqParams, this.getUserIdInfo());
 
-        if (CompressionStream) {
+        if (canUseCompressionStream(userAgent, navigator.vendor, windowOpera)) {
             var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
             new Response(gzipStream)
@@ -17597,6 +18133,38 @@ SessionRecording.prototype.reportError = function(msg, err) {
     } catch(err) {
         logger$3.error(err);
     }
+};
+
+/**
+ * Calculates the duration of the recording in milliseconds, based on the start time and time of last recorded event.
+ * @returns {number} The duration of the recording in milliseconds. Returns 0 if recording hasn't started.
+ */
+SessionRecording.prototype.getDurationMs = function() {
+    if (this.replayStartTime === null) {
+        return 0;
+    }
+
+    // If the recording has no events, assume it is in progress and use the current time as the end time.
+    if (this.lastEventTimestamp === null) {
+        return new Date().getTime() - this.replayStartTime;
+    }
+
+    return this.lastEventTimestamp - this.replayStartTime;
+};
+
+/**
+ * Lazily loads the minimum recording length config in milliseconds, respecting the maximum limit.
+ * @returns {number} The minimum recording length in milliseconds.
+ */
+SessionRecording.prototype._getRecordMinMs = function() {
+    var configValue = this.getConfig('record_min_ms');
+
+    if (configValue > MAX_VALUE_FOR_MIN_RECORDING_MS) {
+        logger$3.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+        return MAX_VALUE_FOR_MIN_RECORDING_MS;
+    }
+
+    return configValue;
 };
 
 /**
@@ -18608,20 +19176,65 @@ function isDefinitelyNonInteractive(element) {
     return false;
 }
 
+/**
+ * Get the composed path of a click event for elements embedded in shadow DOM.
+ * @param {Event} event - event to get the composed path from
+ * @returns {Array} the composed path of the click event
+*/
+function getClickEventComposedPath(event) {
+    if ('composedPath' in event) {
+        return event['composedPath']();
+    }
+
+    return [];
+}
+
+/**
+ * Get the element from a click event, accounting for elements embedded in shadow DOM.
+ * @param {Event} event - event to get the target from
+ * @returns {Element | null} the element that was the target of the click event
+ */
+function getClickEventTargetElement(event) {
+    var path = getClickEventComposedPath(event);
+
+    if (path && path.length > 0) {
+        return path[0];
+    }
+
+    return event['target'] || event['srcElement'];
+}
+
 /** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
 /** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
 /** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
+/** @const */ var DEFAULT_RAGE_CLICK_INTERACTIVE_ELEMENTS_ONLY = false;
 
 function RageClickTracker() {
     this.clicks = [];
 }
 
-RageClickTracker.prototype.isRageClick = function(x, y, options) {
+/**
+ * Determines if a click event is part of a rage click sequence.
+ * @param {Event} event - the original click event.
+ * @param {import('../index.d.ts').RageClickConfig} options - configuration options for rage click detection.
+ * @returns {boolean} - true if the click is considered a rage click, false otherwise.
+ */
+RageClickTracker.prototype.isRageClick = function(event, options) {
     options = options || {};
     var thresholdPx = options['threshold_px'] || DEFAULT_RAGE_CLICK_THRESHOLD_PX;
     var timeoutMs = options['timeout_ms'] || DEFAULT_RAGE_CLICK_TIMEOUT_MS;
     var clickCount = options['click_count'] || DEFAULT_RAGE_CLICK_CLICK_COUNT;
+    var interactiveElementsOnly = options['interactive_elements_only'] || DEFAULT_RAGE_CLICK_INTERACTIVE_ELEMENTS_ONLY;
+
+    if (interactiveElementsOnly) {
+        var target = getClickEventTargetElement(event);
+        if (!target || isDefinitelyNonInteractive(target)) {
+            return false;
+        }
+    }
+
     var timestamp = Date.now();
+    var x = event['pageX'], y = event['pageY'];
 
     var lastClick = this.clicks[this.clicks.length - 1];
     if (
@@ -18652,28 +19265,16 @@ ShadowDOMObserver.prototype.getEventTarget = function(event) {
     if (!this.observedShadowRoots) {
         return;
     }
-    var path = this.getComposedPath(event);
-    if (path && path.length) {
-        return path[0];
-    }
 
-    return event['target'] || event['srcElement'];
+    return getClickEventTargetElement(event);
 };
 
-
-ShadowDOMObserver.prototype.getComposedPath = function(event) {
-    if ('composedPath' in event) {
-        return event['composedPath']();
-    }
-
-    return [];
-};
 ShadowDOMObserver.prototype.observeFromEvent = function(event) {
     if (!this.observedShadowRoots) {
         return;
     }
 
-    var path = this.getComposedPath(event);
+    var path = getClickEventComposedPath(event);
 
     // Check each element in path for shadow roots
     for (var i = 0; i < path.length; i++) {
@@ -19225,6 +19826,11 @@ Autocapture.prototype._trackPageLeave = function(ev, currentUrl, currentScrollHe
         // User has navigated away already ending their impression.
         return;
     }
+
+    if (!this.getConfig(CONFIG_TRACK_PAGE_LEAVE) && !this.mp.is_recording_heatmap_data()) {
+        return;
+    }
+
     this.hasTrackedScrollSession = true;
     var viewportHeight = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
     var scrollPercentage = Math.round(Math.max(this.maxScrollViewDepth - viewportHeight, 0) / (currentScrollHeight - viewportHeight) * 100);
@@ -19244,11 +19850,8 @@ Autocapture.prototype._trackPageLeave = function(ev, currentUrl, currentScrollHe
         '$current_url': currentUrl || _.info.currentUrl(),
         '$viewportHeight': viewportHeight, // This is the fold line
         '$viewportWidth':  Math.max(document$1.documentElement.clientWidth, win.innerWidth || 0),
+        '$captured_for_heatmap': this.mp.is_recording_heatmap_data()
     }, DEFAULT_PROPS);
-
-    if (this.mp.is_recording_heatmap_data() && !this.getConfig(CONFIG_TRACK_PAGE_LEAVE)) {
-        props['$captured_for_heatmap'] = true;
-    }
 
     // Send with beacon transport to ensure event is sent before unload
     this.mp.track(MP_EV_PAGE_LEAVE, props, {transport: 'sendBeacon'});
@@ -19423,7 +20026,7 @@ Autocapture.prototype.initRageClickTracking = function() {
             return;
         }
 
-        if (this._rageClickTracker.isRageClick(ev['pageX'], ev['pageY'], currentRageClickConfig)) {
+        if (this._rageClickTracker.isRageClick(ev, currentRageClickConfig)) {
             this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
         }
     }.bind(this);
@@ -21292,6 +21895,7 @@ var DEFAULT_CONFIG = {
     'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,
     'record_collect_fonts':              false,
+    'record_console':                    true,
     'record_heatmap_data':               false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
     'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),

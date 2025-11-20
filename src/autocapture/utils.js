@@ -744,9 +744,39 @@ function isDefinitelyNonInteractive(element) {
     return false;
 }
 
+/**
+ * Get the composed path of a click event for elements embedded in shadow DOM.
+ * @param {Event} event - event to get the composed path from
+ * @returns {Array} the composed path of the click event
+*/
+function getClickEventComposedPath(event) {
+    if ('composedPath' in event) {
+        return event['composedPath']();
+    }
+
+    return [];
+}
+
+/**
+ * Get the element from a click event, accounting for elements embedded in shadow DOM.
+ * @param {Event} event - event to get the target from
+ * @returns {Element | null} the element that was the target of the click event
+ */
+function getClickEventTargetElement(event) {
+    var path = getClickEventComposedPath(event);
+
+    if (path && path.length > 0) {
+        return path[0];
+    }
+
+    return event['target'] || event['srcElement'];
+}
+
 export {
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_INPUT, EV_LOAD,EV_MP_LOCATION_CHANGE, EV_POPSTATE,
     EV_SCROLL, EV_SCROLLEND, EV_SELECT, EV_SUBMIT, EV_TOGGLE, EV_VISIBILITYCHANGE,
+    getClickEventComposedPath,
+    getClickEventTargetElement,
     getPolyfillScrollEndFunction,
     getPropsForDOMEvent,
     getSafeText,

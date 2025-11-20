@@ -1,6 +1,6 @@
 {
   "name": "mixpanel-browser",
-  "version": "2.71.0",
+  "version": "2.72.0",
   "description": "The official Mixpanel JavaScript browser client library",
   "main": "dist/mixpanel.cjs.js",
   "module": "dist/mixpanel.module.js",
@@ -66,6 +66,7 @@
     "webpack": "1.12.2"
   },
   "dependencies": {
-    "@mixpanel/rrweb": "2.0.0-alpha.18.2"
+    "@mixpanel/rrweb": "2.0.0-alpha.18.2",
+    "@mixpanel/rrweb-plugin-console-record": "2.0.0-alpha.18.2"
   }
 }
