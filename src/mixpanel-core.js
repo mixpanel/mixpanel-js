@@ -1953,21 +1953,18 @@ MixpanelLib.prototype.set_config = function(config) {
 
         if (_.isObject(config['hooks'])) {
             this.hooks = {};
-            for (var hook_name in config['hooks']) {
-                if (Object.prototype.hasOwnProperty.call(config['hooks'], hook_name)) {
-                    var hook_value = config['hooks'][hook_name];
-                    if (_.isFunction(hook_value)) {
-                        this.hooks[hook_name] = [hook_value];
-                    } else if (_.isArray(hook_value)) {
-                        this.hooks[hook_name] = [];
-                        for (var i = 0; i < hook_value.length; i++) {
-                            if (_.isFunction(hook_value[i])) {
-                                this.hooks[hook_name].push(hook_value[i]);
-                            }
+            _.each(config['hooks'], function(hook_value, hook_name) {
+                if (_.isFunction(hook_value)) {
+                    this.hooks[hook_name] = [hook_value];
+                } else if (_.isArray(hook_value)) {
+                    this.hooks[hook_name] = [];
+                    for (var i = 0; i < hook_value.length; i++) {
+                        if (_.isFunction(hook_value[i])) {
+                            this.hooks[hook_name].push(hook_value[i]);
                         }
                     }
                 }
-            }
+            }, this);
         }
     }
 };
@@ -1988,6 +1985,7 @@ MixpanelLib.prototype.get_config = function(prop_name) {
  */
 MixpanelLib.prototype._run_hook = function(hook_name, hook_args) {
     var ret = hook_args;
+    console.log('what happened to this.hooks', this.hooks)
     _.each(this.hooks[hook_name], function(hook) {
         if(ret === null) {
             return null;
