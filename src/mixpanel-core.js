@@ -1049,14 +1049,14 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
-    var ret = this._run_hook('before_track', {event_name: event_name, properties: properties, options: options, callback: callback});
+    var ret = this._run_hook('before_track', {'event_name': event_name, 'properties': properties, 'options': options, 'callback': callback });
     if (ret === null) {
         return;
     }
-    event_name = ret.event_name;
-    properties = ret.properties;
-    options = ret.options;
-    callback = ret.callback;
+    event_name = ret['event_name'];
+    properties = ret['properties'];
+    options = ret['options'];
+    callback = ret['callback'];
 
     if (!callback && typeof options === 'function') {
         callback = options;
@@ -1473,12 +1473,12 @@ var options_for_register = function(days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
-    var ret = this._run_hook('before_register', {properties: props, days_or_options: days_or_options});
+    var ret = this._run_hook('before_register', {'properties': props, 'days_or_options': days_or_options});
     if (ret === null) {
         return;
     }
-    props = ret.properties;
-    days_or_options = ret.days_or_options;
+    props = ret['properties'];
+    days_or_options = ret['days_or_options'];
 
 
     var options = options_for_register(days_or_options);
@@ -1517,13 +1517,13 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
-    var ret = this._run_hook('before_register_once', {properties: props, default_value: default_value, days_or_options: days_or_options});
+    var ret = this._run_hook('before_register_once', {'properties': props, 'default_value': default_value, 'days_or_options': days_or_options});
     if (ret === null) {
         return;
     }
-    props = ret.properties;
-    default_value = ret.default_value;
-    days_or_options = ret.days_or_options;
+    props = ret['properties'];
+    default_value = ret['default_value'];
+    days_or_options = ret['days_or_options'];
 
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
@@ -1548,12 +1548,12 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
-    var ret = this._run_hook('before_unregister', {property: property, options: options});
+    var ret = this._run_hook('before_unregister', {'property': property, 'options': options});
     if (ret === null) {
         return;
     }
-    property = ret.property;
-    options = ret.options;
+    property = ret['property'];
+    options = ret['options'];
 
     options = options_for_register(options);
     if (options['persistent']) {
@@ -1603,28 +1603,28 @@ MixpanelLib.prototype.identify = function(
     //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
-    var hook_args = {
-        unique_id: new_distinct_id,
-        _set_callback: _set_callback,
-        _add_callback: _add_callback,
-        _append_callback: _append_callback,
-        _set_once_callback: _set_once_callback,
-        _union_callback: _union_callback,
-        _unset_callback: _unset_callback,
-        _remove_callback: _remove_callback,
-    };
+    var hook_args = _.extend({}, {
+        'unique_id': new_distinct_id,
+        '_set_callback': _set_callback,
+        '_add_callback': _add_callback,
+        '_append_callback': _append_callback,
+        '_set_once_callback': _set_once_callback,
+        '_union_callback': _union_callback,
+        '_unset_callback': _unset_callback,
+        '_remove_callback': _remove_callback,
+    });
     var ret = this._run_hook('before_identify', hook_args);
     if (ret === null) {
         return -1;
     }
-    new_distinct_id = ret.unique_id;
-    _set_callback = ret._set_callback;
-    _add_callback = ret._add_callback;
-    _append_callback = ret._append_callback;
-    _set_once_callback = ret._set_once_callback;
-    _union_callback = ret._union_callback;
-    _unset_callback = ret._unset_callback;
-    _remove_callback = ret._remove_callback;
+    new_distinct_id = ret['unique_id'];
+    _set_callback = ret['_set_callback'];
+    _add_callback = ret['_add_callback'];
+    _append_callback = ret['_append_callback'];
+    _set_once_callback = ret['_set_once_callback'];
+    _union_callback = ret['_union_callback'];
+    _unset_callback = ret['_unset_callback'];
+    _remove_callback = ret['_remove_callback'];
 
     var previous_distinct_id = this.get_distinct_id();
     if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
