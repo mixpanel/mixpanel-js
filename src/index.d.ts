@@ -171,6 +171,7 @@ export interface Config {
   cookie_domain: string;
   cross_site_cookie: boolean;
   cross_subdomain_cookie: boolean;
+  error_reporter: (msg: string, err: Error) => void;
   flags: boolean | FlagsConfig;
   persistence: Persistence;
   persistence_name: string;
