@@ -1,4 +1,5 @@
 import nodeResolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
 import swc from '@rollup/plugin-swc';
 import esbuild from 'rollup-plugin-esbuild';
 import alias from '@rollup/plugin-alias';
@@ -51,7 +52,7 @@ const MAIN_BUILDS = [
                 format: 'es',
             }
         ],
-        plugins: [nodeResolve({browser: true})]
+        plugins: [commonjs(), nodeResolve({browser: true})]
     },
     {
         'input': BUNDLED_RRWEB_PATH,
@@ -109,6 +110,7 @@ const MAIN_BUILDS = [
                 : []),
         ],
         plugins: [
+            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -167,6 +169,7 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
+            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -204,6 +207,7 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
+            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -226,6 +230,7 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
+            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -245,6 +250,7 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
+            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,

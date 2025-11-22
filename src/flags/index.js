@@ -1,7 +1,7 @@
 import { _, console_with_prefix, generateTraceparent, safewrapClass } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
 import Config from '../config';
-import jsonLogic from 'json-logic-js';
+import * as jsonLogic from 'json-logic-js';
 
 var logger = console_with_prefix('flags');
 
