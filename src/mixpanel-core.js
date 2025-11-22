@@ -1106,6 +1106,11 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
 
+    // Check for first-time event matches
+    if (this.flags && this.flags.checkFirstTimeEvents) {
+        this.flags.checkFirstTimeEvents(event_name, properties);
+    }
+
     var data = {
         'event': event_name,
         'properties': properties
