@@ -2,7 +2,7 @@ export type Persistence = "cookie" | "localStorage";
 
 export type ApiPayloadFormat = "base64" | "json";
 
-export type PushItem = Array<string | Dict>;
+export type PushItem = Array<string | Dict | (this: Mixpanel) => void>;
 
 export type Query = string | Element | Element[];
 
@@ -325,6 +325,7 @@ export interface Mixpanel {
   get_distinct_id(): any;
   get_group(group_key: string, group_id: string): Group;
   get_property(property_name: string): any;
+  get_session_replay_url(): string;
   has_opted_in_tracking(options?: Partial<HasOptedInOutOptions>): boolean;
   has_opted_out_tracking(options?: Partial<HasOptedInOutOptions>): boolean;
   identify(unique_id?: string): any;
@@ -382,6 +383,7 @@ export interface Mixpanel {
   ): void;
   unregister(property: string, options?: Partial<RegisterOptions>): void;
   people: People;
+  start_batch_senders(): void;
   start_session_recording(): void;
   stop_session_recording(): void;
   get_session_recording_properties(): { $mp_replay_id?: string } | {};
