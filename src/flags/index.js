@@ -308,10 +308,6 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
             }
         }
 
-        if (filtersMatch === true) {
-            console.log('Filters matched');
-        }
-
         if (!filtersMatch) {
             return;
         }
