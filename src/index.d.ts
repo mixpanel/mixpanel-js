@@ -171,7 +171,7 @@ export interface Config {
   cookie_domain: string;
   cross_site_cookie: boolean;
   cross_subdomain_cookie: boolean;
-  error_reporter: (msg: string, err: Error) => void;
+  error_reporter: (msg: string, err?: Error) => void;
   flags: boolean | FlagsConfig;
   persistence: Persistence;
   persistence_name: string;
@@ -208,6 +208,7 @@ export interface Config {
   inapp_protocol: string;
   inapp_link_new_window: boolean;
   ignore_dnt: boolean;
+  batch_autostart: boolean;
   batch_requests: boolean;
   batch_size: number;
   batch_flush_interval_ms: number;
@@ -225,6 +226,9 @@ export interface Config {
   record_sessions_percent: number;
   record_canvas: boolean;
   record_heatmap_data: boolean;
+  hooks: {
+      before_send_events?: (event: {event: string; properties: Record<string, any>});
+  }
 }
 
 export type VerboseResponse =
