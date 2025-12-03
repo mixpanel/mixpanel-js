@@ -358,6 +358,7 @@ export interface Mixpanel {
     group_ids: string | string[] | number | number[],
     callback?: Callback
   ): void;
+  start_batch_senders(): void;
   time_event(event_name: string): void;
   track(
     event_name: string,
