@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import Config from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, NOOP_FUNC, JSONStringify, send_sdk_extension_message } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify, send_sdk_extension_message } from './utils';
 import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
@@ -56,6 +56,8 @@ var load_extra_bundle = function(src, _onload) {
 var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
+
+var IDENTITY_FUNC = function() {return arguments; };
 
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
@@ -903,7 +905,12 @@ MixpanelLib.prototype.init_batchers = function() {
                         );
                     }, this),
                     beforeSendHook: _.bind(function(item) {
-                        return this._run_hook('before_send_' + attrs.type, item);
+                        var ret = this._run_hook('before_send_' + attrs.type, item);
+                        if (ret && _.isArray(ret) && ret.length) {
+                            return ret[0];
+                        } else {
+                            return null;
+                        }
                     }, this),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
                     usePersistence: true,
@@ -997,7 +1004,8 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
         if (!send_request_options.skip_hooks) {
             truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
         }
-        if (truncated_data) {
+        if (truncated_data && _.isArray(truncated_data) && truncated_data.length) {
+            truncated_data = truncated_data[0];
             console.log('MIXPANEL REQUEST:');
             console.log(truncated_data);
             return this._send_request(
@@ -1050,14 +1058,14 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
-    var ret = this._run_hook('before_track', {'event_name': event_name, 'properties': properties, 'options': options, 'callback': callback });
+    var ret = this._run_hook('before_track', event_name, properties, options);
     if (ret === null) {
         return;
+    } else {
+        event_name = (ret[0] !== undefined) ? ret[0] : event_name;
+        properties = (ret[1] !== undefined) ? ret[1] : properties;
+        options = (ret[2] !== undefined) ? ret[2] : options;
     }
-    event_name = ret['event_name'];
-    properties = ret['properties'];
-    options = ret['options'];
-    callback = ret['callback'];
 
     if (!callback && typeof options === 'function') {
         callback = options;
@@ -1474,13 +1482,13 @@ var options_for_register = function(days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
-    var ret = this._run_hook('before_register', {'properties': props, 'days_or_options': days_or_options});
+    var ret = this._run_hook('before_register', props, days_or_options);
     if (ret === null) {
         return;
+    } else {
+        props = (ret[0] !== undefined) ? ret[0] : props;
+        days_or_options = (ret[1] !== undefined) ? ret[1] : days_or_options;
     }
-    props = ret['properties'];
-    days_or_options = ret['days_or_options'];
-
 
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
@@ -1518,13 +1526,14 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
-    var ret = this._run_hook('before_register_once', {'properties': props, 'default_value': default_value, 'days_or_options': days_or_options});
+    var ret = this._run_hook('before_register_once', props, default_value, days_or_options);
     if (ret === null) {
         return;
+    } else {
+        props = (ret[0] !== undefined) ? ret[0] : props;
+        default_value = (ret[1] !== undefined) ? ret[1] : default_value;
+        days_or_options = (ret[2] !== undefined) ? ret[2] : days_or_options;
     }
-    props = ret['properties'];
-    default_value = ret['default_value'];
-    days_or_options = ret['days_or_options'];
 
     var options = options_for_register(days_or_options);
     if (options['persistent']) {
@@ -1549,12 +1558,13 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
-    var ret = this._run_hook('before_unregister', {'property': property, 'options': options});
+    var ret = this._run_hook('before_unregister', property, options);
     if (ret === null) {
         return;
+    } else {
+        property = (ret[0] !== undefined) ? ret[0] : property;
+        options = (ret[1] !== undefined) ? ret[1] : options;
     }
-    property = ret['property'];
-    options = ret['options'];
 
     options = options_for_register(options);
     if (options['persistent']) {
@@ -1604,28 +1614,12 @@ MixpanelLib.prototype.identify = function(
     //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
-    var hook_args = _.extend({}, {
-        'unique_id': new_distinct_id,
-        '_set_callback': _set_callback,
-        '_add_callback': _add_callback,
-        '_append_callback': _append_callback,
-        '_set_once_callback': _set_once_callback,
-        '_union_callback': _union_callback,
-        '_unset_callback': _unset_callback,
-        '_remove_callback': _remove_callback,
-    });
-    var ret = this._run_hook('before_identify', hook_args);
+    var ret = this._run_hook('before_identify', new_distinct_id);
     if (ret === null) {
         return -1;
+    } else {
+        new_distinct_id = (ret[0] !== undefined) ? ret[0] : new_distinct_id;
     }
-    new_distinct_id = ret['unique_id'];
-    _set_callback = ret['_set_callback'];
-    _add_callback = ret['_add_callback'];
-    _append_callback = ret['_append_callback'];
-    _set_once_callback = ret['_set_once_callback'];
-    _union_callback = ret['_union_callback'];
-    _unset_callback = ret['_unset_callback'];
-    _remove_callback = ret['_remove_callback'];
 
     var previous_distinct_id = this.get_distinct_id();
     if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
@@ -1983,16 +1977,28 @@ MixpanelLib.prototype.get_config = function(prop_name) {
  * @param {Object} hook_args which are passed into the retrieved hook
  * @returns {any|null} return value of user-provided hook, or null if nothing was returned
  */
-MixpanelLib.prototype._run_hook = function(hook_name, hook_args) {
-    var ret = hook_args;
-    _.each(this.hooks[hook_name], function(hook) {
-        if(ret === null) {
+MixpanelLib.prototype._run_hook = function(hook_name) {
+    var hook_args = slice.call(arguments, 1);
+    var ret = null;
+    var hooks = (this.hooks[hook_name] !== undefined) ? this.hooks[hook_name] : [IDENTITY_FUNC];
+
+    _.each(hooks, function(hook) {
+        if (hook_args === null) {
             return null;
         }
-        ret = hook.call(this, ret);
-        if (typeof ret === 'undefined' || !_.isObject(ret)) {
+
+        ret = hook.apply(this, hook_args);
+
+        if (typeof ret === 'undefined') {
             this.report_error(hook_name + ' hook did not return a valid value');
             ret = null;
+            hook_args = null;
+        } else {
+            if (!_.isArray(ret)) {
+                ret = [ret];
+            }
+            // splice ret into the beginning of hook_args in ES5:
+            hook_args.splice.apply(hook_args, [0, ret.length].concat(ret));
         }
     }, this);
 
