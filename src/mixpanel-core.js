@@ -1002,16 +1002,12 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     var request_enqueued_or_initiated = true;
     var send_request_immediately = _.bind(function() {
         if (!send_request_options.skip_hooks) {
-            console.log('truncated data here', truncated_data)
             truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
-            console.log('truncated data here after', truncated_data)
             if (truncated_data && _.isArray(truncated_data) && truncated_data.length) {
                 truncated_data = truncated_data[0]
             }
-            console.log('truncated data here after 2', options)
         }
         if (truncated_data) {
-            truncated_data = truncated_data[0];
             console.log('MIXPANEL REQUEST:');
             console.log(truncated_data);
             return this._send_request(
@@ -1028,10 +1024,8 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     if (this._batch_requests && !should_send_immediately) {
         batcher.enqueue(truncated_data).then(function(succeeded) {
             if (succeeded) {
-                console.log('succeeded???', callback, truncated_data)
                 callback(1, truncated_data);
             } else {
-                // console.log('sending immediately lol')
                 send_request_immediately();
             }
         });
@@ -1091,13 +1085,11 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     }
 
     if (_.isUndefined(event_name)) {
-        console.log('huh')
         this.report_error('No event name provided to mixpanel.track');
         return;
     }
 
     if (this._event_is_disabled(event_name)) {
-        console.log('huhn2')
         callback(0);
         return;
     }
@@ -1147,7 +1139,6 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         'event': event_name,
         'properties': properties
     };
-    console.log('after batch', )
     ret = this._track_or_batch({
         type: 'events',
         data: data,
@@ -1767,7 +1758,6 @@ MixpanelLib.prototype.alias = function(alias, original) {
     }
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
-        console.log('we get here???', alias, original)
         return this.track('$create_alias', {
             'alias': alias,
             'distinct_id': original
