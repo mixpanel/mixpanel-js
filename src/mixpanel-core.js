@@ -1616,7 +1616,6 @@ MixpanelLib.prototype.identify = function(
     //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
-    console.log('result before hook', new_distinct_id)
     var ret = this._run_hook('before_identify', new_distinct_id);
 
     if (ret === null) {
@@ -1624,7 +1623,6 @@ MixpanelLib.prototype.identify = function(
     } else {
         new_distinct_id = (ret[0] !== undefined) ? ret[0] : new_distinct_id;
     }
-    console.log('result from identify', new_distinct_id)
 
     var previous_distinct_id = this.get_distinct_id();
     if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
@@ -1660,7 +1658,6 @@ MixpanelLib.prototype.identify = function(
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
     if (new_distinct_id !== previous_distinct_id) {
-        console.log('are we sending an event here')
         this.track('$identify', {
             'distinct_id': new_distinct_id,
             '$anon_distinct_id': previous_distinct_id
@@ -1987,7 +1984,6 @@ MixpanelLib.prototype._run_hook = function(hook_name) {
     var hook_args = slice.call(arguments, 1);
     var ret = null;
     var hooks = (this.hooks[hook_name] !== undefined) ? this.hooks[hook_name] : [IDENTITY_FUNC];
-    console.log('run_hook', hook_name, hook_args)
     _.each(hooks, function(hook) {
         if (hook_args === null) {
             return null;

@@ -1704,13 +1704,33 @@
         });
 
         test("before_track hook", 1, function() {
-            mixpanel.test.add_hook('before_track', function(event_data) {
-                return {
-                    event_name: event_data.event_name + ' before_tracked!',
-                };
+            mixpanel.test.add_hook('before_track', function(event_name) {
+                return event_name + ' before_tracked!'
             })
             var data = mixpanel.test.track('testing', {});
             same(data.event, 'testing before_tracked!', 'should transform tracked event name with hook');
+        });
+
+        test("hook with multiple args", 2, function() {
+            mixpanel.test.add_hook('before_track', function(event_name, properties) {
+                var new_event_name = event_name + ' before_tracked!'
+                var new_properties = { test1: false }
+                return [new_event_name, new_properties]
+            })
+            var data = mixpanel.test.track('testing', { test1: true });
+            same(data.event, 'testing before_tracked!', 'should transform tracked event name with hook');
+            same(data.properties.test1, false, 'should transform tracked properties with hook');
+        });
+
+        test("hook modifies multiple args but only returned args should be modified", 2, function() {
+            mixpanel.test.add_hook('before_track', function(event_name, properties) {
+                var new_event_name = event_name + ' before_tracked!'
+                var new_properties = { test1: false }
+                return new_event_name
+            })
+            var data = mixpanel.test.track('testing', { test1: true });
+            same(data.event, 'testing before_tracked!', 'should transform tracked event name with hook');
+            same(data.properties.test1, true, 'should transform tracked properties with hook');
         });
 
         test("before_identify hook", 2, function() {
@@ -1718,10 +1738,8 @@
             var track1 = mixpanel.test.track('haha');
             same(track1.properties.distinct_id, 'old unique id!', 'identify should set distinct id');
 
-            mixpanel.test.add_hook('before_identify', function(identify_data) {
-                return {
-                    unique_id: "new unique id!",
-                };
+            mixpanel.test.add_hook('before_identify', function(new_unique_id) {
+                return "new unique id!"
             })
             mixpanel.test.identify('old unique id!');
             var track2 = mixpanel.test.track('haha');
@@ -1731,9 +1749,7 @@
         test("before_register hook", 1, function() {
             mixpanel.test.add_hook('before_register', function(register_data) {
                 return {
-                    properties: {
-                        old_property_key: false
-                    },
+                    old_property_key: false
                 };
             })
             mixpanel.test.register({old_property_key: true});
@@ -1745,9 +1761,7 @@
             mixpanel.test.register_once({old_property_key: true});
             mixpanel.test.add_hook('before_register_once', function(register_once_data) {
                 return {
-                    properties: {
-                        old_property_key: false
-                    },
+                    old_property_key: false
                 };
             })
             mixpanel.test.register_once({new_property_key: true});
@@ -1759,41 +1773,23 @@
         test("before_unregister hook", 1, function() {
             mixpanel.test.register({old_property_key: true});
             mixpanel.test.add_hook('before_register_once', function(register_once_data) {
-                return {
-                    property: "dont unregister anything"
-                };
+                return  "dont unregister anything";
             })
             mixpanel.test.unregister({property: "old_property_key"});
             var track = mixpanel.test.track('haha');
             same(track.properties.old_property_key, true, 'hook should override unregister property');
         });
 
-        test("hooks change arguments for sdk function", 1, function() {
-            mixpanel.test.add_hook('before_track', function(event_data) {
-                // No longer returning any properties
-                return {
-                    event_name: event_data.event_name,
-                };
-            })
-
-            var data = mixpanel.test.track('haha', { has_properties: true});
-            same(data.properties.has_properties, undefined, 'original tracked property dropped');
-        });
-
         test("add_hook and remove_hook multiple hooks", 4, function() {
-            mixpanel.test.add_hook('before_track', function(event_data) {
-                event_data.properties.hook1 = true
-                return {
-                    event_name: event_data.event_name + '6',
-                    properties: event_data.properties
-                };
+            mixpanel.test.add_hook('before_track', function(event, properties) {
+                var new_event = event + '6';
+                properties.hook1 = true;
+                return [new_event, properties];
             })
-            mixpanel.test.add_hook('before_track', function(event_data) {
-                event_data.properties.hook2 = true
-                return {
-                    event_name: event_data.event_name + '7',
-                    properties: event_data.properties
-                };
+            mixpanel.test.add_hook('before_track', function(event, properties) {
+                var new_event = event + '7';
+                properties.hook2 = true;
+                return [new_event, properties];
             })
             var data = mixpanel.test.track('haha', {});
             same(data.event, 'haha67', 'should transform tracked event name with hook');
@@ -1808,21 +1804,17 @@
         test("add_hook works ontop of set_config hooks", 3, function() {
             mixpanel.test.set_config({
                 hooks: {
-                    before_track: function hook1(event_data) {
-                        event_data.properties.hook1 = true
-                        return {
-                            event_name: event_data.event_name + '6',
-                            properties: event_data.properties
-                        };
+                    before_track: function hook1(event, properties) {
+                        var new_event = event + '6';
+                        properties.hook1 = true;
+                        return [new_event, properties];
                     }
                 }
             });
-            mixpanel.test.add_hook('before_track', function(event_data) {
-                event_data.properties.hook2 = true
-                return {
-                    event_name: event_data.event_name + '7',
-                    properties: event_data.properties
-                };
+            mixpanel.test.add_hook('before_track', function(event, properties) {
+                var new_event = event + '7';
+                properties.hook2 = true;
+                return [new_event, properties];
             })
             var data = mixpanel.test.track('haha', {});
             same(data.event, 'haha67', 'should transform tracked event name with hook');
@@ -1831,21 +1823,17 @@
         });
 
         test("set_config is destructive of existing hooks", 3, function() {
-            mixpanel.test.add_hook('before_track', function(event_data) {
-                event_data.properties.hook1 = true
-                return {
-                    event_name: event_data.event_name + '6',
-                    properties: event_data.properties
-                };
+            mixpanel.test.add_hook('before_track', function(event, properties) {
+                var new_event = event + '6';
+                properties.hook1 = true;
+                return [new_event, properties];
             })
             mixpanel.test.set_config({
                 hooks: {
-                    before_track: function hook2(event_data) {
-                        event_data.properties.hook2 = true
-                        return {
-                            event_name: event_data.event_name + '7',
-                            properties: event_data.properties
-                        };
+                    before_track: function hook2(event, properties) {
+                        var new_event = event + '7';
+                        properties.hook2 = true;
+                        return [new_event, properties];
                     }
                 }
             });
