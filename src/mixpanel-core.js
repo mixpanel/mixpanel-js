@@ -1004,7 +1004,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
         if (!send_request_options.skip_hooks) {
             truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
             if (truncated_data && _.isArray(truncated_data) && truncated_data.length) {
-                truncated_data = truncated_data[0]
+                truncated_data = truncated_data[0];
             }
         }
         if (truncated_data) {
