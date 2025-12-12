@@ -1782,24 +1782,26 @@
         });
 
         test("add_hook and remove_hook multiple hooks", 4, function() {
-            mixpanel.test.add_hook('before_track', function(event, properties) {
+            var hook1 = function(event, properties) {
                 var new_event = event + '6';
                 properties.hook1 = true;
                 return [new_event, properties];
-            })
-            mixpanel.test.add_hook('before_track', function(event, properties) {
+            };
+            var hook2 = function(event, properties) {
                 var new_event = event + '7';
                 properties.hook2 = true;
                 return [new_event, properties];
-            })
+            };
+            mixpanel.test.add_hook('before_track', hook1)
+            mixpanel.test.add_hook('before_track', hook2)
             var data = mixpanel.test.track('haha', {});
             same(data.event, 'haha67', 'should transform tracked event name with hook');
             ok(data.properties.hook1);
             ok(data.properties.hook2);
 
-            mixpanel.test.remove_hook('before_track')
+            mixpanel.test.remove_hook('before_track', hook2)
             data = mixpanel.test.track('haha', {});
-            same(data.event, 'haha', 'tracked event name should stay the same');
+            same(data.event, 'haha6', 'tracked event name should stay the same');
         });
 
         test("add_hook works ontop of set_config hooks", 3, function() {
@@ -2091,7 +2093,6 @@
                 new_id = this.id;
 
             var ev = mixpanel.test.alias(new_id);
-            console.log('whats ev', ev)
             notOk(old_id === new_id);
             same(ev["event"], "$create_alias");
         });

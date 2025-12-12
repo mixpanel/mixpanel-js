@@ -57,8 +57,6 @@ var mixpanel_master; // main mixpanel instance / object
 var INIT_MODULE  = 0;
 var INIT_SNIPPET = 1;
 
-var IDENTITY_FUNC = function() { return slice.call(arguments); };
-
 /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
 /** @const */ var PAYLOAD_TYPE_JSON     = 'json';
@@ -906,7 +904,7 @@ MixpanelLib.prototype.init_batchers = function() {
                     }, this),
                     beforeSendHook: _.bind(function(item) {
                         var ret = this._run_hook('before_send_' + attrs.type, item);
-                        if (ret && _.isArray(ret) && ret.length) {
+                        if (ret && _.isArray(ret)) {
                             return ret[0];
                         } else {
                             return null;
@@ -1003,7 +1001,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     var send_request_immediately = _.bind(function() {
         if (!send_request_options.skip_hooks) {
             truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
-            if (truncated_data && _.isArray(truncated_data) && truncated_data.length) {
+            if (truncated_data && _.isArray(truncated_data)) {
                 truncated_data = truncated_data[0];
             }
         }
@@ -1060,13 +1058,14 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
 MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
+    var ret;
     if (!(options && options.skip_hooks)) {
-        var ret = this._run_hook('before_track', event_name, properties);
+        ret = this._run_hook('before_track', event_name, properties);
         if (ret === null) {
             return;
         } else {
-            event_name = (ret[0] !== undefined) ? ret[0] : event_name;
-            properties = (ret[1] !== undefined) ? ret[1] : properties;
+            event_name = ret[0];
+            properties = ret[1];
         }
     }
 
@@ -1489,8 +1488,8 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
     if (ret === null) {
         return;
     } else {
-        props = (ret[0] !== undefined) ? ret[0] : props;
-        days_or_options = (ret[1] !== undefined) ? ret[1] : days_or_options;
+        props = ret[0];
+        days_or_options = ret[1];
     }
 
     var options = options_for_register(days_or_options);
@@ -1533,9 +1532,9 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
     if (ret === null) {
         return;
     } else {
-        props = (ret[0] !== undefined) ? ret[0] : props;
-        default_value = (ret[1] !== undefined) ? ret[1] : default_value;
-        days_or_options = (ret[2] !== undefined) ? ret[2] : days_or_options;
+        props = ret[0];
+        default_value = ret[1];
+        days_or_options = ret[2];
     }
 
     var options = options_for_register(days_or_options);
@@ -1565,8 +1564,8 @@ MixpanelLib.prototype.unregister = function(property, options) {
     if (ret === null) {
         return;
     } else {
-        property = (ret[0] !== undefined) ? ret[0] : property;
-        options = (ret[1] !== undefined) ? ret[1] : options;
+        property = ret[0];
+        options = ret[1];
     }
 
     options = options_for_register(options);
@@ -1622,7 +1621,7 @@ MixpanelLib.prototype.identify = function(
     if (ret === null) {
         return -1;
     } else {
-        new_distinct_id = (ret[0] !== undefined) ? ret[0] : new_distinct_id;
+        new_distinct_id = ret[0];
     }
 
     var previous_distinct_id = this.get_distinct_id();
@@ -1957,9 +1956,7 @@ MixpanelLib.prototype.set_config = function(config) {
                 } else if (_.isArray(hook_value)) {
                     this.hooks[hook_name] = [];
                     for (var i = 0; i < hook_value.length; i++) {
-                        if (_.isFunction(hook_value[i])) {
-                            this.hooks[hook_name].push(hook_value[i]);
-                        }
+                        this.hooks[hook_name].push(hook_value[i]);
                     }
                 }
             }, this);
@@ -1978,14 +1975,12 @@ MixpanelLib.prototype.get_config = function(prop_name) {
  * Fetch a hook function from config, with safe default, and run it
  * against the given arguments
  * @param {string} hook_name which hook to retrieve
- * @param {Object} hook_args which are passed into the retrieved hook
  * @returns {any|null} return value of user-provided hook, or null if nothing was returned
  */
 MixpanelLib.prototype._run_hook = function(hook_name) {
     var hook_args = slice.call(arguments, 1);
-    var ret = null;
-    var hooks = (this.hooks[hook_name] !== undefined) ? this.hooks[hook_name] : [IDENTITY_FUNC];
-    _.each(hooks, function(hook) {
+    var ret = hook_args;
+    _.each(this.hooks[hook_name], function(hook) {
         if (hook_args === null) {
             return null;
         }
@@ -2000,8 +1995,8 @@ MixpanelLib.prototype._run_hook = function(hook_name) {
             if (!_.isArray(ret)) {
                 ret = [ret];
             }
-            // splice ret into the beginning of hook_args in ES5:
             hook_args.splice.apply(hook_args, [0, ret.length].concat(ret));
+            ret = hook_args;
         }
     }, this);
 
@@ -2317,18 +2312,19 @@ MixpanelLib.prototype.report_error = function(msg, err) {
 };
 
 MixpanelLib.prototype.add_hook = function(hook_name, hook_fn) {
-    if (this.hooks) {
-        if (this.hooks[hook_name]) {
-            this.hooks[hook_name].push(hook_fn);
-        } else {
-            this.hooks[hook_name] = [hook_fn];
-        }
+    if (!this.hooks[hook_name]) {
+        this.hooks[hook_name] = [];
     }
+    this.hooks[hook_name].push(hook_fn);
 };
 
-MixpanelLib.prototype.remove_hook = function(hook_name) {
-    if (this.hooks) {
-        delete this.hooks[hook_name];
+MixpanelLib.prototype.remove_hook = function(hook_name, hook_fn) {
+    var fn_index;
+    if (this.hooks[hook_name]) {
+        fn_index = this.hooks[hook_name].indexOf(hook_fn);
+        if (fn_index !== -1) {
+            this.hooks[hook_name].splice(fn_index, 1);
+        }
     }
 };
 
