@@ -477,7 +477,6 @@
 
         asyncTest("check callback", 1, function() {
             mixpanel.test.track('test', {}, function(response) {
-                console.log('what is response', response)
                 same(response, 1, "server returned 1");
                 start();
             });
@@ -1726,7 +1725,6 @@
         test("hook modifies multiple args but only returned args should be modified", 2, function() {
             mixpanel.test.add_hook('before_track', function(event_name, properties) {
                 var new_event_name = event_name + ' before_tracked!'
-                var new_properties = { test1: false }
                 return new_event_name
             })
             var data = mixpanel.test.track('testing', { test1: true });
@@ -1802,6 +1800,22 @@
             mixpanel.test.remove_hook('before_track', hook2)
             data = mixpanel.test.track('haha', {});
             same(data.event, 'haha6', 'tracked event name should stay the same');
+        });
+
+        test("hook missing return aborts all other hooks and sdk function", 1, function() {
+            mixpanel.test.identify('old unique id!');
+            mixpanel.test.add_hook('before_identify', function(new_unique_id) {
+                return "new unique id!"
+            })
+            mixpanel.test.add_hook('before_identify', function(new_unique_id) {
+                // do nothing and return nothing
+            })
+             mixpanel.test.add_hook('before_identify', function(new_unique_id) {
+                return "newer unique id!"
+            })
+
+            var track2 = mixpanel.test.track('haha');
+            same(track2.properties.distinct_id, 'old unique id!', 'hook should override distinct id');
         });
 
         test("add_hook works ontop of set_config hooks", 3, function() {

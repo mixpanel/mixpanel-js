@@ -904,7 +904,7 @@ MixpanelLib.prototype.init_batchers = function() {
                     }, this),
                     beforeSendHook: _.bind(function(item) {
                         var ret = this._run_hook('before_send_' + attrs.type, item);
-                        if (ret && _.isArray(ret)) {
+                        if (ret) {
                             return ret[0];
                         } else {
                             return null;
@@ -1001,7 +1001,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     var send_request_immediately = _.bind(function() {
         if (!send_request_options.skip_hooks) {
             truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
-            if (truncated_data && _.isArray(truncated_data)) {
+            if (truncated_data) {
                 truncated_data = truncated_data[0];
             }
         }
@@ -1956,8 +1956,13 @@ MixpanelLib.prototype.set_config = function(config) {
                 } else if (_.isArray(hook_value)) {
                     this.hooks[hook_name] = [];
                     for (var i = 0; i < hook_value.length; i++) {
+                        if (!_.isFunction(hook_value[i])) {
+                            console.critical('Invalid hook added. Hook is not a function');
+                        }
                         this.hooks[hook_name].push(hook_value[i]);
                     }
+                } else {
+                    console.critical('Invalid hooks added. Ensure that the hook values passed into config.hooks are functions or arrays of functions.');
                 }
             }, this);
         }
@@ -1978,29 +1983,26 @@ MixpanelLib.prototype.get_config = function(prop_name) {
  * @returns {any|null} return value of user-provided hook, or null if nothing was returned
  */
 MixpanelLib.prototype._run_hook = function(hook_name) {
-    var hook_args = slice.call(arguments, 1);
-    var ret = hook_args;
+    var hook_data = slice.call(arguments, 1);
     _.each(this.hooks[hook_name], function(hook) {
-        if (hook_args === null) {
+        if (hook_data === null) {
             return null;
         }
 
-        ret = hook.apply(this, hook_args);
+        var ret = hook.apply(this, hook_data);
 
         if (typeof ret === 'undefined') {
             this.report_error(hook_name + ' hook did not return a valid value');
-            ret = null;
-            hook_args = null;
+            hook_data = null;
         } else {
             if (!_.isArray(ret)) {
                 ret = [ret];
             }
-            hook_args.splice.apply(hook_args, [0, ret.length].concat(ret));
-            ret = hook_args;
+            hook_data.splice.apply(hook_data, [0, ret.length].concat(ret));
         }
     }, this);
 
-    return ret;
+    return hook_data;
 };
 
 /**
@@ -2324,6 +2326,8 @@ MixpanelLib.prototype.remove_hook = function(hook_name, hook_fn) {
         fn_index = this.hooks[hook_name].indexOf(hook_fn);
         if (fn_index !== -1) {
             this.hooks[hook_name].splice(fn_index, 1);
+        } else {
+            console.log('remove_hook failed. Matching hook was not found');
         }
     }
 };
