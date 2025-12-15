@@ -154,7 +154,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             if (topLevelDefinitions && topLevelDefinitions.length > 0) {
                 _.each(topLevelDefinitions, function(def) {
                     var flagKey = def['flag_key'];
-                    var eventKey = this.getPendingEventKey(flagKey, def['cohort_hash']);
+                    var eventKey = this.getPendingEventKey(flagKey, def['first_time_event_hash']);
 
                     // Skip if this specific event has already been activated this session
                     if (this.activatedFirstTimeEvents[eventKey]) {
@@ -166,9 +166,10 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                         'flag_key': flagKey,
                         'flag_id': def['flag_id'],
                         'project_id': def['project_id'],
-                        'cohort_hash': def['cohort_hash'],
+                        'first_time_event_hash': def['first_time_event_hash'],
                         'event_name': def['event_name'],
                         'property_filters': def['property_filters'],
+                        'endtime': def['endtime'],
                         'pending_variant': def['pending_variant']
                     };
                 }.bind(this));
@@ -257,16 +258,16 @@ FeatureFlagManager.prototype.lowercaseOnlyLeafNodes = function(val) {
 /**
  * Generate a unique key for a pending first-time event
  * @param {string} flagKey - The flag key
- * @param {string} cohortHash - The cohort hash from the pending event definition
- * @returns {string} Composite key in format "flagKey:cohortHash"
+ * @param {string} firstTimeEventHash - The first_time_event_hash from the pending event definition
+ * @returns {string} Composite key in format "flagKey:firstTimeEventHash"
  */
-FeatureFlagManager.prototype.getPendingEventKey = function(flagKey, cohortHash) {
-    return flagKey + ':' + cohortHash;
+FeatureFlagManager.prototype.getPendingEventKey = function(flagKey, firstTimeEventHash) {
+    return flagKey + ':' + firstTimeEventHash;
 };
 
 /**
  * Extract the flag key from a pending event key
- * @param {string} eventKey - The composite event key in format "flagKey:cohortHash"
+ * @param {string} eventKey - The composite event key in format "flagKey:firstTimeEventHash"
  * @returns {string} The flag key portion
  */
 FeatureFlagManager.prototype.getFlagKeyFromPendingEventKey = function(eventKey) {
@@ -335,7 +336,7 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
         this.recordFirstTimeEvent(
             pendingEvent.flag_id,
             pendingEvent.project_id,
-            pendingEvent.cohort_hash
+            pendingEvent.first_time_event_hash
         );
     }.bind(this));
 };
@@ -345,14 +346,14 @@ FeatureFlagManager.prototype.getRecordingApiRoute = function(flagId) {
     return this.getFullApiRoute() + '/' + flagId + '/first-time-events';
 };
 
-FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, cohortHash) {
+FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, firstTimeEventHash) {
     var distinctId = this.getMpProperty('distinct_id');
     var url = this.getRecordingApiRoute(flagId);
 
     var payload = {
         'distinct_id': distinctId,
         'project_id': projectId,
-        'cohort_hash': cohortHash
+        'first_time_event_hash': firstTimeEventHash
     };
 
     logger.log('Recording first-time event for flag: ' + flagId);
