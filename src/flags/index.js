@@ -281,6 +281,11 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
 
     // Iterate through all pending first-time events
     _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
+        // Skip if this event has already been activated
+        if (this.activatedFirstTimeEvents[eventKey]) {
+            return;
+        }
+
         // Check exact event name match (case-sensitive)
         if (eventName !== pendingEvent.event_name) {
             return;
@@ -328,9 +333,6 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
 
         // Mark this specific event as activated using composite key
         this.activatedFirstTimeEvents[eventKey] = true;
-
-        // Send feature flag check event with the new variant
-        this.trackFeatureCheck(flagKey, newVariant);
 
         // Call recording endpoint (fire-and-forget)
         this.recordFirstTimeEvent(

@@ -388,24 +388,23 @@ describe(`FeatureFlagManager`, function () {
       it(`does not re-trigger on subsequent matching events`, function () {
         // First event triggers
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        expect(initOptions.trackingFunc).to.have.been.calledOnce;
+        const eventKey = `onboarding-checklist:abc123def456`;
+        expect(flagManager.activatedFirstTimeEvents[eventKey]).to.equal(true);
 
-        // Second event should not trigger again
+        // Reset the flag to verify it doesn't get updated again
+        flagManager.flags.set(`onboarding-checklist`, {key: `control`});
+
+        // Second event should not trigger again (event is already activated)
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        expect(initOptions.trackingFunc).to.have.been.calledOnce;
+        const flag = flagManager.flags.get(`onboarding-checklist`);
+        expect(flag.key).to.equal(`control`); // unchanged from our reset
       });
 
-      it(`tracks feature flag check event with new variant`, function () {
+      it(`does not track experiment started (deferred to getVariant)`, function () {
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
 
-        expect(initOptions.trackingFunc).to.have.been.calledOnce;
-        const [eventName, properties] = initOptions.trackingFunc.firstCall.args;
-
-        expect(eventName).to.equal(`$experiment_started`);
-        expect(properties[`Experiment name`]).to.equal(`onboarding-checklist`);
-        expect(properties[`Variant name`]).to.equal(`treatment`);
-        expect(properties[`$experiment_id`]).to.equal(123);
-        expect(properties[`$is_experiment_active`]).to.equal(true);
+        // Tracking is NOT called - experiment_started will be tracked when getVariant is called
+        expect(initOptions.trackingFunc).to.not.have.been.called;
       });
 
       it(`calls recording endpoint with correct payload`, function () {
@@ -714,8 +713,8 @@ describe(`FeatureFlagManager`, function () {
         expect(flag.value).to.equal(`orphan-value`);
         expect(flag.experiment_id).to.equal(999);
 
-        // Should track feature flag check event
-        expect(initOptions.trackingFunc).to.have.been.calledOnce;
+        // Should NOT track feature flag check event (deferred to getVariant)
+        expect(initOptions.trackingFunc).to.not.have.been.called;
 
         // Should call recording endpoint
         expect(mockFetch).to.have.been.calledOnce;
