@@ -232,7 +232,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `onboarding-checklist`,
               flag_id: `flag-123`,
               project_id: 3,
-              cohort_hash: `abc123def456`,
+              first_time_event_hash: `abc123def456`,
               event_name: `Dashboard Viewed`,
               property_filters: {},
               pending_variant: {
@@ -246,7 +246,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `premium-welcome`,
               flag_id: `flag-456`,
               project_id: 3,
-              cohort_hash: `xyz789`,
+              first_time_event_hash: `xyz789`,
               event_name: `Purchase Complete`,
               property_filters: {
                 ">": [{ var: `properties.amount` }, 100],
@@ -277,7 +277,7 @@ describe(`FeatureFlagManager`, function () {
         expect(pendingEvent.flag_key).to.equal(`onboarding-checklist`);
         expect(pendingEvent.flag_id).to.equal(`flag-123`);
         expect(pendingEvent.project_id).to.equal(3);
-        expect(pendingEvent.cohort_hash).to.equal(`abc123def456`);
+        expect(pendingEvent.first_time_event_hash).to.equal(`abc123def456`);
         expect(pendingEvent.event_name).to.equal(`Dashboard Viewed`);
         expect(pendingEvent.pending_variant.variant_key).to.equal(`treatment`);
       });
@@ -422,7 +422,7 @@ describe(`FeatureFlagManager`, function () {
         const payload = JSON.parse(options.body);
         expect(payload.distinct_id).to.equal(`test-distinct-id`);
         expect(payload.project_id).to.equal(3);
-        expect(payload.cohort_hash).to.equal(`abc123def456`);
+        expect(payload.first_time_event_hash).to.equal(`abc123def456`);
       });
 
       it(`handles recording endpoint failures gracefully`, function () {
@@ -470,7 +470,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `multi-event-flag`,
               flag_id: `flag-multi`,
               project_id: 3,
-              cohort_hash: `cohort-A`,
+              first_time_event_hash: `cohort-A`,
               event_name: `Event A`,
               property_filters: {},
               pending_variant: {
@@ -484,7 +484,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `multi-event-flag`,
               flag_id: `flag-multi`,
               project_id: 3,
-              cohort_hash: `cohort-B`,
+              first_time_event_hash: `cohort-B`,
               event_name: `Event B`,
               property_filters: {},
               pending_variant: {
@@ -590,7 +590,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `onboarding-checklist`,
               flag_id: `flag-123`,
               project_id: 3,
-              cohort_hash: `abc123def456`,
+              first_time_event_hash: `abc123def456`,
               event_name: `Dashboard Viewed`,
               property_filters: {},
               pending_variant: {
@@ -604,7 +604,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `new-flag`,
               flag_id: `flag-789`,
               project_id: 3,
-              cohort_hash: `new123`,
+              first_time_event_hash: `new123`,
               event_name: `New Event`,
               property_filters: {},
               pending_variant: {
@@ -642,7 +642,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `orphaned-flag`,
               flag_id: `orphan-123`,
               project_id: 3,
-              cohort_hash: `orphan-hash`,
+              first_time_event_hash: `orphan-hash`,
               event_name: `Orphan Event`,
               property_filters: {},
               pending_variant: {
@@ -683,7 +683,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `orphaned-flag`,
               flag_id: `orphan-123`,
               project_id: 3,
-              cohort_hash: `orphan-hash`,
+              first_time_event_hash: `orphan-hash`,
               event_name: `Orphan Event`,
               property_filters: {},
               pending_variant: {
@@ -731,7 +731,7 @@ describe(`FeatureFlagManager`, function () {
               flag_key: `orphaned-flag`,
               flag_id: `orphan-123`,
               project_id: 3,
-              cohort_hash: `orphan-hash`,
+              first_time_event_hash: `orphan-hash`,
               event_name: `Orphan Event`,
               property_filters: {},
               pending_variant: {
