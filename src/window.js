@@ -17,7 +17,7 @@ if (typeof(window) === 'undefined') {
         addEventListener: function() {},
         removeEventListener: function() {},
         dispatchEvent: function() {},
-        CustomEvent: function () {},
+        CustomEvent: function () {}
     };
 } else {
     win = window;

@@ -1769,14 +1769,15 @@
             same(track.properties.old_property_key, true, 'register_once should mean nothing changed');
         });
 
-        test("before_unregister hook", 1, function() {
-            mixpanel.test.register({old_property_key: true});
-            mixpanel.test.add_hook('before_register_once', function(register_once_data) {
-                return  "dont unregister anything";
+        test("before_unregister hook", 2, function() {
+            mixpanel.test.register({old_property_key: true, new_property_key: true});
+            mixpanel.test.add_hook('before_unregister', function(register_once_data) {
+                return "old_property_key";
             })
-            mixpanel.test.unregister({property: "old_property_key"});
+            mixpanel.test.unregister({property: "new_property_key"});
             var track = mixpanel.test.track('haha');
-            same(track.properties.old_property_key, true, 'hook should override unregister property');
+            same(track.properties.old_property_key, undefined, 'hook properly overrides what is being unregistered');
+            same(track.properties.new_property_key, true, 'hook properly overrides what is being unregistered');
         });
 
         test("add_hook and remove_hook multiple hooks", 4, function() {
@@ -1818,7 +1819,7 @@
             same(track2.properties.distinct_id, 'old unique id!', 'hook should override distinct id');
         });
 
-        test("add_hook works ontop of set_config hooks", 3, function() {
+        test("add_hook works on top of set_config hooks", 3, function() {
             mixpanel.test.set_config({
                 hooks: {
                     before_track: function hook1(event, properties) {

@@ -223,13 +223,15 @@ var create_mplib = function(token, config, name) {
     Config.DEBUG = Config.DEBUG || instance.get_config('debug');
 
     var source = init_type === INIT_MODULE ? 'module' : 'snippet';
-    send_sdk_extension_message({
-        instance: instance,
-        source: source,
-        token: token,
-        name: name,
-        info: _.info,
-    });
+    window.dispatchEvent(new window.CustomEvent('$mp_sdk_to_extension_event', {
+        detail: {
+            instance: instance,
+            source: source,
+            token: token,
+            name: name,
+            info: _.info
+        }
+    }));
 
     // if target is not defined, we called init after the lib already
     // loaded, so there won't be an array of things to execute
