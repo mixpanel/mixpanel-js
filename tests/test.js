@@ -1774,7 +1774,7 @@
             mixpanel.test.add_hook('before_unregister', function(register_once_data) {
                 return "old_property_key";
             })
-            mixpanel.test.unregister({property: "new_property_key"});
+            mixpanel.test.unregister("new_property_key");
             var track = mixpanel.test.track('haha');
             same(track.properties.old_property_key, undefined, 'hook properly overrides what is being unregistered');
             same(track.properties.new_property_key, true, 'hook properly overrides what is being unregistered');
