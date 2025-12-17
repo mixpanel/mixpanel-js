@@ -1342,9 +1342,7 @@
             var prop = "test_get_property",
                 value = "23fj22j09jdlsa";
 
-            if (mixpanel.persistence.props[prop]) {
-                delete mixpanel.persistence.props[prop];
-            }
+            mixpanel.persistence.unregister(prop);
             ok(typeof(mixpanel.get_property(prop)) === 'undefined', "get_property returns undefined for unset properties");
 
             mixpanel.register({
