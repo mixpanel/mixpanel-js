@@ -167,6 +167,8 @@ export interface Config {
   app_host: string;
   api_payload_format: ApiPayloadFormat;
   autotrack: boolean;
+  batch_autostart: boolean;
+  batch_requests: boolean;
   cdn: string;
   cookie_domain: string;
   cross_site_cookie: boolean;
