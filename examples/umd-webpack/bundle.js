@@ -84,7 +84,9 @@
 	            screen: { width: 0, height: 0 },
 	            location: loc,
 	            addEventListener: function() {},
-	            removeEventListener: function() {}
+	            removeEventListener: function() {},
+	            dispatchEvent: function() {},
+	            CustomEvent: function () {}
 	        };
 	    } else {
 	        win = window;
@@ -14599,7 +14601,7 @@
 
 	    var Config = {
 	        DEBUG: false,
-	        LIB_VERSION: '2.72.0'
+	        LIB_VERSION: '2.73.0-rc2'
 	    };
 
 	    /* eslint camelcase: "off", eqeqeq: "off" */
@@ -21867,8 +21869,6 @@
 	    var INIT_MODULE  = 0;
 	    var INIT_SNIPPET = 1;
 
-	    var IDENTITY_FUNC = function(x) {return x;};
-
 	    /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
 	    /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
 	    /** @const */ var PAYLOAD_TYPE_JSON     = 'json';
@@ -22034,6 +22034,17 @@
 	        // global debug to be true
 	        Config.DEBUG = Config.DEBUG || instance.get_config('debug');
 
+	        var source = init_type === INIT_MODULE ? 'module' : 'snippet';
+	        win.dispatchEvent(new win.CustomEvent('$mp_sdk_to_extension_event', {
+	            'detail': {
+	                'instance': instance,
+	                'source': source,
+	                'token': token,
+	                'name': name,
+	                'info': _.info
+	            }
+	        }));
+
 	        // if target is not defined, we called init after the lib already
 	        // loaded, so there won't be an array of things to execute
 	        if (!_.isUndefined(target) && _.isArray(target)) {
@@ -22103,6 +22114,8 @@
 	                variable_features['api_payload_format'] = PAYLOAD_TYPE_JSON;
 	            }
 	        }
+
+	        this.hooks = {};
 
 	        this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
 	            'name': name,
@@ -22704,7 +22717,12 @@
 	                            );
 	                        }, this),
 	                        beforeSendHook: _.bind(function(item) {
-	                            return this._run_hook('before_send_' + attrs.type, item);
+	                            var ret = this._run_hook('before_send_' + attrs.type, item);
+	                            if (ret) {
+	                                return ret[0];
+	                            } else {
+	                                return null;
+	                            }
 	                        }, this),
 	                        stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
 	                        usePersistence: true,
@@ -22797,6 +22815,9 @@
 	        var send_request_immediately = _.bind(function() {
 	            if (!send_request_options.skip_hooks) {
 	                truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
+	                if (truncated_data) {
+	                    truncated_data = truncated_data[0];
+	                }
 	            }
 	            if (truncated_data) {
 	                console$1.log('MIXPANEL REQUEST:');
@@ -22851,6 +22872,17 @@
 	     * with the tracking payload sent to the API server is returned; otherwise false.
 	     */
 	    MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
+	        var ret;
+	        if (!(options && options.skip_hooks)) {
+	            ret = this._run_hook('before_track', event_name, properties);
+	            if (ret === null) {
+	                return;
+	            } else {
+	                event_name = ret[0];
+	                properties = ret[1];
+	            }
+	        }
+
 	        if (!callback && typeof options === 'function') {
 	            callback = options;
 	            options = null;
@@ -22920,7 +22952,7 @@
 	            'event': event_name,
 	            'properties': properties
 	        };
-	        var ret = this._track_or_batch({
+	        ret = this._track_or_batch({
 	            type: 'events',
 	            data: data,
 	            endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
@@ -23266,6 +23298,14 @@
 	     * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
 	     */
 	    MixpanelLib.prototype.register = function(props, days_or_options) {
+	        var ret = this._run_hook('before_register', props, days_or_options);
+	        if (ret === null) {
+	            return;
+	        } else {
+	            props = ret[0];
+	            days_or_options = ret[1];
+	        }
+
 	        var options = options_for_register(days_or_options);
 	        if (options['persistent']) {
 	            this['persistence'].register(props, options['days']);
@@ -23302,6 +23342,15 @@
 	     * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
 	     */
 	    MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+	        var ret = this._run_hook('before_register_once', props, default_value, days_or_options);
+	        if (ret === null) {
+	            return;
+	        } else {
+	            props = ret[0];
+	            default_value = ret[1];
+	            days_or_options = ret[2];
+	        }
+
 	        var options = options_for_register(days_or_options);
 	        if (options['persistent']) {
 	            this['persistence'].register_once(props, default_value, options['days']);
@@ -23325,6 +23374,14 @@
 	     * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
 	     */
 	    MixpanelLib.prototype.unregister = function(property, options) {
+	        var ret = this._run_hook('before_unregister', property, options);
+	        if (ret === null) {
+	            return;
+	        } else {
+	            property = ret[0];
+	            options = ret[1];
+	        }
+
 	        options = options_for_register(options);
 	        if (options['persistent']) {
 	            this['persistence'].unregister(property);
@@ -23373,6 +23430,13 @@
 	        //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
 	        //  _union_callback:function  A callback to be run if and when the People union queue is flushed
 	        //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
+	        var ret = this._run_hook('before_identify', new_distinct_id);
+
+	        if (ret === null) {
+	            return -1;
+	        } else {
+	            new_distinct_id = ret[0];
+	        }
 
 	        var previous_distinct_id = this.get_distinct_id();
 	        if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
@@ -23697,6 +23761,25 @@
 	            if (('autocapture' in config || 'record_heatmap_data' in config) && this.autocapture) {
 	                this.autocapture.init();
 	            }
+
+	            if (_.isObject(config['hooks'])) {
+	                this.hooks = {};
+	                _.each(config['hooks'], function(hook_value, hook_name) {
+	                    if (_.isFunction(hook_value)) {
+	                        this.hooks[hook_name] = [hook_value];
+	                    } else if (_.isArray(hook_value)) {
+	                        this.hooks[hook_name] = [];
+	                        for (var i = 0; i < hook_value.length; i++) {
+	                            if (!_.isFunction(hook_value[i])) {
+	                                console$1.critical('Invalid hook added. Hook is not a function');
+	                            }
+	                            this.hooks[hook_name].push(hook_value[i]);
+	                        }
+	                    } else {
+	                        console$1.critical('Invalid hooks added. Ensure that the hook values passed into config.hooks are functions or arrays of functions.');
+	                    }
+	                }, this);
+	            }
 	        }
 	    };
 
@@ -23714,12 +23797,26 @@
 	     * @returns {any|null} return value of user-provided hook, or null if nothing was returned
 	     */
 	    MixpanelLib.prototype._run_hook = function(hook_name) {
-	        var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, slice.call(arguments, 1));
-	        if (typeof ret === 'undefined') {
-	            this.report_error(hook_name + ' hook did not return a value');
-	            ret = null;
-	        }
-	        return ret;
+	        var hook_data = slice.call(arguments, 1);
+	        _.each(this.hooks[hook_name], function(hook) {
+	            if (hook_data === null) {
+	                return null;
+	            }
+
+	            var ret = hook.apply(this, hook_data);
+
+	            if (typeof ret === 'undefined') {
+	                this.report_error(hook_name + ' hook did not return a valid value');
+	                hook_data = null;
+	            } else {
+	                if (!_.isArray(ret)) {
+	                    ret = [ret];
+	                }
+	                hook_data.splice.apply(hook_data, [0, ret.length].concat(ret));
+	            }
+	        }, this);
+
+	        return hook_data;
 	    };
 
 	    /**
@@ -24030,6 +24127,25 @@
 	        }
 	    };
 
+	    MixpanelLib.prototype.add_hook = function(hook_name, hook_fn) {
+	        if (!this.hooks[hook_name]) {
+	            this.hooks[hook_name] = [];
+	        }
+	        this.hooks[hook_name].push(hook_fn);
+	    };
+
+	    MixpanelLib.prototype.remove_hook = function(hook_name, hook_fn) {
+	        var fn_index;
+	        if (this.hooks[hook_name]) {
+	            fn_index = this.hooks[hook_name].indexOf(hook_fn);
+	            if (fn_index !== -1) {
+	                this.hooks[hook_name].splice(fn_index, 1);
+	            } else {
+	                console$1.log('remove_hook failed. Matching hook was not found');
+	            }
+	        }
+	    };
+
 	    // EXPORTS (for closure compiler)
 
 	    // MixpanelLib Exports
@@ -24062,6 +24178,8 @@
 	    MixpanelLib.prototype['set_group']                          = MixpanelLib.prototype.set_group;
 	    MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
 	    MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
+	    MixpanelLib.prototype['add_hook']                           = MixpanelLib.prototype.add_hook;
+	    MixpanelLib.prototype['remove_hook']                        = MixpanelLib.prototype.remove_hook;
 	    MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
 	    MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
 	    MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;

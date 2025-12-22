@@ -18,7 +18,9 @@
             screen: { width: 0, height: 0 },
             location: loc,
             addEventListener: function() {},
-            removeEventListener: function() {}
+            removeEventListener: function() {},
+            dispatchEvent: function() {},
+            CustomEvent: function () {}
         };
     } else {
         win = window;
@@ -14532,7 +14534,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.72.0'
+        LIB_VERSION: '2.73.0-rc2'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
