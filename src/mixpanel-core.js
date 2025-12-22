@@ -224,12 +224,12 @@ var create_mplib = function(token, config, name) {
 
     var source = init_type === INIT_MODULE ? 'module' : 'snippet';
     window.dispatchEvent(new window.CustomEvent('$mp_sdk_to_extension_event', {
-        detail: {
-            instance: instance,
-            source: source,
-            token: token,
-            name: name,
-            info: _.info
+        'detail': {
+            'instance': instance,
+            'source': source,
+            'token': token,
+            'name': name,
+            'info': _.info
         }
     }));
 
