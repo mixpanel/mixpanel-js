@@ -236,12 +236,12 @@ export interface Config {
     before_register?: (
       props: Dict,
       days_or_options?: number | Partial<RegisterOptions>
-    ) => Dict | Array<number | Partial<RegisterOptions>> | null;
+    ) => Dict | Array<Dict | number | Partial<RegisterOptions>> | null;
     before_register_once?: (
       props: Dict,
       default_value?: any,
       days_or_options?: number | Partial<RegisterOptions>
-    ) => Dict | Array<any | number | Partial<RegisterOptions>> | null;
+    ) => Dict | Array<any | Dict | number | Partial<RegisterOptions>> | null;
     before_send_events?: (
       event: BeforeSendHookPayload
     ) => BeforeSendHookPayload | null;
