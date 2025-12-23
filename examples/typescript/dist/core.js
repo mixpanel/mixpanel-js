@@ -15,3 +15,13 @@ mixpanel.people.set({
     "$email": "user@example.com",
     "plan": "core"
 });
+mixpanel.init("FAKE_TOKEN2", {
+    hooks: {
+        before_send_events: function (event) {
+            console.log("before_send_events hook called with event:", event);
+            // Modify event properties
+            event.properties['hook_added_property'] = 'hook_value';
+            return event;
+        },
+    },
+}, "hookstuff");

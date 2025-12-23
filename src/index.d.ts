@@ -2,7 +2,7 @@ export type Persistence = "cookie" | "localStorage";
 
 export type ApiPayloadFormat = "base64" | "json";
 
-export type PushItem = Array<string | Dict | (this: Mixpanel) => void>;
+export type PushItem = Array<string | Dict | ((this: Mixpanel) => void)>;
 
 export type Query = string | Element | Element[];
 
@@ -155,6 +155,11 @@ export interface FlagsConfig {
   context: Dict;
 }
 
+export interface BeforeSendHookPayload {
+  event: string;
+  properties: Record<string, any>;
+}
+
 export interface Config {
   api_host: string;
   api_routes: {
@@ -210,8 +215,6 @@ export interface Config {
   inapp_protocol: string;
   inapp_link_new_window: boolean;
   ignore_dnt: boolean;
-  batch_autostart: boolean;
-  batch_requests: boolean;
   batch_size: number;
   batch_flush_interval_ms: number;
   batch_request_timeout_ms: number;
@@ -229,8 +232,10 @@ export interface Config {
   record_canvas: boolean;
   record_heatmap_data: boolean;
   hooks: {
-      before_send_events?: (event: {event: string; properties: Record<string, any>});
-  }
+    before_send_events?: (
+      event: BeforeSendHookPayload
+    ) => BeforeSendHookPayload | null;
+  };
 }
 
 export type VerboseResponse =
