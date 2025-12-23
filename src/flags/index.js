@@ -125,7 +125,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                 if (this.activatedFirstTimeEvents) {
                     var prefix = key + ':';
                     _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
-                        if (eventKey.indexOf(prefix) === 0) {
+                        if (eventKey.startsWith(prefix)) {
                             hasActivatedEvent = true;
                         }
                     });
@@ -379,7 +379,13 @@ FeatureFlagManager.prototype.getRecordingApiRoute = function(flagId) {
 
 FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, firstTimeEventHash) {
     var distinctId = this.getMpProperty('distinct_id');
-    var url = this.getRecordingApiRoute(flagId);
+    var traceparent = generateTraceparent();
+
+    // Build URL with query string parameters
+    var searchParams = new URLSearchParams();
+    searchParams.set('mp_lib', 'web');
+    searchParams.set('$lib_version', Config.LIB_VERSION);
+    var url = this.getRecordingApiRoute(flagId) + '?' + searchParams.toString();
 
     var payload = {
         'distinct_id': distinctId,
@@ -394,7 +400,8 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
         'method': 'POST',
         'headers': {
             'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':')
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
+            'traceparent': traceparent
         },
         'body': JSON.stringify(payload)
     }).catch(function(error) {
