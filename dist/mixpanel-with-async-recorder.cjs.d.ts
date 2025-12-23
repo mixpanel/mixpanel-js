@@ -232,9 +232,27 @@ export interface Config {
   record_canvas: boolean;
   record_heatmap_data: boolean;
   hooks: {
+    before_identify?: (new_distinct_id: string) => string | null;
+    before_register?: (
+      props: Dict,
+      days_or_options?: number | Partial<RegisterOptions>
+    ) => Dict | Array<number | Partial<RegisterOptions>> | null;
+    before_register_once?: (
+      props: Dict,
+      default_value?: any,
+      days_or_options?: number | Partial<RegisterOptions>
+    ) => Dict | Array<any | number | Partial<RegisterOptions>> | null;
     before_send_events?: (
       event: BeforeSendHookPayload
     ) => BeforeSendHookPayload | null;
+    before_track?: (
+      event_name: string,
+      properties: Dict
+    ) => string | Array<string | Dict> | null;
+    before_unregister?: (
+      property: string,
+      options?: Partial<RegisterOptions>
+    ) => string | Partial<RegisterOptions> | null;
   };
 }
 
