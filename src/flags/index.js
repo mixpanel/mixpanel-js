@@ -1,7 +1,6 @@
 import { _, console_with_prefix, generateTraceparent, safewrapClass } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
 import Config from '../config';
-import * as jsonLogic from 'json-logic-js';
 
 var logger = console_with_prefix('flags');
 
@@ -22,6 +21,7 @@ var FeatureFlagManager = function(initOptions) {
     this.setMpConfig = initOptions.setConfigFunc;
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
+    this.loadExtraBundle = initOptions.loadExtraBundle || function() {};
 };
 
 FeatureFlagManager.prototype.init = function() {
@@ -189,6 +189,9 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             this.flags = flags;
             this.pendingFirstTimeEvents = pendingFirstTimeEvents;
             this._traceparent = traceparent;
+
+            // Load json-logic if any pending events have property filters
+            this._loadJsonLogicIfNeeded();
         }.bind(this)).catch(function(error) {
             this.markFetchComplete();
             logger.error(error);
@@ -274,6 +277,26 @@ FeatureFlagManager.prototype.getFlagKeyFromPendingEventKey = function(eventKey) 
     return eventKey.split(':')[0];
 };
 
+/**
+ * Proactively load json-logic bundle if any pending events have property filters
+ */
+FeatureFlagManager.prototype._loadJsonLogicIfNeeded = function() {
+    if (_.isUndefined(window['__mp_json_logic'])) {
+        var hasPropertyFilters = false;
+        _.each(this.pendingFirstTimeEvents, function(evt) {
+            if (evt.property_filters && !_.isEmptyObject(evt.property_filters)) {
+                hasPropertyFilters = true;
+            }
+        });
+
+        if (hasPropertyFilters) {
+            this.loadExtraBundle(this.getMpConfig('json_logic_src'), function() {
+                logger.log('json-logic loaded for property filter evaluation');
+            });
+        }
+    }
+};
+
 FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properties) {
     if (!this.pendingFirstTimeEvents || _.isEmptyObject(this.pendingFirstTimeEvents)) {
         return;
@@ -298,6 +321,13 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
         var filtersMatch = true; // default to true if no filters
 
         if (propertyFilters && !_.isEmptyObject(propertyFilters)) {
+            var jsonLogic = window['__mp_json_logic'];
+            if (!jsonLogic) {
+                // json-logic not loaded yet, skip filter evaluation (fail closed)
+                logger.error('json-logic not loaded, cannot evaluate property filters for flag "' + flagKey + '"');
+                return;
+            }
+
             try {
                 // Lowercase all keys and values in event properties for case-insensitive matching
                 var lowercasedProperties = this.lowercaseKeysAndValues(properties || {});
@@ -318,7 +348,6 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
             return;
         }
 
-        // Event matched! Switch to the pending variant
         logger.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
 
         var newVariant = {

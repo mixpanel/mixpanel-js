@@ -160,7 +160,8 @@ var DEFAULT_CONFIG = {
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
-    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
+    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+    'json_logic_src':                    'https://cdn.mxpnl.com/libs/mixpanel-json-logic.min.js'
 };
 
 var DOM_LOADED = false;
@@ -376,7 +377,8 @@ MixpanelLib.prototype._init = function(token, config, name) {
         getConfigFunc: _.bind(this.get_config, this),
         setConfigFunc: _.bind(this.set_config, this),
         getPropertyFunc: _.bind(this.get_property, this),
-        trackingFunc: _.bind(this.track, this)
+        trackingFunc: _.bind(this.track, this),
+        loadExtraBundle: load_extra_bundle
     });
     this.flags.init();
     this['flags'] = this.flags;

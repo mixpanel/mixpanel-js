@@ -1,6 +1,7 @@
 import chai, { expect } from "chai";
 import sinon from "sinon";
 import sinonChai from "sinon-chai";
+import * as jsonLogic from "json-logic-js";
 
 import { window } from "../../src/window";
 import Config from "../../src/config";
@@ -64,7 +65,17 @@ describe(`FeatureFlagManager`, function () {
         return null;
       }),
       trackingFunc: sinon.stub(),
+      loadExtraBundle: sinon.stub().callsFake((src, callback) => {
+        // Simulate async loading by calling callback on next tick
+        setTimeout(() => {
+          window[`__mp_json_logic`] = jsonLogic;
+          callback();
+        }, 0);
+      }),
     };
+
+    // Make json-logic available globally for tests that need it immediately
+    window[`__mp_json_logic`] = jsonLogic;
 
     flagManager = new FeatureFlagManager(initOptions);
   });
@@ -72,6 +83,7 @@ describe(`FeatureFlagManager`, function () {
   afterEach(function () {
     sinon.restore();
     delete window[`fetch`];
+    delete window[`__mp_json_logic`];
   });
 
   describe(`init`, function () {
@@ -767,6 +779,112 @@ describe(`FeatureFlagManager`, function () {
         expect(flagManager.flags.has(`orphaned-flag`)).to.be.true;
         const flag = flagManager.flags.get(`orphaned-flag`);
         expect(flag.key).to.equal(`orphan-variant`);
+      });
+    });
+
+    describe(`dynamic json-logic loading`, function () {
+      beforeEach(function () {
+        // Clear json-logic global to test dynamic loading
+        delete window[`__mp_json_logic`];
+        mockConfig.json_logic_src = `https://cdn.mxpnl.com/libs/mixpanel-json-logic.min.js`;
+      });
+
+      it(`calls loadExtraBundle when pending events have property filters`, async function () {
+        flagManager.init();
+        await flagManager.fetchPromise;
+
+        expect(initOptions.loadExtraBundle).to.have.been.calledOnce;
+        expect(initOptions.loadExtraBundle).to.have.been.calledWith(
+          `https://cdn.mxpnl.com/libs/mixpanel-json-logic.min.js`,
+          sinon.match.func
+        );
+      });
+
+      it(`does not call loadExtraBundle when no pending events have property filters`, async function () {
+        mockResponse.json.resolves({
+          code: 200,
+          flags: {
+            "onboarding-checklist": {
+              variant_key: `control`,
+              variant_value: false,
+            },
+          },
+          pending_first_time_events: [
+            {
+              flag_key: `onboarding-checklist`,
+              flag_id: `flag-123`,
+              project_id: 3,
+              first_time_event_hash: `abc123def456`,
+              event_name: `Dashboard Viewed`,
+              property_filters: {}, // Empty filters
+              pending_variant: {
+                variant_key: `treatment`,
+                variant_value: true,
+                experiment_id: 123,
+                is_experiment_active: true,
+              },
+            },
+          ],
+        });
+
+        flagManager.init();
+        await flagManager.fetchPromise;
+
+        expect(initOptions.loadExtraBundle).to.not.have.been.called;
+      });
+
+      it(`does not call loadExtraBundle when json-logic is already loaded`, async function () {
+        // Pre-load json-logic
+        window[`__mp_json_logic`] = jsonLogic;
+
+        flagManager.init();
+        await flagManager.fetchPromise;
+
+        expect(initOptions.loadExtraBundle).to.not.have.been.called;
+      });
+
+      it(`logs error when checkFirstTimeEvents is called without json-logic loaded`, async function () {
+        mockResponse.json.resolves({
+          code: 200,
+          flags: {
+            "premium-welcome": {
+              variant_key: `control`,
+              variant_value: null,
+            },
+          },
+          pending_first_time_events: [
+            {
+              flag_key: `premium-welcome`,
+              flag_id: `flag-456`,
+              project_id: 3,
+              first_time_event_hash: `xyz789`,
+              event_name: `Purchase Complete`,
+              property_filters: {
+                ">": [{ var: `properties.amount` }, 100],
+              },
+              pending_variant: {
+                variant_key: `premium`,
+                variant_value: { discount: 20 },
+                experiment_id: 456,
+                is_experiment_active: true,
+              },
+            },
+          ],
+        });
+
+        // Don't let loadExtraBundle actually load json-logic
+        initOptions.loadExtraBundle = sinon.stub();
+
+        flagManager = new FeatureFlagManager(initOptions);
+        flagManager.init();
+        await flagManager.fetchPromise;
+
+        // Try to check event before json-logic loads
+        flagManager.checkFirstTimeEvents(`Purchase Complete`, { amount: 150 });
+
+        // Flag should not be activated (fail closed)
+        const flag = flagManager.flags.get(`premium-welcome`);
+        expect(flag.key).to.equal(`control`);
       });
     });
   });

@@ -52,7 +52,7 @@ const MAIN_BUILDS = [
                 format: 'es',
             }
         ],
-        plugins: [commonjs(), nodeResolve({browser: true})]
+        plugins: [nodeResolve({browser: true})]
     },
     {
         'input': BUNDLED_RRWEB_PATH,
@@ -90,6 +90,30 @@ const MAIN_BUILDS = [
         plugins: [aliasRrweb()],
     },
 
+    // IIFE json-logic bundle that is loaded asynchronously
+    {
+        input: 'src/json-logic/index.js',
+        output: [
+            {
+                file: 'build/mixpanel-json-logic.js',
+                name: 'mixpanel_json_logic',
+                format: 'iife',
+            },
+            ...(MINIFY
+                ? [
+                    {
+                      file: 'build/mixpanel-json-logic.min.js',
+                      name: 'mixpanel_json_logic',
+                      format: 'iife',
+                      plugins: [esbuild({target: 'es5', minify: true, sourceMap: true})],
+                      sourcemap: true,
+                    },
+                  ]
+                : []),
+        ],
+        plugins: [commonjs(), nodeResolve({browser: true})],
+    },
+
     // IIFE main mixpanel build
     {
         input: 'src/loaders/loader-globals.js',
@@ -110,7 +134,6 @@ const MAIN_BUILDS = [
                 : []),
         ],
         plugins: [
-            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -169,7 +192,6 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
-            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -207,7 +229,6 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
-            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -230,7 +251,6 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
-            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
@@ -250,7 +270,6 @@ const ALL_BUILDS = [
         ],
         plugins: [
             aliasRrweb(),
-            commonjs(),
             nodeResolve({
                 browser: true,
                 main: true,
