@@ -1,3 +1,8 @@
+**2.73.0** (23 Dec 2025)
+- Adds several new hooks: `before_identify`, `before_register`, `before_register_once`, `before_track`, `before_unregister`
+- Adds instance-initialization notification to allow Data Inspector browser extension to hook into SDK actions
+- Fixes and extends type definitions
+
 **2.72.0** (14 Nov 2025)
 - Adds Autocapture rage-click configuration option `interactive_elements_only`, to ignore clicks on non-interactive page elements such as text. Configure with: `mixpanel.init('<TOKEN>', {autocapture: {rage_click: {interactive_elements_only: true}}})`
 - Adds TypeScript types for Feature Flags subsystem (`mixpanel.flags`)
