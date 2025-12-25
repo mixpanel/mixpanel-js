@@ -331,7 +331,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
                 callback(-1);
             }
         }
-        return _.truncate(date_encoded_data, 255);
+        return _.truncate(date_encoded_data, this.get_config('max_property_length') || 255);
     }
 
     return this._mixpanel._track_or_batch({
