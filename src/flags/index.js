@@ -169,7 +169,6 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                         'first_time_event_hash': def['first_time_event_hash'],
                         'event_name': def['event_name'],
                         'property_filters': def['property_filters'],
-                        'endtime': def['endtime'],
                         'pending_variant': def['pending_variant']
                     };
                 }.bind(this));
