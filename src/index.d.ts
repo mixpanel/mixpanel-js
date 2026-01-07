@@ -6,6 +6,8 @@ export type PushItem = Array<string | Dict | ((this: Mixpanel) => void)>;
 
 export type Query = string | Element | Element[];
 
+export type RemoteSettingType = "disabled" | "fallback" | "strict";
+
 export interface Dict {
   [key: string]: any;
 }
@@ -238,6 +240,7 @@ export interface Config {
   record_sessions_percent: number;
   record_canvas: boolean;
   record_heatmap_data: boolean;
+  remote_settings_mode: RemoteSettingType;
   hooks: {
     before_identify?: (new_distinct_id: string) => string | null;
     before_register?: (
