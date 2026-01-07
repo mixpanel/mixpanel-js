@@ -505,6 +505,18 @@ function shouldTrackDomEvent(el, ev) {
     }
 }
 
+function elementLooksSensitive(el) {
+    var name = (el.name || el.id || '').toString().toLowerCase();
+    if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
+        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
+        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /*
  * Check whether a DOM element should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
@@ -557,13 +569,8 @@ function shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors)
         }
     }
 
-    // filter out data from fields that look like sensitive fields
-    var name = el.name || el.id || '';
-    if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
-        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
-        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
-            return false;
-        }
+    if (elementLooksSensitive(el)) {
+        return false;
     }
 
     return true;
@@ -775,6 +782,7 @@ function getClickEventTargetElement(event) {
 export {
     EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_INPUT, EV_LOAD,EV_MP_LOCATION_CHANGE, EV_POPSTATE,
     EV_SCROLL, EV_SCROLLEND, EV_SELECT, EV_SUBMIT, EV_TOGGLE, EV_VISIBILITYCHANGE,
+    elementLooksSensitive,
     getClickEventComposedPath,
     getClickEventTargetElement,
     getPolyfillScrollEndFunction,

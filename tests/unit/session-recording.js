@@ -434,4 +434,81 @@ describe(`SessionRecording`, function() {
     const queue = await idbGetItem(`mixpanelRecordingEvents`, batcherKey);
     expect(queue.length).to.equal(0, `batcher should have removed the items from IDB`);
   });
+
+  describe(`_getMaskFn`, function() {
+    let mockElement;
+    let mockPrivacyConfig;
+    let shouldMaskFnStub;
+    let reportErrorSpy;
+
+    beforeEach(function() {
+      mockElement = {}; // doesn't matter for these tests
+      mockPrivacyConfig = {};
+      shouldMaskFnStub = sinon.stub();
+      reportErrorSpy = sinon.spy(sessionRecording, `reportError`);
+    });
+
+    afterEach(function() {
+      reportErrorSpy.restore();
+    });
+
+    it(`returns empty string for whitespace-only text`, function() {
+      const maskFn = sessionRecording._getMaskFn(shouldMaskFnStub, mockPrivacyConfig);
+
+      expect(maskFn(`   `, mockElement)).to.equal(``);
+      expect(maskFn(`\t\t\t`, mockElement)).to.equal(``);
+      expect(maskFn(`\n\n`, mockElement)).to.equal(``);
+      expect(maskFn(`  \n\t  `, mockElement)).to.equal(``);
+      expect(maskFn(``, mockElement)).to.equal(``);
+
+      // shouldMaskFn should not be called for whitespace-only text
+      expect(shouldMaskFnStub.called).to.be.false;
+    });
+
+    it(`handles errors in shouldMaskFn and defaults to masking`, function() {
+      shouldMaskFnStub.throws(new Error(`Test error in shouldMaskFn`));
+
+      const maskFn = sessionRecording._getMaskFn(shouldMaskFnStub, mockPrivacyConfig);
+      const result = maskFn(`sensitive data`, mockElement);
+
+      // Should default to masking when error occurs
+      expect(result).to.equal(`**************`);
+      expect(reportErrorSpy.calledOnce).to.be.true;
+      expect(reportErrorSpy.firstCall.args[0]).to.include(`Error checking if text should be masked`);
+    });
+
+    it(`truncates massive text lengths to 10000 characters`, function() {
+      shouldMaskFnStub.returns(true);
+
+      const maskFn = sessionRecording._getMaskFn(shouldMaskFnStub, mockPrivacyConfig);
+
+      const massiveText = `a`.repeat(50000);
+      const result = maskFn(massiveText, mockElement);
+
+      expect(result).to.equal(`*`.repeat(10000));
+      expect(result.length).to.equal(10000);
+    });
+
+    it(`masks text when shouldMaskFn returns true`, function() {
+      shouldMaskFnStub.returns(true);
+
+      const maskFn = sessionRecording._getMaskFn(shouldMaskFnStub, mockPrivacyConfig);
+      const result = maskFn(`secret`, mockElement);
+
+      expect(result).to.equal(`******`);
+      expect(shouldMaskFnStub.calledOnce).to.be.true;
+      expect(shouldMaskFnStub.firstCall.args[0]).to.equal(mockElement);
+      expect(shouldMaskFnStub.firstCall.args[1]).to.equal(mockPrivacyConfig);
+    });
+
+    it(`does not mask text when shouldMaskFn returns false`, function() {
+      shouldMaskFnStub.returns(false);
+
+      const maskFn = sessionRecording._getMaskFn(shouldMaskFnStub, mockPrivacyConfig);
+      const result = maskFn(`public data`, mockElement);
+
+      expect(result).to.equal(`public data`);
+      expect(shouldMaskFnStub.calledOnce).to.be.true;
+    });
+  });
 });

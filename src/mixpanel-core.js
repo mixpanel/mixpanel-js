@@ -153,8 +153,7 @@ var DEFAULT_CONFIG = {
     'record_console':                    true,
     'record_heatmap_data':               false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
-    'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
-    'record_mask_text_selector':         '*',
+    'record_mask_inputs':                true,
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
     'record_sessions_percent':           0,

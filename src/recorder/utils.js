@@ -7,6 +7,10 @@ var isRecordingExpired = function(serializedRecording) {
     return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
 };
 
+
 var RECORD_ENQUEUE_THROTTLE_MS = 250;
 
-export { isRecordingExpired, RECORD_ENQUEUE_THROTTLE_MS};
+export {
+    isRecordingExpired,
+    RECORD_ENQUEUE_THROTTLE_MS
+};
