@@ -8113,5 +8113,289 @@
                     });
             });
         }
+
+        module('remote_settings', {
+            setup: function () {
+                this.token = `SETTINGS_TEST_TOKEN`;
+                this.fetchStub = sinon.stub(window, 'fetch');
+                this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({
+                    sdk_config: {
+                        config: {
+                            record_sessions_percent: 30
+                        }
+                    }
+                }), {
+                    status: 200,
+                    headers: {'Content-type': 'application/json'}
+                })));
+            }, 
+            teardown: function () {
+                mixpanel.remote_settings.stop_session_recording();
+                clearLibInstance(mixpanel.remote_settings);
+                this.fetchStub.restore();
+            }
+        });
+
+        asyncTest("remote_settings_mode='disabled' is default and ignores remote settings ", 2, function() {
+            mixpanel.init(this.token, {
+                record_sessions_percent: 20,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                notOk(this.fetchStub.called, "fetch should not be called in disabled mode");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 20, "local settings were applied");
+                
+                start();
+            }, this), 10);
+        });
+
+        asyncTest("remote_settings_mode='fallback' applies fetched settings", 2, function() {
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'fallback',
+                record_sessions_percent: 10,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, true, "fetch was called to get remote settings");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 30, "remote settings were applied");
+                
+                start();
+            }, this), 10);
+        }); 
+
+        asyncTest("remote_settings_mode='fallback' fetches settings and falls back on failure", 2, function() {
+            this.fetchStub.returns(Promise.reject(new Error('Network error')));
+            
+            var token = rand_name();
+            mixpanel.init(token, {
+                remote_settings_mode: 'fallback',
+                record_sessions_percent: 20,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, true, "fetch was called to get remote settings");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 20, "local settings were applied");
+                
+                start();
+            }, this), 200);
+        });
+
+        asyncTest("remote_settings_mode='fallback' respects 500ms timeout", 3, function() {
+            // Return a promise that resolves after 600ms which is longer than the 500ms timeout
+            this.fetchStub.callsFake(function(url, options) {
+                // Use callsFake so we can have access to options.signal for abortController
+                return new Promise(function(resolve, reject) {
+                    var timeoutId = realSetTimeout(function() {
+                        resolve(new Response(JSON.stringify({
+                            sdk_config: {
+                                config: {
+                                    record_sessions_percent: 40
+                                }
+                            }
+                        }), {
+                            status: 200,
+                            headers: {'Content-type': 'application/json'}
+                    }));
+                    }, 600);
+
+                    if (options && options.signal) {
+                        options.signal.addEventListener('abort', function() {
+                            clearTimeout(timeoutId);
+                            reject(new DOMException('Aborted', 'AbortError'));
+                        });
+                    }
+                });
+            });
+            
+            var startTime = Date.now();
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'fallback',
+                record_sessions_percent: 25,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                var elapsed = Date.now() - startTime;
+                same(this.fetchStub.called, true, "fetch was called");
+                ok(elapsed >= 500, "waited at least 500ms for the fetch");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 25, "local settings were applied after timeout");
+                
+                start();
+            }, this), 650);
+        });
+
+        asyncTest("remote_settings_mode='fallback' doesn't run without AbortController", 2, function() {
+            var originalAbortController = window.AbortController;
+            delete window.AbortController;
+            
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'fallback',
+                record_sessions_percent: 25,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, false, "fetch was not called");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 25, "local settings were applied after timeout");
+                
+                window.AbortController = originalAbortController;
+                start();
+            }, this), 100);
+        });
+
+        asyncTest("remote_settings_mode='fallback' with semi-invalid config applies only valid keys", 4, function() {
+            this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({
+                sdk_config: {
+                    config: {
+                        record_sessions_percent: 30,
+                        invalid_key: 'should be ignored',
+                        record_heatmap_data: true,
+                    }
+                }
+            }), {
+                status: 200,
+                headers: {'Content-type': 'application/json'}
+            })));
+            
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'fallback',
+                record_sessions_percent: 10,
+                record_heatmap_data: false,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, true, "fetch was called to get remote settings");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 30, "valid config key was applied");
+                same(mixpanel.remote_settings.get_config('record_heatmap_data'), true, "another valid config key was applied");
+                isUndefined(mixpanel.remote_settings.get_config('invalid_key'), "invalid key should not be in config");
+                
+                start();
+            }, this), 10);
+        });
+
+        asyncTest("remote_settings_mode='fallback' with all invalid config keys", 5, function() {
+            this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({
+                sdk_config: {
+                    config: {
+                        invalid_key: 'should be ignored',
+                        another_invalid_key: true,
+                    }
+                }
+            }), {
+                status: 200,
+                headers: {'Content-type': 'application/json'}
+            })));
+            
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'fallback',
+                record_sessions_percent: 10,
+                record_heatmap_data: false,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, true, "fetch was called to get remote settings");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 10, "local config key was applied");
+                same(mixpanel.remote_settings.get_config('record_heatmap_data'), false, "local config key was applied");
+                isUndefined(mixpanel.remote_settings.get_config('invalid_key'), "invalid_key should not be in config");
+                isUndefined(mixpanel.remote_settings.get_config('another_invalid_key'), "another_invalid_key should not be in config");
+                
+                start();
+            }, this), 10);
+        });
+
+        asyncTest("remote_settings_mode='strict' initializes session recording on fetch success", 2, function() {
+            this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({
+                sdk_config: {
+                    config: {
+                        record_sessions_percent: 30
+                    }
+                }
+            }), {
+                status: 200,
+                headers: {'Content-type': 'application/json'}
+            })));
+            
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'strict',
+                record_sessions_percent: 10,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, true, "fetch was called to get remote settings");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 30, "remote settings were applied");
+                
+                start();
+            }, this), 10);
+        });
+
+        asyncTest("remote_settings_mode='strict' does not initialize session recording on fetch failure", 2, function() {
+            this.fetchStub.returns(Promise.reject(new Error('Network error')));
+            
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'strict',
+                record_sessions_percent: 10,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, true, "fetch was called to get remote settings");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 0, "Recordings disabled");
+                
+                start();
+            }, this), 200);
+        });
+
+        asyncTest("remote_settings_mode='strict' with all invalid config keys disables recordings", 4, function() {
+            this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({
+                sdk_config: {
+                    config: {
+                        invalid_key: 'should be ignored',
+                        another_invalid_key: 12345,
+                    }
+                }
+            }), {
+                status: 200,
+                headers: {'Content-type': 'application/json'}
+            })));
+            
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'strict',
+                record_sessions_percent: 20,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, true, "fetch was called to get remote settings");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 0, "recordings disabled when no valid remote config keys found");
+                isUndefined(mixpanel.remote_settings.get_config('invalid_key'), "invalid_key should not be in config");
+                isUndefined(mixpanel.remote_settings.get_config('another_invalid_key'), "another_invalid_key should not be in config");
+
+                start();
+            }, this), 10);
+        });
+
+        asyncTest("remote_settings_mode='strict' with semi-invalid config applies only valid keys", 4, function() {
+            this.fetchStub.returns(Promise.resolve(new Response(JSON.stringify({
+                sdk_config: {
+                    config: {
+                        record_sessions_percent: 30,
+                        invalid_key: 'should be ignored',
+                    }
+                }
+            }), {
+                status: 200,
+                headers: {'Content-type': 'application/json'}
+            })));
+            
+            mixpanel.init(this.token, {
+                remote_settings_mode: 'strict',
+                record_sessions_percent: 10,
+                record_heatmap_data: false,
+            }, 'remote_settings');
+
+            realSetTimeout(_.bind(function() {
+                same(this.fetchStub.called, true, "fetch was called to get remote settings");
+                same(mixpanel.remote_settings.get_config('record_sessions_percent'), 30, "valid config key was applied");
+                same(mixpanel.remote_settings.get_config('record_heatmap_data'), false, "local key still applied");
+                isUndefined(mixpanel.remote_settings.get_config('invalid_key'), "invalid_key should not be in config");
+                start();
+            }, this), 10);
+        });
     };
 })();
