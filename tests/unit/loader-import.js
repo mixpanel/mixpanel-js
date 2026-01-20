@@ -5,6 +5,10 @@
 import { expect } from 'chai';
 import jsdom from 'jsdom-global';
 
+// Arbitrary import triggers babel-core/register to transpile this file
+// Without it, mocha 11 loads the file as native ESM which breaks chai imports
+import './jsdom-setup';
+
 describe(`Module import with localStorage error`, function() {
   let mixpanel;
   let teardown;
