@@ -1115,8 +1115,17 @@ function _storageWrapper(storage, name, is_supported_fn) {
     };
 }
 
-_.localStorage = _storageWrapper(window.localStorage, 'localStorage', localStorageSupported);
-_.sessionStorage = _storageWrapper(window.sessionStorage, 'sessionStorage', sessionStorageSupported);
+// Safari errors out accessing localStorage/sessionStorage when cookies are disabled,
+// so create dummy storage wrappers that silently fail as a fallback.
+var windowLocalStorage = null, windowSessionStorage = null;
+try {
+    windowLocalStorage = window.localStorage;
+    windowSessionStorage = window.sessionStorage;
+    // eslint-disable-next-line no-empty
+} catch (_err) {}
+
+_.localStorage = _storageWrapper(windowLocalStorage, 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(windowSessionStorage, 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function() {
     // written by Dean Edwards, 2005
