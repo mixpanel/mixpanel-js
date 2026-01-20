@@ -37,7 +37,8 @@
             "sourceType": "module"
         },
         "env": {
-            "mocha": true
+            "mocha": true,
+            "node": true
         },
         "rules": {
             "camelcase": "error",
