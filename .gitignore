@@ -9,3 +9,5 @@ tunnel.log
 *.ps1
 *.bundle.js
 .DS_Store
+/tests/browser/results
+/tests/unit/results
