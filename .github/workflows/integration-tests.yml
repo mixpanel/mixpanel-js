@@ -1,0 +1,52 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      checks: write  # for dorny/test-reporter to post results
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome-latest, edge-latest, safari-latest, firefox-latest, ios-safari-sim, android-chrome-sim]
+
+    env:
+      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+      SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+      SAUCE_TUNNEL_NAME: ci-js-sdk-test-${{ matrix.browser }}-${{ github.run_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build-full
+
+      - name: Sauce test
+        # for some reason, android emulator tests don't work with localhost so we need an IP to give to the runner...
+        run: BROWSER=${{ matrix.browser }} ROOT_DIR=$(pwd) SAUCE_HOST=$(hostname -I | awk '{print $1; exit}') npm run integration-test:sauce
+
+      - name: Test Report
+        uses: dorny/test-reporter@7b7927aa7da8b82e81e755810cb51f39941a2cc7 # v2
+        if: success() || failure() # run this step even if previous step failed
+        with:
+          name: Browser Tests            # Name of the check run which will be created
+          reporter: mocha-json        # Format of test results
+          path: 'tests/browser/results/*.json'    # Path to test results
+          list-tests: 'failed'
+          fail-on-error: 'false'

@@ -25,5 +25,5 @@ fi
 if [ ! -z "$DIST" ]; then
     echo 'Copying to dist/'
     rm -r dist
-    cp -r build dist
+    rsync -av --exclude='test' build/ dist/
 fi
