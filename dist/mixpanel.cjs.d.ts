@@ -6,6 +6,8 @@ export type PushItem = Array<string | Dict | ((this: Mixpanel) => void)>;
 
 export type Query = string | Element | Element[];
 
+export type RemoteSettingType = "disabled" | "fallback" | "strict";
+
 export interface Dict {
   [key: string]: any;
 }
@@ -166,6 +168,8 @@ export interface Config {
     track?: string;
     engage?: string;
     groups?: string;
+    record?: string;
+    flags?: string;
   };
   api_method: string;
   api_transport: string;
@@ -225,12 +229,18 @@ export interface Config {
   record_idle_timeout_ms: number;
   record_inline_images: boolean;
   record_mask_text_class: string | RegExp;
-  record_mask_text_selector: string;
+  record_mask_text_selector: string | string[];
+  record_unmask_text_selector: string | string[];
+  record_mask_all_text: boolean;
+  record_mask_input_selector: string | string[];
+  record_unmask_input_selector: string | string[];
+  record_mask_all_inputs: boolean;
   record_min_ms: number;
   record_max_ms: number;
   record_sessions_percent: number;
   record_canvas: boolean;
   record_heatmap_data: boolean;
+  remote_settings_mode: RemoteSettingType;
   hooks: {
     before_identify?: (new_distinct_id: string) => string | null;
     before_register?: (
@@ -255,6 +265,7 @@ export interface Config {
     ) => string | Partial<RegisterOptions> | null;
   };
 }
+
 
 export type VerboseResponse =
   | {
