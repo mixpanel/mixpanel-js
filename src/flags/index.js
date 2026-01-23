@@ -11,6 +11,72 @@ var CONFIG_DEFAULTS = {};
 CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
 
 /**
+ * Shared helper to recursively lowercase strings in nested structures
+ * @param {*} obj - Value to process
+ * @param {boolean} lowercaseKeys - Whether to lowercase object keys
+ * @returns {*} Processed value with lowercased strings
+ */
+var lowercaseJson = function(obj, lowercaseKeys) {
+    if (obj === null || obj === undefined) {
+        return obj;
+    } else if (typeof obj === 'string') {
+        return obj.toLowerCase();
+    } else if (Array.isArray(obj)) {
+        return obj.map(function(item) {
+            return lowercaseJson(item, lowercaseKeys);
+        });
+    } else if (obj === Object(obj)) {
+        var result = {};
+        for (var key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                var newKey = lowercaseKeys && typeof key === 'string' ? key.toLowerCase() : key;
+                result[newKey] = lowercaseJson(obj[key], lowercaseKeys);
+            }
+        }
+        return result;
+    } else {
+        return obj;
+    }
+};
+
+/**
+ * Lowercase all string keys and values in a nested structure
+ * @param {*} val - Value to process
+ * @returns {*} Processed value with lowercased strings
+ */
+var lowercaseKeysAndValues = function(val) {
+    return lowercaseJson(val, true);
+};
+
+/**
+ * Lowercase only leaf node string values in a nested structure (keys unchanged)
+ * @param {*} val - Value to process
+ * @returns {*} Processed value with lowercased leaf strings
+ */
+var lowercaseOnlyLeafNodes = function(val) {
+    return lowercaseJson(val, false);
+};
+
+/**
+ * Generate a unique key for a pending first-time event
+ * @param {string} flagKey - The flag key
+ * @param {string} firstTimeEventHash - The first_time_event_hash from the pending event definition
+ * @returns {string} Composite key in format "flagKey:firstTimeEventHash"
+ */
+var getPendingEventKey = function(flagKey, firstTimeEventHash) {
+    return flagKey + ':' + firstTimeEventHash;
+};
+
+/**
+ * Extract the flag key from a pending event key
+ * @param {string} eventKey - The composite event key in format "flagKey:firstTimeEventHash"
+ * @returns {string} The flag key portion
+ */
+var getFlagKeyFromPendingEventKey = function(eventKey) {
+    return eventKey.split(':')[0];
+};
+
+/**
  * FeatureFlagManager: support for Mixpanel's feature flagging product
  * @constructor
  */
@@ -122,14 +188,12 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             _.each(responseFlags, function(data, key) {
                 // Check if this flag has any activated first-time events this session
                 var hasActivatedEvent = false;
-                if (this.activatedFirstTimeEvents) {
-                    var prefix = key + ':';
-                    _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
-                        if (eventKey.startsWith(prefix)) {
-                            hasActivatedEvent = true;
-                        }
-                    });
-                }
+                var prefix = key + ':';
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    if (eventKey.startsWith(prefix)) {
+                        hasActivatedEvent = true;
+                    }
+                });
 
                 if (hasActivatedEvent) {
                     // Preserve the activated variant, don't overwrite with server's current variant
@@ -147,14 +211,14 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                         'is_qa_tester': data['is_qa_tester']
                     });
                 }
-            }.bind(this));
+            }, this);
 
             // Process top-level pending_first_time_events array
             var topLevelDefinitions = responseBody['pending_first_time_events'];
             if (topLevelDefinitions && topLevelDefinitions.length > 0) {
                 _.each(topLevelDefinitions, function(def) {
                     var flagKey = def['flag_key'];
-                    var eventKey = this.getPendingEventKey(flagKey, def['first_time_event_hash']);
+                    var eventKey = getPendingEventKey(flagKey, def['first_time_event_hash']);
 
                     // Skip if this specific event has already been activated this session
                     if (this.activatedFirstTimeEvents[eventKey]) {
@@ -171,18 +235,18 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                         'property_filters': def['property_filters'],
                         'pending_variant': def['pending_variant']
                     };
-                }.bind(this));
+                }, this);
             }
 
             // Preserve any activated orphaned flags (flags that were activated but are no longer in response)
             if (this.activatedFirstTimeEvents) {
                 _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
-                    var flagKey = this.getFlagKeyFromPendingEventKey(eventKey);
+                    var flagKey = getFlagKeyFromPendingEventKey(eventKey);
                     if (activated && !flags.has(flagKey) && this.flags && this.flags.has(flagKey)) {
                         // Keep the activated flag even though it's not in the new response
                         flags.set(flagKey, this.flags.get(flagKey));
                     }
-                }.bind(this));
+                }, this);
             }
 
             this.flags = flags;
@@ -215,68 +279,6 @@ FeatureFlagManager.prototype.markFetchComplete = function() {
 };
 
 /**
- * Lowercase all string keys and values in a nested structure
- * @param {*} val - Value to process
- * @returns {*} Processed value with lowercased strings
- */
-FeatureFlagManager.prototype.lowercaseKeysAndValues = function(val) {
-    if (typeof val === 'string') {
-        return val.toLowerCase();
-    } else if (_.isArray(val)) {
-        return _.map(val, this.lowercaseKeysAndValues.bind(this));
-    } else if (_.isObject(val)) {
-        var result = {};
-        _.each(val, function(value, key) {
-            var newKey = (typeof key === 'string') ? key.toLowerCase() : key;
-            result[newKey] = this.lowercaseKeysAndValues(value);
-        }.bind(this));
-        return result;
-    } else {
-        return val;
-    }
-};
-
-/**
- * Lowercase only leaf node string values in a nested structure (keys unchanged)
- * @param {*} val - Value to process
- * @returns {*} Processed value with lowercased leaf strings
- */
-FeatureFlagManager.prototype.lowercaseOnlyLeafNodes = function(val) {
-    if (typeof val === 'string') {
-        return val.toLowerCase();
-    } else if (_.isArray(val)) {
-        return _.map(val, this.lowercaseOnlyLeafNodes.bind(this));
-    } else if (_.isObject(val)) {
-        var result = {};
-        _.each(val, function(value, key) {
-            result[key] = this.lowercaseOnlyLeafNodes(value);
-        }.bind(this));
-        return result;
-    } else {
-        return val;
-    }
-};
-
-/**
- * Generate a unique key for a pending first-time event
- * @param {string} flagKey - The flag key
- * @param {string} firstTimeEventHash - The first_time_event_hash from the pending event definition
- * @returns {string} Composite key in format "flagKey:firstTimeEventHash"
- */
-FeatureFlagManager.prototype.getPendingEventKey = function(flagKey, firstTimeEventHash) {
-    return flagKey + ':' + firstTimeEventHash;
-};
-
-/**
- * Extract the flag key from a pending event key
- * @param {string} eventKey - The composite event key in format "flagKey:firstTimeEventHash"
- * @returns {string} The flag key portion
- */
-FeatureFlagManager.prototype.getFlagKeyFromPendingEventKey = function(eventKey) {
-    return eventKey.split(':')[0];
-};
-
-/**
  * Proactively load json-logic bundle if any pending events have property filters
  */
 FeatureFlagManager.prototype._loadJsonLogicIfNeeded = function() {
@@ -296,6 +298,16 @@ FeatureFlagManager.prototype._loadJsonLogicIfNeeded = function() {
     }
 };
 
+/**
+ * Check if a tracked event matches any pending first-time events and activate the corresponding flag variant
+ * @param {string} eventName - The name of the event being tracked
+ * @param {Object} properties - Event properties to evaluate against property filters
+ *
+ * When a match is found (event name matches and property filters pass), this method:
+ * - Switches the flag to the pending variant
+ * - Marks the event as activated for this session
+ * - Records the activation via the API (fire-and-forget)
+ */
 FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properties) {
     if (!this.pendingFirstTimeEvents || _.isEmptyObject(this.pendingFirstTimeEvents)) {
         return;
@@ -329,10 +341,10 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
 
             try {
                 // Lowercase all keys and values in event properties for case-insensitive matching
-                var lowercasedProperties = this.lowercaseKeysAndValues(properties || {});
+                var lowercasedProperties = lowercaseKeysAndValues(properties || {});
 
                 // Lowercase only leaf nodes in JsonLogic filters (keep operators intact)
-                var lowercasedFilters = this.lowercaseOnlyLeafNodes(propertyFilters);
+                var lowercasedFilters = lowercaseOnlyLeafNodes(propertyFilters);
 
                 // Prepare data for JsonLogic evaluation
                 var data = {'properties': lowercasedProperties};
@@ -368,10 +380,10 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
             pendingEvent.project_id,
             pendingEvent.first_time_event_hash
         );
-    }.bind(this));
+    }, this);
 };
 
-FeatureFlagManager.prototype.getRecordingApiRoute = function(flagId) {
+FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
     // Construct URL: {api_host}/flags/{flagId}/first-time-events
     return this.getFullApiRoute() + '/' + flagId + '/first-time-events';
 };
@@ -384,7 +396,7 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
     var searchParams = new URLSearchParams();
     searchParams.set('mp_lib', 'web');
     searchParams.set('$lib_version', Config.LIB_VERSION);
-    var url = this.getRecordingApiRoute(flagId) + '?' + searchParams.toString();
+    var url = this.getFirstTimeEventApiRoute(flagId) + '?' + searchParams.toString();
 
     var payload = {
         'distinct_id': distinctId,
