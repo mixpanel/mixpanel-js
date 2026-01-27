@@ -1,11 +1,17 @@
+/**
+ * @typedef {import('../index').RecordPrivacyConfig} RecordPrivacyConfig
+ */
+
 import { window } from '../window';
-import { IncrementalSource, EventType, getRecordConsolePlugin } from './rrweb-entrypoint';
+import { EventType, getRecordConsolePlugin, IncrementalSource } from './rrweb-entrypoint';
 import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _, localStorageSupported, canUseCompressionStream, navigator, userAgent, windowOpera} from '../utils'; // eslint-disable-line camelcase
 import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
+
 import Config from '../config';
 import { RECORD_ENQUEUE_THROTTLE_MS } from './utils';
+import { shouldMaskInput, shouldMaskText, getPrivacyConfig } from './masking';
 
 var logger = console_with_prefix('recorder');
 var CompressionStream = window['CompressionStream'];
@@ -52,7 +58,7 @@ function isUserEvent(ev) {
  * @property {String} [options.replayId] - unique uuid for a single replay
  * @property {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
  * @property {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
- * @property {Function} [options.rrwebRecord] - rrweb's `record` function
+ * @property {import('./rrweb-entrypoint').record} [options.rrwebRecord] - rrweb's `record` function
  * @property {Function} [options.onBatchSent] - callback when a batch of events is sent to the server
  * @property {Storage} [options.sharedLockStorage] - optional storage for shared lock, used for test dependency injection
  * optional properties for deserialization:
@@ -233,6 +239,8 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         blockSelector = undefined;
     }
 
+    var privacyConfig = getPrivacyConfig(this._mixpanel);
+
     try {
         this._stopRecording = this._rrwebRecord({
             'emit': function (ev) {
@@ -262,9 +270,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                 'type': 'image/webp',
                 'quality': 0.6
             },
+            // mask all inputs and text by default, unmasking is applied via callbacks maskInputFn and maskTextFn
             'maskAllInputs': true,
-            'maskTextClass': this.getConfig('record_mask_text_class'),
-            'maskTextSelector': this.getConfig('record_mask_text_selector'),
+            'maskTextSelector': '*',
+            'maskInputFn': this._getMaskFn(shouldMaskInput, privacyConfig),
+            'maskTextFn': this._getMaskFn(shouldMaskText, privacyConfig),
             'recordCanvas': this.getConfig('record_canvas'),
             'sampling': {
                 'canvas': 15
@@ -534,6 +544,35 @@ SessionRecording.prototype._getRecordMinMs = function() {
     }
 
     return configValue;
+};
+
+/**
+ * Creates a masking function for rrweb's maskInputFn or maskTextFn
+ * @param {(element: HTMLElement, privacyConfig: RecordPrivacyConfig) => boolean} shouldMaskFn - Function that determines if element should be masked
+ * @param {RecordPrivacyConfig} privacyConfig - Privacy configuration
+ * @returns {(text: string, element: HTMLElement) => string} Function that masks text based on privacy config
+ */
+SessionRecording.prototype._getMaskFn = function(shouldMaskFn, privacyConfig) {
+    return function(text, element) {
+        // prevent visual artifacts from random whitespace
+        if (!text.trim().length) {
+            return '';
+        }
+
+        var shouldMask = true;
+        try {
+            shouldMask = shouldMaskFn(element, privacyConfig);
+        } catch (err) {
+            this.reportError('Error checking if text should be masked, defaulting to masked', err);
+        }
+
+        if (shouldMask) {
+            var textLength = Math.min(text.length, 10000); // limit to 10000 chars to optimize performance
+            return '*'.repeat(textLength);
+        } else {
+            return text;
+        }
+    }.bind(this);
 };
 
 export { SessionRecording };

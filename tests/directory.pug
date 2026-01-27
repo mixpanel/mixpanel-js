@@ -1,0 +1,15 @@
+doctype html
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport" content="width=device-width, initial-scale=1.0")
+        title Mixpanel JS Tests
+    body
+        h1 Mixpanel JS Tests
+        p Please select a test suite to execute against your browser.
+        //- onboarding task: maybe add some css + branding
+        ul
+            each suite, suiteId in testSuites
+                li
+                    a(href="/tests/new/" + suiteId)= suite.name
+                    span= ": " + suite.description

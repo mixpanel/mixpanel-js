@@ -8,7 +8,9 @@
         "sourceType": "module"
     },
     "rules": {
-        "camelcase": "error",
+        "camelcase": ["error", {
+            "properties": "never"
+        }],
         "eol-last": "error",
         "eqeqeq": "error",
         "indent":
@@ -29,13 +31,14 @@
         ]
     },
     "overrides": [{
-        "files": ["tests/unit/**/*.js"],
+        "files": ["tests/unit/**/*.js", "tests/browser/**/*.js", "*.mjs"],
         "parserOptions": {
-            "ecmaVersion": 8,
+            "ecmaVersion": 9,
             "sourceType": "module"
         },
         "env": {
-            "mocha": true
+            "mocha": true,
+            "node": true
         },
         "rules": {
             "camelcase": "error",

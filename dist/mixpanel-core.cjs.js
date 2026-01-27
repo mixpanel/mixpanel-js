@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.73.0'
+    LIB_VERSION: '2.74.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -1504,8 +1504,17 @@ function _storageWrapper(storage, name, is_supported_fn) {
     };
 }
 
-_.localStorage = _storageWrapper(win.localStorage, 'localStorage', localStorageSupported);
-_.sessionStorage = _storageWrapper(win.sessionStorage, 'sessionStorage', sessionStorageSupported);
+// Safari errors out accessing localStorage/sessionStorage when cookies are disabled,
+// so create dummy storage wrappers that silently fail as a fallback.
+var windowLocalStorage = null, windowSessionStorage = null;
+try {
+    windowLocalStorage = win.localStorage;
+    windowSessionStorage = win.sessionStorage;
+    // eslint-disable-next-line no-empty
+} catch (_err) {}
+
+_.localStorage = _storageWrapper(windowLocalStorage, 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(windowSessionStorage, 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function() {
     // written by Dean Edwards, 2005
@@ -2655,6 +2664,18 @@ function shouldTrackDomEvent(el, ev) {
     }
 }
 
+function elementLooksSensitive(el) {
+    var name = (el.name || el.id || '').toString().toLowerCase();
+    if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
+        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
+        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /*
  * Check whether a DOM element should be "tracked" or if it may contain sensitive data
  * using a variety of heuristics.
@@ -2707,13 +2728,8 @@ function shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors)
         }
     }
 
-    // filter out data from fields that look like sensitive fields
-    var name = el.name || el.id || '';
-    if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
-        var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
-        if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
-            return false;
-        }
+    if (elementLooksSensitive(el)) {
+        return false;
     }
 
     return true;
@@ -6841,6 +6857,9 @@ var INIT_SNIPPET = 1;
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
 /** @const */ var PAYLOAD_TYPE_JSON     = 'json';
 /** @const */ var DEVICE_ID_PREFIX      = '$device:';
+/** @const */ var SETTING_STRICT        = 'strict';
+/** @const */ var SETTING_FALLBACK      = 'fallback';
+/** @const */ var SETTING_DISABLED      = 'disabled';
 
 
 /*
@@ -6869,7 +6888,8 @@ var DEFAULT_API_ROUTES = {
     'engage': 'engage/',
     'groups': 'groups/',
     'record': 'record/',
-    'flags':  'flags/'
+    'flags':  'flags/',
+    'settings': 'settings/'
 };
 
 /*
@@ -6933,12 +6953,12 @@ var DEFAULT_CONFIG = {
     'record_console':                    true,
     'record_heatmap_data':               false,
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
-    'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
-    'record_mask_text_selector':         '*',
+    'record_mask_inputs':                true,
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
-    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
+    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+    'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
 };
 
 var DOM_LOADED = false;
@@ -7176,7 +7196,16 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.autocapture.init();
 
     this._init_tab_id();
-    this._check_and_start_session_recording();
+
+    // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
+    var mode = this.get_config('remote_settings_mode');
+    if (mode === SETTING_STRICT || mode === SETTING_FALLBACK) {
+        this._fetch_remote_settings(mode).then(_.bind(function() {
+            this._check_and_start_session_recording();
+        }, this));
+    } else {
+        this._check_and_start_session_recording();
+    }
 };
 
 /**
@@ -7599,6 +7628,77 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     }
 
     return succeeded;
+};
+
+MixpanelLib.prototype._fetch_remote_settings = function(mode) {
+    var disableRecordingIfStrict = function() {
+        if (mode === 'strict') {
+            self.set_config({'record_sessions_percent': 0});
+        }
+    };
+
+    if (!win['AbortController']) {
+        console.critical('Remote settings unavailable: missing minimum required APIs');
+        disableRecordingIfStrict();
+        return Promise.resolve();
+    }
+
+    var settings_endpoint = this.get_api_host('settings') + '/' + this.get_config('api_routes')['settings'];
+    var request_params = {
+        '$lib_version': Config.LIB_VERSION,
+        'mp_lib': 'web',
+        'sdk_config': '1',
+    };
+    var query_string = _.HTTPBuildQuery(request_params);
+    var full_url = settings_endpoint + '?' + query_string;
+    var self = this;
+
+    var abortController = new AbortController();
+    var timeout_id = setTimeout(function() {
+        abortController.abort();
+    }, 500);
+    var fetchOptions = {
+        'method': 'GET',
+        'headers': {
+            'Authorization': 'Basic ' + btoa(self.get_config('token') + ':'),
+        },
+        'signal': abortController.signal
+    };
+
+    return win['fetch'](full_url, fetchOptions).then(function(response) {
+        clearTimeout(timeout_id);
+        if (!response['ok']) {
+            console.critical('Network response was not ok');
+            disableRecordingIfStrict();
+            return;
+        }
+        return response.json();
+    }).then(function(result) {
+        if (result && result['sdk_config'] && result['sdk_config']['config']) {
+            var remote_config = result['sdk_config']['config'];
+
+            // Verify that remote config contains only valid keys from DEFAULT_CONFIG
+            var valid_config = {};
+            _.each(remote_config, function(value, key) {
+                if (DEFAULT_CONFIG.hasOwnProperty(key)) {
+                    valid_config[key] = value;
+                }
+            });
+
+            if (_.isEmptyObject(valid_config)) {
+                console.critical('No valid config keys found in remote settings.');
+                disableRecordingIfStrict();
+            } else {
+                self.set_config(valid_config);
+            }
+        } else {
+            disableRecordingIfStrict();
+        }
+    }).catch(function(err) {
+        clearTimeout(timeout_id);
+        console.critical('Failed to fetch remote settings', err);
+        disableRecordingIfStrict();
+    });
 };
 
 /**

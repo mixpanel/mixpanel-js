@@ -1,1 +1,0 @@
-../../build/mixpanel.cjs.js

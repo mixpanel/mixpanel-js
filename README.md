@@ -67,7 +67,7 @@ mixpanel.init('YOUR_TOKEN', {autocapture: true, debug: true, persistence: 'local
 - Install development dependencies: `npm install`
 - Run unit tests: `npm test`
 - Start test server for browser tests: `npm run integration_test`
-- Browse to [http://localhost:3000/tests/](http://localhost:3000/tests/) and choose a scenario to run
+- Browse to [http://localhost:3001/tests/](http://localhost:3001/tests/) and choose a scenario to run
 
 In the future we plan to automate the last step with a headless browser to streamline development (although
 Mixpanel production releases are tested against a large matrix of browsers and operating systems).
