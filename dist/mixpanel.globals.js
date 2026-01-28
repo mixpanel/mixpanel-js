@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.72.0'
+        LIB_VERSION: '2.74.0'
     };
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -23,7 +23,9 @@
             screen: { width: 0, height: 0 },
             location: loc,
             addEventListener: function() {},
-            removeEventListener: function() {}
+            removeEventListener: function() {},
+            dispatchEvent: function() {},
+            CustomEvent: function () {}
         };
     } else {
         win = window;
@@ -1503,8 +1505,17 @@
         };
     }
 
-    _.localStorage = _storageWrapper(win.localStorage, 'localStorage', localStorageSupported);
-    _.sessionStorage = _storageWrapper(win.sessionStorage, 'sessionStorage', sessionStorageSupported);
+    // Safari errors out accessing localStorage/sessionStorage when cookies are disabled,
+    // so create dummy storage wrappers that silently fail as a fallback.
+    var windowLocalStorage = null, windowSessionStorage = null;
+    try {
+        windowLocalStorage = win.localStorage;
+        windowSessionStorage = win.sessionStorage;
+        // eslint-disable-next-line no-empty
+    } catch (_err) {}
+
+    _.localStorage = _storageWrapper(windowLocalStorage, 'localStorage', localStorageSupported);
+    _.sessionStorage = _storageWrapper(windowSessionStorage, 'sessionStorage', sessionStorageSupported);
 
     _.register_event = (function() {
         // written by Dean Edwards, 2005
@@ -2654,6 +2665,18 @@
         }
     }
 
+    function elementLooksSensitive(el) {
+        var name = (el.name || el.id || '').toString().toLowerCase();
+        if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
+            var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
+            if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /*
      * Check whether a DOM element should be "tracked" or if it may contain sensitive data
      * using a variety of heuristics.
@@ -2706,13 +2729,8 @@
             }
         }
 
-        // filter out data from fields that look like sensitive fields
-        var name = el.name || el.id || '';
-        if (typeof name === 'string') { // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
-            var sensitiveNameRegex = /^cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn/i;
-            if (sensitiveNameRegex.test(name.replace(/[^a-zA-Z0-9]/g, ''))) {
-                return false;
-            }
+        if (elementLooksSensitive(el)) {
+            return false;
         }
 
         return true;
@@ -6836,12 +6854,13 @@
     var INIT_MODULE  = 0;
     var INIT_SNIPPET = 1;
 
-    var IDENTITY_FUNC = function(x) {return x;};
-
     /** @const */ var PRIMARY_INSTANCE_NAME = 'mixpanel';
     /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
     /** @const */ var PAYLOAD_TYPE_JSON     = 'json';
     /** @const */ var DEVICE_ID_PREFIX      = '$device:';
+    /** @const */ var SETTING_STRICT        = 'strict';
+    /** @const */ var SETTING_FALLBACK      = 'fallback';
+    /** @const */ var SETTING_DISABLED      = 'disabled';
 
 
     /*
@@ -6870,7 +6889,8 @@
         'engage': 'engage/',
         'groups': 'groups/',
         'record': 'record/',
-        'flags':  'flags/'
+        'flags':  'flags/',
+        'settings': 'settings/'
     };
 
     /*
@@ -6934,12 +6954,12 @@
         'record_console':                    true,
         'record_heatmap_data':               false,
         'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
-        'record_mask_text_class':            new RegExp('^(mp-mask|fs-mask|amp-mask|rr-mask|ph-mask)$'),
-        'record_mask_text_selector':         '*',
+        'record_mask_inputs':                true,
         'record_max_ms':                     MAX_RECORDING_MS,
         'record_min_ms':                     0,
         'record_sessions_percent':           0,
-        'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js'
+        'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+        'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
     };
 
     var DOM_LOADED = false;
@@ -7002,6 +7022,17 @@
         // if any instance on the page has debug = true, we set the
         // global debug to be true
         Config.DEBUG = Config.DEBUG || instance.get_config('debug');
+
+        var source = init_type === INIT_MODULE ? 'module' : 'snippet';
+        win.dispatchEvent(new win.CustomEvent('$mp_sdk_to_extension_event', {
+            'detail': {
+                'instance': instance,
+                'source': source,
+                'token': token,
+                'name': name,
+                'info': _.info
+            }
+        }));
 
         // if target is not defined, we called init after the lib already
         // loaded, so there won't be an array of things to execute
@@ -7072,6 +7103,8 @@
                 variable_features['api_payload_format'] = PAYLOAD_TYPE_JSON;
             }
         }
+
+        this.hooks = {};
 
         this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
             'name': name,
@@ -7164,7 +7197,16 @@
         this.autocapture.init();
 
         this._init_tab_id();
-        this._check_and_start_session_recording();
+
+        // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
+        var mode = this.get_config('remote_settings_mode');
+        if (mode === SETTING_STRICT || mode === SETTING_FALLBACK) {
+            this._fetch_remote_settings(mode).then(_.bind(function() {
+                this._check_and_start_session_recording();
+            }, this));
+        } else {
+            this._check_and_start_session_recording();
+        }
     };
 
     /**
@@ -7589,6 +7631,77 @@
         return succeeded;
     };
 
+    MixpanelLib.prototype._fetch_remote_settings = function(mode) {
+        var disableRecordingIfStrict = function() {
+            if (mode === 'strict') {
+                self.set_config({'record_sessions_percent': 0});
+            }
+        };
+
+        if (!win['AbortController']) {
+            console.critical('Remote settings unavailable: missing minimum required APIs');
+            disableRecordingIfStrict();
+            return Promise.resolve();
+        }
+
+        var settings_endpoint = this.get_api_host('settings') + '/' + this.get_config('api_routes')['settings'];
+        var request_params = {
+            '$lib_version': Config.LIB_VERSION,
+            'mp_lib': 'web',
+            'sdk_config': '1',
+        };
+        var query_string = _.HTTPBuildQuery(request_params);
+        var full_url = settings_endpoint + '?' + query_string;
+        var self = this;
+
+        var abortController = new AbortController();
+        var timeout_id = setTimeout(function() {
+            abortController.abort();
+        }, 500);
+        var fetchOptions = {
+            'method': 'GET',
+            'headers': {
+                'Authorization': 'Basic ' + btoa(self.get_config('token') + ':'),
+            },
+            'signal': abortController.signal
+        };
+
+        return win['fetch'](full_url, fetchOptions).then(function(response) {
+            clearTimeout(timeout_id);
+            if (!response['ok']) {
+                console.critical('Network response was not ok');
+                disableRecordingIfStrict();
+                return;
+            }
+            return response.json();
+        }).then(function(result) {
+            if (result && result['sdk_config'] && result['sdk_config']['config']) {
+                var remote_config = result['sdk_config']['config'];
+
+                // Verify that remote config contains only valid keys from DEFAULT_CONFIG
+                var valid_config = {};
+                _.each(remote_config, function(value, key) {
+                    if (DEFAULT_CONFIG.hasOwnProperty(key)) {
+                        valid_config[key] = value;
+                    }
+                });
+
+                if (_.isEmptyObject(valid_config)) {
+                    console.critical('No valid config keys found in remote settings.');
+                    disableRecordingIfStrict();
+                } else {
+                    self.set_config(valid_config);
+                }
+            } else {
+                disableRecordingIfStrict();
+            }
+        }).catch(function(err) {
+            clearTimeout(timeout_id);
+            console.critical('Failed to fetch remote settings', err);
+            disableRecordingIfStrict();
+        });
+    };
+
     /**
      * _execute_array() deals with processing any mixpanel function
      * calls that were called before the Mixpanel library were loaded
@@ -7673,7 +7786,12 @@
                             );
                         }, this),
                         beforeSendHook: _.bind(function(item) {
-                            return this._run_hook('before_send_' + attrs.type, item);
+                            var ret = this._run_hook('before_send_' + attrs.type, item);
+                            if (ret) {
+                                return ret[0];
+                            } else {
+                                return null;
+                            }
                         }, this),
                         stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
                         usePersistence: true,
@@ -7766,6 +7884,9 @@
         var send_request_immediately = _.bind(function() {
             if (!send_request_options.skip_hooks) {
                 truncated_data = this._run_hook('before_send_' + options.type, truncated_data);
+                if (truncated_data) {
+                    truncated_data = truncated_data[0];
+                }
             }
             if (truncated_data) {
                 console.log('MIXPANEL REQUEST:');
@@ -7820,6 +7941,17 @@
      * with the tracking payload sent to the API server is returned; otherwise false.
      */
     MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
+        var ret;
+        if (!(options && options.skip_hooks)) {
+            ret = this._run_hook('before_track', event_name, properties);
+            if (ret === null) {
+                return;
+            } else {
+                event_name = ret[0];
+                properties = ret[1];
+            }
+        }
+
         if (!callback && typeof options === 'function') {
             callback = options;
             options = null;
@@ -7889,7 +8021,7 @@
             'event': event_name,
             'properties': properties
         };
-        var ret = this._track_or_batch({
+        ret = this._track_or_batch({
             type: 'events',
             data: data,
             endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
@@ -8235,6 +8367,14 @@
      * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
      */
     MixpanelLib.prototype.register = function(props, days_or_options) {
+        var ret = this._run_hook('before_register', props, days_or_options);
+        if (ret === null) {
+            return;
+        } else {
+            props = ret[0];
+            days_or_options = ret[1];
+        }
+
         var options = options_for_register(days_or_options);
         if (options['persistent']) {
             this['persistence'].register(props, options['days']);
@@ -8271,6 +8411,15 @@
      * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
      */
     MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+        var ret = this._run_hook('before_register_once', props, default_value, days_or_options);
+        if (ret === null) {
+            return;
+        } else {
+            props = ret[0];
+            default_value = ret[1];
+            days_or_options = ret[2];
+        }
+
         var options = options_for_register(days_or_options);
         if (options['persistent']) {
             this['persistence'].register_once(props, default_value, options['days']);
@@ -8294,6 +8443,14 @@
      * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
      */
     MixpanelLib.prototype.unregister = function(property, options) {
+        var ret = this._run_hook('before_unregister', property, options);
+        if (ret === null) {
+            return;
+        } else {
+            property = ret[0];
+            options = ret[1];
+        }
+
         options = options_for_register(options);
         if (options['persistent']) {
             this['persistence'].unregister(property);
@@ -8342,6 +8499,13 @@
         //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
         //  _union_callback:function  A callback to be run if and when the People union queue is flushed
         //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
+        var ret = this._run_hook('before_identify', new_distinct_id);
+
+        if (ret === null) {
+            return -1;
+        } else {
+            new_distinct_id = ret[0];
+        }
 
         var previous_distinct_id = this.get_distinct_id();
         if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
@@ -8666,6 +8830,25 @@
             if (('autocapture' in config || 'record_heatmap_data' in config) && this.autocapture) {
                 this.autocapture.init();
             }
+
+            if (_.isObject(config['hooks'])) {
+                this.hooks = {};
+                _.each(config['hooks'], function(hook_value, hook_name) {
+                    if (_.isFunction(hook_value)) {
+                        this.hooks[hook_name] = [hook_value];
+                    } else if (_.isArray(hook_value)) {
+                        this.hooks[hook_name] = [];
+                        for (var i = 0; i < hook_value.length; i++) {
+                            if (!_.isFunction(hook_value[i])) {
+                                console.critical('Invalid hook added. Hook is not a function');
+                            }
+                            this.hooks[hook_name].push(hook_value[i]);
+                        }
+                    } else {
+                        console.critical('Invalid hooks added. Ensure that the hook values passed into config.hooks are functions or arrays of functions.');
+                    }
+                }, this);
+            }
         }
     };
 
@@ -8683,12 +8866,26 @@
      * @returns {any|null} return value of user-provided hook, or null if nothing was returned
      */
     MixpanelLib.prototype._run_hook = function(hook_name) {
-        var ret = (this['config']['hooks'][hook_name] || IDENTITY_FUNC).apply(this, slice.call(arguments, 1));
-        if (typeof ret === 'undefined') {
-            this.report_error(hook_name + ' hook did not return a value');
-            ret = null;
-        }
-        return ret;
+        var hook_data = slice.call(arguments, 1);
+        _.each(this.hooks[hook_name], function(hook) {
+            if (hook_data === null) {
+                return null;
+            }
+
+            var ret = hook.apply(this, hook_data);
+
+            if (typeof ret === 'undefined') {
+                this.report_error(hook_name + ' hook did not return a valid value');
+                hook_data = null;
+            } else {
+                if (!_.isArray(ret)) {
+                    ret = [ret];
+                }
+                hook_data.splice.apply(hook_data, [0, ret.length].concat(ret));
+            }
+        }, this);
+
+        return hook_data;
     };
 
     /**
@@ -8999,6 +9196,25 @@
         }
     };
 
+    MixpanelLib.prototype.add_hook = function(hook_name, hook_fn) {
+        if (!this.hooks[hook_name]) {
+            this.hooks[hook_name] = [];
+        }
+        this.hooks[hook_name].push(hook_fn);
+    };
+
+    MixpanelLib.prototype.remove_hook = function(hook_name, hook_fn) {
+        var fn_index;
+        if (this.hooks[hook_name]) {
+            fn_index = this.hooks[hook_name].indexOf(hook_fn);
+            if (fn_index !== -1) {
+                this.hooks[hook_name].splice(fn_index, 1);
+            } else {
+                console.log('remove_hook failed. Matching hook was not found');
+            }
+        }
+    };
+
     // EXPORTS (for closure compiler)
 
     // MixpanelLib Exports
@@ -9031,6 +9247,8 @@
     MixpanelLib.prototype['set_group']                          = MixpanelLib.prototype.set_group;
     MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
     MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
+    MixpanelLib.prototype['add_hook']                           = MixpanelLib.prototype.add_hook;
+    MixpanelLib.prototype['remove_hook']                        = MixpanelLib.prototype.remove_hook;
     MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
     MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
     MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;

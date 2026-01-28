@@ -19,15 +19,11 @@ if [ ! -z "$FULL" ]; then
     npx webpack tests/module-cjs.js tests/module-cjs.bundle.js
     npx browserify tests/module-es2015.js -t [ babelify --compact false ] --outfile tests/module-es2015.bundle.js
 
-    echo 'Bundling module-loader examples'
-    pushd examples/commonjs-browserify; npm install && npm run build; popd
-    pushd examples/es2015-babelify; npm install && npm run build; popd
-    pushd examples/umd-webpack; npm install && npm run build; popd
     pushd examples/typescript; npm install && npm run build; popd
 fi
 
 if [ ! -z "$DIST" ]; then
     echo 'Copying to dist/'
     rm -r dist
-    cp -r build dist
+    rsync -av --exclude='test' build/ dist/
 fi

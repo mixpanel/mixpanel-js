@@ -2,9 +2,11 @@ export type Persistence = "cookie" | "localStorage";
 
 export type ApiPayloadFormat = "base64" | "json";
 
-export type PushItem = Array<string | Dict>;
+export type PushItem = Array<string | Dict | ((this: Mixpanel) => void)>;
 
 export type Query = string | Element | Element[];
+
+export type RemoteSettingType = "disabled" | "fallback" | "strict";
 
 export interface Dict {
   [key: string]: any;
@@ -155,22 +157,32 @@ export interface FlagsConfig {
   context: Dict;
 }
 
+export interface BeforeSendHookPayload {
+  event: string;
+  properties: Record<string, any>;
+}
+
 export interface Config {
   api_host: string;
   api_routes: {
     track?: string;
     engage?: string;
     groups?: string;
+    record?: string;
+    flags?: string;
   };
   api_method: string;
   api_transport: string;
   app_host: string;
   api_payload_format: ApiPayloadFormat;
   autotrack: boolean;
+  batch_autostart: boolean;
+  batch_requests: boolean;
   cdn: string;
   cookie_domain: string;
   cross_site_cookie: boolean;
   cross_subdomain_cookie: boolean;
+  error_reporter: (msg: string, err?: Error) => void;
   flags: boolean | FlagsConfig;
   persistence: Persistence;
   persistence_name: string;
@@ -207,23 +219,53 @@ export interface Config {
   inapp_protocol: string;
   inapp_link_new_window: boolean;
   ignore_dnt: boolean;
-  batch_requests: boolean;
   batch_size: number;
   batch_flush_interval_ms: number;
   batch_request_timeout_ms: number;
+  recorder_src: string;
   record_block_class: string | RegExp;
   record_block_selector: string;
   record_collect_fonts: boolean;
   record_idle_timeout_ms: number;
   record_inline_images: boolean;
   record_mask_text_class: string | RegExp;
-  record_mask_text_selector: string;
+  record_mask_text_selector: string | string[];
+  record_unmask_text_selector: string | string[];
+  record_mask_all_text: boolean;
+  record_mask_input_selector: string | string[];
+  record_unmask_input_selector: string | string[];
+  record_mask_all_inputs: boolean;
   record_min_ms: number;
   record_max_ms: number;
   record_sessions_percent: number;
   record_canvas: boolean;
   record_heatmap_data: boolean;
+  remote_settings_mode: RemoteSettingType;
+  hooks: {
+    before_identify?: (new_distinct_id: string) => string | null;
+    before_register?: (
+      props: Dict,
+      days_or_options?: number | Partial<RegisterOptions>
+    ) => Dict | Array<Dict | number | Partial<RegisterOptions>> | null;
+    before_register_once?: (
+      props: Dict,
+      default_value?: any,
+      days_or_options?: number | Partial<RegisterOptions>
+    ) => Dict | Array<any | Dict | number | Partial<RegisterOptions>> | null;
+    before_send_events?: (
+      event: BeforeSendHookPayload
+    ) => BeforeSendHookPayload | null;
+    before_track?: (
+      event_name: string,
+      properties: Dict
+    ) => string | Array<string | Dict> | null;
+    before_unregister?: (
+      property: string,
+      options?: Partial<RegisterOptions>
+    ) => string | Partial<RegisterOptions> | null;
+  };
 }
+
 
 export type VerboseResponse =
   | {
@@ -323,10 +365,11 @@ export interface Mixpanel {
   get_distinct_id(): any;
   get_group(group_key: string, group_id: string): Group;
   get_property(property_name: string): any;
+  get_session_replay_url(): string;
   has_opted_in_tracking(options?: Partial<HasOptedInOutOptions>): boolean;
   has_opted_out_tracking(options?: Partial<HasOptedInOutOptions>): boolean;
   identify(unique_id?: string): any;
-  init(token: string, config: Partial<Config>, name: string): Mixpanel;
+  init(token: string, config: Partial<Config>, name?: string): Mixpanel;
   opt_in_tracking(options?: Partial<InTrackingOptions>): void;
   opt_out_tracking(options?: Partial<OutTrackingOptions>): void;
   push(item: PushItem): void;
@@ -351,6 +394,7 @@ export interface Mixpanel {
     group_ids: string | string[] | number | number[],
     callback?: Callback
   ): void;
+  start_batch_senders(): void;
   time_event(event_name: string): void;
   track(
     event_name: string,
@@ -380,6 +424,7 @@ export interface Mixpanel {
   ): void;
   unregister(property: string, options?: Partial<RegisterOptions>): void;
   people: People;
+  start_batch_senders(): void;
   start_session_recording(): void;
   stop_session_recording(): void;
   get_session_recording_properties(): { $mp_replay_id?: string } | {};
