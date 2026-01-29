@@ -7,6 +7,11 @@ import { window } from "../../src/window";
 import Config from "../../src/config";
 
 import { FeatureFlagManager } from "../../src/flags/index";
+import { initTargetingPromise } from "../../src/targeting";
+import {
+  lowercaseKeysAndValues,
+  lowercaseOnlyLeafNodes
+} from "../../src/targeting/event-matcher";
 
 chai.use(sinonChai);
 
@@ -66,16 +71,31 @@ describe(`FeatureFlagManager`, function () {
       }),
       trackingFunc: sinon.stub(),
       loadExtraBundle: sinon.stub().callsFake((src, callback) => {
-        // Simulate async loading by calling callback on next tick
-        setTimeout(() => {
-          window[`__mp_json_logic`] = jsonLogic;
-          callback();
-        }, 0);
+        // Simulate bundle loading by setting the temp library location
+        window[`__mp_targeting_lib`] = {
+          eventMatchesCriteria: function(eventName, properties, criteria) {
+            // Use actual json-logic for testing with proper lowercasing
+            if (eventName !== criteria.event_name) {
+              return { matches: false };
+            }
+            if (criteria.property_filters && Object.keys(criteria.property_filters).length > 0) {
+              try {
+                // Lowercase keys and values in properties for case-insensitive matching
+                var lowercasedProperties = lowercaseKeysAndValues(properties || {});
+                var lowercasedFilters = lowercaseOnlyLeafNodes(criteria.property_filters);
+                var data = { properties: lowercasedProperties };
+                var filtersMatch = jsonLogic.apply(lowercasedFilters, data);
+                return { matches: filtersMatch };
+              } catch (error) {
+                return { matches: false, error: error.toString() };
+              }
+            }
+            return { matches: true };
+          }
+        };
+        callback();
       }),
     };
-
-    // Make json-logic available globally for tests that need it immediately
-    window[`__mp_json_logic`] = jsonLogic;
 
     flagManager = new FeatureFlagManager(initOptions);
   });
@@ -83,7 +103,7 @@ describe(`FeatureFlagManager`, function () {
   afterEach(function () {
     sinon.restore();
     delete window[`fetch`];
-    delete window[`__mp_json_logic`];
+    delete window[`__mp_targeting`];
   });
 
   describe(`init`, function () {
@@ -330,8 +350,9 @@ describe(`FeatureFlagManager`, function () {
         sinon.resetHistory();
       });
 
-      it(`matches event by exact name and switches variant`, function () {
+      it(`matches event by exact name and switches variant`, async function () {
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         const flag = flagManager.flags.get(`onboarding-checklist`);
         expect(flag.key).to.equal(`treatment`);
@@ -354,9 +375,10 @@ describe(`FeatureFlagManager`, function () {
         expect(flag.key).to.equal(`control`);
       });
 
-      it(`evaluates property filters using JsonLogic`, function () {
+      it(`evaluates property filters using JsonLogic`, async function () {
         // Event with amount > 100 should match
         flagManager.checkFirstTimeEvents(`Purchase Complete`, { amount: 150 });
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         const flag = flagManager.flags.get(`premium-welcome`);
         expect(flag.key).to.equal(`premium`);
@@ -379,27 +401,30 @@ describe(`FeatureFlagManager`, function () {
         expect(flag.key).to.equal(`control`);
       });
 
-      it(`matches properties case-insensitively`, function () {
+      it(`matches properties case-insensitively`, async function () {
         // Event with uppercase property keys and values should still match
         flagManager.checkFirstTimeEvents(`Purchase Complete`, {
           Amount: 150,
           CATEGORY: `PREMIUM`,
         });
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         const flag = flagManager.flags.get(`premium-welcome`);
         expect(flag.key).to.equal(`premium`);
       });
 
-      it(`marks event as activated after first match`, function () {
+      it(`marks event as activated after first match`, async function () {
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         const eventKey = `onboarding-checklist:abc123def456`;
         expect(flagManager.activatedFirstTimeEvents[eventKey]).to.equal(true);
       });
 
-      it(`does not re-trigger on subsequent matching events`, function () {
+      it(`does not re-trigger on subsequent matching events`, async function () {
         // First event triggers
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
         const eventKey = `onboarding-checklist:abc123def456`;
         expect(flagManager.activatedFirstTimeEvents[eventKey]).to.equal(true);
 
@@ -408,6 +433,7 @@ describe(`FeatureFlagManager`, function () {
 
         // Second event should not trigger again (event is already activated)
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
         const flag = flagManager.flags.get(`onboarding-checklist`);
         expect(flag.key).to.equal(`control`); // unchanged from our reset
       });
@@ -419,8 +445,9 @@ describe(`FeatureFlagManager`, function () {
         expect(initOptions.trackingFunc).to.not.have.been.called;
       });
 
-      it(`calls recording endpoint with correct payload`, function () {
+      it(`calls recording endpoint with correct payload`, async function () {
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         expect(mockFetch).to.have.been.calledOnce; // sinon.resetHistory() was called in beforeEach
         const recordingCall = mockFetch.firstCall;
@@ -436,13 +463,14 @@ describe(`FeatureFlagManager`, function () {
         expect(payload.first_time_event_hash).to.equal(`abc123def456`);
       });
 
-      it(`handles recording endpoint failures gracefully`, function () {
+      it(`handles recording endpoint failures gracefully`, async function () {
         mockFetch.onFirstCall().rejects(new Error(`Network error`));
 
         // Should not throw
         expect(() => {
           flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
         }).to.not.throw();
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Variant should still be switched
         const flag = flagManager.flags.get(`onboarding-checklist`);
@@ -519,6 +547,7 @@ describe(`FeatureFlagManager`, function () {
 
         // Activate Event A
         flagManager.checkFirstTimeEvents(`Event A`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Event A should be marked as activated
         expect(flagManager.activatedFirstTimeEvents[eventKeyA]).to.equal(true);
@@ -533,6 +562,7 @@ describe(`FeatureFlagManager`, function () {
 
         // Now activate Event B
         flagManager.checkFirstTimeEvents(`Event B`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Event B should now be activated
         expect(flagManager.activatedFirstTimeEvents[eventKeyB]).to.equal(true);
@@ -554,6 +584,7 @@ describe(`FeatureFlagManager`, function () {
       it(`preserves activated variant when flags are refetched`, async function () {
         // Activate first-time event
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         const flagBefore = flagManager.flags.get(`onboarding-checklist`);
         expect(flagBefore.key).to.equal(`treatment`);
@@ -570,6 +601,7 @@ describe(`FeatureFlagManager`, function () {
       it(`does not re-add activated flag to pending events on refetch`, async function () {
         // Activate first-time event
         flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
         const eventKey = `onboarding-checklist:abc123def456`;
         expect(flagManager.activatedFirstTimeEvents[eventKey]).to.equal(true);
 
@@ -716,6 +748,7 @@ describe(`FeatureFlagManager`, function () {
 
         // Trigger the orphaned event
         flagManager.checkFirstTimeEvents(`Orphan Event`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Flag should now be created in flags Map
         expect(flagManager.flags.has(`orphaned-flag`)).to.be.true;
@@ -782,11 +815,11 @@ describe(`FeatureFlagManager`, function () {
       });
     });
 
-    describe(`dynamic json-logic loading`, function () {
+    describe(`dynamic targeting loading`, function () {
       beforeEach(function () {
-        // Clear json-logic global to test dynamic loading
-        delete window[`__mp_json_logic`];
-        mockConfig.json_logic_src = `https://cdn.mxpnl.com/libs/mixpanel-json-logic.min.js`;
+        // Clear targeting global to test dynamic loading
+        delete window[`__mp_targeting`];
+        mockConfig.targeting_src = `https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js`;
       });
 
       it(`calls loadExtraBundle when pending events have property filters`, async function () {
@@ -795,7 +828,7 @@ describe(`FeatureFlagManager`, function () {
 
         expect(initOptions.loadExtraBundle).to.have.been.calledOnce;
         expect(initOptions.loadExtraBundle).to.have.been.calledWith(
-          `https://cdn.mxpnl.com/libs/mixpanel-json-logic.min.js`,
+          `https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js`,
           sinon.match.func
         );
       });
@@ -833,9 +866,22 @@ describe(`FeatureFlagManager`, function () {
         expect(initOptions.loadExtraBundle).to.not.have.been.called;
       });
 
-      it(`does not call loadExtraBundle when json-logic is already loaded`, async function () {
-        // Pre-load json-logic
-        window[`__mp_json_logic`] = jsonLogic;
+      it(`does not call loadExtraBundle when targeting is already loaded`, async function () {
+        // Pre-load targeting using the promise-based approach
+        await initTargetingPromise(
+          function(src, callback) {
+            window[`__mp_targeting_lib`] = {
+              eventMatchesCriteria: function(eventName, properties, criteria) {
+                if (eventName !== criteria.event_name) {
+                  return { matches: false };
+                }
+                return { matches: true };
+              }
+            };
+            callback();
+          },
+          mockConfig.targeting_src
+        );
 
         flagManager.init();
         await flagManager.fetchPromise;
@@ -843,7 +889,7 @@ describe(`FeatureFlagManager`, function () {
         expect(initOptions.loadExtraBundle).to.not.have.been.called;
       });
 
-      it(`logs error when checkFirstTimeEvents is called without json-logic loaded`, async function () {
+      it(`logs error when checkFirstTimeEvents is called without targeting loaded`, async function () {
         mockResponse.json.resolves({
           code: 200,
           flags: {
@@ -872,14 +918,14 @@ describe(`FeatureFlagManager`, function () {
           ],
         });
 
-        // Don't let loadExtraBundle actually load json-logic
+        // Don't let loadExtraBundle actually load targeting
         initOptions.loadExtraBundle = sinon.stub();
 
         flagManager = new FeatureFlagManager(initOptions);
         flagManager.init();
         await flagManager.fetchPromise;
 
-        // Try to check event before json-logic loads
+        // Try to check event before targeting loads
         flagManager.checkFirstTimeEvents(`Purchase Complete`, { amount: 150 });
 
         // Flag should not be activated (fail closed)

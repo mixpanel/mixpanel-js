@@ -1,6 +1,10 @@
 import { _, console_with_prefix, generateTraceparent, safewrapClass } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
 import Config from '../config';
+import {
+    initTargetingPromise,
+    getTargeting
+} from '../targeting';
 
 var logger = console_with_prefix('flags');
 
@@ -9,53 +13,6 @@ var FLAGS_CONFIG_KEY = 'flags';
 var CONFIG_CONTEXT = 'context';
 var CONFIG_DEFAULTS = {};
 CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
-
-/**
- * Shared helper to recursively lowercase strings in nested structures
- * @param {*} obj - Value to process
- * @param {boolean} lowercaseKeys - Whether to lowercase object keys
- * @returns {*} Processed value with lowercased strings
- */
-var lowercaseJson = function(obj, lowercaseKeys) {
-    if (obj === null || obj === undefined) {
-        return obj;
-    } else if (typeof obj === 'string') {
-        return obj.toLowerCase();
-    } else if (Array.isArray(obj)) {
-        return obj.map(function(item) {
-            return lowercaseJson(item, lowercaseKeys);
-        });
-    } else if (obj === Object(obj)) {
-        var result = {};
-        for (var key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                var newKey = lowercaseKeys && typeof key === 'string' ? key.toLowerCase() : key;
-                result[newKey] = lowercaseJson(obj[key], lowercaseKeys);
-            }
-        }
-        return result;
-    } else {
-        return obj;
-    }
-};
-
-/**
- * Lowercase all string keys and values in a nested structure
- * @param {*} val - Value to process
- * @returns {*} Processed value with lowercased strings
- */
-var lowercaseKeysAndValues = function(val) {
-    return lowercaseJson(val, true);
-};
-
-/**
- * Lowercase only leaf node string values in a nested structure (keys unchanged)
- * @param {*} val - Value to process
- * @returns {*} Processed value with lowercased leaf strings
- */
-var lowercaseOnlyLeafNodes = function(val) {
-    return lowercaseJson(val, false);
-};
 
 /**
  * Generate a unique key for a pending first-time event
@@ -253,8 +210,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             this.pendingFirstTimeEvents = pendingFirstTimeEvents;
             this._traceparent = traceparent;
 
-            // Load json-logic if any pending events have property filters
-            this._loadJsonLogicIfNeeded();
+            this._loadTargetingIfNeeded();
         }.bind(this)).catch(function(error) {
             this.markFetchComplete();
             logger.error(error);
@@ -279,22 +235,25 @@ FeatureFlagManager.prototype.markFetchComplete = function() {
 };
 
 /**
- * Proactively load json-logic bundle if any pending events have property filters
+ * Proactively load targeting bundle if any pending events have property filters
  */
-FeatureFlagManager.prototype._loadJsonLogicIfNeeded = function() {
-    if (_.isUndefined(window['__mp_json_logic'])) {
-        var hasPropertyFilters = false;
-        _.each(this.pendingFirstTimeEvents, function(evt) {
-            if (evt.property_filters && !_.isEmptyObject(evt.property_filters)) {
-                hasPropertyFilters = true;
-            }
-        });
-
-        if (hasPropertyFilters) {
-            this.loadExtraBundle(this.getMpConfig('json_logic_src'), function() {
-                logger.log('json-logic loaded for property filter evaluation');
-            });
+FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
+    var hasPropertyFilters = false;
+    _.each(this.pendingFirstTimeEvents, function(evt) {
+        if (evt.property_filters && !_.isEmptyObject(evt.property_filters)) {
+            hasPropertyFilters = true;
         }
+    });
+
+    if (hasPropertyFilters) {
+        initTargetingPromise(
+            this.loadExtraBundle.bind(this),
+            this.getMpConfig('targeting_src')
+        ).then(function() {
+            logger.log('targeting loaded for property filter evaluation');
+        }).catch(function(error) {
+            logger.error('Failed to load targeting: ' + error);
+        });
     }
 };
 
@@ -313,49 +272,45 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
         return;
     }
 
-    // Iterate through all pending first-time events
-    _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
-        // Skip if this event has already been activated
-        if (this.activatedFirstTimeEvents[eventKey]) {
-            return;
-        }
+    getTargeting().then(function(library) {
+        this._processFirstTimeEventCheck(eventName, properties, library);
+    }.bind(this)).catch(function() {
+        // If targeting is not initialized, process with null
+        // Events without property filters will still match
+        this._processFirstTimeEventCheck(eventName, properties, null);
+    }.bind(this));
+};
 
-        // Check exact event name match (case-sensitive)
-        if (eventName !== pendingEvent.event_name) {
+/**
+ * Internal method to process first-time event checks with loaded targeting library
+ * @param {string} eventName - The name of the event being tracked
+ * @param {Object} properties - Event properties to evaluate against property filters
+ * @param {Object} targeting - The loaded targeting library
+ */
+FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, properties, targeting) {
+    _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
+        if (this.activatedFirstTimeEvents[eventKey]) {
             return;
         }
 
         var flagKey = pendingEvent.flag_key;
 
-        // Evaluate property filters using JsonLogic
-        var propertyFilters = pendingEvent.property_filters;
-        var filtersMatch = true; // default to true if no filters
-
-        if (propertyFilters && !_.isEmptyObject(propertyFilters)) {
-            var jsonLogic = window['__mp_json_logic'];
-            if (!jsonLogic) {
-                // json-logic not loaded yet, skip filter evaluation (fail closed)
-                logger.error('json-logic not loaded, cannot evaluate property filters for flag "' + flagKey + '"');
-                return;
+        // Use targeting module to check if event matches
+        var matchResult = targeting.eventMatchesCriteria(
+            eventName,
+            properties,
+            {
+                event_name: pendingEvent.event_name,
+                property_filters: pendingEvent.property_filters
             }
+        );
 
-            try {
-                // Lowercase all keys and values in event properties for case-insensitive matching
-                var lowercasedProperties = lowercaseKeysAndValues(properties || {});
-
-                // Lowercase only leaf nodes in JsonLogic filters (keep operators intact)
-                var lowercasedFilters = lowercaseOnlyLeafNodes(propertyFilters);
-
-                // Prepare data for JsonLogic evaluation
-                var data = {'properties': lowercasedProperties};
-                filtersMatch = jsonLogic.apply(lowercasedFilters, data);
-            } catch (error) {
-                logger.error('Error evaluating property filters for flag "' + flagKey + '": ' + error);
-                filtersMatch = false;
-            }
+        if (matchResult.error) {
+            logger.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
+            return;
         }
 
-        if (!filtersMatch) {
+        if (!matchResult.matches) {
             return;
         }
 
@@ -368,13 +323,9 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
             'is_experiment_active': pendingEvent.pending_variant.is_experiment_active
         };
 
-        // Update the active variant in flags Map (creates entry if flag doesn't exist)
         this.flags.set(flagKey, newVariant);
-
-        // Mark this specific event as activated using composite key
         this.activatedFirstTimeEvents[eventKey] = true;
 
-        // Call recording endpoint (fire-and-forget)
         this.recordFirstTimeEvent(
             pendingEvent.flag_id,
             pendingEvent.project_id,

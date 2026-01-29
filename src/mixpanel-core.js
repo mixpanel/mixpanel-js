@@ -162,7 +162,7 @@ var DEFAULT_CONFIG = {
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
-    'json_logic_src':                    'https://cdn.mxpnl.com/libs/mixpanel-json-logic.min.js',
+    'targeting_src':                     'https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js',
     'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
 };
 

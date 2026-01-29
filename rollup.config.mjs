@@ -117,20 +117,20 @@ const MAIN_BUILDS = [
     plugins: [aliasRrweb()],
   },
 
-  // IIFE json-logic bundle that is loaded asynchronously
+  // IIFE targeting bundle that is loaded asynchronously
   {
-    input: `src/json-logic/index.js`,
+    input: `src/targeting/bundle-entry.js`,
     output: [
       {
-        file: `build/mixpanel-json-logic.js`,
-        name: `mixpanel_json_logic`,
+        file: `build/mixpanel-targeting.js`,
+        name: `mixpanel_targeting`,
         format: `iife`,
       },
       ...(MINIFY
         ? [
           {
-            file: `build/mixpanel-json-logic.min.js`,
-            name: `mixpanel_json_logic`,
+            file: `build/mixpanel-targeting.min.js`,
+            name: `mixpanel_targeting`,
             format: `iife`,
             plugins: [esbuild({target: `es5`, minify: true, sourceMap: true})],
             sourcemap: true,
