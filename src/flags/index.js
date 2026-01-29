@@ -3,7 +3,8 @@ import { window } from '../window';
 import Config from '../config';
 import {
     initTargetingPromise,
-    getTargeting
+    getTargeting,
+    resetTargeting
 } from '../targeting';
 
 var logger = console_with_prefix('flags');
@@ -258,6 +259,26 @@ FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
 };
 
 /**
+ * Get the targeting library (initializes if not already loaded)
+ * This method is primarily for testing - production code should rely on automatic loading
+ * @returns {Promise} Promise that resolves with targeting library
+ */
+FeatureFlagManager.prototype.getTargeting = function() {
+    return initTargetingPromise(
+        this.loadExtraBundle.bind(this),
+        this.getMpConfig('targeting_src')
+    );
+};
+
+/**
+ * Reset targeting loader state (for testing)
+ * Clears all cached state including internal library reference
+ */
+FeatureFlagManager.prototype.resetTargeting = function() {
+    resetTargeting();
+};
+
+/**
  * Check if a tracked event matches any pending first-time events and activate the corresponding flag variant
  * @param {string} eventName - The name of the event being tracked
  * @param {Object} properties - Event properties to evaluate against property filters
@@ -272,13 +293,28 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
         return;
     }
 
-    getTargeting().then(function(library) {
-        this._processFirstTimeEventCheck(eventName, properties, library);
-    }.bind(this)).catch(function() {
-        // If targeting is not initialized, process with null
-        // Events without property filters will still match
+    // Check if any pending events need targeting for property filters
+    var needsTargeting = false;
+    _.each(this.pendingFirstTimeEvents, function(evt) {
+        if (evt.property_filters && !_.isEmptyObject(evt.property_filters)) {
+            needsTargeting = true;
+        }
+    });
+
+    if (needsTargeting) {
+        // Events with property filters - initialize targeting if needed
+        initTargetingPromise(
+            this.loadExtraBundle.bind(this),
+            this.getMpConfig('targeting_src')
+        ).then(function(library) {
+            this._processFirstTimeEventCheck(eventName, properties, library);
+        }.bind(this)).catch(function(error) {
+            logger.error('Failed to load targeting for property filter evaluation: ' + error);
+        }.bind(this));
+    } else {
+        // Simple events without property filters - process immediately
         this._processFirstTimeEventCheck(eventName, properties, null);
-    }.bind(this));
+    }
 };
 
 /**
@@ -296,14 +332,30 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         var flagKey = pendingEvent.flag_key;
 
         // Use targeting module to check if event matches
-        var matchResult = targeting.eventMatchesCriteria(
-            eventName,
-            properties,
-            {
-                event_name: pendingEvent.event_name,
-                property_filters: pendingEvent.property_filters
-            }
-        );
+        var matchResult;
+
+        // If no targeting library and event has property filters, skip it
+        if (!targeting && pendingEvent.property_filters && !_.isEmptyObject(pendingEvent.property_filters)) {
+            logger.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
+            return;
+        }
+
+        // For simple events (no property filters), just check event name
+        if (!targeting) {
+            matchResult = {
+                matches: eventName === pendingEvent.event_name,
+                error: null
+            };
+        } else {
+            matchResult = targeting.eventMatchesCriteria(
+                eventName,
+                properties,
+                {
+                    event_name: pendingEvent.event_name,
+                    property_filters: pendingEvent.property_filters
+                }
+            );
+        }
 
         if (matchResult.error) {
             logger.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
@@ -489,5 +541,10 @@ FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.up
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
+
+// Exports intended only for testing
+FeatureFlagManager.prototype['_loadTargetingIfNeeded'] = FeatureFlagManager.prototype._loadTargetingIfNeeded;
+FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getTargeting;
+FeatureFlagManager.prototype['resetTargeting'] = FeatureFlagManager.prototype.resetTargeting;
 
 export { FeatureFlagManager };

@@ -4,5 +4,6 @@
 
 export {
     initTargetingPromise,
-    getTargeting
+    getTargeting,
+    resetTargeting
 } from './loader';

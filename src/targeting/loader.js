@@ -20,8 +20,9 @@ var initTargetingPromise = function(loadExtraBundle, targetingSrc) {
         targetingLibrary = null;
     }
 
-    // Create new promise
-    var promise = new Promise(function(resolve, reject) {
+    // Create promise and store atomically to prevent race conditions
+    var promise;
+    window['__mp_targeting'] = promise = new Promise(function(resolve, reject) {
         loadExtraBundle(targetingSrc, function() {
             // Callback fires after bundle loads
             var library = window['__mp_targeting_lib'];
@@ -34,8 +35,6 @@ var initTargetingPromise = function(loadExtraBundle, targetingSrc) {
         });
     });
 
-    // Store promise in window global
-    window['__mp_targeting'] = promise;
     return promise;
 };
 
@@ -58,7 +57,22 @@ var getTargeting = function() {
     return Promise.reject(new Error('targeting not initialized'));
 };
 
+/**
+ * Reset targeting loader state (for testing)
+ * Clears the cached promise and internal library reference.
+ * Note: Does NOT delete window['__mp_targeting_lib'] as the script has already
+ * loaded and won't re-execute. Deleting it would prevent reinitialization.
+ */
+var resetTargeting = function() {
+    targetingLibrary = null;
+    if (window['__mp_targeting']) {
+        delete window['__mp_targeting'];
+    }
+    // Do NOT delete window['__mp_targeting_lib'] - script won't reload
+};
+
 export {
     initTargetingPromise,
-    getTargeting
+    getTargeting,
+    resetTargeting
 };
