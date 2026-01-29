@@ -15,12 +15,20 @@ var initTargetingPromise = function(loadExtraBundle, targetingSrc) {
         return window['__mp_targeting'];
     }
 
+    // Check if targeting library already exists (bundled or already loaded)
+    if (window['__mp_targeting_lib']) {
+        var library = window['__mp_targeting_lib'];
+        targetingLibrary = library;
+        window['__mp_targeting'] = Promise.resolve(library);
+        return window['__mp_targeting'];
+    }
+
     // If window global is undefined/null, clear the cache (for test cleanup)
     if (!window['__mp_targeting']) {
         targetingLibrary = null;
     }
 
-    // Create promise and store atomically to prevent race conditions
+    // Async loading: create promise and load script
     var promise;
     window['__mp_targeting'] = promise = new Promise(function(resolve, reject) {
         loadExtraBundle(targetingSrc, function() {

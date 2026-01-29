@@ -7,7 +7,7 @@ import { window } from "../../src/window";
 import Config from "../../src/config";
 
 import { FeatureFlagManager } from "../../src/flags/index";
-import { initTargetingPromise } from "../../src/targeting";
+import { initTargetingPromise } from "../../src/targeting/loader";
 import {
   lowercaseKeysAndValues,
   lowercaseOnlyLeafNodes
@@ -817,8 +817,9 @@ describe(`FeatureFlagManager`, function () {
 
     describe(`dynamic targeting loading`, function () {
       beforeEach(function () {
-        // Clear targeting global to test dynamic loading
+        // Clear targeting globals to test dynamic loading
         delete window[`__mp_targeting`];
+        delete window[`__mp_targeting_lib`];
         mockConfig.targeting_src = `https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js`;
       });
 

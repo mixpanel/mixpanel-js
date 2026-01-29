@@ -1,9 +1,13 @@
-// Public API for targeting module
-// Note: event-matcher functions are now only available through the targeting bundle,
-// not as direct imports. This prevents json-logic-js from being bundled in the main build.
+import { window } from '../window';
+import { eventMatchesCriteria } from './event-matcher';
 
-export {
-    initTargetingPromise,
-    getTargeting,
-    resetTargeting
-} from './loader';
+// Create the targeting library object
+var targetingLibrary = {
+    eventMatchesCriteria: eventMatchesCriteria
+};
+
+// Export to global for consistency with async loading
+window['__mp_targeting_lib'] = targetingLibrary;
+
+// Export as resolved promise for consistent promise-based API
+window['__mp_targeting'] = Promise.resolve(targetingLibrary);

@@ -5,7 +5,7 @@ import {
     initTargetingPromise,
     getTargeting,
     resetTargeting
-} from '../targeting';
+} from '../targeting/loader';
 
 var logger = console_with_prefix('flags');
 

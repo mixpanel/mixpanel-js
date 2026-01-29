@@ -255,6 +255,7 @@ const ALL_BUILDS = [
       },
     ],
     plugins: [
+      commonjs(),
       aliasRrweb(),
       nodeResolve({
         browser: true,
@@ -287,10 +288,10 @@ const ALL_BUILDS = [
     ],
   },
   {
-    input: `src/loaders/loader-module-with-async-recorder.js`,
+    input: `src/loaders/loader-module-with-async-modules.js`,
     output: [
       {
-        file: `build/mixpanel-with-async-recorder.cjs.js`,
+        file: `build/mixpanel-with-async-modules.cjs.js`,
         name: `mixpanel`,
         format: `cjs`,
       },

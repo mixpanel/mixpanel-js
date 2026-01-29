@@ -6,14 +6,22 @@ import { clearAllLibInstances, clearAllStorage, untilDone } from "../utils";
 export function targetingTests(mixpanel) {
   describe(`targeting loader`, function() {
     let token;
+    // Save bundled library reference (if present) to restore between tests
+    const bundledLibrary = window[`__mp_targeting_lib`];
 
     beforeEach(async () => {
       token = `TARGET_TEST_${Math.random().toString(36).substring(7)}`;
       await clearAllStorage();
 
-      // Clean up targeting globals
+      // Clean up targeting promise (but preserve library if bundled)
       delete window[`__mp_targeting`];
-      delete window[`__mp_targeting_lib`];
+
+      // Restore bundled library if it was present at suite start
+      // (some tests delete it to test async behavior)
+      if (bundledLibrary && !window[`__mp_targeting_lib`]) {
+        window[`__mp_targeting_lib`] = bundledLibrary;
+        window[`__mp_targeting`] = Promise.resolve(bundledLibrary);
+      }
 
       // Clean up targeting script tags from previous tests
       const scripts = document.querySelectorAll(`script[src*="mixpanel-targeting"]`);
@@ -23,7 +31,7 @@ export function targetingTests(mixpanel) {
     afterEach(async () => {
       await clearAllLibInstances(mixpanel);
       delete window[`__mp_targeting`];
-      delete window[`__mp_targeting_lib`];
+      // NOTE: Don't delete window['__mp_targeting_lib']
     });
 
     // Category 1: Basic Loading
@@ -212,6 +220,10 @@ export function targetingTests(mixpanel) {
       });
 
       it(`getTargeting() before init rejects`, async function() {
+        // This test is for async loading only - delete bundled library to test async behavior
+        delete window[`__mp_targeting_lib`];
+        delete window[`__mp_targeting`];
+
         // When targeting is not initialized, window['__mp_targeting'] should not exist
         expect(window[`__mp_targeting`]).to.not.exist;
         expect(window[`__mp_targeting_lib`]).to.not.exist;
@@ -280,6 +292,10 @@ export function targetingTests(mixpanel) {
       });
 
       it(`handles bundle without proper global`, async function() {
+        // This test is for async loading only - delete bundled library to test async behavior
+        delete window[`__mp_targeting_lib`];
+        delete window[`__mp_targeting`];
+
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
@@ -603,7 +619,7 @@ export function targetingTests(mixpanel) {
         expect(window[`__mp_targeting_lib`]).to.exist;
       });
 
-      it(`reinitializes if globals cleared`, async function() {
+      it(`recreates promise if only promise cleared`, async function() {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
@@ -618,19 +634,23 @@ export function targetingTests(mixpanel) {
 
         await untilDone(() => window[`__mp_targeting_lib`], 10000);
 
-        // Manually clear globals
-        delete window[`__mp_targeting`];
-        delete window[`__mp_targeting_lib`];
+        const library1 = window[`__mp_targeting_lib`];
 
-        // Trigger reload
+        // Manually clear promise only (simulating test cleanup)
+        delete window[`__mp_targeting`];
+
+        // Trigger reload - should recreate promise from existing library
         flagsManager.getTargeting();
 
-        // Should reinitialize
+        // Promise should be recreated immediately
         expect(window[`__mp_targeting`]).to.exist;
 
-        await untilDone(() => window[`__mp_targeting_lib`], 10000);
+        // Library should still be the same (reused, not reloaded)
+        expect(window[`__mp_targeting_lib`]).to.equal(library1);
 
-        expect(window[`__mp_targeting_lib`]).to.exist;
+        // Promise should resolve to the same library
+        const library2 = await window[`__mp_targeting`];
+        expect(library2).to.equal(library1);
       });
     });
   });
