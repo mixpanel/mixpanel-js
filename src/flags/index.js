@@ -528,7 +528,6 @@ FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.up
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
 
 // Exports intended only for testing
-FeatureFlagManager.prototype['_loadTargetingIfNeeded'] = FeatureFlagManager.prototype._loadTargetingIfNeeded;
 FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getTargeting;
 FeatureFlagManager.prototype['resetTargeting'] = FeatureFlagManager.prototype.resetTargeting;
 
