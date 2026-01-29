@@ -293,28 +293,13 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
         return;
     }
 
-    // Check if any pending events need targeting for property filters
-    var needsTargeting = false;
-    _.each(this.pendingFirstTimeEvents, function(evt) {
-        if (evt.property_filters && !_.isEmptyObject(evt.property_filters)) {
-            needsTargeting = true;
-        }
-    });
-
-    if (needsTargeting) {
-        // Events with property filters - initialize targeting if needed
-        initTargetingPromise(
-            this.loadExtraBundle.bind(this),
-            this.getMpConfig('targeting_src')
-        ).then(function(library) {
-            this._processFirstTimeEventCheck(eventName, properties, library);
-        }.bind(this)).catch(function(error) {
-            logger.error('Failed to load targeting for property filter evaluation: ' + error);
-        }.bind(this));
-    } else {
-        // Simple events without property filters - process immediately
+    getTargeting().then(function(library) {
+        this._processFirstTimeEventCheck(eventName, properties, library);
+    }.bind(this)).catch(function() {
+        // If targeting is not initialized, process with null
+        // Events without property filters will still match
         this._processFirstTimeEventCheck(eventName, properties, null);
-    }
+    }.bind(this));
 };
 
 /**
