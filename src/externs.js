@@ -26,3 +26,18 @@ window['__mp_targeting'];
  * @type {Object|undefined}
  */
 window['__mp_targeting_lib'];
+
+/**
+ * Criteria object properties used for first-time event targeting
+ * These properties are passed from the main bundle to the targeting bundle
+ * and must not be renamed by Closure Compiler
+ */
+var TargetingCriteria = {};
+/**
+ * @type {string}
+ */
+TargetingCriteria.event_name;
+/**
+ * @type {Object|undefined}
+ */
+TargetingCriteria.property_filters;

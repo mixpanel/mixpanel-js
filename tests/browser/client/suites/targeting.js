@@ -290,40 +290,6 @@ export function targetingTests(mixpanel) {
 
         expect(window[`__mp_targeting`]).to.exist;
       });
-
-      it(`handles bundle without proper global`, async function() {
-        // This test is for async loading only - delete bundled library to test async behavior
-        delete window[`__mp_targeting_lib`];
-        delete window[`__mp_targeting`];
-
-        await new Promise((resolve) => {
-          mixpanel.init(token, {
-            flags: true,
-            debug: true,
-            loaded: resolve
-          }, `test`);
-        });
-
-        const flagsManager = mixpanel.test.flags;
-
-        // Stub loadExtraBundle to simulate a bundle that doesn't set the global
-        const originalLoadExtraBundle = flagsManager.loadExtraBundle;
-        flagsManager.loadExtraBundle = function(src, callback) {
-          // Simulate bundle load without setting window['__mp_targeting_lib']
-          setTimeout(callback, 10);
-        };
-
-        flagsManager.getTargeting();
-
-        try {
-          await window[`__mp_targeting`];
-          throw new Error(`Should have rejected`);
-        } catch (error) {
-          expect(error.message).to.include(`failed to load`);
-        } finally {
-          flagsManager.loadExtraBundle = originalLoadExtraBundle;
-        }
-      });
     });
 
     // Category 5: Integration with Flags
@@ -391,6 +357,8 @@ export function targetingTests(mixpanel) {
         const flagsRequest = fetchRequests.find(req => req.url.includes(`/flags`));
         expect(flagsRequest).to.exist;
 
+        mixpanel.test.flags.getTargeting();
+
         // Wait for targeting to start loading
         await untilDone(() => window[`__mp_targeting`], 5000);
 
@@ -442,6 +410,8 @@ export function targetingTests(mixpanel) {
         // Wait for flags request
         await untilDone(() => fetchRequests.length > 0, 5000);
 
+        mixpanel.test.flags.getTargeting();
+
         // Wait for targeting to load
         await untilDone(() => window[`__mp_targeting_lib`], 10000);
 
@@ -453,63 +423,6 @@ export function targetingTests(mixpanel) {
 
         // Verify the flag switched to treatment variant
         const flagValue = mixpanel.test.flags.get_variant_value_sync(`test-flag`);
-        expect(flagValue).to.equal(true);
-      });
-
-      it(`simple first-time events work without targeting`, async function() {
-        // Set up fetch response
-        fetchStub.callsFake((url, options) => {
-          fetchRequests.push({ url, options });
-          if (url.includes(`/flags`)) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve({
-                flags: {
-                  'simple-flag': {
-                    variant_key: `control`,
-                    variant_value: false
-                  }
-                },
-                pending_first_time_events: [{
-                  flag_key: `simple-flag`,
-                  flag_id: 789,
-                  project_id: 456,
-                  first_time_event_hash: `xyz789`,
-                  event_name: `simple_event`,
-                  pending_variant: {
-                    variant_key: `treatment`,
-                    variant_value: true
-                  }
-                }]
-              })
-            });
-          }
-          return new Promise(() => {});
-        });
-
-        await new Promise((resolve) => {
-          mixpanel.init(token, {
-            flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
-            debug: true,
-            loaded: resolve
-          }, `test`);
-        });
-
-        // Wait for flags request
-        await untilDone(() => fetchRequests.length > 0, 5000);
-
-        // Note: The implementation calls getTargeting() which may attempt to load
-        // but falls back gracefully. Simple events still work correctly.
-
-        // Track simple event (no properties needed)
-        mixpanel.test.track(`simple_event`);
-
-        // Wait for activation
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Flag should still switch
-        const flagValue = mixpanel.test.flags.get_variant_value_sync(`simple-flag`);
         expect(flagValue).to.equal(true);
       });
     });

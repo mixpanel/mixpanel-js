@@ -314,13 +314,13 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
             return;
         }
 
-        var flagKey = pendingEvent.flag_key;
+        var flagKey = pendingEvent['flag_key'];
 
         // Use targeting module to check if event matches
         var matchResult;
 
         // If no targeting library and event has property filters, skip it
-        if (!targeting && pendingEvent.property_filters && !_.isEmptyObject(pendingEvent.property_filters)) {
+        if (!targeting && pendingEvent['property_filters'] && !_.isEmptyObject(pendingEvent['property_filters'])) {
             logger.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
             return;
         }
@@ -328,17 +328,18 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         // For simple events (no property filters), just check event name
         if (!targeting) {
             matchResult = {
-                matches: eventName === pendingEvent.event_name,
+                matches: eventName === pendingEvent['event_name'],
                 error: null
             };
         } else {
-            matchResult = targeting.eventMatchesCriteria(
+            var criteria = {
+                'event_name': pendingEvent['event_name'],
+                'property_filters': pendingEvent['property_filters']
+            };
+            matchResult = targeting['eventMatchesCriteria'](
                 eventName,
                 properties,
-                {
-                    event_name: pendingEvent.event_name,
-                    property_filters: pendingEvent.property_filters
-                }
+                criteria
             );
         }
 
@@ -354,19 +355,19 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         logger.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
 
         var newVariant = {
-            'key': pendingEvent.pending_variant.variant_key,
-            'value': pendingEvent.pending_variant.variant_value,
-            'experiment_id': pendingEvent.pending_variant.experiment_id,
-            'is_experiment_active': pendingEvent.pending_variant.is_experiment_active
+            'key': pendingEvent['pending_variant']['variant_key'],
+            'value': pendingEvent['pending_variant']['variant_value'],
+            'experiment_id': pendingEvent['pending_variant']['experiment_id'],
+            'is_experiment_active': pendingEvent['pending_variant']['is_experiment_active']
         };
 
         this.flags.set(flagKey, newVariant);
         this.activatedFirstTimeEvents[eventKey] = true;
 
         this.recordFirstTimeEvent(
-            pendingEvent.flag_id,
-            pendingEvent.project_id,
-            pendingEvent.first_time_event_hash
+            pendingEvent['flag_id'],
+            pendingEvent['project_id'],
+            pendingEvent['first_time_event_hash']
         );
     }, this);
 };
