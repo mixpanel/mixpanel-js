@@ -7,7 +7,7 @@ import { window } from "../../src/window";
 import Config from "../../src/config";
 
 import { FeatureFlagManager } from "../../src/flags/index";
-import { initTargetingPromise } from "../../src/targeting/loader";
+import { getTargetingPromise } from "../../src/targeting/loader";
 import {
   lowercaseKeysAndValues,
   lowercaseOnlyLeafNodes
@@ -869,7 +869,7 @@ describe(`FeatureFlagManager`, function () {
 
       it(`does not call loadExtraBundle when targeting is already loaded`, async function () {
         // Pre-load targeting using the promise-based approach
-        await initTargetingPromise(
+        await getTargetingPromise(
           function(src, callback) {
             window[`__mp_targeting_lib`] = {
               eventMatchesCriteria: function(eventName, properties, criteria) {

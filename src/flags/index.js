@@ -2,8 +2,7 @@ import { _, console_with_prefix, generateTraceparent, safewrapClass } from '../u
 import { window } from '../window';
 import Config from '../config';
 import {
-    initTargetingPromise,
-    getTargeting,
+    getTargetingPromise,
     resetTargeting
 } from '../targeting/loader';
 
@@ -247,7 +246,7 @@ FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
     });
 
     if (hasPropertyFilters) {
-        initTargetingPromise(
+        getTargetingPromise(
             this.loadExtraBundle.bind(this),
             this.getMpConfig('targeting_src')
         ).then(function() {
@@ -264,7 +263,7 @@ FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
  * @returns {Promise} Promise that resolves with targeting library
  */
 FeatureFlagManager.prototype.getTargeting = function() {
-    return initTargetingPromise(
+    return getTargetingPromise(
         this.loadExtraBundle.bind(this),
         this.getMpConfig('targeting_src')
     );
@@ -293,13 +292,20 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
         return;
     }
 
-    getTargeting().then(function(library) {
-        this._processFirstTimeEventCheck(eventName, properties, library);
-    }.bind(this)).catch(function() {
-        // If targeting is not initialized, process with null
+    // Check if targeting promise exists (either bundled or async loaded)
+    if (window['__mp_targeting'] && typeof window['__mp_targeting'].then === 'function') {
+        window['__mp_targeting'].then(function(library) {
+            this._processFirstTimeEventCheck(eventName, properties, library);
+        }.bind(this)).catch(function() {
+            // If targeting failed to load, process with null
+            // Events without property filters will still match
+            this._processFirstTimeEventCheck(eventName, properties, null);
+        }.bind(this));
+    } else {
+        // No targeting available, process with null
         // Events without property filters will still match
         this._processFirstTimeEventCheck(eventName, properties, null);
-    }.bind(this));
+    }
 };
 
 /**

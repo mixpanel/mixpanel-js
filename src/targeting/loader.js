@@ -1,41 +1,32 @@
 import { window } from '../window';
 
-// Internal reference to loaded library (for sync access)
-var targetingLibrary = null;
-
 /**
- * Initialize the promise-based targeting loader
+ * Get the promise-based targeting loader
  * @param {Function} loadExtraBundle - Function to load external bundle (callback-based)
  * @param {string} targetingSrc - URL to targeting bundle
  * @returns {Promise} Promise that resolves with targeting library
  */
-var initTargetingPromise = function(loadExtraBundle, targetingSrc) {
+var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
     // Return existing promise if already initialized
     if (window['__mp_targeting'] && typeof window['__mp_targeting'].then === 'function') {
         return window['__mp_targeting'];
     }
 
-    // Check if targeting library already exists (bundled or already loaded)
+    // Check if library already loaded (bundled scenario)
     if (window['__mp_targeting_lib']) {
         var library = window['__mp_targeting_lib'];
-        targetingLibrary = library;
+        delete window['__mp_targeting_lib']; // Clean up immediately
         window['__mp_targeting'] = Promise.resolve(library);
         return window['__mp_targeting'];
     }
 
-    // If window global is undefined/null, clear the cache (for test cleanup)
-    if (!window['__mp_targeting']) {
-        targetingLibrary = null;
-    }
-
     // Async loading: create promise and load script
-    var promise;
-    window['__mp_targeting'] = promise = new Promise(function(resolve, reject) {
+    var promise = new Promise(function(resolve, reject) {
         loadExtraBundle(targetingSrc, function() {
-            // Callback fires after bundle loads
+            // Read library from temporary global set by bundle
             var library = window['__mp_targeting_lib'];
             if (library) {
-                targetingLibrary = library; // Store for sync access
+                delete window['__mp_targeting_lib']; // Clean up immediately
                 resolve(library);
             } else {
                 reject(new Error('targeting failed to load'));
@@ -43,44 +34,33 @@ var initTargetingPromise = function(loadExtraBundle, targetingSrc) {
         });
     });
 
+    window['__mp_targeting'] = promise;
     return promise;
 };
 
 /**
- * Get the targeting library as a promise
- * @returns {Promise} Promise that resolves with targeting library
- */
-var getTargeting = function() {
-    // Check if it's a promise
-    if (window['__mp_targeting'] && typeof window['__mp_targeting'].then === 'function') {
-        return window['__mp_targeting'];
-    }
-
-    // If library already loaded in our internal cache, wrap in resolved promise
-    if (targetingLibrary) {
-        return Promise.resolve(targetingLibrary);
-    }
-
-    // Not initialized yet - return rejected promise
-    return Promise.reject(new Error('targeting not initialized'));
-};
-
-/**
  * Reset targeting loader state (for testing)
- * Clears the cached promise and internal library reference.
- * Note: Does NOT delete window['__mp_targeting_lib'] as the script has already
- * loaded and won't re-execute. Deleting it would prevent reinitialization.
+ * Clears all cached state and removes script tags to allow re-initialization.
  */
 var resetTargeting = function() {
-    targetingLibrary = null;
+    // Clear promise global
     if (window['__mp_targeting']) {
         delete window['__mp_targeting'];
     }
-    // Do NOT delete window['__mp_targeting_lib'] - script won't reload
+
+    // Clear library global (should already be deleted by loader, but just in case)
+    if (window['__mp_targeting_lib']) {
+        delete window['__mp_targeting_lib'];
+    }
+
+    // Remove script tags so they can be re-added and re-executed
+    var scripts = document.querySelectorAll('script[src*="mixpanel-targeting"]');
+    for (var i = 0; i < scripts.length; i++) {
+        scripts[i].remove();
+    }
 };
 
 export {
-    initTargetingPromise,
-    getTargeting,
+    getTargetingPromise,
     resetTargeting
 };
