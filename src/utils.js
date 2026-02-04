@@ -204,15 +204,8 @@ _.isArray = nativeIsArray || function(obj) {
     return toString.call(obj) === '[object Array]';
 };
 
-// from a comment on http://dbj.org/dbj/?p=286
-// fails on only one very rare and deliberate custom object:
-// var bomb = { toString : undefined, valueOf: function(o) { return "function BOMBA!"; }};
 _.isFunction = function(f) {
-    try {
-        return /^\s*\bfunction\b/.test(f);
-    } catch (x) {
-        return false;
-    }
+    return typeof f === 'function';
 };
 
 _.isArguments = function(obj) {
