@@ -119,7 +119,7 @@ const MAIN_BUILDS = [
 
   // IIFE targeting bundle that is loaded asynchronously
   {
-    input: `src/targeting/bundle-entry.js`,
+    input: `src/targeting/index.js`,
     output: [
       {
         file: `build/mixpanel-targeting.js`,
@@ -229,7 +229,7 @@ const ALL_BUILDS = [
   },
 
 
-  // Modules builds that are bundled with the recorder
+  // Modules builds that are bundled with the recorder and targeting
   {
     input: `src/loaders/loader-module.js`,
     output: [
@@ -292,6 +292,26 @@ const ALL_BUILDS = [
     output: [
       {
         file: `build/mixpanel-with-async-modules.cjs.js`,
+        name: `mixpanel`,
+        format: `cjs`,
+      },
+    ],
+    plugins: [
+      aliasRrweb(),
+      nodeResolve({
+        browser: true,
+        main: true,
+        jsnext: true,
+      }),
+      copyTypes(),
+    ],
+  },
+  // Backward compatibility: keep old output filename for existing users
+  {
+    input: `src/loaders/loader-module-with-async-modules.js`,
+    output: [
+      {
+        file: `build/mixpanel-with-async-recorder.cjs.js`,
         name: `mixpanel`,
         format: `cjs`,
       },

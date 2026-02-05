@@ -12,30 +12,19 @@ var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
         return window['__mp_targeting'];
     }
 
-    // Check if library already loaded (bundled scenario)
-    if (window['__mp_targeting_lib']) {
-        var library = window['__mp_targeting_lib'];
-        delete window['__mp_targeting_lib']; // Clean up immediately
-        window['__mp_targeting'] = Promise.resolve(library);
-        return window['__mp_targeting'];
-    }
-
-    // Async loading: create promise and load script
-    var promise = new Promise(function(resolve, reject) {
+    // Async loading: load script which will set window['__mp_targeting']
+    return new Promise(function(resolve, reject) {
         loadExtraBundle(targetingSrc, function() {
-            // Read library from temporary global set by bundle
-            var library = window['__mp_targeting_lib'];
-            if (library) {
-                delete window['__mp_targeting_lib']; // Clean up immediately
-                resolve(library);
+            // Bundle has executed and set window['__mp_targeting']
+            var targetingPromise = window['__mp_targeting'];
+            if (targetingPromise && typeof targetingPromise.then === 'function') {
+                // Chain to the Promise set by the bundle
+                targetingPromise.then(resolve, reject);
             } else {
                 reject(new Error('targeting failed to load'));
             }
         });
     });
-
-    window['__mp_targeting'] = promise;
-    return promise;
 };
 
 /**
@@ -46,11 +35,6 @@ var resetTargeting = function() {
     // Clear promise global
     if (window['__mp_targeting']) {
         delete window['__mp_targeting'];
-    }
-
-    // Clear library global (should already be deleted by loader, but just in case)
-    if (window['__mp_targeting_lib']) {
-        delete window['__mp_targeting_lib'];
     }
 
     // Remove script tags so they can be re-added and re-executed

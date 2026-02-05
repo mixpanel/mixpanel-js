@@ -71,8 +71,8 @@ describe(`FeatureFlagManager`, function () {
       }),
       trackingFunc: sinon.stub(),
       loadExtraBundle: sinon.stub().callsFake((src, callback) => {
-        // Simulate bundle loading by setting the temp library location
-        window[`__mp_targeting_lib`] = {
+        // Simulate bundle loading by setting __mp_targeting Promise directly
+        window[`__mp_targeting`] = Promise.resolve({
           eventMatchesCriteria: function(eventName, properties, criteria) {
             // Use actual json-logic for testing with proper lowercasing
             if (eventName !== criteria.event_name) {
@@ -92,7 +92,7 @@ describe(`FeatureFlagManager`, function () {
             }
             return { matches: true };
           }
-        };
+        });
         callback();
       }),
     };
@@ -819,7 +819,6 @@ describe(`FeatureFlagManager`, function () {
       beforeEach(function () {
         // Clear targeting globals to test dynamic loading
         delete window[`__mp_targeting`];
-        delete window[`__mp_targeting_lib`];
         mockConfig.targeting_src = `https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js`;
       });
 
@@ -868,21 +867,15 @@ describe(`FeatureFlagManager`, function () {
       });
 
       it(`does not call loadExtraBundle when targeting is already loaded`, async function () {
-        // Pre-load targeting using the promise-based approach
-        await getTargetingPromise(
-          function(src, callback) {
-            window[`__mp_targeting_lib`] = {
-              eventMatchesCriteria: function(eventName, properties, criteria) {
-                if (eventName !== criteria.event_name) {
-                  return { matches: false };
-                }
-                return { matches: true };
-              }
-            };
-            callback();
-          },
-          mockConfig.targeting_src
-        );
+        // Pre-load targeting by setting window['__mp_targeting'] directly
+        window[`__mp_targeting`] = Promise.resolve({
+          eventMatchesCriteria: function(eventName, properties, criteria) {
+            if (eventName !== criteria.event_name) {
+              return { matches: false };
+            }
+            return { matches: true };
+          }
+        });
 
         flagManager.init();
         await flagManager.fetchPromise;
