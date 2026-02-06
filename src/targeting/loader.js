@@ -14,7 +14,7 @@ var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
 
     // Create loading promise and set it as the global immediately
     // This makes minified build behavior consistent with dev/CJS builds
-    window['__mp_targeting'] = new Promise(function (resolve, reject) {
+    window['__mp_targeting'] = new Promise(function (resolve) {
         loadExtraBundle(targetingSrc, resolve);
     }).then(function () {
         var p = window['__mp_targeting'];
