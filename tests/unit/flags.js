@@ -27,6 +27,7 @@ describe(`FeatureFlagManager`, function () {
       api_host: `https://api.mixpanel.com`,
       api_routes: { flags: `flags` },
       token: `test-token`,
+      targeting_src: `https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js`,
       flags: {
         context: {
           user_id: `test-user`,
@@ -71,28 +72,6 @@ describe(`FeatureFlagManager`, function () {
       }),
       trackingFunc: sinon.stub(),
       loadExtraBundle: sinon.stub().callsFake((src, callback) => {
-        // Simulate bundle loading by setting __mp_targeting Promise directly
-        window[`__mp_targeting`] = Promise.resolve({
-          eventMatchesCriteria: function(eventName, properties, criteria) {
-            // Use actual json-logic for testing with proper lowercasing
-            if (eventName !== criteria.event_name) {
-              return { matches: false };
-            }
-            if (criteria.property_filters && Object.keys(criteria.property_filters).length > 0) {
-              try {
-                // Lowercase keys and values in properties for case-insensitive matching
-                var lowercasedProperties = lowercaseKeysAndValues(properties || {});
-                var lowercasedFilters = lowercaseOnlyLeafNodes(criteria.property_filters);
-                var data = { properties: lowercasedProperties };
-                var filtersMatch = jsonLogic.apply(lowercasedFilters, data);
-                return { matches: filtersMatch };
-              } catch (error) {
-                return { matches: false, error: error.toString() };
-              }
-            }
-            return { matches: true };
-          }
-        });
         callback();
       }),
     };
@@ -345,6 +324,27 @@ describe(`FeatureFlagManager`, function () {
 
     describe(`checkFirstTimeEvents`, function () {
       beforeEach(async function () {
+        // Pre-load targeting to avoid timing issues with loadExtraBundle
+        window[`__mp_targeting`] = Promise.resolve({
+          eventMatchesCriteria: function(eventName, properties, criteria) {
+            if (eventName !== criteria.event_name) {
+              return { matches: false };
+            }
+            if (criteria.property_filters && Object.keys(criteria.property_filters).length > 0) {
+              try {
+                var lowercasedProperties = lowercaseKeysAndValues(properties || {});
+                var lowercasedFilters = lowercaseOnlyLeafNodes(criteria.property_filters);
+                var data = { properties: lowercasedProperties };
+                var filtersMatch = jsonLogic.apply(lowercasedFilters, data);
+                return { matches: filtersMatch };
+              } catch (error) {
+                return { matches: false, error: error.toString() };
+              }
+            }
+            return { matches: true };
+          }
+        });
+
         flagManager.init();
         await flagManager.fetchPromise;
         sinon.resetHistory();
@@ -576,6 +576,27 @@ describe(`FeatureFlagManager`, function () {
 
     describe(`session persistence across refetches`, function () {
       beforeEach(async function () {
+        // Pre-load targeting to avoid timing issues with loadExtraBundle
+        window[`__mp_targeting`] = Promise.resolve({
+          eventMatchesCriteria: function(eventName, properties, criteria) {
+            if (eventName !== criteria.event_name) {
+              return { matches: false };
+            }
+            if (criteria.property_filters && Object.keys(criteria.property_filters).length > 0) {
+              try {
+                var lowercasedProperties = lowercaseKeysAndValues(properties || {});
+                var lowercasedFilters = lowercaseOnlyLeafNodes(criteria.property_filters);
+                var data = { properties: lowercasedProperties };
+                var filtersMatch = jsonLogic.apply(lowercasedFilters, data);
+                return { matches: filtersMatch };
+              } catch (error) {
+                return { matches: false, error: error.toString() };
+              }
+            }
+            return { matches: true };
+          }
+        });
+
         flagManager.init();
         await flagManager.fetchPromise;
         sinon.resetHistory();
