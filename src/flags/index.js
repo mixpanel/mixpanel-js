@@ -2,8 +2,7 @@ import { _, console_with_prefix, generateTraceparent, safewrapClass } from '../u
 import { window } from '../window';
 import Config from '../config';
 import {
-    getTargetingPromise,
-    resetTargeting
+    getTargetingPromise
 } from '../targeting/loader';
 
 var logger = console_with_prefix('flags');
@@ -270,14 +269,6 @@ FeatureFlagManager.prototype.getTargeting = function() {
 };
 
 /**
- * Reset targeting loader state (for testing)
- * Clears all cached state including internal library reference
- */
-FeatureFlagManager.prototype.resetTargeting = function() {
-    resetTargeting();
-};
-
-/**
  * Check if a tracked event matches any pending first-time events and activate the corresponding flag variant
  * @param {string} eventName - The name of the event being tracked
  * @param {Object} properties - Event properties to evaluate against property filters
@@ -536,6 +527,5 @@ FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.
 
 // Exports intended only for testing
 FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getTargeting;
-FeatureFlagManager.prototype['resetTargeting'] = FeatureFlagManager.prototype.resetTargeting;
 
 export { FeatureFlagManager };

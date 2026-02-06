@@ -164,6 +164,23 @@ export function clearMixpanelCookies() {
   }
 }
 
+/**
+ * Reset targeting loader state (for testing)
+ * Clears all cached state and removes script tags to allow re-initialization.
+ */
+export function resetTargeting() {
+  // Clear promise global
+  if (window['__mp_targeting']) {
+    delete window['__mp_targeting'];
+  }
+
+  // Remove script tags so they can be re-added and re-executed
+  const scripts = document.querySelectorAll('script[src*="mixpanel-targeting"]');
+  for (let i = 0; i < scripts.length; i++) {
+    scripts[i].remove();
+  }
+}
+
 export async function clearAllStorage() {
   if (window.localStorage) {
     window.localStorage.clear();

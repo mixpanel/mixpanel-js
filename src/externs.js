@@ -14,13 +14,6 @@ Promise.prototype.then = function() {};
 Promise.prototype.catch = function() {};
 
 /**
- * Targeting loader window global
- * Set by the targeting bundle as a Promise that resolves to the targeting library
- * @type {Promise|undefined}
- */
-window['__mp_targeting'];
-
-/**
  * Criteria object properties used for first-time event targeting
  * These properties are passed from the main bundle to the targeting bundle
  * and must not be renamed by Closure Compiler

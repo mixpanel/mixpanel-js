@@ -295,21 +295,7 @@ const ALL_BUILDS = [
         name: `mixpanel`,
         format: `cjs`,
       },
-    ],
-    plugins: [
-      aliasRrweb(),
-      nodeResolve({
-        browser: true,
-        main: true,
-        jsnext: true,
-      }),
-      copyTypes(),
-    ],
-  },
-  // Backward compatibility: keep old output filename for existing users
-  {
-    input: `src/loaders/loader-module-with-async-modules.js`,
-    output: [
+      // Backward compatibility: keep old output filename for existing users
       {
         file: `build/mixpanel-with-async-recorder.cjs.js`,
         name: `mixpanel`,
