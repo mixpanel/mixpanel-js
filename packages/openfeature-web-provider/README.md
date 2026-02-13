@@ -261,7 +261,7 @@ constructor(mixpanelInstance: Mixpanel, options?: MixpanelProviderOptions)
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `metadata` | `{ name: string }` | Provider metadata with the name "mixpanel-web-provider" |
+| `metadata` | `{ name: string }` | Provider metadata with the name "mixpanel-provider" |
 | `runsOn` | `'client'` | Indicates this is a client-side provider |
 
 #### Methods

@@ -72,7 +72,7 @@ export function isNumber(value: unknown): value is number {
  * Type guard to check if a value is an object (non-null)
  */
 export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**

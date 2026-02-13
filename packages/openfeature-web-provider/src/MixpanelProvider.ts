@@ -59,6 +59,9 @@ export class MixpanelProvider implements Provider {
    * @param options - Provider configuration options
    */
   constructor(mixpanel: MixpanelInstance, options: MixpanelProviderOptions = {}) {
+    if (!mixpanel?.flags) {
+      throw new Error('Invalid mixpanel instance: flags property is required');
+    }
     this.mixpanel = mixpanel;
     this.trackExposures = options.trackExposures !== false;
   }
@@ -102,8 +105,8 @@ export class MixpanelProvider implements Provider {
   resolveBooleanEvaluation(
     flagKey: string,
     defaultValue: boolean,
-    context: EvaluationContext,
-    logger: Logger
+    _context: EvaluationContext,
+    _logger: Logger
   ): ResolutionDetails<boolean> {
     const result = this.resolveFlag(flagKey, defaultValue);
     if (result.errorCode) {
@@ -128,8 +131,8 @@ export class MixpanelProvider implements Provider {
   resolveStringEvaluation(
     flagKey: string,
     defaultValue: string,
-    context: EvaluationContext,
-    logger: Logger
+    _context: EvaluationContext,
+    _logger: Logger
   ): ResolutionDetails<string> {
     const result = this.resolveFlag(flagKey, defaultValue);
     if (result.errorCode) {
@@ -154,8 +157,8 @@ export class MixpanelProvider implements Provider {
   resolveNumberEvaluation(
     flagKey: string,
     defaultValue: number,
-    context: EvaluationContext,
-    logger: Logger
+    _context: EvaluationContext,
+    _logger: Logger
   ): ResolutionDetails<number> {
     const result = this.resolveFlag(flagKey, defaultValue);
     if (result.errorCode) {
@@ -180,8 +183,8 @@ export class MixpanelProvider implements Provider {
   resolveObjectEvaluation<T extends JsonValue>(
     flagKey: string,
     defaultValue: T,
-    context: EvaluationContext,
-    logger: Logger
+    _context: EvaluationContext,
+    _logger: Logger
   ): ResolutionDetails<T> {
     const result = this.resolveFlag(flagKey, defaultValue);
     if (result.errorCode) {

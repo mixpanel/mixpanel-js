@@ -465,7 +465,7 @@ describe('MixpanelProvider', () => {
       expect(result.variant).to.equal('empty');
     });
 
-    it('should return array value correctly (arrays are objects)', () => {
+    it('should return TYPE_MISMATCH error when value is an array', () => {
       const arrayValue = [1, 2, 3, 'four'];
       mockFlags.set('array-flag', {
         key: 'array-variant',
@@ -475,7 +475,8 @@ describe('MixpanelProvider', () => {
       const provider = new MixpanelProvider(mockMixpanel);
       const result = provider.resolveObjectEvaluation('array-flag', [], {}, mockLogger);
 
-      expect(result.value).to.deep.equal(arrayValue);
+      expect(result.errorCode).to.equal(ErrorCode.TYPE_MISMATCH);
+      expect(result.value).to.deep.equal([]);
     });
 
     it('should return nested object value correctly', () => {
