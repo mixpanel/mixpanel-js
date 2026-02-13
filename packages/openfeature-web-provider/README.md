@@ -213,31 +213,6 @@ const client = OpenFeature.getClient();
 const value = client.getBooleanValue('my-flag', false);
 ```
 
-## Configuration Options
-
-### MixpanelProviderOptions
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `trackExposures` | `boolean` | `true` | Whether to automatically track flag exposure events |
-
-### trackExposures
-
-By default, the provider automatically tracks an `$experiment_started` event when a flag is evaluated. This is useful for analyzing experiment results in Mixpanel.
-
-```typescript
-// Disable automatic exposure tracking
-const provider = new MixpanelProvider(mixpanel, {
-  trackExposures: false
-});
-```
-
-**When to disable exposure tracking:**
-
-- You want to track exposures manually at a different point in your code
-- You are evaluating flags for logging/debugging purposes without actually exposing the user to the feature
-- You have custom exposure tracking requirements
-
 ## API Reference
 
 ### MixpanelProvider
@@ -247,13 +222,12 @@ The main provider class that implements the OpenFeature `Provider` interface.
 #### Constructor
 
 ```typescript
-constructor(mixpanelInstance: Mixpanel, options?: MixpanelProviderOptions)
+constructor(mixpanelInstance: Mixpanel)
 ```
 
 **Parameters:**
 
 - `mixpanelInstance`: An initialized Mixpanel instance with feature flags enabled
-- `options`: Optional configuration options
 
 #### Properties
 
@@ -272,18 +246,6 @@ constructor(mixpanelInstance: Mixpanel, options?: MixpanelProviderOptions)
 | `resolveStringEvaluation(flagKey, defaultValue, context, logger)` | Evaluates a string flag |
 | `resolveNumberEvaluation(flagKey, defaultValue, context, logger)` | Evaluates a number flag |
 | `resolveObjectEvaluation(flagKey, defaultValue, context, logger)` | Evaluates an object flag |
-
-### MixpanelProviderOptions
-
-```typescript
-interface MixpanelProviderOptions {
-  /**
-   * Whether to track exposure events when flags are evaluated.
-   * @default true
-   */
-  trackExposures?: boolean;
-}
-```
 
 ## Error Handling
 
@@ -364,16 +326,9 @@ If you are getting `TYPE_MISMATCH` errors:
 
 If `$experiment_started` events are not appearing in Mixpanel:
 
-1. **Check trackExposures option**: Ensure you did not disable it:
-   ```typescript
-   const provider = new MixpanelProvider(mixpanel, {
-     trackExposures: true  // default
-   });
-   ```
+1. **Verify Mixpanel tracking is working**: Test that other Mixpanel events are being tracked successfully.
 
-2. **Verify Mixpanel tracking is working**: Test that other Mixpanel events are being tracked successfully.
-
-3. **Check for duplicate evaluations**: Mixpanel only tracks the first exposure per flag per session to avoid duplicate events.
+2. **Check for duplicate evaluations**: Mixpanel only tracks the first exposure per flag per session to avoid duplicate events.
 
 ### Flags Not Updating After Context Change
 

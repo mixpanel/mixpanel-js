@@ -9,7 +9,6 @@ import type {
 import { ErrorCode } from '@openfeature/web-sdk';
 import {
   MixpanelInstance,
-  MixpanelProviderOptions,
   FlagsVariant,
   isBoolean,
   isString,
@@ -50,20 +49,17 @@ export class MixpanelProvider implements Provider {
   readonly runsOn = 'client' as const;
 
   private readonly mixpanel: MixpanelInstance;
-  private readonly trackExposures: boolean;
 
   /**
    * Creates a new MixpanelProvider instance.
    *
    * @param mixpanel - The Mixpanel instance (must have flags enabled)
-   * @param options - Provider configuration options
    */
-  constructor(mixpanel: MixpanelInstance, options: MixpanelProviderOptions = {}) {
+  constructor(mixpanel: MixpanelInstance) {
     if (!mixpanel?.flags) {
       throw new Error('Invalid mixpanel instance: flags property is required');
     }
     this.mixpanel = mixpanel;
-    this.trackExposures = options.trackExposures !== false;
   }
 
   /**
@@ -221,27 +217,15 @@ export class MixpanelProvider implements Provider {
 
     // Create a fallback variant to detect if flag wasn't found
     const fallbackVariant: FlagsVariant = {
-      key: '__mixpanel_openfeature_fallback__',
+      key: flagKey,
       value: defaultValue,
     };
 
-    let variant: FlagsVariant;
-
-    if (this.trackExposures) {
-      // Use get_variant_sync which triggers exposure tracking
-      variant = this.mixpanel.flags.get_variant_sync(flagKey, fallbackVariant);
-    } else {
-      // Read directly from the flags Map to avoid tracking
-      const flags = this.mixpanel.flags.flags;
-      if (flags && flags.has(flagKey)) {
-        variant = flags.get(flagKey)!;
-      } else {
-        variant = fallbackVariant;
-      }
-    }
+    // Use get_variant_sync which triggers exposure tracking
+    const variant = this.mixpanel.flags.get_variant_sync(flagKey, fallbackVariant);
 
     // Check if we got our fallback back (flag not found)
-    if (variant.key === '__mixpanel_openfeature_fallback__') {
+    if (variant === fallbackVariant) {
       return createErrorResolutionDetails(
         defaultValue,
         ErrorCode.FLAG_NOT_FOUND,

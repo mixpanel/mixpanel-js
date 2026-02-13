@@ -6,19 +6,6 @@ import type {
 } from '@openfeature/web-sdk';
 
 /**
- * Configuration options for MixpanelProvider
- */
-export interface MixpanelProviderOptions {
-  /**
-   * Whether to track exposures when flags are evaluated.
-   * When true (default), calls get_variant_sync which triggers $experiment_started events.
-   * When false, reads flag values without tracking.
-   * @default true
-   */
-  trackExposures?: boolean;
-}
-
-/**
  * Mixpanel FlagsVariant structure
  */
 export interface FlagsVariant {
@@ -37,7 +24,6 @@ export interface FlagsManager {
   get_variant_sync(featureName: string, fallback: FlagsVariant): FlagsVariant;
   update_context(context: Record<string, any>, options?: { replace?: boolean }): Promise<void>;
   fetchPromise?: Promise<void>;
-  flags?: Map<string, FlagsVariant> | null;
 }
 
 /**

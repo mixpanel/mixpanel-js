@@ -2,14 +2,14 @@ import chai, { expect } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import { MixpanelProvider } from '../src/MixpanelProvider';
-import { MixpanelInstance, FlagsVariant } from '../src/types';
+import { MixpanelInstance } from '../src/types';
 import { ErrorCode } from '@openfeature/web-sdk';
 
 chai.use(sinonChai);
 
 describe('MixpanelProvider', () => {
   let mockMixpanel: MixpanelInstance;
-  let mockFlags: Map<string, FlagsVariant>;
+  let mockFlags: Map<string, any>;
   let mockLogger: any;
 
   beforeEach(() => {
@@ -17,12 +17,11 @@ describe('MixpanelProvider', () => {
     mockMixpanel = {
       flags: {
         are_flags_ready: sinon.stub().returns(true),
-        get_variant_sync: sinon.stub().callsFake((key: string, fallback: FlagsVariant) => {
+        get_variant_sync: sinon.stub().callsFake((key: string, fallback: any) => {
           return mockFlags.get(key) || fallback;
         }),
         update_context: sinon.stub().resolves(),
         fetchPromise: Promise.resolve(),
-        flags: mockFlags,
       },
     };
     mockLogger = {
@@ -572,130 +571,6 @@ describe('MixpanelProvider', () => {
     });
   });
 
-  describe('trackExposures option', () => {
-    describe('when trackExposures is true (default)', () => {
-      it('should use get_variant_sync for flag resolution', () => {
-        mockFlags.set('test-flag', {
-          key: 'variant-a',
-          value: 'test-value',
-        });
-
-        const provider = new MixpanelProvider(mockMixpanel);
-        provider.resolveStringEvaluation('test-flag', 'default', {}, mockLogger);
-
-        expect(mockMixpanel.flags.get_variant_sync).to.have.been.calledOnce;
-        expect(mockMixpanel.flags.get_variant_sync).to.have.been.calledWith(
-          'test-flag',
-          sinon.match.object
-        );
-      });
-
-      it('should use get_variant_sync when trackExposures explicitly set to true', () => {
-        mockFlags.set('test-flag', {
-          key: 'variant-a',
-          value: true,
-        });
-
-        const provider = new MixpanelProvider(mockMixpanel, { trackExposures: true });
-        provider.resolveBooleanEvaluation('test-flag', false, {}, mockLogger);
-
-        expect(mockMixpanel.flags.get_variant_sync).to.have.been.calledOnce;
-      });
-
-      it('should pass fallback variant to get_variant_sync', () => {
-        const provider = new MixpanelProvider(mockMixpanel);
-        provider.resolveStringEvaluation('non-existent', 'default-value', {}, mockLogger);
-
-        const call = (mockMixpanel.flags.get_variant_sync as sinon.SinonStub).getCall(0);
-        const fallback = call.args[1];
-        expect(fallback.key).to.equal('__mixpanel_openfeature_fallback__');
-        expect(fallback.value).to.equal('default-value');
-      });
-    });
-
-    describe('when trackExposures is false', () => {
-      it('should read directly from flags Map instead of get_variant_sync', () => {
-        mockFlags.set('test-flag', {
-          key: 'variant-a',
-          value: 'test-value',
-        });
-
-        const provider = new MixpanelProvider(mockMixpanel, { trackExposures: false });
-        const result = provider.resolveStringEvaluation('test-flag', 'default', {}, mockLogger);
-
-        expect(mockMixpanel.flags.get_variant_sync).not.to.have.been.called;
-        expect(result.value).to.equal('test-value');
-        expect(result.variant).to.equal('variant-a');
-      });
-
-      it('should return FLAG_NOT_FOUND when flag not in Map', () => {
-        const provider = new MixpanelProvider(mockMixpanel, { trackExposures: false });
-        const result = provider.resolveStringEvaluation('non-existent', 'default', {}, mockLogger);
-
-        expect(mockMixpanel.flags.get_variant_sync).not.to.have.been.called;
-        expect(result.value).to.equal('default');
-        expect(result.errorCode).to.equal(ErrorCode.FLAG_NOT_FOUND);
-      });
-
-      it('should handle null flags Map gracefully', () => {
-        mockMixpanel.flags.flags = null;
-
-        const provider = new MixpanelProvider(mockMixpanel, { trackExposures: false });
-        const result = provider.resolveStringEvaluation('test-flag', 'default', {}, mockLogger);
-
-        expect(result.value).to.equal('default');
-        expect(result.errorCode).to.equal(ErrorCode.FLAG_NOT_FOUND);
-      });
-
-      it('should handle undefined flags Map gracefully', () => {
-        mockMixpanel.flags.flags = undefined;
-
-        const provider = new MixpanelProvider(mockMixpanel, { trackExposures: false });
-        const result = provider.resolveBooleanEvaluation('test-flag', false, {}, mockLogger);
-
-        expect(result.value).to.equal(false);
-        expect(result.errorCode).to.equal(ErrorCode.FLAG_NOT_FOUND);
-      });
-
-      it('should still check are_flags_ready even when not tracking', () => {
-        (mockMixpanel.flags.are_flags_ready as sinon.SinonStub).returns(false);
-
-        const provider = new MixpanelProvider(mockMixpanel, { trackExposures: false });
-        const result = provider.resolveStringEvaluation('test-flag', 'default', {}, mockLogger);
-
-        expect(mockMixpanel.flags.are_flags_ready).to.have.been.calledOnce;
-        expect(result.errorCode).to.equal(ErrorCode.PROVIDER_NOT_READY);
-      });
-
-      it('should work correctly for all evaluation types', () => {
-        mockFlags.set('bool-flag', { key: 'v1', value: true });
-        mockFlags.set('string-flag', { key: 'v2', value: 'hello' });
-        mockFlags.set('number-flag', { key: 'v3', value: 42 });
-        mockFlags.set('object-flag', { key: 'v4', value: { a: 1 } });
-
-        const provider = new MixpanelProvider(mockMixpanel, { trackExposures: false });
-
-        const boolResult = provider.resolveBooleanEvaluation('bool-flag', false, {}, mockLogger);
-        expect(boolResult.value).to.equal(true);
-        expect(boolResult.variant).to.equal('v1');
-
-        const stringResult = provider.resolveStringEvaluation('string-flag', '', {}, mockLogger);
-        expect(stringResult.value).to.equal('hello');
-        expect(stringResult.variant).to.equal('v2');
-
-        const numberResult = provider.resolveNumberEvaluation('number-flag', 0, {}, mockLogger);
-        expect(numberResult.value).to.equal(42);
-        expect(numberResult.variant).to.equal('v3');
-
-        const objectResult = provider.resolveObjectEvaluation('object-flag', {}, {}, mockLogger);
-        expect(objectResult.value).to.deep.equal({ a: 1 });
-        expect(objectResult.variant).to.equal('v4');
-
-        expect(mockMixpanel.flags.get_variant_sync).not.to.have.been.called;
-      });
-    });
-  });
-
   describe('edge cases', () => {
     it('should handle flag with experiment metadata', () => {
       mockFlags.set('experiment-flag', {
@@ -796,18 +671,16 @@ describe('MixpanelProvider', () => {
     });
 
     it('should create new provider instances independently', () => {
-      const provider1 = new MixpanelProvider(mockMixpanel, { trackExposures: true });
-      const provider2 = new MixpanelProvider(mockMixpanel, { trackExposures: false });
+      const provider1 = new MixpanelProvider(mockMixpanel);
+      const provider2 = new MixpanelProvider(mockMixpanel);
 
       mockFlags.set('test-flag', { key: 'v', value: 'test' });
 
       provider1.resolveStringEvaluation('test-flag', '', {}, mockLogger);
       expect(mockMixpanel.flags.get_variant_sync).to.have.been.calledOnce;
 
-      (mockMixpanel.flags.get_variant_sync as sinon.SinonStub).resetHistory();
-
       provider2.resolveStringEvaluation('test-flag', '', {}, mockLogger);
-      expect(mockMixpanel.flags.get_variant_sync).not.to.have.been.called;
+      expect(mockMixpanel.flags.get_variant_sync).to.have.been.calledTwice;
     });
   });
 });
