@@ -67,19 +67,30 @@ if (isFeatureEnabled) {
 }
 ```
 
-### String, Number, and Object Flags
+### Mixpanel Flag Types and OpenFeature Evaluation Methods
+
+Mixpanel feature flags support three flag types. Use the corresponding OpenFeature evaluation method based on your flag's variant values:
+
+| Mixpanel Flag Type | Variant Values | OpenFeature Method |
+|---|---|---|
+| Feature Gate | `true` / `false` | `getBooleanValue()` |
+| Experiment | boolean, string, number, or JSON object | `getBooleanValue()`, `getStringValue()`, `getNumberValue()`, or `getObjectValue()` |
+| Dynamic Config | JSON object | `getObjectValue()` |
 
 ```typescript
 const client = OpenFeature.getClient();
 
-// String flag
-const buttonColor = client.getStringValue('button-color', 'blue');
+// Feature Gate — boolean variants
+const isFeatureOn = client.getBooleanValue('new-checkout', false);
 
-// Number flag
+// Experiment with string variants
+const buttonColor = client.getStringValue('button-color-test', 'blue');
+
+// Experiment with number variants
 const maxItems = client.getNumberValue('max-items', 10);
 
-// Object flag (for complex configurations)
-const featureConfig = client.getObjectValue('feature-config', {
+// Dynamic Config — JSON object variants
+const featureConfig = client.getObjectValue('homepage-layout', {
   layout: 'grid',
   itemsPerRow: 3
 });
@@ -100,42 +111,29 @@ console.log(details.reason);      // Why this value was returned
 console.log(details.errorCode);   // Error code if evaluation failed
 ```
 
-### Setting Context with targetingKey
+### Setting Context
 
-You can pass evaluation context that will be sent to Mixpanel for flag evaluation:
+You can pass evaluation context that will be sent to Mixpanel for flag evaluation using `OpenFeature.setContext()`:
 
 ```typescript
-// Set context globally
 await OpenFeature.setContext({
-  targetingKey: 'user-123',
   email: 'user@example.com',
-  plan: 'premium'
-});
-
-// Or set context per-evaluation
-const client = OpenFeature.getClient();
-const value = client.getBooleanValue('premium-feature', false, {
-  targetingKey: 'user-123',
   plan: 'premium'
 });
 ```
 
-### Using custom_properties for Nested Context
+> **Note:** Per-evaluation context (the optional third argument to `getBooleanValue`, `getStringValue`, etc.) is **not supported** by this provider. Context must be set globally via `OpenFeature.setContext()`, which triggers a re-fetch of flag values from Mixpanel.
 
-For more complex targeting scenarios, you can use nested properties:
+### Using custom_properties for Runtime Properties
+
+You can pass `custom_properties` in the evaluation context for use with Mixpanel's [Runtime Properties](https://docs.mixpanel.com/docs/feature-flags/runtime-properties) targeting rules. Values must be flat key-value pairs (no nested objects):
 
 ```typescript
 await OpenFeature.setContext({
-  targetingKey: 'user-123',
   custom_properties: {
-    subscription: {
-      tier: 'enterprise',
-      seats: 50
-    },
-    company: {
-      industry: 'technology',
-      size: 'large'
-    }
+    tier: 'enterprise',
+    seats: 50,
+    industry: 'technology'
   }
 });
 ```
