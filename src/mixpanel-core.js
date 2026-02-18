@@ -2473,7 +2473,6 @@ MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES
 
 // Exports intended only for testing
 MixpanelLib.prototype['__get_recorder']                     = MixpanelLib.prototype.__get_recorder;
-MixpanelLib.prototype['flags']                              = MixpanelLib.prototype.flags;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
