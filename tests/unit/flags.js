@@ -7,7 +7,6 @@ import { window } from "../../src/window";
 import Config from "../../src/config";
 
 import { FeatureFlagManager } from "../../src/flags/index";
-import { getTargetingPromise } from "../../src/targeting/loader";
 import {
   lowercaseKeysAndValues,
   lowercaseOnlyLeafNodes

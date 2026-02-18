@@ -393,7 +393,8 @@ MixpanelLib.prototype._init = function(token, config, name) {
         setConfigFunc: _.bind(this.set_config, this),
         getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this),
-        loadExtraBundle: load_extra_bundle
+        loadExtraBundle: load_extra_bundle,
+        targetingSrc: this.get_config('targeting_src')
     });
     this.flags.init();
     this['flags'] = this.flags;

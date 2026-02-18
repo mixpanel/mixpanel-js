@@ -196,3 +196,35 @@ export async function clearAllStorage() {
 
   clearMixpanelCookies();
 }
+
+export function simulateMouseClick(element) {
+  if (element.click) {
+    element.click();
+  } else {
+    var evt = element.ownerDocument.createEvent(`MouseEvents`);
+    evt.initMouseEvent(`click`, true, true, element.ownerDocument.defaultView, 1, 0, 0, 0, 0, false, false, false, false, 0, null);
+    element.dispatchEvent(evt);
+  }
+}
+
+export function makeFakeFetchResponse(status, body) {
+  body = body || {};
+  var response = new Response(JSON.stringify(body), {
+    status: status,
+    headers: {
+      'Content-type': `application/json`
+    }
+  });
+
+  return new Promise(function(resolve) {
+    resolve(response);
+  });
+}
+
+export function makeDelayedFetchResponse(status, body, delay) {
+  return new Promise(function(resolve) {
+    setTimeout(function() {
+      resolve(makeFakeFetchResponse(status, body));
+    }, delay);
+  });
+}

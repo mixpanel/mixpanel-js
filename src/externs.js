@@ -12,18 +12,3 @@ Promise.all = function() {};
 
 Promise.prototype.then = function() {};
 Promise.prototype.catch = function() {};
-
-/**
- * Criteria object properties used for first-time event targeting
- * These properties are passed from the main bundle to the targeting bundle
- * and must not be renamed by Closure Compiler
- */
-var TargetingCriteria = {};
-/**
- * @type {string}
- */
-TargetingCriteria.event_name;
-/**
- * @type {Object|undefined}
- */
-TargetingCriteria.property_filters;

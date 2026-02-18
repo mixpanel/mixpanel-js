@@ -7,6 +7,7 @@ import {
 
 var logger = console_with_prefix('flags');
 
+var TARGETING_GLOBAL_NAME = '__mp_targeting';
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';
@@ -44,6 +45,7 @@ var FeatureFlagManager = function(initOptions) {
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
     this.loadExtraBundle = initOptions.loadExtraBundle || function() {};
+    this.targetingSrc = initOptions.targetingSrc || '';
 };
 
 FeatureFlagManager.prototype.init = function() {
@@ -239,19 +241,14 @@ FeatureFlagManager.prototype.markFetchComplete = function() {
 FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
     var hasPropertyFilters = false;
     _.each(this.pendingFirstTimeEvents, function(evt) {
-        if (evt.property_filters && !_.isEmptyObject(evt.property_filters)) {
+        if (evt['property_filters'] && !_.isEmptyObject(evt['property_filters'])) {
             hasPropertyFilters = true;
         }
     });
 
     if (hasPropertyFilters) {
-        getTargetingPromise(
-            this.loadExtraBundle.bind(this),
-            this.getMpConfig('targeting_src')
-        ).then(function() {
+        this.getTargeting().then(function() {
             logger.log('targeting loaded for property filter evaluation');
-        }).catch(function(error) {
-            logger.error('Failed to load targeting: ' + error);
         });
     }
 };
@@ -264,8 +261,10 @@ FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
 FeatureFlagManager.prototype.getTargeting = function() {
     return getTargetingPromise(
         this.loadExtraBundle.bind(this),
-        this.getMpConfig('targeting_src')
-    );
+        this.targetingSrc
+    ).catch(function(error) {
+        logger.error('Failed to load targeting: ' + error);
+    }.bind(this));
 };
 
 /**
@@ -284,8 +283,8 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
     }
 
     // Check if targeting promise exists (either bundled or async loaded)
-    if (window['__mp_targeting'] && typeof window['__mp_targeting'].then === 'function') {
-        window['__mp_targeting'].then(function(library) {
+    if (window[TARGETING_GLOBAL_NAME] && _.isFunction(window[TARGETING_GLOBAL_NAME].then)) {
+        window[TARGETING_GLOBAL_NAME].then(function(library) {
             this._processFirstTimeEventCheck(eventName, properties, library);
         }.bind(this)).catch(function() {
             // If targeting failed to load, process with null
