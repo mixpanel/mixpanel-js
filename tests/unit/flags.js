@@ -840,6 +840,8 @@ describe(`FeatureFlagManager`, function () {
         // Clear targeting globals to test dynamic loading
         delete window[`__mp_targeting`];
         mockConfig.targeting_src = `https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js`;
+        initOptions.targetingSrc = `https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js`;
+        flagManager = new FeatureFlagManager(initOptions);
       });
 
       it(`calls loadExtraBundle when pending events have property filters`, async function () {
@@ -880,6 +882,9 @@ describe(`FeatureFlagManager`, function () {
           ],
         });
 
+        // Reset spy since beforeEach already called new FeatureFlagManager
+        initOptions.loadExtraBundle.resetHistory();
+
         flagManager.init();
         await flagManager.fetchPromise;
 
@@ -896,6 +901,9 @@ describe(`FeatureFlagManager`, function () {
             return { matches: true };
           }
         });
+
+        // Reset spy since beforeEach already called new FeatureFlagManager
+        initOptions.loadExtraBundle.resetHistory();
 
         flagManager.init();
         await flagManager.fetchPromise;
@@ -934,6 +942,7 @@ describe(`FeatureFlagManager`, function () {
 
         // Don't let loadExtraBundle actually load targeting
         initOptions.loadExtraBundle = sinon.stub();
+        initOptions.targetingSrc = `https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js`;
 
         flagManager = new FeatureFlagManager(initOptions);
         flagManager.init();
