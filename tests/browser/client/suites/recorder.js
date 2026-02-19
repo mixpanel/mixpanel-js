@@ -81,9 +81,9 @@ export function recorderTests (mixpanel) {
         if (IS_RECORDER_BUNDLED) {
           expect(true).to.be.true; // recorder is bundled, so we don't need to check the script
         } else if (exists) {
-          expect(document.querySelector(`script[src="` + recorderSrc + `"]`)).to.not.be.null; // recorder script should exist
+          expect(getRecorderScript()).to.not.be.null; // recorder script should exist
         } else {
-          expect(document.querySelector(`script[src="` + recorderSrc + `"]`)).to.be.null; // recorder script should not exist
+          expect(getRecorderScript()).to.be.null; // recorder script should not exist
         }
       };
 
