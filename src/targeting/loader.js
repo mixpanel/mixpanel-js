@@ -1,4 +1,5 @@
 import { window } from '../window';
+import { TARGETING_GLOBAL_NAME } from '../globals';
 
 /**
  * Get the promise-based targeting loader
@@ -8,26 +9,26 @@ import { window } from '../window';
  */
 var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
     // Return existing promise if already initialized or loading
-    if (window['__mp_targeting'] && typeof window['__mp_targeting'].then === 'function') {
-        return window['__mp_targeting'];
+    if (window[TARGETING_GLOBAL_NAME] && typeof window[TARGETING_GLOBAL_NAME].then === 'function') {
+        return window[TARGETING_GLOBAL_NAME];
     }
 
     // Create loading promise and set it as the global immediately
     // This makes minified build behavior consistent with dev/CJS builds
-    window['__mp_targeting'] = new Promise(function (resolve) {
+    window[TARGETING_GLOBAL_NAME] = new Promise(function (resolve) {
         loadExtraBundle(targetingSrc, resolve);
     }).then(function () {
-        var p = window['__mp_targeting'];
+        var p = window[TARGETING_GLOBAL_NAME];
         if (p && typeof p.then === 'function') {
             return p;
         }
         throw new Error('targeting failed to load');
     }).catch(function (err) {
-        delete window['__mp_targeting'];
+        delete window[TARGETING_GLOBAL_NAME];
         throw err;
     });
 
-    return window['__mp_targeting'];
+    return window[TARGETING_GLOBAL_NAME];
 };
 
 export {

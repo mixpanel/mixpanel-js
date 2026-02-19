@@ -4,10 +4,9 @@ import Config from '../config';
 import {
     getTargetingPromise
 } from '../targeting/loader';
+import { TARGETING_GLOBAL_NAME } from '../globals';
 
 var logger = console_with_prefix('flags');
-
-var TARGETING_GLOBAL_NAME = '__mp_targeting';
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';

@@ -165,20 +165,30 @@ export function clearMixpanelCookies() {
 }
 
 /**
- * Reset targeting loader state (for testing)
- * Clears all cached state and removes script tags to allow re-initialization.
+ * Reset external library state for testing
+ * Clears global and removes dynamically loaded script tags
+ * @param {string} globalName - Window global property name (e.g., '__mp_recorder', '__mp_targeting')
+ * @param {string} scriptSrcMatch - String to match in script src attribute
  */
-export function resetTargeting() {
-  // Clear promise global
-  if (window['__mp_targeting']) {
-    delete window['__mp_targeting'];
+export function resetExternalLibrary(globalName, scriptSrcMatch) {
+  // Clear global if it exists
+  if (window[globalName]) {
+    delete window[globalName];
   }
 
-  // Remove script tags so they can be re-added and re-executed
-  const scripts = document.querySelectorAll('script[src*="mixpanel-targeting"]');
+  // Remove all matching script tags
+  const scripts = document.querySelectorAll(`script[src*="${scriptSrcMatch}"]`);
   for (let i = 0; i < scripts.length; i++) {
     scripts[i].remove();
   }
+}
+
+/**
+ * Reset targeting loader state (for testing)
+ * Wrapper for backward compatibility
+ */
+export function resetTargeting() {
+  resetExternalLibrary('__mp_targeting', 'mixpanel-targeting');
 }
 
 export async function clearAllStorage() {

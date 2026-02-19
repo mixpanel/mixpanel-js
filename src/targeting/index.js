@@ -1,4 +1,5 @@
 import { window } from '../window';
+import { TARGETING_GLOBAL_NAME } from '../globals';
 import { eventMatchesCriteria } from './event-matcher';
 
 // Create targeting library object
@@ -7,4 +8,4 @@ targetingLibrary['eventMatchesCriteria'] = eventMatchesCriteria;
 
 // Set global Promise (use bracket notation to prevent minification)
 // This is the ONE AND ONLY global - matches recorder pattern
-window['__mp_targeting'] = Promise.resolve(targetingLibrary);
+window[TARGETING_GLOBAL_NAME] = Promise.resolve(targetingLibrary);
