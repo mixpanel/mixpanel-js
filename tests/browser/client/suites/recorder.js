@@ -1,5 +1,5 @@
 /* global chai, sinon */
-import { clearAllStorage, clearAllLibInstances, untilDone, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse, resetExternalLibrary, getExternalLibraryScript } from "../utils";
+import { clearAllStorage, clearAllLibInstances, untilDone, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse, resetRecorder, getExternalLibraryScript } from "../utils";
 import { RECORDER_GLOBAL_NAME } from "../../../../src/globals";
 
 const expect = chai.expect;
@@ -42,7 +42,7 @@ export function recorderTests (mixpanel) {
       await clearAllStorage();
 
       if (!IS_RECORDER_BUNDLED) {
-        resetExternalLibrary(RECORDER_GLOBAL_NAME, 'mixpanel-recorder');
+        resetRecorder();
       }
 
       this.token = `RECORDER_TEST_TOKEN`;
@@ -131,7 +131,7 @@ export function recorderTests (mixpanel) {
       sinon.restore();
 
       if (!IS_RECORDER_BUNDLED) {
-        resetExternalLibrary(RECORDER_GLOBAL_NAME, 'mixpanel-recorder');
+        resetRecorder();
       }
       window.location.hash = ``;
     });
@@ -521,7 +521,7 @@ export function recorderTests (mixpanel) {
       window.sessionStorage.removeItem(`mp_gen_new_tab_id_recordertest_RECORDER_TEST_TOKEN`);
 
       if (!IS_RECORDER_BUNDLED) {
-        resetExternalLibrary(RECORDER_GLOBAL_NAME, 'mixpanel-recorder');
+        resetRecorder();
       }
 
       await this.clock.tickAsync(500);

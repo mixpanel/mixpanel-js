@@ -203,6 +203,14 @@ export function resetTargeting() {
   resetExternalLibrary(TARGETING_GLOBAL_NAME, `mixpanel-targeting`);
 }
 
+/**
+ * Reset recorder state (for testing)
+ * Clears recorder global and removes recorder script tags
+ */
+export function resetRecorder() {
+  resetExternalLibrary(RECORDER_GLOBAL_NAME, `mixpanel-recorder`);
+}
+
 export async function clearAllStorage() {
   if (window.localStorage) {
     window.localStorage.clear();
