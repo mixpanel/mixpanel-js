@@ -1,13 +1,15 @@
 /* global chai, sinon */
 
 const { expect } = chai;
-import { clearAllLibInstances, clearAllStorage, untilDone } from "../utils";
+import { clearAllLibInstances, clearAllStorage, untilDone, resetTargeting } from "../utils";
+import { TARGETING_GLOBAL_NAME } from "../../../../src/globals";
 
 export function flagsTests(mixpanel) {
   describe(`feature flags`, function() {
     let token;
 
     beforeEach(async () => {
+      resetTargeting();
       token = `TARGET_TEST_${Math.random().toString(36).substring(7)}`;
       await clearAllStorage();
     });
@@ -37,11 +39,11 @@ export function flagsTests(mixpanel) {
         flagsManager.getTargeting();
 
         // Verify promise exists
-        expect(window[`__mp_targeting`]).to.exist;
-        expect(window[`__mp_targeting`].then).to.be.a(`function`);
+        expect(window[TARGETING_GLOBAL_NAME]).to.exist;
+        expect(window[TARGETING_GLOBAL_NAME].then).to.be.a(`function`);
 
         // Wait for bundle to load
-        const library = await window[`__mp_targeting`];
+        const library = await window[TARGETING_GLOBAL_NAME];
         expect(library).to.exist;
         expect(library.eventMatchesCriteria).to.be.a(`function`);
       });
@@ -63,7 +65,7 @@ export function flagsTests(mixpanel) {
         flagsManager.getTargeting();
         flagsManager.getTargeting();
 
-        await window[`__mp_targeting`];
+        await window[TARGETING_GLOBAL_NAME];
 
         // Count script tags with targeting bundle
         const scripts = document.querySelectorAll(`script[src*="mixpanel-targeting"]`);
@@ -498,12 +500,12 @@ export function flagsTests(mixpanel) {
         await untilDone(() => fetchStub.called, 5000);
 
         // Targeting should load automatically because flag has property_filters
-        await untilDone(() => window[`__mp_targeting`], 5000);
+        await untilDone(() => window[TARGETING_GLOBAL_NAME], 5000);
 
         // Verify targeting library loaded
-        expect(window[`__mp_targeting`]).to.exist;
+        expect(window[TARGETING_GLOBAL_NAME]).to.exist;
 
-        const library = await window[`__mp_targeting`];
+        const library = await window[TARGETING_GLOBAL_NAME];
         expect(library).to.exist;
         expect(library.eventMatchesCriteria).to.be.a(`function`);
 

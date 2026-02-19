@@ -1,4 +1,5 @@
 import { window } from '../window';
+import { RECORDER_GLOBAL_NAME } from '../globals';
 import { MixpanelRecorder } from './recorder';
 
-window['__mp_recorder'] = MixpanelRecorder;
+window[RECORDER_GLOBAL_NAME] = MixpanelRecorder;

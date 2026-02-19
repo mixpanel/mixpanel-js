@@ -1,3 +1,5 @@
+import { TARGETING_GLOBAL_NAME, RECORDER_GLOBAL_NAME } from '../../../src/globals';
+
 const realSetInterval = window.setInterval;
 const realClearInterval = window.clearInterval;
 export const realSetTimeout = window.setTimeout;
@@ -165,6 +167,16 @@ export function clearMixpanelCookies() {
 }
 
 /**
+ * Get external library script element for testing
+ * Returns the first script tag that matches the given source string
+ * @param {string} scriptSrcMatch - String to match in script src attribute
+ * @returns {HTMLScriptElement|null} The matching script element or null if not found
+ */
+export function getExternalLibraryScript(scriptSrcMatch) {
+  return document.querySelector(`script[src*="${scriptSrcMatch}"]`);
+}
+
+/**
  * Reset external library state for testing
  * Clears global and removes dynamically loaded script tags
  * @param {string} globalName - Window global property name (e.g., '__mp_recorder', '__mp_targeting')
@@ -188,7 +200,7 @@ export function resetExternalLibrary(globalName, scriptSrcMatch) {
  * Wrapper for backward compatibility
  */
 export function resetTargeting() {
-  resetExternalLibrary('__mp_targeting', 'mixpanel-targeting');
+  resetExternalLibrary(TARGETING_GLOBAL_NAME, `mixpanel-targeting`);
 }
 
 export async function clearAllStorage() {

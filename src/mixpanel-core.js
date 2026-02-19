@@ -3,6 +3,7 @@ import Config from './config';
 import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify } from './utils';
 import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
+import { RECORDER_GLOBAL_NAME } from './globals';
 import { Autocapture } from './autocapture';
 import { FeatureFlagManager } from './flags';
 import { FormTracker, LinkTracker } from './dom-trackers';
@@ -490,11 +491,11 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
 
     var loadRecorder = _.bind(function(startNewIfInactive) {
         var handleLoadedRecorder = _.bind(function() {
-            this._recorder = this._recorder || new window['__mp_recorder'](this);
+            this._recorder = this._recorder || new window[RECORDER_GLOBAL_NAME](this);
             this._recorder['resumeRecording'](startNewIfInactive);
         }, this);
 
-        if (_.isUndefined(window['__mp_recorder'])) {
+        if (_.isUndefined(window[RECORDER_GLOBAL_NAME])) {
             load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
         } else {
             handleLoadedRecorder();

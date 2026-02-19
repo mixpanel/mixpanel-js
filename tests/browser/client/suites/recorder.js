@@ -1,11 +1,12 @@
 /* global chai, sinon */
-import { clearAllStorage, clearAllLibInstances, untilDone, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse } from "../utils";
+import { clearAllStorage, clearAllLibInstances, untilDone, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse, resetExternalLibrary, getExternalLibraryScript } from "../utils";
+import { RECORDER_GLOBAL_NAME } from "../../../../src/globals";
 
 const expect = chai.expect;
 
 export function recorderTests (mixpanel) {
   // module tests have the recorder bundled in already, so don't need to test certain things
-  const IS_RECORDER_BUNDLED = Boolean(window[`__mp_recorder`]);
+  const IS_RECORDER_BUNDLED = Boolean(window[RECORDER_GLOBAL_NAME]);
   var loadedRecorderProject = false;
 
   var recorderSrc = null;
@@ -28,8 +29,9 @@ export function recorderTests (mixpanel) {
   }
 
   function getRecorderScript () {
-    return document.querySelector(`script[src="` + recorderSrc + `"]`);
+    return getExternalLibraryScript('mixpanel-recorder');
   }
+
 
   describe(`recorder`, function () {
     this.timeout(30000);
@@ -39,9 +41,8 @@ export function recorderTests (mixpanel) {
       await clearAllLibInstances(mixpanel);
       await clearAllStorage();
 
-      const scriptEl = getRecorderScript();
-      if (scriptEl) {
-        scriptEl.parentNode.removeChild(scriptEl);
+      if (!IS_RECORDER_BUNDLED) {
+        resetExternalLibrary(RECORDER_GLOBAL_NAME, 'mixpanel-recorder');
       }
 
       this.token = `RECORDER_TEST_TOKEN`;
@@ -80,9 +81,9 @@ export function recorderTests (mixpanel) {
         if (IS_RECORDER_BUNDLED) {
           expect(true).to.be.true; // recorder is bundled, so we don't need to check the script
         } else if (exists) {
-          expect(getRecorderScript()).to.not.be.null; // recorder script should exist
+          expect(document.querySelector(`script[src="` + recorderSrc + `"]`)).to.not.be.null; // recorder script should exist
         } else {
-          expect(getRecorderScript()).to.be.null; // recorder script should not exist
+          expect(document.querySelector(`script[src="` + recorderSrc + `"]`)).to.be.null; // recorder script should not exist
         }
       };
 
@@ -108,17 +109,12 @@ export function recorderTests (mixpanel) {
           await this.waitForRecordingStarted();
         };
       } else {
-        if (!loadedRecorderProject) {
-          // we should not have any global recorder object yet; but it may exist
-          // due to other mixpanel instances finding orphaned recording data in IDB
-          delete window[`__mp_recorder`];
-        }
         this.waitForRecorderLoad = async function () {
-          await untilDone(() => Boolean(document.querySelector(`script[src="` + recorderSrc + `"]`)));
+          await untilDone(() => Boolean(getRecorderScript()));
           this.assertRecorderScript(true);
           await new Promise(resolve => {
             this.randomStub.restore();
-            if (window[`__mp_recorder`]) {
+            if (window[RECORDER_GLOBAL_NAME]) {
               resolve();
             } else {
               getRecorderScript().addEventListener(`load`, resolve);
@@ -135,7 +131,7 @@ export function recorderTests (mixpanel) {
       sinon.restore();
 
       if (!IS_RECORDER_BUNDLED) {
-        delete window[`__mp_recorder`];
+        resetExternalLibrary(RECORDER_GLOBAL_NAME, 'mixpanel-recorder');
       }
       window.location.hash = ``;
     });
@@ -525,8 +521,7 @@ export function recorderTests (mixpanel) {
       window.sessionStorage.removeItem(`mp_gen_new_tab_id_recordertest_RECORDER_TEST_TOKEN`);
 
       if (!IS_RECORDER_BUNDLED) {
-        delete window[`__mp_recorder`];
-        document.head.removeChild(document.querySelector(`script[src="${recorderSrc}"]`));
+        resetExternalLibrary(RECORDER_GLOBAL_NAME, 'mixpanel-recorder');
       }
 
       await this.clock.tickAsync(500);
