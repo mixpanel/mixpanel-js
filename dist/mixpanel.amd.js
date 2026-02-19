@@ -639,14 +639,16 @@ define((function () { 'use strict';
             return this.nodeMetaMap.get(n2) || null;
         };
         // removes the node from idNodeMap
-        // doesn't remove the node from nodeMetaMap
-        _proto.removeNodeFromMap = function removeNodeFromMap(n2) {
+        // if permanent is true, also removes from nodeMetaMap
+        _proto.removeNodeFromMap = function removeNodeFromMap(n2, permanent) {
             var _this = this;
+            if (permanent === void 0) permanent = false;
             var id = this.getId(n2);
             this.idNodeMap.delete(id);
+            if (permanent) this.nodeMetaMap.delete(n2);
             if (n2.childNodes) {
                 n2.childNodes.forEach(function(childNode) {
-                    return _this.removeNodeFromMap(childNode);
+                    return _this.removeNodeFromMap(childNode, permanent);
                 });
             }
         };
@@ -10388,6 +10390,15 @@ define((function () { 'use strict';
         _proto.generateId = function generateId() {
             return this.id++;
         };
+        _proto.remove = function remove(stylesheet) {
+            var id = this.styleIDMap.get(stylesheet);
+            if (id !== void 0) {
+                this.styleIDMap.delete(stylesheet);
+                this.idStyleMap.delete(id);
+                return true;
+            }
+            return false;
+        };
         return StyleSheetMirror;
     }();
     function getShadowHost(n2) {
@@ -10710,7 +10721,15 @@ define((function () { 'use strict';
                     }
                 };
                 while(_this.mapRemoves.length){
-                    _this.mirror.removeNodeFromMap(_this.mapRemoves.shift());
+                    var removedNode = _this.mapRemoves.shift();
+                    if (removedNode.nodeName === "IFRAME") {
+                        try {
+                            _this.iframeManager.removeIframe(removedNode);
+                        } catch (e2) {}
+                    } else {
+                        _this.stylesheetManager.cleanupStylesheetsForRemovedNode(removedNode);
+                    }
+                    _this.mirror.removeNodeFromMap(removedNode);
                 }
                 for(var _iterator = _create_for_of_iterator_helper_loose(_this.movedSet), _step; !(_step = _iterator()).done;){
                     var n2 = _step.value;
@@ -11084,6 +11103,9 @@ define((function () { 'use strict';
             this.shadowDomManager.reset();
             this.canvasManager.reset();
         };
+        _proto.getDoc = function getDoc() {
+            return this.doc;
+        };
         return MutationBuffer;
     }();
     function deepDelete(addsSet, n2) {
@@ -11183,6 +11205,14 @@ define((function () { 'use strict';
             subtree: true
         });
         return observer;
+    }
+    function removeMutationBufferForDoc(doc) {
+        for(var i2 = mutationBuffers.length - 1; i2 >= 0; i2--){
+            var buffer = mutationBuffers[i2];
+            if (buffer.getDoc() === doc) {
+                mutationBuffers.splice(i2, 1);
+            }
+        }
     }
     function initMoveObserver(param) {
         var mousemoveCb = param.mousemoveCb, sampling = param.sampling, doc = param.doc, mirror2 = param.mirror;
@@ -12199,6 +12229,8 @@ define((function () { 'use strict';
             __publicField$1(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
             __publicField$1(this, "crossOriginIframeStyleMirror");
             __publicField$1(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
+            __publicField$1(this, "iframeContentDocumentMap", /* @__PURE__ */ new WeakMap());
+            __publicField$1(this, "iframeObserverCleanupMap", /* @__PURE__ */ new WeakMap());
             __publicField$1(this, "mirror");
             __publicField$1(this, "mutationCb");
             __publicField$1(this, "wrappedEmit");
@@ -12220,6 +12252,31 @@ define((function () { 'use strict';
             this.iframes.set(iframeEl, true);
             if (iframeEl.contentWindow) this.crossOriginIframeMap.set(iframeEl.contentWindow, iframeEl);
         };
+        _proto.getIframeContentDocument = function getIframeContentDocument(iframeEl) {
+            return this.iframeContentDocumentMap.get(iframeEl);
+        };
+        _proto.setObserverCleanup = function setObserverCleanup(iframeEl, cleanup) {
+            this.iframeObserverCleanupMap.set(iframeEl, cleanup);
+        };
+        _proto.getObserverCleanup = function getObserverCleanup(iframeEl) {
+            return this.iframeObserverCleanupMap.get(iframeEl);
+        };
+        _proto.removeIframe = function removeIframe(iframeEl) {
+            var storedDoc = this.iframeContentDocumentMap.get(iframeEl);
+            if (storedDoc) {
+                this.stylesheetManager.cleanupStylesheetsForRemovedNode(storedDoc);
+                this.mirror.removeNodeFromMap(storedDoc, true);
+            }
+            this.iframes.delete(iframeEl);
+            this.iframeContentDocumentMap.delete(iframeEl);
+            var observerCleanup = this.iframeObserverCleanupMap.get(iframeEl);
+            if (observerCleanup) {
+                try {
+                    observerCleanup();
+                } catch (e2) {}
+                this.iframeObserverCleanupMap.delete(iframeEl);
+            }
+        };
         _proto.addLoadListener = function addLoadListener(cb) {
             this.loadListener = cb;
         };
@@ -12238,6 +12295,9 @@ define((function () { 'use strict';
                 attributes: [],
                 isAttachIframe: true
             });
+            if (iframeEl.contentDocument) {
+                this.iframeContentDocumentMap.set(iframeEl, iframeEl.contentDocument);
+            }
             if (this.recordCrossOriginIframes) (_a2 = iframeEl.contentWindow) == null ? void 0 : _a2.addEventListener("message", this.handleMessage.bind(this));
             (_b = this.loadListener) == null ? void 0 : _b.call(this, iframeEl);
             if (iframeEl.contentDocument && iframeEl.contentDocument.adoptedStyleSheets && iframeEl.contentDocument.adoptedStyleSheets.length > 0) this.stylesheetManager.adoptStyleSheets(iframeEl.contentDocument.adoptedStyleSheets, this.mirror.getId(iframeEl.contentDocument));
@@ -13150,6 +13210,41 @@ define((function () { 'use strict';
             this.styleMirror.reset();
             this.trackedLinkElements = /* @__PURE__ */ new WeakSet();
         };
+        /**
+       * Cleans up stylesheets associated with a removed node.
+       *
+       * @param removedNode - The node that was removed from the DOM.
+       */ _proto.cleanupStylesheetsForRemovedNode = function cleanupStylesheetsForRemovedNode(removedNode) {
+            var _this = this;
+            try {
+                if (removedNode.nodeType === Node.DOCUMENT_NODE) {
+                    var doc = removedNode;
+                    if (doc.adoptedStyleSheets) {
+                        for(var _iterator = _create_for_of_iterator_helper_loose(doc.adoptedStyleSheets), _step; !(_step = _iterator()).done;){
+                            var sheet = _step.value;
+                            this.styleMirror.remove(sheet);
+                        }
+                    }
+                }
+                if (removedNode.nodeName === "STYLE") {
+                    var styleEl = removedNode;
+                    if (styleEl.sheet) {
+                        this.styleMirror.remove(styleEl.sheet);
+                    }
+                }
+                if (removedNode.nodeName === "LINK" && removedNode.rel === "stylesheet") {
+                    var linkEl = removedNode;
+                    if (linkEl.sheet) {
+                        this.styleMirror.remove(linkEl.sheet);
+                    }
+                }
+                if (removedNode.childNodes) {
+                    removedNode.childNodes.forEach(function(child) {
+                        _this.cleanupStylesheetsForRemovedNode(child);
+                    });
+                }
+            } catch (e2) {}
+        };
         // TODO: take snapshot on stylesheet reload by applying event listener
         _proto.trackStylesheetInLinkElement = function trackStylesheetInLinkElement(_linkEl) {};
         return StylesheetManager;
@@ -13604,7 +13699,23 @@ define((function () { 'use strict';
             };
             iframeManager.addLoadListener(function(iframeEl) {
                 try {
-                    handlers.push(observe(iframeEl.contentDocument));
+                    var iframeDoc = iframeEl.contentDocument;
+                    var iframeHandler = observe(iframeDoc);
+                    handlers.push(iframeHandler);
+                    var existingCleanup = iframeManager.getObserverCleanup(iframeEl);
+                    iframeManager.setObserverCleanup(iframeEl, function() {
+                        if (existingCleanup) {
+                            try {
+                                existingCleanup();
+                            } catch (e2) {}
+                        }
+                        try {
+                            iframeHandler();
+                            var idx = handlers.indexOf(iframeHandler);
+                            if (idx !== -1) handlers.splice(idx, 1);
+                            removeMutationBufferForDoc(iframeDoc);
+                        } catch (e2) {}
+                    });
                 } catch (error) {
                     console.warn(error);
                 }
@@ -18853,7 +18964,7 @@ define((function () { 'use strict';
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.74.0'
+        LIB_VERSION: '2.75.0-rc1'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */

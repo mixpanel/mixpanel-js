@@ -301,13 +301,14 @@ class Mirror {
     return this.nodeMetaMap.get(n2) || null;
   }
   // removes the node from idNodeMap
-  // doesn't remove the node from nodeMetaMap
-  removeNodeFromMap(n2) {
+  // if permanent is true, also removes from nodeMetaMap
+  removeNodeFromMap(n2, permanent = false) {
     const id = this.getId(n2);
     this.idNodeMap.delete(id);
+    if (permanent) this.nodeMetaMap.delete(n2);
     if (n2.childNodes) {
       n2.childNodes.forEach(
-        (childNode) => this.removeNodeFromMap(childNode)
+        (childNode) => this.removeNodeFromMap(childNode, permanent)
       );
     }
   }
@@ -8972,6 +8973,15 @@ class StyleSheetMirror {
   generateId() {
     return this.id++;
   }
+  remove(stylesheet) {
+    const id = this.styleIDMap.get(stylesheet);
+    if (id !== void 0) {
+      this.styleIDMap.delete(stylesheet);
+      this.idStyleMap.delete(id);
+      return true;
+    }
+    return false;
+  }
 }
 function getShadowHost(n2) {
   var _a2;
@@ -9293,7 +9303,16 @@ class MutationBuffer {
         }
       };
       while (this.mapRemoves.length) {
-        this.mirror.removeNodeFromMap(this.mapRemoves.shift());
+        const removedNode = this.mapRemoves.shift();
+        if (removedNode.nodeName === "IFRAME") {
+          try {
+            this.iframeManager.removeIframe(removedNode);
+          } catch (e2) {
+          }
+        } else {
+          this.stylesheetManager.cleanupStylesheetsForRemovedNode(removedNode);
+        }
+        this.mirror.removeNodeFromMap(removedNode);
       }
       for (const n2 of this.movedSet) {
         if (isParentRemoved(this.removesSubTreeCache, n2, this.mirror) && !this.movedSet.has(index$2.parentNode(n2))) {
@@ -9654,6 +9673,9 @@ class MutationBuffer {
     this.shadowDomManager.reset();
     this.canvasManager.reset();
   }
+  getDoc() {
+    return this.doc;
+  }
 }
 function deepDelete(addsSet, n2) {
   addsSet.delete(n2);
@@ -9746,6 +9768,14 @@ function initMutationObserver(options, rootEl) {
     subtree: true
   });
   return observer;
+}
+function removeMutationBufferForDoc(doc) {
+  for (let i2 = mutationBuffers.length - 1; i2 >= 0; i2--) {
+    const buffer = mutationBuffers[i2];
+    if (buffer.getDoc() === doc) {
+      mutationBuffers.splice(i2, 1);
+    }
+  }
 }
 function initMoveObserver({
   mousemoveCb,
@@ -10795,6 +10825,8 @@ class IframeManager {
     __publicField$1(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
     __publicField$1(this, "crossOriginIframeStyleMirror");
     __publicField$1(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
+    __publicField$1(this, "iframeContentDocumentMap", /* @__PURE__ */ new WeakMap());
+    __publicField$1(this, "iframeObserverCleanupMap", /* @__PURE__ */ new WeakMap());
     __publicField$1(this, "mirror");
     __publicField$1(this, "mutationCb");
     __publicField$1(this, "wrappedEmit");
@@ -10820,6 +10852,32 @@ class IframeManager {
     if (iframeEl.contentWindow)
       this.crossOriginIframeMap.set(iframeEl.contentWindow, iframeEl);
   }
+  getIframeContentDocument(iframeEl) {
+    return this.iframeContentDocumentMap.get(iframeEl);
+  }
+  setObserverCleanup(iframeEl, cleanup) {
+    this.iframeObserverCleanupMap.set(iframeEl, cleanup);
+  }
+  getObserverCleanup(iframeEl) {
+    return this.iframeObserverCleanupMap.get(iframeEl);
+  }
+  removeIframe(iframeEl) {
+    const storedDoc = this.iframeContentDocumentMap.get(iframeEl);
+    if (storedDoc) {
+      this.stylesheetManager.cleanupStylesheetsForRemovedNode(storedDoc);
+      this.mirror.removeNodeFromMap(storedDoc, true);
+    }
+    this.iframes.delete(iframeEl);
+    this.iframeContentDocumentMap.delete(iframeEl);
+    const observerCleanup = this.iframeObserverCleanupMap.get(iframeEl);
+    if (observerCleanup) {
+      try {
+        observerCleanup();
+      } catch (e2) {
+      }
+      this.iframeObserverCleanupMap.delete(iframeEl);
+    }
+  }
   addLoadListener(cb) {
     this.loadListener = cb;
   }
@@ -10838,6 +10896,9 @@ class IframeManager {
       attributes: [],
       isAttachIframe: true
     });
+    if (iframeEl.contentDocument) {
+      this.iframeContentDocumentMap.set(iframeEl, iframeEl.contentDocument);
+    }
     if (this.recordCrossOriginIframes)
       (_a2 = iframeEl.contentWindow) == null ? void 0 : _a2.addEventListener(
         "message",
@@ -11722,6 +11783,41 @@ class StylesheetManager {
     this.styleMirror.reset();
     this.trackedLinkElements = /* @__PURE__ */ new WeakSet();
   }
+  /**
+   * Cleans up stylesheets associated with a removed node.
+   *
+   * @param removedNode - The node that was removed from the DOM.
+   */
+  cleanupStylesheetsForRemovedNode(removedNode) {
+    try {
+      if (removedNode.nodeType === Node.DOCUMENT_NODE) {
+        const doc = removedNode;
+        if (doc.adoptedStyleSheets) {
+          for (const sheet of doc.adoptedStyleSheets) {
+            this.styleMirror.remove(sheet);
+          }
+        }
+      }
+      if (removedNode.nodeName === "STYLE") {
+        const styleEl = removedNode;
+        if (styleEl.sheet) {
+          this.styleMirror.remove(styleEl.sheet);
+        }
+      }
+      if (removedNode.nodeName === "LINK" && removedNode.rel === "stylesheet") {
+        const linkEl = removedNode;
+        if (linkEl.sheet) {
+          this.styleMirror.remove(linkEl.sheet);
+        }
+      }
+      if (removedNode.childNodes) {
+        removedNode.childNodes.forEach((child) => {
+          this.cleanupStylesheetsForRemovedNode(child);
+        });
+      }
+    } catch (e2) {
+    }
+  }
   // TODO: take snapshot on stylesheet reload by applying event listener
   trackStylesheetInLinkElement(_linkEl) {
   }
@@ -12186,7 +12282,25 @@ function record(options = {}) {
     };
     iframeManager.addLoadListener((iframeEl) => {
       try {
-        handlers.push(observe(iframeEl.contentDocument));
+        const iframeDoc = iframeEl.contentDocument;
+        const iframeHandler = observe(iframeDoc);
+        handlers.push(iframeHandler);
+        const existingCleanup = iframeManager.getObserverCleanup(iframeEl);
+        iframeManager.setObserverCleanup(iframeEl, () => {
+          if (existingCleanup) {
+            try {
+              existingCleanup();
+            } catch (e2) {
+            }
+          }
+          try {
+            iframeHandler();
+            const idx = handlers.indexOf(iframeHandler);
+            if (idx !== -1) handlers.splice(idx, 1);
+            removeMutationBufferForDoc(iframeDoc);
+          } catch (e2) {
+          }
+        });
       } catch (error) {
         console.warn(error);
       }
