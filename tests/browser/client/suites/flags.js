@@ -9,12 +9,13 @@ export function flagsTests(mixpanel) {
     let token;
 
     beforeEach(async () => {
-      token = `TARGET_TEST_${Math.random().toString(36).substring(7)}`;
+      await clearAllLibInstances(mixpanel);
       await clearAllStorage();
+      resetTargeting();
+      token = `TARGET_TEST_${Math.random().toString(36).substring(7)}`;
     });
 
     afterEach(async () => {
-      await clearAllLibInstances(mixpanel);
       resetTargeting();
     });
 
