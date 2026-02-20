@@ -26,6 +26,14 @@
         win = window;
     }
 
+    /**
+     * Shared global window property names used across modules
+     */
+
+
+    // Recorder library global (used by recorder and mixpanel-core)
+    var RECORDER_GLOBAL_NAME = '__mp_recorder';
+
     function _array_like_to_array(arr, len) {
         if (len == null || len > arr.length) len = arr.length;
         for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
@@ -18964,7 +18972,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.75.0-rc1'
+        LIB_VERSION: '2.75.0-rc2'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -19118,15 +19126,8 @@
         return toString.call(obj) === '[object Array]';
     };
 
-    // from a comment on http://dbj.org/dbj/?p=286
-    // fails on only one very rare and deliberate custom object:
-    // var bomb = { toString : undefined, valueOf: function(o) { return "function BOMBA!"; }};
     _.isFunction = function(f) {
-        try {
-            return /^\s*\bfunction\b/.test(f);
-        } catch (x) {
-            return false;
-        }
+        return typeof f === 'function';
     };
 
     _.isArguments = function(obj) {
@@ -22913,6 +22914,6 @@
         }
     });
 
-    win['__mp_recorder'] = MixpanelRecorder;
+    win[RECORDER_GLOBAL_NAME] = MixpanelRecorder;
 
 })();
