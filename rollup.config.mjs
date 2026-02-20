@@ -1,5 +1,6 @@
 import alias from '@rollup/plugin-alias';
 import closureCompiler from '@ampproject/rollup-plugin-closure-compiler';
+import commonjs from '@rollup/plugin-commonjs';
 import fs from 'fs';
 import path from 'path';
 import esbuild from 'rollup-plugin-esbuild';
@@ -116,6 +117,30 @@ const MAIN_BUILDS = [
     plugins: [aliasRrweb()],
   },
 
+  // IIFE targeting bundle that is loaded asynchronously
+  {
+    input: `src/targeting/index.js`,
+    output: [
+      {
+        file: `build/mixpanel-targeting.js`,
+        name: `mixpanel_targeting`,
+        format: `iife`,
+      },
+      ...(MINIFY
+        ? [
+          {
+            file: `build/mixpanel-targeting.min.js`,
+            name: `mixpanel_targeting`,
+            format: `iife`,
+            plugins: [esbuild({target: `es5`, minify: true, sourceMap: true})],
+            sourcemap: true,
+          },
+        ]
+        : []),
+    ],
+    plugins: [commonjs(), nodeResolve({browser: true})],
+  },
+
   // IIFE main mixpanel build
   {
     input: `src/loaders/loader-globals.js`,
@@ -204,7 +229,7 @@ const ALL_BUILDS = [
   },
 
 
-  // Modules builds that are bundled with the recorder
+  // Modules builds that are bundled with the recorder and targeting
   {
     input: `src/loaders/loader-module.js`,
     output: [
@@ -230,6 +255,7 @@ const ALL_BUILDS = [
       },
     ],
     plugins: [
+      commonjs(),
       aliasRrweb(),
       nodeResolve({
         browser: true,
@@ -262,8 +288,14 @@ const ALL_BUILDS = [
     ],
   },
   {
-    input: `src/loaders/loader-module-with-async-recorder.js`,
+    input: `src/loaders/loader-module-with-async-modules.js`,
     output: [
+      {
+        file: `build/mixpanel-with-async-modules.cjs.js`,
+        name: `mixpanel`,
+        format: `cjs`,
+      },
+      // Backward compatibility: keep old output filename for existing users
       {
         file: `build/mixpanel-with-async-recorder.cjs.js`,
         name: `mixpanel`,

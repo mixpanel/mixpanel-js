@@ -3,6 +3,7 @@ import Config from './config';
 import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify } from './utils';
 import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
+import { RECORDER_GLOBAL_NAME } from './globals';
 import { Autocapture } from './autocapture';
 import { FeatureFlagManager } from './flags';
 import { FormTracker, LinkTracker } from './dom-trackers';
@@ -162,6 +163,7 @@ var DEFAULT_CONFIG = {
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+    'targeting_src':                     'https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js',
     'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
 };
 
@@ -391,7 +393,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
         getConfigFunc: _.bind(this.get_config, this),
         setConfigFunc: _.bind(this.set_config, this),
         getPropertyFunc: _.bind(this.get_property, this),
-        trackingFunc: _.bind(this.track, this)
+        trackingFunc: _.bind(this.track, this),
+        loadExtraBundle: load_extra_bundle,
+        targetingSrc: this.get_config('targeting_src')
     });
     this.flags.init();
     this['flags'] = this.flags;
@@ -487,11 +491,11 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
 
     var loadRecorder = _.bind(function(startNewIfInactive) {
         var handleLoadedRecorder = _.bind(function() {
-            this._recorder = this._recorder || new window['__mp_recorder'](this);
+            this._recorder = this._recorder || new window[RECORDER_GLOBAL_NAME](this);
             this._recorder['resumeRecording'](startNewIfInactive);
         }, this);
 
-        if (_.isUndefined(window['__mp_recorder'])) {
+        if (_.isUndefined(window[RECORDER_GLOBAL_NAME])) {
             load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
         } else {
             handleLoadedRecorder();
@@ -1232,6 +1236,11 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         should_send_immediately: should_send_immediately,
         send_request_options: options
     }, callback);
+
+    // Check for first-time event matches
+    if (this.flags && this.flags.checkFirstTimeEvents) {
+        this.flags.checkFirstTimeEvents(event_name, properties);
+    }
 
     return ret;
 });
