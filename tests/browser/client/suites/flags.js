@@ -6,6 +6,8 @@ import { TARGETING_GLOBAL_NAME } from "../../../../src/globals";
 
 export function flagsTests(mixpanel) {
   describe(`feature flags`, function() {
+    // Module tests have targeting bundled in already, so don't need to reset it
+    const IS_TARGETING_BUNDLED = Boolean(window[TARGETING_GLOBAL_NAME]);
     let token;
 
     beforeEach(async () => {
@@ -15,7 +17,9 @@ export function flagsTests(mixpanel) {
 
     afterEach(async () => {
       await clearAllLibInstances(mixpanel);
-      await resetTargeting();
+      if (!IS_TARGETING_BUNDLED) {
+        resetTargeting();
+      }
     });
 
     // SECTION 1: Targeting Loader (3 tests)

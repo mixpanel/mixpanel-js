@@ -197,17 +197,9 @@ export function resetExternalLibrary(globalName, scriptSrcMatch) {
 
 /**
  * Reset targeting loader state (for testing)
- * Waits for pending promise to resolve before cleanup
+ * Clears targeting global and removes targeting script tags
  */
-export async function resetTargeting() {
-  // If targeting is a pending promise, wait for it to settle first
-  if (window[TARGETING_GLOBAL_NAME] && typeof window[TARGETING_GLOBAL_NAME].then === 'function') {
-    try {
-      await window[TARGETING_GLOBAL_NAME];
-    } catch (e) {
-      // Ignore errors, we're cleaning up anyway
-    }
-  }
+export function resetTargeting() {
   resetExternalLibrary(TARGETING_GLOBAL_NAME, `mixpanel-targeting`);
 }
 
