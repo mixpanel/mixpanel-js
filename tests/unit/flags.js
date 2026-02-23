@@ -259,7 +259,7 @@ describe(`FeatureFlagManager`, function () {
               first_time_event_hash: `xyz789`,
               event_name: `Purchase Complete`,
               property_filters: {
-                ">": [{ var: `properties.amount` }, 100],
+                ">": [{ var: `amount` }, 100],
               },
               pending_variant: {
                 variant_key: `premium`,
@@ -333,8 +333,7 @@ describe(`FeatureFlagManager`, function () {
               try {
                 var lowercasedProperties = lowercaseKeysAndValues(properties || {});
                 var lowercasedFilters = lowercaseOnlyLeafNodes(criteria.property_filters);
-                var data = { properties: lowercasedProperties };
-                var filtersMatch = jsonLogic.apply(lowercasedFilters, data);
+                var filtersMatch = jsonLogic.apply(lowercasedFilters, lowercasedProperties);
                 return { matches: filtersMatch };
               } catch (error) {
                 return { matches: false, error: error.toString() };
@@ -585,8 +584,7 @@ describe(`FeatureFlagManager`, function () {
               try {
                 var lowercasedProperties = lowercaseKeysAndValues(properties || {});
                 var lowercasedFilters = lowercaseOnlyLeafNodes(criteria.property_filters);
-                var data = { properties: lowercasedProperties };
-                var filtersMatch = jsonLogic.apply(lowercasedFilters, data);
+                var filtersMatch = jsonLogic.apply(lowercasedFilters, lowercasedProperties);
                 return { matches: filtersMatch };
               } catch (error) {
                 return { matches: false, error: error.toString() };
@@ -928,7 +926,7 @@ describe(`FeatureFlagManager`, function () {
               first_time_event_hash: `xyz789`,
               event_name: `Purchase Complete`,
               property_filters: {
-                ">": [{ var: `properties.amount` }, 100],
+                ">": [{ var: `amount` }, 100],
               },
               pending_variant: {
                 variant_key: `premium`,

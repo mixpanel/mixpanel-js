@@ -130,7 +130,7 @@ export function flagsTests(mixpanel) {
                 project_id: 456,
                 first_time_event_hash: `abc123`,
                 event_name: `purchase`,
-                property_filters: { '>': [{'var': 'properties.price'}, 100] },
+                property_filters: { '>': [{'var': 'price'}, 100] },
                 pending_variant: {
                   variant_key: `treatment`,
                   variant_value: true
@@ -188,7 +188,7 @@ export function flagsTests(mixpanel) {
                 project_id: 456,
                 first_time_event_hash: `abc123`,
                 event_name: `purchase`,
-                property_filters: { '>': [{'var': 'properties.price'}, 100] },
+                property_filters: { '>': [{'var': 'price'}, 100] },
                 pending_variant: {
                   variant_key: `treatment`,
                   variant_value: true
@@ -244,7 +244,7 @@ export function flagsTests(mixpanel) {
                 project_id: 456,
                 first_time_event_hash: `xyz789`,
                 event_name: `page_view`,
-                property_filters: { '==': [{'var': 'properties.country'}, 'US'] },
+                property_filters: { '==': [{'var': 'country'}, 'US'] },
                 pending_variant: {
                   variant_key: `treatment`,
                   variant_value: `us-version`
@@ -299,8 +299,8 @@ export function flagsTests(mixpanel) {
                 // AND condition: price > 100 AND country == 'US'
                 property_filters: {
                   'and': [
-                    { '>': [{'var': 'properties.price'}, 100] },
-                    { '==': [{'var': 'properties.country'}, 'US'] }
+                    { '>': [{'var': 'price'}, 100] },
+                    { '==': [{'var': 'country'}, 'US'] }
                   ]
                 },
                 pending_variant: {
@@ -353,7 +353,7 @@ export function flagsTests(mixpanel) {
                   project_id: 456,
                   first_time_event_hash: `hash_a`,
                   event_name: `purchase`,
-                  property_filters: { '>': [{'var': 'properties.price'}, 100] },
+                  property_filters: { '>': [{'var': 'price'}, 100] },
                   pending_variant: { variant_key: `treatment`, variant_value: true }
                 },
                 {
@@ -477,7 +477,7 @@ export function flagsTests(mixpanel) {
                 project_id: 456,
                 first_time_event_hash: `auto123`,
                 event_name: `test_event`,
-                property_filters: { '>': [{'var': 'properties.value'}, 50] },
+                property_filters: { '>': [{'var': 'value'}, 50] },
                 pending_variant: {
                   variant_key: `treatment`,
                   variant_value: true
