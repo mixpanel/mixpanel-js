@@ -110,6 +110,11 @@ export function recorderTests (mixpanel) {
         };
       } else {
         this.waitForRecorderLoad = async function () {
+          // Clean up orphaned globals from previous tests
+          if (!loadedRecorderProject && window[RECORDER_GLOBAL_NAME]) {
+            delete window[RECORDER_GLOBAL_NAME];
+          }
+
           await untilDone(() => Boolean(getRecorderScript()));
           this.assertRecorderScript(true);
           await new Promise(resolve => {
