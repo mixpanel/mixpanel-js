@@ -77,9 +77,7 @@ var eventMatchesCriteria = function(eventName, properties, criteria) {
             // Lowercase only leaf nodes in JsonLogic filters (keep operators intact)
             var lowercasedFilters = lowercaseOnlyLeafNodes(propertyFilters);
 
-            // Prepare data for JsonLogic evaluation
-            var data = {'properties': lowercasedProperties};
-            filtersMatch = jsonLogic.apply(lowercasedFilters, data);
+            filtersMatch = jsonLogic.apply(lowercasedFilters, lowercasedProperties);
         } catch (error) {
             return {
                 matches: false,
