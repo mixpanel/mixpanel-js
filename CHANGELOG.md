@@ -1,3 +1,8 @@
+**2.75.0** (24 Feb 2026)
+- Adds support for Feature Flags targeting based on events tracked during the current session (Runtime Targeting)
+- Fixes memory leaks in Session Recording on sites which create/destroy iframes
+- Fixes usage of arrow functions in `hooks` config
+
 **2.74.0** (27 Jan 2026)
 - New session recording masking configuration options, including the ability to unmask inputs and allowlist-based selector masking.
 - Adds initial support for the remote settings API, allowing remote configuration of SDK config options.
