@@ -18978,7 +18978,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.75.0-rc2'
+        LIB_VERSION: '2.75.0-rc3'
     };
 
     /* eslint camelcase: "off", eqeqeq: "off" */
@@ -24444,9 +24444,7 @@
                 // Lowercase only leaf nodes in JsonLogic filters (keep operators intact)
                 var lowercasedFilters = lowercaseOnlyLeafNodes(propertyFilters);
 
-                // Prepare data for JsonLogic evaluation
-                var data = {'properties': lowercasedProperties};
-                filtersMatch = jsonLogic.apply(lowercasedFilters, data);
+                filtersMatch = jsonLogic.apply(lowercasedFilters, lowercasedProperties);
             } catch (error) {
                 return {
                     matches: false,

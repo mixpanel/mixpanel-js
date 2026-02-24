@@ -34,7 +34,7 @@
     var TARGETING_GLOBAL_NAME = '__mp_targeting';
 
     var Config = {
-        LIB_VERSION: '2.75.0-rc2'
+        LIB_VERSION: '2.75.0-rc3'
     };
 
     var setImmediate = win['setImmediate'];
@@ -2553,9 +2553,7 @@
                 // Lowercase only leaf nodes in JsonLogic filters (keep operators intact)
                 var lowercasedFilters = lowercaseOnlyLeafNodes(propertyFilters);
 
-                // Prepare data for JsonLogic evaluation
-                var data = {'properties': lowercasedProperties};
-                filtersMatch = jsonLogic.apply(lowercasedFilters, data);
+                filtersMatch = jsonLogic.apply(lowercasedFilters, lowercasedProperties);
             } catch (error) {
                 return {
                     matches: false,
