@@ -30,9 +30,9 @@ To load the core SDK with no option of session recording:
 import mixpanel from 'mixpanel-browser/src/loaders/loader-module-core';
 ```
 
-To load the core SDK and optionally load session recording bundle asynchronously (via script tag):
+To load the core SDK and optionally load session recording and targeting bundles asynchronously (via script tag):
 ```javascript
-import mixpanel from 'mixpanel-browser/src/loaders/loader-module-with-async-recorder';
+import mixpanel from 'mixpanel-browser/src/loaders/loader-module-with-async-modules';
 ```
 
 ## Use as a browser JavaScript module

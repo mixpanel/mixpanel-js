@@ -209,7 +209,7 @@ export function testMixpanel(mixpanel) {
   console.log(`Mocha setup done`);
 
   before(async () => {
-    await idbReady(); // if this works we need to put it in the sdk 
+    await idbReady(); // if this works we need to put it in the sdk
   });
 
   afterEach(() => {

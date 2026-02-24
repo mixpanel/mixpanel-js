@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.74.0'
+    LIB_VERSION: '2.75.0'
 };
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
@@ -593,15 +593,8 @@ _.isArray = nativeIsArray || function(obj) {
     return toString.call(obj) === '[object Array]';
 };
 
-// from a comment on http://dbj.org/dbj/?p=286
-// fails on only one very rare and deliberate custom object:
-// var bomb = { toString : undefined, valueOf: function(o) { return "function BOMBA!"; }};
 _.isFunction = function(f) {
-    try {
-        return /^\s*\bfunction\b/.test(f);
-    } catch (x) {
-        return false;
-    }
+    return typeof f === 'function';
 };
 
 _.isArguments = function(obj) {
@@ -2158,6 +2151,16 @@ var isRecordingExpired = function(serializedRecording) {
     var now = Date.now();
     return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
 };
+
+/**
+ * Shared global window property names used across modules
+ */
+
+// Targeting library global (used by flags and targeting modules)
+var TARGETING_GLOBAL_NAME = '__mp_targeting';
+
+// Recorder library global (used by recorder and mixpanel-core)
+var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
@@ -3907,13 +3910,61 @@ Autocapture.prototype.stopDeadClickTracking = function() {
 // TODO integrate error_reporter from mixpanel instance
 safewrapClass(Autocapture);
 
-var logger$3 = console_with_prefix('flags');
+/**
+ * Get the promise-based targeting loader
+ * @param {Function} loadExtraBundle - Function to load external bundle (callback-based)
+ * @param {string} targetingSrc - URL to targeting bundle
+ * @returns {Promise} Promise that resolves with targeting library
+ */
+var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
+    // Return existing promise if already initialized or loading
+    if (win[TARGETING_GLOBAL_NAME] && typeof win[TARGETING_GLOBAL_NAME].then === 'function') {
+        return win[TARGETING_GLOBAL_NAME];
+    }
 
+    // Create loading promise and set it as the global immediately
+    // This makes minified build behavior consistent with dev/CJS builds
+    win[TARGETING_GLOBAL_NAME] = new Promise(function (resolve) {
+        loadExtraBundle(targetingSrc, resolve);
+    }).then(function () {
+        var p = win[TARGETING_GLOBAL_NAME];
+        if (p && typeof p.then === 'function') {
+            return p;
+        }
+        throw new Error('targeting failed to load');
+    }).catch(function (err) {
+        delete win[TARGETING_GLOBAL_NAME];
+        throw err;
+    });
+
+    return win[TARGETING_GLOBAL_NAME];
+};
+
+var logger$3 = console_with_prefix('flags');
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';
 var CONFIG_DEFAULTS = {};
 CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
+
+/**
+ * Generate a unique key for a pending first-time event
+ * @param {string} flagKey - The flag key
+ * @param {string} firstTimeEventHash - The first_time_event_hash from the pending event definition
+ * @returns {string} Composite key in format "flagKey:firstTimeEventHash"
+ */
+var getPendingEventKey = function(flagKey, firstTimeEventHash) {
+    return flagKey + ':' + firstTimeEventHash;
+};
+
+/**
+ * Extract the flag key from a pending event key
+ * @param {string} eventKey - The composite event key in format "flagKey:firstTimeEventHash"
+ * @returns {string} The flag key portion
+ */
+var getFlagKeyFromPendingEventKey = function(eventKey) {
+    return eventKey.split(':')[0];
+};
 
 /**
  * FeatureFlagManager: support for Mixpanel's feature flagging product
@@ -3926,6 +3977,8 @@ var FeatureFlagManager = function(initOptions) {
     this.setMpConfig = initOptions.setConfigFunc;
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
+    this.loadExtraBundle = initOptions.loadExtraBundle || function() {};
+    this.targetingSrc = initOptions.targetingSrc || '';
 };
 
 FeatureFlagManager.prototype.init = function() {
@@ -3938,6 +3991,8 @@ FeatureFlagManager.prototype.init = function() {
     this.fetchFlags();
 
     this.trackedFeatures = new Set();
+    this.pendingFirstTimeEvents = {};
+    this.activatedFirstTimeEvents = {};
 };
 
 FeatureFlagManager.prototype.getFullConfig = function() {
@@ -4018,17 +4073,78 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                 throw new Error('No flags in API response');
             }
             var flags = new Map();
+            var pendingFirstTimeEvents = {};
+
+            // Process flags from response
             _.each(responseFlags, function(data, key) {
-                flags.set(key, {
-                    'key': data['variant_key'],
-                    'value': data['variant_value'],
-                    'experiment_id': data['experiment_id'],
-                    'is_experiment_active': data['is_experiment_active'],
-                    'is_qa_tester': data['is_qa_tester']
+                // Check if this flag has any activated first-time events this session
+                var hasActivatedEvent = false;
+                var prefix = key + ':';
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    if (eventKey.startsWith(prefix)) {
+                        hasActivatedEvent = true;
+                    }
                 });
-            });
+
+                if (hasActivatedEvent) {
+                    // Preserve the activated variant, don't overwrite with server's current variant
+                    var currentFlag = this.flags && this.flags.get(key);
+                    if (currentFlag) {
+                        flags.set(key, currentFlag);
+                    }
+                } else {
+                    // Use server's current variant
+                    flags.set(key, {
+                        'key': data['variant_key'],
+                        'value': data['variant_value'],
+                        'experiment_id': data['experiment_id'],
+                        'is_experiment_active': data['is_experiment_active'],
+                        'is_qa_tester': data['is_qa_tester']
+                    });
+                }
+            }, this);
+
+            // Process top-level pending_first_time_events array
+            var topLevelDefinitions = responseBody['pending_first_time_events'];
+            if (topLevelDefinitions && topLevelDefinitions.length > 0) {
+                _.each(topLevelDefinitions, function(def) {
+                    var flagKey = def['flag_key'];
+                    var eventKey = getPendingEventKey(flagKey, def['first_time_event_hash']);
+
+                    // Skip if this specific event has already been activated this session
+                    if (this.activatedFirstTimeEvents[eventKey]) {
+                        return;
+                    }
+
+                    // Store pending event definition using composite key
+                    pendingFirstTimeEvents[eventKey] = {
+                        'flag_key': flagKey,
+                        'flag_id': def['flag_id'],
+                        'project_id': def['project_id'],
+                        'first_time_event_hash': def['first_time_event_hash'],
+                        'event_name': def['event_name'],
+                        'property_filters': def['property_filters'],
+                        'pending_variant': def['pending_variant']
+                    };
+                }, this);
+            }
+
+            // Preserve any activated orphaned flags (flags that were activated but are no longer in response)
+            if (this.activatedFirstTimeEvents) {
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    var flagKey = getFlagKeyFromPendingEventKey(eventKey);
+                    if (activated && !flags.has(flagKey) && this.flags && this.flags.has(flagKey)) {
+                        // Keep the activated flag even though it's not in the new response
+                        flags.set(flagKey, this.flags.get(flagKey));
+                    }
+                }, this);
+            }
+
             this.flags = flags;
+            this.pendingFirstTimeEvents = pendingFirstTimeEvents;
             this._traceparent = traceparent;
+
+            this._loadTargetingIfNeeded();
         }.bind(this)).catch(function(error) {
             this.markFetchComplete();
             logger$3.error(error);
@@ -4050,6 +4166,177 @@ FeatureFlagManager.prototype.markFetchComplete = function() {
     this._fetchCompleteTime = Date.now();
     this._fetchLatency = this._fetchCompleteTime - this._fetchStartTime;
     this._fetchInProgressStartTime = null;
+};
+
+/**
+ * Proactively load targeting bundle if any pending events have property filters
+ */
+FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
+    var hasPropertyFilters = false;
+    _.each(this.pendingFirstTimeEvents, function(evt) {
+        if (evt['property_filters'] && !_.isEmptyObject(evt['property_filters'])) {
+            hasPropertyFilters = true;
+        }
+    });
+
+    if (hasPropertyFilters) {
+        this.getTargeting().then(function() {
+            logger$3.log('targeting loaded for property filter evaluation');
+        });
+    }
+};
+
+/**
+ * Get the targeting library (initializes if not already loaded)
+ * This method is primarily for testing - production code should rely on automatic loading
+ * @returns {Promise} Promise that resolves with targeting library
+ */
+FeatureFlagManager.prototype.getTargeting = function() {
+    return getTargetingPromise(
+        this.loadExtraBundle.bind(this),
+        this.targetingSrc
+    ).catch(function(error) {
+        logger$3.error('Failed to load targeting: ' + error);
+    }.bind(this));
+};
+
+/**
+ * Check if a tracked event matches any pending first-time events and activate the corresponding flag variant
+ * @param {string} eventName - The name of the event being tracked
+ * @param {Object} properties - Event properties to evaluate against property filters
+ *
+ * When a match is found (event name matches and property filters pass), this method:
+ * - Switches the flag to the pending variant
+ * - Marks the event as activated for this session
+ * - Records the activation via the API (fire-and-forget)
+ */
+FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properties) {
+    if (!this.pendingFirstTimeEvents || _.isEmptyObject(this.pendingFirstTimeEvents)) {
+        return;
+    }
+
+    // Check if targeting promise exists (either bundled or async loaded)
+    if (win[TARGETING_GLOBAL_NAME] && _.isFunction(win[TARGETING_GLOBAL_NAME].then)) {
+        win[TARGETING_GLOBAL_NAME].then(function(library) {
+            this._processFirstTimeEventCheck(eventName, properties, library);
+        }.bind(this)).catch(function() {
+            // If targeting failed to load, process with null
+            // Events without property filters will still match
+            this._processFirstTimeEventCheck(eventName, properties, null);
+        }.bind(this));
+    } else {
+        // No targeting available, process with null
+        // Events without property filters will still match
+        this._processFirstTimeEventCheck(eventName, properties, null);
+    }
+};
+
+/**
+ * Internal method to process first-time event checks with loaded targeting library
+ * @param {string} eventName - The name of the event being tracked
+ * @param {Object} properties - Event properties to evaluate against property filters
+ * @param {Object} targeting - The loaded targeting library
+ */
+FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, properties, targeting) {
+    _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
+        if (this.activatedFirstTimeEvents[eventKey]) {
+            return;
+        }
+
+        var flagKey = pendingEvent['flag_key'];
+
+        // Use targeting module to check if event matches
+        var matchResult;
+
+        // If no targeting library and event has property filters, skip it
+        if (!targeting && pendingEvent['property_filters'] && !_.isEmptyObject(pendingEvent['property_filters'])) {
+            logger$3.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
+            return;
+        }
+
+        // For simple events (no property filters), just check event name
+        if (!targeting) {
+            matchResult = {
+                matches: eventName === pendingEvent['event_name'],
+                error: null
+            };
+        } else {
+            var criteria = {
+                'event_name': pendingEvent['event_name'],
+                'property_filters': pendingEvent['property_filters']
+            };
+            matchResult = targeting['eventMatchesCriteria'](
+                eventName,
+                properties,
+                criteria
+            );
+        }
+
+        if (matchResult.error) {
+            logger$3.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
+            return;
+        }
+
+        if (!matchResult.matches) {
+            return;
+        }
+
+        logger$3.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
+
+        var newVariant = {
+            'key': pendingEvent['pending_variant']['variant_key'],
+            'value': pendingEvent['pending_variant']['variant_value'],
+            'experiment_id': pendingEvent['pending_variant']['experiment_id'],
+            'is_experiment_active': pendingEvent['pending_variant']['is_experiment_active']
+        };
+
+        this.flags.set(flagKey, newVariant);
+        this.activatedFirstTimeEvents[eventKey] = true;
+
+        this.recordFirstTimeEvent(
+            pendingEvent['flag_id'],
+            pendingEvent['project_id'],
+            pendingEvent['first_time_event_hash']
+        );
+    }, this);
+};
+
+FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
+    // Construct URL: {api_host}/flags/{flagId}/first-time-events
+    return this.getFullApiRoute() + '/' + flagId + '/first-time-events';
+};
+
+FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, firstTimeEventHash) {
+    var distinctId = this.getMpProperty('distinct_id');
+    var traceparent = generateTraceparent();
+
+    // Build URL with query string parameters
+    var searchParams = new URLSearchParams();
+    searchParams.set('mp_lib', 'web');
+    searchParams.set('$lib_version', Config.LIB_VERSION);
+    var url = this.getFirstTimeEventApiRoute(flagId) + '?' + searchParams.toString();
+
+    var payload = {
+        'distinct_id': distinctId,
+        'project_id': projectId,
+        'first_time_event_hash': firstTimeEventHash
+    };
+
+    logger$3.log('Recording first-time event for flag: ' + flagId);
+
+    // Fire-and-forget POST request
+    this.fetch.call(win, url, {
+        'method': 'POST',
+        'headers': {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
+            'traceparent': traceparent
+        },
+        'body': JSON.stringify(payload)
+    }).catch(function(error) {
+        // Silent failure - cohort sync will catch up
+        logger$3.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
+    });
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
@@ -4169,6 +4456,9 @@ FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.up
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
+
+// Exports intended only for testing
+FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getTargeting;
 
 /* eslint camelcase: "off" */
 
@@ -6958,6 +7248,7 @@ var DEFAULT_CONFIG = {
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+    'targeting_src':                     'https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js',
     'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
 };
 
@@ -7187,7 +7478,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
         getConfigFunc: _.bind(this.get_config, this),
         setConfigFunc: _.bind(this.set_config, this),
         getPropertyFunc: _.bind(this.get_property, this),
-        trackingFunc: _.bind(this.track, this)
+        trackingFunc: _.bind(this.track, this),
+        loadExtraBundle: load_extra_bundle,
+        targetingSrc: this.get_config('targeting_src')
     });
     this.flags.init();
     this['flags'] = this.flags;
@@ -7283,11 +7576,11 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
 
     var loadRecorder = _.bind(function(startNewIfInactive) {
         var handleLoadedRecorder = _.bind(function() {
-            this._recorder = this._recorder || new win['__mp_recorder'](this);
+            this._recorder = this._recorder || new win[RECORDER_GLOBAL_NAME](this);
             this._recorder['resumeRecording'](startNewIfInactive);
         }, this);
 
-        if (_.isUndefined(win['__mp_recorder'])) {
+        if (_.isUndefined(win[RECORDER_GLOBAL_NAME])) {
             load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
         } else {
             handleLoadedRecorder();
@@ -8028,6 +8321,11 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         should_send_immediately: should_send_immediately,
         send_request_options: options
     }, callback);
+
+    // Check for first-time event matches
+    if (this.flags && this.flags.checkFirstTimeEvents) {
+        this.flags.checkFirstTimeEvents(event_name, properties);
+    }
 
     return ret;
 });

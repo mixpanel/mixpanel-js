@@ -1,3 +1,5 @@
+import { TARGETING_GLOBAL_NAME, RECORDER_GLOBAL_NAME } from '../../../src/globals';
+
 const realSetInterval = window.setInterval;
 const realClearInterval = window.clearInterval;
 export const realSetTimeout = window.setTimeout;
@@ -164,6 +166,51 @@ export function clearMixpanelCookies() {
   }
 }
 
+/**
+ * Get external library script element for testing
+ * Returns the first script tag that matches the given source string
+ * @param {string} scriptSrcMatch - String to match in script src attribute
+ * @returns {HTMLScriptElement|null} The matching script element or null if not found
+ */
+export function getExternalLibraryScript(scriptSrcMatch) {
+  return document.querySelector(`script[src*="${scriptSrcMatch}"]`);
+}
+
+/**
+ * Reset external library state for testing
+ * Clears global and removes dynamically loaded script tags
+ * @param {string} globalName - Window global property name (e.g., '__mp_recorder', '__mp_targeting')
+ * @param {string} scriptSrcMatch - String to match in script src attribute
+ */
+export function resetExternalLibrary(globalName, scriptSrcMatch) {
+  // Clear global if it exists
+  if (window[globalName]) {
+    delete window[globalName];
+  }
+
+  // Remove all matching script tags
+  const scripts = document.querySelectorAll(`script[src*="${scriptSrcMatch}"]`);
+  for (let i = 0; i < scripts.length; i++) {
+    scripts[i].remove();
+  }
+}
+
+/**
+ * Reset targeting loader state (for testing)
+ * Clears targeting global and removes targeting script tags
+ */
+export function resetTargeting() {
+  resetExternalLibrary(TARGETING_GLOBAL_NAME, `mixpanel-targeting`);
+}
+
+/**
+ * Reset recorder state (for testing)
+ * Clears recorder global and removes recorder script tags
+ */
+export function resetRecorder() {
+  resetExternalLibrary(RECORDER_GLOBAL_NAME, `mixpanel-recorder`);
+}
+
 export async function clearAllStorage() {
   if (window.localStorage) {
     window.localStorage.clear();
@@ -178,4 +225,36 @@ export async function clearAllStorage() {
   }
 
   clearMixpanelCookies();
+}
+
+export function simulateMouseClick(element) {
+  if (element.click) {
+    element.click();
+  } else {
+    var evt = element.ownerDocument.createEvent(`MouseEvents`);
+    evt.initMouseEvent(`click`, true, true, element.ownerDocument.defaultView, 1, 0, 0, 0, 0, false, false, false, false, 0, null);
+    element.dispatchEvent(evt);
+  }
+}
+
+export function makeFakeFetchResponse(status, body) {
+  body = body || {};
+  var response = new Response(JSON.stringify(body), {
+    status: status,
+    headers: {
+      'Content-type': `application/json`
+    }
+  });
+
+  return new Promise(function(resolve) {
+    resolve(response);
+  });
+}
+
+export function makeDelayedFetchResponse(status, body, delay) {
+  return new Promise(function(resolve) {
+    setTimeout(function() {
+      resolve(makeFakeFetchResponse(status, body));
+    }, delay);
+  });
 }

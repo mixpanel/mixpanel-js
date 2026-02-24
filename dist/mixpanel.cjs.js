@@ -25,6 +25,16 @@ if (typeof(window) === 'undefined') {
     win = window;
 }
 
+/**
+ * Shared global window property names used across modules
+ */
+
+// Targeting library global (used by flags and targeting modules)
+var TARGETING_GLOBAL_NAME = '__mp_targeting';
+
+// Recorder library global (used by recorder and mixpanel-core)
+var RECORDER_GLOBAL_NAME = '__mp_recorder';
+
 function _array_like_to_array(arr, len) {
     if (len == null || len > arr.length) len = arr.length;
     for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
@@ -639,14 +649,16 @@ var Mirror = /*#__PURE__*/ function() {
         return this.nodeMetaMap.get(n2) || null;
     };
     // removes the node from idNodeMap
-    // doesn't remove the node from nodeMetaMap
-    _proto.removeNodeFromMap = function removeNodeFromMap(n2) {
+    // if permanent is true, also removes from nodeMetaMap
+    _proto.removeNodeFromMap = function removeNodeFromMap(n2, permanent) {
         var _this = this;
+        if (permanent === void 0) permanent = false;
         var id = this.getId(n2);
         this.idNodeMap.delete(id);
+        if (permanent) this.nodeMetaMap.delete(n2);
         if (n2.childNodes) {
             n2.childNodes.forEach(function(childNode) {
-                return _this.removeNodeFromMap(childNode);
+                return _this.removeNodeFromMap(childNode, permanent);
             });
         }
     };
@@ -10388,6 +10400,15 @@ var StyleSheetMirror = /*#__PURE__*/ function() {
     _proto.generateId = function generateId() {
         return this.id++;
     };
+    _proto.remove = function remove(stylesheet) {
+        var id = this.styleIDMap.get(stylesheet);
+        if (id !== void 0) {
+            this.styleIDMap.delete(stylesheet);
+            this.idStyleMap.delete(id);
+            return true;
+        }
+        return false;
+    };
     return StyleSheetMirror;
 }();
 function getShadowHost(n2) {
@@ -10710,7 +10731,15 @@ var MutationBuffer = /*#__PURE__*/ function() {
                 }
             };
             while(_this.mapRemoves.length){
-                _this.mirror.removeNodeFromMap(_this.mapRemoves.shift());
+                var removedNode = _this.mapRemoves.shift();
+                if (removedNode.nodeName === "IFRAME") {
+                    try {
+                        _this.iframeManager.removeIframe(removedNode);
+                    } catch (e2) {}
+                } else {
+                    _this.stylesheetManager.cleanupStylesheetsForRemovedNode(removedNode);
+                }
+                _this.mirror.removeNodeFromMap(removedNode);
             }
             for(var _iterator = _create_for_of_iterator_helper_loose(_this.movedSet), _step; !(_step = _iterator()).done;){
                 var n2 = _step.value;
@@ -11084,6 +11113,9 @@ var MutationBuffer = /*#__PURE__*/ function() {
         this.shadowDomManager.reset();
         this.canvasManager.reset();
     };
+    _proto.getDoc = function getDoc() {
+        return this.doc;
+    };
     return MutationBuffer;
 }();
 function deepDelete(addsSet, n2) {
@@ -11183,6 +11215,14 @@ function initMutationObserver(options, rootEl) {
         subtree: true
     });
     return observer;
+}
+function removeMutationBufferForDoc(doc) {
+    for(var i2 = mutationBuffers.length - 1; i2 >= 0; i2--){
+        var buffer = mutationBuffers[i2];
+        if (buffer.getDoc() === doc) {
+            mutationBuffers.splice(i2, 1);
+        }
+    }
 }
 function initMoveObserver(param) {
     var mousemoveCb = param.mousemoveCb, sampling = param.sampling, doc = param.doc, mirror2 = param.mirror;
@@ -12199,6 +12239,8 @@ var IframeManager = /*#__PURE__*/ function() {
         __publicField$1(this, "crossOriginIframeMirror", new CrossOriginIframeMirror(genId));
         __publicField$1(this, "crossOriginIframeStyleMirror");
         __publicField$1(this, "crossOriginIframeRootIdMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "iframeContentDocumentMap", /* @__PURE__ */ new WeakMap());
+        __publicField$1(this, "iframeObserverCleanupMap", /* @__PURE__ */ new WeakMap());
         __publicField$1(this, "mirror");
         __publicField$1(this, "mutationCb");
         __publicField$1(this, "wrappedEmit");
@@ -12220,6 +12262,31 @@ var IframeManager = /*#__PURE__*/ function() {
         this.iframes.set(iframeEl, true);
         if (iframeEl.contentWindow) this.crossOriginIframeMap.set(iframeEl.contentWindow, iframeEl);
     };
+    _proto.getIframeContentDocument = function getIframeContentDocument(iframeEl) {
+        return this.iframeContentDocumentMap.get(iframeEl);
+    };
+    _proto.setObserverCleanup = function setObserverCleanup(iframeEl, cleanup) {
+        this.iframeObserverCleanupMap.set(iframeEl, cleanup);
+    };
+    _proto.getObserverCleanup = function getObserverCleanup(iframeEl) {
+        return this.iframeObserverCleanupMap.get(iframeEl);
+    };
+    _proto.removeIframe = function removeIframe(iframeEl) {
+        var storedDoc = this.iframeContentDocumentMap.get(iframeEl);
+        if (storedDoc) {
+            this.stylesheetManager.cleanupStylesheetsForRemovedNode(storedDoc);
+            this.mirror.removeNodeFromMap(storedDoc, true);
+        }
+        this.iframes.delete(iframeEl);
+        this.iframeContentDocumentMap.delete(iframeEl);
+        var observerCleanup = this.iframeObserverCleanupMap.get(iframeEl);
+        if (observerCleanup) {
+            try {
+                observerCleanup();
+            } catch (e2) {}
+            this.iframeObserverCleanupMap.delete(iframeEl);
+        }
+    };
     _proto.addLoadListener = function addLoadListener(cb) {
         this.loadListener = cb;
     };
@@ -12238,6 +12305,9 @@ var IframeManager = /*#__PURE__*/ function() {
             attributes: [],
             isAttachIframe: true
         });
+        if (iframeEl.contentDocument) {
+            this.iframeContentDocumentMap.set(iframeEl, iframeEl.contentDocument);
+        }
         if (this.recordCrossOriginIframes) (_a2 = iframeEl.contentWindow) == null ? void 0 : _a2.addEventListener("message", this.handleMessage.bind(this));
         (_b = this.loadListener) == null ? void 0 : _b.call(this, iframeEl);
         if (iframeEl.contentDocument && iframeEl.contentDocument.adoptedStyleSheets && iframeEl.contentDocument.adoptedStyleSheets.length > 0) this.stylesheetManager.adoptStyleSheets(iframeEl.contentDocument.adoptedStyleSheets, this.mirror.getId(iframeEl.contentDocument));
@@ -13150,6 +13220,41 @@ var StylesheetManager = /*#__PURE__*/ function() {
         this.styleMirror.reset();
         this.trackedLinkElements = /* @__PURE__ */ new WeakSet();
     };
+    /**
+   * Cleans up stylesheets associated with a removed node.
+   *
+   * @param removedNode - The node that was removed from the DOM.
+   */ _proto.cleanupStylesheetsForRemovedNode = function cleanupStylesheetsForRemovedNode(removedNode) {
+        var _this = this;
+        try {
+            if (removedNode.nodeType === Node.DOCUMENT_NODE) {
+                var doc = removedNode;
+                if (doc.adoptedStyleSheets) {
+                    for(var _iterator = _create_for_of_iterator_helper_loose(doc.adoptedStyleSheets), _step; !(_step = _iterator()).done;){
+                        var sheet = _step.value;
+                        this.styleMirror.remove(sheet);
+                    }
+                }
+            }
+            if (removedNode.nodeName === "STYLE") {
+                var styleEl = removedNode;
+                if (styleEl.sheet) {
+                    this.styleMirror.remove(styleEl.sheet);
+                }
+            }
+            if (removedNode.nodeName === "LINK" && removedNode.rel === "stylesheet") {
+                var linkEl = removedNode;
+                if (linkEl.sheet) {
+                    this.styleMirror.remove(linkEl.sheet);
+                }
+            }
+            if (removedNode.childNodes) {
+                removedNode.childNodes.forEach(function(child) {
+                    _this.cleanupStylesheetsForRemovedNode(child);
+                });
+            }
+        } catch (e2) {}
+    };
     // TODO: take snapshot on stylesheet reload by applying event listener
     _proto.trackStylesheetInLinkElement = function trackStylesheetInLinkElement(_linkEl) {};
     return StylesheetManager;
@@ -13604,7 +13709,23 @@ function record(options) {
         };
         iframeManager.addLoadListener(function(iframeEl) {
             try {
-                handlers.push(observe(iframeEl.contentDocument));
+                var iframeDoc = iframeEl.contentDocument;
+                var iframeHandler = observe(iframeDoc);
+                handlers.push(iframeHandler);
+                var existingCleanup = iframeManager.getObserverCleanup(iframeEl);
+                iframeManager.setObserverCleanup(iframeEl, function() {
+                    if (existingCleanup) {
+                        try {
+                            existingCleanup();
+                        } catch (e2) {}
+                    }
+                    try {
+                        iframeHandler();
+                        var idx = handlers.indexOf(iframeHandler);
+                        if (idx !== -1) handlers.splice(idx, 1);
+                        removeMutationBufferForDoc(iframeDoc);
+                    } catch (e2) {}
+                });
             } catch (error) {
                 console.warn(error);
             }
@@ -13861,7 +13982,7 @@ function classMatchesRegex(node2, regex, checkAncestors) {
     }
     return classMatchesRegex(index.parentNode(node2), regex);
 }
-function getDefaultExportFromCjs(x2) {
+function getDefaultExportFromCjs$3(x2) {
     return x2 && x2.__esModule && Object.prototype.hasOwnProperty.call(x2, "default") ? x2["default"] : x2;
 }
 function getAugmentedNamespace(n) {
@@ -17976,7 +18097,7 @@ postcss.Node = Node2;
 LazyResult2.registerPostcss(postcss);
 var postcss_1 = postcss;
 postcss.default = postcss;
-var postcss$1 = /* @__PURE__ */ getDefaultExportFromCjs(postcss_1);
+var postcss$1 = /* @__PURE__ */ getDefaultExportFromCjs$3(postcss_1);
 postcss$1.stringify;
 postcss$1.fromJSON;
 postcss$1.plugin;
@@ -18853,7 +18974,7 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.74.0'
+    LIB_VERSION: '2.75.0'
 };
 
 /* eslint camelcase: "off", eqeqeq: "off" */
@@ -19059,15 +19180,8 @@ _.isArray = nativeIsArray || function(obj) {
     return toString.call(obj) === '[object Array]';
 };
 
-// from a comment on http://dbj.org/dbj/?p=286
-// fails on only one very rare and deliberate custom object:
-// var bomb = { toString : undefined, valueOf: function(o) { return "function BOMBA!"; }};
 _.isFunction = function(f) {
-    try {
-        return /^\s*\bfunction\b/.test(f);
-    } catch (x) {
-        return false;
-    }
+    return typeof f === 'function';
 };
 
 _.isArguments = function(obj) {
@@ -23761,7 +23875,590 @@ Object.defineProperty(MixpanelRecorder.prototype, 'replayId', {
     }
 });
 
-win['__mp_recorder'] = MixpanelRecorder;
+win[RECORDER_GLOBAL_NAME] = MixpanelRecorder;
+
+function getDefaultExportFromCjs (x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+}
+
+var logic$1 = {exports: {}};
+
+/* globals define,module */
+var logic = logic$1.exports;
+
+var hasRequiredLogic;
+
+function requireLogic () {
+	if (hasRequiredLogic) return logic$1.exports;
+	hasRequiredLogic = 1;
+	(function (module, exports) {
+(function(root, factory) {
+		  {
+		    module.exports = factory();
+		  }
+		}(logic, function() {
+		  /* globals console:false */
+
+		  if ( ! Array.isArray) {
+		    Array.isArray = function(arg) {
+		      return Object.prototype.toString.call(arg) === "[object Array]";
+		    };
+		  }
+
+		  /**
+		   * Return an array that contains no duplicates (original not modified)
+		   * @param  {array} array   Original reference array
+		   * @return {array}         New array with no duplicates
+		   */
+		  function arrayUnique(array) {
+		    var a = [];
+		    for (var i=0, l=array.length; i<l; i++) {
+		      if (a.indexOf(array[i]) === -1) {
+		        a.push(array[i]);
+		      }
+		    }
+		    return a;
+		  }
+
+		  var jsonLogic = {};
+		  var operations = {
+		    "==": function(a, b) {
+		      return a == b;
+		    },
+		    "===": function(a, b) {
+		      return a === b;
+		    },
+		    "!=": function(a, b) {
+		      return a != b;
+		    },
+		    "!==": function(a, b) {
+		      return a !== b;
+		    },
+		    ">": function(a, b) {
+		      return a > b;
+		    },
+		    ">=": function(a, b) {
+		      return a >= b;
+		    },
+		    "<": function(a, b, c) {
+		      return (c === undefined) ? a < b : (a < b) && (b < c);
+		    },
+		    "<=": function(a, b, c) {
+		      return (c === undefined) ? a <= b : (a <= b) && (b <= c);
+		    },
+		    "!!": function(a) {
+		      return jsonLogic.truthy(a);
+		    },
+		    "!": function(a) {
+		      return !jsonLogic.truthy(a);
+		    },
+		    "%": function(a, b) {
+		      return a % b;
+		    },
+		    "log": function(a) {
+		      console.log(a); return a;
+		    },
+		    "in": function(a, b) {
+		      if (!b || typeof b.indexOf === "undefined") return false;
+		      return (b.indexOf(a) !== -1);
+		    },
+		    "cat": function() {
+		      return Array.prototype.join.call(arguments, "");
+		    },
+		    "substr": function(source, start, end) {
+		      if (end < 0) {
+		        // JavaScript doesn't support negative end, this emulates PHP behavior
+		        var temp = String(source).substr(start);
+		        return temp.substr(0, temp.length + end);
+		      }
+		      return String(source).substr(start, end);
+		    },
+		    "+": function() {
+		      return Array.prototype.reduce.call(arguments, function(a, b) {
+		        return parseFloat(a, 10) + parseFloat(b, 10);
+		      }, 0);
+		    },
+		    "*": function() {
+		      return Array.prototype.reduce.call(arguments, function(a, b) {
+		        return parseFloat(a, 10) * parseFloat(b, 10);
+		      });
+		    },
+		    "-": function(a, b) {
+		      if (b === undefined) {
+		        return -a;
+		      } else {
+		        return a - b;
+		      }
+		    },
+		    "/": function(a, b) {
+		      return a / b;
+		    },
+		    "min": function() {
+		      return Math.min.apply(this, arguments);
+		    },
+		    "max": function() {
+		      return Math.max.apply(this, arguments);
+		    },
+		    "merge": function() {
+		      return Array.prototype.reduce.call(arguments, function(a, b) {
+		        return a.concat(b);
+		      }, []);
+		    },
+		    "var": function(a, b) {
+		      var not_found = (b === undefined) ? null : b;
+		      var data = this;
+		      if (typeof a === "undefined" || a==="" || a===null) {
+		        return data;
+		      }
+		      var sub_props = String(a).split(".");
+		      for (var i = 0; i < sub_props.length; i++) {
+		        if (data === null || data === undefined) {
+		          return not_found;
+		        }
+		        // Descending into data
+		        data = data[sub_props[i]];
+		        if (data === undefined) {
+		          return not_found;
+		        }
+		      }
+		      return data;
+		    },
+		    "missing": function() {
+		      /*
+		      Missing can receive many keys as many arguments, like {"missing:[1,2]}
+		      Missing can also receive *one* argument that is an array of keys,
+		      which typically happens if it's actually acting on the output of another command
+		      (like 'if' or 'merge')
+		      */
+
+		      var missing = [];
+		      var keys = Array.isArray(arguments[0]) ? arguments[0] : arguments;
+
+		      for (var i = 0; i < keys.length; i++) {
+		        var key = keys[i];
+		        var value = jsonLogic.apply({"var": key}, this);
+		        if (value === null || value === "") {
+		          missing.push(key);
+		        }
+		      }
+
+		      return missing;
+		    },
+		    "missing_some": function(need_count, options) {
+		      // missing_some takes two arguments, how many (minimum) items must be present, and an array of keys (just like 'missing') to check for presence.
+		      var are_missing = jsonLogic.apply({"missing": options}, this);
+
+		      if (options.length - are_missing.length >= need_count) {
+		        return [];
+		      } else {
+		        return are_missing;
+		      }
+		    },
+		  };
+
+		  jsonLogic.is_logic = function(logic) {
+		    return (
+		      typeof logic === "object" && // An object
+		      logic !== null && // but not null
+		      ! Array.isArray(logic) && // and not an array
+		      Object.keys(logic).length === 1 // with exactly one key
+		    );
+		  };
+
+		  /*
+		  This helper will defer to the JsonLogic spec as a tie-breaker when different language interpreters define different behavior for the truthiness of primitives.  E.g., PHP considers empty arrays to be falsy, but Javascript considers them to be truthy. JsonLogic, as an ecosystem, needs one consistent answer.
+
+		  Spec and rationale here: http://jsonlogic.com/truthy
+		  */
+		  jsonLogic.truthy = function(value) {
+		    if (Array.isArray(value) && value.length === 0) {
+		      return false;
+		    }
+		    return !! value;
+		  };
+
+
+		  jsonLogic.get_operator = function(logic) {
+		    return Object.keys(logic)[0];
+		  };
+
+		  jsonLogic.get_values = function(logic) {
+		    return logic[jsonLogic.get_operator(logic)];
+		  };
+
+		  jsonLogic.apply = function(logic, data) {
+		    // Does this array contain logic? Only one way to find out.
+		    if (Array.isArray(logic)) {
+		      return logic.map(function(l) {
+		        return jsonLogic.apply(l, data);
+		      });
+		    }
+		    // You've recursed to a primitive, stop!
+		    if ( ! jsonLogic.is_logic(logic) ) {
+		      return logic;
+		    }
+
+		    var op = jsonLogic.get_operator(logic);
+		    var values = logic[op];
+		    var i;
+		    var current;
+		    var scopedLogic;
+		    var scopedData;
+		    var initial;
+
+		    // easy syntax for unary operators, like {"var" : "x"} instead of strict {"var" : ["x"]}
+		    if ( ! Array.isArray(values)) {
+		      values = [values];
+		    }
+
+		    // 'if', 'and', and 'or' violate the normal rule of depth-first calculating consequents, let each manage recursion as needed.
+		    if (op === "if" || op == "?:") {
+		      /* 'if' should be called with a odd number of parameters, 3 or greater
+		      This works on the pattern:
+		      if( 0 ){ 1 }else{ 2 };
+		      if( 0 ){ 1 }else if( 2 ){ 3 }else{ 4 };
+		      if( 0 ){ 1 }else if( 2 ){ 3 }else if( 4 ){ 5 }else{ 6 };
+
+		      The implementation is:
+		      For pairs of values (0,1 then 2,3 then 4,5 etc)
+		      If the first evaluates truthy, evaluate and return the second
+		      If the first evaluates falsy, jump to the next pair (e.g, 0,1 to 2,3)
+		      given one parameter, evaluate and return it. (it's an Else and all the If/ElseIf were false)
+		      given 0 parameters, return NULL (not great practice, but there was no Else)
+		      */
+		      for (i = 0; i < values.length - 1; i += 2) {
+		        if ( jsonLogic.truthy( jsonLogic.apply(values[i], data) ) ) {
+		          return jsonLogic.apply(values[i+1], data);
+		        }
+		      }
+		      if (values.length === i+1) {
+		        return jsonLogic.apply(values[i], data);
+		      }
+		      return null;
+		    } else if (op === "and") { // Return first falsy, or last
+		      for (i=0; i < values.length; i+=1) {
+		        current = jsonLogic.apply(values[i], data);
+		        if ( ! jsonLogic.truthy(current)) {
+		          return current;
+		        }
+		      }
+		      return current; // Last
+		    } else if (op === "or") {// Return first truthy, or last
+		      for (i=0; i < values.length; i+=1) {
+		        current = jsonLogic.apply(values[i], data);
+		        if ( jsonLogic.truthy(current) ) {
+		          return current;
+		        }
+		      }
+		      return current; // Last
+		    } else if (op === "filter") {
+		      scopedData = jsonLogic.apply(values[0], data);
+		      scopedLogic = values[1];
+
+		      if ( ! Array.isArray(scopedData)) {
+		        return [];
+		      }
+		      // Return only the elements from the array in the first argument,
+		      // that return truthy when passed to the logic in the second argument.
+		      // For parity with JavaScript, reindex the returned array
+		      return scopedData.filter(function(datum) {
+		        return jsonLogic.truthy( jsonLogic.apply(scopedLogic, datum));
+		      });
+		    } else if (op === "map") {
+		      scopedData = jsonLogic.apply(values[0], data);
+		      scopedLogic = values[1];
+
+		      if ( ! Array.isArray(scopedData)) {
+		        return [];
+		      }
+
+		      return scopedData.map(function(datum) {
+		        return jsonLogic.apply(scopedLogic, datum);
+		      });
+		    } else if (op === "reduce") {
+		      scopedData = jsonLogic.apply(values[0], data);
+		      scopedLogic = values[1];
+		      initial = typeof values[2] !== "undefined" ? jsonLogic.apply(values[2], data) : null;
+
+		      if ( ! Array.isArray(scopedData)) {
+		        return initial;
+		      }
+
+		      return scopedData.reduce(
+		        function(accumulator, current) {
+		          return jsonLogic.apply(
+		            scopedLogic,
+		            {current: current, accumulator: accumulator}
+		          );
+		        },
+		        initial
+		      );
+		    } else if (op === "all") {
+		      scopedData = jsonLogic.apply(values[0], data);
+		      scopedLogic = values[1];
+		      // All of an empty set is false. Note, some and none have correct fallback after the for loop
+		      if ( ! Array.isArray(scopedData) || ! scopedData.length) {
+		        return false;
+		      }
+		      for (i=0; i < scopedData.length; i+=1) {
+		        if ( ! jsonLogic.truthy( jsonLogic.apply(scopedLogic, scopedData[i]) )) {
+		          return false; // First falsy, short circuit
+		        }
+		      }
+		      return true; // All were truthy
+		    } else if (op === "none") {
+		      scopedData = jsonLogic.apply(values[0], data);
+		      scopedLogic = values[1];
+
+		      if ( ! Array.isArray(scopedData) || ! scopedData.length) {
+		        return true;
+		      }
+		      for (i=0; i < scopedData.length; i+=1) {
+		        if ( jsonLogic.truthy( jsonLogic.apply(scopedLogic, scopedData[i]) )) {
+		          return false; // First truthy, short circuit
+		        }
+		      }
+		      return true; // None were truthy
+		    } else if (op === "some") {
+		      scopedData = jsonLogic.apply(values[0], data);
+		      scopedLogic = values[1];
+
+		      if ( ! Array.isArray(scopedData) || ! scopedData.length) {
+		        return false;
+		      }
+		      for (i=0; i < scopedData.length; i+=1) {
+		        if ( jsonLogic.truthy( jsonLogic.apply(scopedLogic, scopedData[i]) )) {
+		          return true; // First truthy, short circuit
+		        }
+		      }
+		      return false; // None were truthy
+		    }
+
+		    // Everyone else gets immediate depth-first recursion
+		    values = values.map(function(val) {
+		      return jsonLogic.apply(val, data);
+		    });
+
+
+		    // The operation is called with "data" bound to its "this" and "values" passed as arguments.
+		    // Structured commands like % or > can name formal arguments while flexible commands (like missing or merge) can operate on the pseudo-array arguments
+		    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/arguments
+		    if (operations.hasOwnProperty(op) && typeof operations[op] === "function") {
+		      return operations[op].apply(data, values);
+		    } else if (op.indexOf(".") > 0) { // Contains a dot, and not in the 0th position
+		      var sub_ops = String(op).split(".");
+		      var operation = operations;
+		      for (i = 0; i < sub_ops.length; i++) {
+		        if (!operation.hasOwnProperty(sub_ops[i])) {
+		          throw new Error("Unrecognized operation " + op +
+		            " (failed at " + sub_ops.slice(0, i+1).join(".") + ")");
+		        }
+		        // Descending into operations
+		        operation = operation[sub_ops[i]];
+		      }
+
+		      return operation.apply(data, values);
+		    }
+
+		    throw new Error("Unrecognized operation " + op );
+		  };
+
+		  jsonLogic.uses_data = function(logic) {
+		    var collection = [];
+
+		    if (jsonLogic.is_logic(logic)) {
+		      var op = jsonLogic.get_operator(logic);
+		      var values = logic[op];
+
+		      if ( ! Array.isArray(values)) {
+		        values = [values];
+		      }
+
+		      if (op === "var") {
+		        // This doesn't cover the case where the arg to var is itself a rule.
+		        collection.push(values[0]);
+		      } else {
+		        // Recursion!
+		        values.forEach(function(val) {
+		          collection.push.apply(collection, jsonLogic.uses_data(val) );
+		        });
+		      }
+		    }
+
+		    return arrayUnique(collection);
+		  };
+
+		  jsonLogic.add_operation = function(name, code) {
+		    operations[name] = code;
+		  };
+
+		  jsonLogic.rm_operation = function(name) {
+		    delete operations[name];
+		  };
+
+		  jsonLogic.rule_like = function(rule, pattern) {
+		    // console.log("Is ". JSON.stringify(rule) . " like " . JSON.stringify(pattern) . "?");
+		    if (pattern === rule) {
+		      return true;
+		    } // TODO : Deep object equivalency?
+		    if (pattern === "@") {
+		      return true;
+		    } // Wildcard!
+		    if (pattern === "number") {
+		      return (typeof rule === "number");
+		    }
+		    if (pattern === "string") {
+		      return (typeof rule === "string");
+		    }
+		    if (pattern === "array") {
+		      // !logic test might be superfluous in JavaScript
+		      return Array.isArray(rule) && ! jsonLogic.is_logic(rule);
+		    }
+
+		    if (jsonLogic.is_logic(pattern)) {
+		      if (jsonLogic.is_logic(rule)) {
+		        var pattern_op = jsonLogic.get_operator(pattern);
+		        var rule_op = jsonLogic.get_operator(rule);
+
+		        if (pattern_op === "@" || pattern_op === rule_op) {
+		          // echo "\nOperators match, go deeper\n";
+		          return jsonLogic.rule_like(
+		            jsonLogic.get_values(rule, false),
+		            jsonLogic.get_values(pattern, false)
+		          );
+		        }
+		      }
+		      return false; // pattern is logic, rule isn't, can't be eq
+		    }
+
+		    if (Array.isArray(pattern)) {
+		      if (Array.isArray(rule)) {
+		        if (pattern.length !== rule.length) {
+		          return false;
+		        }
+		        /*
+		          Note, array order MATTERS, because we're using this array test logic to consider arguments, where order can matter. (e.g., + is commutative, but '-' or 'if' or 'var' are NOT)
+		        */
+		        for (var i = 0; i < pattern.length; i += 1) {
+		          // If any fail, we fail
+		          if ( ! jsonLogic.rule_like(rule[i], pattern[i])) {
+		            return false;
+		          }
+		        }
+		        return true; // If they *all* passed, we pass
+		      } else {
+		        return false; // Pattern is array, rule isn't
+		      }
+		    }
+
+		    // Not logic, not array, not a === match for rule.
+		    return false;
+		  };
+
+		  return jsonLogic;
+		})); 
+	} (logic$1));
+	return logic$1.exports;
+}
+
+var logicExports = requireLogic();
+var jsonLogic = /*@__PURE__*/getDefaultExportFromCjs(logicExports);
+
+/**
+ * Shared helper to recursively lowercase strings in nested structures
+ * @param {*} obj - Value to process
+ * @param {boolean} lowercaseKeys - Whether to lowercase object keys
+ * @returns {*} Processed value with lowercased strings
+ */
+var lowercaseJson = function(obj, lowercaseKeys) {
+    if (obj === null || obj === undefined) {
+        return obj;
+    } else if (typeof obj === 'string') {
+        return obj.toLowerCase();
+    } else if (Array.isArray(obj)) {
+        return obj.map(function(item) {
+            return lowercaseJson(item, lowercaseKeys);
+        });
+    } else if (obj === Object(obj)) {
+        var result = {};
+        for (var key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                var newKey = lowercaseKeys && typeof key === 'string' ? key.toLowerCase() : key;
+                result[newKey] = lowercaseJson(obj[key], lowercaseKeys);
+            }
+        }
+        return result;
+    } else {
+        return obj;
+    }
+};
+
+/**
+ * Lowercase all string keys and values in a nested structure
+ * @param {*} val - Value to process
+ * @returns {*} Processed value with lowercased strings
+ */
+var lowercaseKeysAndValues = function(val) {
+    return lowercaseJson(val, true);
+};
+
+/**
+ * Lowercase only leaf node string values in a nested structure (keys unchanged)
+ * @param {*} val - Value to process
+ * @returns {*} Processed value with lowercased leaf strings
+ */
+var lowercaseOnlyLeafNodes = function(val) {
+    return lowercaseJson(val, false);
+};
+
+/**
+ * Check if an event matches the given criteria
+ * @param {string} eventName - The name of the event being checked
+ * @param {Object} properties - Event properties to evaluate against property filters
+ * @param {Object} criteria - Criteria to match against, with:
+ *   - event_name: string - Required event name (case-sensitive match)
+ *   - property_filters: Object - Optional JsonLogic filters for properties
+ * @returns {Object} Result object with:
+ *   - matches: boolean - Whether the event matches the criteria
+ *   - error: string|undefined - Error message if evaluation failed
+ */
+var eventMatchesCriteria = function(eventName, properties, criteria) {
+    // Check exact event name match (case-sensitive)
+    if (eventName !== criteria.event_name) {
+        return { matches: false };
+    }
+
+    // Evaluate property filters using JsonLogic
+    var propertyFilters = criteria.property_filters;
+    var filtersMatch = true; // default to true if no filters
+
+    if (propertyFilters && !_.isEmptyObject(propertyFilters)) {
+        try {
+            // Lowercase all keys and values in event properties for case-insensitive matching
+            var lowercasedProperties = lowercaseKeysAndValues(properties || {});
+
+            // Lowercase only leaf nodes in JsonLogic filters (keep operators intact)
+            var lowercasedFilters = lowercaseOnlyLeafNodes(propertyFilters);
+
+            filtersMatch = jsonLogic.apply(lowercasedFilters, lowercasedProperties);
+        } catch (error) {
+            return {
+                matches: false,
+                error: error.toString()
+            };
+        }
+    }
+
+    return { matches: filtersMatch };
+};
+
+// Create targeting library object
+var targetingLibrary = {};
+targetingLibrary['eventMatchesCriteria'] = eventMatchesCriteria;
+
+// Set global Promise (use bracket notation to prevent minification)
+// This is the ONE AND ONLY global - matches recorder pattern
+win[TARGETING_GLOBAL_NAME] = Promise.resolve(targetingLibrary);
 
 /** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
 /** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
@@ -24732,13 +25429,61 @@ Autocapture.prototype.stopDeadClickTracking = function() {
 // TODO integrate error_reporter from mixpanel instance
 safewrapClass(Autocapture);
 
-var logger = console_with_prefix('flags');
+/**
+ * Get the promise-based targeting loader
+ * @param {Function} loadExtraBundle - Function to load external bundle (callback-based)
+ * @param {string} targetingSrc - URL to targeting bundle
+ * @returns {Promise} Promise that resolves with targeting library
+ */
+var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
+    // Return existing promise if already initialized or loading
+    if (win[TARGETING_GLOBAL_NAME] && typeof win[TARGETING_GLOBAL_NAME].then === 'function') {
+        return win[TARGETING_GLOBAL_NAME];
+    }
 
+    // Create loading promise and set it as the global immediately
+    // This makes minified build behavior consistent with dev/CJS builds
+    win[TARGETING_GLOBAL_NAME] = new Promise(function (resolve) {
+        loadExtraBundle(targetingSrc, resolve);
+    }).then(function () {
+        var p = win[TARGETING_GLOBAL_NAME];
+        if (p && typeof p.then === 'function') {
+            return p;
+        }
+        throw new Error('targeting failed to load');
+    }).catch(function (err) {
+        delete win[TARGETING_GLOBAL_NAME];
+        throw err;
+    });
+
+    return win[TARGETING_GLOBAL_NAME];
+};
+
+var logger = console_with_prefix('flags');
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';
 var CONFIG_DEFAULTS = {};
 CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
+
+/**
+ * Generate a unique key for a pending first-time event
+ * @param {string} flagKey - The flag key
+ * @param {string} firstTimeEventHash - The first_time_event_hash from the pending event definition
+ * @returns {string} Composite key in format "flagKey:firstTimeEventHash"
+ */
+var getPendingEventKey = function(flagKey, firstTimeEventHash) {
+    return flagKey + ':' + firstTimeEventHash;
+};
+
+/**
+ * Extract the flag key from a pending event key
+ * @param {string} eventKey - The composite event key in format "flagKey:firstTimeEventHash"
+ * @returns {string} The flag key portion
+ */
+var getFlagKeyFromPendingEventKey = function(eventKey) {
+    return eventKey.split(':')[0];
+};
 
 /**
  * FeatureFlagManager: support for Mixpanel's feature flagging product
@@ -24751,6 +25496,8 @@ var FeatureFlagManager = function(initOptions) {
     this.setMpConfig = initOptions.setConfigFunc;
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
+    this.loadExtraBundle = initOptions.loadExtraBundle || function() {};
+    this.targetingSrc = initOptions.targetingSrc || '';
 };
 
 FeatureFlagManager.prototype.init = function() {
@@ -24763,6 +25510,8 @@ FeatureFlagManager.prototype.init = function() {
     this.fetchFlags();
 
     this.trackedFeatures = new Set();
+    this.pendingFirstTimeEvents = {};
+    this.activatedFirstTimeEvents = {};
 };
 
 FeatureFlagManager.prototype.getFullConfig = function() {
@@ -24843,17 +25592,78 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                 throw new Error('No flags in API response');
             }
             var flags = new Map();
+            var pendingFirstTimeEvents = {};
+
+            // Process flags from response
             _.each(responseFlags, function(data, key) {
-                flags.set(key, {
-                    'key': data['variant_key'],
-                    'value': data['variant_value'],
-                    'experiment_id': data['experiment_id'],
-                    'is_experiment_active': data['is_experiment_active'],
-                    'is_qa_tester': data['is_qa_tester']
+                // Check if this flag has any activated first-time events this session
+                var hasActivatedEvent = false;
+                var prefix = key + ':';
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    if (eventKey.startsWith(prefix)) {
+                        hasActivatedEvent = true;
+                    }
                 });
-            });
+
+                if (hasActivatedEvent) {
+                    // Preserve the activated variant, don't overwrite with server's current variant
+                    var currentFlag = this.flags && this.flags.get(key);
+                    if (currentFlag) {
+                        flags.set(key, currentFlag);
+                    }
+                } else {
+                    // Use server's current variant
+                    flags.set(key, {
+                        'key': data['variant_key'],
+                        'value': data['variant_value'],
+                        'experiment_id': data['experiment_id'],
+                        'is_experiment_active': data['is_experiment_active'],
+                        'is_qa_tester': data['is_qa_tester']
+                    });
+                }
+            }, this);
+
+            // Process top-level pending_first_time_events array
+            var topLevelDefinitions = responseBody['pending_first_time_events'];
+            if (topLevelDefinitions && topLevelDefinitions.length > 0) {
+                _.each(topLevelDefinitions, function(def) {
+                    var flagKey = def['flag_key'];
+                    var eventKey = getPendingEventKey(flagKey, def['first_time_event_hash']);
+
+                    // Skip if this specific event has already been activated this session
+                    if (this.activatedFirstTimeEvents[eventKey]) {
+                        return;
+                    }
+
+                    // Store pending event definition using composite key
+                    pendingFirstTimeEvents[eventKey] = {
+                        'flag_key': flagKey,
+                        'flag_id': def['flag_id'],
+                        'project_id': def['project_id'],
+                        'first_time_event_hash': def['first_time_event_hash'],
+                        'event_name': def['event_name'],
+                        'property_filters': def['property_filters'],
+                        'pending_variant': def['pending_variant']
+                    };
+                }, this);
+            }
+
+            // Preserve any activated orphaned flags (flags that were activated but are no longer in response)
+            if (this.activatedFirstTimeEvents) {
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    var flagKey = getFlagKeyFromPendingEventKey(eventKey);
+                    if (activated && !flags.has(flagKey) && this.flags && this.flags.has(flagKey)) {
+                        // Keep the activated flag even though it's not in the new response
+                        flags.set(flagKey, this.flags.get(flagKey));
+                    }
+                }, this);
+            }
+
             this.flags = flags;
+            this.pendingFirstTimeEvents = pendingFirstTimeEvents;
             this._traceparent = traceparent;
+
+            this._loadTargetingIfNeeded();
         }.bind(this)).catch(function(error) {
             this.markFetchComplete();
             logger.error(error);
@@ -24875,6 +25685,177 @@ FeatureFlagManager.prototype.markFetchComplete = function() {
     this._fetchCompleteTime = Date.now();
     this._fetchLatency = this._fetchCompleteTime - this._fetchStartTime;
     this._fetchInProgressStartTime = null;
+};
+
+/**
+ * Proactively load targeting bundle if any pending events have property filters
+ */
+FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
+    var hasPropertyFilters = false;
+    _.each(this.pendingFirstTimeEvents, function(evt) {
+        if (evt['property_filters'] && !_.isEmptyObject(evt['property_filters'])) {
+            hasPropertyFilters = true;
+        }
+    });
+
+    if (hasPropertyFilters) {
+        this.getTargeting().then(function() {
+            logger.log('targeting loaded for property filter evaluation');
+        });
+    }
+};
+
+/**
+ * Get the targeting library (initializes if not already loaded)
+ * This method is primarily for testing - production code should rely on automatic loading
+ * @returns {Promise} Promise that resolves with targeting library
+ */
+FeatureFlagManager.prototype.getTargeting = function() {
+    return getTargetingPromise(
+        this.loadExtraBundle.bind(this),
+        this.targetingSrc
+    ).catch(function(error) {
+        logger.error('Failed to load targeting: ' + error);
+    }.bind(this));
+};
+
+/**
+ * Check if a tracked event matches any pending first-time events and activate the corresponding flag variant
+ * @param {string} eventName - The name of the event being tracked
+ * @param {Object} properties - Event properties to evaluate against property filters
+ *
+ * When a match is found (event name matches and property filters pass), this method:
+ * - Switches the flag to the pending variant
+ * - Marks the event as activated for this session
+ * - Records the activation via the API (fire-and-forget)
+ */
+FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properties) {
+    if (!this.pendingFirstTimeEvents || _.isEmptyObject(this.pendingFirstTimeEvents)) {
+        return;
+    }
+
+    // Check if targeting promise exists (either bundled or async loaded)
+    if (win[TARGETING_GLOBAL_NAME] && _.isFunction(win[TARGETING_GLOBAL_NAME].then)) {
+        win[TARGETING_GLOBAL_NAME].then(function(library) {
+            this._processFirstTimeEventCheck(eventName, properties, library);
+        }.bind(this)).catch(function() {
+            // If targeting failed to load, process with null
+            // Events without property filters will still match
+            this._processFirstTimeEventCheck(eventName, properties, null);
+        }.bind(this));
+    } else {
+        // No targeting available, process with null
+        // Events without property filters will still match
+        this._processFirstTimeEventCheck(eventName, properties, null);
+    }
+};
+
+/**
+ * Internal method to process first-time event checks with loaded targeting library
+ * @param {string} eventName - The name of the event being tracked
+ * @param {Object} properties - Event properties to evaluate against property filters
+ * @param {Object} targeting - The loaded targeting library
+ */
+FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, properties, targeting) {
+    _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
+        if (this.activatedFirstTimeEvents[eventKey]) {
+            return;
+        }
+
+        var flagKey = pendingEvent['flag_key'];
+
+        // Use targeting module to check if event matches
+        var matchResult;
+
+        // If no targeting library and event has property filters, skip it
+        if (!targeting && pendingEvent['property_filters'] && !_.isEmptyObject(pendingEvent['property_filters'])) {
+            logger.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
+            return;
+        }
+
+        // For simple events (no property filters), just check event name
+        if (!targeting) {
+            matchResult = {
+                matches: eventName === pendingEvent['event_name'],
+                error: null
+            };
+        } else {
+            var criteria = {
+                'event_name': pendingEvent['event_name'],
+                'property_filters': pendingEvent['property_filters']
+            };
+            matchResult = targeting['eventMatchesCriteria'](
+                eventName,
+                properties,
+                criteria
+            );
+        }
+
+        if (matchResult.error) {
+            logger.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
+            return;
+        }
+
+        if (!matchResult.matches) {
+            return;
+        }
+
+        logger.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
+
+        var newVariant = {
+            'key': pendingEvent['pending_variant']['variant_key'],
+            'value': pendingEvent['pending_variant']['variant_value'],
+            'experiment_id': pendingEvent['pending_variant']['experiment_id'],
+            'is_experiment_active': pendingEvent['pending_variant']['is_experiment_active']
+        };
+
+        this.flags.set(flagKey, newVariant);
+        this.activatedFirstTimeEvents[eventKey] = true;
+
+        this.recordFirstTimeEvent(
+            pendingEvent['flag_id'],
+            pendingEvent['project_id'],
+            pendingEvent['first_time_event_hash']
+        );
+    }, this);
+};
+
+FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
+    // Construct URL: {api_host}/flags/{flagId}/first-time-events
+    return this.getFullApiRoute() + '/' + flagId + '/first-time-events';
+};
+
+FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, firstTimeEventHash) {
+    var distinctId = this.getMpProperty('distinct_id');
+    var traceparent = generateTraceparent();
+
+    // Build URL with query string parameters
+    var searchParams = new URLSearchParams();
+    searchParams.set('mp_lib', 'web');
+    searchParams.set('$lib_version', Config.LIB_VERSION);
+    var url = this.getFirstTimeEventApiRoute(flagId) + '?' + searchParams.toString();
+
+    var payload = {
+        'distinct_id': distinctId,
+        'project_id': projectId,
+        'first_time_event_hash': firstTimeEventHash
+    };
+
+    logger.log('Recording first-time event for flag: ' + flagId);
+
+    // Fire-and-forget POST request
+    this.fetch.call(win, url, {
+        'method': 'POST',
+        'headers': {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
+            'traceparent': traceparent
+        },
+        'body': JSON.stringify(payload)
+    }).catch(function(error) {
+        // Silent failure - cohort sync will catch up
+        logger.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
+    });
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
@@ -24994,6 +25975,9 @@ FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.up
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
+
+// Exports intended only for testing
+FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getTargeting;
 
 /* eslint camelcase: "off" */
 
@@ -26464,6 +27448,7 @@ var DEFAULT_CONFIG = {
     'record_min_ms':                     0,
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
+    'targeting_src':                     'https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js',
     'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
 };
 
@@ -26693,7 +27678,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
         getConfigFunc: _.bind(this.get_config, this),
         setConfigFunc: _.bind(this.set_config, this),
         getPropertyFunc: _.bind(this.get_property, this),
-        trackingFunc: _.bind(this.track, this)
+        trackingFunc: _.bind(this.track, this),
+        loadExtraBundle: load_extra_bundle,
+        targetingSrc: this.get_config('targeting_src')
     });
     this.flags.init();
     this['flags'] = this.flags;
@@ -26789,11 +27776,11 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
 
     var loadRecorder = _.bind(function(startNewIfInactive) {
         var handleLoadedRecorder = _.bind(function() {
-            this._recorder = this._recorder || new win['__mp_recorder'](this);
+            this._recorder = this._recorder || new win[RECORDER_GLOBAL_NAME](this);
             this._recorder['resumeRecording'](startNewIfInactive);
         }, this);
 
-        if (_.isUndefined(win['__mp_recorder'])) {
+        if (_.isUndefined(win[RECORDER_GLOBAL_NAME])) {
             load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
         } else {
             handleLoadedRecorder();
@@ -27534,6 +28521,11 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         should_send_immediately: should_send_immediately,
         send_request_options: options
     }, callback);
+
+    // Check for first-time event matches
+    if (this.flags && this.flags.checkFirstTimeEvents) {
+        this.flags.checkFirstTimeEvents(event_name, properties);
+    }
 
     return ret;
 });
