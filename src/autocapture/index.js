@@ -1,4 +1,4 @@
-import { _, document, safewrap, safewrapClass } from '../utils';
+import { _, document, safewrap, safewrapClass, urlMatchesRegexList } from '../utils';
 import { window } from '../window';
 import {
     getPolyfillScrollEndFunction, getPropsForDOMEvent, logger, minDOMApisSupported,
@@ -112,27 +112,15 @@ Autocapture.prototype.getConfig = function(key) {
 };
 
 Autocapture.prototype.currentUrlBlocked = function() {
-    var i;
     var currentUrl = _.info.currentUrl();
 
     var allowUrlRegexes = this.getConfig(CONFIG_ALLOW_URL_REGEXES) || [];
     if (allowUrlRegexes.length) {
         // we're using an allowlist, only track if current URL matches
-        var allowed = false;
-        for (i = 0; i < allowUrlRegexes.length; i++) {
-            var allowRegex = allowUrlRegexes[i];
-            try {
-                if (currentUrl.match(allowRegex)) {
-                    allowed = true;
-                    break;
-                }
-            } catch (err) {
-                logger.critical('Error while checking block URL regex: ' + allowRegex, err);
-                return true;
-            }
-        }
-        if (!allowed) {
-            // wasn't allowed by any regex
+        try {
+            return !urlMatchesRegexList(currentUrl, allowUrlRegexes);
+        } catch (err) {
+            logger.critical('Error while checking block URL regexes: ', err);
             return true;
         }
     }
@@ -142,17 +130,12 @@ Autocapture.prototype.currentUrlBlocked = function() {
         return false;
     }
 
-    for (i = 0; i < blockUrlRegexes.length; i++) {
-        try {
-            if (currentUrl.match(blockUrlRegexes[i])) {
-                return true;
-            }
-        } catch (err) {
-            logger.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
-            return true;
-        }
+    try {
+        return urlMatchesRegexList(currentUrl, blockUrlRegexes);
+    } catch (err) {
+        logger.critical('Error while checking block URL regexes: ', err);
+        return true;
     }
-    return false;
 };
 
 Autocapture.prototype.pageviewTrackingConfig = function() {

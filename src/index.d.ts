@@ -225,6 +225,9 @@ export interface Config {
   recorder_src: string;
   record_block_class: string | RegExp;
   record_block_selector: string;
+  record_console: boolean;
+  record_network: boolean;
+  record_network_options: NetworkRecordOptions;
   record_collect_fonts: boolean;
   record_idle_timeout_ms: number;
   record_inline_images: boolean;
@@ -517,6 +520,58 @@ export const people: People;
 export function get_session_recording_properties():
   | { $mp_replay_id?: string }
   | {};
+
+// Network Recording Plugin Types
+export type InitiatorType =
+  | 'audio'
+  | 'beacon'
+  | 'body'
+  | 'css'
+  | 'early-hint'
+  | 'embed'
+  | 'fetch'
+  | 'frame'
+  | 'iframe'
+  | 'icon'
+  | 'image'
+  | 'img'
+  | 'input'
+  | 'link'
+  | 'navigation'
+  | 'object'
+  | 'ping'
+  | 'script'
+  | 'track'
+  | 'video'
+  | 'xmlhttprequest';
+
+export interface NetworkRequest {
+  url: string;
+  method?: string;
+  initiatorType: InitiatorType;
+  status?: number;
+  startTime: number;
+  endTime: number;
+  timeOrigin: number;
+  requestHeaders?: Record<string, string>;
+  requestBody?: string;
+  responseHeaders?: Record<string, string>;
+  responseBody?: string;
+}
+
+export interface NetworkRecordOptions {
+  initiatorTypes?: InitiatorType[];
+  ignoreRequestUrls?: string[];
+  ignoreRequestFn?: (data: NetworkRequest) => boolean;
+  recordHeaders?: { request: string[]; response: string[] };
+  recordBodyUrls?: { request: string[]; response: string[] };
+  recordInitialRequests?: boolean;
+}
+
+export interface NetworkData {
+  requests: NetworkRequest[];
+  isInitial?: boolean;
+}
 
 declare const mixpanel: OverridedMixpanel;
 export default mixpanel;

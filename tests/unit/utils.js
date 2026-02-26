@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 
-import { batchedThrottle, canUseCompressionStream, extract_domain, generateTraceparent, _, document } from '../../src/utils';
+import { batchedThrottle, canUseCompressionStream, extract_domain, generateTraceparent, urlMatchesRegexList, _, document } from '../../src/utils';
 import { window } from '../../src/window';
 
 describe(`extract_domain`, function() {
@@ -424,5 +424,79 @@ describe(`canUseCompressionStream`, function() {
 
       expect(canUseCompressionStream(userAgent, vendor, opera)).to.be.true;
     });
+  });
+});
+
+describe(`urlMatchesRegexList`, function() {
+  it(`returns false when url matches no regex in empty list`, function() {
+    const url = `https://example.com/api/test`;
+    const regexList = [];
+    expect(urlMatchesRegexList(url, regexList)).to.be.false;
+  });
+
+  it(`returns true when url matches single regex in list`, function() {
+    const url = `https://example.com/api/test`;
+    const regexList = [/\/api\//];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+
+  it(`returns false when url matches none of the regexes in list`, function() {
+    const url = `https://example.com/public/page`;
+    const regexList = [/\/api\//, /\/admin\//, /\/private\//];
+    expect(urlMatchesRegexList(url, regexList)).to.be.false;
+  });
+
+  it(`returns true when url matches first regex in list`, function() {
+    const url = `https://example.com/api/endpoint`;
+    const regexList = [/\/api\//, /\/admin\//];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+
+  it(`returns true when url matches last regex in list`, function() {
+    const url = `https://example.com/admin/users`;
+    const regexList = [/\/api\//, /\/public\//, /\/admin\//];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+
+  it(`returns true when url matches middle regex in list`, function() {
+    const url = `https://example.com/public/page.html`;
+    const regexList = [/\/api\//, /\/public\//, /\/admin\//];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+
+  it(`works with string-based regex patterns`, function() {
+    const url = `https://example.com/test/path`;
+    const regexList = [`test`];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+
+  it(`handles complex regex patterns`, function() {
+    const url = `https://api.example.com/v1/users/123/profile`;
+    const regexList = [/^https:\/\/api\.example\.com\/v[0-9]+\/users\/[0-9]+/];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+
+  it(`handles wildcard regex patterns`, function() {
+    const url = `https://example.com/api/anything/here`;
+    const regexList = [/\/api\/.*/];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+
+  it(`is case-sensitive by default`, function() {
+    const url = `https://example.com/API/test`;
+    const regexList = [/\/api\//];
+    expect(urlMatchesRegexList(url, regexList)).to.be.false;
+  });
+
+  it(`supports case-insensitive regex patterns`, function() {
+    const url = `https://example.com/API/test`;
+    const regexList = [/\/api\//i];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+
+  it(`matches partial URLs`, function() {
+    const url = `/api/endpoint`;
+    const regexList = [/^\/api\//];
+    expect(urlMatchesRegexList(url, regexList)).to.be.true;
   });
 });

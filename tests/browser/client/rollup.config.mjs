@@ -2,7 +2,11 @@ import swc from '@rollup/plugin-swc';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 
-const builds =[
+// seems rollup source maps + swc sourcemaps don't play well together,
+// skip them for interactive testing flows
+const COMMON_PLUGINS = process.env.DISABLE_TEST_SWC ? [] : [swc({sourceMaps: true, swc: {jsc: {target: `es5`}}})];
+
+const builds = [
   {
     input: `tests/browser/client/loaders/snippet.js`,
     output: [
@@ -13,7 +17,7 @@ const builds =[
         sourcemap: true,
       },
     ],
-    plugins: [nodeResolve({browser: true}), swc({swc: {jsc: {target: `es5`}}})],
+    plugins: [nodeResolve({browser: true}), ...COMMON_PLUGINS],
   },
 ];
 
@@ -28,7 +32,7 @@ if (process.env.FULL) {
         sourcemap: true,
       },
     ],
-    plugins: [swc({swc: {jsc: {target: `es5`}}}), commonjs()],
+    plugins: [...COMMON_PLUGINS, commonjs()],
   });
 }
 

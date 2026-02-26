@@ -1732,6 +1732,17 @@ var isOnline = function() {
 
 var NOOP_FUNC = function () {};
 
+var urlMatchesRegexList = function (url, regexList) {
+    var matches = false;
+    for (var i = 0; i < regexList.length; i++) {
+        if (url.match(regexList[i])) {
+            matches = true;
+            break;
+        }
+    }
+    return matches;
+};
+
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -1797,6 +1808,7 @@ export {
     safewrap,
     safewrapClass,
     slice,
+    urlMatchesRegexList,
     userAgent,
     windowOpera,
 };

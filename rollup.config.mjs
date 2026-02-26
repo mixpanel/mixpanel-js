@@ -312,9 +312,9 @@ const ALL_BUILDS = [
       copyTypes(),
     ],
   },
-
-  ...browserTestBuilds,
 ];
 
-const builds = process.env.FULL ? ALL_BUILDS : MAIN_BUILDS;
+const srcBuilds = process.env.FULL ? ALL_BUILDS : MAIN_BUILDS;
+const builds = [...srcBuilds, ...browserTestBuilds];
+
 export default withCleanOnRebuild(builds);

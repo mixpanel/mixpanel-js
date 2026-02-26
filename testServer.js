@@ -31,9 +31,64 @@ const TEST_SUITES = {
 
 app.use(cookieParser());
 app.use(logger('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.set('views', __dirname + '/tests');
 app.set('view engine', 'pug');
+
+// ========================================
+// Test API endpoints for network plugin tests
+// ========================================
+
+// Main test endpoint - handles all HTTP methods
+app.all('/api/test', function(req, res) {
+    res.json({
+        success: true,
+        method: req.method,
+        headers: req.headers,
+        query: req.query,
+        body: req.body,
+        url: req.originalUrl,
+        timestamp: Date.now()
+    });
+});
+
+// Form submission endpoint
+app.post('/api/test/form', function(req, res) {
+    res.json({
+        success: true,
+        method: 'POST',
+        contentType: req.get('Content-Type'),
+        formData: req.body,
+        timestamp: Date.now()
+    });
+});
+
+// Endpoint with custom response headers
+app.get('/api/test/headers', function(req, res) {
+    res.set({
+        'X-Custom-Header': 'custom-value',
+        'X-Request-Id': 'test-request-123'
+    });
+    res.json({
+        success: true,
+        message: 'Response includes custom headers'
+    });
+});
+
+// Error response endpoint
+app.get('/api/test/error/:status', function(req, res) {
+    const status = parseInt(req.params.status, 10) || 500;
+    res.status(status).json({ success: false, status: status });
+});
+
+// Session recording endpoint (mimics Mixpanel's /record API)
+app.post(/^\/record\/.*/, express.raw({ type: '*/*', limit: '10mb' }), function(req, res) {
+    res.json({ code: 200, status: 'OK' });
+});
+
+// ========================================
 
 app.use('/tests', express.static(__dirname + "/tests"));
 app.get('/tests/cookie_included/:cookieName', function(req, res) {

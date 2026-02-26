@@ -161,6 +161,8 @@ var DEFAULT_CONFIG = {
     'record_mask_inputs':                true,
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
+    'record_network':                    false,
+    'record_network_options':            {},
     'record_sessions_percent':           0,
     'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
     'targeting_src':                     'https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js',

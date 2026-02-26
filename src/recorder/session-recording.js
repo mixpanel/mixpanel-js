@@ -12,6 +12,7 @@ import { RequestBatcher } from '../request-batcher';
 import Config from '../config';
 import { RECORD_ENQUEUE_THROTTLE_MS } from './utils';
 import { shouldMaskInput, shouldMaskText, getPrivacyConfig } from './masking';
+import { getRecordNetworkPlugin } from './rrweb-network-plugin';
 
 var logger = console_with_prefix('recorder');
 var CompressionStream = window['CompressionStream'];
@@ -241,6 +242,29 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
 
     var privacyConfig = getPrivacyConfig(this._mixpanel);
 
+    var plugins = [];
+    if (this.getConfig('record_network')) {
+        var options = this.getConfig('record_network_options') || {};
+        // don't track requests to Mixpanel /record API
+        var ignoreRequestUrls = (options.ignoreRequestUrls || []).slice();
+        ignoreRequestUrls.push(this._getApiRoute());
+        options.ignoreRequestUrls = ignoreRequestUrls;
+
+        plugins.push(getRecordNetworkPlugin(options));
+    }
+
+    if (this.getConfig('record_console')) {
+        plugins.push(
+            getRecordConsolePlugin({
+                stringifyOptions: {
+                    stringLengthLimit: 1000,
+                    numOfKeysLimit: 50,
+                    depthOfLimit: 2
+                }
+            })
+        );
+    }
+
     try {
         this._stopRecording = this._rrwebRecord({
             'emit': function (ev) {
@@ -279,15 +303,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
             'sampling': {
                 'canvas': 15
             },
-            'plugins': this.getConfig('record_console') ? [
-                getRecordConsolePlugin({
-                    stringifyOptions: {
-                        stringLengthLimit: 1000,
-                        numOfKeysLimit: 50,
-                        depthOfLimit: 2
-                    }
-                })
-            ] : []
+            'plugins': plugins,
         });
     } catch (err) {
         this.reportError('Unexpected error when starting rrweb recording.', err);
@@ -402,6 +418,10 @@ SessionRecording.deserialize = function (serializedRecording, options) {
     return recording;
 };
 
+SessionRecording.prototype._getApiRoute = function () {
+    return this.getConfig('api_routes')['record'];
+};
+
 SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
     var onSuccess = function (response, responseBody) {
         // Update batch specific props only if the request was successful to guarantee ordering.
@@ -421,7 +441,7 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
         });
     }.bind(this);
     var apiHost = (this._mixpanel.get_api_host && this._mixpanel.get_api_host('record')) || this.getConfig('api_host');
-    window['fetch'](apiHost + '/' + this.getConfig('api_routes')['record'] + '?' + new URLSearchParams(reqParams), {
+    window['fetch'](apiHost + '/' + this._getApiRoute() + '?' + new URLSearchParams(reqParams), {
         'method': 'POST',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getConfig('token') + ':'),
