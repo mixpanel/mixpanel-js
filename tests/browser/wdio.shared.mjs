@@ -26,6 +26,7 @@ export const sharedConfig = {
     timeout: 20 * 10 * 1000,
   },
   specFileRetries: 3,
+  specFileRetriesDelay: 5,
 
   onPrepare: async function (config, capabilities) {
     console.log(`Starting test server...`);

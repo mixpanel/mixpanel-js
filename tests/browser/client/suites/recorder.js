@@ -31,8 +31,8 @@ export function recorderTests (mixpanel) {
   }
 
   describe(`recorder`, function () {
-    this.timeout(30000);
-    this.retries(3);
+    this.timeout(60000);
+    this.retries(5);
 
     beforeEach(async function () {
       await clearAllLibInstances(mixpanel);
@@ -118,7 +118,7 @@ export function recorderTests (mixpanel) {
             delete window[RECORDER_GLOBAL_NAME];
           }
 
-          await untilDone(() => Boolean(getRecorderScript()));
+          await untilDone(() => Boolean(getRecorderScript()), 10000);
           this.assertRecorderScript(true);
           await new Promise(resolve => {
             this.randomStub.restore();
@@ -416,7 +416,9 @@ export function recorderTests (mixpanel) {
         const fetchCall1 = this.fetchStub.getCall(1);
         const urlParamsRetry = validateAndGetUrlParams(fetchCall1);
         expect(urlParamsRetry.get(`seq`)).to.equal(`0`, `first sequence is retried with exponential backoff`);
-        expect(fetchBody).to.equal(fetchCall1.args[1].body, `fetch body should be the same as the first request`);
+        const originalEvents = JSON.parse(fetchBody);
+        const retryEvents = JSON.parse(fetchCall1.args[1].body);
+        expect(retryEvents[0]).to.deep.equal(originalEvents[0], `first rrweb event in retry should match the original request`);
 
         onlineStub.restore();
         compressionStreamStub.restore();

@@ -53,6 +53,9 @@ const BROWSER_TO_CAPABILITIES = {
     'appium:deviceName': `iPhone Simulator`,
     'appium:platformVersion': `current_major`,
     'appium:automationName': `XCUITest`,
+    'appium:safariWebviewAtomWaitTimeout': 360000,
+    'appium:webviewAtomWaitTimeout': 360000,
+    'appium:webviewConnectTimeout': 60000,
     'sauce:options': {
       ...COMMON_SAUCE_OPTIONS,
       armRequired: true,
