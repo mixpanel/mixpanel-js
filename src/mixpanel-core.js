@@ -841,6 +841,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 };
 
 MixpanelLib.prototype._fetch_remote_settings = function(mode) {
+    var self = this;
     var disableRecordingIfStrict = function() {
         if (mode === 'strict') {
             self.set_config({'record_sessions_percent': 0});
@@ -861,7 +862,6 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
     };
     var query_string = _.HTTPBuildQuery(request_params);
     var full_url = settings_endpoint + '?' + query_string;
-    var self = this;
 
     var abortController = new AbortController();
     var timeout_id = setTimeout(function() {

@@ -2,12 +2,14 @@ import {trackTests} from './suites/track';
 import {batchRequestsTests} from './suites/batchRequests';
 import {recorderTests} from './suites/recorder';
 import {flagsTests} from './suites/flags';
+import {remoteSettingsTests} from './suites/remoteSettings';
 
-export {trackTests, batchRequestsTests, recorderTests, flagsTests};
+export {trackTests, batchRequestsTests, recorderTests, flagsTests, remoteSettingsTests};
 
 export const ALL_TESTS = [
   trackTests,
   batchRequestsTests,
   recorderTests,
   flagsTests,
+  remoteSettingsTests,
 ];
