@@ -1,5 +1,5 @@
-import { clearAllStorage, clearAllLibInstances, untilDone, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse, resetRecorder, getExternalLibraryScript } from "../utils";
-import { RECORDER_GLOBAL_NAME } from "../../../../src/globals";
+import { clearAllStorage, clearAllLibInstances, untilDone, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse, resetRecorder, getExternalLibraryScript, resetTargeting} from "../utils";
+import { RECORDER_GLOBAL_NAME, TARGETING_GLOBAL_NAME } from "../../../../src/globals";
 
 const expect = chai.expect;
 
@@ -12,6 +12,14 @@ export function recorderTests (mixpanel) {
     recorderSrc = window.MIXPANEL_CUSTOM_LIB_URL.endsWith(`.min.js`) ?
       `../../build/mixpanel-recorder.min.js`:
       `../../build/mixpanel-recorder.js`;
+  }
+
+  const IS_TARGETING_BUNDLED = Boolean(window[TARGETING_GLOBAL_NAME]);
+  var targetingSrc = null;
+  if (!IS_TARGETING_BUNDLED) {
+     targetingSrc = window.MIXPANEL_CUSTOM_LIB_URL.endsWith(`.min.js`) ?
+      `../../build/mixpanel-targeting.min.js`:
+      `../../build/mixpanel-targeting.js`;
   }
 
   function validateAndGetUrlParams(fetchStubCall) {
@@ -30,6 +38,10 @@ export function recorderTests (mixpanel) {
     return getExternalLibraryScript('mixpanel-recorder');
   }
 
+  function getTargetingScript () {
+    return document.querySelector(`script[src="` + targetingSrc + `"]`);
+  }
+
   describe(`recorder`, function () {
     this.timeout(60000);
     this.retries(5);
@@ -42,6 +54,10 @@ export function recorderTests (mixpanel) {
         resetRecorder();
       }
       window.performance.clearResourceTimings();
+
+      if (!IS_TARGETING_BUNDLED) {
+        await resetTargeting();
+      }
 
       this.token = `RECORDER_TEST_TOKEN`;
       this.startTime = 1723733423402;
@@ -66,6 +82,7 @@ export function recorderTests (mixpanel) {
             debug: true,
             record_sessions_percent: 0,
             recorder_src: recorderSrc,
+            targeting_src: targetingSrc,
             record_console: false,
             loaded: function () {
               resolve();
@@ -134,12 +151,16 @@ export function recorderTests (mixpanel) {
     });
 
     afterEach(async function () {
-      await mixpanel.recordertest.stop_session_recording();
-
+      if (mixpanel.recordertest) {
+        await mixpanel.recordertest.stop_session_recording();
+      }
       sinon.restore();
 
       if (!IS_RECORDER_BUNDLED) {
         resetRecorder();
+      }
+      if (!IS_TARGETING_BUNDLED) {
+        await resetTargeting();
       }
       window.location.hash = ``;
     });
@@ -160,7 +181,7 @@ export function recorderTests (mixpanel) {
       this.randomStub.returns(0.02);
       this.initMixpanelRecorder({record_sessions_percent: 1});
 
-      await new Promise(resolve => realSetTimeout(resolve, 100));
+      await mixpanel.recordertest.__get_recording_init_promise();
       this.assertRecorderScript(false);
     });
 
@@ -1785,6 +1806,230 @@ export function recorderTests (mixpanel) {
         expect(urlParams2.get(`seq`)).to.equal(`1`);
         expect(urlParams2.get(`$current_url`)).to.match(/#my-url-2$/, `url is updated at the start of this batch`);
         expect(urlParams2.get(`replay_start_url`)).to.match(/#my-url-1$/, `start url does not change in later batches`);
+      });
+    });
+
+    describe(`event-triggered recording`, function () {
+      it(`starts recording when event trigger matches without property filters`, async function () {
+        this.randomStub.returns(0.02);
+        this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          recording_event_triggers: {
+            'test_event': {
+              'percentage': 100
+            }
+          }
+        });
+
+        await mixpanel.recordertest.__get_recording_init_promise();
+        this.assertRecorderScript(false);
+        expect(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length).to.equal(0, `no recording is taking place`);
+
+        mixpanel.recordertest.track('test_event');
+        await this.waitForRecorderLoad();
+
+        simulateMouseClick(document.body);
+        await this.waitForRecorderEnqueue();
+        await this.clock.tickAsync(10 * 1000);
+        await this.waitForFetchCalls(1);
+
+        expect(this.fetchStub.getCalls().length).to.equal(1, `recording started after event trigger`);
+        expect(Boolean(mixpanel.recordertest.get_session_recording_properties()[`$mp_replay_id`])).to.be.true;
+      });
+
+      it(`starts recording when event trigger matches with matching property filters`, async function () {
+        this.randomStub.returns(0.02);
+        this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          recording_event_triggers: {
+            'event': {
+              'percentage': 100,
+              'property_filters': {
+                '==': [{'var': 'attribute'}, 'test']
+              }
+            }
+          }
+        });
+
+        await mixpanel.recordertest.__get_recording_init_promise();
+        this.assertRecorderScript(false);
+
+        mixpanel.recordertest.track('event', {'attribute': 'test'});
+        await this.waitForRecorderLoad();
+
+        simulateMouseClick(document.body);
+        await this.waitForRecorderEnqueue();
+        await this.clock.tickAsync(10 * 1000);
+        await this.waitForFetchCalls(1);
+
+        expect(this.fetchStub.getCalls().length).to.equal(1, `recording started after event trigger with matching property filter`);
+        expect(Boolean(mixpanel.recordertest.get_session_recording_properties()[`$mp_replay_id`])).to.be.true;
+      });
+
+      it(`does not start recording when event trigger has non-matching property filters`, async function () {
+        this.randomStub.returns(0.02);
+        this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          recording_event_triggers: {
+            'event': {
+              'percentage': 100,
+              'property_filters': {
+                '==': [{'var': 'attribute'}, 'test']
+              }
+            }
+          }
+        });
+
+        await mixpanel.recordertest.__get_recording_init_promise();
+        this.assertRecorderScript(false);
+
+        mixpanel.recordertest.track('event', {'attribute': 'other'});
+        await this.clock.tickAsync(20 * 1000);
+
+        this.assertRecorderScript(false);
+        expect(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length).to.equal(0, `no recording started due to non-matching property filter`);
+      });
+
+      it(`does not start recording when event does not match any triggers`, async function () {
+        this.randomStub.returns(0.02);
+        this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          recording_event_triggers: {
+            'special_event': {
+              'percentage': 100
+            }
+          }
+        });
+
+        await mixpanel.recordertest.__get_recording_init_promise();
+        this.assertRecorderScript(false);
+
+        mixpanel.recordertest.track('normal_event');
+        await this.clock.tickAsync(20 * 1000);
+
+        this.assertRecorderScript(false);
+        expect(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length).to.equal(0, `no recording started for non-trigger event`);
+      });
+
+      it(`does not start new recording when already recording`, async function () {
+        this.randomStub.returns(0.02);
+        this.initMixpanelRecorder({
+          record_sessions_percent: 100,
+          recording_event_triggers: {
+            'test_event': {
+              'percentage': 100
+            }
+          }
+        });
+
+        await this.waitForRecorderLoad();
+        const firstReplayId = mixpanel.recordertest.get_session_recording_properties()[`$mp_replay_id`];
+
+        mixpanel.recordertest.track('test_event');
+        await this.clock.tickAsync(1000);
+
+        const secondReplayId = mixpanel.recordertest.get_session_recording_properties()[`$mp_replay_id`];
+        expect(firstReplayId).to.equal(secondReplayId, `replay ID should not change when already recording`);
+      });
+
+      it(`does not start recording when targeting fails to load but property filters are specified`, async function () {
+        if (IS_TARGETING_BUNDLED) {
+          return; // Test doesn't apply when targeting is bundled
+        }
+
+        this.randomStub.returns(0.02);
+
+        // Set targeting global to a rejected promise before init. This gets restored by resetTargeting in afterEach, so it won't affect other tests.
+        window[TARGETING_GLOBAL_NAME] = Promise.reject(new Error('targeting load failed'));
+
+        this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          recording_event_triggers: {
+            'test_event': {
+              'percentage': 100,
+              'property_filters': {
+                '==': [{'var': 'attribute'}, 'test']
+              }
+            }
+          }
+        });
+
+        await mixpanel.recordertest.__get_recording_init_promise();
+        this.assertRecorderScript(false);
+
+        mixpanel.recordertest.track('test_event', {'attribute': 'test'});
+        await this.clock.tickAsync(20 * 1000);
+
+        this.assertRecorderScript(false);
+        expect(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length).to.equal(0, `no recording started when targeting fails to load`);
+      });
+
+      it(`handles targeting logic errors gracefully`, async function () {
+        this.randomStub.returns(0.02);
+        this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          recording_event_triggers: {
+            'test_event': {
+              'percentage': 100,
+              'property_filters': {
+                'bad_formula': [{'var': 'attribute'}, 'test']
+              }
+            }
+          }
+        });
+
+        await mixpanel.recordertest.__get_recording_init_promise();
+        this.assertRecorderScript(false);
+
+        mixpanel.recordertest.track('test_event', {'attribute': 'test'});
+        await this.clock.tickAsync(20 * 1000);
+
+        this.assertRecorderScript(false);
+        expect(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length).to.equal(0, `no recording started when targeting returns error`);
+      });
+
+      it(`respects sampling percentage in event triggers`, async function () {
+        this.randomStub.returns(0.5);
+        this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          recording_event_triggers: {
+            'test_event': {
+              'percentage': 40
+            }
+          }
+        });
+
+        await mixpanel.recordertest.__get_recording_init_promise();
+        this.assertRecorderScript(false);
+
+        mixpanel.recordertest.track('test_event');
+        await this.clock.tickAsync(20 * 1000);
+
+        this.assertRecorderScript(false);
+        expect(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length).to.equal(0, `no recording started due to sampling (50% > 40%)`);
+      });
+
+      it(`preserves original record_sessions_percent after event trigger`, async function () {
+        this.randomStub.returns(0.02);
+        this.initMixpanelRecorder({
+          record_sessions_percent: 10,
+          recording_event_triggers: {
+            'test_event': {
+              'percentage': 100
+            }
+          }
+        });
+
+        await this.waitForRecorderLoad();
+        expect(mixpanel.recordertest.get_config('record_sessions_percent')).to.equal(10, `original rate preserved before event trigger`);
+
+        await mixpanel.recordertest.stop_session_recording();
+        await this.clock.tickAsync(20 * 1000);
+
+        mixpanel.recordertest.track('test_event');
+        await this.waitForRecorderLoad();
+
+        expect(mixpanel.recordertest.get_config('record_sessions_percent')).to.equal(10, `original rate preserved after event trigger`);
       });
     });
   });

@@ -1,3 +1,5 @@
+import type { RulesLogic } from 'json-logic-js';
+
 export type Persistence = "cookie" | "localStorage";
 
 export type ApiPayloadFormat = "base64" | "json";
@@ -7,6 +9,16 @@ export type PushItem = Array<string | Dict | ((this: Mixpanel) => void)>;
 export type Query = string | Element | Element[];
 
 export type RemoteSettingType = "disabled" | "fallback" | "strict";
+
+
+export interface EventTriggerProps {
+    percentage: number;
+    property_filters?: RulesLogic;
+}
+
+export interface RecordingEventTriggers {
+    [eventName: string]: EventTriggerProps;
+}
 
 export interface Dict {
   [key: string]: any;
@@ -242,6 +254,7 @@ export interface Config {
   record_max_ms: number;
   record_sessions_percent: number;
   record_canvas: boolean;
+  recording_event_triggers: RecordingEventTriggers;
   record_heatmap_data: boolean;
   remote_settings_mode: RemoteSettingType;
   hooks: {

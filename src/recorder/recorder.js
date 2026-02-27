@@ -125,8 +125,12 @@ MixpanelRecorder.prototype.resetRecording = function () {
     this.startRecording({shouldStopBatcher: true});
 };
 
+MixpanelRecorder.prototype.isRecording = function () {
+    return this.activeRecording && !this.activeRecording.isRrwebStopped();
+};
+
 MixpanelRecorder.prototype.getActiveReplayId = function () {
-    if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
+    if (this.isRecording()) {
         return this.activeRecording.replayId;
     } else {
         return null;
