@@ -11,6 +11,11 @@
     };
     var loadedRecorderProject = false; // global script tag check
 
+    // Use local recorder build matching the lib being tested (minified or not)
+    var localRecorderSrc = window.MIXPANEL_CUSTOM_LIB_URL && window.MIXPANEL_CUSTOM_LIB_URL.endsWith('.min.js') ?
+        '../build/mixpanel-recorder.min.js' :
+        '../build/mixpanel-recorder.js';
+
     var _jsc = [];
     var mpmodule = function(module_name, extra_setup, extra_teardown) {
 
@@ -4668,7 +4673,8 @@
                 mixpanel.init("heatmap_no_recording_test", {
                     record_heatmap_data: true,
                     record_sessions_percent: 0,
-                    batch_requests: false
+                    batch_requests: false,
+                    recorder_src: localRecorderSrc
                 }, 'heatmaptest');
 
                 this.sendBeaconStub.resetHistory();
@@ -4690,7 +4696,8 @@
                 mixpanel.init("heatmap_recording_test", {
                     record_heatmap_data: true,
                     record_sessions_percent: 100,
-                    batch_requests: false
+                    batch_requests: false,
+                    recorder_src: localRecorderSrc
                 }, 'heatmaptest');
                 this.sendBeaconStub.resetHistory();
 

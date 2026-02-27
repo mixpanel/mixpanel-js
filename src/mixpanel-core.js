@@ -295,6 +295,16 @@ MixpanelLib.prototype.init = function (token, config, name) {
 // init(...) method sets up a new library and calls _init on it.
 //
 MixpanelLib.prototype._init = function(token, config, name) {
+    this.recorderManager = new RecorderManager({
+        mixpanelInstance: this,
+        getConfigFunc: _.bind(this.get_config, this),
+        setConfigFunc: _.bind(this.set_config, this),
+        getTabIdFunc: _.bind(this.get_tab_id, this),
+        reportErrorFunc: _.bind(this.report_error, this),
+        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        loadExtraBundle: load_extra_bundle
+    });
+
     config = config || {};
 
     this['__loaded'] = true;
@@ -405,16 +415,6 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.autocapture.init();
 
     this._init_tab_id();
-
-    this.recorderManager = new RecorderManager({
-        mixpanelInstance: this,
-        getConfigFunc: _.bind(this.get_config, this),
-        setConfigFunc: _.bind(this.set_config, this),
-        getTabIdFunc: _.bind(this.get_tab_id, this),
-        reportErrorFunc: _.bind(this.report_error, this),
-        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
-        loadExtraBundle: load_extra_bundle
-    });
 
     // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
     var mode = this.get_config('remote_settings_mode');
