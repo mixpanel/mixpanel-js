@@ -981,6 +981,34 @@ MixpanelLib.prototype.push = function(item) {
 };
 
 /**
+ * Enables events on the Mixpanel object. If passed no arguments,
+ * this function enable tracking of all events. If passed an
+ * array of event names, those events will be enabled, but other
+ * existing disabled events will continue to be not tracked.
+ *
+ * @param {Array} [events] An array of event names to enable
+ */
+MixpanelLib.prototype.enable = function(events) {
+    var keys, new_disabled_events, i, j;
+
+    if (typeof(events) === 'undefined') {
+        this._flags.disable_all_events = false;
+    } else {
+        keys = {};
+        new_disabled_events = [];
+        for (i = 0; i < events.length; i++) {
+            keys[events[i]] = true;
+        }
+        for (j = 0; j < this.__disabled_events.length; j++) {
+            if (!keys[this.__disabled_events[j]]) {
+                new_disabled_events.push(this.__disabled_events[j]);
+            }
+        }
+        this.__disabled_events = new_disabled_events;
+    }
+};
+
+/**
  * Disable events on the Mixpanel object. If passed no arguments,
  * this function disables tracking of any event. If passed an
  * array of event names, those events will be disabled, but other
@@ -2363,6 +2391,7 @@ MixpanelLib.prototype.remove_hook = function(hook_name, hook_fn) {
 // MixpanelLib Exports
 MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
 MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
+MixpanelLib.prototype['enable']                             = MixpanelLib.prototype.enable;
 MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
 MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
 MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
