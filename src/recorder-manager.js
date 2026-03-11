@@ -1,5 +1,5 @@
 /* eslint camelcase: "off" */
-import { _, console } from './utils';
+import { _, console, safewrap, safewrapClass } from './utils';
 import { window } from './window';
 import { Promise } from './promise-polyfill';
 import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from './storage/indexed-db';
@@ -62,11 +62,11 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
 
     var loadRecorder = _.bind(function(startNewIfInactive) {
         return new Promise(_.bind(function(resolve) {
-            var handleLoadedRecorder = _.bind(function() {
+            var handleLoadedRecorder = safewrap(_.bind(function() {
                 this._recorder = this._recorder || new window[RECORDER_GLOBAL_NAME](this.mixpanelInstance);
                 this._recorder['resumeRecording'](startNewIfInactive);
                 resolve();
-            }, this);
+            }, this));
 
             if (_.isUndefined(window[RECORDER_GLOBAL_NAME])) {
                 this.loadExtraBundle(this.getMpConfig('recorder_src'), handleLoadedRecorder);
@@ -96,7 +96,16 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
 };
 
 RecorderManager.prototype.isRecording = function() {
-    return this._recorder && this._recorder['isRecording']();
+    // Safety check: ensure isRecording method exists (older CDN builds may not have it)
+    if (!this._recorder || !_.isFunction(this._recorder['isRecording'])) {
+        return false;
+    }
+    try {
+        return this._recorder['isRecording']();
+    } catch (e) {
+        this.reportError('Error checking if recording is active', e);
+        return false;
+    }
 };
 
 RecorderManager.prototype.startRecordingOnEvent = function(event_name, properties) {
@@ -196,5 +205,7 @@ RecorderManager.prototype.getSessionReplayId = function() {
 RecorderManager.prototype.getRecorder = function() {
     return this._recorder;
 };
+
+safewrapClass(RecorderManager);
 
 export { RecorderManager };

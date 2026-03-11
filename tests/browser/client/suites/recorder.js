@@ -2032,5 +2032,32 @@ export function recorderTests (mixpanel) {
         expect(mixpanel.recordertest.get_config('record_sessions_percent')).to.equal(10, `original rate preserved after event trigger`);
       });
     });
+
+    it(`handles missing isRecording method gracefully (legacy CDN builds)`, async function () {
+      this.randomStub.returns(0.02);
+      await this.initMixpanelRecorder({
+        record_sessions_percent: 10,
+        recording_event_triggers: {
+          'test_event': {
+            'percentage': 100
+          }
+        }
+      });
+      await this.waitForRecorderLoad();
+
+      const recorder = mixpanel.recordertest.__get_recorder();
+      expect(recorder).to.exist;
+
+      // Remove the isRecording method to simulate old CDN build
+      const originalIsRecording = recorder.isRecording;
+      delete recorder.isRecording;
+
+      // Track an event which internally calls RecorderManager.isRecording()
+      // This should not crash even though the recorder doesn't have isRecording
+      expect(() => mixpanel.recordertest.track(`test_event`)).to.not.throw();
+
+      // Restore the method for cleanup
+      recorder.isRecording = originalIsRecording;
+    });
   });
 }
