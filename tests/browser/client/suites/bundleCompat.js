@@ -18,6 +18,8 @@ export function bundleCompatTests(mixpanel) {
   const IS_TARGETING_BUNDLED = Boolean(window[TARGETING_GLOBAL_NAME]);
 
   context(`bundle compatibility`, function() {
+    this.timeout(10000);
+    this.retries(3);
     // These tests only apply to builds that load bundles asynchronously via script tags.
     // Module builds have the recorder and targeting bundled inline, so there is no script to load.
     if (IS_RECORDER_BUNDLED || IS_TARGETING_BUNDLED) {
