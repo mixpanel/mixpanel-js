@@ -1,5 +1,5 @@
 /* eslint camelcase: "off" */
-import Config from './config';
+import {Config, TARGETING_FILENAME} from './config';
 import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify } from './utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
@@ -163,8 +163,9 @@ var DEFAULT_CONFIG = {
     'record_network':                    false,
     'record_network_options':            {},
     'record_sessions_percent':           0,
-    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
-    'targeting_src':                     'https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js',
+    'recorder_src':                      null,
+    'targeting_src':                     null,
+    'lib_base_path':                     'https://cdn.mxpnl.com/libs/',
     'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
 };
 
@@ -295,16 +296,6 @@ MixpanelLib.prototype.init = function (token, config, name) {
 // init(...) method sets up a new library and calls _init on it.
 //
 MixpanelLib.prototype._init = function(token, config, name) {
-    this.recorderManager = new RecorderManager({
-        mixpanelInstance: this,
-        getConfigFunc: _.bind(this.get_config, this),
-        setConfigFunc: _.bind(this.set_config, this),
-        getTabIdFunc: _.bind(this.get_tab_id, this),
-        reportErrorFunc: _.bind(this.report_error, this),
-        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
-        loadExtraBundle: load_extra_bundle
-    });
-
     config = config || {};
 
     this['__loaded'] = true;
@@ -327,6 +318,19 @@ MixpanelLib.prototype._init = function(token, config, name) {
         'token': token,
         'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
     }));
+
+    this.recorderManager = new RecorderManager({
+        mixpanelInstance: this,
+        getConfigFunc: _.bind(this.get_config, this),
+        setConfigFunc: _.bind(this.set_config, this),
+        getTabIdFunc: _.bind(this.get_tab_id, this),
+        reportErrorFunc: _.bind(this.report_error, this),
+        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        recorderSrc: this.get_config('recorder_src'),
+        targetingSrc: this.get_config('targeting_src'),
+        libBasePath: this.get_config('lib_base_path'),
+        loadExtraBundle: load_extra_bundle
+    });
 
     this['_jsc'] = NOOP_FUNC;
 
@@ -406,7 +410,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this),
         loadExtraBundle: load_extra_bundle,
-        targetingSrc: this.get_config('targeting_src')
+        targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME)
     });
     this.flags.init();
     this['flags'] = this.flags;

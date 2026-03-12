@@ -1,7 +1,7 @@
 /* global chai, sinon */
 
 const { expect } = chai;
-import { clearLibInstance, clearAllStorage, clearAllLibInstances, untilDone } from "../utils";
+import { clearLibInstance, clearAllStorage, clearAllLibInstances, untilDone, getXhrRequestData } from "../utils";
 
 const BATCH_TOKEN = `FAKE_TOKEN_BATCHTEST`;
 const LOCALSTORAGE_PREFIX = `__mpq_` + BATCH_TOKEN;
@@ -22,22 +22,9 @@ function initBatchLibInstance(mixpanel, options) {
   });
 }
 
-function getRequestData(request, keyPath) {
-  try {
-    const data = JSON.parse(decodeURIComponent(request.requestBody.match(/data=([^&]+)/)[1]));
-    (keyPath || []).forEach(function(key) {
-      data = data[key];
-    });
-    return data;
-  } catch (err) {
-    console.error(err);
-    return null;
-  }
-}
-
 function getSendBeaconRequestData(sendBeaconSpy) {
   return sendBeaconSpy.args
-    .map((args) => getRequestData({ requestBody: args[1] }))
+    .map((args) => getXhrRequestData({ requestBody: args[1] }))
     .filter((data) => data);
 }
 
@@ -82,7 +69,7 @@ export function batchRequestsTests(mixpanel) {
 
       expect(xhrRequests).to.have.length(1);
       expect(xhrRequests[0].url).to.include(`/track/`);
-      const tracked_events = getRequestData(xhrRequests[0]);
+      const tracked_events = getXhrRequestData(xhrRequests[0]);
       expect(tracked_events).to.have.length(2);
       expect(tracked_events[0].event).to.equal(`queued event 1`);
       expect(tracked_events[1].event).to.equal(`queued event 2`);
@@ -113,7 +100,7 @@ export function batchRequestsTests(mixpanel) {
       await clock.tickAsync(5100);
       expect(xhrRequests).to.have.length(2);
 
-      const batch2_events = getRequestData(xhrRequests[1]);
+      const batch2_events = getXhrRequestData(xhrRequests[1]);
       expect(batch2_events).to.have.length(1);
       expect(batch2_events[0].event).to.equal(`queued event 3`);
     });
@@ -219,7 +206,7 @@ export function batchRequestsTests(mixpanel) {
       await clock.tickAsync(1000);
 
       expect(xhrRequests).to.have.length(1);
-      const batch_events = getRequestData(xhrRequests[0]);
+      const batch_events = getXhrRequestData(xhrRequests[0]);
       expect(batch_events).to.have.length(2);
       expect(batch_events[0].event).to.equal(`orphaned event 1`);
       expect(batch_events[1].event).to.equal(`orphaned event 2`);
@@ -249,7 +236,7 @@ export function batchRequestsTests(mixpanel) {
       await clock.tickAsync(1000);
 
       expect(xhrRequests).to.have.length(1);
-      const request_data = getRequestData(xhrRequests[0]);
+      const request_data = getXhrRequestData(xhrRequests[0]);
       expect(request_data.event).to.equal(`failure event`);
 
       await clock.tickAsync(30000);
@@ -262,7 +249,7 @@ export function batchRequestsTests(mixpanel) {
       mixpanel.batchtest.track(`immediate event`, {}, { send_immediately: true });
 
       expect(xhrRequests).to.have.length(1);
-      const request_data = getRequestData(xhrRequests[0]);
+      const request_data = getXhrRequestData(xhrRequests[0]);
       expect(request_data.event).to.equal(`immediate event`);
 
       expect(localStorage.getItem(LOCALSTORAGE_EVENTS_KEY)).to.be.null;
@@ -346,7 +333,7 @@ export function batchRequestsTests(mixpanel) {
 
       expect(xhrRequests).to.have.length(2);
 
-      const batch_events = getRequestData(xhrRequests[1]);
+      const batch_events = getXhrRequestData(xhrRequests[1]);
       expect(batch_events).to.have.length(2);
       expect(batch_events[0].event).to.equal(`post-opt-in event 1`);
       expect(batch_events[1].event).to.equal(`post-opt-in event 2`);
@@ -377,7 +364,7 @@ export function batchRequestsTests(mixpanel) {
 
       expect(xhrRequests).to.have.length(1);
 
-      let batch_events = getRequestData(xhrRequests[0]);
+      let batch_events = getXhrRequestData(xhrRequests[0]);
       expect(batch_events[0].event).to.equal(`pre-start event 1`);
       expect(batch_events[1].event).to.equal(`pre-start event 2`);
 
@@ -387,7 +374,7 @@ export function batchRequestsTests(mixpanel) {
 
       expect(xhrRequests).to.have.length(2);
 
-      batch_events = getRequestData(xhrRequests[1]);
+      batch_events = getXhrRequestData(xhrRequests[1]);
       expect(batch_events[0].event).to.equal(`post-start event`);
     });
 
@@ -411,7 +398,7 @@ export function batchRequestsTests(mixpanel) {
 
       expect(xhrRequests).to.have.length(1);
 
-      const batch_events = getRequestData(xhrRequests[0]);
+      const batch_events = getXhrRequestData(xhrRequests[0]);
       expect(batch_events).to.have.length(2);
       expect(batch_events[0].event).to.equal(`orphaned event 1`);
       expect(batch_events[1].event).to.equal(`orphaned event 2`);
@@ -444,7 +431,7 @@ export function batchRequestsTests(mixpanel) {
 
       expect(xhrRequests).to.have.length(1);
 
-      let batch_events = getRequestData(xhrRequests[0]);
+      let batch_events = getXhrRequestData(xhrRequests[0]);
       expect(batch_events).to.have.length(3);
       expect(batch_events[0].event).to.equal(`NON-ORPHANED EVENT`);
       expect(batch_events[0].properties.hello).to.equal(`world`);
@@ -455,7 +442,7 @@ export function batchRequestsTests(mixpanel) {
       mixpanel.batchtest.track(`post-start event`);
       await clock.tickAsync(5000);
 
-      batch_events = getRequestData(xhrRequests[1]);
+      batch_events = getXhrRequestData(xhrRequests[1]);
       expect(batch_events[0].event).to.equal(`POST-START EVENT`);
     });
 
@@ -477,7 +464,7 @@ export function batchRequestsTests(mixpanel) {
 
       expect(xhrRequests).to.have.length(1);
 
-      const batch_events = getRequestData(xhrRequests[0]);
+      const batch_events = getXhrRequestData(xhrRequests[0]);
       expect(batch_events).to.have.length(2);
 
       const eventNames = batch_events.map((event) => event.event).sort();
@@ -521,7 +508,7 @@ export function batchRequestsTests(mixpanel) {
         const engage_request = xhrRequests.find((req) => req.url.includes(`/engage/`));
         expect(engage_request).to.exist;
 
-        const people_updates = getRequestData(engage_request);
+        const people_updates = getXhrRequestData(engage_request);
         expect(people_updates).to.have.length(3);
         expect(people_updates[0].$set_once).to.have.property(`$initial_referrer`);
         expect(people_updates[0].$set_once).to.have.property(`$initial_referring_domain`);
@@ -551,7 +538,7 @@ export function batchRequestsTests(mixpanel) {
 
         expect(xhrRequests).to.have.length(1);
 
-        const group_updates = getRequestData(xhrRequests[0]);
+        const group_updates = getXhrRequestData(xhrRequests[0]);
         expect(group_updates).to.have.length(2);
 
         expect(group_updates[0]).to.deep.include({

@@ -1,5 +1,5 @@
 /* eslint camelcase: "off", eqeqeq: "off" */
-import Config from './config';
+import { Config } from './config';
 import { NpoPromise, Promise } from './promise-polyfill';
 import { window } from './window';
 

@@ -9,7 +9,7 @@ import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/index
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
-import Config from '../config';
+import { Config } from '../config';
 import { RECORD_ENQUEUE_THROTTLE_MS } from './utils';
 import { shouldMaskInput, shouldMaskText, getPrivacyConfig } from './masking';
 import { getRecordNetworkPlugin } from './rrweb-network-plugin';

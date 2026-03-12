@@ -2,7 +2,7 @@
 
 const { expect } = chai;
 import { clearAllLibInstances, clearAllStorage, untilDone, resetTargeting } from "../utils";
-import { TARGETING_GLOBAL_NAME } from "../../../../src/globals";
+import { TARGETING_GLOBAL_NAME } from "../../../../src/config";
 
 export function flagsTests(mixpanel) {
   describe(`feature flags`, function() {
@@ -28,7 +28,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);
@@ -56,7 +56,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);
@@ -80,7 +80,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);
@@ -147,7 +147,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);
@@ -205,7 +205,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);
@@ -261,7 +261,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);
@@ -319,7 +319,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);
@@ -377,7 +377,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);
@@ -494,7 +494,7 @@ export function flagsTests(mixpanel) {
         await new Promise((resolve) => {
           mixpanel.init(token, {
             flags: true,
-            targeting_src: `./static/build/mixpanel-targeting.js`,
+            lib_base_path: `./static/build/async-modules/`,
             debug: true,
             loaded: resolve
           }, `test`);

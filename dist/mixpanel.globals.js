@@ -6,6 +6,14 @@
         LIB_VERSION: '2.75.0'
     };
 
+    // Window global names for async modules
+    var TARGETING_GLOBAL_NAME = '__mp_targeting';
+    var RECORDER_GLOBAL_NAME = '__mp_recorder';
+
+    // Constants that are injected at build-time for the names of async modules.
+    var RECORDER_FILENAME = 'mixpanel-recorder-C4BuhRc3.js';
+    var TARGETING_FILENAME = 'mixpanel-targeting-Bb6srb5W.js';
+
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
     var win;
     if (typeof(window) === 'undefined') {
@@ -2122,6 +2130,17 @@
 
     var NOOP_FUNC = function () {};
 
+    var urlMatchesRegexList = function (url, regexList) {
+        var matches = false;
+        for (var i = 0; i < regexList.length; i++) {
+            if (url.match(regexList[i])) {
+                matches = true;
+                break;
+            }
+        }
+        return matches;
+    };
+
     var JSONStringify = null, JSONParse = null;
     if (typeof JSON !== 'undefined') {
         JSONStringify = JSON.stringify;
@@ -2143,25 +2162,6 @@
     _['JSONEncode']             = _.JSONEncode;
     _['toArray']                = _.toArray;
     _['NPO']                    = NpoPromise;
-
-    /**
-     * @param {import('./session-recording').SerializedRecording} serializedRecording
-     * @returns {boolean}
-     */
-    var isRecordingExpired = function(serializedRecording) {
-        var now = Date.now();
-        return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
-    };
-
-    /**
-     * Shared global window property names used across modules
-     */
-
-    // Targeting library global (used by flags and targeting modules)
-    var TARGETING_GLOBAL_NAME = '__mp_targeting';
-
-    // Recorder library global (used by recorder and mixpanel-core)
-    var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
     // stateless utils
     // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
@@ -3427,27 +3427,15 @@
     };
 
     Autocapture.prototype.currentUrlBlocked = function() {
-        var i;
         var currentUrl = _.info.currentUrl();
 
         var allowUrlRegexes = this.getConfig(CONFIG_ALLOW_URL_REGEXES) || [];
         if (allowUrlRegexes.length) {
             // we're using an allowlist, only track if current URL matches
-            var allowed = false;
-            for (i = 0; i < allowUrlRegexes.length; i++) {
-                var allowRegex = allowUrlRegexes[i];
-                try {
-                    if (currentUrl.match(allowRegex)) {
-                        allowed = true;
-                        break;
-                    }
-                } catch (err) {
-                    logger$4.critical('Error while checking block URL regex: ' + allowRegex, err);
-                    return true;
-                }
-            }
-            if (!allowed) {
-                // wasn't allowed by any regex
+            try {
+                return !urlMatchesRegexList(currentUrl, allowUrlRegexes);
+            } catch (err) {
+                logger$4.critical('Error while checking block URL regexes: ', err);
                 return true;
             }
         }
@@ -3457,17 +3445,12 @@
             return false;
         }
 
-        for (i = 0; i < blockUrlRegexes.length; i++) {
-            try {
-                if (currentUrl.match(blockUrlRegexes[i])) {
-                    return true;
-                }
-            } catch (err) {
-                logger$4.critical('Error while checking block URL regex: ' + blockUrlRegexes[i], err);
-                return true;
-            }
+        try {
+            return urlMatchesRegexList(currentUrl, blockUrlRegexes);
+        } catch (err) {
+            logger$4.critical('Error while checking block URL regexes: ', err);
+            return true;
         }
-        return false;
     };
 
     Autocapture.prototype.pageviewTrackingConfig = function() {
@@ -4460,6 +4443,350 @@
 
     // Exports intended only for testing
     FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getTargeting;
+
+    var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
+
+    var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
+    var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
+
+    // note: increment the version number when adding new object stores
+    var DB_VERSION = 1;
+    var OBJECT_STORES = [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME];
+
+    /**
+     * @type {import('./wrapper').StorageWrapper}
+     */
+    var IDBStorageWrapper = function (storeName) {
+        /**
+         * @type {Promise<IDBDatabase>|null}
+         */
+        this.dbPromise = null;
+        this.storeName = storeName;
+    };
+
+    IDBStorageWrapper.prototype._openDb = function () {
+        return new PromisePolyfill(function (resolve, reject) {
+            var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+            openRequest['onerror'] = function () {
+                reject(openRequest.error);
+            };
+
+            openRequest['onsuccess'] = function () {
+                resolve(openRequest.result);
+            };
+
+            openRequest['onupgradeneeded'] = function (ev) {
+                var db = ev.target.result;
+
+                OBJECT_STORES.forEach(function (storeName) {
+                    db.createObjectStore(storeName);
+                });
+            };
+        });
+    };
+
+    IDBStorageWrapper.prototype.init = function () {
+        if (!win.indexedDB) {
+            return PromisePolyfill.reject('indexedDB is not supported in this browser');
+        }
+
+        if (!this.dbPromise) {
+            this.dbPromise = this._openDb();
+        }
+
+        return this.dbPromise
+            .then(function (dbOrError) {
+                if (dbOrError instanceof win['IDBDatabase']) {
+                    return PromisePolyfill.resolve();
+                } else {
+                    return PromisePolyfill.reject(dbOrError);
+                }
+            });
+    };
+
+    IDBStorageWrapper.prototype.isInitialized = function () {
+        return !!this.dbPromise;
+    };
+
+    /**
+     * @param {IDBTransactionMode} mode
+     * @param {function(IDBObjectStore): void} storeCb
+     */
+    IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
+        var storeName = this.storeName;
+        var doTransaction = function (db) {
+            return new PromisePolyfill(function (resolve, reject) {
+                var transaction = db.transaction(storeName, mode);
+                transaction.oncomplete = function () {
+                    resolve(transaction);
+                };
+                transaction.onabort = transaction.onerror = function () {
+                    reject(transaction.error);
+                };
+
+                storeCb(transaction.objectStore(storeName));
+            });
+        };
+
+        return this.dbPromise
+            .then(doTransaction)
+            .catch(function (err) {
+                if (err && err['name'] === 'InvalidStateError') {
+                    // try reopening the DB if the connection is closed
+                    this.dbPromise = this._openDb();
+                    return this.dbPromise.then(doTransaction);
+                } else {
+                    return PromisePolyfill.reject(err);
+                }
+            }.bind(this));
+    };
+
+    IDBStorageWrapper.prototype.setItem = function (key, value) {
+        return this.makeTransaction('readwrite', function (objectStore) {
+            objectStore.put(value, key);
+        });
+    };
+
+    IDBStorageWrapper.prototype.getItem = function (key) {
+        var req;
+        return this.makeTransaction('readonly', function (objectStore) {
+            req = objectStore.get(key);
+        }).then(function () {
+            return req.result;
+        });
+    };
+
+    IDBStorageWrapper.prototype.removeItem = function (key) {
+        return this.makeTransaction('readwrite', function (objectStore) {
+            objectStore.delete(key);
+        });
+    };
+
+    IDBStorageWrapper.prototype.getAll = function () {
+        var req;
+        return this.makeTransaction('readonly', function (objectStore) {
+            req = objectStore.getAll();
+        }).then(function () {
+            return req.result;
+        });
+    };
+
+    /**
+     * @param {import('./session-recording').SerializedRecording} serializedRecording
+     * @returns {boolean}
+     */
+    var isRecordingExpired = function(serializedRecording) {
+        var now = Date.now();
+        return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
+    };
+
+    /* eslint camelcase: "off" */
+
+
+    /**
+     * RecorderManager: manages session recording initialization, lifecycle and state
+     * @constructor
+     */
+    var RecorderManager = function(initOptions) {
+        // TODO - Passing in mixpanel instance as it is still needed for recorder creation
+        // but ideally we should be able to remove this dependency.
+        this.mixpanelInstance = initOptions.mixpanelInstance;
+
+        this.getMpConfig = initOptions.getConfigFunc;
+        this.getTabId = initOptions.getTabIdFunc;
+        this.reportError = initOptions.reportErrorFunc;
+        this.getDistinctId = initOptions.getDistinctIdFunc;
+        this.loadExtraBundle = initOptions.loadExtraBundle;
+        this.recorderSrc = initOptions.recorderSrc;
+        this.targetingSrc = initOptions.targetingSrc;
+        this.libBasePath = initOptions.libBasePath;
+
+        this._recorder = null;
+    };
+
+    RecorderManager.prototype.shouldLoadRecorder = function() {
+        if (this.getMpConfig('disable_persistence')) {
+            console.log('Load recorder check skipped due to disable_persistence config');
+            return PromisePolyfill.resolve(false);
+        }
+
+        var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+        var tab_id = this.getTabId();
+        return recording_registry_idb.init()
+            .then(function () {
+                return recording_registry_idb.getAll();
+            })
+            .then(function (recordings) {
+                for (var i = 0; i < recordings.length; i++) {
+                    // if there are expired recordings in the registry, we should load the recorder to flush them
+                    // if there's a recording for this tab id, we should load the recorder to continue the recording
+                    if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {
+                        return true;
+                    }
+                }
+                return false;
+            })
+            .catch(_.bind(function (err) {
+                this.reportError('Error checking recording registry', err);
+                return false;
+            }, this));
+    };
+
+    RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, rate) {
+        if (!win['MutationObserver']) {
+            console.critical('Browser does not support MutationObserver; skipping session recording');
+            return PromisePolyfill.resolve();
+        }
+
+        var loadRecorder = _.bind(function(startNewIfInactive) {
+            return new PromisePolyfill(_.bind(function(resolve) {
+                var handleLoadedRecorder = safewrap(_.bind(function() {
+                    this._recorder = this._recorder || new win[RECORDER_GLOBAL_NAME](this.mixpanelInstance);
+                    this._recorder['resumeRecording'](startNewIfInactive);
+                    resolve();
+                }, this));
+
+                if (_.isUndefined(win[RECORDER_GLOBAL_NAME])) {
+                    var recorderSrc = this.recorderSrc || (this.libBasePath + RECORDER_FILENAME);
+                    this.loadExtraBundle(recorderSrc, handleLoadedRecorder);
+                } else {
+                    handleLoadedRecorder();
+                }
+            }, this));
+        }, this);
+
+        /**
+         * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
+         * Otherwise, if the recording registry has any records then it's likely there's a recording in progress or orphaned data that needs to be flushed.
+         */
+        var effective_rate = _.isUndefined(rate) ? this.getMpConfig('record_sessions_percent') : rate;
+        var is_sampled = effective_rate > 0 && Math.random() * 100 <= effective_rate;
+        if (force_start || is_sampled) {
+            return loadRecorder(true);
+        } else {
+            return this.shouldLoadRecorder()
+                .then(_.bind(function (shouldLoad) {
+                    if (shouldLoad) {
+                        return loadRecorder(false);
+                    }
+                    return PromisePolyfill.resolve();
+                }, this));
+        }
+    };
+
+    RecorderManager.prototype.isRecording = function() {
+        // Safety check: ensure isRecording method exists (older CDN builds may not have it)
+        if (!this._recorder || !_.isFunction(this._recorder['isRecording'])) {
+            return false;
+        }
+        try {
+            return this._recorder['isRecording']();
+        } catch (e) {
+            this.reportError('Error checking if recording is active', e);
+            return false;
+        }
+    };
+
+    RecorderManager.prototype.startRecordingOnEvent = function(event_name, properties) {
+        var isRecording = this.isRecording();
+        var recordingTriggerEvents = this.getMpConfig('recording_event_triggers');
+
+        if (!isRecording && recordingTriggerEvents) {
+            var trigger = recordingTriggerEvents[event_name];
+            if (trigger && typeof trigger['percentage'] === 'number') {
+                var newRate = trigger['percentage'];
+                var propertyFilters = trigger['property_filters'];
+                if (propertyFilters && !_.isEmptyObject(propertyFilters)) {
+                    var targetingSrc = this.targetingSrc || (this.libBasePath + TARGETING_FILENAME);
+                    getTargetingPromise(this.loadExtraBundle, targetingSrc)
+                        .then(function(targeting) {
+                            try {
+                                var result = targeting['eventMatchesCriteria'](
+                                    event_name,
+                                    properties,
+                                    {
+                                        'event_name': event_name,
+                                        'property_filters': propertyFilters
+                                    }
+                                );
+                                if (result['matches']) {
+                                    this.checkAndStartSessionRecording(false, newRate);
+                                }
+                            } catch (err) {
+                                console.critical('Could not parse recording event trigger properties logic:', err);
+                            }
+                        }.bind(this)).catch(function(err) {
+                            console.critical('Failed to load targeting library:', err);
+                        });
+                } else {
+                    this.checkAndStartSessionRecording(false, newRate);
+                }
+            }
+        }
+    };
+
+    RecorderManager.prototype.stopSessionRecording = function() {
+        if (this._recorder) {
+            return this._recorder['stopRecording']();
+        }
+        return PromisePolyfill.resolve();
+    };
+
+    RecorderManager.prototype.pauseSessionRecording = function() {
+        if (this._recorder) {
+            return this._recorder['pauseRecording']();
+        }
+        return PromisePolyfill.resolve();
+    };
+
+    RecorderManager.prototype.resumeSessionRecording = function() {
+        if (this._recorder) {
+            return this._recorder['resumeRecording']();
+        }
+        return PromisePolyfill.resolve();
+    };
+
+    RecorderManager.prototype.isRecordingHeatmapData = function() {
+        return this.getSessionReplayId() && this.getMpConfig('record_heatmap_data');
+    };
+
+    RecorderManager.prototype.getSessionRecordingProperties = function() {
+        var props = {};
+        var replay_id = this.getSessionReplayId();
+        if (replay_id) {
+            props['$mp_replay_id'] = replay_id;
+        }
+        return props;
+    };
+
+    RecorderManager.prototype.getSessionReplayUrl = function() {
+        var replay_url = null;
+        var replay_id = this.getSessionReplayId();
+        if (replay_id) {
+            var query_params = _.HTTPBuildQuery({
+                'replay_id': replay_id,
+                'distinct_id': this.getDistinctId(),
+                'token': this.getMpConfig('token')
+            });
+            replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
+        }
+        return replay_url;
+    };
+
+    RecorderManager.prototype.getSessionReplayId = function() {
+        var replay_id = null;
+        if (this._recorder) {
+            replay_id = this._recorder['replayId'];
+        }
+        return replay_id || null;
+    };
+
+    // "private" public method to reach into the recorder in test cases
+    RecorderManager.prototype.getRecorder = function() {
+        return this._recorder;
+    };
+
+    safewrapClass(RecorderManager);
 
     /* eslint camelcase: "off" */
 
@@ -6982,133 +7309,6 @@
         return timestamp;
     };
 
-    var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
-
-    var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
-    var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
-
-    // note: increment the version number when adding new object stores
-    var DB_VERSION = 1;
-    var OBJECT_STORES = [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME];
-
-    /**
-     * @type {import('./wrapper').StorageWrapper}
-     */
-    var IDBStorageWrapper = function (storeName) {
-        /**
-         * @type {Promise<IDBDatabase>|null}
-         */
-        this.dbPromise = null;
-        this.storeName = storeName;
-    };
-
-    IDBStorageWrapper.prototype._openDb = function () {
-        return new PromisePolyfill(function (resolve, reject) {
-            var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
-            openRequest['onerror'] = function () {
-                reject(openRequest.error);
-            };
-
-            openRequest['onsuccess'] = function () {
-                resolve(openRequest.result);
-            };
-
-            openRequest['onupgradeneeded'] = function (ev) {
-                var db = ev.target.result;
-
-                OBJECT_STORES.forEach(function (storeName) {
-                    db.createObjectStore(storeName);
-                });
-            };
-        });
-    };
-
-    IDBStorageWrapper.prototype.init = function () {
-        if (!win.indexedDB) {
-            return PromisePolyfill.reject('indexedDB is not supported in this browser');
-        }
-
-        if (!this.dbPromise) {
-            this.dbPromise = this._openDb();
-        }
-
-        return this.dbPromise
-            .then(function (dbOrError) {
-                if (dbOrError instanceof win['IDBDatabase']) {
-                    return PromisePolyfill.resolve();
-                } else {
-                    return PromisePolyfill.reject(dbOrError);
-                }
-            });
-    };
-
-    IDBStorageWrapper.prototype.isInitialized = function () {
-        return !!this.dbPromise;
-    };
-
-    /**
-     * @param {IDBTransactionMode} mode
-     * @param {function(IDBObjectStore): void} storeCb
-     */
-    IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
-        var storeName = this.storeName;
-        var doTransaction = function (db) {
-            return new PromisePolyfill(function (resolve, reject) {
-                var transaction = db.transaction(storeName, mode);
-                transaction.oncomplete = function () {
-                    resolve(transaction);
-                };
-                transaction.onabort = transaction.onerror = function () {
-                    reject(transaction.error);
-                };
-
-                storeCb(transaction.objectStore(storeName));
-            });
-        };
-
-        return this.dbPromise
-            .then(doTransaction)
-            .catch(function (err) {
-                if (err && err['name'] === 'InvalidStateError') {
-                    // try reopening the DB if the connection is closed
-                    this.dbPromise = this._openDb();
-                    return this.dbPromise.then(doTransaction);
-                } else {
-                    return PromisePolyfill.reject(err);
-                }
-            }.bind(this));
-    };
-
-    IDBStorageWrapper.prototype.setItem = function (key, value) {
-        return this.makeTransaction('readwrite', function (objectStore) {
-            objectStore.put(value, key);
-        });
-    };
-
-    IDBStorageWrapper.prototype.getItem = function (key) {
-        var req;
-        return this.makeTransaction('readonly', function (objectStore) {
-            req = objectStore.get(key);
-        }).then(function () {
-            return req.result;
-        });
-    };
-
-    IDBStorageWrapper.prototype.removeItem = function (key) {
-        return this.makeTransaction('readwrite', function (objectStore) {
-            objectStore.delete(key);
-        });
-    };
-
-    IDBStorageWrapper.prototype.getAll = function () {
-        var req;
-        return this.makeTransaction('readonly', function (objectStore) {
-            req = objectStore.getAll();
-        }).then(function () {
-            return req.result;
-        });
-    };
-
     /* eslint camelcase: "off" */
 
     /*
@@ -7243,13 +7443,17 @@
         'record_collect_fonts':              false,
         'record_console':                    true,
         'record_heatmap_data':               false,
+        'recording_event_triggers':          {},
         'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
         'record_mask_inputs':                true,
         'record_max_ms':                     MAX_RECORDING_MS,
         'record_min_ms':                     0,
+        'record_network':                    false,
+        'record_network_options':            {},
         'record_sessions_percent':           0,
-        'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
-        'targeting_src':                     'https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js',
+        'recorder_src':                      null,
+        'targeting_src':                     null,
+        'lib_base_path':                     'https://cdn.mxpnl.com/libs/',
         'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
     };
 
@@ -7403,6 +7607,19 @@
             'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
         }));
 
+        this.recorderManager = new RecorderManager({
+            mixpanelInstance: this,
+            getConfigFunc: _.bind(this.get_config, this),
+            setConfigFunc: _.bind(this.set_config, this),
+            getTabIdFunc: _.bind(this.get_tab_id, this),
+            reportErrorFunc: _.bind(this.report_error, this),
+            getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+            recorderSrc: this.get_config('recorder_src'),
+            targetingSrc: this.get_config('targeting_src'),
+            libBasePath: this.get_config('lib_base_path'),
+            loadExtraBundle: load_extra_bundle
+        });
+
         this['_jsc'] = NOOP_FUNC;
 
         this.__dom_loaded_queue = [];
@@ -7481,7 +7698,7 @@
             getPropertyFunc: _.bind(this.get_property, this),
             trackingFunc: _.bind(this.track, this),
             loadExtraBundle: load_extra_bundle,
-            targetingSrc: this.get_config('targeting_src')
+            targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME)
         });
         this.flags.init();
         this['flags'] = this.flags;
@@ -7494,11 +7711,11 @@
         // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
         var mode = this.get_config('remote_settings_mode');
         if (mode === SETTING_STRICT || mode === SETTING_FALLBACK) {
-            this._fetch_remote_settings(mode).then(_.bind(function() {
-                this._check_and_start_session_recording();
+            this.__session_recording_init_promise = this._fetch_remote_settings(mode).then(_.bind(function() {
+                return this._check_and_start_session_recording();
             }, this));
         } else {
-            this._check_and_start_session_recording();
+            this.__session_recording_init_promise = this._check_and_start_session_recording();
         }
     };
 
@@ -7542,132 +7759,50 @@
         return this.tab_id || null;
     };
 
-    MixpanelLib.prototype._should_load_recorder = function () {
-        if (this.get_config('disable_persistence')) {
-            console.log('Load recorder check skipped due to disable_persistence config');
-            return Promise.resolve(false);
-        }
-
-        var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
-        var tab_id = this.get_tab_id();
-        return recording_registry_idb.init()
-            .then(function () {
-                return recording_registry_idb.getAll();
-            })
-            .then(function (recordings) {
-                for (var i = 0; i < recordings.length; i++) {
-                    // if there are expired recordings in the registry, we should load the recorder to flush them
-                    // if there's a recording for this tab id, we should load the recorder to continue the recording
-                    if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {
-                        return true;
-                    }
-                }
-                return false;
-            })
-            .catch(_.bind(function (err) {
-                this.report_error('Error checking recording registry', err);
-            }, this));
-    };
-
     MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpanelLib(function(force_start) {
-        if (!win['MutationObserver']) {
-            console.critical('Browser does not support MutationObserver; skipping session recording');
-            return;
-        }
-
-        var loadRecorder = _.bind(function(startNewIfInactive) {
-            var handleLoadedRecorder = _.bind(function() {
-                this._recorder = this._recorder || new win[RECORDER_GLOBAL_NAME](this);
-                this._recorder['resumeRecording'](startNewIfInactive);
-            }, this);
-
-            if (_.isUndefined(win[RECORDER_GLOBAL_NAME])) {
-                load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
-            } else {
-                handleLoadedRecorder();
-            }
-        }, this);
-
-        /**
-         * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
-         * Otherwise, if the recording registry has any records then it's likely there's a recording in progress or orphaned data that needs to be flushed.
-         */
-        var is_sampled = this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent');
-        if (force_start || is_sampled) {
-            loadRecorder(true);
-        } else {
-            this._should_load_recorder()
-                .then(function (shouldLoad) {
-                    if (shouldLoad) {
-                        loadRecorder(false);
-                    }
-                });
-        }
+        return this.recorderManager.checkAndStartSessionRecording(force_start);
     });
 
+    MixpanelLib.prototype._start_recording_on_event = function(event_name, properties) {
+        return this.recorderManager.startRecordingOnEvent(event_name, properties);
+    };
+
     MixpanelLib.prototype.start_session_recording = function () {
-        this._check_and_start_session_recording(true);
+        return this._check_and_start_session_recording(true);
     };
 
     MixpanelLib.prototype.stop_session_recording = function () {
-        if (this._recorder) {
-            return this._recorder['stopRecording']();
-        }
-        return Promise.resolve();
+        return this.recorderManager.stopSessionRecording();
     };
 
     MixpanelLib.prototype.pause_session_recording = function () {
-        if (this._recorder) {
-            return this._recorder['pauseRecording']();
-        }
-        return Promise.resolve();
+        return this.recorderManager.pauseSessionRecording();
     };
 
     MixpanelLib.prototype.resume_session_recording = function () {
-        if (this._recorder) {
-            return this._recorder['resumeRecording']();
-        }
-        return Promise.resolve();
+        return this.recorderManager.resumeSessionRecording();
     };
 
     MixpanelLib.prototype.is_recording_heatmap_data = function () {
-        return this._get_session_replay_id() && this.get_config('record_heatmap_data');
+        return this.recorderManager.isRecordingHeatmapData();
     };
 
     MixpanelLib.prototype.get_session_recording_properties = function () {
-        var props = {};
-        var replay_id = this._get_session_replay_id();
-        if (replay_id) {
-            props['$mp_replay_id'] = replay_id;
-        }
-        return props;
+        return this.recorderManager.getSessionRecordingProperties();
     };
 
     MixpanelLib.prototype.get_session_replay_url = function () {
-        var replay_url = null;
-        var replay_id = this._get_session_replay_id();
-        if (replay_id) {
-            var query_params = _.HTTPBuildQuery({
-                'replay_id': replay_id,
-                'distinct_id': this.get_distinct_id(),
-                'token': this.get_config('token')
-            });
-            replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
-        }
-        return replay_url;
-    };
-
-    MixpanelLib.prototype._get_session_replay_id = function () {
-        var replay_id = null;
-        if (this._recorder) {
-            replay_id = this._recorder['replayId'];
-        }
-        return replay_id || null;
+        return this.recorderManager.getSessionReplayUrl();
     };
 
     // "private" public method to reach into the recorder in test cases
     MixpanelLib.prototype.__get_recorder = function () {
-        return this._recorder;
+        return this.recorderManager.getRecorder();
+    };
+
+    // "private" public method to get session recording init promise in test cases
+    MixpanelLib.prototype.__get_recording_init_promise = function () {
+        return this.__session_recording_init_promise;
     };
 
     // Private methods
@@ -7925,6 +8060,7 @@
     };
 
     MixpanelLib.prototype._fetch_remote_settings = function(mode) {
+        var self = this;
         var disableRecordingIfStrict = function() {
             if (mode === 'strict') {
                 self.set_config({'record_sessions_percent': 0});
@@ -7945,7 +8081,6 @@
         };
         var query_string = _.HTTPBuildQuery(request_params);
         var full_url = settings_endpoint + '?' + query_string;
-        var self = this;
 
         var abortController = new AbortController();
         var timeout_id = setTimeout(function() {
@@ -8138,6 +8273,34 @@
     };
 
     /**
+     * Enables events on the Mixpanel object. If passed no arguments,
+     * this function enable tracking of all events. If passed an
+     * array of event names, those events will be enabled, but other
+     * existing disabled events will continue to be not tracked.
+     *
+     * @param {Array} [events] An array of event names to enable
+     */
+    MixpanelLib.prototype.enable = function(events) {
+        var keys, new_disabled_events, i, j;
+
+        if (typeof(events) === 'undefined') {
+            this._flags.disable_all_events = false;
+        } else {
+            keys = {};
+            new_disabled_events = [];
+            for (i = 0; i < events.length; i++) {
+                keys[events[i]] = true;
+            }
+            for (j = 0; j < this.__disabled_events.length; j++) {
+                if (!keys[this.__disabled_events[j]]) {
+                    new_disabled_events.push(this.__disabled_events[j]);
+                }
+            }
+            this.__disabled_events = new_disabled_events;
+        }
+    };
+
+    /**
      * Disable events on the Mixpanel object. If passed no arguments,
      * this function disables tracking of any event. If passed an
      * array of event names, those events will be disabled, but other
@@ -8309,6 +8472,8 @@
         } else {
             this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
         }
+
+        this._start_recording_on_event(event_name, properties);
 
         var data = {
             'event': event_name,
@@ -9518,6 +9683,7 @@
     // MixpanelLib Exports
     MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
     MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
+    MixpanelLib.prototype['enable']                             = MixpanelLib.prototype.enable;
     MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
     MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
     MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
@@ -9561,6 +9727,7 @@
 
     // Exports intended only for testing
     MixpanelLib.prototype['__get_recorder']                     = MixpanelLib.prototype.__get_recorder;
+    MixpanelLib.prototype['__get_recording_init_promise']       = MixpanelLib.prototype.__get_recording_init_promise;
 
     // MixpanelPersistence Exports
     MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;

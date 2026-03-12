@@ -1,10 +1,10 @@
 /* eslint camelcase: "off" */
+import {RECORDER_FILENAME, TARGETING_FILENAME, RECORDER_GLOBAL_NAME} from './config';
 import { _, console, safewrap, safewrapClass } from './utils';
 import { window } from './window';
 import { Promise } from './promise-polyfill';
 import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from './storage/indexed-db';
 import { isRecordingExpired } from './recorder/utils';
-import { RECORDER_GLOBAL_NAME } from './globals';
 import { getTargetingPromise } from './targeting/loader';
 
 
@@ -22,6 +22,9 @@ var RecorderManager = function(initOptions) {
     this.reportError = initOptions.reportErrorFunc;
     this.getDistinctId = initOptions.getDistinctIdFunc;
     this.loadExtraBundle = initOptions.loadExtraBundle;
+    this.recorderSrc = initOptions.recorderSrc;
+    this.targetingSrc = initOptions.targetingSrc;
+    this.libBasePath = initOptions.libBasePath;
 
     this._recorder = null;
 };
@@ -69,7 +72,8 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
             }, this));
 
             if (_.isUndefined(window[RECORDER_GLOBAL_NAME])) {
-                this.loadExtraBundle(this.getMpConfig('recorder_src'), handleLoadedRecorder);
+                var recorderSrc = this.recorderSrc || (this.libBasePath + RECORDER_FILENAME);
+                this.loadExtraBundle(recorderSrc, handleLoadedRecorder);
             } else {
                 handleLoadedRecorder();
             }
@@ -118,7 +122,8 @@ RecorderManager.prototype.startRecordingOnEvent = function(event_name, propertie
             var newRate = trigger['percentage'];
             var propertyFilters = trigger['property_filters'];
             if (propertyFilters && !_.isEmptyObject(propertyFilters)) {
-                getTargetingPromise(this.loadExtraBundle, this.getMpConfig('targeting_src'))
+                var targetingSrc = this.targetingSrc || (this.libBasePath + TARGETING_FILENAME);
+                getTargetingPromise(this.loadExtraBundle, targetingSrc)
                     .then(function(targeting) {
                         try {
                             var result = targeting['eventMatchesCriteria'](

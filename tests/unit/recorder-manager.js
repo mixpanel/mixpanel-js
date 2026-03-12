@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import sinon from "sinon";
 import { RecorderManager } from "../../src/recorder-manager";
+import { window } from "../../src/window";
+import { RECORDER_GLOBAL_NAME, TARGETING_GLOBAL_NAME, RECORDER_FILENAME, TARGETING_FILENAME } from "../../src/config";
 
 describe(`RecorderManager`, function() {
   let recorderManager;
@@ -210,6 +212,128 @@ describe(`RecorderManager`, function() {
       recorderManager._recorder = mockRecorder;
 
       expect(recorderManager.getRecorder()).to.equal(mockRecorder);
+    });
+  });
+
+  describe(`bundle source loading`, function() {
+    let originalMutationObserver;
+    let loadExtraBundleStub;
+
+    beforeEach(function() {
+      originalMutationObserver = window[`MutationObserver`];
+      window[`MutationObserver`] = sinon.stub();
+      delete window[RECORDER_GLOBAL_NAME];
+
+      loadExtraBundleStub = sinon.stub().callsFake((_src, callback) => {
+        callback();
+      });
+    });
+
+    afterEach(function() {
+      window[`MutationObserver`] = originalMutationObserver;
+      delete window[RECORDER_GLOBAL_NAME];
+      delete window[TARGETING_GLOBAL_NAME];
+    });
+
+    function createManagerWithOpts(opts) {
+      var defaults = {
+        mixpanelInstance: {},
+        getConfigFunc: getConfigStub,
+        getTabIdFunc: () => `test-tab-id`,
+        reportErrorFunc: sinon.stub(),
+        getDistinctIdFunc: getDistinctIdStub,
+        loadExtraBundle: loadExtraBundleStub
+      };
+      return new RecorderManager(Object.assign(defaults, opts));
+    }
+
+    describe(`recorderSrc`, function() {
+      it(`should use recorderSrc when provided`, async function() {
+        const manager = createManagerWithOpts({
+          recorderSrc: `https://cdn.example.com/custom-recorder.js`,
+          libBasePath: `/base/`
+        });
+        // stub out the recorder constructor so it doesn't blow up
+        window[RECORDER_GLOBAL_NAME] = undefined;
+        loadExtraBundleStub.callsFake((_src, callback) => {
+          window[RECORDER_GLOBAL_NAME] = sinon.stub().returns({
+            'resumeRecording': sinon.stub()
+          });
+          callback();
+        });
+
+        await manager.checkAndStartSessionRecording(true);
+
+        expect(loadExtraBundleStub.calledOnce).to.be.true;
+        expect(loadExtraBundleStub.firstCall.args[0]).to.equal(`https://cdn.example.com/custom-recorder.js`);
+      });
+
+      it(`should fall back to libBasePath + RECORDER_FILENAME when recorderSrc is not provided`, async function() {
+        const manager = createManagerWithOpts({
+          libBasePath: `/custom/path/`
+        });
+        loadExtraBundleStub.callsFake((_src, callback) => {
+          window[RECORDER_GLOBAL_NAME] = sinon.stub().returns({
+            'resumeRecording': sinon.stub()
+          });
+          callback();
+        });
+
+        await manager.checkAndStartSessionRecording(true);
+
+        expect(loadExtraBundleStub.calledOnce).to.be.true;
+        expect(loadExtraBundleStub.firstCall.args[0]).to.equal(`/custom/path/` + RECORDER_FILENAME);
+      });
+
+      it(`should not call loadExtraBundle when recorder is already loaded`, async function() {
+        window[RECORDER_GLOBAL_NAME] = sinon.stub().returns({
+          'resumeRecording': sinon.stub()
+        });
+        const manager = createManagerWithOpts({
+          recorderSrc: `https://cdn.example.com/custom-recorder.js`
+        });
+
+        await manager.checkAndStartSessionRecording(true);
+
+        expect(loadExtraBundleStub.called).to.be.false;
+      });
+    });
+
+    describe(`targetingSrc`, function() {
+      it(`should use targetingSrc when provided`, function() {
+        const manager = createManagerWithOpts({
+          targetingSrc: `https://cdn.example.com/custom-targeting.js`,
+          libBasePath: `/base/`
+        });
+        mockConfig[`recording_event_triggers`] = {
+          'test_event': {
+            'percentage': 100,
+            'property_filters': { 'key': `value` }
+          }
+        };
+
+        manager.startRecordingOnEvent(`test_event`, { 'key': `value` });
+
+        expect(loadExtraBundleStub.calledOnce).to.be.true;
+        expect(loadExtraBundleStub.firstCall.args[0]).to.equal(`https://cdn.example.com/custom-targeting.js`);
+      });
+
+      it(`should fall back to libBasePath + TARGETING_FILENAME when targetingSrc is not provided`, function() {
+        const manager = createManagerWithOpts({
+          libBasePath: `/custom/path/`
+        });
+        mockConfig[`recording_event_triggers`] = {
+          'test_event': {
+            'percentage': 100,
+            'property_filters': { 'key': `value` }
+          }
+        };
+
+        manager.startRecordingOnEvent(`test_event`, { 'key': `value` });
+
+        expect(loadExtraBundleStub.calledOnce).to.be.true;
+        expect(loadExtraBundleStub.firstCall.args[0]).to.equal(`/custom/path/` + TARGETING_FILENAME);
+      });
     });
   });
 });

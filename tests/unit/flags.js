@@ -4,7 +4,7 @@ import sinonChai from "sinon-chai";
 import * as jsonLogic from "json-logic-js";
 
 import { window } from "../../src/window";
-import Config from "../../src/config";
+import { Config } from "../../src/config";
 
 import { FeatureFlagManager } from "../../src/flags/index";
 import {

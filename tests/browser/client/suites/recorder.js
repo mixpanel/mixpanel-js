@@ -1,5 +1,5 @@
 import { clearAllStorage, clearAllLibInstances, untilDone, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse, resetRecorder, getExternalLibraryScript, resetTargeting} from "../utils";
-import { RECORDER_GLOBAL_NAME, TARGETING_GLOBAL_NAME } from "../../../../src/globals";
+import { RECORDER_GLOBAL_NAME, TARGETING_GLOBAL_NAME } from "../../../../src/config";
 
 const expect = chai.expect;
 
@@ -7,20 +7,8 @@ export function recorderTests (mixpanel) {
   // module tests have the recorder bundled in already, so don't need to test certain things
   const IS_RECORDER_BUNDLED = Boolean(window[RECORDER_GLOBAL_NAME]);
   var loadedRecorderProject = false;
-  var recorderSrc = null;
-  if (!IS_RECORDER_BUNDLED) {
-    recorderSrc = window.MIXPANEL_CUSTOM_LIB_URL.endsWith(`.min.js`) ?
-      `../../build/mixpanel-recorder.min.js`:
-      `../../build/mixpanel-recorder.js`;
-  }
 
   const IS_TARGETING_BUNDLED = Boolean(window[TARGETING_GLOBAL_NAME]);
-  var targetingSrc = null;
-  if (!IS_TARGETING_BUNDLED) {
-     targetingSrc = window.MIXPANEL_CUSTOM_LIB_URL.endsWith(`.min.js`) ?
-      `../../build/mixpanel-targeting.min.js`:
-      `../../build/mixpanel-targeting.js`;
-  }
 
   function validateAndGetUrlParams(fetchStubCall) {
     var calledURL = fetchStubCall.args[0];
@@ -36,10 +24,6 @@ export function recorderTests (mixpanel) {
 
   function getRecorderScript () {
     return getExternalLibraryScript('mixpanel-recorder');
-  }
-
-  function getTargetingScript () {
-    return document.querySelector(`script[src="` + targetingSrc + `"]`);
   }
 
   describe(`recorder`, function () {
@@ -81,8 +65,7 @@ export function recorderTests (mixpanel) {
           const config = Object.assign({
             debug: true,
             record_sessions_percent: 0,
-            recorder_src: recorderSrc,
-            targeting_src: targetingSrc,
+            lib_base_path: `../../build/async-modules/`,
             record_console: false,
             loaded: function () {
               resolve();
