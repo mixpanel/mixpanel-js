@@ -2,27 +2,25 @@ import chai, { expect } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import { MixpanelProvider } from '../src/MixpanelProvider';
-import { MixpanelInstance } from '../src/types';
+import { FlagsManager } from '../src/types';
 import { ErrorCode } from '@openfeature/web-sdk';
 
 chai.use(sinonChai);
 
 describe('MixpanelProvider', () => {
-  let mockMixpanel: MixpanelInstance;
+  let mockFlagsManager: FlagsManager;
   let mockFlags: Map<string, any>;
   let mockLogger: any;
 
   beforeEach(() => {
     mockFlags = new Map();
-    mockMixpanel = {
-      flags: {
-        are_flags_ready: sinon.stub().returns(true),
-        get_variant_sync: sinon.stub().callsFake((key: string, fallback: any) => {
-          return mockFlags.get(key) || fallback;
-        }),
-        update_context: sinon.stub().resolves(),
-        fetchPromise: Promise.resolve(),
-      },
+    mockFlagsManager = {
+      are_flags_ready: sinon.stub().returns(true),
+      get_variant_sync: sinon.stub().callsFake((key: string, fallback: any) => {
+        return mockFlags.get(key) || fallback;
+      }),
+      update_context: sinon.stub().resolves(),
+      fetchPromise: Promise.resolve(),
     };
     mockLogger = {
       debug: sinon.stub(),
@@ -38,12 +36,12 @@ describe('MixpanelProvider', () => {
 
   describe('metadata', () => {
     it('should have correct provider name', () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       expect(provider.metadata.name).to.equal('mixpanel-provider');
     });
 
     it('should run on client', () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       expect(provider.runsOn).to.equal('client');
     });
   });
@@ -57,9 +55,9 @@ describe('MixpanelProvider', () => {
           resolve();
         }, 10);
       });
-      mockMixpanel.flags.fetchPromise = delayedFetchPromise;
+      mockFlagsManager.fetchPromise = delayedFetchPromise;
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
 
       expect(fetchResolved).to.be.false;
       await provider.initialize();
@@ -67,34 +65,34 @@ describe('MixpanelProvider', () => {
     });
 
     it('should call update_context when context is provided', async () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const context = { userId: 'test-user', email: 'test@example.com' };
 
       await provider.initialize(context);
 
-      expect(mockMixpanel.flags.update_context).to.have.been.calledOnce;
-      expect(mockMixpanel.flags.update_context).to.have.been.calledWith(context, { replace: true });
+      expect(mockFlagsManager.update_context).to.have.been.calledOnce;
+      expect(mockFlagsManager.update_context).to.have.been.calledWith(context, { replace: true });
     });
 
     it('should not call update_context when context is empty', async () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
 
       await provider.initialize({});
 
-      expect(mockMixpanel.flags.update_context).not.to.have.been.called;
+      expect(mockFlagsManager.update_context).not.to.have.been.called;
     });
 
     it('should not call update_context when context is undefined', async () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
 
       await provider.initialize();
 
-      expect(mockMixpanel.flags.update_context).not.to.have.been.called;
+      expect(mockFlagsManager.update_context).not.to.have.been.called;
     });
 
     it('should handle missing fetchPromise gracefully', async () => {
-      mockMixpanel.flags.fetchPromise = undefined;
-      const provider = new MixpanelProvider(mockMixpanel);
+      mockFlagsManager.fetchPromise = undefined;
+      const provider = new MixpanelProvider(mockFlagsManager);
 
       // Should not throw
       await provider.initialize();
@@ -103,35 +101,35 @@ describe('MixpanelProvider', () => {
 
   describe('onContextChange', () => {
     it('should call update_context with new context and replace: true', async () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const oldContext = { userId: 'old-user' };
       const newContext = { userId: 'new-user', plan: 'premium' };
 
       await provider.onContextChange(oldContext, newContext);
 
-      expect(mockMixpanel.flags.update_context).to.have.been.calledOnce;
-      expect(mockMixpanel.flags.update_context).to.have.been.calledWith(newContext, { replace: true });
+      expect(mockFlagsManager.update_context).to.have.been.calledOnce;
+      expect(mockFlagsManager.update_context).to.have.been.calledWith(newContext, { replace: true });
     });
 
     it('should handle empty new context', async () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
 
       await provider.onContextChange({ userId: 'old' }, {});
 
-      expect(mockMixpanel.flags.update_context).to.have.been.calledWith({}, { replace: true });
+      expect(mockFlagsManager.update_context).to.have.been.calledWith({}, { replace: true });
     });
   });
 
   describe('onClose', () => {
     it('should resolve without error', async () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
 
       // Should not throw
       await provider.onClose();
     });
 
     it('should return a promise', () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.onClose();
 
       expect(result).to.be.instanceOf(Promise);
@@ -145,7 +143,7 @@ describe('MixpanelProvider', () => {
         value: true,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveBooleanEvaluation('feature-enabled', false, {}, mockLogger);
 
       expect(result.value).to.equal(true);
@@ -160,7 +158,7 @@ describe('MixpanelProvider', () => {
         value: false,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveBooleanEvaluation('feature-disabled', true, {}, mockLogger);
 
       expect(result.value).to.equal(false);
@@ -173,7 +171,7 @@ describe('MixpanelProvider', () => {
         value: 'not-a-boolean',
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveBooleanEvaluation('string-flag', false, {}, mockLogger);
 
       expect(result.value).to.equal(false);
@@ -188,7 +186,7 @@ describe('MixpanelProvider', () => {
         value: 42,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveBooleanEvaluation('number-flag', true, {}, mockLogger);
 
       expect(result.value).to.equal(true);
@@ -201,7 +199,7 @@ describe('MixpanelProvider', () => {
         value: { some: 'object' },
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveBooleanEvaluation('object-flag', false, {}, mockLogger);
 
       expect(result.value).to.equal(false);
@@ -209,7 +207,7 @@ describe('MixpanelProvider', () => {
     });
 
     it('should return FLAG_NOT_FOUND error when flag does not exist', () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveBooleanEvaluation('non-existent-flag', true, {}, mockLogger);
 
       expect(result.value).to.equal(true);
@@ -219,9 +217,9 @@ describe('MixpanelProvider', () => {
     });
 
     it('should return PROVIDER_NOT_READY error when flags not loaded', () => {
-      (mockMixpanel.flags.are_flags_ready as sinon.SinonStub).returns(false);
+      (mockFlagsManager.are_flags_ready as sinon.SinonStub).returns(false);
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveBooleanEvaluation('any-flag', false, {}, mockLogger);
 
       expect(result.value).to.equal(false);
@@ -238,7 +236,7 @@ describe('MixpanelProvider', () => {
         value: 'dark-mode',
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation('theme-flag', 'light-mode', {}, mockLogger);
 
       expect(result.value).to.equal('dark-mode');
@@ -253,7 +251,7 @@ describe('MixpanelProvider', () => {
         value: '',
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation('empty-string-flag', 'default', {}, mockLogger);
 
       expect(result.value).to.equal('');
@@ -266,7 +264,7 @@ describe('MixpanelProvider', () => {
         value: true,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation('bool-flag', 'default', {}, mockLogger);
 
       expect(result.value).to.equal('default');
@@ -281,7 +279,7 @@ describe('MixpanelProvider', () => {
         value: 123,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation('number-flag', 'default', {}, mockLogger);
 
       expect(result.value).to.equal('default');
@@ -294,7 +292,7 @@ describe('MixpanelProvider', () => {
         value: { key: 'value' },
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation('object-flag', 'default', {}, mockLogger);
 
       expect(result.value).to.equal('default');
@@ -302,7 +300,7 @@ describe('MixpanelProvider', () => {
     });
 
     it('should return FLAG_NOT_FOUND error when flag does not exist', () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation('non-existent-flag', 'fallback', {}, mockLogger);
 
       expect(result.value).to.equal('fallback');
@@ -311,9 +309,9 @@ describe('MixpanelProvider', () => {
     });
 
     it('should return PROVIDER_NOT_READY error when flags not loaded', () => {
-      (mockMixpanel.flags.are_flags_ready as sinon.SinonStub).returns(false);
+      (mockFlagsManager.are_flags_ready as sinon.SinonStub).returns(false);
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation('any-flag', 'default', {}, mockLogger);
 
       expect(result.value).to.equal('default');
@@ -328,7 +326,7 @@ describe('MixpanelProvider', () => {
         value: 50,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('percentage-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(50);
@@ -343,7 +341,7 @@ describe('MixpanelProvider', () => {
         value: 0,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('zero-flag', 100, {}, mockLogger);
 
       expect(result.value).to.equal(0);
@@ -356,7 +354,7 @@ describe('MixpanelProvider', () => {
         value: -42,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('negative-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(-42);
@@ -368,7 +366,7 @@ describe('MixpanelProvider', () => {
         value: 3.14159,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('float-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(3.14159);
@@ -380,7 +378,7 @@ describe('MixpanelProvider', () => {
         value: '42',
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('string-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(0);
@@ -395,7 +393,7 @@ describe('MixpanelProvider', () => {
         value: true,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('bool-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(0);
@@ -408,7 +406,7 @@ describe('MixpanelProvider', () => {
         value: { num: 42 },
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('object-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(0);
@@ -416,7 +414,7 @@ describe('MixpanelProvider', () => {
     });
 
     it('should return FLAG_NOT_FOUND error when flag does not exist', () => {
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('non-existent-flag', 99, {}, mockLogger);
 
       expect(result.value).to.equal(99);
@@ -424,9 +422,9 @@ describe('MixpanelProvider', () => {
     });
 
     it('should return PROVIDER_NOT_READY error when flags not loaded', () => {
-      (mockMixpanel.flags.are_flags_ready as sinon.SinonStub).returns(false);
+      (mockFlagsManager.are_flags_ready as sinon.SinonStub).returns(false);
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('any-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(0);
@@ -442,7 +440,7 @@ describe('MixpanelProvider', () => {
         value: objectValue,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('config-flag', {}, {}, mockLogger);
 
       expect(result.value).to.deep.equal(objectValue);
@@ -457,7 +455,7 @@ describe('MixpanelProvider', () => {
         value: {},
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('empty-object-flag', { default: true }, {}, mockLogger);
 
       expect(result.value).to.deep.equal({});
@@ -471,7 +469,7 @@ describe('MixpanelProvider', () => {
         value: arrayValue,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('array-flag', [], {}, mockLogger);
 
       expect(result.errorCode).to.equal(ErrorCode.TYPE_MISMATCH);
@@ -491,7 +489,7 @@ describe('MixpanelProvider', () => {
         value: nestedValue,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('nested-flag', {}, {}, mockLogger);
 
       expect(result.value).to.deep.equal(nestedValue);
@@ -503,7 +501,7 @@ describe('MixpanelProvider', () => {
         value: 'not-an-object',
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('string-flag', {}, {}, mockLogger);
 
       expect(result.value).to.deep.equal({});
@@ -518,7 +516,7 @@ describe('MixpanelProvider', () => {
         value: 42,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('number-flag', {}, {}, mockLogger);
 
       expect(result.value).to.deep.equal({});
@@ -531,7 +529,7 @@ describe('MixpanelProvider', () => {
         value: true,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('bool-flag', {}, {}, mockLogger);
 
       expect(result.value).to.deep.equal({});
@@ -544,7 +542,7 @@ describe('MixpanelProvider', () => {
         value: null,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('null-flag', { default: true }, {}, mockLogger);
 
       expect(result.value).to.deep.equal({ default: true });
@@ -553,7 +551,7 @@ describe('MixpanelProvider', () => {
 
     it('should return FLAG_NOT_FOUND error when flag does not exist', () => {
       const defaultValue = { fallback: true };
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('non-existent-flag', defaultValue, {}, mockLogger);
 
       expect(result.value).to.deep.equal(defaultValue);
@@ -561,9 +559,9 @@ describe('MixpanelProvider', () => {
     });
 
     it('should return PROVIDER_NOT_READY error when flags not loaded', () => {
-      (mockMixpanel.flags.are_flags_ready as sinon.SinonStub).returns(false);
+      (mockFlagsManager.are_flags_ready as sinon.SinonStub).returns(false);
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('any-flag', {}, {}, mockLogger);
 
       expect(result.value).to.deep.equal({});
@@ -581,7 +579,7 @@ describe('MixpanelProvider', () => {
         is_qa_tester: false,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveBooleanEvaluation('experiment-flag', false, {}, mockLogger);
 
       expect(result.value).to.equal(true);
@@ -594,7 +592,7 @@ describe('MixpanelProvider', () => {
         value: 'special',
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation(
         'flag-with-special_chars.and/slashes',
         'default',
@@ -611,7 +609,7 @@ describe('MixpanelProvider', () => {
         value: 'Hello World',
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveStringEvaluation('unicode-flag', '', {}, mockLogger);
 
       expect(result.value).to.equal('Hello World');
@@ -623,7 +621,7 @@ describe('MixpanelProvider', () => {
         value: Number.MAX_SAFE_INTEGER,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('large-number-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(Number.MAX_SAFE_INTEGER);
@@ -635,7 +633,7 @@ describe('MixpanelProvider', () => {
         value: NaN,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('nan-flag', 0, {}, mockLogger);
 
       // NaN is typeof number, so it passes the type check
@@ -649,7 +647,7 @@ describe('MixpanelProvider', () => {
         value: Infinity,
       });
 
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveNumberEvaluation('infinity-flag', 0, {}, mockLogger);
 
       expect(result.value).to.equal(Infinity);
@@ -662,7 +660,7 @@ describe('MixpanelProvider', () => {
       });
 
       const context = { userId: 'user-123', plan: 'premium' };
-      const provider = new MixpanelProvider(mockMixpanel);
+      const provider = new MixpanelProvider(mockFlagsManager);
 
       // Context is passed but not used in resolution (already set via initialize/onContextChange)
       const result = provider.resolveBooleanEvaluation('context-flag', false, context, mockLogger);
@@ -671,16 +669,16 @@ describe('MixpanelProvider', () => {
     });
 
     it('should create new provider instances independently', () => {
-      const provider1 = new MixpanelProvider(mockMixpanel);
-      const provider2 = new MixpanelProvider(mockMixpanel);
+      const provider1 = new MixpanelProvider(mockFlagsManager);
+      const provider2 = new MixpanelProvider(mockFlagsManager);
 
       mockFlags.set('test-flag', { key: 'v', value: 'test' });
 
       provider1.resolveStringEvaluation('test-flag', '', {}, mockLogger);
-      expect(mockMixpanel.flags.get_variant_sync).to.have.been.calledOnce;
+      expect(mockFlagsManager.get_variant_sync).to.have.been.calledOnce;
 
       provider2.resolveStringEvaluation('test-flag', '', {}, mockLogger);
-      expect(mockMixpanel.flags.get_variant_sync).to.have.been.calledTwice;
+      expect(mockFlagsManager.get_variant_sync).to.have.been.calledTwice;
     });
   });
 });
