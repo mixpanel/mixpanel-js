@@ -2,9 +2,9 @@ name: Integration Tests
 
 on:
   push:
-    branches: [master]
+    branches: [master, '**/*-rc']
   pull_request:
-    branches: [master]
+    branches: [master, '**/*-rc']
 
 jobs:
   build:
