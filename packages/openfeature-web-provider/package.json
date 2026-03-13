@@ -7,6 +7,8 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc",
+    "build:browser": "npx rollup -c rollup.config.browser.mjs",
+    "build:all": "npm run build && npm run build:browser",
     "test": "mocha --require ts-node/register test/**/*.spec.ts",
     "prepublishOnly": "npm run build"
   },

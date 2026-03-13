@@ -2,6 +2,10 @@
   "name": "mixpanel-browser",
   "version": "2.78.0",
   "description": "The official Mixpanel JavaScript browser client library",
+  "private": true,
+  "workspaces": [
+    "packages/openfeature-web-provider"
+  ],
   "main": "dist/mixpanel.cjs.js",
   "module": "dist/mixpanel.module.js",
   "directories": {
@@ -9,6 +13,8 @@
   },
   "scripts": {
     "build": "./build.sh",
+    "build:workspaces": "npm run build --workspaces --if-present",
+    "build:all": "npm run build && npm run build:workspaces",
     "build-watch": "npx rollup -c rollup.config.mjs -w",
     "build-watch:full": "FULL=1 npx rollup -c rollup.config.mjs -w",
     "build-dist": "DIST=1 ./build.sh",
@@ -25,6 +31,8 @@
     "start": "pushd examples; python -m SimpleHTTPServer; popd",
     "test": "npm run lint && npm run unit-test",
     "test:ci": "npm run lint && npm run unit-test:ci",
+    "test:workspaces": "npm run test --workspaces --if-present",
+    "test:all": "npm run test && npm run test:workspaces",
     "unit-test": "BABEL_ENV=test mocha --require babel-core/register tests/unit/*.js",
     "unit-test:ci": "BABEL_ENV=test mocha --require babel-core/register tests/unit/*.js --reporter json --reporter-option output=tests/unit/results/results.json",
     "integration-test:local": "wdio run tests/browser/wdio.local.mjs",

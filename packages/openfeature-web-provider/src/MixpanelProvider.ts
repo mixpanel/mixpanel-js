@@ -8,7 +8,7 @@ import type {
 } from '@openfeature/web-sdk';
 import { ErrorCode } from '@openfeature/web-sdk';
 import {
-  MixpanelInstance,
+  FlagsManager,
   FlagsVariant,
   isBoolean,
   isString,
@@ -33,8 +33,8 @@ import {
  * // Initialize Mixpanel with flags
  * mixpanel.init('TOKEN', { flags: true });
  *
- * // Register provider
- * await OpenFeature.setProviderAndWait(new MixpanelProvider(mixpanel));
+ * // Register provider with flags manager
+ * await OpenFeature.setProviderAndWait(new MixpanelProvider(mixpanel.flags));
  *
  * // Use flags
  * const client = OpenFeature.getClient();
@@ -48,32 +48,44 @@ export class MixpanelProvider implements Provider {
 
   readonly runsOn = 'client' as const;
 
-  private readonly mixpanel: MixpanelInstance;
+  private readonly flags: FlagsManager;
 
   /**
    * Creates a new MixpanelProvider instance.
    *
-   * @param mixpanel - The Mixpanel instance (must have flags enabled)
+   * @param flagsManager - The Mixpanel FlagsManager instance
    */
-  constructor(mixpanel: MixpanelInstance) {
-    if (!mixpanel?.flags) {
-      throw new Error('Invalid mixpanel instance: flags property is required');
+  constructor(flagsManager: FlagsManager) {
+    if (!flagsManager) {
+      throw new Error('FlagsManager is required');
     }
-    this.mixpanel = mixpanel;
+    // Validate required methods
+    if (typeof flagsManager.are_flags_ready !== 'function' ||
+        typeof flagsManager.get_variant_sync !== 'function' ||
+        typeof flagsManager.update_context !== 'function') {
+      throw new Error('Invalid FlagsManager: missing required methods');
+    }
+    this.flags = flagsManager;
   }
 
   /**
    * Initialize the provider by waiting for Mixpanel's flags to be fetched.
    */
   async initialize(context?: EvaluationContext): Promise<void> {
+    console.log('[MixpanelProvider] initialize called');
+    console.log('[MixpanelProvider] context:', context);
+
     // If context is provided, update Mixpanel's flag context
     if (context && Object.keys(context).length > 0) {
-      await this.mixpanel.flags.update_context(context, { replace: true });
+      console.log('[MixpanelProvider] Updating context...');
+      await this.flags.update_context(context, { replace: true });
     }
 
     // Wait for the initial fetch to complete
-    if (this.mixpanel.flags.fetchPromise) {
-      await this.mixpanel.flags.fetchPromise;
+    if (this.flags.fetchPromise) {
+      console.log('[MixpanelProvider] Waiting for fetchPromise...');
+      await this.flags.fetchPromise;
+      console.log('[MixpanelProvider] fetchPromise resolved');
     }
   }
 
@@ -84,8 +96,14 @@ export class MixpanelProvider implements Provider {
     oldContext: EvaluationContext,
     newContext: EvaluationContext
   ): Promise<void> {
+    console.log('[MixpanelProvider] onContextChange called');
+    console.log('[MixpanelProvider] oldContext:', oldContext);
+    console.log('[MixpanelProvider] newContext:', newContext);
+
     // Pass the new context directly to Mixpanel (replace mode)
-    await this.mixpanel.flags.update_context(newContext, { replace: true });
+    await this.flags.update_context(newContext, { replace: true });
+
+    console.log('[MixpanelProvider] update_context completed');
   }
 
   /**
@@ -207,7 +225,7 @@ export class MixpanelProvider implements Provider {
     defaultValue: T
   ): ResolutionDetails<any> & { variant?: string } {
     // Check if flags are ready
-    if (!this.mixpanel.flags.are_flags_ready()) {
+    if (!this.flags.are_flags_ready()) {
       return createErrorResolutionDetails(
         defaultValue,
         ErrorCode.PROVIDER_NOT_READY,
@@ -222,7 +240,7 @@ export class MixpanelProvider implements Provider {
     };
 
     // Use get_variant_sync which triggers exposure tracking
-    const variant = this.mixpanel.flags.get_variant_sync(flagKey, fallbackVariant);
+    const variant = this.flags.get_variant_sync(flagKey, fallbackVariant);
 
     // Check if we got our fallback back (flag not found)
     if (variant === fallbackVariant) {

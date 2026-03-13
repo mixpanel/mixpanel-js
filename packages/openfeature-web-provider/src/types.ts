@@ -27,13 +27,6 @@ export interface FlagsManager {
 }
 
 /**
- * Minimal interface for Mixpanel instance
- */
-export interface MixpanelInstance {
-  flags: FlagsManager;
-}
-
-/**
  * Type guard to check if a value is a boolean
  */
 export function isBoolean(value: unknown): value is boolean {

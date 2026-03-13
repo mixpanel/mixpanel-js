@@ -40,7 +40,7 @@ mixpanel.init('YOUR_PROJECT_TOKEN', {
 });
 
 // 2. Create and register the Mixpanel provider
-const provider = new MixpanelProvider(mixpanel);
+const provider = new MixpanelProvider(mixpanel.flags);
 await OpenFeature.setProviderAndWait(provider);
 
 // 3. Get a client and evaluate flags
@@ -150,7 +150,7 @@ import { MixpanelProvider } from '@mixpanel/openfeature-web-provider';
 
 // Initialize outside of component
 mixpanel.init('YOUR_PROJECT_TOKEN', { flags: true });
-const provider = new MixpanelProvider(mixpanel);
+const provider = new MixpanelProvider(mixpanel.flags);
 OpenFeature.setProvider(provider);
 
 function App() {
@@ -222,12 +222,14 @@ The main provider class that implements the OpenFeature `Provider` interface.
 #### Constructor
 
 ```typescript
-constructor(mixpanelInstance: Mixpanel)
+constructor(flagsManager: FlagsManager)
 ```
 
 **Parameters:**
 
-- `mixpanelInstance`: An initialized Mixpanel instance with feature flags enabled
+- `flagsManager`: The Mixpanel FlagsManager instance (accessed via `mixpanel.flags`)
+
+**Note:** Pass `mixpanel.flags` (the FlagsManager) to the provider, not the entire mixpanel instance. This reduces coupling and makes the provider only depend on the flags interface.
 
 #### Properties
 
