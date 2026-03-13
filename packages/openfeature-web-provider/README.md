@@ -34,9 +34,11 @@ import mixpanel from 'mixpanel-browser';
 import { OpenFeature } from '@openfeature/web-sdk';
 import { MixpanelProvider } from '@mixpanel/openfeature-web-provider';
 
-// 1. Initialize Mixpanel with feature flags enabled
+// 1. Initialize Mixpanel with feature flags and context
 mixpanel.init('YOUR_PROJECT_TOKEN', {
-  flags: true  // Enable feature flags
+  flags: {
+    context: { plan: 'premium' }
+  }
 });
 
 // 2. Create and register the Mixpanel provider
@@ -149,7 +151,11 @@ import mixpanel from 'mixpanel-browser';
 import { MixpanelProvider } from '@mixpanel/openfeature-web-provider';
 
 // Initialize outside of component
-mixpanel.init('YOUR_PROJECT_TOKEN', { flags: true });
+mixpanel.init('YOUR_PROJECT_TOKEN', {
+  flags: {
+    context: { plan: 'premium' }
+  }
+});
 const provider = new MixpanelProvider(mixpanel.flags);
 OpenFeature.setProvider(provider);
 
@@ -298,9 +304,9 @@ if (details.errorCode === 'TYPE_MISMATCH') {
 
 **Possible causes:**
 
-1. **Feature flags not enabled**: Ensure you initialized Mixpanel with `flags: true`:
+1. **Feature flags not enabled**: Ensure you initialized Mixpanel with `flags` enabled:
    ```typescript
-   mixpanel.init('YOUR_TOKEN', { flags: true });
+   mixpanel.init('YOUR_TOKEN', { flags: { context: { plan: 'premium' } } });
    ```
 
 2. **Provider not ready**: Make sure to wait for the provider to initialize:

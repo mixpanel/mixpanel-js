@@ -30,8 +30,12 @@ import {
  * import { OpenFeature } from '@openfeature/web-sdk';
  * import { MixpanelProvider } from '@mixpanel/openfeature-web-provider';
  *
- * // Initialize Mixpanel with flags
- * mixpanel.init('TOKEN', { flags: true });
+ * // Initialize Mixpanel with flags and context
+ * mixpanel.init('TOKEN', {
+ *   flags: {
+ *     context: { plan: 'premium' }
+ *   }
+ * });
  *
  * // Register provider with flags manager
  * await OpenFeature.setProviderAndWait(new MixpanelProvider(mixpanel.flags));
@@ -72,20 +76,14 @@ export class MixpanelProvider implements Provider {
    * Initialize the provider by waiting for Mixpanel's flags to be fetched.
    */
   async initialize(context?: EvaluationContext): Promise<void> {
-    console.log('[MixpanelProvider] initialize called');
-    console.log('[MixpanelProvider] context:', context);
-
     // If context is provided, update Mixpanel's flag context
     if (context && Object.keys(context).length > 0) {
-      console.log('[MixpanelProvider] Updating context...');
       await this.flags.update_context(context, { replace: true });
     }
 
     // Wait for the initial fetch to complete
     if (this.flags.fetchPromise) {
-      console.log('[MixpanelProvider] Waiting for fetchPromise...');
       await this.flags.fetchPromise;
-      console.log('[MixpanelProvider] fetchPromise resolved');
     }
   }
 
@@ -96,14 +94,8 @@ export class MixpanelProvider implements Provider {
     oldContext: EvaluationContext,
     newContext: EvaluationContext
   ): Promise<void> {
-    console.log('[MixpanelProvider] onContextChange called');
-    console.log('[MixpanelProvider] oldContext:', oldContext);
-    console.log('[MixpanelProvider] newContext:', newContext);
-
     // Pass the new context directly to Mixpanel (replace mode)
     await this.flags.update_context(newContext, { replace: true });
-
-    console.log('[MixpanelProvider] update_context completed');
   }
 
   /**
