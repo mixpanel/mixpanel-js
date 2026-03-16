@@ -223,6 +223,16 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     return this.fetchPromise;
 };
 
+FeatureFlagManager.prototype.loadFlags = function() {
+    if (!this.isSystemEnabled()) {
+        return Promise.resolve();
+    }
+    if (this._fetchInProgressStartTime) {
+        return this.fetchPromise;
+    }
+    return this.fetchFlags();
+};
+
 FeatureFlagManager.prototype.markFetchComplete = function() {
     if (!this._fetchInProgressStartTime) {
         logger.error('Fetch in progress started time not set, cannot mark fetch complete');
@@ -518,6 +528,7 @@ FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
+FeatureFlagManager.prototype['load_flags'] = FeatureFlagManager.prototype.loadFlags;
 FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.updateContext;
 
 // Deprecated method

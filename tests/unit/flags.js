@@ -955,4 +955,40 @@ describe(`FeatureFlagManager`, function () {
       });
     });
   });
+
+  describe(`loadFlags`, function () {
+    it(`fetches flags when no request is in flight`, async function () {
+      flagManager.init();
+      await flagManager.fetchPromise;
+      mockFetch.resetHistory();
+
+      await flagManager.loadFlags();
+
+      expect(mockFetch).to.have.been.calledOnce;
+    });
+
+    it(`returns existing promise and does not make a new fetch when request is in flight`, async function () {
+      flagManager.init();
+      // fetchPromise is in flight, not yet resolved
+      const existingPromise = flagManager.fetchPromise;
+
+      const loadPromise = flagManager.loadFlags();
+
+      expect(loadPromise).to.equal(existingPromise);
+      // init already called fetch once; loadFlags should not call it again
+      expect(mockFetch).to.have.been.calledOnce;
+
+      await loadPromise;
+    });
+
+    it(`returns resolved promise when system is not enabled`, async function () {
+      initOptions.getConfigFunc.withArgs(`flags`).returns(null);
+      flagManager = new FeatureFlagManager(initOptions);
+
+      const result = await flagManager.loadFlags();
+
+      expect(result).to.be.undefined;
+      expect(mockFetch).not.to.have.been.called;
+    });
+  });
 });
