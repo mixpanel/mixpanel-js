@@ -968,16 +968,20 @@ describe(`FeatureFlagManager`, function () {
     });
 
     it(`returns existing promise and does not make a new fetch when request is in flight`, async function () {
+      // Make fetch hang so the request is genuinely in-flight
+      let resolveFetch;
+      mockFetch.returns(new Promise(function (resolve) { resolveFetch = resolve; }));
+
       flagManager.init();
-      // fetchPromise is in flight, not yet resolved
       const existingPromise = flagManager.fetchPromise;
 
       const loadPromise = flagManager.loadFlags();
 
       expect(loadPromise).to.equal(existingPromise);
-      // init already called fetch once; loadFlags should not call it again
       expect(mockFetch).to.have.been.calledOnce;
 
+      // Unblock the fetch so the test can clean up
+      resolveFetch(mockResponse);
       await loadPromise;
     });
 
