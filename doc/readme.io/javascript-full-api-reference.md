@@ -413,12 +413,8 @@ mixpanel.register({'Name': 'Pat'}, {persistent: false});
 | ------------- | ------------- | ----- |
 | **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | An associative array of properties to store about the user |
 | **days_or_options** | <span class="mp-arg-type">Number or Object</span></br></span><span class="mp-arg-optional">optional</span> | Options object or number of days since the user's last visit to store the super properties (only valid for persisted props) |
-| **days_or_options.days** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
-<li>number of days since the user's last visit to store the super properties (only valid for persisted props)</li>
-</ul> |
-| **days_or_options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
-<li>whether to put in persistent storage (cookie/localStorage)</li>
-</ul> |
+| **days_or_options.days** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Number of days since the user's last visit to store the super properties (only valid for persisted props) |
+| **days_or_options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether to put in persistent storage (cookie/localStorage) |
 
 
 ___
@@ -451,12 +447,8 @@ If default_value is specified, current super properties  with that value will be
 | **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-required">required</span> | An associative array of properties to store about the user |
 | **default_value** | <span class="mp-arg-type">any</span></br></span><span class="mp-arg-optional">optional</span> | Value to override if already set in super properties (ex: 'False') Default: 'None' |
 | **days_or_options** | <span class="mp-arg-type">Number or Object</span></br></span><span class="mp-arg-optional">optional</span> | Options object or number of days since the user's last visit to store the super properties (only valid for persisted props) |
-| **days_or_options.days** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
-<li>number of days since the user's last visit to store the super properties (only valid for persisted props)</li>
-</ul> |
-| **days_or_options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
-<li>whether to put in persistent storage (cookie/localStorage)</li>
-</ul> |
+| **days_or_options.days** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Number of days since the user's last visit to store the super properties (only valid for persisted props) |
+| **days_or_options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether to put in persistent storage (cookie/localStorage) |
 
 
 ___
@@ -811,9 +803,8 @@ mixpanel.init(PROJECT_TOKEN, {track_pageview: 'url-with-path'});
 | ------------- | ------------- | ----- |
 | **properties** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | An optional set of additional properties to send with the page view event |
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> | Page view tracking options |
-| **options.event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
-<li>Alternate name for the tracking event</li>
-</ul> |
+| **options.event_name** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-optional">optional</span> | Alternate name for the tracking event |
+
 #### Returns:
 | Type | Description |
 | ----- | ------------- |
@@ -852,9 +843,7 @@ Delete a super property stored with the current user.
 | ------------- | ------------- | ----- |
 | **property** | <span class="mp-arg-type">String</span></br></span><span class="mp-arg-required">required</span> | The name of the super property to remove |
 | **options** | <span class="mp-arg-type">Object</span></br></span><span class="mp-arg-optional">optional</span> |  |
-| **options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | <ul>
-<li>whether to look in persistent storage (cookie/localStorage)</li>
-</ul> |
+| **options.persistent=true** | <span class="mp-arg-type">boolean</span></br></span><span class="mp-arg-optional">optional</span> | Whether to look in persistent storage (cookie/localStorage) |
 
 
 
