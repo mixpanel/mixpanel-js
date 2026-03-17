@@ -124,6 +124,7 @@ FeatureFlagManager.prototype.fetchFlags = function(propagateErrors) {
     searchParams.set('$lib_version', Config.LIB_VERSION);
     var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
+    this._lastFetchError = null;
     this._fetchInProgressStartTime = Date.now();
     this.fetchPromise = this.fetch.call(window, url, {
         'method': 'GET',
@@ -215,6 +216,7 @@ FeatureFlagManager.prototype.fetchFlags = function(propagateErrors) {
             if (this._fetchInProgressStartTime) {
                 this.markFetchComplete();
             }
+            this._lastFetchError = error;
             logger.error(error);
             if (propagateErrors) {
                 throw error;
@@ -222,6 +224,7 @@ FeatureFlagManager.prototype.fetchFlags = function(propagateErrors) {
         }.bind(this));
     }.bind(this)).catch(function(error) {
         this.markFetchComplete();
+        this._lastFetchError = error;
         logger.error(error);
         if (propagateErrors) {
             throw error;
@@ -238,6 +241,13 @@ FeatureFlagManager.prototype.loadFlags = function() {
     if (!this.trackedFeatures) {
         logger.error('loadFlags called before init');
         return Promise.resolve();
+    }
+    if (this._fetchInProgressStartTime) {
+        return this.fetchPromise.then(function() {
+            if (this._lastFetchError) {
+                throw this._lastFetchError;
+            }
+        }.bind(this));
     }
     return this.fetchFlags(true);
 };

@@ -968,21 +968,45 @@ describe(`FeatureFlagManager`, function () {
       expect(mockFetch).to.have.been.calledOnce;
     });
 
-    it(`starts a new fetch even when a request is in flight`, async function () {
+    it(`reuses in-flight fetch instead of starting a new one`, async function () {
       // Make fetch hang so the request is genuinely in-flight
       let resolveFetch;
       mockFetch.onFirstCall().returns(new Promise(function (resolve) { resolveFetch = resolve; }));
-      mockFetch.onSecondCall().resolves(mockResponse);
 
       flagManager.init();
 
       const loadPromise = flagManager.loadFlags();
 
-      expect(mockFetch).to.have.been.calledTwice;
+      // Should NOT have started a second fetch
+      expect(mockFetch).to.have.been.calledOnce;
 
       // Unblock the first fetch so the test can clean up
       resolveFetch(mockResponse);
       await loadPromise;
+    });
+
+    it(`reuses in-flight fetch and rejects if that fetch fails`, async function () {
+      // Make fetch hang so the request is genuinely in-flight, then reject
+      let rejectFetch;
+      mockFetch.onFirstCall().returns(new Promise(function (resolve, reject) { rejectFetch = reject; }));
+
+      flagManager.init();
+
+      const loadPromise = flagManager.loadFlags();
+
+      // Should NOT have started a second fetch
+      expect(mockFetch).to.have.been.calledOnce;
+
+      // Reject the in-flight fetch
+      rejectFetch(new Error(`Network error`));
+
+      try {
+        await loadPromise;
+        expect.fail(`loadFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`Network error`);
+      }
     });
 
     it(`returns resolved promise when system is not enabled`, async function () {
@@ -1053,14 +1077,15 @@ describe(`FeatureFlagManager`, function () {
       // Make init's fetch hang, then fail
       let rejectFetch;
       mockFetch.onFirstCall().returns(new Promise(function (resolve, reject) { rejectFetch = reject; }));
-      // loadFlags will start its own fetch which also fails
-      mockFetch.onSecondCall().rejects(new Error(`Network error`));
 
       flagManager.init();
 
       const loadPromise = flagManager.loadFlags();
 
-      // Unblock init's fetch (reject it)
+      // loadFlags should reuse the in-flight fetch, not start a new one
+      expect(mockFetch).to.have.been.calledOnce;
+
+      // Reject init's fetch
       rejectFetch(new Error(`Init network error`));
 
       try {
@@ -1068,7 +1093,7 @@ describe(`FeatureFlagManager`, function () {
         expect.fail(`loadFlags should have rejected`);
       } catch (err) {
         expect(err).to.be.an.instanceOf(Error);
-        expect(err.message).to.equal(`Network error`);
+        expect(err.message).to.equal(`Init network error`);
       }
     });
 
@@ -1076,25 +1101,27 @@ describe(`FeatureFlagManager`, function () {
       flagManager.init();
       await flagManager.fetchPromise;
 
-      // Configure next two fetches: updateContext hangs, then loadFlags fails
+      // Configure updateContext fetch to hang, then fail
       let rejectUpdateContextFetch;
       mockFetch
-        .onSecondCall().returns(new Promise(function (resolve, reject) { rejectUpdateContextFetch = reject; }))
-        .onThirdCall().rejects(new Error(`Network error`));
+        .onSecondCall().returns(new Promise(function (resolve, reject) { rejectUpdateContextFetch = reject; }));
 
       flagManager.updateContext({key: `value`});
 
-      // loadFlags starts its own fetch (propagateErrors=true)
+      // loadFlags should reuse updateContext's in-flight fetch, not start a new one
+      const loadPromise = flagManager.loadFlags();
+      expect(mockFetch).to.have.been.calledTwice; // init + updateContext, NOT a third call
+
+      // Reject the updateContext fetch
+      rejectUpdateContextFetch(new Error(`UpdateContext network error`));
+
       try {
-        await flagManager.loadFlags();
+        await loadPromise;
         expect.fail(`loadFlags should have rejected`);
       } catch (err) {
         expect(err).to.be.an.instanceOf(Error);
-        expect(err.message).to.equal(`Network error`);
+        expect(err.message).to.equal(`UpdateContext network error`);
       }
-
-      // Reject the updateContext fetch (cleanup)
-      rejectUpdateContextFetch(new Error(`UpdateContext network error`));
     });
 
     it(`preserves previously-fetched flags after a failed loadFlags`, async function () {
