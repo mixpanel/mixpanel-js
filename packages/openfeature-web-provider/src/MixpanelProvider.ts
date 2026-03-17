@@ -66,7 +66,8 @@ export class MixpanelProvider implements Provider {
     // Validate required methods
     if (typeof flagsManager.are_flags_ready !== 'function' ||
         typeof flagsManager.get_variant_sync !== 'function' ||
-        typeof flagsManager.update_context !== 'function') {
+        typeof flagsManager.update_context !== 'function' ||
+        typeof flagsManager.when_ready !== 'function') {
       throw new Error('Invalid FlagsManager: missing required methods');
     }
     this.flags = flagsManager;
@@ -82,9 +83,7 @@ export class MixpanelProvider implements Provider {
     }
 
     // Wait for the initial fetch to complete
-    if (this.flags.fetchPromise) {
-      await this.flags.fetchPromise;
-    }
+    await this.flags.when_ready();
   }
 
   /**
@@ -215,7 +214,7 @@ export class MixpanelProvider implements Provider {
   private resolveFlag<T>(
     flagKey: string,
     defaultValue: T
-  ): ResolutionDetails<any> & { variant?: string } {
+  ): ResolutionDetails<any> {
     // Check if flags are ready
     if (!this.flags.are_flags_ready()) {
       return createErrorResolutionDetails(

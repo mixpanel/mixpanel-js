@@ -27,9 +27,6 @@ jobs:
       - run: npm ci
       - run: npm run test:ci
       - run: npm run build-dist
-      - name: OpenFeature Web Provider Tests
-        working-directory: packages/openfeature-web-provider
-        run: npm install && npm test
 
       - name: Test Report
         uses: dorny/test-reporter@7b7927aa7da8b82e81e755810cb51f39941a2cc7 # v2

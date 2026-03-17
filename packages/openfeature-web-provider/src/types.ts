@@ -23,7 +23,7 @@ export interface FlagsManager {
   are_flags_ready(): boolean;
   get_variant_sync(featureName: string, fallback: FlagsVariant): FlagsVariant;
   update_context(context: Record<string, any>, options?: { replace?: boolean }): Promise<void>;
-  fetchPromise?: Promise<void>;
+  when_ready(): Promise<void>;
 }
 
 /**

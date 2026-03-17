@@ -20,7 +20,7 @@ describe('MixpanelProvider', () => {
         return mockFlags.get(key) || fallback;
       }),
       update_context: sinon.stub().resolves(),
-      fetchPromise: Promise.resolve(),
+      when_ready: sinon.stub().resolves(),
     };
     mockLogger = {
       debug: sinon.stub(),
@@ -47,21 +47,22 @@ describe('MixpanelProvider', () => {
   });
 
   describe('initialize', () => {
-    it('should wait for fetchPromise to resolve', async () => {
-      let fetchResolved = false;
-      const delayedFetchPromise = new Promise<void>((resolve) => {
-        setTimeout(() => {
-          fetchResolved = true;
-          resolve();
-        }, 10);
-      });
-      mockFlagsManager.fetchPromise = delayedFetchPromise;
+    it('should wait for when_ready to resolve', async () => {
+      let readyResolved = false;
+      (mockFlagsManager.when_ready as sinon.SinonStub).returns(
+        new Promise<void>((resolve) => {
+          setTimeout(() => {
+            readyResolved = true;
+            resolve();
+          }, 10);
+        })
+      );
 
       const provider = new MixpanelProvider(mockFlagsManager);
 
-      expect(fetchResolved).to.be.false;
+      expect(readyResolved).to.be.false;
       await provider.initialize();
-      expect(fetchResolved).to.be.true;
+      expect(readyResolved).to.be.true;
     });
 
     it('should call update_context when context is provided', async () => {
@@ -90,12 +91,12 @@ describe('MixpanelProvider', () => {
       expect(mockFlagsManager.update_context).not.to.have.been.called;
     });
 
-    it('should handle missing fetchPromise gracefully', async () => {
-      mockFlagsManager.fetchPromise = undefined;
+    it('should call when_ready during initialize', async () => {
       const provider = new MixpanelProvider(mockFlagsManager);
 
-      // Should not throw
       await provider.initialize();
+
+      expect(mockFlagsManager.when_ready).to.have.been.calledOnce;
     });
   });
 
