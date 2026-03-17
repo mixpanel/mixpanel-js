@@ -106,7 +106,7 @@ FeatureFlagManager.prototype.areFlagsReady = function() {
     return !!this.flags;
 };
 
-FeatureFlagManager.prototype.fetchFlags = function() {
+FeatureFlagManager.prototype.fetchFlags = function(propagateErrors) {
     if (!this.isSystemEnabled()) {
         return Promise.resolve();
     }
@@ -212,12 +212,20 @@ FeatureFlagManager.prototype.fetchFlags = function() {
 
             this._loadTargetingIfNeeded();
         }.bind(this)).catch(function(error) {
-            this.markFetchComplete();
+            if (this._fetchInProgressStartTime) {
+                this.markFetchComplete();
+            }
             logger.error(error);
+            if (propagateErrors) {
+                throw error;
+            }
         }.bind(this));
     }.bind(this)).catch(function(error) {
         this.markFetchComplete();
         logger.error(error);
+        if (propagateErrors) {
+            throw error;
+        }
     }.bind(this));
 
     return this.fetchPromise;
@@ -227,10 +235,11 @@ FeatureFlagManager.prototype.loadFlags = function() {
     if (!this.isSystemEnabled()) {
         return Promise.resolve();
     }
-    if (this._fetchInProgressStartTime) {
-        return this.fetchPromise;
+    if (!this.trackedFeatures) {
+        logger.error('loadFlags called before init');
+        return Promise.resolve();
     }
-    return this.fetchFlags();
+    return this.fetchFlags(true);
 };
 
 FeatureFlagManager.prototype.markFetchComplete = function() {
