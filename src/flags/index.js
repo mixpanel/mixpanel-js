@@ -111,7 +111,7 @@ FeatureFlagManager.prototype.areFlagsReady = function() {
     return !!this.flags;
 };
 
-FeatureFlagManager.prototype.fetchFlags = function() {
+FeatureFlagManager.prototype.fetchFlags = function(propagateErrors) {
     if (!this.isSystemEnabled()) {
         return Promise.resolve();
     }
@@ -239,7 +239,7 @@ FeatureFlagManager.prototype.loadFlags = function() {
     if (this._fetchInProgressStartTime) {
         return this.fetchPromise;
     }
-    return this.fetchFlags();
+    return this.fetchFlags(true);
 };
 
 FeatureFlagManager.prototype.markFetchComplete = function() {
