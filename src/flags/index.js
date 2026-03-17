@@ -129,6 +129,7 @@ FeatureFlagManager.prototype.fetchFlags = function(propagateErrors) {
     searchParams.set('$lib_version', Config.LIB_VERSION);
     var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
+    this._lastFetchError = null;
     this._fetchInProgressStartTime = Date.now();
     this.fetchPromise = this.fetch.call(window, url, {
         'method': 'GET',
