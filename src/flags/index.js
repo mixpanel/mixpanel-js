@@ -1,10 +1,9 @@
 import { _, console_with_prefix, generateTraceparent, safewrapClass } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
-import Config from '../config';
+import { Config, TARGETING_GLOBAL_NAME } from '../config';
 import {
     getTargetingPromise
 } from '../targeting/loader';
-import { TARGETING_GLOBAL_NAME } from '../globals';
 
 var logger = console_with_prefix('flags');
 var FLAGS_CONFIG_KEY = 'flags';

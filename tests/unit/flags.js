@@ -4,13 +4,9 @@ import sinonChai from "sinon-chai";
 import * as jsonLogic from "json-logic-js";
 
 import { window } from "../../src/window";
-import Config from "../../src/config";
+import { Config } from "../../src/config";
 
 import { FeatureFlagManager } from "../../src/flags/index";
-import {
-  lowercaseKeysAndValues,
-  lowercaseOnlyLeafNodes
-} from "../../src/targeting/event-matcher";
 
 chai.use(sinonChai);
 
@@ -331,9 +327,7 @@ describe(`FeatureFlagManager`, function () {
             }
             if (criteria.property_filters && Object.keys(criteria.property_filters).length > 0) {
               try {
-                var lowercasedProperties = lowercaseKeysAndValues(properties || {});
-                var lowercasedFilters = lowercaseOnlyLeafNodes(criteria.property_filters);
-                var filtersMatch = jsonLogic.apply(lowercasedFilters, lowercasedProperties);
+                var filtersMatch = jsonLogic.apply(criteria.property_filters, properties || {});
                 return { matches: filtersMatch };
               } catch (error) {
                 return { matches: false, error: error.toString() };
@@ -399,8 +393,8 @@ describe(`FeatureFlagManager`, function () {
         expect(flag.key).to.equal(`control`);
       });
 
-      it(`matches properties case-insensitively`, async function () {
-        // Event with uppercase property keys and values should still match
+      it(`requires exact case match for property keys`, async function () {
+        // Event with incorrect case for property key should NOT match
         flagManager.checkFirstTimeEvents(`Purchase Complete`, {
           Amount: 150,
           CATEGORY: `PREMIUM`,
@@ -408,7 +402,18 @@ describe(`FeatureFlagManager`, function () {
         await new Promise(resolve => setTimeout(resolve, 0));
 
         const flag = flagManager.flags.get(`premium-welcome`);
-        expect(flag.key).to.equal(`premium`);
+        // Should remain control due to case mismatch
+        expect(flag.key).to.equal(`control`);
+
+        // Event with correct case should match
+        flagManager.checkFirstTimeEvents(`Purchase Complete`, {
+          amount: 150,
+          category: `premium`,
+        });
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const flagAfter = flagManager.flags.get(`premium-welcome`);
+        expect(flagAfter.key).to.equal(`premium`);
       });
 
       it(`marks event as activated after first match`, async function () {
@@ -582,9 +587,7 @@ describe(`FeatureFlagManager`, function () {
             }
             if (criteria.property_filters && Object.keys(criteria.property_filters).length > 0) {
               try {
-                var lowercasedProperties = lowercaseKeysAndValues(properties || {});
-                var lowercasedFilters = lowercaseOnlyLeafNodes(criteria.property_filters);
-                var filtersMatch = jsonLogic.apply(lowercasedFilters, lowercasedProperties);
+                var filtersMatch = jsonLogic.apply(criteria.property_filters, properties || {});
                 return { matches: filtersMatch };
               } catch (error) {
                 return { matches: false, error: error.toString() };

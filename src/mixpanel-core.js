@@ -1,11 +1,10 @@
 /* eslint camelcase: "off" */
-import Config from './config';
+import {Config, TARGETING_FILENAME} from './config';
 import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify } from './utils';
-import { isRecordingExpired } from './recorder/utils';
 import { window } from './window';
-import { RECORDER_GLOBAL_NAME } from './globals';
 import { Autocapture } from './autocapture';
 import { FeatureFlagManager } from './flags';
+import { RecorderManager } from './recorder-manager';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
 import { MixpanelGroup } from './mixpanel-group';
@@ -23,7 +22,6 @@ import {
     clearOptInOut,
     addOptOutCheckMixpanelLib
 } from './gdpr-utils';
-import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from './storage/indexed-db';
 
 /*
  * Mixpanel JS Library
@@ -157,13 +155,17 @@ var DEFAULT_CONFIG = {
     'record_collect_fonts':              false,
     'record_console':                    true,
     'record_heatmap_data':               false,
+    'recording_event_triggers':          {},
     'record_idle_timeout_ms':            30 * 60 * 1000, // 30 minutes
     'record_mask_inputs':                true,
     'record_max_ms':                     MAX_RECORDING_MS,
     'record_min_ms':                     0,
+    'record_network':                    false,
+    'record_network_options':            {},
     'record_sessions_percent':           0,
-    'recorder_src':                      'https://cdn.mxpnl.com/libs/mixpanel-recorder.min.js',
-    'targeting_src':                     'https://cdn.mxpnl.com/libs/mixpanel-targeting.min.js',
+    'recorder_src':                      null,
+    'targeting_src':                     null,
+    'lib_base_path':                     'https://cdn.mxpnl.com/libs/',
     'remote_settings_mode':              SETTING_DISABLED // 'strict', 'fallback', 'disabled'
 };
 
@@ -317,6 +319,19 @@ MixpanelLib.prototype._init = function(token, config, name) {
         'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
     }));
 
+    this.recorderManager = new RecorderManager({
+        mixpanelInstance: this,
+        getConfigFunc: _.bind(this.get_config, this),
+        setConfigFunc: _.bind(this.set_config, this),
+        getTabIdFunc: _.bind(this.get_tab_id, this),
+        reportErrorFunc: _.bind(this.report_error, this),
+        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        recorderSrc: this.get_config('recorder_src'),
+        targetingSrc: this.get_config('targeting_src'),
+        libBasePath: this.get_config('lib_base_path'),
+        loadExtraBundle: load_extra_bundle
+    });
+
     this['_jsc'] = NOOP_FUNC;
 
     this.__dom_loaded_queue = [];
@@ -395,7 +410,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this),
         loadExtraBundle: load_extra_bundle,
-        targetingSrc: this.get_config('targeting_src')
+        targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME)
     });
     this.flags.init();
     this['flags'] = this.flags;
@@ -408,11 +423,11 @@ MixpanelLib.prototype._init = function(token, config, name) {
     // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
     var mode = this.get_config('remote_settings_mode');
     if (mode === SETTING_STRICT || mode === SETTING_FALLBACK) {
-        this._fetch_remote_settings(mode).then(_.bind(function() {
-            this._check_and_start_session_recording();
+        this.__session_recording_init_promise = this._fetch_remote_settings(mode).then(_.bind(function() {
+            return this._check_and_start_session_recording();
         }, this));
     } else {
-        this._check_and_start_session_recording();
+        this.__session_recording_init_promise = this._check_and_start_session_recording();
     }
 };
 
@@ -456,132 +471,50 @@ MixpanelLib.prototype.get_tab_id = function () {
     return this.tab_id || null;
 };
 
-MixpanelLib.prototype._should_load_recorder = function () {
-    if (this.get_config('disable_persistence')) {
-        console.log('Load recorder check skipped due to disable_persistence config');
-        return Promise.resolve(false);
-    }
-
-    var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
-    var tab_id = this.get_tab_id();
-    return recording_registry_idb.init()
-        .then(function () {
-            return recording_registry_idb.getAll();
-        })
-        .then(function (recordings) {
-            for (var i = 0; i < recordings.length; i++) {
-                // if there are expired recordings in the registry, we should load the recorder to flush them
-                // if there's a recording for this tab id, we should load the recorder to continue the recording
-                if (isRecordingExpired(recordings[i]) || recordings[i]['tabId'] === tab_id) {
-                    return true;
-                }
-            }
-            return false;
-        })
-        .catch(_.bind(function (err) {
-            this.report_error('Error checking recording registry', err);
-        }, this));
-};
-
 MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpanelLib(function(force_start) {
-    if (!window['MutationObserver']) {
-        console.critical('Browser does not support MutationObserver; skipping session recording');
-        return;
-    }
-
-    var loadRecorder = _.bind(function(startNewIfInactive) {
-        var handleLoadedRecorder = _.bind(function() {
-            this._recorder = this._recorder || new window[RECORDER_GLOBAL_NAME](this);
-            this._recorder['resumeRecording'](startNewIfInactive);
-        }, this);
-
-        if (_.isUndefined(window[RECORDER_GLOBAL_NAME])) {
-            load_extra_bundle(this.get_config('recorder_src'), handleLoadedRecorder);
-        } else {
-            handleLoadedRecorder();
-        }
-    }, this);
-
-    /**
-     * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
-     * Otherwise, if the recording registry has any records then it's likely there's a recording in progress or orphaned data that needs to be flushed.
-     */
-    var is_sampled = this.get_config('record_sessions_percent') > 0 && Math.random() * 100 <= this.get_config('record_sessions_percent');
-    if (force_start || is_sampled) {
-        loadRecorder(true);
-    } else {
-        this._should_load_recorder()
-            .then(function (shouldLoad) {
-                if (shouldLoad) {
-                    loadRecorder(false);
-                }
-            });
-    }
+    return this.recorderManager.checkAndStartSessionRecording(force_start);
 });
 
+MixpanelLib.prototype._start_recording_on_event = function(event_name, properties) {
+    return this.recorderManager.startRecordingOnEvent(event_name, properties);
+};
+
 MixpanelLib.prototype.start_session_recording = function () {
-    this._check_and_start_session_recording(true);
+    return this._check_and_start_session_recording(true);
 };
 
 MixpanelLib.prototype.stop_session_recording = function () {
-    if (this._recorder) {
-        return this._recorder['stopRecording']();
-    }
-    return Promise.resolve();
+    return this.recorderManager.stopSessionRecording();
 };
 
 MixpanelLib.prototype.pause_session_recording = function () {
-    if (this._recorder) {
-        return this._recorder['pauseRecording']();
-    }
-    return Promise.resolve();
+    return this.recorderManager.pauseSessionRecording();
 };
 
 MixpanelLib.prototype.resume_session_recording = function () {
-    if (this._recorder) {
-        return this._recorder['resumeRecording']();
-    }
-    return Promise.resolve();
+    return this.recorderManager.resumeSessionRecording();
 };
 
 MixpanelLib.prototype.is_recording_heatmap_data = function () {
-    return this._get_session_replay_id() && this.get_config('record_heatmap_data');
+    return this.recorderManager.isRecordingHeatmapData();
 };
 
 MixpanelLib.prototype.get_session_recording_properties = function () {
-    var props = {};
-    var replay_id = this._get_session_replay_id();
-    if (replay_id) {
-        props['$mp_replay_id'] = replay_id;
-    }
-    return props;
+    return this.recorderManager.getSessionRecordingProperties();
 };
 
 MixpanelLib.prototype.get_session_replay_url = function () {
-    var replay_url = null;
-    var replay_id = this._get_session_replay_id();
-    if (replay_id) {
-        var query_params = _.HTTPBuildQuery({
-            'replay_id': replay_id,
-            'distinct_id': this.get_distinct_id(),
-            'token': this.get_config('token')
-        });
-        replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
-    }
-    return replay_url;
-};
-
-MixpanelLib.prototype._get_session_replay_id = function () {
-    var replay_id = null;
-    if (this._recorder) {
-        replay_id = this._recorder['replayId'];
-    }
-    return replay_id || null;
+    return this.recorderManager.getSessionReplayUrl();
 };
 
 // "private" public method to reach into the recorder in test cases
 MixpanelLib.prototype.__get_recorder = function () {
-    return this._recorder;
+    return this.recorderManager.getRecorder();
+};
+
+// "private" public method to get session recording init promise in test cases
+MixpanelLib.prototype.__get_recording_init_promise = function () {
+    return this.__session_recording_init_promise;
 };
 
 // Private methods
@@ -839,6 +772,7 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 };
 
 MixpanelLib.prototype._fetch_remote_settings = function(mode) {
+    var self = this;
     var disableRecordingIfStrict = function() {
         if (mode === 'strict') {
             self.set_config({'record_sessions_percent': 0});
@@ -859,7 +793,6 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
     };
     var query_string = _.HTTPBuildQuery(request_params);
     var full_url = settings_endpoint + '?' + query_string;
-    var self = this;
 
     var abortController = new AbortController();
     var timeout_id = setTimeout(function() {
@@ -1052,6 +985,34 @@ MixpanelLib.prototype.push = function(item) {
 };
 
 /**
+ * Enables events on the Mixpanel object. If passed no arguments,
+ * this function enable tracking of all events. If passed an
+ * array of event names, those events will be enabled, but other
+ * existing disabled events will continue to be not tracked.
+ *
+ * @param {Array} [events] An array of event names to enable
+ */
+MixpanelLib.prototype.enable = function(events) {
+    var keys, new_disabled_events, i, j;
+
+    if (typeof(events) === 'undefined') {
+        this._flags.disable_all_events = false;
+    } else {
+        keys = {};
+        new_disabled_events = [];
+        for (i = 0; i < events.length; i++) {
+            keys[events[i]] = true;
+        }
+        for (j = 0; j < this.__disabled_events.length; j++) {
+            if (!keys[this.__disabled_events[j]]) {
+                new_disabled_events.push(this.__disabled_events[j]);
+            }
+        }
+        this.__disabled_events = new_disabled_events;
+    }
+};
+
+/**
  * Disable events on the Mixpanel object. If passed no arguments,
  * this function disables tracking of any event. If passed an
  * array of event names, those events will be disabled, but other
@@ -1223,6 +1184,8 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     } else {
         this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
+
+    this._start_recording_on_event(event_name, properties);
 
     var data = {
         'event': event_name,
@@ -2432,6 +2395,7 @@ MixpanelLib.prototype.remove_hook = function(hook_name, hook_fn) {
 // MixpanelLib Exports
 MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
 MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
+MixpanelLib.prototype['enable']                             = MixpanelLib.prototype.enable;
 MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
 MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
 MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
@@ -2475,6 +2439,7 @@ MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES
 
 // Exports intended only for testing
 MixpanelLib.prototype['__get_recorder']                     = MixpanelLib.prototype.__get_recorder;
+MixpanelLib.prototype['__get_recording_init_promise']       = MixpanelLib.prototype.__get_recording_init_promise;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;

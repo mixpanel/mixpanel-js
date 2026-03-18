@@ -1,4 +1,4 @@
-import Config from './config';
+import { Config } from './config';
 import { Promise } from './promise-polyfill';
 import { RequestQueue } from './request-queue';
 import { console_with_prefix, isOnline, _ } from './utils'; // eslint-disable-line camelcase

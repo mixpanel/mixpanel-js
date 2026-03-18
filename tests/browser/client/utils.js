@@ -1,4 +1,4 @@
-import { TARGETING_GLOBAL_NAME, RECORDER_GLOBAL_NAME } from '../../../src/globals';
+import { TARGETING_GLOBAL_NAME, RECORDER_GLOBAL_NAME } from '../../../src/config';
 
 const realSetInterval = window.setInterval;
 const realClearInterval = window.clearInterval;
@@ -257,4 +257,17 @@ export function makeDelayedFetchResponse(status, body, delay) {
       resolve(makeFakeFetchResponse(status, body));
     }, delay);
   });
+}
+
+export function getXhrRequestData(request, keyPath) {
+  try {
+    let data = JSON.parse(decodeURIComponent(request.requestBody.match(/data=([^&]+)/)[1]));
+    (keyPath || []).forEach(function(key) {
+      data = data[key];
+    });
+    return data;
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
 }

@@ -1,5 +1,5 @@
 import { window } from '../window';
-import { TARGETING_GLOBAL_NAME } from '../globals';
+import { TARGETING_GLOBAL_NAME } from '../config';
 
 /**
  * Get the promise-based targeting loader

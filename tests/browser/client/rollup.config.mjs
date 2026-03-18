@@ -1,8 +1,7 @@
-import swc from '@rollup/plugin-swc';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 
-const builds =[
+const builds = [
   {
     input: `tests/browser/client/loaders/snippet.js`,
     output: [
@@ -13,7 +12,7 @@ const builds =[
         sourcemap: true,
       },
     ],
-    plugins: [nodeResolve({browser: true}), swc({swc: {jsc: {target: `es5`}}})],
+    plugins: [nodeResolve({browser: true})],
   },
 ];
 
@@ -28,7 +27,7 @@ if (process.env.FULL) {
         sourcemap: true,
       },
     ],
-    plugins: [swc({swc: {jsc: {target: `es5`}}}), commonjs()],
+    plugins: [commonjs()],
   });
 }
 

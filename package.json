@@ -93,6 +93,7 @@
   "dependencies": {
     "@mixpanel/rrweb": "2.0.0-alpha.18.3",
     "@mixpanel/rrweb-plugin-console-record": "2.0.0-alpha.18.3",
+    "@mixpanel/rrweb-utils": "2.0.0-alpha.18.3",
     "json-logic-js": "2.0.5"
   }
 }
