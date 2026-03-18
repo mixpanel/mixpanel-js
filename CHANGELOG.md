@@ -1,3 +1,13 @@
+**2.76.0** (18 Mar 2026)
+- Added a new network plugin that captures network telemetry during session recordings.
+- Added recording_event_triggers configuration option that allows starting a session recording when targeted events that meet specified property filters occur. Property filters are optional and use json-logic syntax, but this option is mainly intended to be used by remote settings (closed beta). Allows session replays to start on a trigger if a session replay is not already in progress. Does not affect any active recording sessions.
+- Added mixpanel.enable() public method, complementing the existing disable() method. Re-enables tracking for some or all events after disable() has been called.
+- Changed async bundles (e.g., mixpanel-recorder, mixpanel-targeting) loaded via CDN or loader-module-with-async-modules entry points to use hash-based file names for consistent versioning with the main SDK (e.g. mixpanel-recorder.min.js => mixpanel-recorder-bIS4LMGd.min.js). For customers who already proxy these files individually from the CDN, we recommend proxying everything under cdn.mxpnl.com/libs/* for reliability.
+- Fixed event property matching in targeting to respect case sensitivity, consistent with how Mixpanel handles property names.
+- Added dependency declaration for @mixpanel/rrweb-utils, a peer dependency of @mixpanel/rrweb-plugin-console-record. This was causing errors for users with strict peer dependencies enabled.
+- Fixed an error thrown when disabling recording from remote settings and AbortController is not supported in the browser.
+- Stabilized Safari simulator tests and ported remote settings tests to new test infrastructure.
+
 **2.75.0** (24 Feb 2026)
 - Adds support for Feature Flags targeting based on events tracked during the current session (Runtime Targeting)
 - Fixes memory leaks in Session Recording on sites which create/destroy iframes
