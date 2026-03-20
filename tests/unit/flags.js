@@ -183,7 +183,12 @@ describe(`FeatureFlagManager`, function () {
 
       flagManager.init();
 
-      await flagManager.fetchPromise;
+      // init swallows the error, but fetchPromise itself rejects
+      try {
+        await flagManager.fetchPromise;
+      } catch (err) {
+        expect(err.message).to.equal(`Network error`);
+      }
     });
   });
 
@@ -1062,15 +1067,21 @@ describe(`FeatureFlagManager`, function () {
       }
     });
 
-    it(`does not reject for other callers of fetchFlags when fetch fails`, async function () {
+    it(`rejects for all callers of fetchFlags when fetch fails`, async function () {
       flagManager.init();
       await flagManager.fetchPromise;
 
       // Make next fetch fail with network error
       mockFetch.rejects(new Error(`Network error`));
 
-      // Regular fetchFlags (not loadFlags) should still swallow errors
-      await flagManager.fetchFlags(); // should not throw
+      // fetchFlags now always rejects on error; callers like init/updateContext add their own .catch()
+      try {
+        await flagManager.fetchFlags();
+        expect.fail(`fetchFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`Network error`);
+      }
     });
 
     it(`rejects when called while an init-triggered fetch is in-flight and that fetch fails`, async function () {
