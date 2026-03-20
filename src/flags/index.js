@@ -111,7 +111,7 @@ FeatureFlagManager.prototype.areFlagsReady = function() {
     return !!this.flags;
 };
 
-FeatureFlagManager.prototype.fetchFlags = function(propagateErrors) {
+FeatureFlagManager.prototype.fetchFlags = function() {
     if (!this.isSystemEnabled()) {
         return Promise.resolve();
     }
@@ -129,7 +129,6 @@ FeatureFlagManager.prototype.fetchFlags = function(propagateErrors) {
     searchParams.set('$lib_version', Config.LIB_VERSION);
     var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
-    this._lastFetchError = null;
     this._fetchInProgressStartTime = Date.now();
     this.fetchPromise = this.fetch.call(window, url, {
         'method': 'GET',
@@ -240,7 +239,7 @@ FeatureFlagManager.prototype.loadFlags = function() {
     if (this._fetchInProgressStartTime) {
         return this.fetchPromise;
     }
-    return this.fetchFlags(true);
+    return this.fetchFlags();
 };
 
 FeatureFlagManager.prototype.markFetchComplete = function() {
