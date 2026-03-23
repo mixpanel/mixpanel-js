@@ -463,7 +463,7 @@ describe('MixpanelProvider', () => {
       expect(result.variant).to.equal('empty');
     });
 
-    it('should return TYPE_MISMATCH error when value is an array', () => {
+    it('should return array value correctly (object accepts any type)', () => {
       const arrayValue = [1, 2, 3, 'four'];
       mockFlags.set('array-flag', {
         key: 'array-variant',
@@ -473,8 +473,9 @@ describe('MixpanelProvider', () => {
       const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('array-flag', [], {}, mockLogger);
 
-      expect(result.errorCode).to.equal(ErrorCode.TYPE_MISMATCH);
-      expect(result.value).to.deep.equal([]);
+      expect(result.value).to.deep.equal(arrayValue);
+      expect(result.variant).to.equal('array-variant');
+      expect(result.errorCode).to.be.undefined;
     });
 
     it('should return nested object value correctly', () => {
@@ -496,7 +497,7 @@ describe('MixpanelProvider', () => {
       expect(result.value).to.deep.equal(nestedValue);
     });
 
-    it('should return TYPE_MISMATCH error when value is not object (string)', () => {
+    it('should return string value via object evaluation (object accepts any type)', () => {
       mockFlags.set('string-flag', {
         key: 'variant-a',
         value: 'not-an-object',
@@ -505,13 +506,12 @@ describe('MixpanelProvider', () => {
       const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('string-flag', {}, {}, mockLogger);
 
-      expect(result.value).to.deep.equal({});
-      expect(result.errorCode).to.equal(ErrorCode.TYPE_MISMATCH);
-      expect(result.errorMessage).to.include('not an object');
-      expect(result.reason).to.equal('ERROR');
+      expect(result.value).to.equal('not-an-object');
+      expect(result.variant).to.equal('variant-a');
+      expect(result.errorCode).to.be.undefined;
     });
 
-    it('should return TYPE_MISMATCH error when value is not object (number)', () => {
+    it('should return number value via object evaluation (object accepts any type)', () => {
       mockFlags.set('number-flag', {
         key: 'variant-a',
         value: 42,
@@ -520,11 +520,12 @@ describe('MixpanelProvider', () => {
       const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('number-flag', {}, {}, mockLogger);
 
-      expect(result.value).to.deep.equal({});
-      expect(result.errorCode).to.equal(ErrorCode.TYPE_MISMATCH);
+      expect(result.value).to.equal(42);
+      expect(result.variant).to.equal('variant-a');
+      expect(result.errorCode).to.be.undefined;
     });
 
-    it('should return TYPE_MISMATCH error when value is not object (boolean)', () => {
+    it('should return boolean value via object evaluation (object accepts any type)', () => {
       mockFlags.set('bool-flag', {
         key: 'variant-a',
         value: true,
@@ -533,11 +534,12 @@ describe('MixpanelProvider', () => {
       const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('bool-flag', {}, {}, mockLogger);
 
-      expect(result.value).to.deep.equal({});
-      expect(result.errorCode).to.equal(ErrorCode.TYPE_MISMATCH);
+      expect(result.value).to.equal(true);
+      expect(result.variant).to.equal('variant-a');
+      expect(result.errorCode).to.be.undefined;
     });
 
-    it('should return TYPE_MISMATCH error when value is null', () => {
+    it('should return null value via object evaluation (object accepts any type)', () => {
       mockFlags.set('null-flag', {
         key: 'variant-a',
         value: null,
@@ -546,8 +548,9 @@ describe('MixpanelProvider', () => {
       const provider = new MixpanelProvider(mockFlagsManager);
       const result = provider.resolveObjectEvaluation('null-flag', { default: true }, {}, mockLogger);
 
-      expect(result.value).to.deep.equal({ default: true });
-      expect(result.errorCode).to.equal(ErrorCode.TYPE_MISMATCH);
+      expect(result.value).to.be.null;
+      expect(result.variant).to.equal('variant-a');
+      expect(result.errorCode).to.be.undefined;
     });
 
     it('should return FLAG_NOT_FOUND error when flag does not exist', () => {

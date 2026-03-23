@@ -13,7 +13,6 @@ import {
   isBoolean,
   isString,
   isNumber,
-  isObject,
   createResolutionDetails,
   createErrorResolutionDetails,
 } from './types';
@@ -196,16 +195,7 @@ export class MixpanelProvider implements Provider {
       return result as ResolutionDetails<T>;
     }
 
-    const value = result.value;
-    if (!isObject(value)) {
-      return createErrorResolutionDetails(
-        defaultValue,
-        ErrorCode.TYPE_MISMATCH,
-        `Flag "${flagKey}" value is not an object: ${typeof value}`
-      );
-    }
-
-    return createResolutionDetails(value as T, result.variant);
+    return createResolutionDetails(result.value as T, result.variant);
   }
 
   /**
