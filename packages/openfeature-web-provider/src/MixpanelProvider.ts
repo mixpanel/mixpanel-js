@@ -112,21 +112,29 @@ export class MixpanelProvider implements Provider {
     _context: EvaluationContext,
     _logger: Logger
   ): ResolutionDetails<boolean> {
-    const result = this.resolveFlag(flagKey, defaultValue);
-    if (result.errorCode) {
-      return result as ResolutionDetails<boolean>;
-    }
+    try {
+      const result = this.resolveFlag(flagKey, defaultValue);
+      if (result.errorCode) {
+        return result as ResolutionDetails<boolean>;
+      }
 
-    const value = result.value;
-    if (!isBoolean(value)) {
+      const value = result.value;
+      if (!isBoolean(value)) {
+        return createErrorResolutionDetails(
+          defaultValue,
+          ErrorCode.TYPE_MISMATCH,
+          `Flag "${flagKey}" value is not a boolean: ${typeof value}`
+        );
+      }
+
+      return createResolutionDetails(value, result.variant);
+    } catch (e) {
       return createErrorResolutionDetails(
         defaultValue,
-        ErrorCode.TYPE_MISMATCH,
-        `Flag "${flagKey}" value is not a boolean: ${typeof value}`
+        ErrorCode.GENERAL,
+        e instanceof Error ? e.message : String(e)
       );
     }
-
-    return createResolutionDetails(value, result.variant);
   }
 
   /**
@@ -138,21 +146,29 @@ export class MixpanelProvider implements Provider {
     _context: EvaluationContext,
     _logger: Logger
   ): ResolutionDetails<string> {
-    const result = this.resolveFlag(flagKey, defaultValue);
-    if (result.errorCode) {
-      return result as ResolutionDetails<string>;
-    }
+    try {
+      const result = this.resolveFlag(flagKey, defaultValue);
+      if (result.errorCode) {
+        return result as ResolutionDetails<string>;
+      }
 
-    const value = result.value;
-    if (!isString(value)) {
+      const value = result.value;
+      if (!isString(value)) {
+        return createErrorResolutionDetails(
+          defaultValue,
+          ErrorCode.TYPE_MISMATCH,
+          `Flag "${flagKey}" value is not a string: ${typeof value}`
+        );
+      }
+
+      return createResolutionDetails(value, result.variant);
+    } catch (e) {
       return createErrorResolutionDetails(
         defaultValue,
-        ErrorCode.TYPE_MISMATCH,
-        `Flag "${flagKey}" value is not a string: ${typeof value}`
+        ErrorCode.GENERAL,
+        e instanceof Error ? e.message : String(e)
       );
     }
-
-    return createResolutionDetails(value, result.variant);
   }
 
   /**
@@ -164,21 +180,29 @@ export class MixpanelProvider implements Provider {
     _context: EvaluationContext,
     _logger: Logger
   ): ResolutionDetails<number> {
-    const result = this.resolveFlag(flagKey, defaultValue);
-    if (result.errorCode) {
-      return result as ResolutionDetails<number>;
-    }
+    try {
+      const result = this.resolveFlag(flagKey, defaultValue);
+      if (result.errorCode) {
+        return result as ResolutionDetails<number>;
+      }
 
-    const value = result.value;
-    if (!isNumber(value)) {
+      const value = result.value;
+      if (!isNumber(value)) {
+        return createErrorResolutionDetails(
+          defaultValue,
+          ErrorCode.TYPE_MISMATCH,
+          `Flag "${flagKey}" value is not a number: ${typeof value}`
+        );
+      }
+
+      return createResolutionDetails(value, result.variant);
+    } catch (e) {
       return createErrorResolutionDetails(
         defaultValue,
-        ErrorCode.TYPE_MISMATCH,
-        `Flag "${flagKey}" value is not a number: ${typeof value}`
+        ErrorCode.GENERAL,
+        e instanceof Error ? e.message : String(e)
       );
     }
-
-    return createResolutionDetails(value, result.variant);
   }
 
   /**
@@ -190,12 +214,20 @@ export class MixpanelProvider implements Provider {
     _context: EvaluationContext,
     _logger: Logger
   ): ResolutionDetails<T> {
-    const result = this.resolveFlag(flagKey, defaultValue);
-    if (result.errorCode) {
-      return result as ResolutionDetails<T>;
-    }
+    try {
+      const result = this.resolveFlag(flagKey, defaultValue);
+      if (result.errorCode) {
+        return result as ResolutionDetails<T>;
+      }
 
-    return createResolutionDetails(result.value as T, result.variant);
+      return createResolutionDetails(result.value as T, result.variant);
+    } catch (e) {
+      return createErrorResolutionDetails(
+        defaultValue,
+        ErrorCode.GENERAL,
+        e instanceof Error ? e.message : String(e)
+      );
+    }
   }
 
   /**
