@@ -3,6 +3,7 @@
 const express      = require('express');
 const cookieParser = require('cookie-parser');
 const logger       = require('morgan');
+const { PARENT_PORT, CHILD_PORT } = require('./tests/browser/test-ports');
 
 const app = express();
 
@@ -119,8 +120,20 @@ for (const [suiteId, suite] of Object.entries(TEST_SUITES)) {
             testUrl: suite.testUrl
         });
     });
+
+    // Cross-origin child iframe page for session recording tests
+    app.get('/tests/new/' + suiteId + '-cross-origin-page', function(req, res) {
+        res.render('cross-origin-page.pug', {
+            testUrl: './static/build/test/browser/cross-origin-page.js'
+        });
+    });
 }
 
-const server = app.listen(3001, function () {
+const server = app.listen(PARENT_PORT, function () {
     console.log(`Mixpanel test app listening on port ${server.address().port}`);
+});
+
+// Second port for cross-origin iframe tests
+const server2 = app.listen(CHILD_PORT, function () {
+    console.log(`Mixpanel cross-origin test server listening on port ${server2.address().port}`);
 });

@@ -12,6 +12,7 @@ export class MockMixpanelLib {
       'record_min_ms': 0,
       'record_max_ms': 24 * 60 * 60 * 1000,
       'record_idle_timeout_ms': 30 * 60 * 1000,
+      'record_allowed_iframe_origins': [],
       'name': `mp_test`,
       'api_host': `https://api.mixpanel.com`,
       'api_routes': {

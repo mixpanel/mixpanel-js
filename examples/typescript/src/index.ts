@@ -1,7 +1,8 @@
 import './core';
-import './module';
-import './module-with-async-recorder';
-import './session-recording';
 import './flags';
+import './loader-module-with-async-modules';
+import './module-with-async-recorder';
+import './module';
+import './session-recording';
 
 console.log('Mixpanel TypeScript examples completed');

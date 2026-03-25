@@ -252,11 +252,12 @@ export interface Config {
   record_mask_all_inputs: boolean;
   record_min_ms: number;
   record_max_ms: number;
-  record_sessions_percent: number;
+  record_allowed_iframe_origins: string[];
   record_canvas: boolean;
   recording_event_triggers: RecordingEventTriggers;
   record_heatmap_data: boolean;
   remote_settings_mode: RemoteSettingType;
+  record_sessions_percent: number;
   hooks: {
     before_identify?: (new_distinct_id: string) => string | null;
     before_register?: (

@@ -64,7 +64,6 @@ var INIT_SNIPPET = 1;
 /** @const */ var SETTING_FALLBACK      = 'fallback';
 /** @const */ var SETTING_DISABLED      = 'disabled';
 
-
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
@@ -149,6 +148,7 @@ var DEFAULT_CONFIG = {
     'batch_request_timeout_ms':          90000,
     'batch_autostart':                   true,
     'hooks':                             {},
+    'record_allowed_iframe_origins':     [],
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
     'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,

@@ -1,5 +1,7 @@
 import { spawn } from 'child_process';
 import waitOn from 'wait-on';
+import testPorts from './test-ports.js';
+const { PARENT_PORT, CHILD_PORT } = testPorts;
 
 let testServer;
 
@@ -15,7 +17,7 @@ export const sharedConfig = {
   maxInstances: 10,
   logLevel: `info`,
   bail: 0,
-  baseUrl: `http://localhost:3001`,
+  baseUrl: `http://localhost:${PARENT_PORT}`,
   waitforTimeout: 10000,
   connectionRetryTimeout: 5 * 60 * 1000,
   connectionRetryCount: 3,
@@ -23,14 +25,14 @@ export const sharedConfig = {
   reporters: [`spec`],
   mochaOpts: {
     ui: `bdd`,
-    timeout: 20 * 10 * 1000,
+    timeout: 60 * 10 * 1000,
   },
   specFileRetries: 3,
   specFileRetriesDelay: 5,
 
   onPrepare: async function (config, capabilities) {
     console.log(`Starting test server...`);
-    console.log(`Navigate to http://localhost:3001 to see the test runner UI.`);
+    console.log(`Navigate to http://localhost:${PARENT_PORT} to see the test runner UI.`);
 
     // Spawn the test server from the project root
     testServer = spawn(`node`, [`testServer.js`], {
@@ -41,7 +43,10 @@ export const sharedConfig = {
     // Wait for server to be ready
     try {
       await waitOn({
-        resources: [`http://localhost:3001/tests/new`],
+        resources: [
+          `http://localhost:${PARENT_PORT}/tests/new`,
+          `http://localhost:${CHILD_PORT}/tests/new`,
+        ],
         timeout: 10000,
       });
       console.log(`Test server is ready!`);

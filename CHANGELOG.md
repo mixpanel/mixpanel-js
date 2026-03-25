@@ -1,3 +1,7 @@
+**2.77.0** (24 Mar 2026)
+- Session recording now supports cross origin iframe recording by specifying allowed domains via `record_allowed_iframe_origins`.
+- Added type dependency @types/json-logic-js for the RulesLogic type introduced in 2.76.0
+
 **2.76.0** (18 Mar 2026)
 - Added a new network plugin that captures network telemetry during session recordings.
 - Added recording_event_triggers configuration option that allows starting a session recording when targeted events that meet specified property filters occur. Property filters are optional and use json-logic syntax, but this option is mainly intended to be used by remote settings (closed beta). Allows session replays to start on a trigger if a session replay is not already in progress. Does not affect any active recording sessions.

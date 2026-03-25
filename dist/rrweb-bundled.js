@@ -9304,14 +9304,7 @@ class MutationBuffer {
       };
       while (this.mapRemoves.length) {
         const removedNode = this.mapRemoves.shift();
-        if (removedNode.nodeName === "IFRAME") {
-          try {
-            this.iframeManager.removeIframe(removedNode);
-          } catch (e2) {
-          }
-        } else {
-          this.stylesheetManager.cleanupStylesheetsForRemovedNode(removedNode);
-        }
+        this.cleanupRemovedNode(removedNode);
         this.mirror.removeNodeFromMap(removedNode);
       }
       for (const n2 of this.movedSet) {
@@ -9619,6 +9612,22 @@ class MutationBuffer {
           });
         }
       }
+    });
+    __publicField$1(this, "cleanupRemovedNode", (node2) => {
+      if (node2.nodeName === "IFRAME") {
+        try {
+          this.iframeManager.removeIframe(node2);
+        } catch (e2) {
+        }
+      } else {
+        try {
+          this.stylesheetManager.cleanupStylesheetsForRemovedNode(node2);
+        } catch (e2) {
+        }
+      }
+      node2.childNodes.forEach((child) => {
+        this.cleanupRemovedNode(child);
+      });
     });
   }
   init(options) {
@@ -11844,6 +11853,35 @@ class ProcessedNodeManager {
   destroy() {
   }
 }
+function toOrigin(url) {
+  try {
+    const origin = new URL(url).origin;
+    return origin !== "null" ? origin : null;
+  } catch {
+    return null;
+  }
+}
+function buildAllowedOriginSet(origins) {
+  if (!Array.isArray(origins) || origins.length === 0) {
+    throw new Error(
+      "[rrweb] allowedIframeOrigins must be a non-empty array of origin strings."
+    );
+  }
+  const set = /* @__PURE__ */ new Set();
+  for (let i2 = 0; i2 < origins.length; i2++) {
+    const entry = origins[i2];
+    if (typeof entry !== "string") {
+      throw new Error(
+        `[rrweb] allowedIframeOrigins[${i2}] must be a string, got ${typeof entry}.`
+      );
+    }
+    const origin = toOrigin(entry);
+    if (origin) {
+      set.add(origin);
+    }
+  }
+  return Object.freeze(set);
+}
 let wrappedEmit;
 let takeFullSnapshot$1;
 let canvasManager;
@@ -11884,6 +11922,7 @@ function record(options = {}) {
     recordDOM = true,
     recordCanvas = false,
     recordCrossOriginIframes = false,
+    allowedIframeOrigins,
     recordAfter = options.recordAfter === "DOMContentLoaded" ? options.recordAfter : "load",
     userTriggeredOnInput = false,
     collectFonts = false,
@@ -11894,6 +11933,13 @@ function record(options = {}) {
     errorHandler: errorHandler2
   } = options;
   registerErrorHandler(errorHandler2);
+  let validatedOrigins;
+  if (recordCrossOriginIframes && allowedIframeOrigins && allowedIframeOrigins.length > 0) {
+    validatedOrigins = buildAllowedOriginSet(allowedIframeOrigins);
+    if (validatedOrigins.size === 0) {
+      validatedOrigins = void 0;
+    }
+  }
   const inEmittingFrame = recordCrossOriginIframes ? window.parent === window : true;
   let passEmitsToParent = false;
   if (!inEmittingFrame) {
@@ -11981,7 +12027,13 @@ function record(options = {}) {
         origin: window.location.origin,
         isCheckout
       };
-      window.parent.postMessage(message, "*");
+      if (validatedOrigins) {
+        for (const targetOrigin of validatedOrigins) {
+          window.parent.postMessage(message, targetOrigin);
+        }
+      } else {
+        window.parent.postMessage(message, "*");
+      }
     }
     if (e2.type === EventType.FullSnapshot) {
       lastFullSnapshotEvent = e2;

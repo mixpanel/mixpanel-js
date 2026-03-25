@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.76.0'
+        LIB_VERSION: '2.77.0'
     };
 
     // Window global names for async modules
@@ -11,8 +11,8 @@
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
     // Constants that are injected at build-time for the names of async modules.
-    var RECORDER_FILENAME = 'mixpanel-recorder-bIS4LMGd.js';
-    var TARGETING_FILENAME = 'mixpanel-targeting-BcAPS-Mz.js';
+    var RECORDER_FILENAME = 'mixpanel-recorder-DLKbUIEE.js';
+    var TARGETING_FILENAME = 'mixpanel-targeting-CmVvUyFM.js';
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
     var win;
@@ -2268,7 +2268,7 @@
 
     var MAX_DEPTH = 5;
 
-    var logger$4 = console_with_prefix('autocapture');
+    var logger$5 = console_with_prefix('autocapture');
 
 
     function getClasses(el) {
@@ -2532,7 +2532,7 @@
                     return false;
                 }
             } catch (err) {
-                logger$4.critical('Error while checking element in allowElementCallback', err);
+                logger$5.critical('Error while checking element in allowElementCallback', err);
                 return false;
             }
         }
@@ -2549,7 +2549,7 @@
                     return true;
                 }
             } catch (err) {
-                logger$4.critical('Error while checking selector: ' + sel, err);
+                logger$5.critical('Error while checking selector: ' + sel, err);
             }
         }
         return false;
@@ -2564,7 +2564,7 @@
                     return true;
                 }
             } catch (err) {
-                logger$4.critical('Error while checking element in blockElementCallback', err);
+                logger$5.critical('Error while checking element in blockElementCallback', err);
                 return true;
             }
         }
@@ -2578,7 +2578,7 @@
                         return true;
                     }
                 } catch (err) {
-                    logger$4.critical('Error while checking selector: ' + sel, err);
+                    logger$5.critical('Error while checking selector: ' + sel, err);
                 }
             }
         }
@@ -3042,7 +3042,7 @@
             observer.observe(shadowRoot, this.observerConfig);
             this.shadowObservers.push(observer);
         } catch (e) {
-            logger$4.critical('Error while observing shadow root', e);
+            logger$5.critical('Error while observing shadow root', e);
         }
     };
 
@@ -3053,7 +3053,7 @@
         }
 
         if (!weakSetSupported()) {
-            logger$4.critical('Shadow DOM observation unavailable: WeakSet not supported');
+            logger$5.critical('Shadow DOM observation unavailable: WeakSet not supported');
             return;
         }
 
@@ -3069,7 +3069,7 @@
             try {
                 this.shadowObservers[i].disconnect();
             } catch (e) {
-                logger$4.critical('Error while disconnecting shadow DOM observer', e);
+                logger$5.critical('Error while disconnecting shadow DOM observer', e);
             }
         }
         this.shadowObservers = [];
@@ -3257,7 +3257,7 @@
 
                 this.mutationObserver.observe(document.body || document.documentElement, MUTATION_OBSERVER_CONFIG);
             } catch (e) {
-                logger$4.critical('Error while setting up mutation observer', e);
+                logger$5.critical('Error while setting up mutation observer', e);
             }
         }
 
@@ -3272,7 +3272,7 @@
                 );
                 this.shadowDOMObserver.start();
             } catch (e) {
-                logger$4.critical('Error while setting up shadow DOM observer', e);
+                logger$5.critical('Error while setting up shadow DOM observer', e);
                 this.shadowDOMObserver = null;
             }
         }
@@ -3299,7 +3299,7 @@
             try {
                 listener.target.removeEventListener(listener.event, listener.handler, listener.options);
             } catch (e) {
-                logger$4.critical('Error while removing event listener', e);
+                logger$5.critical('Error while removing event listener', e);
             }
         }
         this.eventListeners = [];
@@ -3308,7 +3308,7 @@
             try {
                 this.mutationObserver.disconnect();
             } catch (e) {
-                logger$4.critical('Error while disconnecting mutation observer', e);
+                logger$5.critical('Error while disconnecting mutation observer', e);
             }
             this.mutationObserver = null;
         }
@@ -3317,7 +3317,7 @@
             try {
                 this.shadowDOMObserver.stop();
             } catch (e) {
-                logger$4.critical('Error while stopping shadow DOM observer', e);
+                logger$5.critical('Error while stopping shadow DOM observer', e);
             }
             this.shadowDOMObserver = null;
         }
@@ -3395,7 +3395,7 @@
 
     Autocapture.prototype.init = function() {
         if (!minDOMApisSupported()) {
-            logger$4.critical('Autocapture unavailable: missing required DOM APIs');
+            logger$5.critical('Autocapture unavailable: missing required DOM APIs');
             return;
         }
         this.initPageListeners();
@@ -3435,7 +3435,7 @@
             try {
                 return !urlMatchesRegexList(currentUrl, allowUrlRegexes);
             } catch (err) {
-                logger$4.critical('Error while checking block URL regexes: ', err);
+                logger$5.critical('Error while checking block URL regexes: ', err);
                 return true;
             }
         }
@@ -3448,7 +3448,7 @@
         try {
             return urlMatchesRegexList(currentUrl, blockUrlRegexes);
         } catch (err) {
-            logger$4.critical('Error while checking block URL regexes: ', err);
+            logger$5.critical('Error while checking block URL regexes: ', err);
             return true;
         }
     };
@@ -3586,7 +3586,7 @@
             return;
         }
 
-        logger$4.log('Initializing scroll depth tracking');
+        logger$5.log('Initializing scroll depth tracking');
 
         this.maxScrollViewDepth = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
 
@@ -3612,7 +3612,7 @@
         if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
             return;
         }
-        logger$4.log('Initializing click tracking');
+        logger$5.log('Initializing click tracking');
 
         this.listenerClick = function(ev) {
             if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
@@ -3631,7 +3631,7 @@
             return;
         }
 
-        logger$4.log('Initializing dead click tracking');
+        logger$5.log('Initializing dead click tracking');
         if (!this._deadClickTracker) {
             this._deadClickTracker = new DeadClickTracker(function(deadClickEvent) {
                 this.trackDomEvent(deadClickEvent, MP_EV_DEAD_CLICK);
@@ -3665,7 +3665,7 @@
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
             return;
         }
-        logger$4.log('Initializing input tracking');
+        logger$5.log('Initializing input tracking');
 
         this.listenerChange = function(ev) {
             if (!this.getConfig(CONFIG_TRACK_INPUT)) {
@@ -3682,7 +3682,7 @@
         if (!this.pageviewTrackingConfig()) {
             return;
         }
-        logger$4.log('Initializing pageview tracking');
+        logger$5.log('Initializing pageview tracking');
 
         var previousTrackedUrl = '';
         var tracked = false;
@@ -3717,7 +3717,7 @@
                 }
                 if (didPathChange) {
                     this.lastScrollCheckpoint = 0;
-                    logger$4.log('Path change: re-initializing scroll depth checkpoints');
+                    logger$5.log('Path change: re-initializing scroll depth checkpoints');
                 }
             }
         }.bind(this));
@@ -3732,7 +3732,7 @@
             return;
         }
 
-        logger$4.log('Initializing rage click tracking');
+        logger$5.log('Initializing rage click tracking');
         if (!this._rageClickTracker) {
             this._rageClickTracker = new RageClickTracker();
         }
@@ -3762,7 +3762,7 @@
         if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
             return;
         }
-        logger$4.log('Initializing scroll tracking');
+        logger$5.log('Initializing scroll tracking');
         this.lastScrollCheckpoint = 0;
 
         var scrollTrackFunction = function() {
@@ -3799,7 +3799,7 @@
                     }
                 }
             } catch (err) {
-                logger$4.critical('Error while calculating scroll percentage', err);
+                logger$5.critical('Error while calculating scroll percentage', err);
             }
             if (shouldTrack) {
                 this.mp.track(MP_EV_SCROLL, props);
@@ -3817,7 +3817,7 @@
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
             return;
         }
-        logger$4.log('Initializing submit tracking');
+        logger$5.log('Initializing submit tracking');
 
         this.listenerSubmit = function(ev) {
             if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
@@ -3839,7 +3839,7 @@
             return;
         }
 
-        logger$4.log('Initializing page visibility tracking.');
+        logger$5.log('Initializing page visibility tracking.');
         this._initScrollDepthTracking();
         var previousTrackedUrl = _.info.currentUrl();
 
@@ -3924,7 +3924,7 @@
         return win[TARGETING_GLOBAL_NAME];
     };
 
-    var logger$3 = console_with_prefix('flags');
+    var logger$4 = console_with_prefix('flags');
     var FLAGS_CONFIG_KEY = 'flags';
 
     var CONFIG_CONTEXT = 'context';
@@ -3967,7 +3967,7 @@
 
     FeatureFlagManager.prototype.init = function() {
         if (!this.minApisSupported()) {
-            logger$3.critical('Feature Flags unavailable: missing minimum required APIs');
+            logger$4.critical('Feature Flags unavailable: missing minimum required APIs');
             return;
         }
 
@@ -4002,7 +4002,7 @@
 
     FeatureFlagManager.prototype.updateContext = function(newContext, options) {
         if (!this.isSystemEnabled()) {
-            logger$3.critical('Feature Flags not enabled, cannot update context');
+            logger$4.critical('Feature Flags not enabled, cannot update context');
             return Promise.resolve();
         }
 
@@ -4019,7 +4019,7 @@
 
     FeatureFlagManager.prototype.areFlagsReady = function() {
         if (!this.isSystemEnabled()) {
-            logger$3.error('Feature Flags not enabled');
+            logger$4.error('Feature Flags not enabled');
         }
         return !!this.flags;
     };
@@ -4032,7 +4032,7 @@
         var distinctId = this.getMpProperty('distinct_id');
         var deviceId = this.getMpProperty('$device_id');
         var traceparent = generateTraceparent();
-        logger$3.log('Fetching flags for distinct ID: ' + distinctId);
+        logger$4.log('Fetching flags for distinct ID: ' + distinctId);
 
         var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
         var searchParams = new URLSearchParams();
@@ -4131,11 +4131,11 @@
                 this._loadTargetingIfNeeded();
             }.bind(this)).catch(function(error) {
                 this.markFetchComplete();
-                logger$3.error(error);
+                logger$4.error(error);
             }.bind(this));
         }.bind(this)).catch(function(error) {
             this.markFetchComplete();
-            logger$3.error(error);
+            logger$4.error(error);
         }.bind(this));
 
         return this.fetchPromise;
@@ -4143,7 +4143,7 @@
 
     FeatureFlagManager.prototype.markFetchComplete = function() {
         if (!this._fetchInProgressStartTime) {
-            logger$3.error('Fetch in progress started time not set, cannot mark fetch complete');
+            logger$4.error('Fetch in progress started time not set, cannot mark fetch complete');
             return;
         }
         this._fetchStartTime = this._fetchInProgressStartTime;
@@ -4165,7 +4165,7 @@
 
         if (hasPropertyFilters) {
             this.getTargeting().then(function() {
-                logger$3.log('targeting loaded for property filter evaluation');
+                logger$4.log('targeting loaded for property filter evaluation');
             });
         }
     };
@@ -4180,7 +4180,7 @@
             this.loadExtraBundle.bind(this),
             this.targetingSrc
         ).catch(function(error) {
-            logger$3.error('Failed to load targeting: ' + error);
+            logger$4.error('Failed to load targeting: ' + error);
         }.bind(this));
     };
 
@@ -4234,7 +4234,7 @@
 
             // If no targeting library and event has property filters, skip it
             if (!targeting && pendingEvent['property_filters'] && !_.isEmptyObject(pendingEvent['property_filters'])) {
-                logger$3.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
+                logger$4.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
                 return;
             }
 
@@ -4257,7 +4257,7 @@
             }
 
             if (matchResult.error) {
-                logger$3.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
+                logger$4.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
                 return;
             }
 
@@ -4265,7 +4265,7 @@
                 return;
             }
 
-            logger$3.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
+            logger$4.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
 
             var newVariant = {
                 'key': pendingEvent['pending_variant']['variant_key'],
@@ -4306,7 +4306,7 @@
             'first_time_event_hash': firstTimeEventHash
         };
 
-        logger$3.log('Recording first-time event for flag: ' + flagId);
+        logger$4.log('Recording first-time event for flag: ' + flagId);
 
         // Fire-and-forget POST request
         this.fetch.call(win, url, {
@@ -4319,14 +4319,14 @@
             'body': JSON.stringify(payload)
         }).catch(function(error) {
             // Silent failure - cohort sync will catch up
-            logger$3.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
+            logger$4.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
         });
     };
 
     FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
         if (!this.fetchPromise) {
             return new Promise(function(resolve) {
-                logger$3.critical('Feature Flags not initialized');
+                logger$4.critical('Feature Flags not initialized');
                 resolve(fallback);
             });
         }
@@ -4334,19 +4334,19 @@
         return this.fetchPromise.then(function() {
             return this.getVariantSync(featureName, fallback);
         }.bind(this)).catch(function(error) {
-            logger$3.error(error);
+            logger$4.error(error);
             return fallback;
         });
     };
 
     FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
         if (!this.areFlagsReady()) {
-            logger$3.log('Flags not loaded yet');
+            logger$4.log('Flags not loaded yet');
             return fallback;
         }
         var feature = this.flags.get(featureName);
         if (!feature) {
-            logger$3.log('No flag found: "' + featureName + '"');
+            logger$4.log('No flag found: "' + featureName + '"');
             return fallback;
         }
         this.trackFeatureCheck(featureName, feature);
@@ -4357,14 +4357,14 @@
         return this.getVariant(featureName, {'value': fallbackValue}).then(function(feature) {
             return feature['value'];
         }).catch(function(error) {
-            logger$3.error(error);
+            logger$4.error(error);
             return fallbackValue;
         });
     };
 
     // TODO remove deprecated method
     FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
-        logger$3.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
+        logger$4.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
         return this.getVariantValue(featureName, fallbackValue);
     };
 
@@ -4376,7 +4376,7 @@
         return this.getVariantValue(featureName).then(function() {
             return this.isEnabledSync(featureName, fallbackValue);
         }.bind(this)).catch(function(error) {
-            logger$3.error(error);
+            logger$4.error(error);
             return fallbackValue;
         });
     };
@@ -4385,7 +4385,7 @@
         fallbackValue = fallbackValue || false;
         var val = this.getVariantValueSync(featureName, fallbackValue);
         if (val !== true && val !== false) {
-            logger$3.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
+            logger$4.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
             val = fallbackValue;
         }
         return val;
@@ -4580,7 +4580,36 @@
         return !serializedRecording || now > serializedRecording['maxExpires'] || now > serializedRecording['idleExpires'];
     };
 
+    var validateAllowedOrigins = function(origins, logger) {
+        if (!_.isArray(origins)) {
+            if (origins) {
+                logger.critical('record_allowed_iframe_origins must be an array of origin strings, cross-origin recording will be disabled.');
+            }
+            return [];
+        }
+        var valid = [];
+        for (var i = 0; i < origins.length; i++) {
+            try {
+                var origin = new URL(origins[i]).origin;
+                if (origin === 'null') {
+                    logger.critical(origins[i] + ' has an opaque origin. Skipping this entry.');
+                    continue;
+                }
+                valid.push(origin);
+            } catch (e) {
+                logger.critical(origins[i] + ' is not a valid origin URL. Skipping this entry.');
+            }
+        }
+        return valid;
+    };
+
     /* eslint camelcase: "off" */
+
+
+    var logger$3 = console_with_prefix('recorder');
+
+    var IFRAME_HANDSHAKE_REQUEST  = 'mp_iframe_handshake_request';
+    var IFRAME_HANDSHAKE_RESPONSE = 'mp_iframe_handshake_response';
 
 
     /**
@@ -4602,6 +4631,8 @@
         this.libBasePath = initOptions.libBasePath;
 
         this._recorder = null;
+        this._parentReplayId = null;
+        this._parentFrameRetryInterval = null;
     };
 
     RecorderManager.prototype.shouldLoadRecorder = function() {
@@ -4654,6 +4685,22 @@
                 }
             }, this));
         }, this);
+
+        // Cross-origin iframe handling
+        var allowedOrigins = validateAllowedOrigins(this.getMpConfig('record_allowed_iframe_origins'), logger$3);
+        var isCrossOriginRecordingEnabled = allowedOrigins.length > 0;
+
+        if (isCrossOriginRecordingEnabled) {
+            // listen for handshake requests from their own child iframes (including nested)
+            this._setupParentFrameListener(allowedOrigins);
+
+            if (win.parent !== win) {
+                // also wait for parent's replay ID
+                this._setupChildFrameListener(allowedOrigins, loadRecorder);
+                this._sendParentFrameRequestWithRetry(allowedOrigins);
+                return PromisePolyfill.resolve();
+            }
+        }
 
         /**
          * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
@@ -4774,6 +4821,10 @@
     };
 
     RecorderManager.prototype.getSessionReplayId = function() {
+        // Child iframe uses parent's replay ID
+        if (this._parentReplayId) {
+            return this._parentReplayId;
+        }
         var replay_id = null;
         if (this._recorder) {
             replay_id = this._recorder['replayId'];
@@ -4784,6 +4835,86 @@
     // "private" public method to reach into the recorder in test cases
     RecorderManager.prototype.getRecorder = function() {
         return this._recorder;
+    };
+
+    RecorderManager.prototype._setupChildFrameListener = function(allowedOrigins, loadRecorder) {
+        if (this._childFrameMessageHandler) {
+            return;
+        }
+        var self = this;
+        this._childFrameMessageHandler = function(event) {
+            if (allowedOrigins.indexOf(event.origin) === -1) return;
+            var data = event.data;
+            if (data && data['type'] === IFRAME_HANDSHAKE_RESPONSE && data['token'] === self.getMpConfig('token') && data['replayId']) {
+                self._parentReplayId = data['replayId'];
+                if (data['distinctId']) {
+                    self.mixpanelInstance['identify'](data['distinctId']);
+                }
+                self._parentFrameRetryActive = false;
+                win.removeEventListener('message', self._childFrameMessageHandler);
+                self._childFrameMessageHandler = null;
+                loadRecorder(true);
+            }
+        };
+        win.addEventListener('message', this._childFrameMessageHandler);
+    };
+
+    RecorderManager.prototype._sendParentFrameRequest = function(allowedOrigins) {
+        var message = {};
+        message['type'] = IFRAME_HANDSHAKE_REQUEST;
+        message['token'] = this.getMpConfig('token');
+        for (var i = 0; i < allowedOrigins.length; i++) {
+            try {
+                win.parent.postMessage(message, allowedOrigins[i]);
+            } catch (e) {
+                // origin mismatch - ignore
+            }
+        }
+    };
+
+    RecorderManager.prototype._sendParentFrameRequestWithRetry = function(allowedOrigins) {
+        var self = this;
+        var maxRetries = 10;
+        var retryCount = 0;
+        var delay = 50;
+        this._parentFrameRetryActive = true;
+
+        this._sendParentFrameRequest(allowedOrigins);
+
+        function scheduleRetry() {
+            setTimeout(function() {
+                if (!self._parentFrameRetryActive || self._parentReplayId || ++retryCount >= maxRetries) {
+                    return;
+                }
+                self._sendParentFrameRequest(allowedOrigins);
+                delay *= 2;
+                scheduleRetry();
+            }, delay);
+        }
+        scheduleRetry();
+    };
+
+    RecorderManager.prototype._setupParentFrameListener = function(allowedOrigins) {
+        if (this._parentFrameMessageHandler) {
+            return;
+        }
+        var self = this;
+        this._parentFrameMessageHandler = function(event) {
+            if (allowedOrigins.indexOf(event.origin) === -1) return;
+            var data = event.data;
+            if (data && data['type'] === IFRAME_HANDSHAKE_REQUEST && data['token'] === self.getMpConfig('token')) {
+                var replayId = self.getSessionReplayId();
+                if (replayId) {
+                    var response = {};
+                    response['type'] = IFRAME_HANDSHAKE_RESPONSE;
+                    response['token'] = self.getMpConfig('token');
+                    response['replayId'] = replayId;
+                    response['distinctId'] = self.getDistinctId();
+                    event.source.postMessage(response, event.origin);
+                }
+            }
+        };
+        win.addEventListener('message', this._parentFrameMessageHandler);
     };
 
     safewrapClass(RecorderManager);
@@ -7352,7 +7483,6 @@
     /** @const */ var SETTING_FALLBACK      = 'fallback';
     /** @const */ var SETTING_DISABLED      = 'disabled';
 
-
     /*
      * Dynamic... constants? Is that an oxymoron?
      */
@@ -7437,6 +7567,7 @@
         'batch_request_timeout_ms':          90000,
         'batch_autostart':                   true,
         'hooks':                             {},
+        'record_allowed_iframe_origins':     [],
         'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
         'record_block_selector':             'img, video, audio',
         'record_canvas':                     false,

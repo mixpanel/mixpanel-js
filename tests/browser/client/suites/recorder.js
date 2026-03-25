@@ -1,5 +1,6 @@
-import { clearAllStorage, clearAllLibInstances, untilDone, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse, resetRecorder, getExternalLibraryScript, resetTargeting} from "../utils";
+import { clearAllStorage, clearAllLibInstances, untilDone, untilDoneAsync, realSetTimeout, simulateMouseClick, makeFakeFetchResponse, makeDelayedFetchResponse, resetRecorder, getExternalLibraryScript, resetTargeting} from "../utils";
 import { RECORDER_GLOBAL_NAME, TARGETING_GLOBAL_NAME } from "../../../../src/config";
+import { CHILD_PORT } from "../../test-ports";
 
 const expect = chai.expect;
 
@@ -23,7 +24,7 @@ export function recorderTests (mixpanel) {
   }
 
   function getRecorderScript () {
-    return getExternalLibraryScript('mixpanel-recorder');
+    return getExternalLibraryScript(`mixpanel-recorder`);
   }
 
   describe(`recorder`, function () {
@@ -1808,7 +1809,7 @@ export function recorderTests (mixpanel) {
         this.assertRecorderScript(false);
         expect(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length).to.equal(0, `no recording is taking place`);
 
-        mixpanel.recordertest.track('test_event');
+        mixpanel.recordertest.track(`test_event`);
         await this.waitForRecorderLoad();
 
         simulateMouseClick(document.body);
@@ -1828,7 +1829,7 @@ export function recorderTests (mixpanel) {
             'event': {
               'percentage': 100,
               'property_filters': {
-                '==': [{'var': 'attribute'}, 'test']
+                '==': [{'var': `attribute`}, `test`]
               }
             }
           }
@@ -1837,7 +1838,7 @@ export function recorderTests (mixpanel) {
         await mixpanel.recordertest.__get_recording_init_promise();
         this.assertRecorderScript(false);
 
-        mixpanel.recordertest.track('event', {'attribute': 'test'});
+        mixpanel.recordertest.track(`event`, {'attribute': `test`});
         await this.waitForRecorderLoad();
 
         simulateMouseClick(document.body);
@@ -1857,7 +1858,7 @@ export function recorderTests (mixpanel) {
             'event': {
               'percentage': 100,
               'property_filters': {
-                '==': [{'var': 'attribute'}, 'test']
+                '==': [{'var': `attribute`}, `test`]
               }
             }
           }
@@ -1866,7 +1867,7 @@ export function recorderTests (mixpanel) {
         await mixpanel.recordertest.__get_recording_init_promise();
         this.assertRecorderScript(false);
 
-        mixpanel.recordertest.track('event', {'attribute': 'other'});
+        mixpanel.recordertest.track(`event`, {'attribute': `other`});
         await this.clock.tickAsync(20 * 1000);
 
         this.assertRecorderScript(false);
@@ -1887,7 +1888,7 @@ export function recorderTests (mixpanel) {
         await mixpanel.recordertest.__get_recording_init_promise();
         this.assertRecorderScript(false);
 
-        mixpanel.recordertest.track('normal_event');
+        mixpanel.recordertest.track(`normal_event`);
         await this.clock.tickAsync(20 * 1000);
 
         this.assertRecorderScript(false);
@@ -1908,7 +1909,7 @@ export function recorderTests (mixpanel) {
         await this.waitForRecorderLoad();
         const firstReplayId = mixpanel.recordertest.get_session_recording_properties()[`$mp_replay_id`];
 
-        mixpanel.recordertest.track('test_event');
+        mixpanel.recordertest.track(`test_event`);
         await this.clock.tickAsync(1000);
 
         const secondReplayId = mixpanel.recordertest.get_session_recording_properties()[`$mp_replay_id`];
@@ -1923,7 +1924,7 @@ export function recorderTests (mixpanel) {
         this.randomStub.returns(0.02);
 
         // Set targeting global to a rejected promise before init. This gets restored by resetTargeting in afterEach, so it won't affect other tests.
-        window[TARGETING_GLOBAL_NAME] = Promise.reject(new Error('targeting load failed'));
+        window[TARGETING_GLOBAL_NAME] = Promise.reject(new Error(`targeting load failed`));
 
         this.initMixpanelRecorder({
           record_sessions_percent: 0,
@@ -1931,7 +1932,7 @@ export function recorderTests (mixpanel) {
             'test_event': {
               'percentage': 100,
               'property_filters': {
-                '==': [{'var': 'attribute'}, 'test']
+                '==': [{'var': `attribute`}, `test`]
               }
             }
           }
@@ -1940,7 +1941,7 @@ export function recorderTests (mixpanel) {
         await mixpanel.recordertest.__get_recording_init_promise();
         this.assertRecorderScript(false);
 
-        mixpanel.recordertest.track('test_event', {'attribute': 'test'});
+        mixpanel.recordertest.track(`test_event`, {'attribute': `test`});
         await this.clock.tickAsync(20 * 1000);
 
         this.assertRecorderScript(false);
@@ -1955,7 +1956,7 @@ export function recorderTests (mixpanel) {
             'test_event': {
               'percentage': 100,
               'property_filters': {
-                'bad_formula': [{'var': 'attribute'}, 'test']
+                'bad_formula': [{'var': `attribute`}, `test`]
               }
             }
           }
@@ -1964,7 +1965,7 @@ export function recorderTests (mixpanel) {
         await mixpanel.recordertest.__get_recording_init_promise();
         this.assertRecorderScript(false);
 
-        mixpanel.recordertest.track('test_event', {'attribute': 'test'});
+        mixpanel.recordertest.track(`test_event`, {'attribute': `test`});
         await this.clock.tickAsync(20 * 1000);
 
         this.assertRecorderScript(false);
@@ -1985,7 +1986,7 @@ export function recorderTests (mixpanel) {
         await mixpanel.recordertest.__get_recording_init_promise();
         this.assertRecorderScript(false);
 
-        mixpanel.recordertest.track('test_event');
+        mixpanel.recordertest.track(`test_event`);
         await this.clock.tickAsync(20 * 1000);
 
         this.assertRecorderScript(false);
@@ -2004,15 +2005,15 @@ export function recorderTests (mixpanel) {
         });
 
         await this.waitForRecorderLoad();
-        expect(mixpanel.recordertest.get_config('record_sessions_percent')).to.equal(10, `original rate preserved before event trigger`);
+        expect(mixpanel.recordertest.get_config(`record_sessions_percent`)).to.equal(10, `original rate preserved before event trigger`);
 
         await mixpanel.recordertest.stop_session_recording();
         await this.clock.tickAsync(20 * 1000);
 
-        mixpanel.recordertest.track('test_event');
+        mixpanel.recordertest.track(`test_event`);
         await this.waitForRecorderLoad();
 
-        expect(mixpanel.recordertest.get_config('record_sessions_percent')).to.equal(10, `original rate preserved after event trigger`);
+        expect(mixpanel.recordertest.get_config(`record_sessions_percent`)).to.equal(10, `original rate preserved after event trigger`);
       });
     });
 
@@ -2041,6 +2042,148 @@ export function recorderTests (mixpanel) {
 
       // Restore the method for cleanup
       recorder.isRecording = originalIsRecording;
+    });
+    describe(`cross-origin iframe recording`, function () {
+      const CHILD_ORIGIN = window.location.protocol + `//` + window.location.hostname + `:` + CHILD_PORT;
+
+      var childIframe;
+      var messageListeners = [];
+
+      function addMessageListener(handler) {
+        window.addEventListener(`message`, handler);
+        messageListeners.push(handler);
+      }
+
+      function removeAllMessageListeners() {
+        messageListeners.forEach(function (handler) {
+          window.removeEventListener(`message`, handler);
+        });
+        messageListeners = [];
+      }
+
+      afterEach(function () {
+        removeAllMessageListeners();
+
+        if (childIframe && childIframe.parentNode) {
+          childIframe.parentNode.removeChild(childIframe);
+          childIframe = null;
+        }
+      });
+
+      function createChildIframe() {
+        return new Promise(function (resolve, reject) {
+          var timeoutId = realSetTimeout(function () {
+            reject(new Error(`Child iframe ready timed out`));
+          }, 5000);
+
+          childIframe = document.createElement(`iframe`);
+          childIframe.src = CHILD_ORIGIN + window.location.pathname + `-cross-origin-page`;
+
+          addMessageListener(function onReady(event) {
+            if (event.data && event.data.type === `mp_test_child_ready`) {
+              window.removeEventListener(`message`, onReady);
+              clearTimeout(timeoutId);
+              resolve();
+            }
+          });
+
+          document.body.appendChild(childIframe);
+        });
+      }
+
+      function queryChildState(timeout) {
+        timeout = timeout || 2000;
+        return new Promise(function (resolve, reject) {
+          var timeoutId = realSetTimeout(function () {
+            reject(new Error(`Child state query timed out`));
+          }, timeout);
+
+          addMessageListener(function onResponse(event) {
+            if (event.data && event.data.type === `mp_test_state_response`) {
+              window.removeEventListener(`message`, onResponse);
+              clearTimeout(timeoutId);
+              resolve(event.data);
+            }
+          });
+
+          childIframe.contentWindow.postMessage({type: `mp_test_query_state`}, CHILD_ORIGIN);
+        });
+      }
+
+      it(`child iframe receives parent replayId via handshake`, async function () {
+        this.randomStub.returns(0.01);
+        await this.initMixpanelRecorder({
+          record_sessions_percent: 100,
+          record_allowed_iframe_origins: [CHILD_ORIGIN]
+        });
+        await this.waitForRecorderLoad();
+
+        var parentProps = mixpanel.recordertest.get_session_recording_properties();
+        var parentReplayId = parentProps[`$mp_replay_id`];
+        expect(parentReplayId).to.be.a(`string`);
+
+        await createChildIframe();
+
+        await untilDoneAsync(async function() {
+          var childState = await queryChildState();
+          expect(childState.replayId).to.equal(parentReplayId);
+        });
+      });
+
+      it(`child iframe receives parent distinctId via handshake`, async function () {
+        this.randomStub.returns(0.01);
+        await this.initMixpanelRecorder({
+          record_sessions_percent: 100,
+          record_allowed_iframe_origins: [CHILD_ORIGIN]
+        });
+        await this.waitForRecorderLoad();
+
+        var parentDistinctId = mixpanel.recordertest.get_distinct_id();
+
+        await createChildIframe();
+
+        await untilDoneAsync(async function() {
+          var childState = await queryChildState();
+          expect(childState.distinctId).to.equal(parentDistinctId);
+        });
+      });
+
+      it(`child iframe does not receive replayId from disallowed origin`, async function () {
+        // Parent allows port 9999 (not port 3002 where child actually lives)
+        this.randomStub.returns(0.01);
+        await this.initMixpanelRecorder({
+          record_sessions_percent: 100,
+          record_allowed_iframe_origins: [`http://localhost:9999`]
+        });
+        await this.waitForRecorderLoad();
+
+        await createChildIframe();
+
+        // Wait for potential handshake attempts to complete
+        await new Promise(function (resolve) { realSetTimeout(resolve, 1000); });
+
+        var childState = await queryChildState();
+        expect(childState.replayId).to.be.null;
+      });
+
+      it(`parent without active recording does not respond to handshake`, async function () {
+        // Parent has recording disabled (0%) but has allowed origins configured
+        await this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          record_allowed_iframe_origins: [CHILD_ORIGIN]
+        });
+
+        // Wait for init to settle (no recording will start)
+        await mixpanel.recordertest.__get_recording_init_promise();
+
+        await createChildIframe();
+
+        // Wait for potential handshake attempts to complete
+        await new Promise(function (resolve) { realSetTimeout(resolve, 1000); });
+
+        var childState = await queryChildState();
+        expect(childState.replayId).to.be.null;
+      });
     });
   });
 }

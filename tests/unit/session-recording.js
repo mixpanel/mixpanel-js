@@ -435,6 +435,117 @@ describe(`SessionRecording`, function() {
     expect(queue.length).to.equal(0, `batcher should have removed the items from IDB`);
   });
 
+  describe(`validateAllowedOrigins via startRecording`, function() {
+    it(`non-array config doesn't crash recording`, function() {
+      const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': `https://a.com`});
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `test-replay-id`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+      rec.startRecording();
+      expect(mockRrweb.recordStub.called).to.be.true;
+      const args = mockRrweb.recordStub.getCall(0).args[0];
+      expect(args.recordCrossOriginIframes).to.be.false;
+      expect(args.allowedIframeOrigins).to.deep.equal([]);
+      rec.stopRecording();
+    });
+
+    it(`non-string elements are filtered`, function() {
+      const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [42, `https://valid.com`]});
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `test-replay-id`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+      rec.startRecording();
+      const args = mockRrweb.recordStub.getCall(0).args[0];
+      expect(args.recordCrossOriginIframes).to.be.true;
+      expect(args.allowedIframeOrigins).to.deep.equal([`https://valid.com`]);
+      rec.stopRecording();
+    });
+
+    it(`unparseable URL strings are filtered`, function() {
+      const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [`not-a-url`, `https://valid.com`]});
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `test-replay-id`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+      rec.startRecording();
+      const args = mockRrweb.recordStub.getCall(0).args[0];
+      expect(args.recordCrossOriginIframes).to.be.true;
+      expect(args.allowedIframeOrigins).to.deep.equal([`https://valid.com`]);
+      rec.stopRecording();
+    });
+
+    it(`all invalid origins disables cross-origin`, function() {
+      const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [`not-a-url`, 42]});
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `test-replay-id`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+      rec.startRecording();
+      const args = mockRrweb.recordStub.getCall(0).args[0];
+      expect(args.recordCrossOriginIframes).to.be.false;
+      expect(args.allowedIframeOrigins).to.deep.equal([]);
+      rec.stopRecording();
+    });
+
+    it(`valid origins pass through unchanged`, function() {
+      const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [`https://a.com`, `https://b.com`]});
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `test-replay-id`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+      rec.startRecording();
+      const args = mockRrweb.recordStub.getCall(0).args[0];
+      expect(args.recordCrossOriginIframes).to.be.true;
+      expect(args.allowedIframeOrigins).to.deep.equal([`https://a.com`, `https://b.com`]);
+      rec.stopRecording();
+    });
+
+    it(`origins are normalized to scheme+host+port`, function() {
+      const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [
+        `https://a.com/path/page`,
+        `http://b.com:8080/`,
+      ]});
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `test-replay-id`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+      rec.startRecording();
+      const args = mockRrweb.recordStub.getCall(0).args[0];
+      expect(args.recordCrossOriginIframes).to.be.true;
+      expect(args.allowedIframeOrigins).to.deep.equal([`https://a.com`, `http://b.com:8080`]);
+      rec.stopRecording();
+    });
+
+    it(`opaque origins are rejected`, function() {
+      const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [`data:text/html,test`]});
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `test-replay-id`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+      rec.startRecording();
+      const args = mockRrweb.recordStub.getCall(0).args[0];
+      expect(args.recordCrossOriginIframes).to.be.false;
+      expect(args.allowedIframeOrigins).to.deep.equal([]);
+      rec.stopRecording();
+    });
+  });
+
   describe(`_getMaskFn`, function() {
     let mockElement;
     let mockPrivacyConfig;

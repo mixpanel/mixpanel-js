@@ -10,7 +10,7 @@ import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
 import { Config } from '../config';
-import { RECORD_ENQUEUE_THROTTLE_MS } from './utils';
+import { RECORD_ENQUEUE_THROTTLE_MS, validateAllowedOrigins } from './utils';
 import { shouldMaskInput, shouldMaskText, getPrivacyConfig } from './masking';
 import { getRecordNetworkPlugin } from './rrweb-network-plugin';
 
@@ -265,6 +265,8 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         );
     }
 
+    var validatedOrigins = validateAllowedOrigins(this.getConfig('record_allowed_iframe_origins'), logger);
+
     try {
         this._stopRecording = this._rrwebRecord({
             'emit': function (ev) {
@@ -299,6 +301,8 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
             'maskTextSelector': '*',
             'maskInputFn': this._getMaskFn(shouldMaskInput, privacyConfig),
             'maskTextFn': this._getMaskFn(shouldMaskText, privacyConfig),
+            'recordCrossOriginIframes': validatedOrigins.length > 0,
+            'allowedIframeOrigins': validatedOrigins,
             'recordCanvas': this.getConfig('record_canvas'),
             'sampling': {
                 'canvas': 15

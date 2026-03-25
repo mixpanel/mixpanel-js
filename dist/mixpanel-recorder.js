@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.76.0'
+        LIB_VERSION: '2.77.0'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -10728,13 +10728,7 @@
                 };
                 while(_this.mapRemoves.length){
                     var removedNode = _this.mapRemoves.shift();
-                    if (removedNode.nodeName === "IFRAME") {
-                        try {
-                            _this.iframeManager.removeIframe(removedNode);
-                        } catch (e2) {}
-                    } else {
-                        _this.stylesheetManager.cleanupStylesheetsForRemovedNode(removedNode);
-                    }
+                    _this.cleanupRemovedNode(removedNode);
                     _this.mirror.removeNodeFromMap(removedNode);
                 }
                 for(var _iterator = _create_for_of_iterator_helper_loose(_this.movedSet), _step; !(_step = _iterator()).done;){
@@ -11053,6 +11047,20 @@
                         });
                     }
                 }
+            });
+            __publicField$1(this, "cleanupRemovedNode", function(node2) {
+                if (node2.nodeName === "IFRAME") {
+                    try {
+                        _this.iframeManager.removeIframe(node2);
+                    } catch (e2) {}
+                } else {
+                    try {
+                        _this.stylesheetManager.cleanupStylesheetsForRemovedNode(node2);
+                    } catch (e2) {}
+                }
+                node2.childNodes.forEach(function(child) {
+                    _this.cleanupRemovedNode(child);
+                });
             });
         }
         var _proto = MutationBuffer.prototype;
@@ -13281,6 +13289,31 @@
         _proto.destroy = function destroy() {};
         return ProcessedNodeManager;
     }();
+    function toOrigin(url) {
+        try {
+            var origin = new URL(url).origin;
+            return origin !== "null" ? origin : null;
+        } catch (e) {
+            return null;
+        }
+    }
+    function buildAllowedOriginSet(origins) {
+        if (!Array.isArray(origins) || origins.length === 0) {
+            throw new Error("[rrweb] allowedIframeOrigins must be a non-empty array of origin strings.");
+        }
+        var set = /* @__PURE__ */ new Set();
+        for(var i2 = 0; i2 < origins.length; i2++){
+            var entry = origins[i2];
+            if (typeof entry !== "string") {
+                throw new Error("[rrweb] allowedIframeOrigins[" + i2 + "] must be a string, got " + (typeof entry === "undefined" ? "undefined" : _type_of(entry)) + ".");
+            }
+            var origin = toOrigin(entry);
+            if (origin) {
+                set.add(origin);
+            }
+        }
+        return Object.freeze(set);
+    }
     var wrappedEmit;
     var takeFullSnapshot$1;
     var canvasManager;
@@ -13302,10 +13335,17 @@
     var mirror = createMirror$2();
     function record(options) {
         if (options === void 0) options = {};
-        var emit = options.emit, checkoutEveryNms = options.checkoutEveryNms, checkoutEveryNth = options.checkoutEveryNth, _options_blockClass = options.blockClass, blockClass = _options_blockClass === void 0 ? "rr-block" : _options_blockClass, _options_blockSelector = options.blockSelector, blockSelector = _options_blockSelector === void 0 ? null : _options_blockSelector, _options_ignoreClass = options.ignoreClass, ignoreClass = _options_ignoreClass === void 0 ? "rr-ignore" : _options_ignoreClass, _options_ignoreSelector = options.ignoreSelector, ignoreSelector = _options_ignoreSelector === void 0 ? null : _options_ignoreSelector, _options_maskTextClass = options.maskTextClass, maskTextClass = _options_maskTextClass === void 0 ? "rr-mask" : _options_maskTextClass, _options_maskTextSelector = options.maskTextSelector, maskTextSelector = _options_maskTextSelector === void 0 ? null : _options_maskTextSelector, _options_inlineStylesheet = options.inlineStylesheet, inlineStylesheet = _options_inlineStylesheet === void 0 ? true : _options_inlineStylesheet, maskAllInputs = options.maskAllInputs, _maskInputOptions = options.maskInputOptions, _slimDOMOptions = options.slimDOMOptions, maskInputFn = options.maskInputFn, maskTextFn = options.maskTextFn, hooks = options.hooks, packFn = options.packFn, _options_sampling = options.sampling, sampling = _options_sampling === void 0 ? {} : _options_sampling, _options_dataURLOptions = options.dataURLOptions, dataURLOptions = _options_dataURLOptions === void 0 ? {} : _options_dataURLOptions, mousemoveWait = options.mousemoveWait, _options_recordDOM = options.recordDOM, recordDOM = _options_recordDOM === void 0 ? true : _options_recordDOM, _options_recordCanvas = options.recordCanvas, recordCanvas = _options_recordCanvas === void 0 ? false : _options_recordCanvas, _options_recordCrossOriginIframes = options.recordCrossOriginIframes, recordCrossOriginIframes = _options_recordCrossOriginIframes === void 0 ? false : _options_recordCrossOriginIframes, _options_recordAfter = options.recordAfter, recordAfter = _options_recordAfter === void 0 ? options.recordAfter === "DOMContentLoaded" ? options.recordAfter : "load" : _options_recordAfter, _options_userTriggeredOnInput = options.userTriggeredOnInput, userTriggeredOnInput = _options_userTriggeredOnInput === void 0 ? false : _options_userTriggeredOnInput, _options_collectFonts = options.collectFonts, collectFonts = _options_collectFonts === void 0 ? false : _options_collectFonts, _options_inlineImages = options.inlineImages, inlineImages = _options_inlineImages === void 0 ? false : _options_inlineImages, plugins = options.plugins, _options_keepIframeSrcFn = options.keepIframeSrcFn, keepIframeSrcFn = _options_keepIframeSrcFn === void 0 ? function() {
+        var emit = options.emit, checkoutEveryNms = options.checkoutEveryNms, checkoutEveryNth = options.checkoutEveryNth, _options_blockClass = options.blockClass, blockClass = _options_blockClass === void 0 ? "rr-block" : _options_blockClass, _options_blockSelector = options.blockSelector, blockSelector = _options_blockSelector === void 0 ? null : _options_blockSelector, _options_ignoreClass = options.ignoreClass, ignoreClass = _options_ignoreClass === void 0 ? "rr-ignore" : _options_ignoreClass, _options_ignoreSelector = options.ignoreSelector, ignoreSelector = _options_ignoreSelector === void 0 ? null : _options_ignoreSelector, _options_maskTextClass = options.maskTextClass, maskTextClass = _options_maskTextClass === void 0 ? "rr-mask" : _options_maskTextClass, _options_maskTextSelector = options.maskTextSelector, maskTextSelector = _options_maskTextSelector === void 0 ? null : _options_maskTextSelector, _options_inlineStylesheet = options.inlineStylesheet, inlineStylesheet = _options_inlineStylesheet === void 0 ? true : _options_inlineStylesheet, maskAllInputs = options.maskAllInputs, _maskInputOptions = options.maskInputOptions, _slimDOMOptions = options.slimDOMOptions, maskInputFn = options.maskInputFn, maskTextFn = options.maskTextFn, hooks = options.hooks, packFn = options.packFn, _options_sampling = options.sampling, sampling = _options_sampling === void 0 ? {} : _options_sampling, _options_dataURLOptions = options.dataURLOptions, dataURLOptions = _options_dataURLOptions === void 0 ? {} : _options_dataURLOptions, mousemoveWait = options.mousemoveWait, _options_recordDOM = options.recordDOM, recordDOM = _options_recordDOM === void 0 ? true : _options_recordDOM, _options_recordCanvas = options.recordCanvas, recordCanvas = _options_recordCanvas === void 0 ? false : _options_recordCanvas, _options_recordCrossOriginIframes = options.recordCrossOriginIframes, recordCrossOriginIframes = _options_recordCrossOriginIframes === void 0 ? false : _options_recordCrossOriginIframes, allowedIframeOrigins = options.allowedIframeOrigins, _options_recordAfter = options.recordAfter, recordAfter = _options_recordAfter === void 0 ? options.recordAfter === "DOMContentLoaded" ? options.recordAfter : "load" : _options_recordAfter, _options_userTriggeredOnInput = options.userTriggeredOnInput, userTriggeredOnInput = _options_userTriggeredOnInput === void 0 ? false : _options_userTriggeredOnInput, _options_collectFonts = options.collectFonts, collectFonts = _options_collectFonts === void 0 ? false : _options_collectFonts, _options_inlineImages = options.inlineImages, inlineImages = _options_inlineImages === void 0 ? false : _options_inlineImages, plugins = options.plugins, _options_keepIframeSrcFn = options.keepIframeSrcFn, keepIframeSrcFn = _options_keepIframeSrcFn === void 0 ? function() {
             return false;
         } : _options_keepIframeSrcFn, _options_ignoreCSSAttributes = options.ignoreCSSAttributes, ignoreCSSAttributes = _options_ignoreCSSAttributes === void 0 ? /* @__PURE__ */ new Set([]) : _options_ignoreCSSAttributes, errorHandler2 = options.errorHandler;
         registerErrorHandler(errorHandler2);
+        var validatedOrigins;
+        if (recordCrossOriginIframes && allowedIframeOrigins && allowedIframeOrigins.length > 0) {
+            validatedOrigins = buildAllowedOriginSet(allowedIframeOrigins);
+            if (validatedOrigins.size === 0) {
+                validatedOrigins = void 0;
+            }
+        }
         var inEmittingFrame = recordCrossOriginIframes ? window.parent === window : true;
         var passEmitsToParent = false;
         if (!inEmittingFrame) {
@@ -13397,7 +13437,14 @@
                     origin: window.location.origin,
                     isCheckout: isCheckout
                 };
-                window.parent.postMessage(message, "*");
+                if (validatedOrigins) {
+                    for(var _iterator = _create_for_of_iterator_helper_loose(validatedOrigins), _step; !(_step = _iterator()).done;){
+                        var targetOrigin = _step.value;
+                        window.parent.postMessage(message, targetOrigin);
+                    }
+                } else {
+                    window.parent.postMessage(message, "*");
+                }
             }
             if (e2.type === EventType.FullSnapshot) {
                 lastFullSnapshotEvent = e2;
@@ -21887,6 +21934,29 @@
 
     var RECORD_ENQUEUE_THROTTLE_MS = 250;
 
+    var validateAllowedOrigins = function(origins, logger) {
+        if (!_.isArray(origins)) {
+            if (origins) {
+                logger.critical('record_allowed_iframe_origins must be an array of origin strings, cross-origin recording will be disabled.');
+            }
+            return [];
+        }
+        var valid = [];
+        for (var i = 0; i < origins.length; i++) {
+            try {
+                var origin = new URL(origins[i]).origin;
+                if (origin === 'null') {
+                    logger.critical(origins[i] + ' has an opaque origin. Skipping this entry.');
+                    continue;
+                }
+                valid.push(origin);
+            } catch (e) {
+                logger.critical(origins[i] + ' is not a valid origin URL. Skipping this entry.');
+            }
+        }
+        return valid;
+    };
+
     // stateless utils
     // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
 
@@ -22993,6 +23063,8 @@
             );
         }
 
+        var validatedOrigins = validateAllowedOrigins(this.getConfig('record_allowed_iframe_origins'), logger$1);
+
         try {
             this._stopRecording = this._rrwebRecord({
                 'emit': function (ev) {
@@ -23027,6 +23099,8 @@
                 'maskTextSelector': '*',
                 'maskInputFn': this._getMaskFn(shouldMaskInput, privacyConfig),
                 'maskTextFn': this._getMaskFn(shouldMaskText, privacyConfig),
+                'recordCrossOriginIframes': validatedOrigins.length > 0,
+                'allowedIframeOrigins': validatedOrigins,
                 'recordCanvas': this.getConfig('record_canvas'),
                 'sampling': {
                     'canvas': 15

@@ -27,7 +27,7 @@ if (typeof(window) === 'undefined') {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.76.0'
+    LIB_VERSION: '2.77.0'
 };
 
 // Window global names for async modules
@@ -10735,13 +10735,7 @@ var MutationBuffer = /*#__PURE__*/ function() {
             };
             while(_this.mapRemoves.length){
                 var removedNode = _this.mapRemoves.shift();
-                if (removedNode.nodeName === "IFRAME") {
-                    try {
-                        _this.iframeManager.removeIframe(removedNode);
-                    } catch (e2) {}
-                } else {
-                    _this.stylesheetManager.cleanupStylesheetsForRemovedNode(removedNode);
-                }
+                _this.cleanupRemovedNode(removedNode);
                 _this.mirror.removeNodeFromMap(removedNode);
             }
             for(var _iterator = _create_for_of_iterator_helper_loose(_this.movedSet), _step; !(_step = _iterator()).done;){
@@ -11060,6 +11054,20 @@ var MutationBuffer = /*#__PURE__*/ function() {
                     });
                 }
             }
+        });
+        __publicField$1(this, "cleanupRemovedNode", function(node2) {
+            if (node2.nodeName === "IFRAME") {
+                try {
+                    _this.iframeManager.removeIframe(node2);
+                } catch (e2) {}
+            } else {
+                try {
+                    _this.stylesheetManager.cleanupStylesheetsForRemovedNode(node2);
+                } catch (e2) {}
+            }
+            node2.childNodes.forEach(function(child) {
+                _this.cleanupRemovedNode(child);
+            });
         });
     }
     var _proto = MutationBuffer.prototype;
@@ -13288,6 +13296,31 @@ var ProcessedNodeManager = /*#__PURE__*/ function() {
     _proto.destroy = function destroy() {};
     return ProcessedNodeManager;
 }();
+function toOrigin(url) {
+    try {
+        var origin = new URL(url).origin;
+        return origin !== "null" ? origin : null;
+    } catch (e) {
+        return null;
+    }
+}
+function buildAllowedOriginSet(origins) {
+    if (!Array.isArray(origins) || origins.length === 0) {
+        throw new Error("[rrweb] allowedIframeOrigins must be a non-empty array of origin strings.");
+    }
+    var set = /* @__PURE__ */ new Set();
+    for(var i2 = 0; i2 < origins.length; i2++){
+        var entry = origins[i2];
+        if (typeof entry !== "string") {
+            throw new Error("[rrweb] allowedIframeOrigins[" + i2 + "] must be a string, got " + (typeof entry === "undefined" ? "undefined" : _type_of(entry)) + ".");
+        }
+        var origin = toOrigin(entry);
+        if (origin) {
+            set.add(origin);
+        }
+    }
+    return Object.freeze(set);
+}
 var wrappedEmit;
 var takeFullSnapshot$1;
 var canvasManager;
@@ -13309,10 +13342,17 @@ try {
 var mirror = createMirror$2();
 function record(options) {
     if (options === void 0) options = {};
-    var emit = options.emit, checkoutEveryNms = options.checkoutEveryNms, checkoutEveryNth = options.checkoutEveryNth, _options_blockClass = options.blockClass, blockClass = _options_blockClass === void 0 ? "rr-block" : _options_blockClass, _options_blockSelector = options.blockSelector, blockSelector = _options_blockSelector === void 0 ? null : _options_blockSelector, _options_ignoreClass = options.ignoreClass, ignoreClass = _options_ignoreClass === void 0 ? "rr-ignore" : _options_ignoreClass, _options_ignoreSelector = options.ignoreSelector, ignoreSelector = _options_ignoreSelector === void 0 ? null : _options_ignoreSelector, _options_maskTextClass = options.maskTextClass, maskTextClass = _options_maskTextClass === void 0 ? "rr-mask" : _options_maskTextClass, _options_maskTextSelector = options.maskTextSelector, maskTextSelector = _options_maskTextSelector === void 0 ? null : _options_maskTextSelector, _options_inlineStylesheet = options.inlineStylesheet, inlineStylesheet = _options_inlineStylesheet === void 0 ? true : _options_inlineStylesheet, maskAllInputs = options.maskAllInputs, _maskInputOptions = options.maskInputOptions, _slimDOMOptions = options.slimDOMOptions, maskInputFn = options.maskInputFn, maskTextFn = options.maskTextFn, hooks = options.hooks, packFn = options.packFn, _options_sampling = options.sampling, sampling = _options_sampling === void 0 ? {} : _options_sampling, _options_dataURLOptions = options.dataURLOptions, dataURLOptions = _options_dataURLOptions === void 0 ? {} : _options_dataURLOptions, mousemoveWait = options.mousemoveWait, _options_recordDOM = options.recordDOM, recordDOM = _options_recordDOM === void 0 ? true : _options_recordDOM, _options_recordCanvas = options.recordCanvas, recordCanvas = _options_recordCanvas === void 0 ? false : _options_recordCanvas, _options_recordCrossOriginIframes = options.recordCrossOriginIframes, recordCrossOriginIframes = _options_recordCrossOriginIframes === void 0 ? false : _options_recordCrossOriginIframes, _options_recordAfter = options.recordAfter, recordAfter = _options_recordAfter === void 0 ? options.recordAfter === "DOMContentLoaded" ? options.recordAfter : "load" : _options_recordAfter, _options_userTriggeredOnInput = options.userTriggeredOnInput, userTriggeredOnInput = _options_userTriggeredOnInput === void 0 ? false : _options_userTriggeredOnInput, _options_collectFonts = options.collectFonts, collectFonts = _options_collectFonts === void 0 ? false : _options_collectFonts, _options_inlineImages = options.inlineImages, inlineImages = _options_inlineImages === void 0 ? false : _options_inlineImages, plugins = options.plugins, _options_keepIframeSrcFn = options.keepIframeSrcFn, keepIframeSrcFn = _options_keepIframeSrcFn === void 0 ? function() {
+    var emit = options.emit, checkoutEveryNms = options.checkoutEveryNms, checkoutEveryNth = options.checkoutEveryNth, _options_blockClass = options.blockClass, blockClass = _options_blockClass === void 0 ? "rr-block" : _options_blockClass, _options_blockSelector = options.blockSelector, blockSelector = _options_blockSelector === void 0 ? null : _options_blockSelector, _options_ignoreClass = options.ignoreClass, ignoreClass = _options_ignoreClass === void 0 ? "rr-ignore" : _options_ignoreClass, _options_ignoreSelector = options.ignoreSelector, ignoreSelector = _options_ignoreSelector === void 0 ? null : _options_ignoreSelector, _options_maskTextClass = options.maskTextClass, maskTextClass = _options_maskTextClass === void 0 ? "rr-mask" : _options_maskTextClass, _options_maskTextSelector = options.maskTextSelector, maskTextSelector = _options_maskTextSelector === void 0 ? null : _options_maskTextSelector, _options_inlineStylesheet = options.inlineStylesheet, inlineStylesheet = _options_inlineStylesheet === void 0 ? true : _options_inlineStylesheet, maskAllInputs = options.maskAllInputs, _maskInputOptions = options.maskInputOptions, _slimDOMOptions = options.slimDOMOptions, maskInputFn = options.maskInputFn, maskTextFn = options.maskTextFn, hooks = options.hooks, packFn = options.packFn, _options_sampling = options.sampling, sampling = _options_sampling === void 0 ? {} : _options_sampling, _options_dataURLOptions = options.dataURLOptions, dataURLOptions = _options_dataURLOptions === void 0 ? {} : _options_dataURLOptions, mousemoveWait = options.mousemoveWait, _options_recordDOM = options.recordDOM, recordDOM = _options_recordDOM === void 0 ? true : _options_recordDOM, _options_recordCanvas = options.recordCanvas, recordCanvas = _options_recordCanvas === void 0 ? false : _options_recordCanvas, _options_recordCrossOriginIframes = options.recordCrossOriginIframes, recordCrossOriginIframes = _options_recordCrossOriginIframes === void 0 ? false : _options_recordCrossOriginIframes, allowedIframeOrigins = options.allowedIframeOrigins, _options_recordAfter = options.recordAfter, recordAfter = _options_recordAfter === void 0 ? options.recordAfter === "DOMContentLoaded" ? options.recordAfter : "load" : _options_recordAfter, _options_userTriggeredOnInput = options.userTriggeredOnInput, userTriggeredOnInput = _options_userTriggeredOnInput === void 0 ? false : _options_userTriggeredOnInput, _options_collectFonts = options.collectFonts, collectFonts = _options_collectFonts === void 0 ? false : _options_collectFonts, _options_inlineImages = options.inlineImages, inlineImages = _options_inlineImages === void 0 ? false : _options_inlineImages, plugins = options.plugins, _options_keepIframeSrcFn = options.keepIframeSrcFn, keepIframeSrcFn = _options_keepIframeSrcFn === void 0 ? function() {
         return false;
     } : _options_keepIframeSrcFn, _options_ignoreCSSAttributes = options.ignoreCSSAttributes, ignoreCSSAttributes = _options_ignoreCSSAttributes === void 0 ? /* @__PURE__ */ new Set([]) : _options_ignoreCSSAttributes, errorHandler2 = options.errorHandler;
     registerErrorHandler(errorHandler2);
+    var validatedOrigins;
+    if (recordCrossOriginIframes && allowedIframeOrigins && allowedIframeOrigins.length > 0) {
+        validatedOrigins = buildAllowedOriginSet(allowedIframeOrigins);
+        if (validatedOrigins.size === 0) {
+            validatedOrigins = void 0;
+        }
+    }
     var inEmittingFrame = recordCrossOriginIframes ? window.parent === window : true;
     var passEmitsToParent = false;
     if (!inEmittingFrame) {
@@ -13404,7 +13444,14 @@ function record(options) {
                 origin: window.location.origin,
                 isCheckout: isCheckout
             };
-            window.parent.postMessage(message, "*");
+            if (validatedOrigins) {
+                for(var _iterator = _create_for_of_iterator_helper_loose(validatedOrigins), _step; !(_step = _iterator()).done;){
+                    var targetOrigin = _step.value;
+                    window.parent.postMessage(message, targetOrigin);
+                }
+            } else {
+                window.parent.postMessage(message, "*");
+            }
         }
         if (e2.type === EventType.FullSnapshot) {
             lastFullSnapshotEvent = e2;
@@ -21188,7 +21235,7 @@ function _addOptOutCheck(method, getConfigValue) {
     };
 }
 
-var logger$7 = console_with_prefix('lock');
+var logger$8 = console_with_prefix('lock');
 
 /**
  * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
@@ -21240,7 +21287,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
 
         var delay = function(cb) {
             if (new Date().getTime() - startTime > timeoutMS) {
-                logger$7.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                logger$8.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                 storage.removeItem(keyZ);
                 storage.removeItem(keyY);
                 loop();
@@ -21387,7 +21434,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
     }, this));
 };
 
-var logger$6 = console_with_prefix('batch');
+var logger$7 = console_with_prefix('batch');
 
 /**
  * RequestQueue: queue for batching API requests with localStorage backup for retries.
@@ -21416,7 +21463,7 @@ var RequestQueue = function (storageKey, options) {
             timeoutMS: options.sharedLockTimeoutMS,
         });
     }
-    this.reportError = options.errorReporter || _.bind(logger$6.error, logger$6);
+    this.reportError = options.errorReporter || _.bind(logger$7.error, logger$7);
 
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
@@ -21749,7 +21796,7 @@ RequestQueue.prototype.clear = function () {
 // maximum interval between request retries after exponential backoff
 var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-var logger$5 = console_with_prefix('batch');
+var logger$6 = console_with_prefix('batch');
 
 /**
  * RequestBatcher: manages the queueing, flushing, retry etc of requests of one
@@ -21877,7 +21924,7 @@ RequestBatcher.prototype.sendRequestPromise = function(data, options) {
  */
 RequestBatcher.prototype.flush = function(options) {
     if (this.requestInProgress) {
-        logger$5.log('Flush: Request already in progress');
+        logger$6.log('Flush: Request already in progress');
         return PromisePolyfill.resolve();
     }
 
@@ -22054,7 +22101,7 @@ RequestBatcher.prototype.flush = function(options) {
             if (options.unloading) {
                 requestOptions.transport = 'sendBeacon';
             }
-            logger$5.log('MIXPANEL REQUEST:', dataForRequest);
+            logger$6.log('MIXPANEL REQUEST:', dataForRequest);
             return this.sendRequestPromise(dataForRequest, requestOptions).then(batchSendCallback);
         }, this))
         .catch(_.bind(function(err) {
@@ -22067,7 +22114,7 @@ RequestBatcher.prototype.flush = function(options) {
  * Log error to global logger and optional user-defined logger.
  */
 RequestBatcher.prototype.reportError = function(msg, err) {
-    logger$5.error.apply(logger$5.error, arguments);
+    logger$6.error.apply(logger$6.error, arguments);
     if (this.errorReporter) {
         try {
             if (!(err instanceof Error)) {
@@ -22075,7 +22122,7 @@ RequestBatcher.prototype.reportError = function(msg, err) {
             }
             this.errorReporter(msg, err);
         } catch(err) {
-            logger$5.error(err);
+            logger$6.error(err);
         }
     }
 };
@@ -22091,6 +22138,29 @@ var isRecordingExpired = function(serializedRecording) {
 
 
 var RECORD_ENQUEUE_THROTTLE_MS = 250;
+
+var validateAllowedOrigins = function(origins, logger) {
+    if (!_.isArray(origins)) {
+        if (origins) {
+            logger.critical('record_allowed_iframe_origins must be an array of origin strings, cross-origin recording will be disabled.');
+        }
+        return [];
+    }
+    var valid = [];
+    for (var i = 0; i < origins.length; i++) {
+        try {
+            var origin = new URL(origins[i]).origin;
+            if (origin === 'null') {
+                logger.critical(origins[i] + ' has an opaque origin. Skipping this entry.');
+                continue;
+            }
+            valid.push(origin);
+        } catch (e) {
+            logger.critical(origins[i] + ' is not a valid origin URL. Skipping this entry.');
+        }
+    }
+    return valid;
+};
 
 // stateless utils
 // mostly from https://github.com/mixpanel/mixpanel-js/blob/989ada50f518edab47b9c4fd9535f9fbd5ec5fc0/src/autotrack-utils.js
@@ -22197,7 +22267,7 @@ var EVENT_HANDLER_ATTRIBUTES = [
 
 var MAX_DEPTH = 5;
 
-var logger$4 = console_with_prefix('autocapture');
+var logger$5 = console_with_prefix('autocapture');
 
 
 function getClasses(el) {
@@ -22461,7 +22531,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return false;
             }
         } catch (err) {
-            logger$4.critical('Error while checking element in allowElementCallback', err);
+            logger$5.critical('Error while checking element in allowElementCallback', err);
             return false;
         }
     }
@@ -22478,7 +22548,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return true;
             }
         } catch (err) {
-            logger$4.critical('Error while checking selector: ' + sel, err);
+            logger$5.critical('Error while checking selector: ' + sel, err);
         }
     }
     return false;
@@ -22493,7 +22563,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                 return true;
             }
         } catch (err) {
-            logger$4.critical('Error while checking element in blockElementCallback', err);
+            logger$5.critical('Error while checking element in blockElementCallback', err);
             return true;
         }
     }
@@ -22507,7 +22577,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                     return true;
                 }
             } catch (err) {
-                logger$4.critical('Error while checking selector: ' + sel, err);
+                logger$5.critical('Error while checking selector: ' + sel, err);
             }
         }
     }
@@ -23063,7 +23133,7 @@ function shouldMaskText(element, privacyConfig) {
  *
  */
 
-var logger$3 = console_with_prefix('network-plugin');
+var logger$4 = console_with_prefix('network-plugin');
 
 /**
  * Get the time origin for converting performance timestamps to absolute timestamps.
@@ -23215,7 +23285,7 @@ function truncateBody(str) {
         return str;
     }
     if (str.length > MAX_BODY_SIZE) {
-        logger$3.error('Body truncated from ' + str.length + ' to ' + MAX_BODY_SIZE + ' characters');
+        logger$4.error('Body truncated from ' + str.length + ' to ' + MAX_BODY_SIZE + ' characters');
         return str.substring(0, MAX_BODY_SIZE) + '... [truncated]';
     }
     return str;
@@ -23229,7 +23299,7 @@ function truncateBody(str) {
  */
 function initPerformanceObserver(cb, win, options) {
     if (!win.PerformanceObserver) {
-        logger$3.error('PerformanceObserver not supported');
+        logger$4.error('PerformanceObserver not supported');
         return function() {
             //
         };
@@ -23382,7 +23452,7 @@ function getRequestPerformanceEntry(win, initiatorType, url, after, before, atte
         attempt = 0;
     }
     if (attempt > 10) {
-        logger$3.error('Cannot find performance entry');
+        logger$4.error('Cannot find performance entry');
         return Promise.resolve(null);
     }
     var urlPerformanceEntries = /** @type {PerformanceResourceTiming[]} */ (
@@ -23503,7 +23573,7 @@ function initXhrObserver(cb, win, options) {
                     )
                         .then(function(entry) {
                             if (!entry) {
-                                logger$3.error('Failed to get performance entry for XHR request to ' + req.url);
+                                logger$4.error('Failed to get performance entry for XHR request to ' + req.url);
                                 return;
                             }
                             /** @type {NetworkRequest} */
@@ -23523,7 +23593,7 @@ function initXhrObserver(cb, win, options) {
                             cb({ requests: [request] });
                         })
                         .catch(function(e) {
-                            logger$3.error('Error recording XHR request to ' + req.url + ': ' + String(e));
+                            logger$4.error('Error recording XHR request to ' + req.url + ': ' + String(e));
                         });
                 });
 
@@ -23615,7 +23685,7 @@ function initFetchObserver(cb, win, options) {
                 })
                 .then(function(entry) {
                     if (!entry) {
-                        logger$3.error('Failed to get performance entry for fetch request to ' + req.url);
+                        logger$4.error('Failed to get performance entry for fetch request to ' + req.url);
                         return;
                     }
                     /** @type {NetworkRequest} */
@@ -23635,7 +23705,7 @@ function initFetchObserver(cb, win, options) {
                     cb({ requests: [request] });
                 })
                 .catch(function (e) {
-                    logger$3.error('Error recording fetch request to ' + req.url + ': ' + String(e));
+                    logger$4.error('Error recording fetch request to ' + req.url + ': ' + String(e));
                 });
 
             return originalFetchPromise;
@@ -23708,7 +23778,7 @@ var getRecordNetworkPlugin = function(options) {
  */
 
 
-var logger$2 = console_with_prefix('recorder');
+var logger$3 = console_with_prefix('recorder');
 var CompressionStream = win['CompressionStream'];
 
 var RECORDER_BATCHER_LIB_CONFIG = {
@@ -23888,14 +23958,14 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     if (this._stopRecording !== null) {
-        logger$2.log('Recording already in progress, skipping startRecording.');
+        logger$3.log('Recording already in progress, skipping startRecording.');
         return;
     }
 
     this.recordMaxMs = this.getConfig('record_max_ms');
     if (this.recordMaxMs > MAX_RECORDING_MS) {
         this.recordMaxMs = MAX_RECORDING_MS;
-        logger$2.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
+        logger$3.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
     }
 
     if (!this.maxExpires) {
@@ -23959,6 +24029,8 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         );
     }
 
+    var validatedOrigins = validateAllowedOrigins(this.getConfig('record_allowed_iframe_origins'), logger$3);
+
     try {
         this._stopRecording = this._rrwebRecord({
             'emit': function (ev) {
@@ -23993,6 +24065,8 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
             'maskTextSelector': '*',
             'maskInputFn': this._getMaskFn(shouldMaskInput, privacyConfig),
             'maskTextFn': this._getMaskFn(shouldMaskText, privacyConfig),
+            'recordCrossOriginIframes': validatedOrigins.length > 0,
+            'allowedIframeOrigins': validatedOrigins,
             'recordCanvas': this.getConfig('record_canvas'),
             'sampling': {
                 'canvas': 15
@@ -24217,14 +24291,14 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
 
 
 SessionRecording.prototype.reportError = function(msg, err) {
-    logger$2.error.apply(logger$2.error, arguments);
+    logger$3.error.apply(logger$3.error, arguments);
     try {
         if (!err && !(msg instanceof Error)) {
             msg = new Error(msg);
         }
         this.getConfig('error_reporter')(msg, err);
     } catch(err) {
-        logger$2.error(err);
+        logger$3.error(err);
     }
 };
 
@@ -24253,7 +24327,7 @@ SessionRecording.prototype._getRecordMinMs = function() {
     var configValue = this.getConfig('record_min_ms');
 
     if (configValue > MAX_VALUE_FOR_MIN_RECORDING_MS) {
-        logger$2.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+        logger$3.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
         return MAX_VALUE_FOR_MIN_RECORDING_MS;
     }
 
@@ -24416,7 +24490,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
         .catch(this.handleError.bind(this));
 };
 
-var logger$1 = console_with_prefix('recorder');
+var logger$2 = console_with_prefix('recorder');
 
 /**
  * Recorder API: bundles rrweb and and exposes methods to start and stop recordings.
@@ -24432,7 +24506,7 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
      */
     this.recordingRegistry = new RecordingRegistry({
         mixpanelInstance: this.mixpanelInstance,
-        errorReporter: logger$1.error,
+        errorReporter: logger$2.error,
         sharedLockStorage: sharedLockStorage
     });
     this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
@@ -24444,17 +24518,17 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
 MixpanelRecorder.prototype.startRecording = function(options) {
     options = options || {};
     if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
-        logger$1.log('Recording already in progress, skipping startRecording.');
+        logger$2.log('Recording already in progress, skipping startRecording.');
         return;
     }
 
     var onIdleTimeout = function () {
-        logger$1.log('Idle timeout reached, restarting recording.');
+        logger$2.log('Idle timeout reached, restarting recording.');
         this.resetRecording();
     }.bind(this);
 
     var onMaxLengthReached = function () {
-        logger$1.log('Max recording length reached, stopping recording.');
+        logger$2.log('Max recording length reached, stopping recording.');
         this.resetRecording();
     }.bind(this);
 
@@ -24524,7 +24598,7 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
             } else if (startNewIfInactive) {
                 return this.startRecording({shouldStopBatcher: false});
             } else {
-                logger$1.log('No resumable recording found.');
+                logger$2.log('No resumable recording found.');
                 return null;
             }
         }.bind(this));
@@ -25189,7 +25263,7 @@ ShadowDOMObserver.prototype.observeShadowRoot = function(shadowRoot) {
         observer.observe(shadowRoot, this.observerConfig);
         this.shadowObservers.push(observer);
     } catch (e) {
-        logger$4.critical('Error while observing shadow root', e);
+        logger$5.critical('Error while observing shadow root', e);
     }
 };
 
@@ -25200,7 +25274,7 @@ ShadowDOMObserver.prototype.start = function() {
     }
 
     if (!weakSetSupported()) {
-        logger$4.critical('Shadow DOM observation unavailable: WeakSet not supported');
+        logger$5.critical('Shadow DOM observation unavailable: WeakSet not supported');
         return;
     }
 
@@ -25216,7 +25290,7 @@ ShadowDOMObserver.prototype.stop = function() {
         try {
             this.shadowObservers[i].disconnect();
         } catch (e) {
-            logger$4.critical('Error while disconnecting shadow DOM observer', e);
+            logger$5.critical('Error while disconnecting shadow DOM observer', e);
         }
     }
     this.shadowObservers = [];
@@ -25404,7 +25478,7 @@ DeadClickTracker.prototype.startTracking = function() {
 
             this.mutationObserver.observe(document.body || document.documentElement, MUTATION_OBSERVER_CONFIG);
         } catch (e) {
-            logger$4.critical('Error while setting up mutation observer', e);
+            logger$5.critical('Error while setting up mutation observer', e);
         }
     }
 
@@ -25419,7 +25493,7 @@ DeadClickTracker.prototype.startTracking = function() {
             );
             this.shadowDOMObserver.start();
         } catch (e) {
-            logger$4.critical('Error while setting up shadow DOM observer', e);
+            logger$5.critical('Error while setting up shadow DOM observer', e);
             this.shadowDOMObserver = null;
         }
     }
@@ -25446,7 +25520,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             listener.target.removeEventListener(listener.event, listener.handler, listener.options);
         } catch (e) {
-            logger$4.critical('Error while removing event listener', e);
+            logger$5.critical('Error while removing event listener', e);
         }
     }
     this.eventListeners = [];
@@ -25455,7 +25529,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             this.mutationObserver.disconnect();
         } catch (e) {
-            logger$4.critical('Error while disconnecting mutation observer', e);
+            logger$5.critical('Error while disconnecting mutation observer', e);
         }
         this.mutationObserver = null;
     }
@@ -25464,7 +25538,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             this.shadowDOMObserver.stop();
         } catch (e) {
-            logger$4.critical('Error while stopping shadow DOM observer', e);
+            logger$5.critical('Error while stopping shadow DOM observer', e);
         }
         this.shadowDOMObserver = null;
     }
@@ -25542,7 +25616,7 @@ var Autocapture = function(mp) {
 
 Autocapture.prototype.init = function() {
     if (!minDOMApisSupported()) {
-        logger$4.critical('Autocapture unavailable: missing required DOM APIs');
+        logger$5.critical('Autocapture unavailable: missing required DOM APIs');
         return;
     }
     this.initPageListeners();
@@ -25582,7 +25656,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
         try {
             return !urlMatchesRegexList(currentUrl, allowUrlRegexes);
         } catch (err) {
-            logger$4.critical('Error while checking block URL regexes: ', err);
+            logger$5.critical('Error while checking block URL regexes: ', err);
             return true;
         }
     }
@@ -25595,7 +25669,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
     try {
         return urlMatchesRegexList(currentUrl, blockUrlRegexes);
     } catch (err) {
-        logger$4.critical('Error while checking block URL regexes: ', err);
+        logger$5.critical('Error while checking block URL regexes: ', err);
         return true;
     }
 };
@@ -25733,7 +25807,7 @@ Autocapture.prototype._initScrollDepthTracking = function() {
         return;
     }
 
-    logger$4.log('Initializing scroll depth tracking');
+    logger$5.log('Initializing scroll depth tracking');
 
     this.maxScrollViewDepth = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
 
@@ -25759,7 +25833,7 @@ Autocapture.prototype.initClickTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
-    logger$4.log('Initializing click tracking');
+    logger$5.log('Initializing click tracking');
 
     this.listenerClick = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
@@ -25778,7 +25852,7 @@ Autocapture.prototype.initDeadClickTracking = function() {
         return;
     }
 
-    logger$4.log('Initializing dead click tracking');
+    logger$5.log('Initializing dead click tracking');
     if (!this._deadClickTracker) {
         this._deadClickTracker = new DeadClickTracker(function(deadClickEvent) {
             this.trackDomEvent(deadClickEvent, MP_EV_DEAD_CLICK);
@@ -25812,7 +25886,7 @@ Autocapture.prototype.initInputTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_INPUT)) {
         return;
     }
-    logger$4.log('Initializing input tracking');
+    logger$5.log('Initializing input tracking');
 
     this.listenerChange = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
@@ -25829,7 +25903,7 @@ Autocapture.prototype.initPageviewTracking = function() {
     if (!this.pageviewTrackingConfig()) {
         return;
     }
-    logger$4.log('Initializing pageview tracking');
+    logger$5.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
     var tracked = false;
@@ -25864,7 +25938,7 @@ Autocapture.prototype.initPageviewTracking = function() {
             }
             if (didPathChange) {
                 this.lastScrollCheckpoint = 0;
-                logger$4.log('Path change: re-initializing scroll depth checkpoints');
+                logger$5.log('Path change: re-initializing scroll depth checkpoints');
             }
         }
     }.bind(this));
@@ -25879,7 +25953,7 @@ Autocapture.prototype.initRageClickTracking = function() {
         return;
     }
 
-    logger$4.log('Initializing rage click tracking');
+    logger$5.log('Initializing rage click tracking');
     if (!this._rageClickTracker) {
         this._rageClickTracker = new RageClickTracker();
     }
@@ -25909,7 +25983,7 @@ Autocapture.prototype.initScrollTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
     }
-    logger$4.log('Initializing scroll tracking');
+    logger$5.log('Initializing scroll tracking');
     this.lastScrollCheckpoint = 0;
 
     var scrollTrackFunction = function() {
@@ -25946,7 +26020,7 @@ Autocapture.prototype.initScrollTracking = function() {
                 }
             }
         } catch (err) {
-            logger$4.critical('Error while calculating scroll percentage', err);
+            logger$5.critical('Error while calculating scroll percentage', err);
         }
         if (shouldTrack) {
             this.mp.track(MP_EV_SCROLL, props);
@@ -25964,7 +26038,7 @@ Autocapture.prototype.initSubmitTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
         return;
     }
-    logger$4.log('Initializing submit tracking');
+    logger$5.log('Initializing submit tracking');
 
     this.listenerSubmit = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
@@ -25986,7 +26060,7 @@ Autocapture.prototype.initPageLeaveTracking = function() {
         return;
     }
 
-    logger$4.log('Initializing page visibility tracking.');
+    logger$5.log('Initializing page visibility tracking.');
     this._initScrollDepthTracking();
     var previousTrackedUrl = _.info.currentUrl();
 
@@ -26071,7 +26145,7 @@ var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
     return win[TARGETING_GLOBAL_NAME];
 };
 
-var logger = console_with_prefix('flags');
+var logger$1 = console_with_prefix('flags');
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';
@@ -26114,7 +26188,7 @@ var FeatureFlagManager = function(initOptions) {
 
 FeatureFlagManager.prototype.init = function() {
     if (!this.minApisSupported()) {
-        logger.critical('Feature Flags unavailable: missing minimum required APIs');
+        logger$1.critical('Feature Flags unavailable: missing minimum required APIs');
         return;
     }
 
@@ -26149,7 +26223,7 @@ FeatureFlagManager.prototype.isSystemEnabled = function() {
 
 FeatureFlagManager.prototype.updateContext = function(newContext, options) {
     if (!this.isSystemEnabled()) {
-        logger.critical('Feature Flags not enabled, cannot update context');
+        logger$1.critical('Feature Flags not enabled, cannot update context');
         return Promise.resolve();
     }
 
@@ -26166,7 +26240,7 @@ FeatureFlagManager.prototype.updateContext = function(newContext, options) {
 
 FeatureFlagManager.prototype.areFlagsReady = function() {
     if (!this.isSystemEnabled()) {
-        logger.error('Feature Flags not enabled');
+        logger$1.error('Feature Flags not enabled');
     }
     return !!this.flags;
 };
@@ -26179,7 +26253,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var distinctId = this.getMpProperty('distinct_id');
     var deviceId = this.getMpProperty('$device_id');
     var traceparent = generateTraceparent();
-    logger.log('Fetching flags for distinct ID: ' + distinctId);
+    logger$1.log('Fetching flags for distinct ID: ' + distinctId);
 
     var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
     var searchParams = new URLSearchParams();
@@ -26278,11 +26352,11 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             this._loadTargetingIfNeeded();
         }.bind(this)).catch(function(error) {
             this.markFetchComplete();
-            logger.error(error);
+            logger$1.error(error);
         }.bind(this));
     }.bind(this)).catch(function(error) {
         this.markFetchComplete();
-        logger.error(error);
+        logger$1.error(error);
     }.bind(this));
 
     return this.fetchPromise;
@@ -26290,7 +26364,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
 
 FeatureFlagManager.prototype.markFetchComplete = function() {
     if (!this._fetchInProgressStartTime) {
-        logger.error('Fetch in progress started time not set, cannot mark fetch complete');
+        logger$1.error('Fetch in progress started time not set, cannot mark fetch complete');
         return;
     }
     this._fetchStartTime = this._fetchInProgressStartTime;
@@ -26312,7 +26386,7 @@ FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
 
     if (hasPropertyFilters) {
         this.getTargeting().then(function() {
-            logger.log('targeting loaded for property filter evaluation');
+            logger$1.log('targeting loaded for property filter evaluation');
         });
     }
 };
@@ -26327,7 +26401,7 @@ FeatureFlagManager.prototype.getTargeting = function() {
         this.loadExtraBundle.bind(this),
         this.targetingSrc
     ).catch(function(error) {
-        logger.error('Failed to load targeting: ' + error);
+        logger$1.error('Failed to load targeting: ' + error);
     }.bind(this));
 };
 
@@ -26381,7 +26455,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
 
         // If no targeting library and event has property filters, skip it
         if (!targeting && pendingEvent['property_filters'] && !_.isEmptyObject(pendingEvent['property_filters'])) {
-            logger.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
+            logger$1.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
             return;
         }
 
@@ -26404,7 +26478,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         }
 
         if (matchResult.error) {
-            logger.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
+            logger$1.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
             return;
         }
 
@@ -26412,7 +26486,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
             return;
         }
 
-        logger.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
+        logger$1.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
 
         var newVariant = {
             'key': pendingEvent['pending_variant']['variant_key'],
@@ -26453,7 +26527,7 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
         'first_time_event_hash': firstTimeEventHash
     };
 
-    logger.log('Recording first-time event for flag: ' + flagId);
+    logger$1.log('Recording first-time event for flag: ' + flagId);
 
     // Fire-and-forget POST request
     this.fetch.call(win, url, {
@@ -26466,14 +26540,14 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
         'body': JSON.stringify(payload)
     }).catch(function(error) {
         // Silent failure - cohort sync will catch up
-        logger.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
+        logger$1.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
     });
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
     if (!this.fetchPromise) {
         return new Promise(function(resolve) {
-            logger.critical('Feature Flags not initialized');
+            logger$1.critical('Feature Flags not initialized');
             resolve(fallback);
         });
     }
@@ -26481,19 +26555,19 @@ FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
     return this.fetchPromise.then(function() {
         return this.getVariantSync(featureName, fallback);
     }.bind(this)).catch(function(error) {
-        logger.error(error);
+        logger$1.error(error);
         return fallback;
     });
 };
 
 FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
     if (!this.areFlagsReady()) {
-        logger.log('Flags not loaded yet');
+        logger$1.log('Flags not loaded yet');
         return fallback;
     }
     var feature = this.flags.get(featureName);
     if (!feature) {
-        logger.log('No flag found: "' + featureName + '"');
+        logger$1.log('No flag found: "' + featureName + '"');
         return fallback;
     }
     this.trackFeatureCheck(featureName, feature);
@@ -26504,14 +26578,14 @@ FeatureFlagManager.prototype.getVariantValue = function(featureName, fallbackVal
     return this.getVariant(featureName, {'value': fallbackValue}).then(function(feature) {
         return feature['value'];
     }).catch(function(error) {
-        logger.error(error);
+        logger$1.error(error);
         return fallbackValue;
     });
 };
 
 // TODO remove deprecated method
 FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
-    logger.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
+    logger$1.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
     return this.getVariantValue(featureName, fallbackValue);
 };
 
@@ -26523,7 +26597,7 @@ FeatureFlagManager.prototype.isEnabled = function(featureName, fallbackValue) {
     return this.getVariantValue(featureName).then(function() {
         return this.isEnabledSync(featureName, fallbackValue);
     }.bind(this)).catch(function(error) {
-        logger.error(error);
+        logger$1.error(error);
         return fallbackValue;
     });
 };
@@ -26532,7 +26606,7 @@ FeatureFlagManager.prototype.isEnabledSync = function(featureName, fallbackValue
     fallbackValue = fallbackValue || false;
     var val = this.getVariantValueSync(featureName, fallbackValue);
     if (val !== true && val !== false) {
-        logger.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
+        logger$1.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
         val = fallbackValue;
     }
     return val;
@@ -26594,6 +26668,12 @@ FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getT
 /* eslint camelcase: "off" */
 
 
+var logger = console_with_prefix('recorder');
+
+var IFRAME_HANDSHAKE_REQUEST  = 'mp_iframe_handshake_request';
+var IFRAME_HANDSHAKE_RESPONSE = 'mp_iframe_handshake_response';
+
+
 /**
  * RecorderManager: manages session recording initialization, lifecycle and state
  * @constructor
@@ -26613,6 +26693,8 @@ var RecorderManager = function(initOptions) {
     this.libBasePath = initOptions.libBasePath;
 
     this._recorder = null;
+    this._parentReplayId = null;
+    this._parentFrameRetryInterval = null;
 };
 
 RecorderManager.prototype.shouldLoadRecorder = function() {
@@ -26665,6 +26747,22 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
             }
         }, this));
     }, this);
+
+    // Cross-origin iframe handling
+    var allowedOrigins = validateAllowedOrigins(this.getMpConfig('record_allowed_iframe_origins'), logger);
+    var isCrossOriginRecordingEnabled = allowedOrigins.length > 0;
+
+    if (isCrossOriginRecordingEnabled) {
+        // listen for handshake requests from their own child iframes (including nested)
+        this._setupParentFrameListener(allowedOrigins);
+
+        if (win.parent !== win) {
+            // also wait for parent's replay ID
+            this._setupChildFrameListener(allowedOrigins, loadRecorder);
+            this._sendParentFrameRequestWithRetry(allowedOrigins);
+            return PromisePolyfill.resolve();
+        }
+    }
 
     /**
      * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
@@ -26785,6 +26883,10 @@ RecorderManager.prototype.getSessionReplayUrl = function() {
 };
 
 RecorderManager.prototype.getSessionReplayId = function() {
+    // Child iframe uses parent's replay ID
+    if (this._parentReplayId) {
+        return this._parentReplayId;
+    }
     var replay_id = null;
     if (this._recorder) {
         replay_id = this._recorder['replayId'];
@@ -26795,6 +26897,86 @@ RecorderManager.prototype.getSessionReplayId = function() {
 // "private" public method to reach into the recorder in test cases
 RecorderManager.prototype.getRecorder = function() {
     return this._recorder;
+};
+
+RecorderManager.prototype._setupChildFrameListener = function(allowedOrigins, loadRecorder) {
+    if (this._childFrameMessageHandler) {
+        return;
+    }
+    var self = this;
+    this._childFrameMessageHandler = function(event) {
+        if (allowedOrigins.indexOf(event.origin) === -1) return;
+        var data = event.data;
+        if (data && data['type'] === IFRAME_HANDSHAKE_RESPONSE && data['token'] === self.getMpConfig('token') && data['replayId']) {
+            self._parentReplayId = data['replayId'];
+            if (data['distinctId']) {
+                self.mixpanelInstance['identify'](data['distinctId']);
+            }
+            self._parentFrameRetryActive = false;
+            win.removeEventListener('message', self._childFrameMessageHandler);
+            self._childFrameMessageHandler = null;
+            loadRecorder(true);
+        }
+    };
+    win.addEventListener('message', this._childFrameMessageHandler);
+};
+
+RecorderManager.prototype._sendParentFrameRequest = function(allowedOrigins) {
+    var message = {};
+    message['type'] = IFRAME_HANDSHAKE_REQUEST;
+    message['token'] = this.getMpConfig('token');
+    for (var i = 0; i < allowedOrigins.length; i++) {
+        try {
+            win.parent.postMessage(message, allowedOrigins[i]);
+        } catch (e) {
+            // origin mismatch - ignore
+        }
+    }
+};
+
+RecorderManager.prototype._sendParentFrameRequestWithRetry = function(allowedOrigins) {
+    var self = this;
+    var maxRetries = 10;
+    var retryCount = 0;
+    var delay = 50;
+    this._parentFrameRetryActive = true;
+
+    this._sendParentFrameRequest(allowedOrigins);
+
+    function scheduleRetry() {
+        setTimeout(function() {
+            if (!self._parentFrameRetryActive || self._parentReplayId || ++retryCount >= maxRetries) {
+                return;
+            }
+            self._sendParentFrameRequest(allowedOrigins);
+            delay *= 2;
+            scheduleRetry();
+        }, delay);
+    }
+    scheduleRetry();
+};
+
+RecorderManager.prototype._setupParentFrameListener = function(allowedOrigins) {
+    if (this._parentFrameMessageHandler) {
+        return;
+    }
+    var self = this;
+    this._parentFrameMessageHandler = function(event) {
+        if (allowedOrigins.indexOf(event.origin) === -1) return;
+        var data = event.data;
+        if (data && data['type'] === IFRAME_HANDSHAKE_REQUEST && data['token'] === self.getMpConfig('token')) {
+            var replayId = self.getSessionReplayId();
+            if (replayId) {
+                var response = {};
+                response['type'] = IFRAME_HANDSHAKE_RESPONSE;
+                response['token'] = self.getMpConfig('token');
+                response['replayId'] = replayId;
+                response['distinctId'] = self.getDistinctId();
+                event.source.postMessage(response, event.origin);
+            }
+        }
+    };
+    win.addEventListener('message', this._parentFrameMessageHandler);
 };
 
 safewrapClass(RecorderManager);
@@ -28171,7 +28353,6 @@ var INIT_SNIPPET = 1;
 /** @const */ var SETTING_FALLBACK      = 'fallback';
 /** @const */ var SETTING_DISABLED      = 'disabled';
 
-
 /*
  * Dynamic... constants? Is that an oxymoron?
  */
@@ -28256,6 +28437,7 @@ var DEFAULT_CONFIG = {
     'batch_request_timeout_ms':          90000,
     'batch_autostart':                   true,
     'hooks':                             {},
+    'record_allowed_iframe_origins':     [],
     'record_block_class':                new RegExp('^(mp-block|fs-exclude|amp-block|rr-block|ph-no-capture)$'),
     'record_block_selector':             'img, video, audio',
     'record_canvas':                     false,

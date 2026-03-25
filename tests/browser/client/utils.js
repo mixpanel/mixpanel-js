@@ -29,6 +29,25 @@ export function untilDone (func, timeout = 5000) {
   });
 }
 
+export function untilDoneAsync(func, timeout = 5000) {
+  return new Promise(function(resolve, reject) {
+    var timeoutId = realSetTimeout(function() {
+      reject(new Error(`untilDoneAsync timed out`));
+      console.trace(`untilDoneAsync timed out`);
+    }, timeout);
+
+    function poll() {
+      func().then(function() {
+        realClearTimeout(timeoutId);
+        resolve();
+      }).catch(function() {
+        realSetTimeout(poll, 20);
+      });
+    }
+    poll();
+  });
+}
+
 // does obj a contain all of obj b?
 export function containsObj(a, b) {
   for (const key in b) {

@@ -12,7 +12,19 @@ const builds = [
         sourcemap: true,
       },
     ],
-    plugins: [nodeResolve({browser: true})],
+    plugins: [commonjs(), nodeResolve({browser: true})],
+  },
+  {
+    input: `tests/browser/client/cross-origin-page.js`,
+    output: [
+      {
+        file: `build/test/browser/cross-origin-page.js`,
+        format: `iife`,
+        name: `crossOriginPage`,
+        sourcemap: true,
+      },
+    ],
+    plugins: [commonjs()],
   },
 ];
 

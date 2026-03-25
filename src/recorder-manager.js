@@ -1,11 +1,17 @@
 /* eslint camelcase: "off" */
+
 import {RECORDER_FILENAME, TARGETING_FILENAME, RECORDER_GLOBAL_NAME} from './config';
-import { _, console, safewrap, safewrapClass } from './utils';
+import { _, console, console_with_prefix, safewrap, safewrapClass } from './utils';
 import { window } from './window';
 import { Promise } from './promise-polyfill';
 import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from './storage/indexed-db';
-import { isRecordingExpired } from './recorder/utils';
+import { isRecordingExpired, validateAllowedOrigins } from './recorder/utils';
 import { getTargetingPromise } from './targeting/loader';
+
+var logger = console_with_prefix('recorder');
+
+var IFRAME_HANDSHAKE_REQUEST  = 'mp_iframe_handshake_request';
+var IFRAME_HANDSHAKE_RESPONSE = 'mp_iframe_handshake_response';
 
 
 /**
@@ -27,6 +33,8 @@ var RecorderManager = function(initOptions) {
     this.libBasePath = initOptions.libBasePath;
 
     this._recorder = null;
+    this._parentReplayId = null;
+    this._parentFrameRetryInterval = null;
 };
 
 RecorderManager.prototype.shouldLoadRecorder = function() {
@@ -79,6 +87,22 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
             }
         }, this));
     }, this);
+
+    // Cross-origin iframe handling
+    var allowedOrigins = validateAllowedOrigins(this.getMpConfig('record_allowed_iframe_origins'), logger);
+    var isCrossOriginRecordingEnabled = allowedOrigins.length > 0;
+
+    if (isCrossOriginRecordingEnabled) {
+        // listen for handshake requests from their own child iframes (including nested)
+        this._setupParentFrameListener(allowedOrigins);
+
+        if (window.parent !== window) {
+            // also wait for parent's replay ID
+            this._setupChildFrameListener(allowedOrigins, loadRecorder);
+            this._sendParentFrameRequestWithRetry(allowedOrigins);
+            return Promise.resolve();
+        }
+    }
 
     /**
      * If the user is sampled or start_session_recording is called, we always load the recorder since it's guaranteed a recording should start.
@@ -199,6 +223,10 @@ RecorderManager.prototype.getSessionReplayUrl = function() {
 };
 
 RecorderManager.prototype.getSessionReplayId = function() {
+    // Child iframe uses parent's replay ID
+    if (this._parentReplayId) {
+        return this._parentReplayId;
+    }
     var replay_id = null;
     if (this._recorder) {
         replay_id = this._recorder['replayId'];
@@ -209,6 +237,86 @@ RecorderManager.prototype.getSessionReplayId = function() {
 // "private" public method to reach into the recorder in test cases
 RecorderManager.prototype.getRecorder = function() {
     return this._recorder;
+};
+
+RecorderManager.prototype._setupChildFrameListener = function(allowedOrigins, loadRecorder) {
+    if (this._childFrameMessageHandler) {
+        return;
+    }
+    var self = this;
+    this._childFrameMessageHandler = function(event) {
+        if (allowedOrigins.indexOf(event.origin) === -1) return;
+        var data = event.data;
+        if (data && data['type'] === IFRAME_HANDSHAKE_RESPONSE && data['token'] === self.getMpConfig('token') && data['replayId']) {
+            self._parentReplayId = data['replayId'];
+            if (data['distinctId']) {
+                self.mixpanelInstance['identify'](data['distinctId']);
+            }
+            self._parentFrameRetryActive = false;
+            window.removeEventListener('message', self._childFrameMessageHandler);
+            self._childFrameMessageHandler = null;
+            loadRecorder(true);
+        }
+    };
+    window.addEventListener('message', this._childFrameMessageHandler);
+};
+
+RecorderManager.prototype._sendParentFrameRequest = function(allowedOrigins) {
+    var message = {};
+    message['type'] = IFRAME_HANDSHAKE_REQUEST;
+    message['token'] = this.getMpConfig('token');
+    for (var i = 0; i < allowedOrigins.length; i++) {
+        try {
+            window.parent.postMessage(message, allowedOrigins[i]);
+        } catch (e) {
+            // origin mismatch - ignore
+        }
+    }
+};
+
+RecorderManager.prototype._sendParentFrameRequestWithRetry = function(allowedOrigins) {
+    var self = this;
+    var maxRetries = 10;
+    var retryCount = 0;
+    var delay = 50;
+    this._parentFrameRetryActive = true;
+
+    this._sendParentFrameRequest(allowedOrigins);
+
+    function scheduleRetry() {
+        setTimeout(function() {
+            if (!self._parentFrameRetryActive || self._parentReplayId || ++retryCount >= maxRetries) {
+                return;
+            }
+            self._sendParentFrameRequest(allowedOrigins);
+            delay *= 2;
+            scheduleRetry();
+        }, delay);
+    }
+    scheduleRetry();
+};
+
+RecorderManager.prototype._setupParentFrameListener = function(allowedOrigins) {
+    if (this._parentFrameMessageHandler) {
+        return;
+    }
+    var self = this;
+    this._parentFrameMessageHandler = function(event) {
+        if (allowedOrigins.indexOf(event.origin) === -1) return;
+        var data = event.data;
+        if (data && data['type'] === IFRAME_HANDSHAKE_REQUEST && data['token'] === self.getMpConfig('token')) {
+            var replayId = self.getSessionReplayId();
+            if (replayId) {
+                var response = {};
+                response['type'] = IFRAME_HANDSHAKE_RESPONSE;
+                response['token'] = self.getMpConfig('token');
+                response['replayId'] = replayId;
+                response['distinctId'] = self.getDistinctId();
+                event.source.postMessage(response, event.origin);
+            }
+        }
+    };
+    window.addEventListener('message', this._parentFrameMessageHandler);
 };
 
 safewrapClass(RecorderManager);
