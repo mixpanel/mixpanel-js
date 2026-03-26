@@ -4,5 +4,10 @@ html(lang="en")
         meta(charset="UTF-8")
         title Cross-Origin Page
     body
+        if customLibUrl
+            script.
+                window.MIXPANEL_CUSTOM_LIB_URL = '#{customLibUrl}';
+        if snippetUrl
+            script(type="text/javascript" src=snippetUrl)
         if testUrl
             script(type="text/javascript" src=testUrl)

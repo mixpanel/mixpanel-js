@@ -124,6 +124,8 @@ for (const [suiteId, suite] of Object.entries(TEST_SUITES)) {
     // Cross-origin child iframe page for session recording tests
     app.get('/tests/new/' + suiteId + '-cross-origin-page', function(req, res) {
         res.render('cross-origin-page.pug', {
+            customLibUrl: suite.customLibUrl || './static/build/mixpanel.js',
+            snippetUrl: suite.snippetUrl || './static/src/loaders/mixpanel-jslib-snippet.js',
             testUrl: './static/build/test/browser/cross-origin-page.js'
         });
     });
