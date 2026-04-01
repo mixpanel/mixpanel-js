@@ -53,9 +53,7 @@ FeatureFlagManager.prototype.init = function() {
     }
 
     this.flags = null;
-    this.fetchFlags().catch(function() {
-        logger.error('Error fetching flags during init');
-    });
+    this.fetchFlags();
 
     this.trackedFeatures = new Set();
     this.pendingFirstTimeEvents = {};
@@ -138,108 +136,94 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         }
     }).then(function(response) {
         this.markFetchComplete();
-        return response.json();
-    }.bind(this)).then(function(responseBody) {
-        var responseFlags = responseBody['flags'];
-        if (!responseFlags) {
-            throw new Error('No flags in API response');
-        }
-        var flags = new Map();
-        var pendingFirstTimeEvents = {};
-
-        // Process flags from response
-        _.each(responseFlags, function(data, key) {
-            // Check if this flag has any activated first-time events this session
-            var hasActivatedEvent = false;
-            var prefix = key + ':';
-            _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
-                if (eventKey.startsWith(prefix)) {
-                    hasActivatedEvent = true;
-                }
-            });
-
-            if (hasActivatedEvent) {
-                // Preserve the activated variant, don't overwrite with server's current variant
-                var currentFlag = this.flags && this.flags.get(key);
-                if (currentFlag) {
-                    flags.set(key, currentFlag);
-                }
-            } else {
-                // Use server's current variant
-                flags.set(key, {
-                    'key': data['variant_key'],
-                    'value': data['variant_value'],
-                    'experiment_id': data['experiment_id'],
-                    'is_experiment_active': data['is_experiment_active'],
-                    'is_qa_tester': data['is_qa_tester']
-                });
+        return response.json().then(function(responseBody) {
+            var responseFlags = responseBody['flags'];
+            if (!responseFlags) {
+                throw new Error('No flags in API response');
             }
-        }, this);
+            var flags = new Map();
+            var pendingFirstTimeEvents = {};
 
-        // Process top-level pending_first_time_events array
-        var topLevelDefinitions = responseBody['pending_first_time_events'];
-        if (topLevelDefinitions && topLevelDefinitions.length > 0) {
-            _.each(topLevelDefinitions, function(def) {
-                var flagKey = def['flag_key'];
-                var eventKey = getPendingEventKey(flagKey, def['first_time_event_hash']);
+            // Process flags from response
+            _.each(responseFlags, function(data, key) {
+                // Check if this flag has any activated first-time events this session
+                var hasActivatedEvent = false;
+                var prefix = key + ':';
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    if (eventKey.startsWith(prefix)) {
+                        hasActivatedEvent = true;
+                    }
+                });
 
-                // Skip if this specific event has already been activated this session
-                if (this.activatedFirstTimeEvents[eventKey]) {
-                    return;
-                }
-
-                // Store pending event definition using composite key
-                pendingFirstTimeEvents[eventKey] = {
-                    'flag_key': flagKey,
-                    'flag_id': def['flag_id'],
-                    'project_id': def['project_id'],
-                    'first_time_event_hash': def['first_time_event_hash'],
-                    'event_name': def['event_name'],
-                    'property_filters': def['property_filters'],
-                    'pending_variant': def['pending_variant']
-                };
-            }, this);
-        }
-
-        // Preserve any activated orphaned flags (flags that were activated but are no longer in response)
-        if (this.activatedFirstTimeEvents) {
-            _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
-                var flagKey = getFlagKeyFromPendingEventKey(eventKey);
-                if (activated && !flags.has(flagKey) && this.flags && this.flags.has(flagKey)) {
-                    // Keep the activated flag even though it's not in the new response
-                    flags.set(flagKey, this.flags.get(flagKey));
+                if (hasActivatedEvent) {
+                    // Preserve the activated variant, don't overwrite with server's current variant
+                    var currentFlag = this.flags && this.flags.get(key);
+                    if (currentFlag) {
+                        flags.set(key, currentFlag);
+                    }
+                } else {
+                    // Use server's current variant
+                    flags.set(key, {
+                        'key': data['variant_key'],
+                        'value': data['variant_value'],
+                        'experiment_id': data['experiment_id'],
+                        'is_experiment_active': data['is_experiment_active'],
+                        'is_qa_tester': data['is_qa_tester']
+                    });
                 }
             }, this);
-        }
 
-        this.flags = flags;
-        this.pendingFirstTimeEvents = pendingFirstTimeEvents;
-        this._traceparent = traceparent;
+            // Process top-level pending_first_time_events array
+            var topLevelDefinitions = responseBody['pending_first_time_events'];
+            if (topLevelDefinitions && topLevelDefinitions.length > 0) {
+                _.each(topLevelDefinitions, function(def) {
+                    var flagKey = def['flag_key'];
+                    var eventKey = getPendingEventKey(flagKey, def['first_time_event_hash']);
 
-        this._loadTargetingIfNeeded();
-    }.bind(this)).catch(function(error) {
-        if (this._fetchInProgressStartTime) {
+                    // Skip if this specific event has already been activated this session
+                    if (this.activatedFirstTimeEvents[eventKey]) {
+                        return;
+                    }
+
+                    // Store pending event definition using composite key
+                    pendingFirstTimeEvents[eventKey] = {
+                        'flag_key': flagKey,
+                        'flag_id': def['flag_id'],
+                        'project_id': def['project_id'],
+                        'first_time_event_hash': def['first_time_event_hash'],
+                        'event_name': def['event_name'],
+                        'property_filters': def['property_filters'],
+                        'pending_variant': def['pending_variant']
+                    };
+                }, this);
+            }
+
+            // Preserve any activated orphaned flags (flags that were activated but are no longer in response)
+            if (this.activatedFirstTimeEvents) {
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    var flagKey = getFlagKeyFromPendingEventKey(eventKey);
+                    if (activated && !flags.has(flagKey) && this.flags && this.flags.has(flagKey)) {
+                        // Keep the activated flag even though it's not in the new response
+                        flags.set(flagKey, this.flags.get(flagKey));
+                    }
+                }, this);
+            }
+
+            this.flags = flags;
+            this.pendingFirstTimeEvents = pendingFirstTimeEvents;
+            this._traceparent = traceparent;
+
+            this._loadTargetingIfNeeded();
+        }.bind(this)).catch(function(error) {
             this.markFetchComplete();
-        }
+            logger.error(error);
+        }.bind(this));
+    }.bind(this)).catch(function(error) {
+        this.markFetchComplete();
         logger.error(error);
-        throw error;
     }.bind(this));
 
     return this.fetchPromise;
-};
-
-FeatureFlagManager.prototype.loadFlags = function() {
-    if (!this.isSystemEnabled()) {
-        return Promise.resolve();
-    }
-    if (!this.trackedFeatures) {
-        logger.error('loadFlags called before init');
-        return Promise.resolve();
-    }
-    if (this._fetchInProgressStartTime) {
-        return this.fetchPromise;
-    }
-    return this.fetchFlags();
 };
 
 FeatureFlagManager.prototype.markFetchComplete = function() {
@@ -544,7 +528,6 @@ FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
-FeatureFlagManager.prototype['load_flags'] = FeatureFlagManager.prototype.loadFlags;
 FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.updateContext;
 FeatureFlagManager.prototype['when_ready'] = FeatureFlagManager.prototype.whenReady;
 

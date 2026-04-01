@@ -357,7 +357,6 @@ export interface FlagsUpdateContextOptions {
 
 export interface FlagsManager {
   are_flags_ready(): boolean;
-  load_flags(): Promise<void>;
   get_variant(
     featureName: string,
     fallback: FlagsVariant

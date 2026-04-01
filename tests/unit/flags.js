@@ -60,7 +60,6 @@ describe(`FeatureFlagManager`, function () {
     initOptions = {
       getFullApiRoute: sinon.stub().returns(`https://api.mixpanel.com/flags`),
       getConfigFunc: sinon.stub().callsFake((key) => mockConfig[key]),
-      setConfigFunc: sinon.stub().callsFake((key, value) => { mockConfig[key] = value; }),
       getPropertyFunc: sinon.stub().callsFake((key) => {
         if (key === `distinct_id`) return `test-distinct-id`;
         if (key === `$device_id`) return `test-device-id`;
@@ -179,12 +178,7 @@ describe(`FeatureFlagManager`, function () {
 
       flagManager.init();
 
-      // init swallows the error, but fetchPromise itself rejects
-      try {
-        await flagManager.fetchPromise;
-      } catch (err) {
-        expect(err.message).to.equal(`Network error`);
-      }
+      await flagManager.fetchPromise;
     });
   });
 
