@@ -982,12 +982,12 @@ describe(`FeatureFlagManager`, function () {
 
       const loadPromise = flagManager.loadFlags();
 
-      // Should NOT have started a second fetch
-      expect(mockFetch).to.have.been.calledOnce;
-
       // Unblock the first fetch so the test can clean up
       resolveFetch(mockResponse);
       await loadPromise;
+
+      // Should NOT have started a second fetch
+      expect(mockFetch).to.have.been.calledOnce;
     });
 
     it(`reuses in-flight fetch and rejects if that fetch fails`, async function () {

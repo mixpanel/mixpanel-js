@@ -54,7 +54,9 @@ FeatureFlagManager.prototype.init = function() {
     }
 
     this.flags = null;
-    this.fetchFlags().catch(function() {});
+    this.fetchFlags().catch(function() {
+        logger.error('Error fetching flags during init');
+    });
 
     this.trackedFeatures = new Set();
     this.pendingFirstTimeEvents = {};
@@ -96,7 +98,9 @@ FeatureFlagManager.prototype.updateContext = function(newContext, options) {
     ffConfig[CONFIG_CONTEXT] = _.extend({}, oldContext, newContext);
 
     this.setMpConfig(FLAGS_CONFIG_KEY, ffConfig);
-    return this.fetchFlags().catch(function() {});
+    return this.fetchFlags().catch(function() {
+        logger.error('Error fetching flags during updateContext');
+    });
 };
 
 FeatureFlagManager.prototype.areFlagsReady = function() {
