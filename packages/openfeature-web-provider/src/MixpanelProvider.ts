@@ -7,6 +7,8 @@ import type {
   JsonValue,
 } from '@openfeature/web-sdk';
 import { ErrorCode } from '@openfeature/web-sdk';
+import mixpanel from 'mixpanel-browser';
+import type { Config, Mixpanel } from 'mixpanel-browser';
 import {
   FlagsManager,
   FlagsVariant,
@@ -16,6 +18,8 @@ import {
   createResolutionDetails,
   createErrorResolutionDetails,
 } from './types';
+
+let _instanceCount = 0;
 
 /**
  * OpenFeature Web Provider for Mixpanel feature flags.
@@ -52,6 +56,28 @@ export class MixpanelProvider implements Provider {
   readonly runsOn = 'client' as const;
 
   private readonly flags: FlagsManager;
+
+  /**
+   * The underlying Mixpanel instance, set when using the static `create` method.
+   * Users need this to call `identify()` and `track()` on the underlying instance.
+   */
+  mixpanel?: Mixpanel;
+
+  /**
+   * Creates a MixpanelProvider by initializing a new Mixpanel instance internally.
+   *
+   * @param token - Your Mixpanel project token
+   * @param config - Optional Mixpanel configuration options
+   * @returns A MixpanelProvider with an initialized Mixpanel instance
+   */
+  static create(token: string, config?: Partial<Config>): MixpanelProvider {
+    const instanceName = `openfeature_${_instanceCount++}`;
+    const instance = mixpanel.init(token, config || {}, instanceName);
+    const flagsManager = (instance as any).flags as FlagsManager;
+    const provider = new MixpanelProvider(flagsManager);
+    provider.mixpanel = instance;
+    return provider;
+  }
 
   /**
    * Creates a new MixpanelProvider instance.
