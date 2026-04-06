@@ -94,7 +94,9 @@ FeatureFlagManager.prototype.updateContext = function(newContext, options) {
     var oldContext = (options && options['replace']) ? {} : this.getConfig(CONFIG_CONTEXT);
     ffConfig[CONFIG_CONTEXT] = _.extend({}, oldContext, newContext);
 
-    this.setMpConfig(FLAGS_CONFIG_KEY, ffConfig);
+    var configUpdate = {};
+    configUpdate[FLAGS_CONFIG_KEY] = ffConfig;
+    this.setMpConfig(configUpdate);
     return this.fetchFlags();
 };
 
@@ -501,6 +503,13 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
     this.track('$experiment_started', trackingProperties);
 };
 
+FeatureFlagManager.prototype.whenReady = function() {
+    if (this.fetchPromise) {
+        return this.fetchPromise;
+    }
+    return Promise.resolve();
+};
+
 FeatureFlagManager.prototype.minApisSupported = function() {
     return !!this.fetch &&
       typeof Promise !== 'undefined' &&
@@ -518,6 +527,7 @@ FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prot
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
 FeatureFlagManager.prototype['is_enabled_sync'] = FeatureFlagManager.prototype.isEnabledSync;
 FeatureFlagManager.prototype['update_context'] = FeatureFlagManager.prototype.updateContext;
+FeatureFlagManager.prototype['when_ready'] = FeatureFlagManager.prototype.whenReady;
 
 // Deprecated method
 FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.getFeatureData;
