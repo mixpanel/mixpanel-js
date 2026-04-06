@@ -66,6 +66,9 @@ export class MixpanelProvider implements Provider {
   /**
    * Creates a MixpanelProvider by initializing a new Mixpanel instance internally.
    *
+   * The created Mixpanel instance is accessible via the `mixpanel` property
+   * for calling `identify()`, `track()`, and other Mixpanel methods.
+   *
    * @param token - Your Mixpanel project token
    * @param config - Optional Mixpanel configuration options
    * @returns A MixpanelProvider with an initialized Mixpanel instance
