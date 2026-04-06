@@ -14,7 +14,6 @@
   "scripts": {
     "build": "./build.sh",
     "build:workspaces": "npm run build --workspaces --if-present",
-    "build:all": "npm run build && npm run build:workspaces",
     "build-watch": "npx rollup -c rollup.config.mjs -w",
     "build-watch:full": "FULL=1 npx rollup -c rollup.config.mjs -w",
     "build-dist": "DIST=1 ./build.sh",
