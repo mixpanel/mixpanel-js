@@ -286,17 +286,18 @@ export class MixpanelProvider implements Provider {
 
     // Check if we got our fallback back (flag not found)
     if (variant === fallbackVariant) {
-      return createErrorResolutionDetails(
-        defaultValue,
-        ErrorCode.FLAG_NOT_FOUND,
-        `Flag "${flagKey}" not found`
-      );
+      return {
+        value: defaultValue,
+        errorCode: ErrorCode.FLAG_NOT_FOUND,
+        errorMessage: `Flag "${flagKey}" not found`,
+        reason: 'DEFAULT',
+      };
     }
 
     return {
       value: variant.value,
       variant: variant.key,
-      reason: 'STATIC',
+      reason: 'TARGETING_MATCH',
     };
   }
 }

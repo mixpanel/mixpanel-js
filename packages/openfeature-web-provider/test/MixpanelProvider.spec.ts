@@ -129,7 +129,7 @@ describe('MixpanelProvider', () => {
 
       expect(result.value).to.equal(true);
       expect(result.variant).to.equal('enabled');
-      expect(result.reason).to.equal('STATIC');
+      expect(result.reason).to.equal('TARGETING_MATCH');
       expect(result.errorCode).to.be.undefined;
     });
 
@@ -180,7 +180,7 @@ describe('MixpanelProvider', () => {
 
       expect(result.value).to.equal('dark-mode');
       expect(result.variant).to.equal('dark');
-      expect(result.reason).to.equal('STATIC');
+      expect(result.reason).to.equal('TARGETING_MATCH');
       expect(result.errorCode).to.be.undefined;
     });
 
@@ -231,7 +231,7 @@ describe('MixpanelProvider', () => {
 
       expect(result.value).to.equal(50);
       expect(result.variant).to.equal('variant-50');
-      expect(result.reason).to.equal('STATIC');
+      expect(result.reason).to.equal('TARGETING_MATCH');
       expect(result.errorCode).to.be.undefined;
     });
 
@@ -299,7 +299,7 @@ describe('MixpanelProvider', () => {
 
       expect(result.value).to.deep.equal(objectValue);
       expect(result.variant).to.equal('variant-full');
-      expect(result.reason).to.equal('STATIC');
+      expect(result.reason).to.equal('TARGETING_MATCH');
       expect(result.errorCode).to.be.undefined;
     });
 
@@ -388,7 +388,7 @@ describe('MixpanelProvider', () => {
         expect(result.value).to.deep.equal(defaultValue);
         expect(result.errorCode).to.equal(ErrorCode.FLAG_NOT_FOUND);
         expect(result.errorMessage).to.include('not found');
-        expect(result.reason).to.equal('ERROR');
+        expect(result.reason).to.equal('DEFAULT');
       });
     });
 

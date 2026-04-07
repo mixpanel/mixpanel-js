@@ -64,7 +64,7 @@ export function createResolutionDetails<T>(
   return {
     value,
     variant,
-    reason: 'STATIC',
+    reason: 'TARGETING_MATCH',
   };
 }
 
