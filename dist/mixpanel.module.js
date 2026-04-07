@@ -25,7 +25,7 @@ if (typeof(window) === 'undefined') {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.78.0-rc1'
+    LIB_VERSION: '2.78.0'
 };
 
 // Window global names for async modules
