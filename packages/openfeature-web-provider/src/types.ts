@@ -1,8 +1,6 @@
 import type {
-  EvaluationContext,
   ResolutionDetails,
   ErrorCode,
-  Logger,
 } from '@openfeature/web-sdk';
 
 /**
@@ -17,7 +15,8 @@ export interface FlagsVariant {
 }
 
 /**
- * Minimal interface for Mixpanel's FlagsManager
+ * Minimal interface for Mixpanel's FlagsManager.
+ * Defines only the methods used by this provider.
  */
 export interface FlagsManager {
   are_flags_ready(): boolean;

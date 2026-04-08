@@ -14,7 +14,7 @@
   },
   "peerDependencies": {
     "@openfeature/web-sdk": "^1.0.0",
-    "mixpanel-browser": "^2.68.0"
+    "mixpanel-browser": "^2.74.0"
   },
   "devDependencies": {
     "@openfeature/web-sdk": "1.7.2",
