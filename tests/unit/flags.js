@@ -60,6 +60,7 @@ describe(`FeatureFlagManager`, function () {
     initOptions = {
       getFullApiRoute: sinon.stub().returns(`https://api.mixpanel.com/flags`),
       getConfigFunc: sinon.stub().callsFake((key) => mockConfig[key]),
+      setConfigFunc: sinon.stub().callsFake((key, value) => { mockConfig[key] = value; }),
       getPropertyFunc: sinon.stub().callsFake((key) => {
         if (key === `distinct_id`) return `test-distinct-id`;
         if (key === `$device_id`) return `test-device-id`;
@@ -178,7 +179,12 @@ describe(`FeatureFlagManager`, function () {
 
       flagManager.init();
 
-      await flagManager.fetchPromise;
+      // init swallows the error, but fetchPromise itself rejects
+      try {
+        await flagManager.fetchPromise;
+      } catch (err) {
+        expect(err.message).to.equal(`Network error`);
+      }
     });
   });
 
@@ -956,6 +962,212 @@ describe(`FeatureFlagManager`, function () {
         const flag = flagManager.flags.get(`premium-welcome`);
         expect(flag.key).to.equal(`control`);
       });
+    });
+  });
+
+  describe(`loadFlags`, function () {
+    it(`fetches flags when no request is in flight`, async function () {
+      flagManager.init();
+      await flagManager.fetchPromise;
+      mockFetch.resetHistory();
+
+      await flagManager.loadFlags();
+
+      expect(mockFetch).to.have.been.calledOnce;
+    });
+
+    it(`reuses in-flight fetch instead of starting a new one`, async function () {
+      // Make fetch hang so the request is genuinely in-flight
+      let resolveFetch;
+      mockFetch.onFirstCall().returns(new Promise(function (resolve) { resolveFetch = resolve; }));
+
+      flagManager.init();
+
+      const loadPromise = flagManager.loadFlags();
+
+      // Unblock the first fetch so the test can clean up
+      resolveFetch(mockResponse);
+      await loadPromise;
+
+      // Should NOT have started a second fetch
+      expect(mockFetch).to.have.been.calledOnce;
+    });
+
+    it(`reuses in-flight fetch and rejects if that fetch fails`, async function () {
+      // Make fetch hang so the request is genuinely in-flight, then reject
+      let rejectFetch;
+      mockFetch.onFirstCall().returns(new Promise(function (resolve, reject) { rejectFetch = reject; }));
+
+      flagManager.init();
+
+      const loadPromise = flagManager.loadFlags();
+
+      // Should NOT have started a second fetch
+      expect(mockFetch).to.have.been.calledOnce;
+
+      // Reject the in-flight fetch
+      rejectFetch(new Error(`Network error`));
+
+      try {
+        await loadPromise;
+        expect.fail(`loadFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`Network error`);
+      }
+    });
+
+    it(`returns resolved promise when system is not enabled`, async function () {
+      initOptions.getConfigFunc.withArgs(`flags`).returns(null);
+      flagManager = new FeatureFlagManager(initOptions);
+
+      const result = await flagManager.loadFlags();
+
+      expect(result).to.be.undefined;
+      expect(mockFetch).not.to.have.been.called;
+    });
+
+    it(`resolves when fetch succeeds`, async function () {
+      flagManager.init();
+      await flagManager.fetchPromise;
+      mockFetch.resetHistory();
+
+      // loadFlags should resolve without error on success
+      await flagManager.loadFlags();
+
+      expect(mockFetch).to.have.been.calledOnce;
+    });
+
+    it(`rejects when fetch fails with a network error`, async function () {
+      flagManager.init();
+      await flagManager.fetchPromise;
+
+      // Make next fetch fail with network error
+      mockFetch.rejects(new Error(`Network error`));
+
+      try {
+        await flagManager.loadFlags();
+        expect.fail(`loadFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`Network error`);
+      }
+    });
+
+    it(`rejects when fetch returns a bad response`, async function () {
+      flagManager.init();
+      await flagManager.fetchPromise;
+
+      // Make next fetch return a response with invalid JSON / no flags
+      mockResponse.json.resolves({ code: 200 }); // no 'flags' key
+
+      try {
+        await flagManager.loadFlags();
+        expect.fail(`loadFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`No flags in API response`);
+      }
+    });
+
+    it(`rejects for all callers of fetchFlags when fetch fails`, async function () {
+      flagManager.init();
+      await flagManager.fetchPromise;
+
+      // Make next fetch fail with network error
+      mockFetch.rejects(new Error(`Network error`));
+
+      // fetchFlags now always rejects on error; callers like init/updateContext add their own .catch()
+      try {
+        await flagManager.fetchFlags();
+        expect.fail(`fetchFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`Network error`);
+      }
+    });
+
+    it(`rejects when called while an init-triggered fetch is in-flight and that fetch fails`, async function () {
+      // Make init's fetch hang, then fail
+      let rejectFetch;
+      mockFetch.onFirstCall().returns(new Promise(function (resolve, reject) { rejectFetch = reject; }));
+
+      flagManager.init();
+
+      const loadPromise = flagManager.loadFlags();
+
+      // loadFlags should reuse the in-flight fetch, not start a new one
+      expect(mockFetch).to.have.been.calledOnce;
+
+      // Reject init's fetch
+      rejectFetch(new Error(`Init network error`));
+
+      try {
+        await loadPromise;
+        expect.fail(`loadFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`Init network error`);
+      }
+    });
+
+    it(`rejects when called while an updateContext-triggered fetch is in-flight and that fetch fails`, async function () {
+      flagManager.init();
+      await flagManager.fetchPromise;
+
+      // Configure updateContext fetch to hang, then fail
+      let rejectUpdateContextFetch;
+      mockFetch
+        .onSecondCall().returns(new Promise(function (resolve, reject) { rejectUpdateContextFetch = reject; }));
+
+      flagManager.updateContext({key: `value`});
+
+      // loadFlags should reuse updateContext's in-flight fetch, not start a new one
+      const loadPromise = flagManager.loadFlags();
+      expect(mockFetch).to.have.been.calledTwice; // init + updateContext, NOT a third call
+
+      // Reject the updateContext fetch
+      rejectUpdateContextFetch(new Error(`UpdateContext network error`));
+
+      try {
+        await loadPromise;
+        expect.fail(`loadFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`UpdateContext network error`);
+      }
+    });
+
+    it(`preserves previously-fetched flags after a failed loadFlags`, async function () {
+      flagManager.init();
+      await flagManager.fetchPromise;
+
+      // Verify flags were loaded
+      expect(flagManager.flags).to.be.instanceOf(Map);
+      expect(flagManager.flags.size).to.equal(3);
+
+      // Make the next fetch fail
+      mockFetch.rejects(new Error(`Network error`));
+
+      try {
+        await flagManager.loadFlags();
+        expect.fail(`loadFlags should have rejected`);
+      } catch (err) {
+        expect(err.message).to.equal(`Network error`);
+      }
+
+      // Flags from the initial successful fetch should still be accessible
+      expect(flagManager.flags).to.be.instanceOf(Map);
+      expect(flagManager.flags.size).to.equal(3);
+
+      const deepThoughtFlag = flagManager.flags.get(`deepThoughtAnswerExperiment`);
+      expect(deepThoughtFlag.key).to.equal(`fortyTwo`);
+      expect(deepThoughtFlag.value).to.equal(`42`);
+
+      // Sync methods should still work
+      expect(flagManager.areFlagsReady()).to.be.true;
+      const variant = flagManager.getVariantSync(`deepThoughtAnswerExperiment`);
+      expect(variant.key).to.equal(`fortyTwo`);
     });
   });
 });

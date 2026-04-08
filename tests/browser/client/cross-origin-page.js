@@ -1,4 +1,3 @@
-import mixpanel from '../../../build/mixpanel.cjs.js';
 import { PARENT_PORT } from '../test-ports';
 
 var parentOrigin = window.location.protocol + `//` + window.location.hostname + `:` + PARENT_PORT;
