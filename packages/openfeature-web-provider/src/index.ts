@@ -1,0 +1,1 @@
+export { MixpanelProvider } from './MixpanelProvider';
