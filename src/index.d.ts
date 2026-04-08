@@ -256,6 +256,7 @@ export interface Config {
   record_canvas: boolean;
   recording_event_triggers: RecordingEventTriggers;
   record_heatmap_data: boolean;
+  record_console: boolean;
   remote_settings_mode: RemoteSettingType;
   record_sessions_percent: number;
   hooks: {
