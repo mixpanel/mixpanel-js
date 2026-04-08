@@ -38,6 +38,9 @@
     "url": "https://github.com/mixpanel/mixpanel-js.git",
     "directory": "packages/openfeature-web-provider"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "Apache-2.0",
   "keywords": [
     "openfeature",
