@@ -1,4 +1,4 @@
-**2.77.0** (8 Apr 2026)
+**2.78.0** (8 Apr 2026)
 - Adds `loadFlags` method to the `mixpanel.flags` to manually refresh feature flags.
 - Adds `whenReady` method to the `mixpanel.flags`, which returns a Promise that resolves when feature flags are done fetching.
 
