@@ -17,9 +17,15 @@ describe('MixpanelProvider', () => {
     mockFlags = new Map();
     mockFlagsManager = {
       are_flags_ready: sinon.stub().returns(true),
+      load_flags: sinon.stub().resolves(),
+      get_variant: sinon.stub().resolves(),
       get_variant_sync: sinon.stub().callsFake((key: string, fallback: any) => {
         return mockFlags.get(key) || fallback;
       }),
+      get_variant_value: sinon.stub().resolves(),
+      get_variant_value_sync: sinon.stub(),
+      is_enabled: sinon.stub().resolves(),
+      is_enabled_sync: sinon.stub(),
       update_context: sinon.stub().resolves(),
       when_ready: sinon.stub().resolves(),
     };

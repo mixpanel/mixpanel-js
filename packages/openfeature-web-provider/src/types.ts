@@ -2,26 +2,14 @@ import type {
   ResolutionDetails,
   ErrorCode,
 } from '@openfeature/web-sdk';
+import type { FlagsManager as MixpanelFlagsManager } from 'mixpanel-browser';
 
 /**
- * Mixpanel FlagsVariant structure
+ * Extended FlagsManager interface that includes when_ready().
+ * TODO: Remove this once mixpanel-browser exports when_ready() in its type definitions,
+ * and re-export FlagsManager directly from mixpanel-browser.
  */
-export interface FlagsVariant {
-  key: string;
-  value: any;
-  experiment_id?: string;
-  is_experiment_active?: boolean;
-  is_qa_tester?: boolean;
-}
-
-/**
- * Minimal interface for Mixpanel's FlagsManager.
- * Defines only the methods used by this provider.
- */
-export interface FlagsManager {
-  are_flags_ready(): boolean;
-  get_variant_sync(featureName: string, fallback: FlagsVariant): FlagsVariant;
-  update_context(context: Record<string, any>, options?: { replace?: boolean }): Promise<void>;
+export interface FlagsManager extends MixpanelFlagsManager {
   when_ready(): Promise<void>;
 }
 

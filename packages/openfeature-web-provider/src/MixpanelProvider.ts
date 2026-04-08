@@ -8,10 +8,9 @@ import type {
 } from '@openfeature/web-sdk';
 import { ErrorCode } from '@openfeature/web-sdk';
 import mixpanel from 'mixpanel-browser';
-import type { Config, Mixpanel } from 'mixpanel-browser';
+import type { Config, Mixpanel, FlagsVariant } from 'mixpanel-browser';
 import {
   FlagsManager,
-  FlagsVariant,
   isBoolean,
   isString,
   isNumber,
