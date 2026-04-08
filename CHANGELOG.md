@@ -1,3 +1,7 @@
+**2.77.0** (8 Apr 2026)
+- Adds `loadFlags` method to the `mixpanel.flags` to manually refresh feature flags.
+- Adds `whenReady` method to the `mixpanel.flags`, which returns a Promise that resolves when feature flags are done fetching.
+
 **2.77.0** (24 Mar 2026)
 - Session recording now supports cross origin iframe recording by specifying allowed domains via `record_allowed_iframe_origins`.
 - Added type dependency @types/json-logic-js for the RulesLogic type introduced in 2.76.0

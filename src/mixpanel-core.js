@@ -1724,7 +1724,9 @@ MixpanelLib.prototype.identify = function(
 
     // check feature flags again if distinct id has changed
     if (new_distinct_id !== previous_distinct_id) {
-        this.flags.fetchFlags();
+        this.flags.fetchFlags().catch(function() {
+            console.error('[flags] Error fetching flags during identify');
+        });
     }
 };
 
