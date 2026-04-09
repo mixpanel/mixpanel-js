@@ -138,6 +138,37 @@ describe(`FeatureFlagManager`, function () {
       expect(context.group_id).to.be.undefined;
     });
 
+    it(`includes api_extra_query_params in fetchFlags URL`, function () {
+      mockConfig.api_extra_query_params = {some_param: `some_value`, another_param: `another_value`};
+
+      flagManager.init();
+
+      const [url] = mockFetch.firstCall.args;
+      const urlObj = new URL(url);
+      expect(urlObj.searchParams.get(`some_param`)).to.equal(`some_value`);
+      expect(urlObj.searchParams.get(`another_param`)).to.equal(`another_value`);
+    });
+
+    it(`does not fail when api_extra_query_params is empty`, function () {
+      mockConfig.api_extra_query_params = {};
+
+      flagManager.init();
+
+      expect(mockFetch).to.have.been.calledOnce;
+      const [url] = mockFetch.firstCall.args;
+      expect(url).to.include(`token=test-token`);
+    });
+
+    it(`does not fail when api_extra_query_params is not set`, function () {
+      delete mockConfig.api_extra_query_params;
+
+      flagManager.init();
+
+      expect(mockFetch).to.have.been.calledOnce;
+      const [url] = mockFetch.firstCall.args;
+      expect(url).to.include(`token=test-token`);
+    });
+
     it(`handles successful response and parses flags correctly`, async function () {
       flagManager.init();
 
@@ -470,6 +501,19 @@ describe(`FeatureFlagManager`, function () {
         expect(payload.distinct_id).to.equal(`test-distinct-id`);
         expect(payload.project_id).to.equal(3);
         expect(payload.first_time_event_hash).to.equal(`abc123def456`);
+      });
+
+      it(`includes api_extra_query_params in recordFirstTimeEvent URL`, async function () {
+        mockConfig.api_extra_query_params = {some_param: `some_value`, another_param: `another_value`};
+
+        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(mockFetch).to.have.been.calledOnce;
+        const [url] = mockFetch.firstCall.args;
+        const urlObj = new URL(url);
+        expect(urlObj.searchParams.get(`some_param`)).to.equal(`some_value`);
+        expect(urlObj.searchParams.get(`another_param`)).to.equal(`another_value`);
       });
 
       it(`handles recording endpoint failures gracefully`, async function () {
