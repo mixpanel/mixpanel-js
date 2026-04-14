@@ -87,7 +87,7 @@
     "mocha": "11.1.0",
     "morgan": "1.9.1",
     "pug": "3.0.3",
-    "rdme": "7.5.0",
+    "rdme": "10.6.2",
     "request": "2.88.0",
     "rollup": "4.34.9",
     "rollup-plugin-esbuild": "6.2.1",
