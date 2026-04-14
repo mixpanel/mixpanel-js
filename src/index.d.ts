@@ -371,6 +371,7 @@ export interface FlagsManager {
     context: Dict,
     options?: FlagsUpdateContextOptions
   ): Promise<void>;
+  when_ready(): Promise<void>;
 }
 
 export interface Mixpanel {
