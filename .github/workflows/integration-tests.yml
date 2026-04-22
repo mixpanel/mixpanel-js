@@ -42,7 +42,7 @@ jobs:
         run: BROWSER=${{ matrix.browser }} ROOT_DIR=$(pwd) SAUCE_HOST=$(hostname -I | awk '{print $1; exit}') npm run integration-test:sauce
 
       - name: Test Report
-        uses: dorny/test-reporter@7b7927aa7da8b82e81e755810cb51f39941a2cc7 # v2
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v2
         if: success() || failure() # run this step even if previous step failed
         with:
           name: Browser Tests            # Name of the check run which will be created
