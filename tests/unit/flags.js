@@ -1017,6 +1017,30 @@ describe(`FeatureFlagManager`, function () {
       }
     });
 
+    it(`reuses in-flight fetch and rejects if that fetch fails`, async function () {
+      // Make fetch hang so the request is genuinely in-flight, then reject
+      let rejectFetch;
+      mockFetch.onFirstCall().returns(new Promise(function (resolve, reject) { rejectFetch = reject; }));
+
+      flagManager.init();
+
+      const loadPromise = flagManager.loadFlags();
+
+      // Should NOT have started a second fetch
+      expect(mockFetch).to.have.been.calledOnce;
+
+      // Reject the in-flight fetch
+      rejectFetch(new Error(`Network error`));
+
+      try {
+        await loadPromise;
+        expect.fail(`loadFlags should have rejected`);
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal(`Network error`);
+      }
+    });
+
     it(`returns resolved promise when system is not enabled`, async function () {
       initOptions.getConfigFunc.withArgs(`flags`).returns(null);
       flagManager = new FeatureFlagManager(initOptions);
