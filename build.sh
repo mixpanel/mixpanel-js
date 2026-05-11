@@ -6,7 +6,7 @@ set -e
 if [ ! -z "$DIST" ]; then
     export FULL=1
     rm -r -f build
-    npm install
+    npm ci
 fi
 
 echo 'Building main bundles'
@@ -21,7 +21,7 @@ if [ ! -z "$DIST" ]; then
 
     # typescript examples require dist files
     echo 'Building TypeScript examples'
-    pushd examples/typescript; npm install && npm run build; popd
+    pushd examples/typescript; npm ci && npm run build; popd
 fi
 
 if [ ! -z "$FULL" ]; then
