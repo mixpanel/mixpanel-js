@@ -1050,7 +1050,8 @@ var localStorageSupported = function(storage, forceCheck) {
     if (_localStorageSupported !== null && !forceCheck) {
         return _localStorageSupported;
     }
-    return _localStorageSupported = _testStorageSupported(storage || window.localStorage);
+
+    return _localStorageSupported = _testStorageSupported(storage);
 };
 
 var _sessionStorageSupported = null;
@@ -1058,7 +1059,8 @@ var sessionStorageSupported = function(storage, forceCheck) {
     if (_sessionStorageSupported !== null && !forceCheck) {
         return _sessionStorageSupported;
     }
-    return _sessionStorageSupported = _testStorageSupported(storage || window.sessionStorage);
+
+    return _sessionStorageSupported = _testStorageSupported(storage);
 };
 
 function _storageWrapper(storage, name, is_supported_fn) {
@@ -1108,17 +1110,26 @@ function _storageWrapper(storage, name, is_supported_fn) {
     };
 }
 
-// Safari errors out accessing localStorage/sessionStorage when cookies are disabled,
-// so create dummy storage wrappers that silently fail as a fallback.
-var windowLocalStorage = null, windowSessionStorage = null;
-try {
-    windowLocalStorage = window.localStorage;
-    windowSessionStorage = window.sessionStorage;
-    // eslint-disable-next-line no-empty
-} catch (_err) {}
+// Safari and other browsers may error out accessing localStorage/sessionStorage
+// when cookies are disabled, so wrap access in a try-catch.
+var getLocalStorage = function() {
+    try {
+        return window.localStorage; // eslint-disable-line no-restricted-properties
+    } catch (_err) {
+        return null;
+    }
+};
 
-_.localStorage = _storageWrapper(windowLocalStorage, 'localStorage', localStorageSupported);
-_.sessionStorage = _storageWrapper(windowSessionStorage, 'sessionStorage', sessionStorageSupported);
+var getSessionStorage = function() {
+    try {
+        return window.sessionStorage; // eslint-disable-line no-restricted-properties
+    } catch (_err) {
+        return null;
+    }
+};
+
+_.localStorage = _storageWrapper(getLocalStorage(), 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(getSessionStorage(), 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function() {
     // written by Dean Edwards, 2005
@@ -1810,5 +1821,6 @@ export {
     slice,
     urlMatchesRegexList,
     userAgent,
+    getLocalStorage,
     windowOpera,
 };

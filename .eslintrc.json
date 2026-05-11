@@ -28,6 +28,18 @@
         "semi": [
             "error",
             "always"
+        ],
+        "no-restricted-properties": ["error",
+            {
+                "object": "window",
+                "property": "localStorage",
+                "message": "Use getLocalStorage() from utils.js instead to handle browsers that block storage access."
+            },
+            {
+                "object": "window",
+                "property": "sessionStorage",
+                "message": "Use getSessionStorage() from utils.js instead to handle browsers that block storage access."
+            }
         ]
     },
     "overrides": [{

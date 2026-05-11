@@ -472,6 +472,33 @@ export function batchRequestsTests(mixpanel) {
       expect(eventNames[1]).to.equal(`track me 2`);
     });
 
+    it(`handles inaccessible localStorage gracefully`, async function() {
+      await clearLibInstance(mixpanel, mixpanel.batchtest);
+
+      const originalLocalStorage = Object.getOwnPropertyDescriptor(window, `localStorage`);
+      Object.defineProperty(window, `localStorage`, {
+        get: function() { throw new DOMException(`Access is denied for this document.`, `SecurityError`); },
+        configurable: true,
+      });
+
+      try {
+        await initBatchLibInstance(mixpanel);
+        mixpanel.batchtest.track(`no-storage event`);
+
+        await clock.tickAsync(1000);
+
+        expect(xhrRequests).to.have.length(1);
+        const request_data = getXhrRequestData(xhrRequests[0]);
+        expect(request_data.event).to.equal(`no-storage event`);
+      } catch (err) {
+        expect.fail(`init and track should not throw even if localStorage is inaccessible: ${err}`);
+      } finally {
+        if (originalLocalStorage) {
+          Object.defineProperty(window, `localStorage`, originalLocalStorage);
+        }
+      }
+    });
+
     context(`people updates`, function() {
       this.retries(3);
 

@@ -1,6 +1,5 @@
 import { SharedLock } from './shared-lock';
 import { batchedThrottle, cheap_guid, console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
-import { window } from './window';
 import { LocalStorageWrapper } from './storage/local-storage';
 import { Promise } from './promise-polyfill';
 
@@ -29,7 +28,7 @@ var RequestQueue = function (storageKey, options) {
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
         this.lock = new SharedLock(storageKey, {
-            storage: options.sharedLockStorage || window.localStorage,
+            storage: options.sharedLockStorage,
             timeoutMS: options.sharedLockTimeoutMS,
         });
     }

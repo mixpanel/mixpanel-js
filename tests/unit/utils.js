@@ -1,7 +1,8 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
+import localStorage from 'localStorage';
 
-import { batchedThrottle, canUseCompressionStream, extract_domain, generateTraceparent, urlMatchesRegexList, _, document } from '../../src/utils';
+import { batchedThrottle, canUseCompressionStream, extract_domain, generateTraceparent, localStorageSupported, urlMatchesRegexList, _, document } from '../../src/utils';
 import { window } from '../../src/window';
 
 describe(`extract_domain`, function() {
@@ -498,5 +499,37 @@ describe(`urlMatchesRegexList`, function() {
     const url = `/api/endpoint`;
     const regexList = [/^\/api\//];
     expect(urlMatchesRegexList(url, regexList)).to.be.true;
+  });
+});
+
+describe(`localStorageSupported`, function() {
+  it(`returns true for a working storage implementation`, function() {
+    expect(localStorageSupported(localStorage, true)).to.be.true;
+  });
+
+  it(`returns false when storage is null`, function() {
+    expect(localStorageSupported(null, true)).to.be.false;
+  });
+
+  it(`returns false when storage is undefined`, function() {
+    expect(localStorageSupported(undefined, true)).to.be.false;
+  });
+
+  it(`returns false when storage operations throw`, function() {
+    const brokenStorage = {
+      setItem: function() { throw new Error(`Access is denied`); },
+      getItem: function() { throw new Error(`Access is denied`); },
+      removeItem: function() { throw new Error(`Access is denied`); },
+    };
+    expect(localStorageSupported(brokenStorage, true)).to.be.false;
+  });
+});
+
+describe(`_.localStorage / _.sessionStorage wrappers`, function() {
+  it(`is_supported returns false and does not throw when storage is null`, function() {
+    const wrapper = _.localStorage;
+    // When window.localStorage threw during init, the wrapper received null storage.
+    // Calling is_supported should not throw even if the underlying storage is null.
+    expect(function() { wrapper.is_supported(true); }).to.not.throw();
   });
 });

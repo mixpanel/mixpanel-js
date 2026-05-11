@@ -1,15 +1,17 @@
 import { Promise } from '../promise-polyfill';
-import { _, JSONParse, JSONStringify } from '../utils'; // eslint-disable-line camelcase
-import { window } from '../window';
+import { _, JSONParse, JSONStringify, getLocalStorage } from '../utils'; // eslint-disable-line camelcase
 
 /**
  * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function (storageOverride) {
-    this.storage = storageOverride || window.localStorage;
+    this.storage = storageOverride || getLocalStorage();
 };
 
 LocalStorageWrapper.prototype.init = function () {
+    if (!this.storage) {
+        return Promise.reject(new Error('localStorage is not available'));
+    }
     return Promise.resolve();
 };
 

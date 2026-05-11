@@ -203,4 +203,18 @@ describe(`SharedLock`, function() {
       await firstLockPromise;
     });
   });
+
+  describe(`when storage is null`, function() {
+    it(`rejects withLock immediately`, async function() {
+      const nullLock = new SharedLock(`some-key`, {storage: null, timeoutMS: TIMEOUT_MS});
+      try {
+        await nullLock.withLock(function() {
+          return Promise.resolve();
+        });
+        expect.fail(`should have rejected`);
+      } catch (err) {
+        expect(err.message).to.equal(`localStorage support check failed`);
+      }
+    });
+  });
 });

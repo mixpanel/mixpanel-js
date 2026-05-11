@@ -1,6 +1,5 @@
 import { Promise } from './promise-polyfill';
-import { console_with_prefix, localStorageSupported, _ } from './utils'; // eslint-disable-line camelcase
-import { window } from './window';
+import { console_with_prefix, localStorageSupported, getLocalStorage, _ } from './utils'; // eslint-disable-line camelcase
 
 var logger = console_with_prefix('lock');
 
@@ -28,7 +27,7 @@ var SharedLock = function(key, options) {
     options = options || {};
 
     this.storageKey = key;
-    this.storage = options.storage || window.localStorage;
+    this.storage = options.storage || getLocalStorage();
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
 
