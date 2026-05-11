@@ -2015,6 +2015,71 @@ export function recorderTests (mixpanel) {
 
         expect(mixpanel.recordertest.get_config(`record_sessions_percent`)).to.equal(10, `original rate preserved after event trigger`);
       });
+
+      it(`starts recording when event fires before recording init completes with remote_settings_mode strict`, async function () {
+        this.randomStub.returns(0.02);
+
+        const remoteSettings = {
+          sdk_config: {
+            config: {
+              recording_event_triggers: {
+                '$mp_web_page_view': {
+                  'percentage': 100,
+                  'property_filters': {
+                    'and': [
+                      {
+                        'in': ['test.com', {'var': '$current_url'}]
+                      },
+                      {
+                        '===': [{'var': 'consent'}, 'granted']
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        };
+
+        // Delay the remote settings response
+        this.fetchStub.withArgs(sinon.match(/settings/)).returns(makeDelayedFetchResponse(200, remoteSettings, 100));
+
+        // Initialize with remote_settings_mode strict but NO local recording_event_triggers
+        const initPromise = this.initMixpanelRecorder({
+          record_sessions_percent: 0,
+          remote_settings_mode: 'strict'
+        });
+
+        await initPromise;
+
+        // Confirm that remote event triggers are NOT loaded yet (remote settings still in flight)
+        const triggersBeforeRemote = mixpanel.recordertest.get_config('recording_event_triggers');
+        expect(triggersBeforeRemote || {}).to.deep.equal({});
+
+        // Track event BEFORE recording init completes (remote settings still loading)
+        mixpanel.recordertest.track('$mp_web_page_view', {
+          '$current_url': 'https://test.com/page',
+          'consent': 'granted'
+        });
+
+        expect(Object.keys(mixpanel.recordertest.get_session_recording_properties()).length).to.equal(0, `no replay_id yet - recording hasn't started`);
+
+        // Advance clock to let the delayed remote settings response complete (100ms delay)
+        await this.clock.tickAsync(150);
+        await mixpanel.recordertest.__get_recording_init_promise();
+
+        // Confirm that remote event triggers ARE now loaded after remote settings fetch
+        const triggersAfterRemote = mixpanel.recordertest.get_config('recording_event_triggers');
+        expect(triggersAfterRemote).to.exist;
+        expect(triggersAfterRemote['$mp_web_page_view']).to.exist;
+        expect(triggersAfterRemote['$mp_web_page_view'].percentage).to.equal(100);
+
+        // Now advance time to allow async trigger evaluation to complete
+        await this.clock.tickAsync(200);
+        await this.waitForRecorderLoad();
+
+        expect(Boolean(mixpanel.recordertest.get_session_recording_properties()[`$mp_replay_id`])).to.be.true;
+      });
     });
 
     it(`handles missing isRecording method gracefully (legacy CDN builds)`, async function () {

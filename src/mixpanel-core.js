@@ -1,6 +1,6 @@
 /* eslint camelcase: "off" */
 import {Config, TARGETING_FILENAME} from './config';
-import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify } from './utils';
+import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NOOP_FUNC, JSONStringify, safewrap } from './utils';
 import { window } from './window';
 import { Autocapture } from './autocapture';
 import { FeatureFlagManager } from './flags';
@@ -341,6 +341,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         'disable_all_events': false,
         'identify_called': false
     };
+    this._remote_settings_strict_disabled = false;
 
     // set up request queueing/batching
     this.request_batchers = {};
@@ -475,9 +476,17 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
     return this.recorderManager.checkAndStartSessionRecording(force_start);
 });
 
-MixpanelLib.prototype._start_recording_on_event = function(event_name, properties) {
-    return this.recorderManager.startRecordingOnEvent(event_name, properties);
-};
+MixpanelLib.prototype._start_recording_on_event = safewrap(function(event_name, properties) {
+    // Wait for recording init to complete before evaluating event triggers.
+    // This ensures recording_event_triggers config is fully loaded when remote settings are used.
+    this.__session_recording_init_promise.then(_.bind(function() {
+        // In strict mode, skip recording if remote settings failed
+        if (this._remote_settings_strict_disabled) {
+            return;
+        }
+        return this.recorderManager.startRecordingOnEvent(event_name, properties);
+    }, this));
+});
 
 MixpanelLib.prototype.start_session_recording = function () {
     return this._check_and_start_session_recording(true);
@@ -776,6 +785,7 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
     var disableRecordingIfStrict = function() {
         if (mode === 'strict') {
             self.set_config({'record_sessions_percent': 0});
+            self._remote_settings_strict_disabled = true;
         }
     };
 
