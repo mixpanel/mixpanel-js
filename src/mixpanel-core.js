@@ -1411,6 +1411,10 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(proper
         properties
     );
 
+    if (this.is_recording_heatmap_data()) {
+        event_properties['$captured_for_heatmap'] = true;
+    }
+
     return this.track(event_name, event_properties);
 });
 

@@ -364,14 +364,15 @@ Autocapture.prototype.initInputTracking = function() {
 Autocapture.prototype.initPageviewTracking = function() {
     window.removeEventListener(EV_MP_LOCATION_CHANGE, this.listenerLocationchange);
 
-    if (!this.pageviewTrackingConfig()) {
+    if (!this.pageviewTrackingConfig() && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
     logger.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
     var tracked = false;
-    if (!this.currentUrlBlocked()) {
+    // Track initial pageview if pageview tracking enabled OR heatmap recording is active
+    if ((this.pageviewTrackingConfig() || this.mp.is_recording_heatmap_data()) && !this.currentUrlBlocked()) {
         tracked = this.mp.track_pageview(DEFAULT_PROPS);
     }
     if (tracked) {
@@ -387,6 +388,10 @@ Autocapture.prototype.initPageviewTracking = function() {
         var shouldTrack = false;
         var didPathChange = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
         var trackPageviewOption = this.pageviewTrackingConfig();
+        if (!trackPageviewOption && this.mp.is_recording_heatmap_data()) {
+            trackPageviewOption = PAGEVIEW_OPTION_FULL_URL;
+        }
+
         if (trackPageviewOption === PAGEVIEW_OPTION_FULL_URL) {
             shouldTrack = currentUrl !== previousTrackedUrl;
         } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING) {
