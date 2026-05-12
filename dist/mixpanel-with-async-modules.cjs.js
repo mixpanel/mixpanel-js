@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.78.0'
+    LIB_VERSION: '2.79.0-rc1'
 };
 
 // Window global names for async modules
@@ -10,8 +10,8 @@ var TARGETING_GLOBAL_NAME = '__mp_targeting';
 var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
 // Constants that are injected at build-time for the names of async modules.
-var RECORDER_FILENAME = 'mixpanel-recorder-zMBXIyeG.js';
-var TARGETING_FILENAME = 'mixpanel-targeting-UHf4eBfC.js';
+var RECORDER_FILENAME = 'mixpanel-recorder-BArfRG9r.js';
+var TARGETING_FILENAME = 'mixpanel-targeting-BDehNckL.js';
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 var win;
@@ -1447,7 +1447,8 @@ var localStorageSupported = function(storage, forceCheck) {
     if (_localStorageSupported !== null && !forceCheck) {
         return _localStorageSupported;
     }
-    return _localStorageSupported = _testStorageSupported(storage || win.localStorage);
+
+    return _localStorageSupported = _testStorageSupported(storage);
 };
 
 var _sessionStorageSupported = null;
@@ -1455,7 +1456,8 @@ var sessionStorageSupported = function(storage, forceCheck) {
     if (_sessionStorageSupported !== null && !forceCheck) {
         return _sessionStorageSupported;
     }
-    return _sessionStorageSupported = _testStorageSupported(storage || win.sessionStorage);
+
+    return _sessionStorageSupported = _testStorageSupported(storage);
 };
 
 function _storageWrapper(storage, name, is_supported_fn) {
@@ -1505,17 +1507,26 @@ function _storageWrapper(storage, name, is_supported_fn) {
     };
 }
 
-// Safari errors out accessing localStorage/sessionStorage when cookies are disabled,
-// so create dummy storage wrappers that silently fail as a fallback.
-var windowLocalStorage = null, windowSessionStorage = null;
-try {
-    windowLocalStorage = win.localStorage;
-    windowSessionStorage = win.sessionStorage;
-    // eslint-disable-next-line no-empty
-} catch (_err) {}
+// Safari and other browsers may error out accessing localStorage/sessionStorage
+// when cookies are disabled, so wrap access in a try-catch.
+var getLocalStorage = function() {
+    try {
+        return win.localStorage; // eslint-disable-line no-restricted-properties
+    } catch (_err) {
+        return null;
+    }
+};
 
-_.localStorage = _storageWrapper(windowLocalStorage, 'localStorage', localStorageSupported);
-_.sessionStorage = _storageWrapper(windowSessionStorage, 'sessionStorage', sessionStorageSupported);
+var getSessionStorage = function() {
+    try {
+        return win.sessionStorage; // eslint-disable-line no-restricted-properties
+    } catch (_err) {
+        return null;
+    }
+};
+
+_.localStorage = _storageWrapper(getLocalStorage(), 'localStorage', localStorageSupported);
+_.sessionStorage = _storageWrapper(getSessionStorage(), 'sessionStorage', sessionStorageSupported);
 
 _.register_event = (function() {
     // written by Dean Edwards, 2005
@@ -2267,7 +2278,7 @@ var EVENT_HANDLER_ATTRIBUTES = [
 
 var MAX_DEPTH = 5;
 
-var logger$5 = console_with_prefix('autocapture');
+var logger$6 = console_with_prefix('autocapture');
 
 
 function getClasses(el) {
@@ -2531,7 +2542,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return false;
             }
         } catch (err) {
-            logger$5.critical('Error while checking element in allowElementCallback', err);
+            logger$6.critical('Error while checking element in allowElementCallback', err);
             return false;
         }
     }
@@ -2548,7 +2559,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return true;
             }
         } catch (err) {
-            logger$5.critical('Error while checking selector: ' + sel, err);
+            logger$6.critical('Error while checking selector: ' + sel, err);
         }
     }
     return false;
@@ -2563,7 +2574,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                 return true;
             }
         } catch (err) {
-            logger$5.critical('Error while checking element in blockElementCallback', err);
+            logger$6.critical('Error while checking element in blockElementCallback', err);
             return true;
         }
     }
@@ -2577,7 +2588,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                     return true;
                 }
             } catch (err) {
-                logger$5.critical('Error while checking selector: ' + sel, err);
+                logger$6.critical('Error while checking selector: ' + sel, err);
             }
         }
     }
@@ -3041,7 +3052,7 @@ ShadowDOMObserver.prototype.observeShadowRoot = function(shadowRoot) {
         observer.observe(shadowRoot, this.observerConfig);
         this.shadowObservers.push(observer);
     } catch (e) {
-        logger$5.critical('Error while observing shadow root', e);
+        logger$6.critical('Error while observing shadow root', e);
     }
 };
 
@@ -3052,7 +3063,7 @@ ShadowDOMObserver.prototype.start = function() {
     }
 
     if (!weakSetSupported()) {
-        logger$5.critical('Shadow DOM observation unavailable: WeakSet not supported');
+        logger$6.critical('Shadow DOM observation unavailable: WeakSet not supported');
         return;
     }
 
@@ -3068,7 +3079,7 @@ ShadowDOMObserver.prototype.stop = function() {
         try {
             this.shadowObservers[i].disconnect();
         } catch (e) {
-            logger$5.critical('Error while disconnecting shadow DOM observer', e);
+            logger$6.critical('Error while disconnecting shadow DOM observer', e);
         }
     }
     this.shadowObservers = [];
@@ -3256,7 +3267,7 @@ DeadClickTracker.prototype.startTracking = function() {
 
             this.mutationObserver.observe(document.body || document.documentElement, MUTATION_OBSERVER_CONFIG);
         } catch (e) {
-            logger$5.critical('Error while setting up mutation observer', e);
+            logger$6.critical('Error while setting up mutation observer', e);
         }
     }
 
@@ -3271,7 +3282,7 @@ DeadClickTracker.prototype.startTracking = function() {
             );
             this.shadowDOMObserver.start();
         } catch (e) {
-            logger$5.critical('Error while setting up shadow DOM observer', e);
+            logger$6.critical('Error while setting up shadow DOM observer', e);
             this.shadowDOMObserver = null;
         }
     }
@@ -3298,7 +3309,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             listener.target.removeEventListener(listener.event, listener.handler, listener.options);
         } catch (e) {
-            logger$5.critical('Error while removing event listener', e);
+            logger$6.critical('Error while removing event listener', e);
         }
     }
     this.eventListeners = [];
@@ -3307,7 +3318,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             this.mutationObserver.disconnect();
         } catch (e) {
-            logger$5.critical('Error while disconnecting mutation observer', e);
+            logger$6.critical('Error while disconnecting mutation observer', e);
         }
         this.mutationObserver = null;
     }
@@ -3316,7 +3327,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             this.shadowDOMObserver.stop();
         } catch (e) {
-            logger$5.critical('Error while stopping shadow DOM observer', e);
+            logger$6.critical('Error while stopping shadow DOM observer', e);
         }
         this.shadowDOMObserver = null;
     }
@@ -3394,7 +3405,7 @@ var Autocapture = function(mp) {
 
 Autocapture.prototype.init = function() {
     if (!minDOMApisSupported()) {
-        logger$5.critical('Autocapture unavailable: missing required DOM APIs');
+        logger$6.critical('Autocapture unavailable: missing required DOM APIs');
         return;
     }
     this.initPageListeners();
@@ -3434,7 +3445,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
         try {
             return !urlMatchesRegexList(currentUrl, allowUrlRegexes);
         } catch (err) {
-            logger$5.critical('Error while checking block URL regexes: ', err);
+            logger$6.critical('Error while checking block URL regexes: ', err);
             return true;
         }
     }
@@ -3447,7 +3458,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
     try {
         return urlMatchesRegexList(currentUrl, blockUrlRegexes);
     } catch (err) {
-        logger$5.critical('Error while checking block URL regexes: ', err);
+        logger$6.critical('Error while checking block URL regexes: ', err);
         return true;
     }
 };
@@ -3585,7 +3596,7 @@ Autocapture.prototype._initScrollDepthTracking = function() {
         return;
     }
 
-    logger$5.log('Initializing scroll depth tracking');
+    logger$6.log('Initializing scroll depth tracking');
 
     this.maxScrollViewDepth = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
 
@@ -3611,7 +3622,7 @@ Autocapture.prototype.initClickTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
-    logger$5.log('Initializing click tracking');
+    logger$6.log('Initializing click tracking');
 
     this.listenerClick = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
@@ -3630,7 +3641,7 @@ Autocapture.prototype.initDeadClickTracking = function() {
         return;
     }
 
-    logger$5.log('Initializing dead click tracking');
+    logger$6.log('Initializing dead click tracking');
     if (!this._deadClickTracker) {
         this._deadClickTracker = new DeadClickTracker(function(deadClickEvent) {
             this.trackDomEvent(deadClickEvent, MP_EV_DEAD_CLICK);
@@ -3664,7 +3675,7 @@ Autocapture.prototype.initInputTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_INPUT)) {
         return;
     }
-    logger$5.log('Initializing input tracking');
+    logger$6.log('Initializing input tracking');
 
     this.listenerChange = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
@@ -3678,14 +3689,15 @@ Autocapture.prototype.initInputTracking = function() {
 Autocapture.prototype.initPageviewTracking = function() {
     win.removeEventListener(EV_MP_LOCATION_CHANGE, this.listenerLocationchange);
 
-    if (!this.pageviewTrackingConfig()) {
+    if (!this.pageviewTrackingConfig() && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
-    logger$5.log('Initializing pageview tracking');
+    logger$6.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
     var tracked = false;
-    if (!this.currentUrlBlocked()) {
+    // Track initial pageview if pageview tracking enabled OR heatmap recording is active
+    if ((this.pageviewTrackingConfig() || this.mp.is_recording_heatmap_data()) && !this.currentUrlBlocked()) {
         tracked = this.mp.track_pageview(DEFAULT_PROPS);
     }
     if (tracked) {
@@ -3701,6 +3713,10 @@ Autocapture.prototype.initPageviewTracking = function() {
         var shouldTrack = false;
         var didPathChange = currentUrl.split('#')[0].split('?')[0] !== previousTrackedUrl.split('#')[0].split('?')[0];
         var trackPageviewOption = this.pageviewTrackingConfig();
+        if (!trackPageviewOption && this.mp.is_recording_heatmap_data()) {
+            trackPageviewOption = PAGEVIEW_OPTION_FULL_URL;
+        }
+
         if (trackPageviewOption === PAGEVIEW_OPTION_FULL_URL) {
             shouldTrack = currentUrl !== previousTrackedUrl;
         } else if (trackPageviewOption === PAGEVIEW_OPTION_URL_WITH_PATH_AND_QUERY_STRING) {
@@ -3716,7 +3732,7 @@ Autocapture.prototype.initPageviewTracking = function() {
             }
             if (didPathChange) {
                 this.lastScrollCheckpoint = 0;
-                logger$5.log('Path change: re-initializing scroll depth checkpoints');
+                logger$6.log('Path change: re-initializing scroll depth checkpoints');
             }
         }
     }.bind(this));
@@ -3731,7 +3747,7 @@ Autocapture.prototype.initRageClickTracking = function() {
         return;
     }
 
-    logger$5.log('Initializing rage click tracking');
+    logger$6.log('Initializing rage click tracking');
     if (!this._rageClickTracker) {
         this._rageClickTracker = new RageClickTracker();
     }
@@ -3761,7 +3777,7 @@ Autocapture.prototype.initScrollTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
     }
-    logger$5.log('Initializing scroll tracking');
+    logger$6.log('Initializing scroll tracking');
     this.lastScrollCheckpoint = 0;
 
     var scrollTrackFunction = function() {
@@ -3798,7 +3814,7 @@ Autocapture.prototype.initScrollTracking = function() {
                 }
             }
         } catch (err) {
-            logger$5.critical('Error while calculating scroll percentage', err);
+            logger$6.critical('Error while calculating scroll percentage', err);
         }
         if (shouldTrack) {
             this.mp.track(MP_EV_SCROLL, props);
@@ -3816,7 +3832,7 @@ Autocapture.prototype.initSubmitTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
         return;
     }
-    logger$5.log('Initializing submit tracking');
+    logger$6.log('Initializing submit tracking');
 
     this.listenerSubmit = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
@@ -3838,7 +3854,7 @@ Autocapture.prototype.initPageLeaveTracking = function() {
         return;
     }
 
-    logger$5.log('Initializing page visibility tracking.');
+    logger$6.log('Initializing page visibility tracking.');
     this._initScrollDepthTracking();
     var previousTrackedUrl = _.info.currentUrl();
 
@@ -3923,10 +3939,309 @@ var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
     return win[TARGETING_GLOBAL_NAME];
 };
 
+/**
+ * @type {import('./wrapper').StorageWrapper}
+ */
+var IDBStorageWrapper = function (dbName, storeName, versionData) {
+    this.dbName = dbName;
+    this.storeName = storeName;
+    this.version = versionData.version;
+    this.storeNamesInDb = versionData.storeNames;
+    /**
+     * @type {Promise<IDBDatabase>|null}
+     */
+    this.dbPromise = null;
+};
+
+IDBStorageWrapper.prototype._openDb = function () {
+    var dbName = this.dbName;
+    var version = this.version;
+    var storeNamesInDb = this.storeNamesInDb;
+    return new PromisePolyfill(function (resolve, reject) {
+        var openRequest = win.indexedDB.open(dbName, version);
+        openRequest['onerror'] = function () {
+            reject(openRequest.error);
+        };
+
+        openRequest['onsuccess'] = function () {
+            resolve(openRequest.result);
+        };
+
+        openRequest['onupgradeneeded'] = function (ev) {
+            var db = ev.target.result;
+
+            storeNamesInDb.forEach(function (storeName) {
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName);
+                }
+            });
+        };
+    });
+};
+
+IDBStorageWrapper.prototype.init = function () {
+    if (!win.indexedDB) {
+        return PromisePolyfill.reject('indexedDB is not supported in this browser');
+    }
+
+    if (!this.dbPromise) {
+        this.dbPromise = this._openDb();
+    }
+
+    return this.dbPromise
+        .then(function (dbOrError) {
+            if (dbOrError instanceof win['IDBDatabase']) {
+                return PromisePolyfill.resolve();
+            } else {
+                return PromisePolyfill.reject(dbOrError);
+            }
+        });
+};
+
+IDBStorageWrapper.prototype.isInitialized = function () {
+    return !!this.dbPromise;
+};
+
+/**
+ * @param {IDBTransactionMode} mode
+ * @param {function(IDBObjectStore): void} storeCb
+ */
+IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
+    var storeName = this.storeName;
+    var doTransaction = function (db) {
+        return new PromisePolyfill(function (resolve, reject) {
+            var transaction = db.transaction(storeName, mode);
+            transaction.oncomplete = function () {
+                resolve(transaction);
+            };
+            transaction.onabort = transaction.onerror = function () {
+                reject(transaction.error);
+            };
+
+            storeCb(transaction.objectStore(storeName));
+        });
+    };
+
+    return this.dbPromise
+        .then(doTransaction)
+        .catch(function (err) {
+            if (err && err['name'] === 'InvalidStateError') {
+                // try reopening the DB if the connection is closed
+                this.dbPromise = this._openDb();
+                return this.dbPromise.then(doTransaction);
+            } else {
+                return PromisePolyfill.reject(err);
+            }
+        }.bind(this));
+};
+
+IDBStorageWrapper.prototype.setItem = function (key, value) {
+    return this.makeTransaction('readwrite', function (objectStore) {
+        objectStore.put(value, key);
+    });
+};
+
+IDBStorageWrapper.prototype.getItem = function (key) {
+    var req;
+    return this.makeTransaction('readonly', function (objectStore) {
+        req = objectStore.get(key);
+    }).then(function () {
+        return req.result;
+    });
+};
+
+IDBStorageWrapper.prototype.removeItem = function (key) {
+    return this.makeTransaction('readwrite', function (objectStore) {
+        objectStore.delete(key);
+    });
+};
+
+IDBStorageWrapper.prototype.getAll = function () {
+    var req;
+    return this.makeTransaction('readonly', function (objectStore) {
+        req = objectStore.getAll();
+    }).then(function () {
+        return req.result;
+    });
+};
+
+var logger$5 = console_with_prefix('flags');
+
+var MIXPANEL_FLAGS_DB_NAME = 'mixpanelFlagsDb';
+var FLAGS_STORE_NAME = 'mixpanelFlags';
+
+// Keeping these two properties closeby, as adding additional stores to a DB in IndexedDB requires a version increment
+var FLAGS_VERSION_DATA = { version: 1, storeNames: [FLAGS_STORE_NAME] };
+
+var PERSISTED_VARIANTS_KEY_PREFIX = 'persisted_variants_for_';
+var DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
+
+var VariantLookupPolicy = Object.freeze({
+    NETWORK_ONLY: 'networkOnly',
+    NETWORK_FIRST: 'networkFirst',
+    PERSISTENCE_UNTIL_NETWORK_SUCCESS: 'persistenceUntilNetworkSuccess'
+});
+
+var VALID_POLICIES = [
+    VariantLookupPolicy.NETWORK_ONLY,
+    VariantLookupPolicy.NETWORK_FIRST,
+    VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS
+];
+
+/**
+ * Module for handling the storage and retrieval of persisted feature flag variants.
+ */
+var FeatureFlagPersistence = function(persistenceConfig, token, isGloballyDisabled) {
+    this.idb = new IDBStorageWrapper(MIXPANEL_FLAGS_DB_NAME, FLAGS_STORE_NAME, FLAGS_VERSION_DATA);
+    this.persistenceConfig = persistenceConfig;
+    this.persistedVariantsKey = PERSISTED_VARIANTS_KEY_PREFIX + token;
+    this.isGloballyDisabled = isGloballyDisabled || function() { return false; };
+};
+
+FeatureFlagPersistence.prototype.getPolicy = function() {
+    if (this.isGloballyDisabled() || !this._isConfigValid()) {
+        return VariantLookupPolicy.NETWORK_ONLY;
+    }
+    return this.persistenceConfig['variantLookupPolicy'];
+};
+
+FeatureFlagPersistence.prototype.getTtlMs = function() {
+    if (!this._isConfigValid()) {
+        return DEFAULT_TTL_MS;
+    }
+    var configuredTtl = this.persistenceConfig['persistenceTtlMs'];
+    return (configuredTtl === undefined || configuredTtl === null) ? DEFAULT_TTL_MS : configuredTtl;
+};
+
+FeatureFlagPersistence.prototype._isConfigValid = function() {
+    var config = this.persistenceConfig;
+    if (!config) {
+        return false;
+    }
+
+    if (VALID_POLICIES.indexOf(config['variantLookupPolicy']) === -1) {
+        logger$5.error('Invalid variantLookupPolicy:', config['variantLookupPolicy']);
+        return false;
+    }
+
+    if (config['persistenceTtlMs'] !== undefined &&
+        config['persistenceTtlMs'] !== null &&
+        config['persistenceTtlMs'] <= 0) {
+        logger$5.error('If provided, persistenceTtlMs must be a positive number. Provided value:', config['persistenceTtlMs']);
+        return false;
+    }
+
+    return true;
+};
+
+FeatureFlagPersistence.prototype.loadFlagsFromStorage = function(context) {
+    var clearAndReturnNull = _.bind(function() {
+        return this.clear().then(function() { return null; }).catch(function() { return null; });
+    }, this);
+
+    if (this.getPolicy() === VariantLookupPolicy.NETWORK_ONLY) {
+        return clearAndReturnNull();
+    }
+
+    var ttlMs = this.getTtlMs();
+
+    return this.idb.init().then(_.bind(function() {
+        return this.idb.getItem(this.persistedVariantsKey);
+    }, this)).then(_.bind(function(data) {
+        if (!data) {
+            logger$5.log('No persisted variants found in IndexedDB');
+            return null;
+        }
+
+        if (ttlMs && Date.now() - data['persistedAt'] >= ttlMs) {
+            logger$5.log('Persisted variants are expiring');
+            return null;
+        }
+
+        if (!context || data['distinctId'] !== context['distinct_id']) {
+            logger$5.log('Persisted variants found, but for a different distinct_id so clearing.');
+            return clearAndReturnNull();
+        }
+
+        var persistedFlags = new Map();
+        _.each(data['flagVariants'], function(variantData, key) {
+            persistedFlags.set(key, {
+                'key': variantData['variant_key'],
+                'value': variantData['variant_value'],
+                'experiment_id': variantData['experiment_id'],
+                'is_experiment_active': variantData['is_experiment_active'],
+                'is_qa_tester': variantData['is_qa_tester'],
+                'variant_source': 'persistence',
+                'persisted_at_in_ms': data['persistedAt'],
+                'ttl_in_ms': ttlMs
+            });
+        });
+
+        logger$5.log('Loaded', persistedFlags.size, 'variants from IndexedDB for distinct_id', data['distinctId']);
+
+        return {
+            flags: persistedFlags,
+            pendingFirstTimeEvents: data['pendingFirstTimeEvents'] || {},
+            persistedAtMs: data['persistedAt'],
+            ttlMs: ttlMs
+        };
+    }, this)).catch(_.bind(function(error) {
+        logger$5.error('Failed to load persisted variants from IndexedDB, so clearing', error);
+        return clearAndReturnNull();
+    }, this));
+};
+
+FeatureFlagPersistence.prototype.save = function(context, flagsMap, pendingFirstTimeEvents) {
+    if (this.getPolicy() === VariantLookupPolicy.NETWORK_ONLY) {
+        return Promise.resolve();
+    }
+
+    var flagVariants = {};
+    flagsMap.forEach(function(variant, key) {
+        flagVariants[key] = {
+            'variant_key': variant['key'],
+            'variant_value': variant['value'],
+            'experiment_id': variant['experiment_id'],
+            'is_experiment_active': variant['is_experiment_active'],
+            'is_qa_tester': variant['is_qa_tester']
+        };
+    });
+
+    var data = {
+        'persistedAt': Date.now(),
+        'distinctId': context && context['distinct_id'],
+        'context': context,
+        'flagVariants': flagVariants,
+        'pendingFirstTimeEvents': pendingFirstTimeEvents || {}
+    };
+
+    return this.idb.init().then(_.bind(function() {
+        return this.idb.setItem(this.persistedVariantsKey, data);
+    }, this)).then(function() {
+        logger$5.log('Saved', flagsMap.size, 'variants to IndexedDB for distinct_id', data['distinctId']);
+    }).catch(function(error) {
+        logger$5.error('Failed to persist variants to IndexedDB:', error);
+    });
+};
+
+FeatureFlagPersistence.prototype.clear = function() {
+    if (this.isGloballyDisabled()) {
+        return Promise.resolve();
+    }
+    return this.idb.init().then(_.bind(function() {
+        return this.idb.removeItem(this.persistedVariantsKey);
+    }, this)).then(function() {
+        logger$5.log('Cleared persisted variants from IndexedDB');
+    }).catch(function(error) {
+        logger$5.error('Failed to clear persisted variants from IndexedDB:', error);
+    });
+};
+
 var logger$4 = console_with_prefix('flags');
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';
+var CONFIG_PERSISTENCE = 'persistence';
 var CONFIG_DEFAULTS = {};
 CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
 
@@ -3947,6 +4262,13 @@ var getPendingEventKey = function(flagKey, firstTimeEventHash) {
  */
 var getFlagKeyFromPendingEventKey = function(eventKey) {
     return eventKey.split(':')[0];
+};
+
+var withFallbackSource = function(fallback) {
+    if (_.isObject(fallback)) {
+        return _.extend({}, fallback, {'variant_source': 'fallback'});
+    }
+    return {'value': fallback, 'variant_source': 'fallback'};
 };
 
 /**
@@ -3971,13 +4293,63 @@ FeatureFlagManager.prototype.init = function() {
     }
 
     this.flags = null;
-    this.fetchFlags().catch(function() {
-        logger$4.error('Error fetching flags during init');
-    });
-
     this.trackedFeatures = new Set();
     this.pendingFirstTimeEvents = {};
     this.activatedFirstTimeEvents = {};
+    this._loadedPersistedAtMs = null;
+    this._loadedTtlMs = null;
+
+    this.persistence = new FeatureFlagPersistence(
+        this.getConfig(CONFIG_PERSISTENCE),
+        this.getMpConfig('token'),
+        _.bind(function() { return this.getMpConfig('disable_persistence'); }, this)
+    );
+
+    this.persistenceLoadedPromise = this.persistence.loadFlagsFromStorage(this._buildContext())
+        .then(_.bind(function(loaded) {
+            if (loaded) {
+                this.flags = loaded.flags;
+                this.pendingFirstTimeEvents = loaded.pendingFirstTimeEvents;
+                this._loadedPersistedAtMs = loaded.persistedAtMs;
+                this._loadedTtlMs = loaded.ttlMs;
+            }
+        }, this));
+
+    return this.persistenceLoadedPromise
+        .then(_.bind(function() {
+            return this.fetchFlags();
+        }, this))
+        .catch(function() {
+            logger$4.error('Error initializing feature flags');
+        });
+};
+
+FeatureFlagManager.prototype._buildContext = function() {
+    return _.extend(
+        {'distinct_id': this.getMpProperty('distinct_id'), 'device_id': this.getMpProperty('$device_id')},
+        this.getConfig(CONFIG_CONTEXT)
+    );
+};
+
+FeatureFlagManager.prototype.reset = function() {
+    if (!this.persistence) {
+        return Promise.resolve();
+    }
+
+    this.flags = null;
+    this.pendingFirstTimeEvents = {};
+    this.activatedFirstTimeEvents = {};
+    this.trackedFeatures = new Set();
+    this.fetchPromise = null;
+    this._fetchInProgressStartTime = null;
+    this._loadedPersistedAtMs = null;
+    this._loadedTtlMs = null;
+
+    return this.persistence.clear().then(_.bind(function() {
+        return this.fetchFlags();
+    }, this)).catch(function() {
+        logger$4.error('Error during flags reset');
+    });
 };
 
 FeatureFlagManager.prototype.getFullConfig = function() {
@@ -4034,12 +4406,11 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         return Promise.resolve();
     }
 
-    var distinctId = this.getMpProperty('distinct_id');
-    var deviceId = this.getMpProperty('$device_id');
+    var context = this._buildContext();
+    var distinctId = context['distinct_id'];
     var traceparent = generateTraceparent();
     logger$4.log('Fetching flags for distinct ID: ' + distinctId);
 
-    var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
     var searchParams = new URLSearchParams();
     searchParams.set('context', JSON.stringify(context));
     searchParams.set('token', this.getMpConfig('token'));
@@ -4089,7 +4460,8 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                     'value': data['variant_value'],
                     'experiment_id': data['experiment_id'],
                     'is_experiment_active': data['is_experiment_active'],
-                    'is_qa_tester': data['is_qa_tester']
+                    'is_qa_tester': data['is_qa_tester'],
+                    'variant_source': 'network'
                 });
             }
         }, this);
@@ -4131,10 +4503,15 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         }
 
         this.flags = flags;
+        this.trackedFeatures = new Set();
         this.pendingFirstTimeEvents = pendingFirstTimeEvents;
+        this._loadedPersistedAtMs = null;
+        this._loadedTtlMs = null;
         this._traceparent = traceparent;
 
         this._loadTargetingIfNeeded();
+
+        this.persistence.save(context, this.flags, this.pendingFirstTimeEvents);
     }.bind(this)).catch(function(error) {
         if (this._fetchInProgressStartTime) {
             this.markFetchComplete();
@@ -4294,6 +4671,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         };
 
         this.flags.set(flagKey, newVariant);
+        this.trackedFeatures.delete(flagKey);
         this.activatedFirstTimeEvents[eventKey] = true;
 
         this.recordFirstTimeEvent(
@@ -4343,33 +4721,104 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
-    if (!this.fetchPromise) {
+    if (!this.persistenceLoadedPromise) {
         return new Promise(function(resolve) {
             logger$4.critical('Feature Flags not initialized');
-            resolve(fallback);
+            resolve(withFallbackSource(fallback));
         });
     }
 
-    return this.fetchPromise.then(function() {
-        return this.getVariantSync(featureName, fallback);
-    }.bind(this)).catch(function(error) {
-        logger$4.error(error);
-        return fallback;
-    });
+    var policy = this.persistence.getPolicy();
+
+    return this.persistenceLoadedPromise.then(_.bind(function() {
+        // Serve from persistence until the network completes a successful fetch. If a non-expired cached value is available, return it without waiting on the in-flight fetch.
+        if (policy === VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS) {
+            if (this.areFlagsReady() && !this._loadedPersistenceIsStale()) {
+                return this.getVariantSync(featureName, fallback);
+            }
+            if (!this.fetchPromise) {
+                return withFallbackSource(fallback);
+            }
+            return this.fetchPromise.then(_.bind(function() {
+                return this.getVariantSync(featureName, fallback);
+            }, this)).catch(function(error) {
+                logger$4.error(error);
+                return withFallbackSource(fallback);
+            });
+        }
+
+        var serve = _.bind(function() { return this.getVariantSync(featureName, fallback); }, this);
+        if (!this.fetchPromise) {
+            return withFallbackSource(fallback);
+        }
+        return this.fetchPromise.then(serve).catch(serve);
+    }, this));
+};
+
+FeatureFlagManager.prototype._loadedPersistenceIsStale = function() {
+    if (!this._loadedPersistedAtMs || !this._loadedTtlMs) {
+        return false;
+    }
+    return Date.now() - this._loadedPersistedAtMs >= this._loadedTtlMs;
 };
 
 FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
+    if (this._loadedPersistenceIsStale()) {
+        logger$4.log('Loaded persisted variants are past TTL so returning fallback for "' + featureName + '"');
+        return withFallbackSource(fallback);
+    }
     if (!this.areFlagsReady()) {
         logger$4.log('Flags not loaded yet');
-        return fallback;
+        return withFallbackSource(fallback);
     }
     var feature = this.flags.get(featureName);
     if (!feature) {
         logger$4.log('No flag found: "' + featureName + '"');
-        return fallback;
+        return withFallbackSource(fallback);
     }
     this.trackFeatureCheck(featureName, feature);
     return feature;
+};
+
+FeatureFlagManager.prototype.getAllVariants = function() {
+    if (!this.persistenceLoadedPromise) {
+        logger$4.critical('Feature Flags not initialized');
+        return Promise.resolve(new Map());
+    }
+
+    var policy = this.persistence.getPolicy();
+
+    return this.persistenceLoadedPromise.then(_.bind(function() {
+        // Serve from persistence until the network completes a successful fetch. If a non-expired cached value is available, return it without waiting on the in-flight fetch.
+        if (policy === VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS) {
+            if (this.areFlagsReady() && !this._loadedPersistenceIsStale()) {
+                return this.getAllVariantsSync();
+            }
+            if (!this.fetchPromise) {
+                return new Map();
+            }
+            return this.fetchPromise.then(_.bind(function() {
+                return this.getAllVariantsSync();
+            }, this)).catch(function(error) {
+                logger$4.error(error);
+                return new Map();
+            });
+        }
+
+        var serve = _.bind(this.getAllVariantsSync, this);
+        if (!this.fetchPromise) {
+            return new Map();
+        }
+        return this.fetchPromise.then(serve).catch(serve);
+    }, this));
+};
+
+FeatureFlagManager.prototype.getAllVariantsSync = function() {
+    if (this._loadedPersistenceIsStale()) {
+        logger$4.log('Loaded persisted variants are past TTL so returning empty Map');
+        return new Map();
+    }
+    return this.flags || new Map();
 };
 
 FeatureFlagManager.prototype.getVariantValue = function(featureName, fallbackValue) {
@@ -4410,6 +4859,10 @@ FeatureFlagManager.prototype.isEnabledSync = function(featureName, fallbackValue
     return val;
 };
 
+function isPresent(v) {
+    return v !== undefined && v !== null;
+}
+
 FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) {
     if (this.trackedFeatures.has(featureName)) {
         return;
@@ -4420,20 +4873,29 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
         'Experiment name': featureName,
         'Variant name': feature['key'],
         '$experiment_type': 'feature_flag',
-        'Variant fetch start time': new Date(this._fetchStartTime).toISOString(),
-        'Variant fetch complete time': new Date(this._fetchCompleteTime).toISOString(),
+        'Variant fetch start time': isPresent(this._fetchStartTime) ? new Date(this._fetchStartTime).toISOString() : null,
+        'Variant fetch complete time': isPresent(this._fetchCompleteTime) ? new Date(this._fetchCompleteTime).toISOString() : null,
         'Variant fetch latency (ms)': this._fetchLatency,
         'Variant fetch traceparent': this._traceparent,
     };
 
-    if (feature['experiment_id'] !== 'undefined') {
+    if (isPresent(feature['experiment_id'])) {
         trackingProperties['$experiment_id'] = feature['experiment_id'];
     }
-    if (feature['is_experiment_active'] !== 'undefined') {
+    if (isPresent(feature['is_experiment_active'])) {
         trackingProperties['$is_experiment_active'] = feature['is_experiment_active'];
     }
-    if (feature['is_qa_tester'] !== 'undefined') {
+    if (isPresent(feature['is_qa_tester'])) {
         trackingProperties['$is_qa_tester'] = feature['is_qa_tester'];
+    }
+    if (isPresent(feature['variant_source'])) {
+        trackingProperties['$variant_source'] = feature['variant_source'];
+    }
+    if (isPresent(feature['persisted_at_in_ms'])) {
+        trackingProperties['$persisted_at_in_ms'] = feature['persisted_at_in_ms'];
+    }
+    if (isPresent(feature['ttl_in_ms'])) {
+        trackingProperties['$ttl_in_ms'] = feature['ttl_in_ms'];
     }
 
     this.track('$experiment_started', trackingProperties);
@@ -4458,6 +4920,8 @@ safewrapClass(FeatureFlagManager);
 FeatureFlagManager.prototype['are_flags_ready'] = FeatureFlagManager.prototype.areFlagsReady;
 FeatureFlagManager.prototype['get_variant'] = FeatureFlagManager.prototype.getVariant;
 FeatureFlagManager.prototype['get_variant_sync'] = FeatureFlagManager.prototype.getVariantSync;
+FeatureFlagManager.prototype['get_all_variants'] = FeatureFlagManager.prototype.getAllVariants;
+FeatureFlagManager.prototype['get_all_variants_sync'] = FeatureFlagManager.prototype.getAllVariantsSync;
 FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype.getVariantValue;
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;
@@ -4472,131 +4936,14 @@ FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.
 // Exports intended only for testing
 FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getTargeting;
 
-var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
-
+var MIXPANEL_BROWSER_DB_NAME = 'mixpanelBrowserDb';
 var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
 var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
 
-// note: increment the version number when adding new object stores
-var DB_VERSION = 1;
-var OBJECT_STORES = [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME];
-
-/**
- * @type {import('./wrapper').StorageWrapper}
- */
-var IDBStorageWrapper = function (storeName) {
-    /**
-     * @type {Promise<IDBDatabase>|null}
-     */
-    this.dbPromise = null;
-    this.storeName = storeName;
-};
-
-IDBStorageWrapper.prototype._openDb = function () {
-    return new PromisePolyfill(function (resolve, reject) {
-        var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
-        openRequest['onerror'] = function () {
-            reject(openRequest.error);
-        };
-
-        openRequest['onsuccess'] = function () {
-            resolve(openRequest.result);
-        };
-
-        openRequest['onupgradeneeded'] = function (ev) {
-            var db = ev.target.result;
-
-            OBJECT_STORES.forEach(function (storeName) {
-                db.createObjectStore(storeName);
-            });
-        };
-    });
-};
-
-IDBStorageWrapper.prototype.init = function () {
-    if (!win.indexedDB) {
-        return PromisePolyfill.reject('indexedDB is not supported in this browser');
-    }
-
-    if (!this.dbPromise) {
-        this.dbPromise = this._openDb();
-    }
-
-    return this.dbPromise
-        .then(function (dbOrError) {
-            if (dbOrError instanceof win['IDBDatabase']) {
-                return PromisePolyfill.resolve();
-            } else {
-                return PromisePolyfill.reject(dbOrError);
-            }
-        });
-};
-
-IDBStorageWrapper.prototype.isInitialized = function () {
-    return !!this.dbPromise;
-};
-
-/**
- * @param {IDBTransactionMode} mode
- * @param {function(IDBObjectStore): void} storeCb
- */
-IDBStorageWrapper.prototype.makeTransaction = function (mode, storeCb) {
-    var storeName = this.storeName;
-    var doTransaction = function (db) {
-        return new PromisePolyfill(function (resolve, reject) {
-            var transaction = db.transaction(storeName, mode);
-            transaction.oncomplete = function () {
-                resolve(transaction);
-            };
-            transaction.onabort = transaction.onerror = function () {
-                reject(transaction.error);
-            };
-
-            storeCb(transaction.objectStore(storeName));
-        });
-    };
-
-    return this.dbPromise
-        .then(doTransaction)
-        .catch(function (err) {
-            if (err && err['name'] === 'InvalidStateError') {
-                // try reopening the DB if the connection is closed
-                this.dbPromise = this._openDb();
-                return this.dbPromise.then(doTransaction);
-            } else {
-                return PromisePolyfill.reject(err);
-            }
-        }.bind(this));
-};
-
-IDBStorageWrapper.prototype.setItem = function (key, value) {
-    return this.makeTransaction('readwrite', function (objectStore) {
-        objectStore.put(value, key);
-    });
-};
-
-IDBStorageWrapper.prototype.getItem = function (key) {
-    var req;
-    return this.makeTransaction('readonly', function (objectStore) {
-        req = objectStore.get(key);
-    }).then(function () {
-        return req.result;
-    });
-};
-
-IDBStorageWrapper.prototype.removeItem = function (key) {
-    return this.makeTransaction('readwrite', function (objectStore) {
-        objectStore.delete(key);
-    });
-};
-
-IDBStorageWrapper.prototype.getAll = function () {
-    var req;
-    return this.makeTransaction('readonly', function (objectStore) {
-        req = objectStore.getAll();
-    }).then(function () {
-        return req.result;
-    });
+// Keeping these two properties closeby, as adding additional stores to a DB in IndexedDB requires a version increment
+var RECORDER_VERSION_DATA = {
+    version: 1,
+    storeNames: [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME]
 };
 
 /**
@@ -4669,7 +5016,7 @@ RecorderManager.prototype.shouldLoadRecorder = function() {
         return PromisePolyfill.resolve(false);
     }
 
-    var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    var recording_registry_idb = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA);
     var tab_id = this.getTabId();
     return recording_registry_idb.init()
         .then(function () {
@@ -5125,7 +5472,7 @@ var SharedLock = function(key, options) {
     options = options || {};
 
     this.storageKey = key;
-    this.storage = options.storage || win.localStorage;
+    this.storage = options.storage || getLocalStorage();
     this.pollIntervalMS = options.pollIntervalMS || 100;
     this.timeoutMS = options.timeoutMS || 2000;
 
@@ -5253,10 +5600,13 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
  * @type {import('./wrapper').StorageWrapper}
  */
 var LocalStorageWrapper = function (storageOverride) {
-    this.storage = storageOverride || win.localStorage;
+    this.storage = storageOverride || getLocalStorage();
 };
 
 LocalStorageWrapper.prototype.init = function () {
+    if (!this.storage) {
+        return PromisePolyfill.reject(new Error('localStorage is not available'));
+    }
     return PromisePolyfill.resolve();
 };
 
@@ -5323,7 +5673,7 @@ var RequestQueue = function (storageKey, options) {
     if (this.usePersistence) {
         this.queueStorage = options.queueStorage || new LocalStorageWrapper();
         this.lock = new SharedLock(storageKey, {
-            storage: options.sharedLockStorage || win.localStorage,
+            storage: options.sharedLockStorage,
             timeoutMS: options.sharedLockTimeoutMS,
         });
     }
@@ -7788,6 +8138,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         'disable_all_events': false,
         'identify_called': false
     };
+    this._remote_settings_strict_disabled = false;
 
     // set up request queueing/batching
     this.request_batchers = {};
@@ -7862,9 +8213,6 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.flags.init();
     this['flags'] = this.flags;
 
-    this.autocapture = new Autocapture(this);
-    this.autocapture.init();
-
     this._init_tab_id();
 
     // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
@@ -7876,6 +8224,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
     } else {
         this.__session_recording_init_promise = this._check_and_start_session_recording();
     }
+
+    this.autocapture = new Autocapture(this);
+    this.autocapture.init();
 };
 
 /**
@@ -7922,9 +8273,19 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
     return this.recorderManager.checkAndStartSessionRecording(force_start);
 });
 
-MixpanelLib.prototype._start_recording_on_event = function(event_name, properties) {
-    return this.recorderManager.startRecordingOnEvent(event_name, properties);
-};
+MixpanelLib.prototype._start_recording_on_event = safewrap(function(event_name, properties) {
+    // Wait for recording init to complete before evaluating event triggers.
+    // This ensures recording_event_triggers config is fully loaded when remote settings are used.
+    if (this.__session_recording_init_promise) {
+        this.__session_recording_init_promise.then(_.bind(function() {
+            // In strict mode, skip recording if remote settings failed
+            if (this._remote_settings_strict_disabled) {
+                return;
+            }
+            return this.recorderManager.startRecordingOnEvent(event_name, properties);
+        }, this));
+    }
+});
 
 MixpanelLib.prototype.start_session_recording = function () {
     return this._check_and_start_session_recording(true);
@@ -8223,6 +8584,7 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
     var disableRecordingIfStrict = function() {
         if (mode === 'strict') {
             self.set_config({'record_sessions_percent': 0});
+            self._remote_settings_strict_disabled = true;
         }
     };
 
@@ -8848,6 +9210,10 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(proper
         properties
     );
 
+    if (this.is_recording_heatmap_data()) {
+        event_properties['$captured_for_heatmap'] = true;
+    }
+
     return this.track(event_name, event_properties);
 });
 
@@ -9191,6 +9557,7 @@ MixpanelLib.prototype.reset = function() {
         '$device_id': uuid
     }, '');
     this._check_and_start_session_recording();
+    this.flags.reset();
 };
 
 /**

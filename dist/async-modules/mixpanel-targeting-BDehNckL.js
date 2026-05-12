@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.78.0'
+        LIB_VERSION: '2.79.0-rc1'
     };
 
     // Window global names for async modules
@@ -1340,7 +1340,8 @@
         if (_localStorageSupported !== null && !forceCheck) {
             return _localStorageSupported;
         }
-        return _localStorageSupported = _testStorageSupported(storage || win.localStorage);
+
+        return _localStorageSupported = _testStorageSupported(storage);
     };
 
     var _sessionStorageSupported = null;
@@ -1348,7 +1349,8 @@
         if (_sessionStorageSupported !== null && !forceCheck) {
             return _sessionStorageSupported;
         }
-        return _sessionStorageSupported = _testStorageSupported(storage || win.sessionStorage);
+
+        return _sessionStorageSupported = _testStorageSupported(storage);
     };
 
     function _storageWrapper(storage, name, is_supported_fn) {
@@ -1391,17 +1393,26 @@
         };
     }
 
-    // Safari errors out accessing localStorage/sessionStorage when cookies are disabled,
-    // so create dummy storage wrappers that silently fail as a fallback.
-    var windowLocalStorage = null, windowSessionStorage = null;
-    try {
-        windowLocalStorage = win.localStorage;
-        windowSessionStorage = win.sessionStorage;
-        // eslint-disable-next-line no-empty
-    } catch (_err) {}
+    // Safari and other browsers may error out accessing localStorage/sessionStorage
+    // when cookies are disabled, so wrap access in a try-catch.
+    var getLocalStorage = function() {
+        try {
+            return win.localStorage; // eslint-disable-line no-restricted-properties
+        } catch (_err) {
+            return null;
+        }
+    };
 
-    _.localStorage = _storageWrapper(windowLocalStorage, 'localStorage', localStorageSupported);
-    _.sessionStorage = _storageWrapper(windowSessionStorage, 'sessionStorage', sessionStorageSupported);
+    var getSessionStorage = function() {
+        try {
+            return win.sessionStorage; // eslint-disable-line no-restricted-properties
+        } catch (_err) {
+            return null;
+        }
+    };
+
+    _.localStorage = _storageWrapper(getLocalStorage(), 'localStorage', localStorageSupported);
+    _.sessionStorage = _storageWrapper(getSessionStorage(), 'sessionStorage', sessionStorageSupported);
 
     _.register_event = (function() {
         // written by Dean Edwards, 2005

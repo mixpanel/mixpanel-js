@@ -165,8 +165,47 @@ export interface AutocaptureConfig {
   block_element_callback?: (element: Element, event: Event) => boolean;
 }
 
+/**
+ * Network-only variant lookup - no persistence. Default behavior.
+ */
+export interface NetworkOnlyFlagsPolicy {
+  variantLookupPolicy: "networkOnly";
+}
+
+/**
+ * Network-first variant lookup - prioritizes freshness.
+ * Attempts network fetch first, falls back to persisted variants on failure.
+ */
+export interface NetworkFirstFlagsPolicy {
+  variantLookupPolicy: "networkFirst";
+  /**
+   * Time-to-live in milliseconds. Persisted variants older than this are discarded.
+   * Defaults to 24 hours.
+   */
+  persistenceTtlMs?: number;
+}
+
+/**
+ * Serves persisted variants immediately while a network fetch runs in the background.
+ * Once the fetch succeeds, its result replaces the cached variants for the rest of the session.
+ */
+export interface PersistenceUntilNetworkSuccessFlagsPolicy {
+  variantLookupPolicy: "persistenceUntilNetworkSuccess";
+  /**
+   * Time-to-live in milliseconds. Persisted variants older than this are discarded.
+   * Defaults to 24 hours.
+   */
+  persistenceTtlMs?: number;
+}
+
+export type FlagsPersistencePolicy =
+  | NetworkOnlyFlagsPolicy
+  | NetworkFirstFlagsPolicy
+  | PersistenceUntilNetworkSuccessFlagsPolicy;
+
 export interface FlagsConfig {
-  context: Dict;
+  context?: Dict;
+  persistence?: FlagsPersistencePolicy;
 }
 
 export interface BeforeSendHookPayload {
@@ -349,6 +388,8 @@ export interface FlagsVariant {
   experiment_id?: string;
   is_experiment_active?: boolean;
   is_qa_tester?: boolean;
+  variant_source?: string;
+  persisted_at_in_ms?: number;
 }
 
 export interface FlagsUpdateContextOptions {
@@ -365,12 +406,15 @@ export interface FlagsManager {
   get_variant_sync(featureName: string, fallback: FlagsVariant): FlagsVariant;
   get_variant_value(featureName: string, fallbackValue: any): Promise<any>;
   get_variant_value_sync(featureName: string, fallbackValue: any): any;
+  get_all_variants(): Promise<Map<string, FlagsVariant>>;
+  get_all_variants_sync(): Map<string, FlagsVariant>;
   is_enabled(featureName: string, fallbackValue?: boolean): Promise<boolean>;
   is_enabled_sync(featureName: string, fallbackValue?: boolean): boolean;
   update_context(
     context: Dict,
     options?: FlagsUpdateContextOptions
   ): Promise<void>;
+  when_ready(): Promise<void>;
 }
 
 export interface Mixpanel {

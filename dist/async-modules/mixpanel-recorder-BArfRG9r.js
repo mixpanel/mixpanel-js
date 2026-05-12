@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.78.0'
+        LIB_VERSION: '2.79.0-rc1'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -20012,7 +20012,8 @@
         if (_localStorageSupported !== null && !forceCheck) {
             return _localStorageSupported;
         }
-        return _localStorageSupported = _testStorageSupported(storage || win.localStorage);
+
+        return _localStorageSupported = _testStorageSupported(storage);
     };
 
     var _sessionStorageSupported = null;
@@ -20020,7 +20021,8 @@
         if (_sessionStorageSupported !== null && !forceCheck) {
             return _sessionStorageSupported;
         }
-        return _sessionStorageSupported = _testStorageSupported(storage || win.sessionStorage);
+
+        return _sessionStorageSupported = _testStorageSupported(storage);
     };
 
     function _storageWrapper(storage, name, is_supported_fn) {
@@ -20070,17 +20072,26 @@
         };
     }
 
-    // Safari errors out accessing localStorage/sessionStorage when cookies are disabled,
-    // so create dummy storage wrappers that silently fail as a fallback.
-    var windowLocalStorage = null, windowSessionStorage = null;
-    try {
-        windowLocalStorage = win.localStorage;
-        windowSessionStorage = win.sessionStorage;
-        // eslint-disable-next-line no-empty
-    } catch (_err) {}
+    // Safari and other browsers may error out accessing localStorage/sessionStorage
+    // when cookies are disabled, so wrap access in a try-catch.
+    var getLocalStorage = function() {
+        try {
+            return win.localStorage; // eslint-disable-line no-restricted-properties
+        } catch (_err) {
+            return null;
+        }
+    };
 
-    _.localStorage = _storageWrapper(windowLocalStorage, 'localStorage', localStorageSupported);
-    _.sessionStorage = _storageWrapper(windowSessionStorage, 'sessionStorage', sessionStorageSupported);
+    var getSessionStorage = function() {
+        try {
+            return win.sessionStorage; // eslint-disable-line no-restricted-properties
+        } catch (_err) {
+            return null;
+        }
+    };
+
+    _.localStorage = _storageWrapper(getLocalStorage(), 'localStorage', localStorageSupported);
+    _.sessionStorage = _storageWrapper(getSessionStorage(), 'sessionStorage', sessionStorageSupported);
 
     _.register_event = (function() {
         // written by Dean Edwards, 2005
@@ -20735,29 +20746,26 @@
     _['toArray']                = _.toArray;
     _['NPO']                    = NpoPromise;
 
-    var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
-
-    var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
-    var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
-
-    // note: increment the version number when adding new object stores
-    var DB_VERSION = 1;
-    var OBJECT_STORES = [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME];
-
     /**
      * @type {import('./wrapper').StorageWrapper}
      */
-    var IDBStorageWrapper = function (storeName) {
+    var IDBStorageWrapper = function (dbName, storeName, versionData) {
+        this.dbName = dbName;
+        this.storeName = storeName;
+        this.version = versionData.version;
+        this.storeNamesInDb = versionData.storeNames;
         /**
          * @type {Promise<IDBDatabase>|null}
          */
         this.dbPromise = null;
-        this.storeName = storeName;
     };
 
     IDBStorageWrapper.prototype._openDb = function () {
+        var dbName = this.dbName;
+        var version = this.version;
+        var storeNamesInDb = this.storeNamesInDb;
         return new PromisePolyfill(function (resolve, reject) {
-            var openRequest = win.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+            var openRequest = win.indexedDB.open(dbName, version);
             openRequest['onerror'] = function () {
                 reject(openRequest.error);
             };
@@ -20769,8 +20777,10 @@
             openRequest['onupgradeneeded'] = function (ev) {
                 var db = ev.target.result;
 
-                OBJECT_STORES.forEach(function (storeName) {
-                    db.createObjectStore(storeName);
+                storeNamesInDb.forEach(function (storeName) {
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        db.createObjectStore(storeName);
+                    }
                 });
             };
         });
@@ -20860,6 +20870,16 @@
         }).then(function () {
             return req.result;
         });
+    };
+
+    var MIXPANEL_BROWSER_DB_NAME = 'mixpanelBrowserDb';
+    var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
+    var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
+
+    // Keeping these two properties closeby, as adding additional stores to a DB in IndexedDB requires a version increment
+    var RECORDER_VERSION_DATA = {
+        version: 1,
+        storeNames: [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME]
     };
 
     /**
@@ -21056,7 +21076,7 @@
         options = options || {};
 
         this.storageKey = key;
-        this.storage = options.storage || win.localStorage;
+        this.storage = options.storage || getLocalStorage();
         this.pollIntervalMS = options.pollIntervalMS || 100;
         this.timeoutMS = options.timeoutMS || 2000;
 
@@ -21184,10 +21204,13 @@
      * @type {import('./wrapper').StorageWrapper}
      */
     var LocalStorageWrapper = function (storageOverride) {
-        this.storage = storageOverride || win.localStorage;
+        this.storage = storageOverride || getLocalStorage();
     };
 
     LocalStorageWrapper.prototype.init = function () {
+        if (!this.storage) {
+            return PromisePolyfill.reject(new Error('localStorage is not available'));
+        }
         return PromisePolyfill.resolve();
     };
 
@@ -21254,7 +21277,7 @@
         if (this.usePersistence) {
             this.queueStorage = options.queueStorage || new LocalStorageWrapper();
             this.lock = new SharedLock(storageKey, {
-                storage: options.sharedLockStorage || win.localStorage,
+                storage: options.sharedLockStorage,
                 timeoutMS: options.sharedLockTimeoutMS,
             });
         }
@@ -22909,11 +22932,11 @@
 
         // disable persistence if localStorage is not supported
         // request-queue will automatically disable persistence if indexedDB fails to initialize
-        var usePersistence = localStorageSupported(options.sharedLockStorage, true) && !this.getConfig('disable_persistence');
+        var usePersistence = localStorageSupported(options.sharedLockStorage || getLocalStorage(), true) && !this.getConfig('disable_persistence');
 
         // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
         this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
-        this.queueStorage = new IDBStorageWrapper(RECORDING_EVENTS_STORE_NAME);
+        this.queueStorage = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_EVENTS_STORE_NAME, RECORDER_VERSION_DATA);
         this.batcher = new RequestBatcher(this.batcherKey, {
             errorReporter: this.reportError.bind(this),
             flushOnlyOnInterval: true,
@@ -23403,7 +23426,7 @@
      */
     var RecordingRegistry = function (options) {
         /** @type {IDBStorageWrapper} */
-        this.idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+        this.idb = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA);
         this.errorReporter = options.errorReporter;
         this.mixpanelInstance = options.mixpanelInstance;
         this.sharedLockStorage = options.sharedLockStorage;
