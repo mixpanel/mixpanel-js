@@ -27,7 +27,7 @@ if (typeof(window) === 'undefined') {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.79.0-rc1'
+    LIB_VERSION: '2.79.0-rc2'
 };
 
 // Window global names for async modules
@@ -19125,6 +19125,7 @@ var log_func_with_prefix = function(func, prefix) {
 var console_with_prefix = function(prefix) {
     return {
         log: log_func_with_prefix(console$1.log, prefix),
+        warn: log_func_with_prefix(console$1.warn, prefix),
         error: log_func_with_prefix(console$1.error, prefix),
         critical: log_func_with_prefix(console$1.critical, prefix)
     };

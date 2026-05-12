@@ -3,7 +3,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.79.0-rc1'
+        LIB_VERSION: '2.79.0-rc2'
     };
 
     // Window global names for async modules
@@ -11,8 +11,8 @@
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
     // Constants that are injected at build-time for the names of async modules.
-    var RECORDER_FILENAME = 'mixpanel-recorder-BArfRG9r.js';
-    var TARGETING_FILENAME = 'mixpanel-targeting-BDehNckL.js';
+    var RECORDER_FILENAME = 'mixpanel-recorder-bG6by7sJ.js';
+    var TARGETING_FILENAME = 'mixpanel-targeting-DeRpq3qi.js';
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
     var win;
@@ -502,6 +502,7 @@
     var console_with_prefix = function(prefix) {
         return {
             log: log_func_with_prefix(console.log, prefix),
+            warn: log_func_with_prefix(console.warn, prefix),
             error: log_func_with_prefix(console.error, prefix),
             critical: log_func_with_prefix(console.critical, prefix)
         };

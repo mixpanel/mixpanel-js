@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.79.0-rc1'
+        LIB_VERSION: '2.79.0-rc2'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -19089,6 +19089,7 @@
     var console_with_prefix = function(prefix) {
         return {
             log: log_func_with_prefix(console$1.log, prefix),
+            warn: log_func_with_prefix(console$1.warn, prefix),
             error: log_func_with_prefix(console$1.error, prefix),
             critical: log_func_with_prefix(console$1.critical, prefix)
         };
