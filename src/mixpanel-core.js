@@ -1760,6 +1760,7 @@ MixpanelLib.prototype.reset = function() {
         '$device_id': uuid
     }, '');
     this._check_and_start_session_recording();
+    this.flags.reset();
 };
 
 /**

@@ -5,7 +5,12 @@
 import { window } from '../window';
 import { EventType, getRecordConsolePlugin, IncrementalSource } from './rrweb-entrypoint';
 import { MAX_RECORDING_MS, MAX_VALUE_FOR_MIN_RECORDING_MS, console_with_prefix, NOOP_FUNC, _, localStorageSupported, getLocalStorage, canUseCompressionStream, navigator, userAgent, windowOpera} from '../utils'; // eslint-disable-line camelcase
-import { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME } from '../storage/indexed-db';
+import { IDBStorageWrapper } from '../storage/indexed-db';
+import {
+    MIXPANEL_BROWSER_DB_NAME,
+    RECORDING_EVENTS_STORE_NAME,
+    RECORDER_VERSION_DATA
+} from './idb-config';
 import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
@@ -115,7 +120,7 @@ var SessionRecording = function(options) {
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
-    this.queueStorage = new IDBStorageWrapper(RECORDING_EVENTS_STORE_NAME);
+    this.queueStorage = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_EVENTS_STORE_NAME, RECORDER_VERSION_DATA);
     this.batcher = new RequestBatcher(this.batcherKey, {
         errorReporter: this.reportError.bind(this),
         flushOnlyOnInterval: true,

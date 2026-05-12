@@ -1,29 +1,26 @@
 import { Promise } from '../promise-polyfill';
 import { window } from '../window';
 
-var MIXPANEL_DB_NAME = 'mixpanelBrowserDb';
-
-var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
-var RECORDING_REGISTRY_STORE_NAME = 'mixpanelRecordingRegistry';
-
-// note: increment the version number when adding new object stores
-var DB_VERSION = 1;
-var OBJECT_STORES = [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME];
-
 /**
  * @type {import('./wrapper').StorageWrapper}
  */
-var IDBStorageWrapper = function (storeName) {
+var IDBStorageWrapper = function (dbName, storeName, versionData) {
+    this.dbName = dbName;
+    this.storeName = storeName;
+    this.version = versionData.version;
+    this.storeNamesInDb = versionData.storeNames;
     /**
      * @type {Promise<IDBDatabase>|null}
      */
     this.dbPromise = null;
-    this.storeName = storeName;
 };
 
 IDBStorageWrapper.prototype._openDb = function () {
+    var dbName = this.dbName;
+    var version = this.version;
+    var storeNamesInDb = this.storeNamesInDb;
     return new Promise(function (resolve, reject) {
-        var openRequest = window.indexedDB.open(MIXPANEL_DB_NAME, DB_VERSION);
+        var openRequest = window.indexedDB.open(dbName, version);
         openRequest['onerror'] = function () {
             reject(openRequest.error);
         };
@@ -35,8 +32,10 @@ IDBStorageWrapper.prototype._openDb = function () {
         openRequest['onupgradeneeded'] = function (ev) {
             var db = ev.target.result;
 
-            OBJECT_STORES.forEach(function (storeName) {
-                db.createObjectStore(storeName);
+            storeNamesInDb.forEach(function (storeName) {
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName);
+                }
             });
         };
     });
@@ -128,4 +127,6 @@ IDBStorageWrapper.prototype.getAll = function () {
     });
 };
 
-export { IDBStorageWrapper, RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME };
+export {
+    IDBStorageWrapper
+};

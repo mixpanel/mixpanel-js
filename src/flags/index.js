@@ -4,11 +4,13 @@ import { Config, TARGETING_GLOBAL_NAME } from '../config';
 import {
     getTargetingPromise
 } from '../targeting/loader';
+import { FeatureFlagPersistence, VariantLookupPolicy } from './flags-persistence';
 
 var logger = console_with_prefix('flags');
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';
+var CONFIG_PERSISTENCE = 'persistence';
 var CONFIG_DEFAULTS = {};
 CONFIG_DEFAULTS[CONFIG_CONTEXT] = {};
 
@@ -29,6 +31,13 @@ var getPendingEventKey = function(flagKey, firstTimeEventHash) {
  */
 var getFlagKeyFromPendingEventKey = function(eventKey) {
     return eventKey.split(':')[0];
+};
+
+var withFallbackSource = function(fallback) {
+    if (_.isObject(fallback)) {
+        return _.extend({}, fallback, {'variant_source': 'fallback'});
+    }
+    return {'value': fallback, 'variant_source': 'fallback'};
 };
 
 /**
@@ -53,13 +62,63 @@ FeatureFlagManager.prototype.init = function() {
     }
 
     this.flags = null;
-    this.fetchFlags().catch(function() {
-        logger.error('Error fetching flags during init');
-    });
-
     this.trackedFeatures = new Set();
     this.pendingFirstTimeEvents = {};
     this.activatedFirstTimeEvents = {};
+    this._loadedPersistedAtMs = null;
+    this._loadedTtlMs = null;
+
+    this.persistence = new FeatureFlagPersistence(
+        this.getConfig(CONFIG_PERSISTENCE),
+        this.getMpConfig('token'),
+        _.bind(function() { return this.getMpConfig('disable_persistence'); }, this)
+    );
+
+    this.persistenceLoadedPromise = this.persistence.loadFlagsFromStorage(this._buildContext())
+        .then(_.bind(function(loaded) {
+            if (loaded) {
+                this.flags = loaded.flags;
+                this.pendingFirstTimeEvents = loaded.pendingFirstTimeEvents;
+                this._loadedPersistedAtMs = loaded.persistedAtMs;
+                this._loadedTtlMs = loaded.ttlMs;
+            }
+        }, this));
+
+    return this.persistenceLoadedPromise
+        .then(_.bind(function() {
+            return this.fetchFlags();
+        }, this))
+        .catch(function() {
+            logger.error('Error initializing feature flags');
+        });
+};
+
+FeatureFlagManager.prototype._buildContext = function() {
+    return _.extend(
+        {'distinct_id': this.getMpProperty('distinct_id'), 'device_id': this.getMpProperty('$device_id')},
+        this.getConfig(CONFIG_CONTEXT)
+    );
+};
+
+FeatureFlagManager.prototype.reset = function() {
+    if (!this.persistence) {
+        return Promise.resolve();
+    }
+
+    this.flags = null;
+    this.pendingFirstTimeEvents = {};
+    this.activatedFirstTimeEvents = {};
+    this.trackedFeatures = new Set();
+    this.fetchPromise = null;
+    this._fetchInProgressStartTime = null;
+    this._loadedPersistedAtMs = null;
+    this._loadedTtlMs = null;
+
+    return this.persistence.clear().then(_.bind(function() {
+        return this.fetchFlags();
+    }, this)).catch(function() {
+        logger.error('Error during flags reset');
+    });
 };
 
 FeatureFlagManager.prototype.getFullConfig = function() {
@@ -116,12 +175,11 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         return Promise.resolve();
     }
 
-    var distinctId = this.getMpProperty('distinct_id');
-    var deviceId = this.getMpProperty('$device_id');
+    var context = this._buildContext();
+    var distinctId = context['distinct_id'];
     var traceparent = generateTraceparent();
     logger.log('Fetching flags for distinct ID: ' + distinctId);
 
-    var context = _.extend({'distinct_id': distinctId, 'device_id': deviceId}, this.getConfig(CONFIG_CONTEXT));
     var searchParams = new URLSearchParams();
     searchParams.set('context', JSON.stringify(context));
     searchParams.set('token', this.getMpConfig('token'));
@@ -171,7 +229,8 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                     'value': data['variant_value'],
                     'experiment_id': data['experiment_id'],
                     'is_experiment_active': data['is_experiment_active'],
-                    'is_qa_tester': data['is_qa_tester']
+                    'is_qa_tester': data['is_qa_tester'],
+                    'variant_source': 'network'
                 });
             }
         }, this);
@@ -213,10 +272,15 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         }
 
         this.flags = flags;
+        this.trackedFeatures = new Set();
         this.pendingFirstTimeEvents = pendingFirstTimeEvents;
+        this._loadedPersistedAtMs = null;
+        this._loadedTtlMs = null;
         this._traceparent = traceparent;
 
         this._loadTargetingIfNeeded();
+
+        this.persistence.save(context, this.flags, this.pendingFirstTimeEvents);
     }.bind(this)).catch(function(error) {
         if (this._fetchInProgressStartTime) {
             this.markFetchComplete();
@@ -376,6 +440,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         };
 
         this.flags.set(flagKey, newVariant);
+        this.trackedFeatures.delete(flagKey);
         this.activatedFirstTimeEvents[eventKey] = true;
 
         this.recordFirstTimeEvent(
@@ -425,33 +490,104 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
-    if (!this.fetchPromise) {
+    if (!this.persistenceLoadedPromise) {
         return new Promise(function(resolve) {
             logger.critical('Feature Flags not initialized');
-            resolve(fallback);
+            resolve(withFallbackSource(fallback));
         });
     }
 
-    return this.fetchPromise.then(function() {
-        return this.getVariantSync(featureName, fallback);
-    }.bind(this)).catch(function(error) {
-        logger.error(error);
-        return fallback;
-    });
+    var policy = this.persistence.getPolicy();
+
+    return this.persistenceLoadedPromise.then(_.bind(function() {
+        // Serve from persistence until the network completes a successful fetch. If a non-expired cached value is available, return it without waiting on the in-flight fetch.
+        if (policy === VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS) {
+            if (this.areFlagsReady() && !this._loadedPersistenceIsStale()) {
+                return this.getVariantSync(featureName, fallback);
+            }
+            if (!this.fetchPromise) {
+                return withFallbackSource(fallback);
+            }
+            return this.fetchPromise.then(_.bind(function() {
+                return this.getVariantSync(featureName, fallback);
+            }, this)).catch(function(error) {
+                logger.error(error);
+                return withFallbackSource(fallback);
+            });
+        }
+
+        var serve = _.bind(function() { return this.getVariantSync(featureName, fallback); }, this);
+        if (!this.fetchPromise) {
+            return withFallbackSource(fallback);
+        }
+        return this.fetchPromise.then(serve).catch(serve);
+    }, this));
+};
+
+FeatureFlagManager.prototype._loadedPersistenceIsStale = function() {
+    if (!this._loadedPersistedAtMs || !this._loadedTtlMs) {
+        return false;
+    }
+    return Date.now() - this._loadedPersistedAtMs >= this._loadedTtlMs;
 };
 
 FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
+    if (this._loadedPersistenceIsStale()) {
+        logger.log('Loaded persisted variants are past TTL so returning fallback for "' + featureName + '"');
+        return withFallbackSource(fallback);
+    }
     if (!this.areFlagsReady()) {
         logger.log('Flags not loaded yet');
-        return fallback;
+        return withFallbackSource(fallback);
     }
     var feature = this.flags.get(featureName);
     if (!feature) {
         logger.log('No flag found: "' + featureName + '"');
-        return fallback;
+        return withFallbackSource(fallback);
     }
     this.trackFeatureCheck(featureName, feature);
     return feature;
+};
+
+FeatureFlagManager.prototype.getAllVariants = function() {
+    if (!this.persistenceLoadedPromise) {
+        logger.critical('Feature Flags not initialized');
+        return Promise.resolve(new Map());
+    }
+
+    var policy = this.persistence.getPolicy();
+
+    return this.persistenceLoadedPromise.then(_.bind(function() {
+        // Serve from persistence until the network completes a successful fetch. If a non-expired cached value is available, return it without waiting on the in-flight fetch.
+        if (policy === VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS) {
+            if (this.areFlagsReady() && !this._loadedPersistenceIsStale()) {
+                return this.getAllVariantsSync();
+            }
+            if (!this.fetchPromise) {
+                return new Map();
+            }
+            return this.fetchPromise.then(_.bind(function() {
+                return this.getAllVariantsSync();
+            }, this)).catch(function(error) {
+                logger.error(error);
+                return new Map();
+            });
+        }
+
+        var serve = _.bind(this.getAllVariantsSync, this);
+        if (!this.fetchPromise) {
+            return new Map();
+        }
+        return this.fetchPromise.then(serve).catch(serve);
+    }, this));
+};
+
+FeatureFlagManager.prototype.getAllVariantsSync = function() {
+    if (this._loadedPersistenceIsStale()) {
+        logger.log('Loaded persisted variants are past TTL so returning empty Map');
+        return new Map();
+    }
+    return this.flags || new Map();
 };
 
 FeatureFlagManager.prototype.getVariantValue = function(featureName, fallbackValue) {
@@ -492,6 +628,10 @@ FeatureFlagManager.prototype.isEnabledSync = function(featureName, fallbackValue
     return val;
 };
 
+function isPresent(v) {
+    return v !== undefined && v !== null;
+}
+
 FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) {
     if (this.trackedFeatures.has(featureName)) {
         return;
@@ -502,20 +642,29 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
         'Experiment name': featureName,
         'Variant name': feature['key'],
         '$experiment_type': 'feature_flag',
-        'Variant fetch start time': new Date(this._fetchStartTime).toISOString(),
-        'Variant fetch complete time': new Date(this._fetchCompleteTime).toISOString(),
+        'Variant fetch start time': isPresent(this._fetchStartTime) ? new Date(this._fetchStartTime).toISOString() : null,
+        'Variant fetch complete time': isPresent(this._fetchCompleteTime) ? new Date(this._fetchCompleteTime).toISOString() : null,
         'Variant fetch latency (ms)': this._fetchLatency,
         'Variant fetch traceparent': this._traceparent,
     };
 
-    if (feature['experiment_id'] !== 'undefined') {
+    if (isPresent(feature['experiment_id'])) {
         trackingProperties['$experiment_id'] = feature['experiment_id'];
     }
-    if (feature['is_experiment_active'] !== 'undefined') {
+    if (isPresent(feature['is_experiment_active'])) {
         trackingProperties['$is_experiment_active'] = feature['is_experiment_active'];
     }
-    if (feature['is_qa_tester'] !== 'undefined') {
+    if (isPresent(feature['is_qa_tester'])) {
         trackingProperties['$is_qa_tester'] = feature['is_qa_tester'];
+    }
+    if (isPresent(feature['variant_source'])) {
+        trackingProperties['$variant_source'] = feature['variant_source'];
+    }
+    if (isPresent(feature['persisted_at_in_ms'])) {
+        trackingProperties['$persisted_at_in_ms'] = feature['persisted_at_in_ms'];
+    }
+    if (isPresent(feature['ttl_in_ms'])) {
+        trackingProperties['$ttl_in_ms'] = feature['ttl_in_ms'];
     }
 
     this.track('$experiment_started', trackingProperties);
@@ -540,6 +689,8 @@ safewrapClass(FeatureFlagManager);
 FeatureFlagManager.prototype['are_flags_ready'] = FeatureFlagManager.prototype.areFlagsReady;
 FeatureFlagManager.prototype['get_variant'] = FeatureFlagManager.prototype.getVariant;
 FeatureFlagManager.prototype['get_variant_sync'] = FeatureFlagManager.prototype.getVariantSync;
+FeatureFlagManager.prototype['get_all_variants'] = FeatureFlagManager.prototype.getAllVariants;
+FeatureFlagManager.prototype['get_all_variants_sync'] = FeatureFlagManager.prototype.getAllVariantsSync;
 FeatureFlagManager.prototype['get_variant_value'] = FeatureFlagManager.prototype.getVariantValue;
 FeatureFlagManager.prototype['get_variant_value_sync'] = FeatureFlagManager.prototype.getVariantValueSync;
 FeatureFlagManager.prototype['is_enabled'] = FeatureFlagManager.prototype.isEnabled;

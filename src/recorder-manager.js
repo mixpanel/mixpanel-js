@@ -4,7 +4,12 @@ import {RECORDER_FILENAME, TARGETING_FILENAME, RECORDER_GLOBAL_NAME} from './con
 import { _, console, console_with_prefix, safewrap, safewrapClass } from './utils';
 import { window } from './window';
 import { Promise } from './promise-polyfill';
-import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from './storage/indexed-db';
+import { IDBStorageWrapper } from './storage/indexed-db';
+import {
+    MIXPANEL_BROWSER_DB_NAME,
+    RECORDING_REGISTRY_STORE_NAME,
+    RECORDER_VERSION_DATA
+} from './recorder/idb-config';
 import { isRecordingExpired, validateAllowedOrigins } from './recorder/utils';
 import { getTargetingPromise } from './targeting/loader';
 
@@ -43,7 +48,7 @@ RecorderManager.prototype.shouldLoadRecorder = function() {
         return Promise.resolve(false);
     }
 
-    var recording_registry_idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    var recording_registry_idb = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA);
     var tab_id = this.getTabId();
     return recording_registry_idb.init()
         .then(function () {

@@ -1,6 +1,20 @@
 import { IDBFactory, IDBDatabase} from 'fake-indexeddb';
 
 import { window } from '../../../src/window';
+import {
+  MIXPANEL_BROWSER_DB_NAME,
+  RECORDING_EVENTS_STORE_NAME,
+  RECORDING_REGISTRY_STORE_NAME,
+} from '../../../src/recorder/idb-config';
+import { FLAGS_STORE_NAME } from '../../../src/flags/flags-persistence';
+
+const MIXPANEL_FLAGS_DB_NAME = `mixpanelFlagsDb`;
+
+const STORE_TO_DB_NAME = {
+  [RECORDING_EVENTS_STORE_NAME]: MIXPANEL_BROWSER_DB_NAME,
+  [RECORDING_REGISTRY_STORE_NAME]: MIXPANEL_BROWSER_DB_NAME,
+  [FLAGS_STORE_NAME]: MIXPANEL_FLAGS_DB_NAME,
+};
 
 export function setupFakeIDB() {
   beforeEach(function () {
@@ -15,7 +29,7 @@ export function setupFakeIDB() {
 }
 
 export const idbCreateDatabase = (dbName, version, stores) => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const openRequest = window.indexedDB.open(dbName, version);
     openRequest.onsuccess = function () {
       resolve(openRequest.result);
@@ -24,15 +38,25 @@ export const idbCreateDatabase = (dbName, version, stores) => {
     openRequest.onupgradeneeded = function (ev) {
       const db = ev.target.result;
       stores.forEach(function (storeName) {
-        db.createObjectStore(storeName);
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName);
+        }
       });
+    };
+
+    openRequest.onerror = function () {
+      reject(openRequest.error);
     };
   });
 };
 
 export const idbTransaction = (storeName, cb) => {
-  return new Promise((resolve) => {
-    const openRequest = window.indexedDB.open(`mixpanelBrowserDb`, 1);
+  const dbName = STORE_TO_DB_NAME[storeName];
+  if (!dbName) {
+    return Promise.reject(new Error(`Unknown IDB store: ${storeName}`));
+  }
+  return new Promise((resolve, reject) => {
+    const openRequest = window.indexedDB.open(dbName, 1);
     openRequest.onsuccess = function () {
       const db = openRequest.result;
       const transaction = db.transaction([storeName], `readwrite`);
@@ -41,6 +65,18 @@ export const idbTransaction = (storeName, cb) => {
       transaction.oncomplete = function () {
         resolve(req.result);
       };
+      transaction.onerror = function () {
+        reject(transaction.error);
+      };
+    };
+    openRequest.onupgradeneeded = function (ev) {
+      const db = ev.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName);
+      }
+    };
+    openRequest.onerror = function () {
+      reject(openRequest.error);
     };
   });
 };

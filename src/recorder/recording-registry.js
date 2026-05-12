@@ -1,5 +1,10 @@
 import { Promise } from '../promise-polyfill';
-import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from '../storage/indexed-db';
+import { IDBStorageWrapper } from '../storage/indexed-db';
+import {
+    MIXPANEL_BROWSER_DB_NAME,
+    RECORDING_REGISTRY_STORE_NAME,
+    RECORDER_VERSION_DATA
+} from './idb-config';
 import { SessionRecording } from './session-recording';
 import { isRecordingExpired } from './utils';
 
@@ -9,7 +14,7 @@ import { isRecordingExpired } from './utils';
  */
 var RecordingRegistry = function (options) {
     /** @type {IDBStorageWrapper} */
-    this.idb = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    this.idb = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA);
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
     this.sharedLockStorage = options.sharedLockStorage;

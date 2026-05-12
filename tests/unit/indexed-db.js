@@ -2,7 +2,12 @@ import { expect } from 'chai';
 
 import sinon from 'sinon';
 import { window } from '../../src/window';
-import { IDBStorageWrapper, RECORDING_REGISTRY_STORE_NAME } from '../../src/storage/indexed-db';
+import { IDBStorageWrapper } from '../../src/storage/indexed-db';
+import {
+  MIXPANEL_BROWSER_DB_NAME,
+  RECORDING_REGISTRY_STORE_NAME,
+  RECORDER_VERSION_DATA,
+} from '../../src/recorder/idb-config';
 import { setupFakeIDB } from './test-utils/indexed-db';
 
 describe(`IDBStorageWrapper`, function() {
@@ -15,7 +20,7 @@ describe(`IDBStorageWrapper`, function() {
 
   beforeEach( function() {
     // all the stores are key/value for now, so just use one of the stores supported in mixpanelBrowserDb
-    idbWrapper = new IDBStorageWrapper(RECORDING_REGISTRY_STORE_NAME);
+    idbWrapper = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA);
   });
 
   afterEach(function () {

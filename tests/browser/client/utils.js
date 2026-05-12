@@ -1,4 +1,18 @@
 import { TARGETING_GLOBAL_NAME, RECORDER_GLOBAL_NAME } from '../../../src/config';
+import {
+  MIXPANEL_BROWSER_DB_NAME,
+  RECORDING_EVENTS_STORE_NAME,
+  RECORDING_REGISTRY_STORE_NAME,
+} from '../../../src/recorder/idb-config';
+import { FLAGS_STORE_NAME } from '../../../src/flags/flags-persistence';
+
+const MIXPANEL_FLAGS_DB_NAME = `mixpanelFlagsDb`;
+
+const STORE_TO_DB_NAME = {
+  [RECORDING_EVENTS_STORE_NAME]: MIXPANEL_BROWSER_DB_NAME,
+  [RECORDING_REGISTRY_STORE_NAME]: MIXPANEL_BROWSER_DB_NAME,
+  [FLAGS_STORE_NAME]: MIXPANEL_FLAGS_DB_NAME,
+};
 
 const realSetInterval = window.setInterval;
 const realClearInterval = window.clearInterval;
@@ -98,17 +112,11 @@ export async function clearAllLibInstances(mixpanel) {
   await Promise.all(clearPromises);
 }
 
-export async function clearIDB() {
-  console.log(`Clearing IndexedDB...`);
-  if (!window.indexedDB) {
-    console.warn(`IndexedDB is not supported in this browser.`);
-    return;
-  }
-
-  const openRequest = window.indexedDB.open(`mixpanelBrowserDb`, 1);
+function clearOneDb(dbName, stores) {
+  const openRequest = window.indexedDB.open(dbName, 1);
 
   let isFresh = false;
-  await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     openRequest.onsuccess = async function () {
       if (isFresh) {
         resolve();
@@ -149,13 +157,30 @@ export async function clearIDB() {
       }
     };
 
-    openRequest.onupgradeneeded = function () {
-      isFresh = true; // idb doesn't exist yet, the sdk will make it
+    openRequest.onupgradeneeded = function (ev) {
+      isFresh = true; // idb doesn't exist yet (or needs upgrade); pre-create stores so the SDK can use it
+      const db = ev.target.result;
+      stores.forEach(function (storeName) {
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName);
+        }
+      });
       resolve();
     };
 
     openRequest.onerror = reject;
   });
+}
+
+export async function clearIDB() {
+  console.log(`Clearing IndexedDB...`);
+  if (!window.indexedDB) {
+    console.warn(`IndexedDB is not supported in this browser.`);
+    return;
+  }
+
+  await clearOneDb(MIXPANEL_BROWSER_DB_NAME, [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME]);
+  await clearOneDb(MIXPANEL_FLAGS_DB_NAME, [FLAGS_STORE_NAME]);
   console.log(`IndexedDB cleared.`);
 }
 
@@ -228,6 +253,43 @@ export function resetTargeting() {
  */
 export function resetRecorder() {
   resetExternalLibrary(RECORDER_GLOBAL_NAME, `mixpanel-recorder`);
+}
+
+export function getIDBValue(storeName, key) {
+  const dbName = STORE_TO_DB_NAME[storeName];
+  if (!dbName) {
+    return Promise.reject(new Error(`Unknown IDB store: ${storeName}`));
+  }
+  return new Promise(function (resolve, reject) {
+    const openRequest = window.indexedDB.open(dbName, 1);
+    openRequest.onupgradeneeded = function (ev) {
+      const db = ev.target.result;
+      // Pre-create only this store; the SDK creates the rest on its own opens.
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName);
+      }
+    };
+    openRequest.onsuccess = function () {
+      const db = openRequest.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.close();
+        resolve(undefined);
+        return;
+      }
+      const txn = db.transaction([storeName], `readonly`);
+      const req = txn.objectStore(storeName).get(key);
+      req.onsuccess = function () {
+        db.close();
+        resolve(req.result);
+      };
+      req.onerror = function () {
+        db.close();
+        reject(req.error);
+      };
+    };
+    openRequest.onerror = function () { reject(openRequest.error); };
+    openRequest.onblocked = function () { reject(new Error(`getIDBValue open blocked`)); };
+  });
 }
 
 export async function clearAllStorage() {

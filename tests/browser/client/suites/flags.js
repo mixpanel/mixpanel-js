@@ -1,8 +1,9 @@
 /* global chai, sinon */
 
 const { expect } = chai;
-import { clearAllLibInstances, clearAllStorage, untilDone, resetTargeting } from "../utils";
+import { clearAllLibInstances, clearAllStorage, clearMixpanelCookies, getIDBValue, untilDone, untilDoneAsync, resetTargeting } from "../utils";
 import { TARGETING_GLOBAL_NAME } from "../../../../src/config";
+import { FLAGS_STORE_NAME, PERSISTED_VARIANTS_KEY_PREFIX } from "../../../../src/flags/flags-persistence";
 
 export function flagsTests(mixpanel) {
   describe(`feature flags`, function() {
@@ -130,7 +131,7 @@ export function flagsTests(mixpanel) {
                 project_id: 456,
                 first_time_event_hash: `abc123`,
                 event_name: `purchase`,
-                property_filters: { '>': [{'var': 'price'}, 100] },
+                property_filters: { '>': [{'var': `price`}, 100] },
                 pending_variant: {
                   variant_key: `treatment`,
                   variant_value: true
@@ -138,7 +139,7 @@ export function flagsTests(mixpanel) {
               }]
             }), {
               status: 200,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': `application/json` }
             }));
           }
           return new Promise(() => {});
@@ -188,7 +189,7 @@ export function flagsTests(mixpanel) {
                 project_id: 456,
                 first_time_event_hash: `abc123`,
                 event_name: `purchase`,
-                property_filters: { '>': [{'var': 'price'}, 100] },
+                property_filters: { '>': [{'var': `price`}, 100] },
                 pending_variant: {
                   variant_key: `treatment`,
                   variant_value: true
@@ -196,7 +197,7 @@ export function flagsTests(mixpanel) {
               }]
             }), {
               status: 200,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': `application/json` }
             }));
           }
           return new Promise(() => {});
@@ -244,7 +245,7 @@ export function flagsTests(mixpanel) {
                 project_id: 456,
                 first_time_event_hash: `xyz789`,
                 event_name: `page_view`,
-                property_filters: { '==': [{'var': 'country'}, 'US'] },
+                property_filters: { '==': [{'var': `country`}, `US`] },
                 pending_variant: {
                   variant_key: `treatment`,
                   variant_value: `us-version`
@@ -252,7 +253,7 @@ export function flagsTests(mixpanel) {
               }]
             }), {
               status: 200,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': `application/json` }
             }));
           }
           return new Promise(() => {});
@@ -270,7 +271,7 @@ export function flagsTests(mixpanel) {
         await untilDone(() => fetchStub.called, 5000);
 
         // Track matching event with country = 'US'
-        mixpanel.test.track(`page_view`, { country: 'US' });
+        mixpanel.test.track(`page_view`, { country: `US` });
 
         // Wait for flag to switch to treatment variant
         await untilDone(() => mixpanel.test.flags.get_variant_value_sync(`region-feature`) === `us-version`, 5000);
@@ -299,8 +300,8 @@ export function flagsTests(mixpanel) {
                 // AND condition: price > 100 AND country == 'US'
                 property_filters: {
                   'and': [
-                    { '>': [{'var': 'price'}, 100] },
-                    { '==': [{'var': 'country'}, 'US'] }
+                    { '>': [{'var': `price`}, 100] },
+                    { '==': [{'var': `country`}, `US`] }
                   ]
                 },
                 pending_variant: {
@@ -310,7 +311,7 @@ export function flagsTests(mixpanel) {
               }]
             }), {
               status: 200,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': `application/json` }
             }));
           }
           return new Promise(() => {});
@@ -328,7 +329,7 @@ export function flagsTests(mixpanel) {
         await untilDone(() => fetchStub.called, 5000);
 
         // Track event matching both conditions
-        mixpanel.test.track(`checkout`, { price: 150, country: 'US' });
+        mixpanel.test.track(`checkout`, { price: 150, country: `US` });
 
         // Wait for flag to switch to treatment
         await untilDone(() => mixpanel.test.flags.get_variant_value_sync(`complex-feature`) === true, 5000);
@@ -353,7 +354,7 @@ export function flagsTests(mixpanel) {
                   project_id: 456,
                   first_time_event_hash: `hash_a`,
                   event_name: `purchase`,
-                  property_filters: { '>': [{'var': 'price'}, 100] },
+                  property_filters: { '>': [{'var': `price`}, 100] },
                   pending_variant: { variant_key: `treatment`, variant_value: true }
                 },
                 {
@@ -368,7 +369,7 @@ export function flagsTests(mixpanel) {
               ]
             }), {
               status: 200,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': `application/json` }
             }));
           }
           return new Promise(() => {});
@@ -430,7 +431,7 @@ export function flagsTests(mixpanel) {
               }]
             }), {
               status: 200,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': `application/json` }
             }));
           }
           return new Promise(() => {});
@@ -477,7 +478,7 @@ export function flagsTests(mixpanel) {
                 project_id: 456,
                 first_time_event_hash: `auto123`,
                 event_name: `test_event`,
-                property_filters: { '>': [{'var': 'value'}, 50] },
+                property_filters: { '>': [{'var': `value`}, 50] },
                 pending_variant: {
                   variant_key: `treatment`,
                   variant_value: true
@@ -485,7 +486,7 @@ export function flagsTests(mixpanel) {
               }]
             }), {
               status: 200,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': `application/json` }
             }));
           }
           return new Promise(() => {});
@@ -521,6 +522,267 @@ export function flagsTests(mixpanel) {
 
         const flagValue = mixpanel.test.flags.get_variant_value_sync(`auto-load-flag`);
         expect(flagValue).to.equal(true);
+      });
+    });
+
+    // SECTION 3: Variant Persistence
+    describe(`persistence`, function () {
+      const persistedKeyFor = (t) => PERSISTED_VARIANTS_KEY_PREFIX + t;
+
+      // Default fetch handler — never resolves. Tests reassign this for the
+      // primer/test phases to control flag-fetch behavior without recreating the stub.
+      let fetchHandler;
+
+      beforeEach(function () {
+        fetchHandler = function () { return new Promise(function () {}); };
+        sinon.stub(window, `fetch`).callsFake(function (url) {
+          return fetchHandler(url);
+        });
+      });
+
+      afterEach(function () {
+        sinon.restore();
+      });
+
+      // Returns a fetch handler that resolves /flags with the supplied variants
+      // and lets every other URL hang (matching how tests already isolate flag traffic).
+      function flagsFetchHandler(flagVariants) {
+        return function (url) {
+          if (url.includes(`/flags`)) {
+            return Promise.resolve(new Response(JSON.stringify({
+              flags: flagVariants,
+            }), { status: 200, headers: { 'Content-Type': `application/json` } }));
+          }
+          return new Promise(function () {});
+        };
+      }
+
+      // Initialize a named instance and wait for `loaded`.
+      function initInstance(initToken, instanceName, flagsConfig) {
+        return new Promise(function (resolve) {
+          mixpanel.init(initToken, {
+            flags: flagsConfig,
+            debug: true,
+            loaded: resolve,
+          }, instanceName);
+        });
+      }
+
+      // Initialize a "primer" instance with persistenceUntilNetworkSuccess, let its fetch succeed
+      // with the supplied variants, and wait until those variants are written to IDB.
+      // Returns the primer's distinct_id.
+      async function primeCache(primerToken, flagVariants) {
+        fetchHandler = flagsFetchHandler(flagVariants);
+        await initInstance(primerToken, `primer`, { persistence: { variantLookupPolicy: `persistenceUntilNetworkSuccess` } });
+
+        const firstFlagKey = Object.keys(flagVariants)[0];
+        await untilDoneAsync(async function () {
+          const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(primerToken));
+          if (!stored || !stored.flagVariants || !stored.flagVariants[firstFlagKey]) {
+            throw new Error(`not yet`);
+          }
+        }, 5000);
+
+        return mixpanel.primer.get_distinct_id();
+      }
+
+      it(`persists variants on first successful fetch`, async function () {
+        this.timeout(10000);
+        console.log(`[flags-persistence test] Start persistence test`);
+        const fetchCalls = [];
+        const baseHandler = flagsFetchHandler({
+          flagA: { variant_key: `varA`, variant_value: `1` },
+        });
+        fetchHandler = function (url) {
+          fetchCalls.push(url);
+          console.log(`[flags-persistence-test] fetch called:`, url);
+          return baseHandler(url);
+        };
+
+        await initInstance(token, `test`, { persistence: { variantLookupPolicy: `persistenceUntilNetworkSuccess` } });
+        console.log(`[flags-persistence-test] init resolved; distinct_id:`, mixpanel.test.get_distinct_id());
+
+        await new Promise(function (resolve) { setTimeout(resolve, 1000); });
+
+        console.log(`[flags-persistence-test] fetch call count:`, fetchCalls.length, `urls:`, fetchCalls);
+
+        const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+        console.log(`[flags-persistence-test] IDB stored value:`, JSON.stringify(stored));
+
+        expect(stored).to.exist;
+        expect(stored.persistedAt).to.be.a(`number`);
+        expect(stored.distinctId).to.equal(mixpanel.test.get_distinct_id());
+        expect(stored.flagVariants.flagA.variant_key).to.equal(`varA`);
+      });
+
+      it(`persistenceUntilNetworkSuccess serves from cache before any network fetch resolves`, async function () {
+        // Phase 1: prime the cache with a real fetch.
+        const primerDistinctId = await primeCache(token, {
+          flagA: { variant_key: `primed`, variant_value: `primedValue` },
+        });
+
+        // Phase 2: a fresh instance with the same token shares the cookie, so it
+        // reads the same distinct_id and should serve flagA from persistence
+        // even though fetch never resolves.
+        fetchHandler = function () { return new Promise(function () {}); };
+        await initInstance(token, `test`, { persistence: { variantLookupPolicy: `persistenceUntilNetworkSuccess` } });
+        expect(mixpanel.test.get_distinct_id()).to.equal(primerDistinctId);
+
+        await untilDone(function () {
+          const v = mixpanel.test.flags.get_variant_sync(`flagA`, { value: `fallback` });
+          return v && v.key === `primed`;
+        }, 5000);
+
+        const variant = mixpanel.test.flags.get_variant_sync(`flagA`, { value: `fallback` });
+        expect(variant.key).to.equal(`primed`);
+        expect(variant.variant_source).to.equal(`persistence`);
+      });
+
+      it(`networkFirst falls back to cache on fetch failure`, async function () {
+        await primeCache(token, {
+          flagA: { variant_key: `primed`, variant_value: `primedValue` },
+        });
+
+        // Phase 2: networkFirst with a failing fetch should fall back to the primed cache.
+        fetchHandler = function () { return Promise.reject(new Error(`network down`)); };
+        await initInstance(token, `test`, { persistence: { variantLookupPolicy: `networkFirst` } });
+
+        await untilDone(function () {
+          const v = mixpanel.test.flags.get_variant_sync(`flagA`, { value: `fallback` });
+          return v && v.key === `primed`;
+        }, 5000);
+
+        const variant = mixpanel.test.flags.get_variant_sync(`flagA`, { value: `fallback` });
+        expect(variant.key).to.equal(`primed`);
+      });
+
+      it(`clears persisted variants on distinct_id mismatch`, async function () {
+        // Prime the cache with one distinct_id, then init a fresh instance under
+        // the same token but a different distinct_id (forced by clearing cookies
+        // between phases). The load path should detect the mismatch and clear
+        // the cached entry.
+        const primerDistinctId = await primeCache(token, {
+          flagA: { variant_key: `primed`, variant_value: `primedValue` },
+        });
+
+        // Wipe cookies so the next init generates a new distinct_id, while
+        // leaving IDB intact.
+        clearMixpanelCookies();
+
+        fetchHandler = function () { return new Promise(function () {}); };
+        await initInstance(token, `test`, { persistence: { variantLookupPolicy: `persistenceUntilNetworkSuccess` } });
+        expect(mixpanel.test.get_distinct_id()).to.not.equal(primerDistinctId);
+
+        await untilDoneAsync(async function () {
+          const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+          if (stored !== undefined) throw new Error(`not yet`);
+        }, 5000);
+
+        const variant = mixpanel.test.flags.get_variant_sync(`flagA`, { value: `fallback` });
+        expect(variant.value).to.equal(`fallback`);
+
+        const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+        expect(stored).to.be.undefined;
+      });
+
+      it(`does not clear cache when TTL has expired (eviction is lazy)`, async function () {
+        // Backdate Date.now during the primer's fetch so the persisted entry
+        // already looks ~2 minutes old by the time the test instance reads it.
+        const realNow = Date.now();
+        const dateStub = sinon.stub(Date, `now`).returns(realNow - 120000);
+
+        await primeCache(token, {
+          flagA: { variant_key: `primed`, variant_value: `primedValue` },
+        });
+
+        dateStub.restore();
+
+        // Phase 2: TTL of 60s with a hung fetch — load should detect expiry,
+        // skip serving the expired data, but leave the entry in IDB.
+        fetchHandler = function () { return new Promise(function () {}); };
+        await initInstance(token, `test`, {
+          persistence: {
+            variantLookupPolicy: `networkFirst`,
+            persistenceTtlMs: 60000,
+          },
+        });
+
+        // Give the load a moment to evaluate the expiry path.
+        await new Promise(function (resolve) { setTimeout(resolve, 500); });
+
+        const variant = mixpanel.test.flags.get_variant_sync(`flagA`, { value: `fallback` });
+        expect(variant.value).to.equal(`fallback`);
+
+        const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+        expect(stored).to.exist;
+        expect(stored.flagVariants.flagA.variant_key).to.equal(`primed`);
+      });
+
+      it(`networkOnly clears any pre-existing persisted data on init`, async function () {
+        // Phase 1: prime the cache via a caching policy.
+        await primeCache(token, {
+          flagA: { variant_key: `primed`, variant_value: `primedValue` },
+        });
+
+        // Phase 2: a fresh instance with the same token but networkOnly policy
+        // should wipe the cached blob on init.
+        fetchHandler = function () { return new Promise(function () {}); };
+        await initInstance(token, `test`, { persistence: { variantLookupPolicy: `networkOnly` } });
+
+        await untilDoneAsync(async function () {
+          const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+          if (stored !== undefined) throw new Error(`not yet`);
+        }, 5000);
+
+        const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+        expect(stored).to.be.undefined;
+      });
+
+      it(`mixpanel.reset() clears persisted variants and refetches with new distinct_id`, async function () {
+        const flagsRequests = [];
+        fetchHandler = function (url) {
+          if (url.includes(`/flags`)) {
+            flagsRequests.push(url);
+            return Promise.resolve(new Response(JSON.stringify({
+              flags: { flagA: { variant_key: `varA`, variant_value: `1` } },
+            }), { status: 200, headers: { 'Content-Type': `application/json` } }));
+          }
+          return new Promise(function () {});
+        };
+
+        await initInstance(token, `test`, { persistence: { variantLookupPolicy: `persistenceUntilNetworkSuccess` } });
+
+        await untilDoneAsync(async function () {
+          const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+          if (!stored || !stored.flagVariants || !stored.flagVariants.flagA) {
+            throw new Error(`not yet`);
+          }
+        }, 5000);
+
+        const initialDistinctId = mixpanel.test.get_distinct_id();
+        flagsRequests.length = 0;
+
+        mixpanel.test.reset();
+
+        await untilDoneAsync(async function () {
+          if (flagsRequests.length === 0) throw new Error(`no fetch yet`);
+          const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+          if (!stored || stored.distinctId !== mixpanel.test.get_distinct_id() || stored.distinctId === initialDistinctId) {
+            throw new Error(`not yet`);
+          }
+        }, 5000);
+
+        const newDistinctId = mixpanel.test.get_distinct_id();
+        expect(newDistinctId).to.not.equal(initialDistinctId);
+
+        const lastUrl = flagsRequests[flagsRequests.length - 1];
+        const urlObj = new URL(lastUrl);
+        const contextParam = urlObj.searchParams.get(`context`);
+        const context = JSON.parse(decodeURIComponent(contextParam));
+        expect(context.distinct_id).to.equal(newDistinctId);
+
+        const stored = await getIDBValue(FLAGS_STORE_NAME, persistedKeyFor(token));
+        expect(stored.distinctId).to.equal(newDistinctId);
       });
     });
   });
