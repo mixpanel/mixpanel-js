@@ -416,9 +416,6 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this.flags.init();
     this['flags'] = this.flags;
 
-    this.autocapture = new Autocapture(this);
-    this.autocapture.init();
-
     this._init_tab_id();
 
     // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
@@ -430,6 +427,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
     } else {
         this.__session_recording_init_promise = this._check_and_start_session_recording();
     }
+
+    this.autocapture = new Autocapture(this);
+    this.autocapture.init();
 };
 
 /**
@@ -479,13 +479,15 @@ MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpane
 MixpanelLib.prototype._start_recording_on_event = safewrap(function(event_name, properties) {
     // Wait for recording init to complete before evaluating event triggers.
     // This ensures recording_event_triggers config is fully loaded when remote settings are used.
-    this.__session_recording_init_promise.then(_.bind(function() {
-        // In strict mode, skip recording if remote settings failed
-        if (this._remote_settings_strict_disabled) {
-            return;
-        }
-        return this.recorderManager.startRecordingOnEvent(event_name, properties);
-    }, this));
+    if (this.__session_recording_init_promise) {
+        this.__session_recording_init_promise.then(_.bind(function() {
+            // In strict mode, skip recording if remote settings failed
+            if (this._remote_settings_strict_disabled) {
+                return;
+            }
+            return this.recorderManager.startRecordingOnEvent(event_name, properties);
+        }, this));
+    }
 });
 
 MixpanelLib.prototype.start_session_recording = function () {

@@ -45,6 +45,7 @@ export function autocaptureTests(mixpanel) {
           autocapture: { pageview: false },
           record_heatmap_data: false,
           batch_requests: false,
+          lib_base_path: `./static/build/async-modules/`,
           loaded: resolve
         }, `actest`);
       });
@@ -67,6 +68,7 @@ export function autocaptureTests(mixpanel) {
           record_heatmap_data: true,
           record_sessions_percent: 1.0,
           batch_requests: false,
+          lib_base_path: `./static/build/async-modules/`,
           loaded: resolve
         }, `actest`);
       });
@@ -94,6 +96,7 @@ export function autocaptureTests(mixpanel) {
           autocapture: { pageview: 'full-url' },
           record_heatmap_data: false,
           batch_requests: false,
+          lib_base_path: `./static/build/async-modules/`,
           loaded: resolve
         }, `actest`);
       });
@@ -117,6 +120,7 @@ export function autocaptureTests(mixpanel) {
           record_heatmap_data: true,
           record_sessions_percent: 1.0,
           batch_requests: false,
+          lib_base_path: `./static/build/async-modules/`,
           loaded: resolve
         }, `actest`);
       });
@@ -155,6 +159,7 @@ export function autocaptureTests(mixpanel) {
           record_heatmap_data: true,
           record_sessions_percent: 1.0,
           batch_requests: false,
+          lib_base_path: `./static/build/async-modules/`,
           loaded: resolve
         }, `actest`);
       });
@@ -196,6 +201,7 @@ export function autocaptureTests(mixpanel) {
           record_heatmap_data: true,
           record_sessions_percent: 1.0,
           batch_requests: false,
+          lib_base_path: `./static/build/async-modules/`,
           loaded: resolve
         }, `actest`);
       });
@@ -219,6 +225,7 @@ export function autocaptureTests(mixpanel) {
           record_heatmap_data: true,
           record_sessions_percent: 1.0,
           batch_requests: false,
+          lib_base_path: `./static/build/async-modules/`,
           loaded: resolve
         }, `actest`);
       });
