@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.79.0-rc2'
+        LIB_VERSION: '2.79.0'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
