@@ -1,6 +1,6 @@
 **2.79.0** (14 May 2026)
 
-- Adds support feature flag variant persistence: variants can now be cached in IndexedDB with a configurable TTL so flag values stay stable across page loads and remain available before the next fetch completes.
+- Adds support for feature flag variant persistence: variants can now be cached in IndexedDB with a configurable TTL so flag values stay stable across page loads and remain available before the next fetch completes.
 - Enables pageview events for free during session recording when record_heatmap_data is enabled, so heatmaps get accompanying pageview context without separately enabling pageview autocapture.
 - Event-triggered session recordings now wait for remote settings to finish loading (or fail) before deciding whether to start, preventing missed recordings when a triggering event fires during init.
 - Hardens all window.localStorage and window.sessionStorage access with exhaustive try/catch guards, so SDK initialization no longer throws in environments where storage access raises (e.g., strict privacy modes, sandboxed iframes).
