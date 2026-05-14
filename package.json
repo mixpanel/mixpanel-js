@@ -1,6 +1,6 @@
 {
   "name": "mixpanel-browser",
-  "version": "2.78.0",
+  "version": "2.79.0",
   "description": "The official Mixpanel JavaScript browser client library",
   "private": true,
   "workspaces": [
