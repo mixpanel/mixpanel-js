@@ -113,6 +113,7 @@ var SessionRecording = function(options) {
 
     this.recordMaxMs = MAX_RECORDING_MS;
     this.recordMinMs = 0;
+    this._recordMinMsCheckStart = null;
 
     // disable persistence if localStorage is not supported
     // request-queue will automatically disable persistence if indexedDB fails to initialize
@@ -228,6 +229,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         // this also applies if the minimum recording length has not been hit yet
         // so that we don't send data until we know the recording will be long enough
         this.batcher.stop();
+        this._recordMinMsCheckStart = null;
     } else {
         this.batcher.start();
     }
@@ -279,9 +281,11 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                     this._onIdleTimeout();
                     return;
                 }
+                if (this._recordMinMsCheckStart === null) {
+                    this._recordMinMsCheckStart = ev.timestamp;
+                }
                 if (isUserEvent(ev)) {
-                    if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
-                        // start flushing again after user activity
+                    if (this.batcher.stopped && ev.timestamp - this._recordMinMsCheckStart >= this.recordMinMs) {
                         this.batcher.start();
                     }
                     resetIdleTimeout();
