@@ -622,4 +622,79 @@ describe(`SessionRecording`, function() {
       expect(shouldMaskFnStub.calledOnce).to.be.true;
     });
   });
+
+  describe(`record_min_ms`, function() {
+    it(`deserialized recording uses first event timestamp for record_min_ms check, not old replayStartTime`, async function() {
+      const recordMinMs = 5000;
+      const oldReplayStartTime = NOW_MS - 60 * 1000; // 60 seconds ago
+      const customMixpanel = new MockMixpanelLib({'record_min_ms': recordMinMs});
+
+      const deserializedRecording = SessionRecording.deserialize({
+        replayId: `deserialized-replay-id`,
+        seqNo: 0,
+        replayStartTime: oldReplayStartTime,
+        batchStartUrl: `https://example.com/page-a`,
+        replayStartUrl: `https://example.com/page-a`,
+        idleExpires: NOW_MS + 30 * 60 * 1000,
+        maxExpires: NOW_MS + 24 * 60 * 60 * 1000,
+        tabId: `test-tab-id`,
+      }, {
+        mixpanelInstance: customMixpanel,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+
+      deserializedRecording.startRecording();
+      expect(deserializedRecording.batcher.stopped).to.be.true;
+
+      // emit first event to establish the record_min_ms start time
+      clock.tick(1000);
+      mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+      expect(deserializedRecording.batcher.stopped).to.be.true, `batcher should stay stopped before record_min_ms`;
+
+      // emit another user event before record_min_ms elapses from first event
+      clock.tick(3000);
+      mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+      expect(deserializedRecording.batcher.stopped).to.be.true, `batcher should stay stopped before record_min_ms`;
+
+      // advance past record_min_ms from first event and emit another user event
+      clock.tick(3000);
+      mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
+      expect(deserializedRecording.batcher.stopped).to.be.false, `batcher should start after record_min_ms`;
+
+      deserializedRecording.stopRecording();
+    });
+
+    it(`batcher stays stopped until record_min_ms elapses even with non-user events`, async function() {
+      const recordMinMs = 5000;
+      const customMixpanel = new MockMixpanelLib({'record_min_ms': recordMinMs});
+
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `min-ms-test-replay`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+
+      rec.startRecording();
+      expect(rec.batcher.stopped).to.be.true;
+
+      // non-user events should not start the batcher
+      mockRrweb.emit(EventType.Meta);
+      mockRrweb.emit(EventType.FullSnapshot);
+      clock.tick(2000);
+      expect(rec.batcher.stopped).to.be.true;
+
+      // user event before record_min_ms should not start the batcher
+      mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+      expect(rec.batcher.stopped).to.be.true;
+
+      // after record_min_ms, a user event should start the batcher
+      clock.tick(4000);
+      mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
+      expect(rec.batcher.stopped).to.be.false;
+
+      rec.stopRecording();
+    });
+  });
 });
