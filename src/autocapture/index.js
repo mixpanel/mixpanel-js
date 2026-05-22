@@ -292,7 +292,7 @@ Autocapture.prototype._initScrollDepthTracking = function() {
 };
 
 Autocapture.prototype.initClickTracking = function() {
-    window.removeEventListener(EV_CLICK, this.listenerClick);
+    window.removeEventListener(EV_CLICK, this.listenerClick, true);
 
     if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
         return;
@@ -305,7 +305,7 @@ Autocapture.prototype.initClickTracking = function() {
         }
         this.trackDomEvent(ev, MP_EV_CLICK);
     }.bind(this);
-    window.addEventListener(EV_CLICK, this.listenerClick);
+    window.addEventListener(EV_CLICK, this.listenerClick, true);
 };
 
 Autocapture.prototype.initDeadClickTracking = function() {
@@ -340,12 +340,12 @@ Autocapture.prototype.initDeadClickTracking = function() {
             }
             this._deadClickTracker.trackClick(ev, normalizedConfig);
         }.bind(this);
-        window.addEventListener(EV_CLICK, this.listenerDeadClick);
+        window.addEventListener(EV_CLICK, this.listenerDeadClick, true);
     }
 };
 
 Autocapture.prototype.initInputTracking = function() {
-    window.removeEventListener(EV_CHANGE, this.listenerChange);
+    window.removeEventListener(EV_CHANGE, this.listenerChange, true);
 
     if (!this.getConfig(CONFIG_TRACK_INPUT)) {
         return;
@@ -358,7 +358,7 @@ Autocapture.prototype.initInputTracking = function() {
         }
         this.trackDomEvent(ev, MP_EV_INPUT);
     }.bind(this);
-    window.addEventListener(EV_CHANGE, this.listenerChange);
+    window.addEventListener(EV_CHANGE, this.listenerChange, true);
 };
 
 Autocapture.prototype.initPageviewTracking = function() {
@@ -415,7 +415,7 @@ Autocapture.prototype.initPageviewTracking = function() {
 };
 
 Autocapture.prototype.initRageClickTracking = function() {
-    window.removeEventListener(EV_CLICK, this.listenerRageClick);
+    window.removeEventListener(EV_CLICK, this.listenerRageClick, true);
 
     var rageClickConfig = this._getClickTrackingConfig(CONFIG_TRACK_RAGE_CLICK);
     if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
@@ -441,7 +441,7 @@ Autocapture.prototype.initRageClickTracking = function() {
             this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
         }
     }.bind(this);
-    window.addEventListener(EV_CLICK, this.listenerRageClick);
+    window.addEventListener(EV_CLICK, this.listenerRageClick, true);
 };
 
 Autocapture.prototype.initScrollTracking = function() {
@@ -502,7 +502,7 @@ Autocapture.prototype.initScrollTracking = function() {
 };
 
 Autocapture.prototype.initSubmitTracking = function() {
-    window.removeEventListener(EV_SUBMIT, this.listenerSubmit);
+    window.removeEventListener(EV_SUBMIT, this.listenerSubmit, true);
 
     if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
         return;
@@ -515,7 +515,7 @@ Autocapture.prototype.initSubmitTracking = function() {
         }
         this.trackDomEvent(ev, MP_EV_SUBMIT);
     }.bind(this);
-    window.addEventListener(EV_SUBMIT, this.listenerSubmit);
+    window.addEventListener(EV_SUBMIT, this.listenerSubmit, true);
 };
 
 Autocapture.prototype.initPageLeaveTracking = function() {
@@ -571,7 +571,7 @@ Autocapture.prototype.initPageLeaveTracking = function() {
 
 Autocapture.prototype.stopDeadClickTracking = function() {
     if (this.listenerDeadClick) {
-        window.removeEventListener(EV_CLICK, this.listenerDeadClick);
+        window.removeEventListener(EV_CLICK, this.listenerDeadClick, true);
         this.listenerDeadClick = null;
     }
 
