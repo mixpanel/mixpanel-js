@@ -452,8 +452,8 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
 };
 
 FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
-    // Construct URL: {api_host}/flags/{flagId}/first-time-events
-    return this.getFullApiRoute() + '/' + flagId + '/first-time-events';
+    var base = this.getFullApiRoute().replace(/\/$/, '');
+    return base + '/' + flagId + '/first-time-events';
 };
 
 FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, firstTimeEventHash) {
