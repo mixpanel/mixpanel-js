@@ -573,7 +573,8 @@ describe(`FeatureFlagManager`, function () {
         const recordingCall = mockFetch.firstCall;
         const [url, options] = recordingCall.args;
 
-        expect(url).to.include(`flag-123/first-time-events`);
+        expect(url).to.include(`flags/flag-123/first-time-events`);
+        expect(url).to.not.include(`//flag-123`);
         expect(options.method).to.equal(`POST`);
         expect(options.headers[`Content-Type`]).to.equal(`application/json`);
 
