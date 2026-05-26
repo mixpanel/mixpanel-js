@@ -31,7 +31,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.79.0'
+        LIB_VERSION: '2.80.0-rc1'
     };
 
     // Window global names for async modules
@@ -23900,6 +23900,7 @@
 
         this.recordMaxMs = MAX_RECORDING_MS;
         this.recordMinMs = 0;
+        this._recordMinMsCheckStart = null;
 
         // disable persistence if localStorage is not supported
         // request-queue will automatically disable persistence if indexedDB fails to initialize
@@ -24015,6 +24016,7 @@
             // this also applies if the minimum recording length has not been hit yet
             // so that we don't send data until we know the recording will be long enough
             this.batcher.stop();
+            this._recordMinMsCheckStart = null;
         } else {
             this.batcher.start();
         }
@@ -24066,9 +24068,11 @@
                         this._onIdleTimeout();
                         return;
                     }
+                    if (this._recordMinMsCheckStart === null) {
+                        this._recordMinMsCheckStart = ev.timestamp;
+                    }
                     if (isUserEvent(ev)) {
-                        if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
-                            // start flushing again after user activity
+                        if (this.batcher.stopped && ev.timestamp - this._recordMinMsCheckStart >= this.recordMinMs) {
                             this.batcher.start();
                         }
                         resetIdleTimeout();
@@ -25856,7 +25860,7 @@
     };
 
     Autocapture.prototype.initClickTracking = function() {
-        win.removeEventListener(EV_CLICK, this.listenerClick);
+        win.removeEventListener(EV_CLICK, this.listenerClick, true);
 
         if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
             return;
@@ -25869,7 +25873,7 @@
             }
             this.trackDomEvent(ev, MP_EV_CLICK);
         }.bind(this);
-        win.addEventListener(EV_CLICK, this.listenerClick);
+        win.addEventListener(EV_CLICK, this.listenerClick, true);
     };
 
     Autocapture.prototype.initDeadClickTracking = function() {
@@ -25904,12 +25908,12 @@
                 }
                 this._deadClickTracker.trackClick(ev, normalizedConfig);
             }.bind(this);
-            win.addEventListener(EV_CLICK, this.listenerDeadClick);
+            win.addEventListener(EV_CLICK, this.listenerDeadClick, true);
         }
     };
 
     Autocapture.prototype.initInputTracking = function() {
-        win.removeEventListener(EV_CHANGE, this.listenerChange);
+        win.removeEventListener(EV_CHANGE, this.listenerChange, true);
 
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
             return;
@@ -25922,7 +25926,7 @@
             }
             this.trackDomEvent(ev, MP_EV_INPUT);
         }.bind(this);
-        win.addEventListener(EV_CHANGE, this.listenerChange);
+        win.addEventListener(EV_CHANGE, this.listenerChange, true);
     };
 
     Autocapture.prototype.initPageviewTracking = function() {
@@ -25979,7 +25983,7 @@
     };
 
     Autocapture.prototype.initRageClickTracking = function() {
-        win.removeEventListener(EV_CLICK, this.listenerRageClick);
+        win.removeEventListener(EV_CLICK, this.listenerRageClick, true);
 
         var rageClickConfig = this._getClickTrackingConfig(CONFIG_TRACK_RAGE_CLICK);
         if (!rageClickConfig && !this.mp.get_config('record_heatmap_data')) {
@@ -26005,7 +26009,7 @@
                 this.trackDomEvent(ev, MP_EV_RAGE_CLICK);
             }
         }.bind(this);
-        win.addEventListener(EV_CLICK, this.listenerRageClick);
+        win.addEventListener(EV_CLICK, this.listenerRageClick, true);
     };
 
     Autocapture.prototype.initScrollTracking = function() {
@@ -26066,7 +26070,7 @@
     };
 
     Autocapture.prototype.initSubmitTracking = function() {
-        win.removeEventListener(EV_SUBMIT, this.listenerSubmit);
+        win.removeEventListener(EV_SUBMIT, this.listenerSubmit, true);
 
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
             return;
@@ -26079,7 +26083,7 @@
             }
             this.trackDomEvent(ev, MP_EV_SUBMIT);
         }.bind(this);
-        win.addEventListener(EV_SUBMIT, this.listenerSubmit);
+        win.addEventListener(EV_SUBMIT, this.listenerSubmit, true);
     };
 
     Autocapture.prototype.initPageLeaveTracking = function() {
@@ -26135,7 +26139,7 @@
 
     Autocapture.prototype.stopDeadClickTracking = function() {
         if (this.listenerDeadClick) {
-            win.removeEventListener(EV_CLICK, this.listenerDeadClick);
+            win.removeEventListener(EV_CLICK, this.listenerDeadClick, true);
             this.listenerDeadClick = null;
         }
 
@@ -26796,8 +26800,8 @@
     };
 
     FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
-        // Construct URL: {api_host}/flags/{flagId}/first-time-events
-        return this.getFullApiRoute() + '/' + flagId + '/first-time-events';
+        var base = this.getFullApiRoute().replace(/\/$/, '');
+        return base + '/' + flagId + '/first-time-events';
     };
 
     FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, firstTimeEventHash) {

@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.79.0'
+        LIB_VERSION: '2.80.0-rc1'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -22930,6 +22930,7 @@
 
         this.recordMaxMs = MAX_RECORDING_MS;
         this.recordMinMs = 0;
+        this._recordMinMsCheckStart = null;
 
         // disable persistence if localStorage is not supported
         // request-queue will automatically disable persistence if indexedDB fails to initialize
@@ -23045,6 +23046,7 @@
             // this also applies if the minimum recording length has not been hit yet
             // so that we don't send data until we know the recording will be long enough
             this.batcher.stop();
+            this._recordMinMsCheckStart = null;
         } else {
             this.batcher.start();
         }
@@ -23096,9 +23098,11 @@
                         this._onIdleTimeout();
                         return;
                     }
+                    if (this._recordMinMsCheckStart === null) {
+                        this._recordMinMsCheckStart = ev.timestamp;
+                    }
                     if (isUserEvent(ev)) {
-                        if (this.batcher.stopped && new Date().getTime() - this.replayStartTime >= this.recordMinMs) {
-                            // start flushing again after user activity
+                        if (this.batcher.stopped && ev.timestamp - this._recordMinMsCheckStart >= this.recordMinMs) {
                             this.batcher.start();
                         }
                         resetIdleTimeout();
