@@ -94,6 +94,7 @@ export const config = {
         tunnelName: TUNNEL_NAME,
         region: `us`,
         proxyLocalhost: `allow`,
+        apiAddress: `:8032`,
       },
     }],
   ],

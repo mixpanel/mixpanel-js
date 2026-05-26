@@ -14,7 +14,7 @@ export const sharedConfig = {
   runner: `local`,
   region: `us`,
   specs,
-  maxInstances: 10,
+  maxInstances: 1,
   logLevel: `info`,
   bail: 0,
   baseUrl: `http://localhost:${PARENT_PORT}`,
