@@ -1,3 +1,9 @@
+**2.80.0** (28 May 2026)
+
+- Fixes a session recording bug where `record_min_ms` could be bypassed after a page navigation or an idle period, causing short recordings to be uploaded. Elapsed time is now measured from the first rrweb event timestamp rather than wall-clock time, so the minimum-duration check stays accurate across navigations.
+- Fixes a malformed first-time-events request URL that contained a double slash (`//`) before the flag ID. The URL is now built cleanly regardless of whether the base ends in `/`.
+- Registers autocapture click/change/submit listeners in the capture phase, so events are reliably observed even when downstream handlers call `stopPropagation()`.
+
 **2.79.0** (14 May 2026)
 
 - Adds support for feature flag variant persistence: variants can now be cached in IndexedDB with a configurable TTL so flag values stay stable across page loads and remain available before the next fetch completes.
