@@ -281,10 +281,14 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
                     this._onIdleTimeout();
                     return;
                 }
-                if (this._recordMinMsCheckStart === null) {
-                    this._recordMinMsCheckStart = ev.timestamp;
-                }
                 if (isUserEvent(ev)) {
+                    // Measure record_min_ms from the first user event, not the first rrweb event.
+                    // Initial Meta/FullSnapshot/Mutation events fire at page load before any
+                    // interaction, so anchoring on them would let an idle-then-click flush a
+                    // near-empty replay (see MULTI-436).
+                    if (this._recordMinMsCheckStart === null) {
+                        this._recordMinMsCheckStart = ev.timestamp;
+                    }
                     if (this.batcher.stopped && ev.timestamp - this._recordMinMsCheckStart >= this.recordMinMs) {
                         this.batcher.start();
                     }

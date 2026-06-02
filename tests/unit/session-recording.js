@@ -685,12 +685,56 @@ describe(`SessionRecording`, function() {
       clock.tick(2000);
       expect(rec.batcher.stopped).to.be.true;
 
-      // user event before record_min_ms should not start the batcher
+      // user event before record_min_ms (measured from first user event) should not start the batcher
       mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
       expect(rec.batcher.stopped).to.be.true;
 
-      // after record_min_ms, a user event should start the batcher
-      clock.tick(4000);
+      // after record_min_ms has elapsed since the first user event, the next user event starts the batcher
+      clock.tick(recordMinMs);
+      mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
+      expect(rec.batcher.stopped).to.be.false;
+
+      rec.stopRecording();
+    });
+
+    it(`measures record_min_ms from first user event, not first rrweb event`, async function() {
+      // Regression test for MULTI-436: page loads, rrweb emits initial Meta/FullSnapshot,
+      // user is idle past record_min_ms, then clicks once. Previously this immediately
+      // started the batcher and flushed a near-empty replay because the threshold was
+      // measured from the initial snapshot rather than from the first user activity.
+      const recordMinMs = 8000;
+      const customMixpanel = new MockMixpanelLib({'record_min_ms': recordMinMs});
+
+      const rec = new SessionRecording({
+        mixpanelInstance: customMixpanel,
+        replayId: `min-ms-idle-load-replay`,
+        rrwebRecord: mockRrweb.recordStub,
+        sharedLockStorage: localStorage,
+      });
+
+      rec.startRecording();
+      expect(rec.batcher.stopped).to.be.true;
+
+      // initial non-user events at page load (t=0)
+      mockRrweb.emit(EventType.Meta);
+      mockRrweb.emit(EventType.FullSnapshot);
+
+      // user is idle for longer than record_min_ms, then interacts once
+      clock.tick(recordMinMs + 1000);
+      mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
+
+      // batcher must NOT start: there has only been one user event so far,
+      // so the recorded user-activity window is 0ms, well below record_min_ms.
+      expect(rec.batcher.stopped).to.be.true;
+
+      // another user event still inside record_min_ms (measured from the first
+      // user event) must also keep the batcher stopped.
+      clock.tick(recordMinMs - 1);
+      mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
+      expect(rec.batcher.stopped).to.be.true;
+
+      // one more tick crosses record_min_ms from the first user event; batcher starts.
+      clock.tick(2);
       mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseMove);
       expect(rec.batcher.stopped).to.be.false;
 
