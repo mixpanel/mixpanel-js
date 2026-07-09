@@ -283,8 +283,10 @@ export class MixpanelProvider implements Provider {
     // Use get_variant_sync which triggers exposure tracking
     const variant = this.flags.get_variant_sync(flagKey, fallbackVariant);
 
-    // Check if we got our fallback back (flag not found)
-    if (variant === fallbackVariant) {
+    // mixpanel-browser returns a NEW object for fallbacks (see withFallbackSource
+    // in src/flags/index.js), so a reference check against `fallbackVariant` never
+    // matches. Detect the fallback via the `variant_source` marker instead.
+    if (variant.variant_source === 'fallback') {
       return {
         value: defaultValue,
         errorCode: ErrorCode.FLAG_NOT_FOUND,

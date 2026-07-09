@@ -20,7 +20,9 @@ describe('MixpanelProvider', () => {
       load_flags: sinon.stub().resolves(),
       get_variant: sinon.stub().resolves(),
       get_variant_sync: sinon.stub().callsFake((key: string, fallback: any) => {
-        return mockFlags.get(key) || fallback;
+        // Mirror mixpanel-browser's withFallbackSource: return a NEW object
+        // tagged with variant_source: 'fallback' rather than the caller's ref.
+        return mockFlags.get(key) || { ...fallback, variant_source: 'fallback' };
       }),
       get_variant_value: sinon.stub().resolves(),
       get_variant_value_sync: sinon.stub(),
@@ -28,6 +30,8 @@ describe('MixpanelProvider', () => {
       is_enabled_sync: sinon.stub(),
       update_context: sinon.stub().resolves(),
       when_ready: sinon.stub().resolves(),
+      get_all_variants: sinon.stub().resolves(new Map()),
+      get_all_variants_sync: sinon.stub().returns(new Map()),
     };
     mockLogger = {
       debug: sinon.stub(),

@@ -16,7 +16,7 @@
   },
   "peerDependencies": {
     "@openfeature/web-sdk": "^1.0.0",
-    "mixpanel-browser": "^2.78.0"
+    "mixpanel-browser": "^2.79.0"
   },
   "devDependencies": {
     "@openfeature/web-sdk": "1.7.2",
@@ -26,7 +26,7 @@
     "@types/sinon": "17.0.4",
     "@types/sinon-chai": "3.2.12",
     "chai": "4.5.0",
-    "mixpanel-browser": "^2.78.0",
+    "mixpanel-browser": "^2.79.0",
     "mocha": "11.7.6",
     "sinon": "17.0.1",
     "sinon-chai": "3.7.0",
