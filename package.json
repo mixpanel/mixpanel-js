@@ -45,9 +45,6 @@
     "url": "https://github.com/mixpanel/mixpanel-js/issues"
   },
   "homepage": "https://github.com/mixpanel/mixpanel-js",
-  "engines": {
-    "node": ">=20 <26"
-  },
   "devDependencies": {
     "@ampproject/rollup-plugin-closure-compiler": "0.27.0",
     "@rollup/plugin-alias": "5.1.1",
