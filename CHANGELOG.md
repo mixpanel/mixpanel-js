@@ -1,3 +1,8 @@
+**2.81.0** (9 Jul 2026)
+
+- `@mixpanel/openfeature-web-provider`: fixes fallback detection so `FLAG_NOT_FOUND` is reported correctly. The provider previously compared the returned variant against the fallback by reference, but mixpanel-browser wraps fallbacks in a new object, so the check never matched. It now detects fallbacks via the `variant_source` marker.
+- Removes the `engines` field from `package.json` so npm no longer prints an engine warning on newer Node.js versions. CI now runs on current Node.js LTS versions.
+
 **2.80.0** (28 May 2026)
 
 - Fixes a session recording bug where `record_min_ms` could be bypassed after a page navigation or an idle period, causing short recordings to be uploaded. Elapsed time is now measured from the first rrweb event timestamp rather than wall-clock time, so the minimum-duration check stays accurate across navigations.
