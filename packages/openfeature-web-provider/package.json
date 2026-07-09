@@ -27,7 +27,7 @@
     "@types/sinon-chai": "3.2.12",
     "chai": "4.5.0",
     "mixpanel-browser": "^2.78.0",
-    "mocha": "10.8.2",
+    "mocha": "11.7.6",
     "sinon": "17.0.1",
     "sinon-chai": "3.7.0",
     "ts-node": "10.9.2",
