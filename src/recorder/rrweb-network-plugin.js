@@ -487,7 +487,7 @@ function initXhrObserver(cb, win, options) {
  * @param {Required<NetworkRecordOptions>} options
  * @returns {listenerHandler}
  */
-function initFetchObserver(cb, win, options) {
+export function initFetchObserver(cb, win, options) {
     if (!options.initiatorTypes.includes('fetch')) {
         return function() {
             //
@@ -508,7 +508,10 @@ function initFetchObserver(cb, win, options) {
 
             var originalFetchPromise;
             var requestBodyPromise = Promise.resolve(undefined);
-            var responseBodyPromise = Promise.resolve(undefined);
+            var responseBodyResolve;
+            var responseBodyPromise = new Promise(function(resolve) {
+                responseBodyResolve = resolve;
+            });
             try {
                 /** @type {Headers} */
                 var requestHeaders = {};
@@ -541,10 +544,12 @@ function initFetchObserver(cb, win, options) {
                     networkRequest.responseHeaders = responseHeaders;
 
                     if (shouldRecordBody('response', options.recordBodyUrls, req.url)) {
-                        responseBodyPromise = tryReadFetchBody(res)
-                            .then(function(body) {
-                                networkRequest.responseBody = body;
-                            });
+                        tryReadFetchBody(res).then(function(body) {
+                            networkRequest.responseBody = body;
+                            responseBodyResolve();
+                        });
+                    } else {
+                        responseBodyResolve();
                     }
 
                     return res;

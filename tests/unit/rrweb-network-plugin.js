@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { findLast, truncateBody, shouldRecordHeader, shouldRecordBody, patch } from '../../src/recorder/rrweb-network-plugin';
+import { findLast, truncateBody, shouldRecordHeader, shouldRecordBody, patch, initFetchObserver } from '../../src/recorder/rrweb-network-plugin';
 
 describe(`rrweb-network-plugin utils`, function() {
   describe(`findLast`, function() {
@@ -165,6 +165,50 @@ describe(`rrweb-network-plugin utils`, function() {
       const restore = patch(obj, `val`, () => () => {});
       expect(restore).to.be.a(`function`);
       expect(obj.val).to.equal(123);
+    });
+  });
+
+  describe(`initFetchObserver`, function() {
+    it(`populates responseBody before emitting the network event (regression for #607)`, function(done) {
+      const url = `https://example.com/api/data`;
+      const responseText = `{"hello":"world"}`;
+
+      const fakeEntry = {
+        name: url,
+        initiatorType: `fetch`,
+        entryType: `resource`,
+        startTime: 0,
+        responseEnd: 50,
+      };
+
+      const fakeResponse = new Response(responseText, { status: 200 });
+
+      const win = {
+        fetch: function() { return Promise.resolve(fakeResponse); },
+        performance: {
+          now: function() { return 0; },
+          getEntriesByName: function() { return [fakeEntry]; },
+        },
+      };
+
+      const options = {
+        initiatorTypes: [`fetch`],
+        recordHeaders: { request: [], response: [] },
+        recordBodyUrls: { request: [], response: [/example\.com/] },
+        ignoreRequestUrls: [],
+        ignoreRequestFn: function() { return false; },
+      };
+
+      initFetchObserver(function(data) {
+        try {
+          expect(data.requests[0].responseBody).to.equal(responseText);
+          done();
+        } catch (e) {
+          done(e);
+        }
+      }, win, options);
+
+      win.fetch(url);
     });
   });
 });
