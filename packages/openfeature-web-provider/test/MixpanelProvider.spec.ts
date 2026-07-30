@@ -485,4 +485,56 @@ describe('MixpanelProvider', () => {
       expect(mockFlagsManager.get_variant_sync).to.have.been.calledTwice;
     });
   });
+
+  // SDK-79: mixpanel-browser 2.81.0+ stamps a fallback_reason field on
+  // returned fallback variants. The wrapper should map each reason to the
+  // right error code.
+  describe('fallback_reason dispatch', () => {
+    const stub = (reason: string) =>
+      (mockFlagsManager.get_variant_sync as sinon.SinonStub).callsFake(
+        (_key: string, fallback: any) => ({
+          ...fallback,
+          variant_source: 'fallback',
+          fallback_reason: reason,
+        }),
+      );
+
+    it('FLAG_NOT_FOUND maps to FLAG_NOT_FOUND', () => {
+      stub('FLAG_NOT_FOUND');
+      const result = provider.resolveBooleanEvaluation('flag', true, {}, mockLogger);
+      expect(result.value).to.equal(true);
+      expect(result.errorCode).to.equal(ErrorCode.FLAG_NOT_FOUND);
+      expect(result.reason).to.equal('DEFAULT');
+    });
+
+    it('NOT_READY maps to PROVIDER_NOT_READY', () => {
+      stub('NOT_READY');
+      const result = provider.resolveBooleanEvaluation('flag', false, {}, mockLogger);
+      expect(result.value).to.equal(false);
+      expect(result.errorCode).to.equal(ErrorCode.PROVIDER_NOT_READY);
+      expect(result.reason).to.equal('ERROR');
+    });
+
+    it('BACKEND_ERROR maps to GENERAL with an actionable message', () => {
+      stub('BACKEND_ERROR');
+      const result = provider.resolveStringEvaluation('flag', 'default', {}, mockLogger);
+      expect(result.value).to.equal('default');
+      expect(result.errorCode).to.equal(ErrorCode.GENERAL);
+      expect(result.reason).to.equal('ERROR');
+      // Message should point at plausible causes so the developer can triage
+      // without needing to reach for logs.
+      expect(result.errorMessage).to.contain('network');
+      expect(result.errorMessage).to.contain('distinct_id');
+      expect(result.errorMessage).to.contain('flag');
+    });
+
+    it('legacy bare variant_source=fallback (no reason) maps to FLAG_NOT_FOUND', () => {
+      // Older base SDK that doesn't yet emit fallback_reason.
+      (mockFlagsManager.get_variant_sync as sinon.SinonStub).callsFake(
+        (_key: string, fallback: any) => ({ ...fallback, variant_source: 'fallback' }),
+      );
+      const result = provider.resolveBooleanEvaluation('flag', true, {}, mockLogger);
+      expect(result.errorCode).to.equal(ErrorCode.FLAG_NOT_FOUND);
+    });
+  });
 });

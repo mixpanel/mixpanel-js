@@ -1280,7 +1280,7 @@ describe(`FeatureFlagManager`, function () {
       flagManager.reset();
 
       const fallback = { value: `fallback-value` };
-      expect(flagManager.getVariantSync(`deepThoughtAnswerExperiment`, fallback)).to.deep.equal({ value: `fallback-value`, variant_source: `fallback` });
+      expect(flagManager.getVariantSync(`deepThoughtAnswerExperiment`, fallback)).to.deep.equal({ value: `fallback-value`, variant_source: `fallback`, fallback_reason: `NOT_READY` });
     });
 
     it(`triggers a new fetchFlags call`, async function () {
@@ -1431,13 +1431,17 @@ describe(`FeatureFlagManager`, function () {
       expect(variant.key).to.equal(`fortyTwo`);
     });
 
-    it(`with networkOnly, returns fallback on fetch failure`, async function () {
+    it(`with networkOnly, returns BACKEND_ERROR fallback on fetch failure`, async function () {
       mockFetch.rejects(new Error(`Network error`));
       await flagManager.init();
 
       const fallback = { value: `fallback-value` };
-      expect(await flagManager.getVariant(`deepThoughtAnswerExperiment`, fallback)).to.deep.equal({ value: `fallback-value`, variant_source: `fallback` });
+      // Fetch failed with no persistence to fall back on. Distinguish this from
+      // "flags never loaded" (NOT_READY) so the OpenFeature wrapper can map to a
+      // backend/general error rather than a not-ready state.
+      expect(await flagManager.getVariant(`deepThoughtAnswerExperiment`, fallback)).to.deep.equal({ value: `fallback-value`, variant_source: `fallback`, fallback_reason: `BACKEND_ERROR` });
     });
+
 
     it(`with networkFirst, returns the persisted variant on fetch failure`, async function () {
       mockConfig.flags.persistence = { variantLookupPolicy: VariantLookupPolicy.NETWORK_FIRST };
@@ -1510,7 +1514,7 @@ describe(`FeatureFlagManager`, function () {
       const fallback = { value: `fallback` };
       const result = flagManager.getVariantSync(`flagA`, fallback);
 
-      expect(result).to.deep.equal({ value: `fallback`, variant_source: `fallback` });
+      expect(result).to.deep.equal({ value: `fallback`, variant_source: `fallback`, fallback_reason: `NOT_READY` });
       expect(flagManager.flags).to.not.be.null;
       expect(flagManager.flags.has(`flagA`)).to.be.true;
       expect(clearSpy).to.not.have.been.called;
@@ -1548,7 +1552,7 @@ describe(`FeatureFlagManager`, function () {
       const fallback = { value: `fallback` };
       const result = await flagManager.getVariant(`flagA`, fallback);
 
-      expect(result).to.deep.equal({ value: `fallback`, variant_source: `fallback` });
+      expect(result).to.deep.equal({ value: `fallback`, variant_source: `fallback`, fallback_reason: `NOT_READY` });
       expect(flagManager.flags).to.not.be.null;
     });
 
@@ -1616,7 +1620,7 @@ describe(`FeatureFlagManager`, function () {
       rejectFetch(new Error(`Network error`));
       const result = await pendingResult;
 
-      expect(result).to.deep.equal({ value: `fallback`, variant_source: `fallback` });
+      expect(result).to.deep.equal({ value: `fallback`, variant_source: `fallback`, fallback_reason: `BACKEND_ERROR` });
     });
   });
 });
