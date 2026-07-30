@@ -285,7 +285,43 @@ export class MixpanelProvider implements Provider {
 
     // mixpanel-browser returns a NEW object for fallbacks (see withFallbackSource
     // in src/flags/index.js), so a reference check against `fallbackVariant` never
-    // matches. Detect the fallback via the `variant_source` marker instead.
+    // matches. As of mixpanel-browser 2.81.0 the SDK also stamps a NEW
+    // `fallback_reason` field on the returned variant (SDK-79) so we can map
+    // each reason to the spec-correct OpenFeature response. `variant_source`
+    // stays as 'network' | 'persistence' | 'fallback' from 2.80.0 — extending
+    // it would break consumers reading the existing values.
+    const variantWithReason = variant as typeof variant & {
+      fallback_reason?: 'FLAG_NOT_FOUND' | 'NOT_READY' | 'BACKEND_ERROR';
+    };
+    switch (variantWithReason.fallback_reason) {
+      case 'NOT_READY':
+        return {
+          value: defaultValue,
+          errorCode: ErrorCode.PROVIDER_NOT_READY,
+          errorMessage: `Flags not ready for "${flagKey}"`,
+          reason: 'ERROR',
+        };
+      case 'BACKEND_ERROR':
+        return {
+          value: defaultValue,
+          errorCode: ErrorCode.GENERAL,
+          errorMessage:
+            `Backend fetch for "${flagKey}" failed — check network, ` +
+            `distinct_id in evalContext, or server-side flag configuration`,
+          reason: 'ERROR',
+        };
+      case 'FLAG_NOT_FOUND':
+        return {
+          value: defaultValue,
+          errorCode: ErrorCode.FLAG_NOT_FOUND,
+          errorMessage: `Flag "${flagKey}" not found`,
+          reason: 'DEFAULT',
+        };
+    }
+
+    // Legacy path: older base SDK predates fallback_reason and only tags
+    // variant_source = 'fallback'. Map to FLAG_NOT_FOUND so we don't regress
+    // callers on the older base SDK.
     if (variant.variant_source === 'fallback') {
       return {
         value: defaultValue,
