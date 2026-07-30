@@ -382,13 +382,32 @@ export interface Group {
   unset(prop: string, callback?: Callback): void;
 }
 
+/**
+ * Where a variant came from. Coarse-grained — see {@link FlagsFallbackReason}
+ * for the specific reason behind a fallback.
+ */
+export type FlagsVariantSource = 'network' | 'persistence' | 'fallback';
+
+/**
+ * Why the SDK returned the developer fallback. Only meaningful when
+ * `variant_source === 'fallback'`. Matches the constant set used by
+ * mixpanel-php so the OpenFeature wrapper can map each reason to the
+ * spec-correct error code.
+ */
+export type FlagsFallbackReason =
+  | 'FLAG_NOT_FOUND'
+  | 'NOT_READY'
+  | 'BACKEND_ERROR';
+
 export interface FlagsVariant {
   key: string;
   value: any;
   experiment_id?: string;
   is_experiment_active?: boolean;
   is_qa_tester?: boolean;
-  variant_source?: string;
+  variant_source?: FlagsVariantSource;
+  /** Undefined on success; set when `variant_source === 'fallback'`. */
+  fallback_reason?: FlagsFallbackReason;
   persisted_at_in_ms?: number;
 }
 

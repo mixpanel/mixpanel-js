@@ -31,7 +31,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.81.0'
+        LIB_VERSION: '2.82.0-rc1'
     };
 
     // Window global names for async modules
@@ -23661,7 +23661,10 @@
 
                 var originalFetchPromise;
                 var requestBodyPromise = Promise.resolve(undefined);
-                var responseBodyPromise = Promise.resolve(undefined);
+                var responseBodyResolve;
+                var responseBodyPromise = new Promise(function(resolve) {
+                    responseBodyResolve = resolve;
+                });
                 try {
                     /** @type {Headers} */
                     var requestHeaders = {};
@@ -23694,10 +23697,12 @@
                         networkRequest.responseHeaders = responseHeaders;
 
                         if (shouldRecordBody('response', options.recordBodyUrls, req.url)) {
-                            responseBodyPromise = tryReadFetchBody(res)
-                                .then(function(body) {
-                                    networkRequest.responseBody = body;
-                                });
+                            tryReadFetchBody(res).then(function(body) {
+                                networkRequest.responseBody = body;
+                                responseBodyResolve();
+                            });
+                        } else {
+                            responseBodyResolve();
                         }
 
                         return res;
@@ -26381,11 +26386,25 @@
         return eventKey.split(':')[0];
     };
 
-    var withFallbackSource = function(fallback) {
-        if (_.isObject(fallback)) {
-            return _.extend({}, fallback, {'variant_source': 'fallback'});
+    // Fallback reasons surfaced via a NEW `fallback_reason` field on the returned
+    // variant. `variant_source` stays as the coarse 'network' | 'persistence' |
+    // 'fallback' values shipped in 2.80.0 — adding a sibling field rather than
+    // extending the existing one keeps every consumer of the published type
+    // working unchanged. Values match mixpanel-php so the OpenFeature wrapper
+    // dispatch is consistent across SDKs.
+    var FALLBACK_REASON_FLAG_NOT_FOUND = 'FLAG_NOT_FOUND';
+    var FALLBACK_REASON_NOT_READY = 'NOT_READY';
+    var FALLBACK_REASON_BACKEND_ERROR = 'BACKEND_ERROR';
+
+    var withFallbackSource = function(fallback, reason) {
+        var extras = {'variant_source': 'fallback'};
+        if (reason) {
+            extras['fallback_reason'] = reason;
         }
-        return {'value': fallback, 'variant_source': 'fallback'};
+        if (_.isObject(fallback)) {
+            return _.extend({}, fallback, extras);
+        }
+        return _.extend({'value': fallback}, extras);
     };
 
     /**
@@ -26841,7 +26860,7 @@
         if (!this.persistenceLoadedPromise) {
             return new Promise(function(resolve) {
                 logger$1.critical('Feature Flags not initialized');
-                resolve(withFallbackSource(fallback));
+                resolve(withFallbackSource(fallback, FALLBACK_REASON_NOT_READY));
             });
         }
 
@@ -26854,21 +26873,30 @@
                     return this.getVariantSync(featureName, fallback);
                 }
                 if (!this.fetchPromise) {
-                    return withFallbackSource(fallback);
+                    return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
                 }
                 return this.fetchPromise.then(_.bind(function() {
                     return this.getVariantSync(featureName, fallback);
                 }, this)).catch(function(error) {
                     logger$1.error(error);
-                    return withFallbackSource(fallback);
+                    return withFallbackSource(fallback, FALLBACK_REASON_BACKEND_ERROR);
                 });
             }
 
             var serve = _.bind(function() { return this.getVariantSync(featureName, fallback); }, this);
             if (!this.fetchPromise) {
-                return withFallbackSource(fallback);
+                return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
             }
-            return this.fetchPromise.then(serve).catch(serve);
+            return this.fetchPromise.then(serve).catch(_.bind(function(error) {
+                logger$1.error(error);
+                // If the fetch failure still left usable state (e.g. persistence hit under
+                // a different policy config), serve from cache. Otherwise stamp
+                // BACKEND_ERROR so callers can distinguish "backend is down" from
+                // "flags never loaded". Mirrors the PUNS branch above.
+                return this.areFlagsReady()
+                    ? serve()
+                    : withFallbackSource(fallback, FALLBACK_REASON_BACKEND_ERROR);
+            }, this));
         }, this));
     };
 
@@ -26882,16 +26910,16 @@
     FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
         if (this._loadedPersistenceIsStale()) {
             logger$1.log('Loaded persisted variants are past TTL so returning fallback for "' + featureName + '"');
-            return withFallbackSource(fallback);
+            return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
         }
         if (!this.areFlagsReady()) {
             logger$1.log('Flags not loaded yet');
-            return withFallbackSource(fallback);
+            return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
         }
         var feature = this.flags.get(featureName);
         if (!feature) {
             logger$1.log('No flag found: "' + featureName + '"');
-            return withFallbackSource(fallback);
+            return withFallbackSource(fallback, FALLBACK_REASON_FLAG_NOT_FOUND);
         }
         this.trackFeatureCheck(featureName, feature);
         return feature;

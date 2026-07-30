@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.81.0'
+        LIB_VERSION: '2.82.0-rc1'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -22691,7 +22691,10 @@
 
                 var originalFetchPromise;
                 var requestBodyPromise = Promise.resolve(undefined);
-                var responseBodyPromise = Promise.resolve(undefined);
+                var responseBodyResolve;
+                var responseBodyPromise = new Promise(function(resolve) {
+                    responseBodyResolve = resolve;
+                });
                 try {
                     /** @type {Headers} */
                     var requestHeaders = {};
@@ -22724,10 +22727,12 @@
                         networkRequest.responseHeaders = responseHeaders;
 
                         if (shouldRecordBody('response', options.recordBodyUrls, req.url)) {
-                            responseBodyPromise = tryReadFetchBody(res)
-                                .then(function(body) {
-                                    networkRequest.responseBody = body;
-                                });
+                            tryReadFetchBody(res).then(function(body) {
+                                networkRequest.responseBody = body;
+                                responseBodyResolve();
+                            });
+                        } else {
+                            responseBodyResolve();
                         }
 
                         return res;
