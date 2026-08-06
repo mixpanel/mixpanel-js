@@ -504,10 +504,10 @@ The default config is:
     track: 'track/',
     engage: 'engage/',
     groups: 'groups/',
-  }
+  },
 
   // HTTP method for tracking requests
-  api_method: 'POST'
+  api_method: 'POST',
 
   // transport for sending requests ('XHR' or 'sendBeacon')
   // NB: sendBeacon should only be used for scenarios such as
@@ -516,7 +516,7 @@ The default config is:
   // or any way to know the result of the request. Mixpanel
   // tracking via sendBeacon will not support any event-
   // batching or retry mechanisms.
-  api_transport: 'XHR'
+  api_transport: 'XHR',
 
   // request-batching/queueing/retry
   batch_requests: true,
@@ -536,85 +536,85 @@ The default config is:
   // correct cross-subdomain cookies on unusual domains like
   // subdomain.mainsite.avocat.fr; NB this cannot be used to
   // set cookies on a different domain than the current origin
-  cookie_domain: ''
+  cookie_domain: '',
 
   // super properties cookie expiration (in days)
-  cookie_expiration: 365
+  cookie_expiration: 365,
 
   // if true, cookie will be set with SameSite=None; Secure
   // this is only useful in special situations, like embedded
   // 3rd-party iframes that set up a Mixpanel instance
-  cross_site_cookie: false
+  cross_site_cookie: false,
 
   // super properties span subdomains
-  cross_subdomain_cookie: true
+  cross_subdomain_cookie: true,
 
   // debug mode
-  debug: false
+  debug: false,
 
   // if this is true, the mixpanel cookie or localStorage entry
   // will be deleted, and no user persistence will take place
-  disable_persistence: false
+  disable_persistence: false,
 
   // if this is true, Mixpanel will automatically determine
   // City, Region and Country data using the IP address of
-  //the client
-  ip: true
+  // the client
+  ip: true,
 
   // opt users out of tracking by this Mixpanel instance by default
-  opt_out_tracking_by_default: false
+  opt_out_tracking_by_default: false,
 
   // opt users out of browser data storage by this Mixpanel instance by default
-  opt_out_persistence_by_default: false
+  opt_out_persistence_by_default: false,
 
   // persistence mechanism used by opt-in/opt-out methods - cookie
   // or localStorage - falls back to cookie if localStorage is unavailable
-  opt_out_tracking_persistence_type: 'localStorage'
+  opt_out_tracking_persistence_type: 'localStorage',
 
   // customize the name of cookie/localStorage set by opt-in/opt-out methods
-  opt_out_tracking_cookie_prefix: null
+  opt_out_tracking_cookie_prefix: null,
 
   // type of persistent store for super properties (cookie/
   // localStorage) if set to 'localStorage', any existing
   // mixpanel cookie value with the same persistence_name
   // will be transferred to localStorage and deleted
-  persistence: 'cookie'
+  persistence: 'cookie',
 
   // name for super properties persistent store
-  persistence_name: ''
+  persistence_name: '',
 
   // names of properties/superproperties which should never
   // be sent with track() calls
-  property_blacklist: []
+  property_blacklist: [],
 
   // if this is true, mixpanel cookies will be marked as
   // secure, meaning they will only be transmitted over https
-  secure_cookie: false
+  secure_cookie: false,
 
   // disables enriching user profiles with first touch marketing data
-  skip_first_touch_marketing: false
+  skip_first_touch_marketing: false,
 
   // the amount of time track_links will
   // wait for Mixpanel's servers to respond
-  track_links_timeout: 300
+  track_links_timeout: 300,
 
   // adds any UTM parameters and click IDs present on the page to any events fired
-  track_marketing: true
+  track_marketing: true,
 
   // enables automatic page view tracking using default page view events through
   // the track_pageview() method
-  track_pageview: false
+  track_pageview: false,
 
   // if you set upgrade to be true, the library will check for
   // a cookie from our old js library and import super
   // properties from it, then the old cookie is deleted
   // The upgrade config option only works in the initialization,
   // so make sure you set it when you create the library.
-  upgrade: false
+  upgrade: false,
 
   // extra HTTP request headers to set for each API request, in
   // the format {'Header-Name': value}
-  xhr_headers: {}
+  xhr_headers: {},
 
   // whether to ignore or respect the web browser's Do Not Track setting
   ignore_dnt: false
