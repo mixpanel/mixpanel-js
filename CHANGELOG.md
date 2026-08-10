@@ -1,3 +1,8 @@
+**2.82.0** (10 Aug 2026)
+
+- Fixes empty response bodies in session recording network telemetry. Fetch events were emitted before the response body finished being read; they now wait for it. The application's own `fetch()` is not delayed.
+- Adds `fallback_reason` (`FLAG_NOT_FOUND`, `NOT_READY`, or `BACKEND_ERROR`) to feature flag variants when `variant_source` is `'fallback'`. `@mixpanel/openfeature-web-provider` uses it to report the specific cause instead of always reporting `FLAG_NOT_FOUND`.
+
 **2.81.0** (9 Jul 2026)
 
 - `@mixpanel/openfeature-web-provider`: fixes fallback detection so `FLAG_NOT_FOUND` is reported correctly. The provider previously compared the returned variant against the fallback by reference, but mixpanel-browser wraps fallbacks in a new object, so the check never matched. It now detects fallbacks via the `variant_source` marker.
