@@ -328,14 +328,18 @@ _.isElement = function(obj) {
 };
 
 _.encodeDates = function(obj) {
+    // build a copy so the caller's object (and any nested objects) are not mutated
+    var encoded = _.isArray(obj) ? [] : {};
     _.each(obj, function(v, k) {
         if (_.isDate(v)) {
-            obj[k] = _.formatDate(v);
+            encoded[k] = _.formatDate(v);
         } else if (_.isObject(v)) {
-            obj[k] = _.encodeDates(v); // recurse
+            encoded[k] = _.encodeDates(v); // recurse
+        } else {
+            encoded[k] = v;
         }
     });
-    return obj;
+    return encoded;
 };
 
 _.timestamp = function() {
