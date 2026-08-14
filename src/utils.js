@@ -1548,7 +1548,7 @@ _.info = {
             'Firefox iOS': /FxiOS\/(\d+(\.\d+)?)/,
             'Konqueror': /Konqueror:(\d+(\.\d+)?)/,
             'BlackBerry': /BlackBerry (\d+(\.\d+)?)/,
-            'Android Mobile': /android\s(\d+(\.\d+)?)/,
+            'Android Mobile': /Android\s(\d+(\.\d+)?)/,
             'Samsung Internet': /SamsungBrowser\/(\d+(\.\d+)?)/,
             'Internet Explorer': /(rv:|MSIE )(\d+(\.\d+)?)/,
             'Mozilla': /rv:(\d+(\.\d+)?)/,
