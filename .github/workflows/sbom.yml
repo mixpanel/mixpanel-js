@@ -1,0 +1,44 @@
+name: SBOM
+
+# Generate a CycloneDX SBOM for the published (production) dependency tree and
+# attach it to the GitHub Release. Forward-only: fires on newly published
+# releases; past releases are not backfilled.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write  # upload the SBOM as a release asset
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate CycloneDX SBOM (production deps only)
+        env:
+          SBOM_FILE: mixpanel-browser-${{ github.event.release.tag_name }}.cdx.json
+        # --yes overrides the repo .npmrc (yes=false) for this pinned, exact-version
+        # tool invocation only. --omit dev matches what consumers install; --validate
+        # fails the job if the output is not schema-valid CycloneDX.
+        run: |
+          npx --yes --package @cyclonedx/cyclonedx-npm@6.0.1 cyclonedx-npm \
+            --omit dev \
+            --mc-type library \
+            --validate \
+            --output-format JSON \
+            --output-file "$SBOM_FILE"
+
+      - name: Attach SBOM to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SBOM_FILE: mixpanel-browser-${{ github.event.release.tag_name }}.cdx.json
+        run: gh release upload "${{ github.event.release.tag_name }}" "$SBOM_FILE" --clobber
