@@ -47,6 +47,7 @@
   "homepage": "https://github.com/mixpanel/mixpanel-js",
   "devDependencies": {
     "@ampproject/rollup-plugin-closure-compiler": "0.27.0",
+    "@cyclonedx/cyclonedx-npm": "6.0.1",
     "@rollup/plugin-alias": "5.1.1",
     "@rollup/plugin-commonjs": "28.0.3",
     "@rollup/plugin-node-resolve": "15.2.3",

@@ -26,11 +26,12 @@ jobs:
       - name: Generate CycloneDX SBOM (production deps only)
         env:
           SBOM_FILE: mixpanel-browser-${{ github.event.release.tag_name }}.cdx.json
-        # --yes overrides the repo .npmrc (yes=false) for this pinned, exact-version
-        # tool invocation only. --omit dev matches what consumers install; --validate
-        # fails the job if the output is not schema-valid CycloneDX.
+        # cyclonedx-npm is pinned in devDependencies and installed by `npm ci` above,
+        # so it runs from node_modules with no network fetch (respects .npmrc yes=false).
+        # --omit dev matches what consumers install; --validate fails the job if the
+        # SBOM is not schema-valid CycloneDX.
         run: |
-          npx --yes --package @cyclonedx/cyclonedx-npm@6.0.1 cyclonedx-npm \
+          npx cyclonedx-npm \
             --omit dev \
             --mc-type library \
             --validate \
