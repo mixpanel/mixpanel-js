@@ -1,14 +1,22 @@
 name: SBOM
 
 # Generate a CycloneDX SBOM for the published (production) dependency tree and
-# attach it to the GitHub Release. Forward-only: fires on newly published
-# releases; past releases are not backfilled.
+# attach it to a DRAFT GitHub Release for the pushed tag. The release maintainer
+# reviews and publishes the draft, which finalizes it as an immutable, attested
+# release with the SBOM already included.
+#
+# Why a draft instead of upload-on-publish: with Immutable Releases enabled, a
+# release's asset list is frozen at publish time, so an asset cannot be added
+# after `release: published` (GitHub returns HTTP 422). Attaching the SBOM while
+# the release is still a draft is the only way to include it. The manual
+# `npm publish` + 2FA flow is unaffected — this only touches the GitHub Release.
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
 
 permissions:
-  contents: write  # upload the SBOM as a release asset
+  contents: write  # create the draft release + attach the SBOM asset
 
 jobs:
   sbom:
@@ -25,11 +33,10 @@ jobs:
 
       - name: Generate CycloneDX SBOM (production deps only)
         env:
-          SBOM_FILE: mixpanel-browser-${{ github.event.release.tag_name }}.cdx.json
-        # cyclonedx-npm is pinned in devDependencies and installed by `npm ci` above,
-        # so it runs from node_modules with no network fetch (respects .npmrc yes=false).
-        # --omit dev matches what consumers install; --validate fails the job if the
-        # SBOM is not schema-valid CycloneDX.
+          SBOM_FILE: mixpanel-browser-${{ github.ref_name }}.cdx.json
+        # cyclonedx-npm is pinned in devDependencies and installed by `npm ci`.
+        # --omit dev matches what consumers install; --validate fails the job if
+        # the SBOM is not schema-valid CycloneDX.
         run: |
           npx cyclonedx-npm \
             --omit dev \
@@ -38,8 +45,20 @@ jobs:
             --output-format JSON \
             --output-file "$SBOM_FILE"
 
-      - name: Attach SBOM to the release
+      - name: Attach SBOM to a draft release for the tag
         env:
           GH_TOKEN: ${{ github.token }}
-          SBOM_FILE: mixpanel-browser-${{ github.event.release.tag_name }}.cdx.json
-        run: gh release upload "${{ github.event.release.tag_name }}" "$SBOM_FILE" --clobber
+          SBOM_FILE: mixpanel-browser-${{ github.ref_name }}.cdx.json
+        # Create a DRAFT release (or reuse an existing draft) and attach the SBOM
+        # while the release is still mutable. The maintainer publishes the draft
+        # manually, which finalizes the immutable + attested release with the SBOM
+        # already included.
+        run: |
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            gh release upload "${{ github.ref_name }}" "$SBOM_FILE" --clobber
+          else
+            gh release create "${{ github.ref_name }}" "$SBOM_FILE" \
+              --draft \
+              --title "${{ github.ref_name }}" \
+              --generate-notes
+          fi
