@@ -1,15 +1,23 @@
 # .github/dependabot.yml
 version: 2
 updates:
-  - package-ecosystem: "npm" # Or "yarn"
-    directory: "/" # Tells Dependabot to scan root directory only
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
       interval: "daily"
     cooldown:
       default-days: 30
+    # Only open version-update PRs for production (runtime) dependencies.
+    # Development-scoped deps are intentionally out of scope: they are not
+    # distributed to consumers, and their alerts are auto-dismissed via the
+    # scope:development Dependabot rule. This keeps both surfaces consistent.
+    allow:
+      - dependency-type: "production"
+    open-pull-requests-limit: 5
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     cooldown:
       default-days: 30
+    open-pull-requests-limit: 5
