@@ -91,7 +91,7 @@
   "dependencies": {
     "@mixpanel/rrweb": "2.0.0-alpha.18.4",
     "@mixpanel/rrweb-plugin-console-record": "2.0.0-alpha.18.4",
-    "@mixpanel/rrweb-utils": "2.0.0-alpha.18.4",
+    "@mixpanel/rrweb-utils": "2.0.0-alpha.18.5",
     "json-logic-js": "2.0.5",
     "@types/json-logic-js": "2.0.5"
   }
