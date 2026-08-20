@@ -13,6 +13,7 @@
     "build-watch:full": "FULL=1 npx rollup -c rollup.config.mjs -w",
     "build-dist": "DIST=1 ./build.sh",
     "build-full": "FULL=1 ./build.sh",
+    "sbom": "cyclonedx-npm --omit dev --mc-type library --validate --output-format JSON --output-file mixpanel-browser-$npm_package_version.cdx.json",
     "build-test-polyfill": "webpack tests/vendor/core-js-polyfills.src.js  tests/vendor/core-js-polyfills.js",
     "build-browser-tests": "npx rollup -c tests/browser/client/rollup.config.mjs -w",
     "dox": "node doc/build-docs.js",

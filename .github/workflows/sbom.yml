@@ -1,64 +1,35 @@
 name: SBOM
 
-# Generate a CycloneDX SBOM for the published (production) dependency tree and
-# attach it to a DRAFT GitHub Release for the pushed tag. The release maintainer
-# reviews and publishes the draft, which finalizes it as an immutable, attested
-# release with the SBOM already included.
+# The CycloneDX SBOM is generated and attached to the release AT CREATION time
+# (see the `sbom` script in package.json and the release process). It cannot be
+# attached after publish: Immutable Releases freeze a release's asset list, so a
+# post-publish `gh release upload` returns HTTP 422. This workflow therefore does
+# NOT attach anything — it only VERIFIES that a published release carries its SBOM,
+# and warns if it doesn't.
 #
-# Why a draft instead of upload-on-publish: with Immutable Releases enabled, a
-# release's asset list is frozen at publish time, so an asset cannot be added
-# after `release: published` (GitHub returns HTTP 422). Attaching the SBOM while
-# the release is still a draft is the only way to include it. The manual
-# `npm publish` + 2FA flow is unaffected — this only touches the GitHub Release.
+# Release step (in the release tooling): after `npm ci`, run
+#   npm run sbom
+# then include the generated `mixpanel-browser-<version>.cdx.json` as an asset when
+# the release is CREATED, e.g. `gh release create <tag> ... mixpanel-browser-*.cdx.json`.
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 permissions:
-  contents: write  # create the draft release + attach the SBOM asset
+  contents: read
 
 jobs:
-  sbom:
+  verify-sbom:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - name: Use Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
-        with:
-          node-version: 22.x
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate CycloneDX SBOM (production deps only)
-        env:
-          SBOM_FILE: mixpanel-browser-${{ github.ref_name }}.cdx.json
-        # cyclonedx-npm is pinned in devDependencies and installed by `npm ci`.
-        # --omit dev matches what consumers install; --validate fails the job if
-        # the SBOM is not schema-valid CycloneDX.
-        run: |
-          npx cyclonedx-npm \
-            --omit dev \
-            --mc-type library \
-            --validate \
-            --output-format JSON \
-            --output-file "$SBOM_FILE"
-
-      - name: Attach SBOM to a draft release for the tag
+      - name: Verify the release has a CycloneDX SBOM asset
         env:
           GH_TOKEN: ${{ github.token }}
-          SBOM_FILE: mixpanel-browser-${{ github.ref_name }}.cdx.json
-        # Create a DRAFT release (or reuse an existing draft) and attach the SBOM
-        # while the release is still mutable. The maintainer publishes the draft
-        # manually, which finalizes the immutable + attested release with the SBOM
-        # already included.
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
-            gh release upload "${{ github.ref_name }}" "$SBOM_FILE" --clobber
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+               --jq '.assets[].name' | grep -q '\.cdx\.json$'; then
+            echo "✅ SBOM asset present on release $TAG."
           else
-            gh release create "${{ github.ref_name }}" "$SBOM_FILE" \
-              --draft \
-              --title "${{ github.ref_name }}" \
-              --generate-notes
+            echo "::warning title=SBOM missing::No CycloneDX SBOM (*.cdx.json) is attached to release $TAG. Generate it with 'npm run sbom' and attach it when the release is CREATED — assets cannot be added after publish (immutable releases)."
           fi
