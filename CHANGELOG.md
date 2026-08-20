@@ -1,3 +1,8 @@
+**2.82.1** (19 Aug 2026)
+
+- Publishes a CycloneDX Software Bill of Materials (SBOM) as a release asset.
+- Bumps the transitive `postcss` and `nanoid` dependencies to patched versions. The published bundle is unchanged — a fresh install already resolved to the patched versions.
+
 **2.82.0** (10 Aug 2026)
 
 - Fixes empty response bodies in session recording network telemetry. Fetch events were emitted before the response body finished being read; they now wait for it. The application's own `fetch()` is not delayed.
