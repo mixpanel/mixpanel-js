@@ -199,6 +199,12 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     searchParams.set('token', this.getMpConfig('token'));
     searchParams.set('mp_lib', 'web');
     searchParams.set('$lib_version', Config.LIB_VERSION);
+    var extraParams = this.getMpConfig('api_extra_query_params');
+    if (_.isObject(extraParams)) {
+        _.each(extraParams, function(value, key) {
+            searchParams.set(key, value);
+        });
+    }
     var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
     this._fetchInProgressStartTime = Date.now();
@@ -478,6 +484,12 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
     var searchParams = new URLSearchParams();
     searchParams.set('mp_lib', 'web');
     searchParams.set('$lib_version', Config.LIB_VERSION);
+    var extraParams = this.getMpConfig('api_extra_query_params');
+    if (_.isObject(extraParams)) {
+        _.each(extraParams, function(value, key) {
+            searchParams.set(key, value);
+        });
+    }
     var url = this.getFirstTimeEventApiRoute(flagId) + '?' + searchParams.toString();
 
     var payload = {
