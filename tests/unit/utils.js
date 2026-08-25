@@ -44,6 +44,35 @@ describe(`extract_domain`, function() {
   });
 });
 
+describe(`_.trim`, function() {
+  it(`strips leading and trailing ASCII whitespace`, function() {
+    expect(_.trim(`  hello  `)).to.equal(`hello`);
+    expect(_.trim(`\t\n hi \r\n`)).to.equal(`hi`);
+  });
+
+  it(`preserves interior whitespace`, function() {
+    expect(_.trim(`  a b  c  `)).to.equal(`a b  c`);
+  });
+
+  it(`strips non-breaking space (\\xA0) and BOM (\\uFEFF), matching the former regex`, function() {
+    expect(_.trim(`\uFEFF\xA0text\xA0\uFEFF`)).to.equal(`text`);
+  });
+
+  it(`returns an empty string for all-whitespace input`, function() {
+    expect(_.trim(`\t \uFEFF\xA0 \n`)).to.equal(``);
+  });
+
+  it(`runs in linear time on adversarial whitespace (no polynomial ReDoS)`, function() {
+    // The former anchored-alternation regex backtracked on long runs of \t
+    // followed by a non-space (CodeQL js/polynomial-redos). Guard against a
+    // regression to a super-linear implementation.
+    var input = new Array(200001).join(`\t`) + `x`;
+    var start = Date.now();
+    expect(_.trim(input)).to.equal(`x`);
+    expect(Date.now() - start).to.be.lessThan(1000);
+  });
+});
+
 describe(`_.info helper methods`, function() {
   beforeEach(resetTestingState);
   afterEach(resetTestingState);

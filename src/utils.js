@@ -35,8 +35,11 @@ var nativeBind = FuncProto.bind,
 
 var _ = {
     trim: function(str) {
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
-        return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
+        // Native String.prototype.trim strips the same set as the former regex
+        // (ECMAScript WhiteSpace + LineTerminator, which includes NBSP \xA0 and
+        // BOM \uFEFF) in linear time, avoiding the polynomial backtracking of an
+        // anchored alternation regex (CodeQL js/polynomial-redos).
+        return str.trim();
     }
 };
 
