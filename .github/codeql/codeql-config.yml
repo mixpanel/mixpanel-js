@@ -1,0 +1,28 @@
+name: "mixpanel-js CodeQL config"
+
+# Scope CodeQL to first-party runtime source.
+#
+# Generated build output (dist/, build/), sample code (examples/), tests, and
+# build/dev tooling are excluded. This matches the accepted-risk scope in the
+# org security policy (mixpanel/.github SECURITY.md): dev/build dependencies,
+# sample/example code, and repo-lockfile scan findings are out of scope, and the
+# SBOM is the basis for supply-chain assessment.
+#
+# dist/ is generated from src/ at release time and vendors third-party code
+# (e.g. @mixpanel/rrweb). Scanning it duplicated every source finding across 6+
+# bundle variants and surfaced third-party issues we do not hand-edit in the
+# generated output. First-party issues are fixed at their source in src/;
+# third-party issues in the shipped bundle are tracked via the SBOM + VEX.
+
+paths-ignore:
+  - dist
+  - build
+  - examples
+  - doc
+  - vendor
+  - tests
+  - packages/*/test
+  - testServer.js
+  - rollup.config.mjs
+  - build.sh
+  - "**/*.min.js"
