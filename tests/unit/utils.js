@@ -44,6 +44,34 @@ describe(`extract_domain`, function() {
   });
 });
 
+describe(`_.getQueryParam`, function() {
+  it(`extracts a parameter value from a URL`, function() {
+    expect(_.getQueryParam(`https://example.com/?foo=bar&baz=qux`, `foo`)).to.equal(`bar`);
+    expect(_.getQueryParam(`https://example.com/?foo=bar&baz=qux`, `baz`)).to.equal(`qux`);
+  });
+
+  it(`returns an empty string when the parameter is absent`, function() {
+    expect(_.getQueryParam(`https://example.com/?foo=bar`, `missing`)).to.equal(``);
+  });
+
+  it(`URL-decodes values and converts + to space`, function() {
+    expect(_.getQueryParam(`https://example.com/?q=hello+world%21`, `q`)).to.equal(`hello world!`);
+  });
+
+  it(`treats bracket metacharacters in the param name literally`, function() {
+    // Brackets in the name must match literally, not as a regex character class.
+    expect(_.getQueryParam(`https://example.com/?a[b]=c`, `a[b]`)).to.equal(`c`);
+    expect(_.getQueryParam(`https://example.com/?ab=c`, `a[b]`)).to.equal(``);
+  });
+
+  it(`escapes backslashes in the param name (CodeQL js/incomplete-sanitization)`, function() {
+    // Regression guard: with the former escaping, a backslash in the param name
+    // interpolated unescaped into the RegExp (e.g. `\b` became a word boundary),
+    // so this lookup failed to match. Escaping backslash makes it match literally.
+    expect(_.getQueryParam(`https://example.com/?a\\b=z`, `a\\b`)).to.equal(`z`);
+  });
+});
+
 describe(`_.info helper methods`, function() {
   beforeEach(resetTestingState);
   afterEach(resetTestingState);

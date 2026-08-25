@@ -921,7 +921,11 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
+    // Escape the RegExp metacharacters the param name may contain before
+    // interpolating it into `regexS`. Backslash is escaped in the same pass as
+    // the brackets (a single character class), so a param name is never able to
+    // introduce an unintended escape sequence (CodeQL js/incomplete-sanitization).
+    param = param.replace(/[[\]\\]/g, '\\$&');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);
