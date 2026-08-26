@@ -2,3 +2,20 @@ build
 examples
 tests
 vendor
+
+# Dev/build/test tooling — not used by consumers of the published package.
+# Keeps the npm tarball to shipped runtime code (dist/, src/) and docs, and
+# keeps dev-only files (incl. a local test server and build configs) out of the
+# published surface that a consumer's scanner would otherwise flag.
+.babelrc
+.eslintignore
+.eslintrc.json
+.jshintignore
+.jshintrc
+.github
+.vscode
+.claude
+build.sh
+rollup.config.mjs
+tsconfig.base.json
+testServer.js
