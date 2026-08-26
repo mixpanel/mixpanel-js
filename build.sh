@@ -19,6 +19,11 @@ if [ ! -z "$DIST" ]; then
     rm -r dist
     rsync -av --exclude='test' build/ dist/
 
+    # CycloneDX SBOM for the production dependency tree, shipped inside dist/ so
+    # it travels with the immutable distributed source and the npm tarball.
+    echo 'Generating CycloneDX SBOM'
+    npm run sbom
+
     # typescript examples require dist files
     echo 'Building TypeScript examples'
     pushd examples/typescript; npm ci && npm run build; popd

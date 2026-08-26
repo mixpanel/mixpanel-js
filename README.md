@@ -63,6 +63,10 @@ mixpanel.init('YOUR_TOKEN', {autocapture: true, debug: true, persistence: 'local
 - Install development dependencies: `npm install`
 - Build: `npm run build-dist`
 
+`npm run build-dist` also writes `dist/mixpanel-browser.cdx.json`, a CycloneDX Software Bill of
+Materials (SBOM) covering the production dependency tree, so it ships with the published package.
+To regenerate just that file: `npm run sbom`.
+
 ## Running tests
 - Install development dependencies: `npm install`
 - Run unit tests: `npm test`

@@ -1,0 +1,1060 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "npm",
+          "version": "11.16.0"
+        },
+        {
+          "type": "library",
+          "name": "cyclonedx-library",
+          "group": "@cyclonedx",
+          "version": "10.2.0",
+          "author": "Jan Kowalleck",
+          "description": "Core functionality of CycloneDX for JavaScript (Node.js or WebBrowser).",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "externalReferences": [
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-javascript-library/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            },
+            {
+              "url": "git+https://github.com/CycloneDX/cyclonedx-javascript-library.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-javascript-library#readme",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.18.0"
+            }
+          ]
+        },
+        {
+          "type": "application",
+          "name": "cyclonedx-npm",
+          "group": "@cyclonedx",
+          "version": "6.0.1",
+          "author": "Jan Kowalleck",
+          "description": "Create CycloneDX Software Bill of Materials (SBOM) from NPM projects.",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "externalReferences": [
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-node-npm/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            },
+            {
+              "url": "git+https://github.com/CycloneDX/cyclonedx-node-npm.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-node-npm#readme",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.18.0"
+            },
+            {
+              "name": "cdx:npm:package:constraint:engine:npm",
+              "value": ">=9"
+            }
+          ]
+        }
+      ]
+    },
+    "component": {
+      "type": "library",
+      "name": "mixpanel-browser",
+      "version": "2.82.1",
+      "bom-ref": "mixpanel-browser@2.82.1",
+      "description": "The official Mixpanel JavaScript browser client library",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/mixpanel-browser@2.82.1?vcs_url=git%2Bhttps%3A%2F%2Fgithub.com%2Fmixpanel%2Fmixpanel-js.git",
+      "externalReferences": [
+        {
+          "url": "https://github.com/mixpanel/mixpanel-js/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/mixpanel/mixpanel-js.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mixpanel/mixpanel-js",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": ""
+        }
+      ]
+    },
+    "properties": [
+      {
+        "name": "cdx:reproducible",
+        "value": "true"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "rrdom",
+      "group": "@mixpanel",
+      "version": "2.0.0-alpha.18",
+      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrdom@2.0.0-alpha.18",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40mixpanel/rrdom@2.0.0-alpha.18",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@mixpanel/rrdom/-/rrdom-2.0.0-alpha.18.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "3f10d9b768f5ea188384cdffbe77f85e33d2285b105f49bc65ed81b645f558cc52cd214c96130d27c5b6b52ef1c01f7c3a2f0ac2789fac1f83a4ce7d6c3d1764"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/mixpanel/rrweb.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/tree/main/packages/rrdom#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@mixpanel/rrdom"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "rrweb-plugin-console-record",
+      "group": "@mixpanel",
+      "version": "2.0.0-alpha.18.4",
+      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.4",
+      "author": "justin@recordonce.com",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.4",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@mixpanel/rrweb-plugin-console-record/-/rrweb-plugin-console-record-2.0.0-alpha.18.4.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "806c449cda5f5aead086df9fa5225bc0f57ad2e8342c010d964e14c775d1998a2834918f04ed538901dc33b834ca1aca7f8b5f6d388a299e045f3165399b3fa7"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/mixpanel/rrweb.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@mixpanel/rrweb-plugin-console-record"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "rrweb-snapshot",
+      "group": "@mixpanel",
+      "version": "2.0.0-alpha.18",
+      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
+      "author": "yanzhen@smartx.com",
+      "description": "rrweb's component to take a snapshot of DOM, aka DOM serializer",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40mixpanel/rrweb-snapshot@2.0.0-alpha.18",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@mixpanel/rrweb-snapshot/-/rrweb-snapshot-2.0.0-alpha.18.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "0b7e5ad0f41ca1b552ce053f2a233f922c26af0c8cfc3baa13dfefab626dba44fdf81fd6bc56acfc77da856638a3c278c7ef72958ab06401184585eca43a3154"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/mixpanel/rrweb.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/tree/master/packages/rrweb-snapshot#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@mixpanel/rrweb-snapshot"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "rrweb-types",
+      "group": "@mixpanel",
+      "version": "2.0.0-alpha.18",
+      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-types@2.0.0-alpha.18",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40mixpanel/rrweb-types@2.0.0-alpha.18",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@mixpanel/rrweb-types/-/rrweb-types-2.0.0-alpha.18.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "9e2c2e187f2caa7b5c1a1d0082c96f129b11c5b8c4fc63ab6ac4432161bbfd3e22a1d551d2c8152483ec176c73e9ec986e3d2e4fbc495bfe56c0dbb524c2b31b"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/mixpanel/rrweb.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/tree/main/packages/@rrweb/types#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@mixpanel/rrweb-types"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "rrweb-utils",
+      "group": "@mixpanel",
+      "version": "2.0.0-alpha.18.4",
+      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40mixpanel/rrweb-utils@2.0.0-alpha.18.4",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@mixpanel/rrweb-utils/-/rrweb-utils-2.0.0-alpha.18.4.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "7379d46d0975f64c478dff27a3014c797949c3466a2deb085416fdb788359c2e16b5a3443e4168b5645d1ade55d9c24d43e698dfcfefdae61bf117a7e0871d49"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/mixpanel/rrweb.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/tree/main/packages/@rrweb/utils#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@mixpanel/rrweb-utils"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "rrweb",
+      "group": "@mixpanel",
+      "version": "2.0.0-alpha.18.4",
+      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb@2.0.0-alpha.18.4",
+      "author": "yanzhen@smartx.com",
+      "description": "record and replay the web",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40mixpanel/rrweb@2.0.0-alpha.18.4",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@mixpanel/rrweb/-/rrweb-2.0.0-alpha.18.4.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "202a446031441220a852e420f9d7b756f402b28945e253477c433d0c1a793f0b9cec4817ab0595e3052989117f35b8682a4fbcd97d507bea2aaa52896ff08617"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+ssh://git@github.com/mixpanel/rrweb.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mixpanel/rrweb#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@mixpanel/rrweb"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "css-font-loading-module",
+      "group": "@types",
+      "version": "0.0.7",
+      "bom-ref": "mixpanel-browser@2.82.1|@types/css-font-loading-module@0.0.7",
+      "description": "TypeScript definitions for CSS Font Loading Module Level 3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40types/css-font-loading-module@0.0.7",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@types/css-font-loading-module/-/css-font-loading-module-0.0.7.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "9e5d3d561bad76320d756c97c4758dff0f7394d09fafad0952a25b776e185d4b82c2078bd13a4549d1250b06fa7317c1eb26c4d7d1a38f88348ec8245f12afd5"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/DefinitelyTyped/DefinitelyTyped.git#types/css-font-loading-module",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\" and \"repository.directory\""
+        },
+        {
+          "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/css-font-loading-module",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/css-font-loading-module"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "json-logic-js",
+      "group": "@types",
+      "version": "2.0.5",
+      "bom-ref": "mixpanel-browser@2.82.1|@types/json-logic-js@2.0.5",
+      "description": "TypeScript definitions for json-logic-js",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40types/json-logic-js@2.0.5",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@types/json-logic-js/-/json-logic-js-2.0.5.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "86efc54e2d33c028d01057db3eeaf6ef970da198fa36cb8e061858373aa849d7e6321bb116be7c399f79ee5c8839673dfa43bedad16506d8518dcc6ecad0f81c"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/DefinitelyTyped/DefinitelyTyped.git#types/json-logic-js",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\" and \"repository.directory\""
+        },
+        {
+          "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/json-logic-js",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/json-logic-js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "fsm",
+      "group": "@xstate",
+      "version": "1.6.5",
+      "bom-ref": "mixpanel-browser@2.82.1|@xstate/fsm@1.6.5",
+      "author": "David Khourshid",
+      "description": "XState for finite state machines",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40xstate/fsm@1.6.5",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@xstate/fsm/-/fsm-1.6.5.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "6f9a3523a68b35e62553fdc23e58ff67dd726e4d6052c293fb9340248fb65b8523bd2e4a2c6dbc2bdbf952f3681558c757c3da8d5674d111f7be78f240eed903"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/statelyai/xstate/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+ssh://git@github.com/statelyai/xstate.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/statelyai/xstate/tree/main/packages/xstate-fsm#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@xstate/fsm"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "base64-arraybuffer",
+      "version": "1.0.2",
+      "bom-ref": "mixpanel-browser@2.82.1|base64-arraybuffer@1.0.2",
+      "author": "Niklas von Hertzen",
+      "description": "Encode/decode base64 data into ArrayBuffers",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/base64-arraybuffer@1.0.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/base64-arraybuffer/-/base64-arraybuffer-1.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "237ca5e2bf500796516375ee25510f7dcd978593ba6307853c8f94a2f0339fef3f85bde827a967cac6857235699023df5561540efa19f249950cfed6c91b58b5"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/niklasvh/base64-arraybuffer/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/niklasvh/base64-arraybuffer.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/niklasvh/base64-arraybuffer",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.6.0"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/base64-arraybuffer"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "json-logic-js",
+      "version": "2.0.5",
+      "bom-ref": "mixpanel-browser@2.82.1|json-logic-js@2.0.5",
+      "author": "Jeremy Wadhams",
+      "description": "Build complex rules, serialize them as JSON, and execute them in JavaScript",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/json-logic-js@2.0.5",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/json-logic-js/-/json-logic-js-2.0.5.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "ad34f6fa5a9cb949a3e038167e6ceea59a900c0eb801d998aa2cf330f5a3dc3c4675f14db313e970d5526938f897c5b6b46ffe860eff9908718d4dda3da70eea"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/jwadhams/json-logic-js/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/jwadhams/json-logic-js.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/jwadhams/json-logic-js#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/json-logic-js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mitt",
+      "version": "3.0.1",
+      "bom-ref": "mixpanel-browser@2.82.1|mitt@3.0.1",
+      "description": "Tiny 200b functional Event Emitter / pubsub.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/mitt@3.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/mitt/-/mitt-3.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "bca8af0137ebf7b976fd00426009176036eb2163ccd8820a125ed83e18c2bca946de4136826fae068ea71172b7339fc57e1fc52e9284c73390dc926824614a07"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/developit/mitt/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/developit/mitt.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/developit/mitt",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/mitt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "nanoid",
+      "version": "3.3.18",
+      "bom-ref": "mixpanel-browser@2.82.1|nanoid@3.3.18",
+      "author": "Andrey Sitnik",
+      "description": "A tiny (116 bytes), secure URL-friendly unique string ID generator",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/nanoid@3.3.18",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.18.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "0d38383096c631691f8ba55915d36ddbf71a31b432e0ebbe3a9fe1250bc611672755fa00d5003ec7344a033c3d8c3ebe19538e798aff98872e0d276e83a17afb"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/ai/nanoid/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/ai/nanoid.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/ai/nanoid#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^10 || ^12 || ^13.7 || ^14 || >=15.0.1"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/nanoid"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "picocolors",
+      "version": "1.1.1",
+      "bom-ref": "mixpanel-browser@2.82.1|picocolors@1.1.1",
+      "author": "Alexey Raspopov",
+      "description": "The tiniest and the fastest library for terminal output formatting with ANSI colors",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/picocolors@1.1.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c5c787dac9e1b5be4cf658aa0ec984c39ea57b7efa993664117fe311bfd1c4d1727a036e97b78db250973fd1438ff2dcbb45fc284c8c71e3f69eda5a1eb0c454"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/alexeyraspopov/picocolors/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/alexeyraspopov/picocolors.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/alexeyraspopov/picocolors#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/picocolors"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "postcss",
+      "version": "8.5.26",
+      "bom-ref": "mixpanel-browser@2.82.1|postcss@8.5.26",
+      "author": "Andrey Sitnik",
+      "description": "Tool for transforming styles with JS plugins",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/postcss@8.5.26",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/postcss/-/postcss-8.5.26.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "bbcd8def82c5cc6f1c6be743f29b8f9e99535e8187e1f4cfa551ae21bb77e86deabcd964bdf0f49440194b16a5cb7297f134bf2f503582c0849af2a605c55b91"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/postcss/postcss/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/postcss/postcss.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://postcss.org/",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^10 || ^12 || >=14"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/postcss"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "source-map-js",
+      "version": "1.2.1",
+      "bom-ref": "mixpanel-browser@2.82.1|source-map-js@1.2.1",
+      "author": "Valentin 7rulnik Semirulnik",
+      "description": "Generates and consumes source maps",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/source-map-js@1.2.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "51758c2a12cec1529bef6f0852d40f5f17d853ebac7726ed52b2bff2e184f0240cbeb84ea70bf30c1c23d108522fb31073bbc8b084811bc550f3e203431a5f40"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/7rulnik/source-map-js/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/7rulnik/source-map-js.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/7rulnik/source-map-js",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/source-map-js"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "mixpanel-browser@2.82.1",
+      "dependsOn": [
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.4",
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4",
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb@2.0.0-alpha.18.4",
+        "mixpanel-browser@2.82.1|@types/json-logic-js@2.0.5",
+        "mixpanel-browser@2.82.1|json-logic-js@2.0.5"
+      ]
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrdom@2.0.0-alpha.18",
+      "dependsOn": [
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb-snapshot@2.0.0-alpha.18"
+      ]
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.4",
+      "dependsOn": [
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4",
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb@2.0.0-alpha.18.4"
+      ]
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
+      "dependsOn": [
+        "mixpanel-browser@2.82.1|postcss@8.5.26"
+      ]
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-types@2.0.0-alpha.18"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb@2.0.0-alpha.18.4",
+      "dependsOn": [
+        "mixpanel-browser@2.82.1|@mixpanel/rrdom@2.0.0-alpha.18",
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb-types@2.0.0-alpha.18",
+        "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4",
+        "mixpanel-browser@2.82.1|@types/css-font-loading-module@0.0.7",
+        "mixpanel-browser@2.82.1|@xstate/fsm@1.6.5",
+        "mixpanel-browser@2.82.1|base64-arraybuffer@1.0.2",
+        "mixpanel-browser@2.82.1|mitt@3.0.1"
+      ]
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@types/css-font-loading-module@0.0.7"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@types/json-logic-js@2.0.5"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|@xstate/fsm@1.6.5"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|base64-arraybuffer@1.0.2"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|json-logic-js@2.0.5"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|mitt@3.0.1"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|nanoid@3.3.18"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|picocolors@1.1.1"
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|postcss@8.5.26",
+      "dependsOn": [
+        "mixpanel-browser@2.82.1|nanoid@3.3.18",
+        "mixpanel-browser@2.82.1|picocolors@1.1.1",
+        "mixpanel-browser@2.82.1|source-map-js@1.2.1"
+      ]
+    },
+    {
+      "ref": "mixpanel-browser@2.82.1|source-map-js@1.2.1"
+    }
+  ]
+}
