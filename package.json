@@ -1,6 +1,16 @@
 {
   "name": "mixpanel-browser",
   "version": "2.82.1",
+  "files": [
+    "CHANGELOG.md",
+    "dist",
+    "doc",
+    "LICENSE",
+    "logo.svg",
+    "package.json",
+    "README.md",
+    "src"
+  ],
   "description": "The official Mixpanel JavaScript browser client library",
   "main": "dist/mixpanel.cjs.js",
   "module": "dist/mixpanel.module.js",
