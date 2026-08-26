@@ -371,26 +371,31 @@ FeatureFlagManager.prototype.getTargeting = function() {
  * When a match is found (event name matches and property filters pass), this method:
  * - Switches the flag to the pending variant
  * - Marks the event as activated for this session
- * - Records the activation via the API (fire-and-forget)
+ * - Records the activation via the API
+ *
+ * @returns {Promise} Resolves once the pending events have been processed and their recording
+ * requests have settled. The promise never rejects, so callers that ignore it cannot produce an
+ * unhandled rejection.
  */
 FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properties) {
     if (!this.pendingFirstTimeEvents || _.isEmptyObject(this.pendingFirstTimeEvents)) {
-        return;
+        return Promise.resolve();
     }
 
     // Check if targeting promise exists (either bundled or async loaded)
     if (window[TARGETING_GLOBAL_NAME] && _.isFunction(window[TARGETING_GLOBAL_NAME].then)) {
-        window[TARGETING_GLOBAL_NAME].then(function(library) {
-            this._processFirstTimeEventCheck(eventName, properties, library);
+        // The catch is part of the returned chain so the promise handed back always resolves.
+        return window[TARGETING_GLOBAL_NAME].then(function(library) {
+            return this._processFirstTimeEventCheck(eventName, properties, library);
         }.bind(this)).catch(function() {
             // If targeting failed to load, process with null
             // Events without property filters will still match
-            this._processFirstTimeEventCheck(eventName, properties, null);
+            return this._processFirstTimeEventCheck(eventName, properties, null);
         }.bind(this));
     } else {
         // No targeting available, process with null
         // Events without property filters will still match
-        this._processFirstTimeEventCheck(eventName, properties, null);
+        return this._processFirstTimeEventCheck(eventName, properties, null);
     }
 };
 
@@ -399,8 +404,10 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
  * @param {string} eventName - The name of the event being tracked
  * @param {Object} properties - Event properties to evaluate against property filters
  * @param {Object} targeting - The loaded targeting library
+ * @returns {Promise} Resolves once every recording request started here has settled.
  */
 FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, properties, targeting) {
+    var recordings = [];
     _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
         if (this.activatedFirstTimeEvents[eventKey]) {
             return;
@@ -457,12 +464,13 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         this.trackedFeatures.delete(flagKey);
         this.activatedFirstTimeEvents[eventKey] = true;
 
-        this.recordFirstTimeEvent(
+        recordings.push(this.recordFirstTimeEvent(
             pendingEvent['flag_id'],
             pendingEvent['project_id'],
             pendingEvent['first_time_event_hash']
-        );
+        ));
     }, this);
+    return Promise.all(recordings);
 };
 
 FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
@@ -488,8 +496,9 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
 
     logger.log('Recording first-time event for flag: ' + flagId);
 
-    // Fire-and-forget POST request
-    this.fetch.call(window, url, {
+    // The caller chains this so it can wait for the recording to settle. The catch below keeps the
+    // returned promise resolved on failure, so a dropped request never rejects the chain.
+    return this.fetch.call(window, url, {
         'method': 'POST',
         'headers': {
             'Content-Type': 'application/json',

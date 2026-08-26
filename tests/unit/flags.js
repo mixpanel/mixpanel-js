@@ -7,6 +7,7 @@ import { window } from "../../src/window";
 import { Config } from "../../src/config";
 
 import { FeatureFlagManager } from "../../src/flags/index";
+import { eventMatchesCriteria } from "../../src/targeting/event-matcher";
 import {
   FeatureFlagPersistence,
   VariantLookupPolicy,
@@ -435,6 +436,74 @@ describe(`FeatureFlagManager`, function () {
       });
     });
 
+    describe(`custom operator property filters`, function () {
+      // The sibling suite stubs the matcher; these use the real one so semver_compare and
+      // datetime_compare are actually evaluated on the way to activating a variant.
+      beforeEach(async function () {
+        mockResponse.json = sinon.stub().resolves({
+          code: 200,
+          flags: {
+            "version-gate": { variant_key: `control`, variant_value: false },
+            "signup-gate": { variant_key: `control`, variant_value: false },
+          },
+          pending_first_time_events: [
+            {
+              flag_key: `version-gate`,
+              flag_id: `flag-sv`,
+              project_id: 3,
+              first_time_event_hash: `sv-hash`,
+              event_name: `App Open`,
+              property_filters: { semver_compare: [{ var: `app_version` }, `>=`, `1.2.3`] },
+              pending_variant: { variant_key: `treatment`, variant_value: true },
+            },
+            {
+              flag_key: `signup-gate`,
+              flag_id: `flag-dt`,
+              project_id: 3,
+              first_time_event_hash: `dt-hash`,
+              event_name: `Signup`,
+              property_filters: { datetime_compare: [{ var: `signup` }, `>=`, 1784160000000] },
+              pending_variant: { variant_key: `treatment`, variant_value: true },
+            },
+          ],
+        });
+        window[`__mp_targeting`] = Promise.resolve({ eventMatchesCriteria: eventMatchesCriteria });
+
+        await flagManager.init();
+        sinon.resetHistory();
+      });
+
+      it(`activates the variant when the semver filter matches`, async function () {
+        await flagManager.checkFirstTimeEvents(`App Open`, { app_version: `1.10.0` });
+
+        expect(flagManager.flags.get(`version-gate`).key).to.equal(`treatment`);
+      });
+
+      it(`leaves the variant alone when the semver filter does not match`, async function () {
+        await flagManager.checkFirstTimeEvents(`App Open`, { app_version: `1.2.2` });
+
+        expect(flagManager.flags.get(`version-gate`).key).to.equal(`control`);
+      });
+
+      it(`activates the variant when the datetime filter matches`, async function () {
+        await flagManager.checkFirstTimeEvents(`Signup`, { signup: `2026-07-17T00:00:00Z` });
+
+        expect(flagManager.flags.get(`signup-gate`).key).to.equal(`treatment`);
+      });
+
+      it(`leaves the variant alone when the datetime filter does not match`, async function () {
+        await flagManager.checkFirstTimeEvents(`Signup`, { signup: `2026-07-15T00:00:00Z` });
+
+        expect(flagManager.flags.get(`signup-gate`).key).to.equal(`control`);
+      });
+
+      it(`fails closed when the property is not a valid version`, async function () {
+        await flagManager.checkFirstTimeEvents(`App Open`, { app_version: `not-a-version` });
+
+        expect(flagManager.flags.get(`version-gate`).key).to.equal(`control`);
+      });
+    });
+
     describe(`checkFirstTimeEvents`, function () {
       beforeEach(async function () {
         // Pre-load targeting to avoid timing issues with loadExtraBundle
@@ -460,8 +529,7 @@ describe(`FeatureFlagManager`, function () {
       });
 
       it(`matches event by exact name and switches variant`, async function () {
-        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
 
         const flag = flagManager.flags.get(`onboarding-checklist`);
         expect(flag.key).to.equal(`treatment`);
@@ -469,16 +537,16 @@ describe(`FeatureFlagManager`, function () {
         expect(flag.experiment_id).to.equal(123);
       });
 
-      it(`does not match event with different name`, function () {
-        flagManager.checkFirstTimeEvents(`Other Event`, {});
+      it(`does not match event with different name`, async function () {
+        await flagManager.checkFirstTimeEvents(`Other Event`, {});
 
         const flag = flagManager.flags.get(`onboarding-checklist`);
         expect(flag.key).to.equal(`control`);
         expect(flag.value).to.equal(false);
       });
 
-      it(`is case-sensitive for event names`, function () {
-        flagManager.checkFirstTimeEvents(`dashboard viewed`, {});
+      it(`is case-sensitive for event names`, async function () {
+        await flagManager.checkFirstTimeEvents(`dashboard viewed`, {});
 
         const flag = flagManager.flags.get(`onboarding-checklist`);
         expect(flag.key).to.equal(`control`);
@@ -486,25 +554,24 @@ describe(`FeatureFlagManager`, function () {
 
       it(`evaluates property filters using JsonLogic`, async function () {
         // Event with amount > 100 should match
-        flagManager.checkFirstTimeEvents(`Purchase Complete`, { amount: 150 });
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Purchase Complete`, { amount: 150 });
 
         const flag = flagManager.flags.get(`premium-welcome`);
         expect(flag.key).to.equal(`premium`);
         expect(flag.value).to.deep.equal({ discount: 20 });
       });
 
-      it(`does not match when property filters fail`, function () {
+      it(`does not match when property filters fail`, async function () {
         // Event with amount <= 100 should not match
-        flagManager.checkFirstTimeEvents(`Purchase Complete`, { amount: 50 });
+        await flagManager.checkFirstTimeEvents(`Purchase Complete`, { amount: 50 });
 
         const flag = flagManager.flags.get(`premium-welcome`);
         expect(flag.key).to.equal(`control`);
       });
 
-      it(`handles undefined properties in filters`, function () {
+      it(`handles undefined properties in filters`, async function () {
         // Event without amount property should not match
-        flagManager.checkFirstTimeEvents(`Purchase Complete`, {});
+        await flagManager.checkFirstTimeEvents(`Purchase Complete`, {});
 
         const flag = flagManager.flags.get(`premium-welcome`);
         expect(flag.key).to.equal(`control`);
@@ -512,30 +579,27 @@ describe(`FeatureFlagManager`, function () {
 
       it(`requires exact case match for property keys`, async function () {
         // Event with incorrect case for property key should NOT match
-        flagManager.checkFirstTimeEvents(`Purchase Complete`, {
+        await flagManager.checkFirstTimeEvents(`Purchase Complete`, {
           Amount: 150,
           CATEGORY: `PREMIUM`,
         });
-        await new Promise(resolve => setTimeout(resolve, 0));
 
         const flag = flagManager.flags.get(`premium-welcome`);
         // Should remain control due to case mismatch
         expect(flag.key).to.equal(`control`);
 
         // Event with correct case should match
-        flagManager.checkFirstTimeEvents(`Purchase Complete`, {
+        await flagManager.checkFirstTimeEvents(`Purchase Complete`, {
           amount: 150,
           category: `premium`,
         });
-        await new Promise(resolve => setTimeout(resolve, 0));
 
         const flagAfter = flagManager.flags.get(`premium-welcome`);
         expect(flagAfter.key).to.equal(`premium`);
       });
 
       it(`marks event as activated after first match`, async function () {
-        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
 
         const eventKey = `onboarding-checklist:abc123def456`;
         expect(flagManager.activatedFirstTimeEvents[eventKey]).to.equal(true);
@@ -543,8 +607,7 @@ describe(`FeatureFlagManager`, function () {
 
       it(`does not re-trigger on subsequent matching events`, async function () {
         // First event triggers
-        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
         const eventKey = `onboarding-checklist:abc123def456`;
         expect(flagManager.activatedFirstTimeEvents[eventKey]).to.equal(true);
 
@@ -552,22 +615,20 @@ describe(`FeatureFlagManager`, function () {
         flagManager.flags.set(`onboarding-checklist`, {key: `control`});
 
         // Second event should not trigger again (event is already activated)
-        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
         const flag = flagManager.flags.get(`onboarding-checklist`);
         expect(flag.key).to.equal(`control`); // unchanged from our reset
       });
 
-      it(`does not track experiment started (deferred to getVariant)`, function () {
-        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+      it(`does not track experiment started (deferred to getVariant)`, async function () {
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
 
         // Tracking is NOT called - experiment_started will be tracked when getVariant is called
         expect(initOptions.trackingFunc).to.not.have.been.called;
       });
 
       it(`calls recording endpoint with correct payload`, async function () {
-        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
 
         expect(mockFetch).to.have.been.calledOnce; // sinon.resetHistory() was called in beforeEach
         const recordingCall = mockFetch.firstCall;
@@ -584,21 +645,46 @@ describe(`FeatureFlagManager`, function () {
         expect(payload.first_time_event_hash).to.equal(`abc123def456`);
       });
 
+      // The returned promise covers the recording request, not just the matching that starts it.
+      it(`does not resolve until the recording request settles`, async function () {
+        let releaseFetch;
+        mockFetch.onFirstCall().returns(
+          new Promise(function (resolve) {
+            releaseFetch = resolve;
+          })
+        );
+
+        let settled = false;
+        const checked = flagManager
+          .checkFirstTimeEvents(`Dashboard Viewed`, {})
+          .then(function () {
+            settled = true;
+          });
+
+        // A macrotask turn drains every microtask the chain queues, so anything still pending here
+        // is pending on the request itself.
+        await new Promise(function (resolve) {
+          setTimeout(resolve, 0);
+        });
+        expect(settled).to.equal(false);
+
+        releaseFetch({ ok: true });
+        await checked;
+        expect(settled).to.equal(true);
+      });
+
       it(`handles recording endpoint failures gracefully`, async function () {
         mockFetch.onFirstCall().rejects(new Error(`Network error`));
 
         // Should not throw
-        expect(() => {
-          flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        }).to.not.throw();
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
 
         // Variant should still be switched
         const flag = flagManager.flags.get(`onboarding-checklist`);
         expect(flag.key).to.equal(`treatment`);
       });
 
-      it(`handles JsonLogic evaluation errors gracefully`, function () {
+      it(`handles JsonLogic evaluation errors gracefully`, async function () {
         // Invalid property filter that causes error
         const eventKey = `onboarding-checklist:abc123def456`;
         flagManager.pendingFirstTimeEvents[eventKey].property_filters = {
@@ -606,9 +692,7 @@ describe(`FeatureFlagManager`, function () {
         };
 
         // Should not throw
-        expect(() => {
-          flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        }).to.not.throw();
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
 
         // Variant should not switch on error
         const flag = flagManager.flags.get(`onboarding-checklist`);
@@ -666,8 +750,7 @@ describe(`FeatureFlagManager`, function () {
         expect(flagManager.pendingFirstTimeEvents[eventKeyB]).to.exist;
 
         // Activate Event A
-        flagManager.checkFirstTimeEvents(`Event A`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Event A`, {});
 
         // Event A should be marked as activated
         expect(flagManager.activatedFirstTimeEvents[eventKeyA]).to.equal(true);
@@ -681,8 +764,7 @@ describe(`FeatureFlagManager`, function () {
         expect(flag.value).to.equal(`value-A`);
 
         // Now activate Event B
-        flagManager.checkFirstTimeEvents(`Event B`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Event B`, {});
 
         // Event B should now be activated
         expect(flagManager.activatedFirstTimeEvents[eventKeyB]).to.equal(true);
@@ -720,8 +802,7 @@ describe(`FeatureFlagManager`, function () {
 
       it(`preserves activated variant when flags are refetched`, async function () {
         // Activate first-time event
-        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
 
         const flagBefore = flagManager.flags.get(`onboarding-checklist`);
         expect(flagBefore.key).to.equal(`treatment`);
@@ -737,8 +818,7 @@ describe(`FeatureFlagManager`, function () {
 
       it(`does not re-add activated flag to pending events on refetch`, async function () {
         // Activate first-time event
-        flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Dashboard Viewed`, {});
         const eventKey = `onboarding-checklist:abc123def456`;
         expect(flagManager.activatedFirstTimeEvents[eventKey]).to.equal(true);
 
@@ -882,8 +962,7 @@ describe(`FeatureFlagManager`, function () {
         expect(flagManager.flags.has(`orphaned-flag`)).to.be.false;
 
         // Trigger the orphaned event
-        flagManager.checkFirstTimeEvents(`Orphan Event`, {});
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await flagManager.checkFirstTimeEvents(`Orphan Event`, {});
 
         // Flag should now be created in flags Map
         expect(flagManager.flags.has(`orphaned-flag`)).to.be.true;
@@ -926,7 +1005,7 @@ describe(`FeatureFlagManager`, function () {
         await flagManager.init();
 
         // Activate the orphaned flag
-        flagManager.checkFirstTimeEvents(`Orphan Event`, {});
+        await flagManager.checkFirstTimeEvents(`Orphan Event`, {});
 
         // Refetch with response that doesn't include this flag at all
         mockResponse.json.resolves({
@@ -1058,7 +1137,8 @@ describe(`FeatureFlagManager`, function () {
         flagManager = new FeatureFlagManager(initOptions);
         await flagManager.init();
 
-        // Try to check event before targeting loads
+        // Not awaited: with the bundle never loading, the targeting promise the check chains onto
+        // never settles, so the assertion is on the state immediately after the call.
         flagManager.checkFirstTimeEvents(`Purchase Complete`, { amount: 150 });
 
         // Flag should not be activated (fail closed)

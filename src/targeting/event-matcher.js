@@ -1,5 +1,10 @@
 import { _ } from '../utils';
 import jsonLogic from 'json-logic-js';
+import { registerCustomOperators } from './custom-operators';
+
+// Register typed runtime-targeting operators (semver_compare, datetime_compare) into the JsonLogic engine.
+// Registration happens lazily, when the async targeting bundle loads.
+registerCustomOperators(jsonLogic);
 
 /**
  * Check if an event matches the given criteria
