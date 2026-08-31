@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.82.1'
+    LIB_VERSION: '2.83.0-rc1'
 };
 
 // Window global names for async modules
@@ -430,12 +430,7 @@ var nativeBind = FuncProto.bind,
     nativeIsArray = Array.isArray,
     breaker = {};
 
-var _ = {
-    trim: function(str) {
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
-        return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
-    }
-};
+var _ = {};
 
 // Console override
 var console = {
@@ -1318,7 +1313,11 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
-    param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
+    // Escape the RegExp metacharacters the param name may contain before
+    // interpolating it into `regexS`. Backslash is escaped in the same pass as
+    // the brackets (a single character class), so a param name is never able to
+    // introduce an unintended escape sequence (CodeQL js/incomplete-sanitization).
+    param = param.replace(/[[\]\\]/g, '\\$&');
     var regexS = '[\\?&]' + param + '=([^&#]*)',
         regex = new RegExp(regexS),
         results = regex.exec(url);
@@ -2500,7 +2499,7 @@ function getSafeText(el, ev, allowElementCallback, allowSelectors) {
     if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) && el.childNodes && el.childNodes.length) {
         _.each(el.childNodes, function(child) {
             if (isTextNode(child) && child.textContent) {
-                elText += _.trim(child.textContent)
+                elText += child.textContent.trim()
                     // scrub potentially sensitive values
                     .split(/(\s+)/).filter(shouldTrackValue).join('')
                     // normalize whitespace
@@ -2511,7 +2510,7 @@ function getSafeText(el, ev, allowElementCallback, allowSelectors) {
         });
     }
 
-    return _.trim(elText);
+    return elText.trim();
 }
 
 function guessRealClickTarget(ev) {
@@ -2763,7 +2762,7 @@ function shouldTrackValue(value) {
     }
 
     if (typeof value === 'string') {
-        value = _.trim(value);
+        value = value.trim();
 
         // check to see if input value looks like a credit card number
         // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
@@ -4603,26 +4602,31 @@ FeatureFlagManager.prototype.getTargeting = function() {
  * When a match is found (event name matches and property filters pass), this method:
  * - Switches the flag to the pending variant
  * - Marks the event as activated for this session
- * - Records the activation via the API (fire-and-forget)
+ * - Records the activation via the API
+ *
+ * @returns {Promise} Resolves once the pending events have been processed and their recording
+ * requests have settled. The promise never rejects, so callers that ignore it cannot produce an
+ * unhandled rejection.
  */
 FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properties) {
     if (!this.pendingFirstTimeEvents || _.isEmptyObject(this.pendingFirstTimeEvents)) {
-        return;
+        return Promise.resolve();
     }
 
     // Check if targeting promise exists (either bundled or async loaded)
     if (win[TARGETING_GLOBAL_NAME] && _.isFunction(win[TARGETING_GLOBAL_NAME].then)) {
-        win[TARGETING_GLOBAL_NAME].then(function(library) {
-            this._processFirstTimeEventCheck(eventName, properties, library);
+        // The catch is part of the returned chain so the promise handed back always resolves.
+        return win[TARGETING_GLOBAL_NAME].then(function(library) {
+            return this._processFirstTimeEventCheck(eventName, properties, library);
         }.bind(this)).catch(function() {
             // If targeting failed to load, process with null
             // Events without property filters will still match
-            this._processFirstTimeEventCheck(eventName, properties, null);
+            return this._processFirstTimeEventCheck(eventName, properties, null);
         }.bind(this));
     } else {
         // No targeting available, process with null
         // Events without property filters will still match
-        this._processFirstTimeEventCheck(eventName, properties, null);
+        return this._processFirstTimeEventCheck(eventName, properties, null);
     }
 };
 
@@ -4631,8 +4635,10 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
  * @param {string} eventName - The name of the event being tracked
  * @param {Object} properties - Event properties to evaluate against property filters
  * @param {Object} targeting - The loaded targeting library
+ * @returns {Promise} Resolves once every recording request started here has settled.
  */
 FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, properties, targeting) {
+    var recordings = [];
     _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
         if (this.activatedFirstTimeEvents[eventKey]) {
             return;
@@ -4689,12 +4695,13 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         this.trackedFeatures.delete(flagKey);
         this.activatedFirstTimeEvents[eventKey] = true;
 
-        this.recordFirstTimeEvent(
+        recordings.push(this.recordFirstTimeEvent(
             pendingEvent['flag_id'],
             pendingEvent['project_id'],
             pendingEvent['first_time_event_hash']
-        );
+        ));
     }, this);
+    return Promise.all(recordings);
 };
 
 FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
@@ -4720,8 +4727,9 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
 
     logger$4.log('Recording first-time event for flag: ' + flagId);
 
-    // Fire-and-forget POST request
-    this.fetch.call(win, url, {
+    // The caller chains this so it can wait for the recording to settle. The catch below keeps the
+    // returned promise resolved on failure, so a dropped request never rejects the chain.
+    return this.fetch.call(win, url, {
         'method': 'POST',
         'headers': {
             'Content-Type': 'application/json',
@@ -5362,7 +5370,7 @@ DomTracker.prototype.track = function(query, event_name, properties, user_callba
             that.event_handler(e, this, options);
 
             // in case the mixpanel servers don't get back to us in time
-            window.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
+            win.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
 
             // fire the tracking event
             that.mp.track(event_name, props, that.track_callback(user_callback, props, options));
@@ -5442,10 +5450,10 @@ LinkTracker.prototype.event_handler = function(evt, element, options) {
 };
 
 LinkTracker.prototype.after_track_handler = function(props, options) {
-    if (options.new_tab) { return; }
+    if (options.new_tab || !options.href) { return; }
 
     setTimeout(function() {
-        window.location = options.href;
+        win.location = options.href;
     }, 0);
 };
 

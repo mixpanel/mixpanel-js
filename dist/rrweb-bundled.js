@@ -980,6 +980,16 @@ function serializeElementNode(n2, options) {
       attributes.checked = checked;
     }
   }
+  if ((tagName === "input" || tagName === "textarea") && attributes.placeholder) {
+    attributes.placeholder = maskInputValue({
+      element: n2,
+      type: getInputType(n2),
+      tagName,
+      value: attributes.placeholder,
+      maskInputOptions,
+      maskInputFn
+    });
+  }
   if (tagName === "option") {
     if (n2.selected && !maskInputOptions["select"]) {
       attributes.selected = true;
@@ -9464,7 +9474,7 @@ class MutationBuffer {
           const target = m.target;
           let attributeName = m.attributeName;
           let value = m.target.getAttribute(attributeName);
-          if (attributeName === "value") {
+          if (attributeName === "value" || attributeName === "placeholder") {
             const type = getInputType(target);
             value = maskInputValue({
               element: target,
