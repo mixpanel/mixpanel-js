@@ -1,6 +1,7 @@
 /* eslint camelcase: "off" */
 
 import { _, console } from './utils';
+import { window } from './window';
 
 /**
  * DomTracker Object
@@ -123,7 +124,7 @@ LinkTracker.prototype.event_handler = function(evt, element, options) {
 };
 
 LinkTracker.prototype.after_track_handler = function(props, options) {
-    if (options.new_tab) { return; }
+    if (options.new_tab || !options.href) { return; }
 
     setTimeout(function() {
         window.location = options.href;
