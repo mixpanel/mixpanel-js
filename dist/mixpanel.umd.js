@@ -31,7 +31,7 @@
 
     var Config = {
         DEBUG: false,
-        LIB_VERSION: '2.82.1'
+        LIB_VERSION: '2.83.0-rc1'
     };
 
     // Window global names for async modules
@@ -1268,6 +1268,16 @@
             } else if (checked) {
                 attributes.checked = checked;
             }
+        }
+        if ((tagName === "input" || tagName === "textarea") && attributes.placeholder) {
+            attributes.placeholder = maskInputValue({
+                element: n2,
+                type: getInputType(n2),
+                tagName: tagName,
+                value: attributes.placeholder,
+                maskInputOptions: maskInputOptions,
+                maskInputFn: maskInputFn
+            });
         }
         if (tagName === "option") {
             if (n2.selected && !maskInputOptions["select"]) {
@@ -10904,7 +10914,7 @@
                             var target = m.target;
                             var attributeName = m.attributeName;
                             var value1 = m.target.getAttribute(attributeName);
-                            if (attributeName === "value") {
+                            if (attributeName === "value" || attributeName === "placeholder") {
                                 var type = getInputType(target);
                                 value1 = maskInputValue({
                                     element: target,
@@ -19058,12 +19068,7 @@
         nativeIsArray = Array.isArray,
         breaker = {};
 
-    var _ = {
-        trim: function(str) {
-            // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
-            return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
-        }
-    };
+    var _ = {};
 
     // Console override
     var console$1 = {
@@ -19946,7 +19951,11 @@
     _.getQueryParam = function(url, param) {
         // Expects a raw URL
 
-        param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
+        // Escape the RegExp metacharacters the param name may contain before
+        // interpolating it into `regexS`. Backslash is escaped in the same pass as
+        // the brackets (a single character class), so a param name is never able to
+        // introduce an unintended escape sequence (CodeQL js/incomplete-sanitization).
+        param = param.replace(/[[\]\\]/g, '\\$&');
         var regexS = '[\\?&]' + param + '=([^&#]*)',
             regex = new RegExp(regexS),
             results = regex.exec(url);
@@ -22516,7 +22525,7 @@
         if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) && el.childNodes && el.childNodes.length) {
             _.each(el.childNodes, function(child) {
                 if (isTextNode(child) && child.textContent) {
-                    elText += _.trim(child.textContent)
+                    elText += child.textContent.trim()
                         // scrub potentially sensitive values
                         .split(/(\s+)/).filter(shouldTrackValue).join('')
                         // normalize whitespace
@@ -22527,7 +22536,7 @@
             });
         }
 
-        return _.trim(elText);
+        return elText.trim();
     }
 
     function guessRealClickTarget(ev) {
@@ -22779,7 +22788,7 @@
         }
 
         if (typeof value === 'string') {
-            value = _.trim(value);
+            value = value.trim();
 
             // check to see if input value looks like a credit card number
             // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
@@ -25156,6 +25165,260 @@
     var logicExports = requireLogic();
     var jsonLogic = /*@__PURE__*/getDefaultExportFromCjs(logicExports);
 
+    // Strict RFC3339 guard for datetime strings. The date and hour fields are captured so the calendar
+    // can be validated separately; the regex only constrains their shape.
+    var RFC3339_REGEX = /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
+
+    // SemVer 2.0.0 requires major.minor.patch; partial versions are zero-padded to this.
+    var SEMVER_PARTS = 3;
+
+    // Longest operand the semver regex is allowed to see. A real version never approaches this; the
+    // bound matches MAX_LENGTH in node-semver, and keeps an arbitrarily long property value off the
+    // regex regardless of how the engine schedules backtracking.
+    var MAX_SEMVER_LENGTH = 256;
+
+    // Epoch milliseconds are compared as int64 elsewhere, so anything at or beyond this is out of range.
+    var MAX_EPOCH_MS = 9223372036854775808;
+
+    // Using the official semantic versioning 2.0.0 regular expression to handle cross-platform validation
+    // differences on other SDK's. For example, some platforms allow leading zeros even though it is not valid
+    // as part of the Semver 2.0.0 spec. See https://semver.org/
+    var SEMVER_REGEX = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+
+    // Registers custom operators into the JSONLogic engine.
+    // 1. Semantic Versioning 2.0.0 comparison
+    // 2. RFC3339 datetime comparison
+    function registerCustomOperators(jsonLogic) {
+        jsonLogic.add_operation('semver_compare', semverCompare);
+        jsonLogic.add_operation('datetime_compare', datetimeCompare);
+    }
+
+    // Implements a custom operation for semantic versioning comparison that conforms to the semver 2.0.0 standard.
+    // Prior to comparison, any leading version prefix is stripped.
+    function semverCompare() {
+        var ops = operands(arguments);
+        if (!ops) {
+            return false;
+        }
+        if (typeof ops.actual !== 'string' || typeof ops.target !== 'string') {
+            return false;
+        }
+        if (ops.actual.length > MAX_SEMVER_LENGTH || ops.target.length > MAX_SEMVER_LENGTH) {
+            return false;
+        }
+        var actual = normalizeSemver(ops.actual);
+        var target = normalizeSemver(ops.target);
+        if (!SEMVER_REGEX.test(actual) || !SEMVER_REGEX.test(target)) {
+            return false;
+        }
+        var cmp = compareSemver(actual, target);
+        return comparatorMatches(cmp, ops.symbol);
+    }
+
+    // Strip optional build metadata and separate the core version from pre-release identifiers
+    function splitSemver(version) {
+        var plus = version.indexOf('+');
+        if (plus !== -1) {
+            version = version.slice(0, plus);
+        }
+        var dash = version.indexOf('-');
+        if (dash === -1) {
+            return {core: version.split('.'), prerelease: []};
+        }
+        return {core: version.slice(0, dash).split('.'), prerelease: version.slice(dash + 1).split('.')};
+    }
+
+    function isNumericIdentifier(identifier) {
+        return /^[0-9]+$/.test(identifier);
+    }
+
+    // Numeric identifiers carry no leading zeros, so the longer run of digits is the larger number.
+    // Comparing them as digits rather than as numbers keeps versions past Number.MAX_SAFE_INTEGER ordered
+    // correctly.
+    function compareNumeric(a, b) {
+        if (a.length !== b.length) {
+            return a.length < b.length ? -1 : 1;
+        }
+        return a < b ? -1 : (a > b ? 1 : 0);
+    }
+
+    // SemVer 2.0.0 section 11.4: digits compare numerically, a numeric identifier ranks below an
+    // alphanumeric one, and anything else compares by ASCII order.
+    function comparePrereleaseIdentifier(a, b) {
+        var aNumeric = isNumericIdentifier(a);
+        var bNumeric = isNumericIdentifier(b);
+        if (aNumeric && bNumeric) {
+            return compareNumeric(a, b);
+        }
+        if (aNumeric) {
+            return -1;
+        }
+        if (bNumeric) {
+            return 1;
+        }
+        return a < b ? -1 : (a > b ? 1 : 0);
+    }
+
+    // Ordering per SemVer 2.0.0 section 11. Both operands have already been normalized and matched against
+    // the official regex, so the core holds exactly three numeric identifiers and every prerelease field is
+    // well-formed; the split needs no error path.
+    function compareSemver(actualVersion, targetVersion) {
+        var actual = splitSemver(actualVersion);
+        var target = splitSemver(targetVersion);
+        var i, result;
+
+        for (i = 0; i < actual.core.length; i++) {
+            result = compareNumeric(actual.core[i], target.core[i]);
+            if (result !== 0) {
+                return result;
+            }
+        }
+
+        // A prerelease ranks below the release it belongs to (section 11.3).
+        if (!actual.prerelease.length && !target.prerelease.length) {
+            return 0;
+        }
+        if (!actual.prerelease.length) {
+            return 1;
+        }
+        if (!target.prerelease.length) {
+            return -1;
+        }
+
+        var shared = Math.min(actual.prerelease.length, target.prerelease.length);
+        for (i = 0; i < shared; i++) {
+            result = comparePrereleaseIdentifier(actual.prerelease[i], target.prerelease[i]);
+            if (result !== 0) {
+                return result;
+            }
+        }
+        // Every field so far is equal, so the longer list wins (section 11.4.4).
+        if (actual.prerelease.length !== target.prerelease.length) {
+            return actual.prerelease.length < target.prerelease.length ? -1 : 1;
+        }
+        return 0;
+    }
+
+    // Implements a custom operation for datetime comparison.
+    // The target value stored on the feature flag is the millisecond epoch, whereas the actual value provided at evaluation time must be RFC-3339 formatted.
+    function datetimeCompare() {
+        var ops = operands(arguments);
+        if (!ops) {
+            return false;
+        }
+        var actualSec = convertRfc3339ToUnixSeconds(ops.actual);
+        var targetSec = convertUnixMillisecondsToSeconds(ops.target);
+        if (actualSec === null || targetSec === null) {
+            return false;
+        }
+        var cmp = actualSec - targetSec;
+        return comparatorMatches(cmp, ops.symbol);
+    }
+
+    function operands(args) {
+        if (args.length !== 3) {
+            return null;
+        }
+        return { actual: args[0], symbol: args[1], target: args[2] };
+    }
+
+    function comparatorMatches(cmp, symbol) {
+        switch (symbol) {
+            case '===':
+                return cmp === 0;
+            case '!==':
+                return cmp !== 0;
+            case '<':
+                return cmp < 0;
+            case '<=':
+                return cmp <= 0;
+            case '>':
+                return cmp > 0;
+            case '>=':
+                return cmp >= 0;
+            default:
+                return false;
+        }
+    }
+
+    function normalizeSemver(version) {
+        var stripped = version.trim().replace(/^[vV]/, '');
+
+        var suffixStart = stripped.length;
+        var separators = ['-', '+'];
+        for (var i = 0; i < separators.length; i++) {
+            var index = stripped.indexOf(separators[i]);
+            if (index !== -1 && index < suffixStart) {
+                suffixStart = index;
+            }
+        }
+
+        var core = stripped.slice(0, suffixStart);
+        var suffix = stripped.slice(suffixStart);
+
+        var parts = core.split('.');
+        while (parts.length < SEMVER_PARTS) {
+            parts.push('0');
+        }
+        return parts.join('.') + suffix;
+    }
+
+    // The regex constrains each field to two digits, which still admits a date that cannot exist, such as
+    // 2026-02-30 or 29 February in a common year. Writing the fields into a Date and reading them back
+    // settles it: out-of-range fields are normalized into a real instant, so a date that does not exist
+    // comes back carrying different fields than it went in with. The three-argument setUTCFullYear sets
+    // all three at once, which judges 29 February against the year given rather than a placeholder, and
+    // leaves years 0 through 99 alone where Date.UTC would map them into the 1900s. The hour is checked
+    // separately because it is not part of the round trip; RFC 3339 section 5.6 allows hours 00 through 23.
+    function isRealCalendarDate(year, month, day, hour) {
+        if (hour > 23) {
+            return false;
+        }
+        var dt = new Date();
+        dt.setUTCFullYear(year, month - 1, day);
+        return dt.getUTCFullYear() === year && dt.getUTCMonth() === month - 1 && dt.getUTCDate() === day;
+    }
+
+    function convertRfc3339ToUnixSeconds(v) {
+        if (typeof v !== 'string') {
+            return null;
+        }
+        var normalized = v.trim().toUpperCase();
+        var fields = RFC3339_REGEX.exec(normalized);
+        if (!fields) {
+            return null;
+        }
+        if (!isRealCalendarDate(Number(fields[1]), Number(fields[2]), Number(fields[3]), Number(fields[4]))) {
+            return null;
+        }
+        var parsed = new Date(normalized);
+        var ms = parsed.getTime();
+        if (isNaN(ms)) {
+            return null;
+        }
+        return Math.floor(ms / 1000);
+    }
+
+    function convertUnixMillisecondsToSeconds(v) {
+        if (typeof v !== 'number' || !isFinite(v)) {
+            return null;
+        }
+        // A value int64 cannot represent is not a real timestamp; treating one as a bound would let a
+        // nonsense target define a rollout window.
+        if (v >= MAX_EPOCH_MS || v <= -9223372036854776e3) {
+            return null;
+        }
+        return truncate(v / 1000);
+    }
+
+    function truncate(n) {
+        return n < 0 ? Math.ceil(n) : Math.floor(n);
+    }
+
+    // Register typed runtime-targeting operators (semver_compare, datetime_compare) into the JsonLogic engine.
+    // Registration happens lazily, when the async targeting bundle loads.
+    registerCustomOperators(jsonLogic);
+
     /**
      * Check if an event matches the given criteria
      * @param {string} eventName - The name of the event being checked
@@ -26724,26 +26987,31 @@
      * When a match is found (event name matches and property filters pass), this method:
      * - Switches the flag to the pending variant
      * - Marks the event as activated for this session
-     * - Records the activation via the API (fire-and-forget)
+     * - Records the activation via the API
+     *
+     * @returns {Promise} Resolves once the pending events have been processed and their recording
+     * requests have settled. The promise never rejects, so callers that ignore it cannot produce an
+     * unhandled rejection.
      */
     FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properties) {
         if (!this.pendingFirstTimeEvents || _.isEmptyObject(this.pendingFirstTimeEvents)) {
-            return;
+            return Promise.resolve();
         }
 
         // Check if targeting promise exists (either bundled or async loaded)
         if (win[TARGETING_GLOBAL_NAME] && _.isFunction(win[TARGETING_GLOBAL_NAME].then)) {
-            win[TARGETING_GLOBAL_NAME].then(function(library) {
-                this._processFirstTimeEventCheck(eventName, properties, library);
+            // The catch is part of the returned chain so the promise handed back always resolves.
+            return win[TARGETING_GLOBAL_NAME].then(function(library) {
+                return this._processFirstTimeEventCheck(eventName, properties, library);
             }.bind(this)).catch(function() {
                 // If targeting failed to load, process with null
                 // Events without property filters will still match
-                this._processFirstTimeEventCheck(eventName, properties, null);
+                return this._processFirstTimeEventCheck(eventName, properties, null);
             }.bind(this));
         } else {
             // No targeting available, process with null
             // Events without property filters will still match
-            this._processFirstTimeEventCheck(eventName, properties, null);
+            return this._processFirstTimeEventCheck(eventName, properties, null);
         }
     };
 
@@ -26752,8 +27020,10 @@
      * @param {string} eventName - The name of the event being tracked
      * @param {Object} properties - Event properties to evaluate against property filters
      * @param {Object} targeting - The loaded targeting library
+     * @returns {Promise} Resolves once every recording request started here has settled.
      */
     FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, properties, targeting) {
+        var recordings = [];
         _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
             if (this.activatedFirstTimeEvents[eventKey]) {
                 return;
@@ -26810,12 +27080,13 @@
             this.trackedFeatures.delete(flagKey);
             this.activatedFirstTimeEvents[eventKey] = true;
 
-            this.recordFirstTimeEvent(
+            recordings.push(this.recordFirstTimeEvent(
                 pendingEvent['flag_id'],
                 pendingEvent['project_id'],
                 pendingEvent['first_time_event_hash']
-            );
+            ));
         }, this);
+        return Promise.all(recordings);
     };
 
     FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
@@ -26841,8 +27112,9 @@
 
         logger$1.log('Recording first-time event for flag: ' + flagId);
 
-        // Fire-and-forget POST request
-        this.fetch.call(win, url, {
+        // The caller chains this so it can wait for the recording to settle. The catch below keeps the
+        // returned promise resolved on failure, so a dropped request never rejects the chain.
+        return this.fetch.call(win, url, {
             'method': 'POST',
             'headers': {
                 'Content-Type': 'application/json',
@@ -27441,7 +27713,7 @@
                 that.event_handler(e, this, options);
 
                 // in case the mixpanel servers don't get back to us in time
-                window.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
+                win.setTimeout(that.track_callback(user_callback, props, options, true), timeout);
 
                 // fire the tracking event
                 that.mp.track(event_name, props, that.track_callback(user_callback, props, options));
@@ -27521,10 +27793,10 @@
     };
 
     LinkTracker.prototype.after_track_handler = function(props, options) {
-        if (options.new_tab) { return; }
+        if (options.new_tab || !options.href) { return; }
 
         setTimeout(function() {
-            window.location = options.href;
+            win.location = options.href;
         }, 0);
     };
 

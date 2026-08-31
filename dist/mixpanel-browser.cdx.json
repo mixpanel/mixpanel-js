@@ -96,8 +96,8 @@
     "component": {
       "type": "library",
       "name": "mixpanel-browser",
-      "version": "2.82.1",
-      "bom-ref": "mixpanel-browser@2.82.1",
+      "version": "2.83.0",
+      "bom-ref": "mixpanel-browser@2.83.0",
       "description": "The official Mixpanel JavaScript browser client library",
       "licenses": [
         {
@@ -107,7 +107,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/mixpanel-browser@2.82.1?vcs_url=git%2Bhttps%3A%2F%2Fgithub.com%2Fmixpanel%2Fmixpanel-js.git",
+      "purl": "pkg:npm/mixpanel-browser@2.83.0?vcs_url=git%2Bhttps%3A%2F%2Fgithub.com%2Fmixpanel%2Fmixpanel-js.git",
       "externalReferences": [
         {
           "url": "https://github.com/mixpanel/mixpanel-js/issues",
@@ -145,7 +145,7 @@
       "name": "rrdom",
       "group": "@mixpanel",
       "version": "2.0.0-alpha.18",
-      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrdom@2.0.0-alpha.18",
+      "bom-ref": "mixpanel-browser@2.83.0|@mixpanel/rrdom@2.0.0-alpha.18",
       "licenses": [
         {
           "license": {
@@ -194,8 +194,8 @@
       "type": "library",
       "name": "rrweb-plugin-console-record",
       "group": "@mixpanel",
-      "version": "2.0.0-alpha.18.4",
-      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.4",
+      "version": "2.0.0-alpha.18.6",
+      "bom-ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.6",
       "author": "justin@recordonce.com",
       "licenses": [
         {
@@ -205,15 +205,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.4",
+      "purl": "pkg:npm/%40mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.6",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@mixpanel/rrweb-plugin-console-record/-/rrweb-plugin-console-record-2.0.0-alpha.18.4.tgz",
+          "url": "https://registry.npmjs.org/@mixpanel/rrweb-plugin-console-record/-/rrweb-plugin-console-record-2.0.0-alpha.18.6.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "806c449cda5f5aead086df9fa5225bc0f57ad2e8342c010d964e14c775d1998a2834918f04ed538901dc33b834ca1aca7f8b5f6d388a299e045f3165399b3fa7"
+              "content": "a9f44d19f58b1d91e7310e0815030e6f17fb72d5fc62b45fdb4e61a69c1bf725f08d91f206c2a42be1a6ddaa2dda950cbb504415e5d2bc54b7f0d7f7bca83843"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -246,7 +246,7 @@
       "name": "rrweb-snapshot",
       "group": "@mixpanel",
       "version": "2.0.0-alpha.18",
-      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
+      "bom-ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
       "author": "yanzhen@smartx.com",
       "description": "rrweb's component to take a snapshot of DOM, aka DOM serializer",
       "licenses": [
@@ -298,7 +298,7 @@
       "name": "rrweb-types",
       "group": "@mixpanel",
       "version": "2.0.0-alpha.18",
-      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-types@2.0.0-alpha.18",
+      "bom-ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb-types@2.0.0-alpha.18",
       "licenses": [
         {
           "license": {
@@ -347,8 +347,8 @@
       "type": "library",
       "name": "rrweb-utils",
       "group": "@mixpanel",
-      "version": "2.0.0-alpha.18.4",
-      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4",
+      "version": "2.0.0-alpha.18.6",
+      "bom-ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb-utils@2.0.0-alpha.18.6",
       "licenses": [
         {
           "license": {
@@ -357,15 +357,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40mixpanel/rrweb-utils@2.0.0-alpha.18.4",
+      "purl": "pkg:npm/%40mixpanel/rrweb-utils@2.0.0-alpha.18.6",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@mixpanel/rrweb-utils/-/rrweb-utils-2.0.0-alpha.18.4.tgz",
+          "url": "https://registry.npmjs.org/@mixpanel/rrweb-utils/-/rrweb-utils-2.0.0-alpha.18.6.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "7379d46d0975f64c478dff27a3014c797949c3466a2deb085416fdb788359c2e16b5a3443e4168b5645d1ade55d9c24d43e698dfcfefdae61bf117a7e0871d49"
+              "content": "d5e11c3ae9e59efdbba2a1d185a2bd1767e8e6407deccf7cfb7568673e820aaf35e89dfbc2f7864088970ef6f9a943a032a8f027d18235131486bc52c8cd02e7"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -397,8 +397,8 @@
       "type": "library",
       "name": "rrweb",
       "group": "@mixpanel",
-      "version": "2.0.0-alpha.18.4",
-      "bom-ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb@2.0.0-alpha.18.4",
+      "version": "2.0.0-alpha.18.6",
+      "bom-ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb@2.0.0-alpha.18.6",
       "author": "yanzhen@smartx.com",
       "description": "record and replay the web",
       "licenses": [
@@ -409,15 +409,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40mixpanel/rrweb@2.0.0-alpha.18.4",
+      "purl": "pkg:npm/%40mixpanel/rrweb@2.0.0-alpha.18.6",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@mixpanel/rrweb/-/rrweb-2.0.0-alpha.18.4.tgz",
+          "url": "https://registry.npmjs.org/@mixpanel/rrweb/-/rrweb-2.0.0-alpha.18.6.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "202a446031441220a852e420f9d7b756f402b28945e253477c433d0c1a793f0b9cec4817ab0595e3052989117f35b8682a4fbcd97d507bea2aaa52896ff08617"
+              "content": "f43381ef6def0c4cbcccff3c9eb1260367459956becf4b5cd8019356bc47975a49727ca14f767b48049643181c4f8286b2a4c8a2b249fc3d6c348ee3e7ded9f6"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -450,7 +450,7 @@
       "name": "css-font-loading-module",
       "group": "@types",
       "version": "0.0.7",
-      "bom-ref": "mixpanel-browser@2.82.1|@types/css-font-loading-module@0.0.7",
+      "bom-ref": "mixpanel-browser@2.83.0|@types/css-font-loading-module@0.0.7",
       "description": "TypeScript definitions for CSS Font Loading Module Level 3",
       "licenses": [
         {
@@ -501,7 +501,7 @@
       "name": "json-logic-js",
       "group": "@types",
       "version": "2.0.5",
-      "bom-ref": "mixpanel-browser@2.82.1|@types/json-logic-js@2.0.5",
+      "bom-ref": "mixpanel-browser@2.83.0|@types/json-logic-js@2.0.5",
       "description": "TypeScript definitions for json-logic-js",
       "licenses": [
         {
@@ -552,7 +552,7 @@
       "name": "fsm",
       "group": "@xstate",
       "version": "1.6.5",
-      "bom-ref": "mixpanel-browser@2.82.1|@xstate/fsm@1.6.5",
+      "bom-ref": "mixpanel-browser@2.83.0|@xstate/fsm@1.6.5",
       "author": "David Khourshid",
       "description": "XState for finite state machines",
       "licenses": [
@@ -603,7 +603,7 @@
       "type": "library",
       "name": "base64-arraybuffer",
       "version": "1.0.2",
-      "bom-ref": "mixpanel-browser@2.82.1|base64-arraybuffer@1.0.2",
+      "bom-ref": "mixpanel-browser@2.83.0|base64-arraybuffer@1.0.2",
       "author": "Niklas von Hertzen",
       "description": "Encode/decode base64 data into ArrayBuffers",
       "licenses": [
@@ -658,7 +658,7 @@
       "type": "library",
       "name": "json-logic-js",
       "version": "2.0.5",
-      "bom-ref": "mixpanel-browser@2.82.1|json-logic-js@2.0.5",
+      "bom-ref": "mixpanel-browser@2.83.0|json-logic-js@2.0.5",
       "author": "Jeremy Wadhams",
       "description": "Build complex rules, serialize them as JSON, and execute them in JavaScript",
       "licenses": [
@@ -709,7 +709,7 @@
       "type": "library",
       "name": "mitt",
       "version": "3.0.1",
-      "bom-ref": "mixpanel-browser@2.82.1|mitt@3.0.1",
+      "bom-ref": "mixpanel-browser@2.83.0|mitt@3.0.1",
       "description": "Tiny 200b functional Event Emitter / pubsub.",
       "licenses": [
         {
@@ -759,7 +759,7 @@
       "type": "library",
       "name": "nanoid",
       "version": "3.3.18",
-      "bom-ref": "mixpanel-browser@2.82.1|nanoid@3.3.18",
+      "bom-ref": "mixpanel-browser@2.83.0|nanoid@3.3.18",
       "author": "Andrey Sitnik",
       "description": "A tiny (116 bytes), secure URL-friendly unique string ID generator",
       "licenses": [
@@ -814,7 +814,7 @@
       "type": "library",
       "name": "picocolors",
       "version": "1.1.1",
-      "bom-ref": "mixpanel-browser@2.82.1|picocolors@1.1.1",
+      "bom-ref": "mixpanel-browser@2.83.0|picocolors@1.1.1",
       "author": "Alexey Raspopov",
       "description": "The tiniest and the fastest library for terminal output formatting with ANSI colors",
       "licenses": [
@@ -865,7 +865,7 @@
       "type": "library",
       "name": "postcss",
       "version": "8.5.26",
-      "bom-ref": "mixpanel-browser@2.82.1|postcss@8.5.26",
+      "bom-ref": "mixpanel-browser@2.83.0|postcss@8.5.26",
       "author": "Andrey Sitnik",
       "description": "Tool for transforming styles with JS plugins",
       "licenses": [
@@ -920,7 +920,7 @@
       "type": "library",
       "name": "source-map-js",
       "version": "1.2.1",
-      "bom-ref": "mixpanel-browser@2.82.1|source-map-js@1.2.1",
+      "bom-ref": "mixpanel-browser@2.83.0|source-map-js@1.2.1",
       "author": "Valentin 7rulnik Semirulnik",
       "description": "Generates and consumes source maps",
       "licenses": [
@@ -974,87 +974,87 @@
   ],
   "dependencies": [
     {
-      "ref": "mixpanel-browser@2.82.1",
+      "ref": "mixpanel-browser@2.83.0",
       "dependsOn": [
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.4",
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4",
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb@2.0.0-alpha.18.4",
-        "mixpanel-browser@2.82.1|@types/json-logic-js@2.0.5",
-        "mixpanel-browser@2.82.1|json-logic-js@2.0.5"
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.6",
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb-utils@2.0.0-alpha.18.6",
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb@2.0.0-alpha.18.6",
+        "mixpanel-browser@2.83.0|@types/json-logic-js@2.0.5",
+        "mixpanel-browser@2.83.0|json-logic-js@2.0.5"
       ]
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrdom@2.0.0-alpha.18",
+      "ref": "mixpanel-browser@2.83.0|@mixpanel/rrdom@2.0.0-alpha.18",
       "dependsOn": [
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb-snapshot@2.0.0-alpha.18"
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb-snapshot@2.0.0-alpha.18"
       ]
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.4",
+      "ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb-plugin-console-record@2.0.0-alpha.18.6",
       "dependsOn": [
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4",
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb@2.0.0-alpha.18.4"
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb-utils@2.0.0-alpha.18.6",
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb@2.0.0-alpha.18.6"
       ]
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
+      "ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
       "dependsOn": [
-        "mixpanel-browser@2.82.1|postcss@8.5.26"
+        "mixpanel-browser@2.83.0|postcss@8.5.26"
       ]
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-types@2.0.0-alpha.18"
+      "ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb-types@2.0.0-alpha.18"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4"
+      "ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb-utils@2.0.0-alpha.18.6"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@mixpanel/rrweb@2.0.0-alpha.18.4",
+      "ref": "mixpanel-browser@2.83.0|@mixpanel/rrweb@2.0.0-alpha.18.6",
       "dependsOn": [
-        "mixpanel-browser@2.82.1|@mixpanel/rrdom@2.0.0-alpha.18",
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb-types@2.0.0-alpha.18",
-        "mixpanel-browser@2.82.1|@mixpanel/rrweb-utils@2.0.0-alpha.18.4",
-        "mixpanel-browser@2.82.1|@types/css-font-loading-module@0.0.7",
-        "mixpanel-browser@2.82.1|@xstate/fsm@1.6.5",
-        "mixpanel-browser@2.82.1|base64-arraybuffer@1.0.2",
-        "mixpanel-browser@2.82.1|mitt@3.0.1"
+        "mixpanel-browser@2.83.0|@mixpanel/rrdom@2.0.0-alpha.18",
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb-snapshot@2.0.0-alpha.18",
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb-types@2.0.0-alpha.18",
+        "mixpanel-browser@2.83.0|@mixpanel/rrweb-utils@2.0.0-alpha.18.6",
+        "mixpanel-browser@2.83.0|@types/css-font-loading-module@0.0.7",
+        "mixpanel-browser@2.83.0|@xstate/fsm@1.6.5",
+        "mixpanel-browser@2.83.0|base64-arraybuffer@1.0.2",
+        "mixpanel-browser@2.83.0|mitt@3.0.1"
       ]
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@types/css-font-loading-module@0.0.7"
+      "ref": "mixpanel-browser@2.83.0|@types/css-font-loading-module@0.0.7"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@types/json-logic-js@2.0.5"
+      "ref": "mixpanel-browser@2.83.0|@types/json-logic-js@2.0.5"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|@xstate/fsm@1.6.5"
+      "ref": "mixpanel-browser@2.83.0|@xstate/fsm@1.6.5"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|base64-arraybuffer@1.0.2"
+      "ref": "mixpanel-browser@2.83.0|base64-arraybuffer@1.0.2"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|json-logic-js@2.0.5"
+      "ref": "mixpanel-browser@2.83.0|json-logic-js@2.0.5"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|mitt@3.0.1"
+      "ref": "mixpanel-browser@2.83.0|mitt@3.0.1"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|nanoid@3.3.18"
+      "ref": "mixpanel-browser@2.83.0|nanoid@3.3.18"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|picocolors@1.1.1"
+      "ref": "mixpanel-browser@2.83.0|picocolors@1.1.1"
     },
     {
-      "ref": "mixpanel-browser@2.82.1|postcss@8.5.26",
+      "ref": "mixpanel-browser@2.83.0|postcss@8.5.26",
       "dependsOn": [
-        "mixpanel-browser@2.82.1|nanoid@3.3.18",
-        "mixpanel-browser@2.82.1|picocolors@1.1.1",
-        "mixpanel-browser@2.82.1|source-map-js@1.2.1"
+        "mixpanel-browser@2.83.0|nanoid@3.3.18",
+        "mixpanel-browser@2.83.0|picocolors@1.1.1",
+        "mixpanel-browser@2.83.0|source-map-js@1.2.1"
       ]
     },
     {
-      "ref": "mixpanel-browser@2.82.1|source-map-js@1.2.1"
+      "ref": "mixpanel-browser@2.83.0|source-map-js@1.2.1"
     }
   ]
 }

@@ -1225,6 +1225,16 @@ function serializeElementNode(n2, options) {
             attributes.checked = checked;
         }
     }
+    if ((tagName === "input" || tagName === "textarea") && attributes.placeholder) {
+        attributes.placeholder = maskInputValue({
+            element: n2,
+            type: getInputType(n2),
+            tagName: tagName,
+            value: attributes.placeholder,
+            maskInputOptions: maskInputOptions,
+            maskInputFn: maskInputFn
+        });
+    }
     if (tagName === "option") {
         if (n2.selected && !maskInputOptions["select"]) {
             attributes.selected = true;
@@ -10860,7 +10870,7 @@ var MutationBuffer = /*#__PURE__*/ function() {
                         var target = m.target;
                         var attributeName = m.attributeName;
                         var value1 = m.target.getAttribute(attributeName);
-                        if (attributeName === "value") {
+                        if (attributeName === "value" || attributeName === "placeholder") {
                             var type = getInputType(target);
                             value1 = maskInputValue({
                                 element: target,

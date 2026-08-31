@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.82.1'
+        LIB_VERSION: '2.83.0-rc1'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -1257,6 +1257,16 @@
             } else if (checked) {
                 attributes.checked = checked;
             }
+        }
+        if ((tagName === "input" || tagName === "textarea") && attributes.placeholder) {
+            attributes.placeholder = maskInputValue({
+                element: n2,
+                type: getInputType(n2),
+                tagName: tagName,
+                value: attributes.placeholder,
+                maskInputOptions: maskInputOptions,
+                maskInputFn: maskInputFn
+            });
         }
         if (tagName === "option") {
             if (n2.selected && !maskInputOptions["select"]) {
@@ -10893,7 +10903,7 @@
                             var target = m.target;
                             var attributeName = m.attributeName;
                             var value1 = m.target.getAttribute(attributeName);
-                            if (attributeName === "value") {
+                            if (attributeName === "value" || attributeName === "placeholder") {
                                 var type = getInputType(target);
                                 value1 = maskInputValue({
                                     element: target,
@@ -19047,12 +19057,7 @@
         nativeIsArray = Array.isArray,
         breaker = {};
 
-    var _ = {
-        trim: function(str) {
-            // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Polyfill
-            return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
-        }
-    };
+    var _ = {};
 
     // Console override
     var console$1 = {
@@ -19883,7 +19888,11 @@
     _.getQueryParam = function(url, param) {
         // Expects a raw URL
 
-        param = param.replace(/[[]/g, '\\[').replace(/[\]]/g, '\\]');
+        // Escape the RegExp metacharacters the param name may contain before
+        // interpolating it into `regexS`. Backslash is escaped in the same pass as
+        // the brackets (a single character class), so a param name is never able to
+        // introduce an unintended escape sequence (CodeQL js/incomplete-sanitization).
+        param = param.replace(/[[\]\\]/g, '\\$&');
         var regexS = '[\\?&]' + param + '=([^&#]*)',
             regex = new RegExp(regexS),
             results = regex.exec(url);
