@@ -5,8 +5,9 @@ import {flagsTests} from './suites/flags';
 import {remoteSettingsTests} from './suites/remoteSettings';
 import {bundleCompatTests} from './suites/bundleCompat';
 import {autocaptureTests} from './suites/autocapture';
+import {domTrackersTests} from './suites/domTrackers';
 
-export {trackTests, batchRequestsTests, recorderTests, flagsTests, remoteSettingsTests, bundleCompatTests};
+export {trackTests, batchRequestsTests, recorderTests, flagsTests, remoteSettingsTests, bundleCompatTests, domTrackersTests};
 
 export const ALL_TESTS = [
   trackTests,
@@ -16,4 +17,5 @@ export const ALL_TESTS = [
   flagsTests,
   remoteSettingsTests,
   bundleCompatTests,
+  domTrackersTests,
 ];
