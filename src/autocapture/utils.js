@@ -326,7 +326,7 @@ function getSafeText(el, ev, allowElementCallback, allowSelectors) {
     if (shouldTrackElementDetails(el, ev, allowElementCallback, allowSelectors) && el.childNodes && el.childNodes.length) {
         _.each(el.childNodes, function(child) {
             if (isTextNode(child) && child.textContent) {
-                elText += _.trim(child.textContent)
+                elText += child.textContent.trim()
                     // scrub potentially sensitive values
                     .split(/(\s+)/).filter(shouldTrackValue).join('')
                     // normalize whitespace
@@ -337,7 +337,7 @@ function getSafeText(el, ev, allowElementCallback, allowSelectors) {
         });
     }
 
-    return _.trim(elText);
+    return elText.trim();
 }
 
 function guessRealClickTarget(ev) {
@@ -589,7 +589,7 @@ function shouldTrackValue(value) {
     }
 
     if (typeof value === 'string') {
-        value = _.trim(value);
+        value = value.trim();
 
         // check to see if input value looks like a credit card number
         // see: https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s20.html
