@@ -11,7 +11,7 @@
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
     // Constants that are injected at build-time for the names of async modules.
-    var RECORDER_FILENAME = 'mixpanel-recorder-9W-_m2IY.js';
+    var RECORDER_FILENAME = 'mixpanel-recorder-DhSQ5T5X.js';
     var TARGETING_FILENAME = 'mixpanel-targeting-ROmBW6ob.js';
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
