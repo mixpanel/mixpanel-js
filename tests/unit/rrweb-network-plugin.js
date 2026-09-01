@@ -210,5 +210,120 @@ describe(`rrweb-network-plugin utils`, function() {
 
       win.fetch(url);
     });
+
+    it(`does not consume a Request object passed to fetch (SDK-157)`, function(done) {
+      const url = `https://example.com/api/data`;
+      const requestText = `{"hello":"world"}`;
+
+      const fakeEntry = {
+        name: url,
+        initiatorType: `fetch`,
+        entryType: `resource`,
+        startTime: 0,
+        responseEnd: 50,
+      };
+
+      let dispatchError = null;
+      const win = {
+        fetch: function(input) {
+          try {
+            // browsers construct an internal request from the input; this throws if the
+            // body has already been consumed
+            new Request(input);
+          } catch (e) {
+            dispatchError = e;
+            return Promise.reject(e);
+          }
+          return Promise.resolve(new Response(`{}`, {status: 200}));
+        },
+        performance: {
+          now: function() { return 0; },
+          getEntriesByName: function() { return [fakeEntry]; },
+        },
+      };
+
+      const options = {
+        initiatorTypes: [`fetch`],
+        recordHeaders: { request: [], response: [] },
+        recordBodyUrls: { request: [/example\.com/], response: [] },
+        ignoreRequestUrls: [],
+        ignoreRequestFn: function() { return false; },
+      };
+
+      initFetchObserver(function(data) {
+        try {
+          expect(dispatchError).to.be.null;
+          expect(data.requests[0].requestBody).to.equal(requestText);
+          expect(data.requests[0].method).to.equal(`POST`);
+          done();
+        } catch (e) {
+          done(e);
+        }
+      }, win, options);
+
+      const request = new Request(url, {
+        method: `POST`,
+        headers: {'content-type': `application/json`},
+        body: requestText,
+      });
+
+      win.fetch(request).catch((e) => done(e));
+    });
+
+    it(`does not consume a Request object passed to fetch with an init object (SDK-157)`, function(done) {
+      const url = `https://example.com/api/data`;
+      const requestText = `{"hello":"world"}`;
+
+      const fakeEntry = {
+        name: url,
+        initiatorType: `fetch`,
+        entryType: `resource`,
+        startTime: 0,
+        responseEnd: 50,
+      };
+
+      let dispatchError = null;
+      const win = {
+        fetch: function(input) {
+          try {
+            new Request(input);
+          } catch (e) {
+            dispatchError = e;
+            return Promise.reject(e);
+          }
+          return Promise.resolve(new Response(`{}`, {status: 200}));
+        },
+        performance: {
+          now: function() { return 0; },
+          getEntriesByName: function() { return [fakeEntry]; },
+        },
+      };
+
+      const options = {
+        initiatorTypes: [`fetch`],
+        recordHeaders: { request: [], response: [] },
+        recordBodyUrls: { request: [/example\.com/], response: [] },
+        ignoreRequestUrls: [],
+        ignoreRequestFn: function() { return false; },
+      };
+
+      initFetchObserver(function(data) {
+        try {
+          expect(dispatchError).to.be.null;
+          expect(data.requests[0].requestBody).to.equal(requestText);
+          expect(data.requests[0].method).to.equal(`PUT`);
+          done();
+        } catch (e) {
+          done(e);
+        }
+      }, win, options);
+
+      const request = new Request(url, {
+        method: `POST`,
+        body: requestText,
+      });
+
+      win.fetch(request, {method: `PUT`}).catch((e) => done(e));
+    });
   });
 });
