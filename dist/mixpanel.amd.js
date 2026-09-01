@@ -23640,6 +23640,25 @@ define((function () { 'use strict';
     }
 
     /**
+     * Build the Request used to inspect an outgoing fetch call.
+     *
+     * Constructing a Request from another Request marks the source's body as used, which makes
+     * the caller's own fetch fail with "Cannot construct a Request with a Request object that has
+     * already been used". Clone Request inputs first so the object the caller passed stays intact.
+     *
+     * @param {RequestInfo | URL} input
+     * @param {RequestInit} [init]
+     * @returns {Request}
+     */
+    function buildRecordedRequest(input, init) {
+        if (typeof Request !== 'undefined' && input instanceof Request) {
+            var cloned = input.clone();
+            return init ? new Request(cloned, init) : cloned;
+        }
+        return new Request(input, init);
+    }
+
+    /**
      * @param {networkCallback} cb
      * @param {Window} win
      * @param {Required<NetworkRecordOptions>} options
@@ -23654,7 +23673,7 @@ define((function () { 'use strict';
 
         var restorePatch = patch(win, 'fetch', function(/** @type {typeof fetch} */ originalFetch) {
             return function() {
-                var req = new Request(arguments[0], arguments[1]);
+                var req = buildRecordedRequest(arguments[0], arguments[1]);
                 /** @type {Response | undefined} */
                 var res;
                 /** @type {Partial<NetworkRequest>} */
