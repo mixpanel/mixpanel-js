@@ -1,0 +1,54 @@
+name: "CodeQL"
+
+# Advanced CodeQL setup for mixpanel-js.
+#
+# Replaces GitHub default setup so analysis can be scoped to first-party runtime
+# source via .github/codeql/codeql-config.yml (default setup does not honor a
+# path-filter config). The query suite is left at the CodeQL default to preserve
+# parity with the previous default-setup coverage — this change re-scopes what is
+# analyzed, it does not change which queries run.
+#
+# NOTE: GitHub default setup must be disabled for this workflow to upload
+# results (Settings -> Advanced Security -> CodeQL analysis -> switch to
+# Advanced). See the PR description for the migration steps.
+
+on:
+  push:
+    branches: [master, "**/*-rc"]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: "31 5 * * 1" # weekly, Monday 05:31 UTC
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+            build-mode: none
+          - language: actions
+            build-mode: none
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef # codeql-bundle-v2.26.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef # codeql-bundle-v2.26.3
+        with:
+          category: "/language:${{ matrix.language }}"
