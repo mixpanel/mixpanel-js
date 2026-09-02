@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.83.0-rc1'
+        LIB_VERSION: '2.83.0'
     };
 
     // Window global names for async modules
