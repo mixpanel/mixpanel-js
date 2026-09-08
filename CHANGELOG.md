@@ -1,3 +1,14 @@
+**2.83.0** (8 Sep 2026)
+
+- Adds `semver` and `date` custom operators for Feature Flags runtime targeting (first-time-event) rules, alongside the existing operators.
+- Fixes session recording network telemetry: passing a `Request` object directly to `fetch()` no longer marks its body as consumed, which previously made the application's own `fetch()` call fail with "Cannot construct a Request with a Request object that has already been used".
+- Fixes autocapture link tracking to skip the delayed navigation when a tracked `<a>` element has no `href`, instead of navigating to `undefined`.
+- Fixes a CodeQL-flagged incomplete sanitization in `_.getQueryParam`: the URL param name is now fully escaped (including backslashes) before being interpolated into the lookup regex.
+- Removes the internal `_.trim` polyfill in favor of native `String.prototype.trim`, addressing a CodeQL alert.
+- Updates `@mixpanel/rrweb` to `2.0.0-alpha.18.6`.
+- Publishes the CycloneDX SBOM as part of the `dist` build rather than as a separate CI job.
+- Trims the published npm package down to `CHANGELOG.md`, `dist`, `doc`, `LICENSE`, `logo.svg`, `package.json`, `README.md`, and `src`, so dev/build/test tooling is no longer shipped.
+
 **2.82.1** (19 Aug 2026)
 
 - Publishes a CycloneDX Software Bill of Materials (SBOM) as a release asset.
