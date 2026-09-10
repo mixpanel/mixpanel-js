@@ -204,6 +204,20 @@ describe(`_.info helper methods`, function() {
       expect(pageViewProperties.current_url_search).to.equal(`?utm_source=google`);
     });
   });
+
+  describe(`_.info.browserVersion`, function() {
+    // Real Samsung stock browser UA on Android 4.4.2 (no "Chrome" token, so
+    // it is detected as "Android Mobile" rather than "Chrome").
+    var androidMobileUA = `Mozilla/5.0 (Linux; U; Android 4.4.2; en-us; SAMSUNG SM-G900F Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Mobile Safari/537.36`;
+
+    it(`detects "Android Mobile" browsers`, function() {
+      expect(_.info.browser(androidMobileUA, ``, false)).to.equal(`Android Mobile`);
+    });
+
+    it(`parses the version for "Android Mobile" browsers`, function() {
+      expect(_.info.browserVersion(androidMobileUA, ``, false)).to.equal(4.4);
+    });
+  });
 });
 
 describe(`_.isBlockedUA`, function() {
