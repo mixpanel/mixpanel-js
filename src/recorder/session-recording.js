@@ -518,6 +518,11 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
         var eventsJson = JSON.stringify(data);
         Object.assign(reqParams, this.getUserIdInfo());
 
+        var sendUncompressed = function() {
+            reqParams['format'] = 'body';
+            this._sendRequest(replayId, reqParams, eventsJson, callback);
+        }.bind(this);
+
         if (canUseCompressionStream(userAgent, navigator.vendor, windowOpera)) {
             var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
             var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
@@ -526,10 +531,12 @@ SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (da
                 .then(function(compressedBlob) {
                     reqParams['format'] = 'gzip';
                     this._sendRequest(replayId, reqParams, compressedBlob, callback);
+                }.bind(this), function(err) {
+                    this.reportError('Error compressing session recording batch; sending uncompressed', err);
+                    sendUncompressed();
                 }.bind(this));
         } else {
-            reqParams['format'] = 'body';
-            this._sendRequest(replayId, reqParams, eventsJson, callback);
+            sendUncompressed();
         }
     }
 });
