@@ -2,10 +2,6 @@
 
 set -e
 
-# make locally installed CLIs (rollup, webpack, browserify) available even when
-# this script is run directly rather than via `npm run`
-export PATH="$(cd "$(dirname "$0")" && pwd)/node_modules/.bin:$PATH"
-
 # building with $DIST=1 also implies $FULL=1
 if [ ! -z "$DIST" ]; then
     export FULL=1
