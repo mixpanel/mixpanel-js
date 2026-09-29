@@ -2,6 +2,10 @@
 
 set -e
 
+# make locally installed CLIs (rollup, webpack, browserify) available even when
+# this script is run directly rather than via `npm run`
+export PATH="$(cd "$(dirname "$0")" && pwd)/node_modules/.bin:$PATH"
+
 # building with $DIST=1 also implies $FULL=1
 if [ ! -z "$DIST" ]; then
     export FULL=1
@@ -10,7 +14,7 @@ if [ ! -z "$DIST" ]; then
 fi
 
 echo 'Building main bundles'
-npx rollup -c rollup.config.mjs
+rollup -c rollup.config.mjs
 
 ln -sf mixpanel.globals.js build/mixpanel.js
 
@@ -31,6 +35,6 @@ fi
 
 if [ ! -z "$FULL" ]; then
     echo 'Bundling module-loader test runners'
-    npx webpack tests/module-cjs.js tests/module-cjs.bundle.js
-    npx browserify tests/module-es2015.js -t [ babelify --compact false ] --outfile tests/module-es2015.bundle.js
+    webpack tests/module-cjs.js tests/module-cjs.bundle.js
+    browserify tests/module-es2015.js -t [ babelify --compact false ] --outfile tests/module-es2015.bundle.js
 fi
