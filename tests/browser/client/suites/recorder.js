@@ -430,6 +430,28 @@ export function recorderTests (mixpanel) {
         await mixpanel.recordertest.stop_session_recording();
       });
 
+      it(`sends the batch uncompressed when compression fails`, async function () {
+        this.randomStub.returns(0.02);
+        this.initMixpanelRecorder({ record_sessions_percent: 10 });
+
+        this.responseBlobStub = sinon.stub(window.Response.prototype, `blob`);
+        this.responseBlobStub.returns(Promise.reject(new DOMException(`The I/O read operation failed.`, `NotReadableError`)));
+        this.fetchStub.returns(makeFakeFetchResponse(200));
+
+        await this.waitForRecorderLoad();
+        simulateMouseClick(document.body);
+        await this.waitForRecorderEnqueue();
+        await this.clock.tickAsync(10 * 1000);
+        await this.waitForFetchCalls(1);
+
+        const fetchCall = this.fetchStub.getCall(0);
+        const urlParams = validateAndGetUrlParams(fetchCall);
+        expect(urlParams.get(`format`)).to.equal(`body`, `falls back to an uncompressed body`);
+        expect(JSON.parse(fetchCall.args[1].body)).to.be.an(`array`).that.is.not.empty;
+
+        await mixpanel.recordertest.stop_session_recording();
+      });
+
       it(`halves batch size and retries record request after a 413`, async function () {
         this.randomStub.returns(0.02);
 
