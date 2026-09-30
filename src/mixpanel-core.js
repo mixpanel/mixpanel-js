@@ -173,9 +173,9 @@ var DOM_LOADED = false;
 
 /**
  * Mixpanel Library Object
- * @constructor
+ * @class
  */
-var MixpanelLib = function() {};
+function MixpanelLib() {}
 
 
 /**
@@ -268,7 +268,7 @@ var create_mplib = function(token, config, name) {
  *     mixpanel.library_name.track(...);
  *
  * @param {String} token   Your Mixpanel API token
- * @param {Object} [config]  A dictionary of config options to override. <a href="https://github.com/mixpanel/mixpanel-js/blob/v2.46.0/src/mixpanel-core.js#L88-L127">See a list of default config options</a>.
+ * @param {Partial<import('./index.d.ts').Config>} [config] A dictionary of config options to override; see the Config type for the available options and their defaults.
  * @param {String} [name]    The name for the new mixpanel instance that you want created
  */
 MixpanelLib.prototype.init = function (token, config, name) {
@@ -987,8 +987,10 @@ MixpanelLib.prototype.stop_batch_senders = function() {
  * do not wish to rely on our convenience methods
  * (created in the snippet).
  *
- * ### Usage:
- *     mixpanel.push(['register', { a: 'b' }]);
+ * @example
+ * ```js
+ * mixpanel.push(['register', { a: 'b' }]);
+ * ```
  *
  * @param {Array} item A [function_name, args...] array to be executed
  */
@@ -1097,19 +1099,21 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     return request_enqueued_or_initiated && truncated_data;
 };
 
+MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(
 /**
  * Track an event. This is the most important and
  * frequently used Mixpanel function.
  *
- * ### Usage:
- *
- *     // track an event named 'Registered'
- *     mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
- *
- *     // track an event using navigator.sendBeacon
- *     mixpanel.track('Left page', {'duration_seconds': 35}, {transport: 'sendBeacon'});
- *
  * To track link clicks or form submissions, see track_links() or track_forms().
+ *
+ * @example
+ * ```js
+ * // track an event named 'Registered'
+ * mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
+ *
+ * // track an event using navigator.sendBeacon
+ * mixpanel.track('Left page', {'duration_seconds': 35}, {transport: 'sendBeacon'});
+ * ```
  *
  * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
  * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
@@ -1120,7 +1124,7 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
-MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, properties, options, callback) {
+function(event_name, properties, options, callback) {
     var ret;
     if (!(options && options.skip_hooks)) {
         ret = this._run_hook('before_track', event_name, properties);
@@ -1228,21 +1232,23 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
     return ret;
 });
 
+MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(
 /**
  * Register the current user into one/many groups.
  *
- * ### Usage:
- *
- *      mixpanel.set_group('company', ['mixpanel', 'google']) // an array of IDs
- *      mixpanel.set_group('company', 'mixpanel')
- *      mixpanel.set_group('company', 128746312)
+ * @example
+ * ```js
+ * mixpanel.set_group('company', ['mixpanel', 'google']) // an array of IDs
+ * mixpanel.set_group('company', 'mixpanel')
+ * mixpanel.set_group('company', 128746312)
+ * ```
  *
  * @param {String} group_key Group key
  * @param {Array|String|Number} group_ids An array of group IDs, or a singular group ID
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  *
  */
-MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, group_ids, callback) {
+function(group_key, group_ids, callback) {
     if (!_.isArray(group_ids)) {
         group_ids = [group_ids];
     }
@@ -1252,18 +1258,20 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(function(group_key, 
     return this['people'].set(group_key, group_ids, callback);
 });
 
+MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(
 /**
  * Add a new group for this user.
  *
- * ### Usage:
- *
- *      mixpanel.add_group('company', 'mixpanel')
+ * @example
+ * ```js
+ * mixpanel.add_group('company', 'mixpanel')
+ * ```
  *
  * @param {String} group_key Group key
  * @param {*} group_id A valid Mixpanel property type
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
-MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
+function(group_key, group_id, callback) {
     var old_values = this.get_property(group_key);
     var prop = {};
     if (old_values === undefined) {
@@ -1279,18 +1287,20 @@ MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(function(group_key, 
     return this['people'].union(group_key, group_id, callback);
 });
 
+MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(
 /**
  * Remove a group from this user.
  *
- * ### Usage:
- *
- *      mixpanel.remove_group('company', 'mixpanel')
+ * @example
+ * ```js
+ * mixpanel.remove_group('company', 'mixpanel')
+ * ```
  *
  * @param {String} group_key Group key
  * @param {*} group_id A valid Mixpanel property type
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
-MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_key, group_id, callback) {
+function(group_key, group_id, callback) {
     var old_value = this.get_property(group_key);
     // if the value doesn't exist, the persistent store is unchanged
     if (old_value !== undefined) {
@@ -1306,19 +1316,21 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(function(group_ke
     return this['people'].remove(group_key, group_id, callback);
 });
 
+MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(
 /**
  * Track an event with specific groups.
  *
- * ### Usage:
- *
- *      mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
+ * @example
+ * ```js
+ * mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
+ * ```
  *
  * @param {String} event_name The name of the event (see `mixpanel.track()`)
  * @param {Object=} properties A set of properties to include with the event you're sending (see `mixpanel.track()`)
  * @param {Object=} groups An object mapping group name keys to one or more values
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
-MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(function(event_name, properties, groups, callback) {
+function(event_name, properties, groups, callback) {
     var tracking_props = _.extend({}, properties || {});
     _.each(groups, function(v, k) {
         if (v !== null && v !== undefined) {
@@ -1339,9 +1351,10 @@ MixpanelLib.prototype._remove_group_from_cache = function (group_key, group_id) 
 /**
  * Look up reference to a Mixpanel group
  *
- * ### Usage:
- *
- *       mixpanel.get_group(group_key, group_id)
+ * @example
+ * ```js
+ * mixpanel.get_group(group_key, group_id)
+ * ```
  *
  * @param {String} group_key Group key
  * @param {Object} group_id A valid Mixpanel property type
@@ -1358,28 +1371,30 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
     return group;
 };
 
+MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(
 /**
  * Track a default Mixpanel page view event, which includes extra default event properties to
  * improve page view data.
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // track a default $mp_web_page_view event
+ * mixpanel.track_pageview();
  *
- *     // track a default $mp_web_page_view event
- *     mixpanel.track_pageview();
+ * // track a page view event with additional event properties
+ * mixpanel.track_pageview({'ab_test_variant': 'card-layout-b'});
  *
- *     // track a page view event with additional event properties
- *     mixpanel.track_pageview({'ab_test_variant': 'card-layout-b'});
+ * // example approach to track page views on different page types as event properties
+ * mixpanel.track_pageview({'page': 'pricing'});
+ * mixpanel.track_pageview({'page': 'homepage'});
  *
- *     // example approach to track page views on different page types as event properties
- *     mixpanel.track_pageview({'page': 'pricing'});
- *     mixpanel.track_pageview({'page': 'homepage'});
+ * // UNCOMMON: Tracking a page view event with a custom event_name option. NOT expected to be used for
+ * // individual pages on the same site or product. Use cases for custom event_name may be page
+ * // views on different products or internal applications that are considered completely separate
+ * mixpanel.track_pageview({'page': 'customer-search'}, {'event_name': '[internal] Admin Page View'});
+ * ```
  *
- *     // UNCOMMON: Tracking a page view event with a custom event_name option. NOT expected to be used for
- *     // individual pages on the same site or product. Use cases for custom event_name may be page
- *     // views on different products or internal applications that are considered completely separate
- *     mixpanel.track_pageview({'page': 'customer-search'}, {'event_name': '[internal] Admin Page View'});
- *
- * ### Notes:
+ * @remarks
  *
  * The `config.track_pageview` option for <a href="#mixpanelinit">mixpanel.init()</a>
  * may be turned on for tracking page loads automatically.
@@ -1402,7 +1417,7 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
-MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(properties, options) {
+function(properties, options) {
     if (typeof properties !== 'object') {
         properties = {};
     }
@@ -1432,12 +1447,13 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(proper
  * Track clicks on a set of document elements. Selector must be a
  * valid query. Elements must exist on the page at the time track_links is called.
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // track click for link id #nav
+ * mixpanel.track_links('#nav', 'Clicked Nav Link');
+ * ```
  *
- *     // track click for link id #nav
- *     mixpanel.track_links('#nav', 'Clicked Nav Link');
- *
- * ### Notes:
+ * @remarks
  *
  * This function will wait up to 300 ms for the Mixpanel
  * servers to respond. If they have not responded by that time
@@ -1451,24 +1467,24 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(function(proper
  * from the function; any properties defined on this object
  * will be sent to mixpanel as event properties.
  *
- * @type {Function}
  * @param {Object|String} query A valid DOM query, element or jQuery-esque list
  * @param {String} event_name The name of the event to track
  * @param {Object|Function} [properties] A properties object or function that returns a dictionary of properties when passed a DOMElement
  */
-MixpanelLib.prototype.track_links = function() {
+MixpanelLib.prototype.track_links = function(query, event_name, properties) { // eslint-disable-line no-unused-vars
     return this._track_dom.call(this, LinkTracker, arguments);
 };
 
 /**
  * Track form submissions. Selector must be a valid query.
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // track submission for form id 'register'
+ * mixpanel.track_forms('#register', 'Created Account');
+ * ```
  *
- *     // track submission for form id 'register'
- *     mixpanel.track_forms('#register', 'Created Account');
- *
- * ### Notes:
+ * @remarks
  *
  * This function will wait up to 300 ms for the mixpanel
  * servers to respond, if they have not responded by that time
@@ -1482,12 +1498,11 @@ MixpanelLib.prototype.track_links = function() {
  * from the function; any properties defined on this object
  * will be sent to mixpanel as event properties.
  *
- * @type {Function}
  * @param {Object|String} query A valid DOM query, element or jQuery-esque list
  * @param {String} event_name The name of the event to track
  * @param {Object|Function} [properties] This can be a set of properties, or a function that returns a set of properties after being passed a DOMElement
  */
-MixpanelLib.prototype.track_forms = function() {
+MixpanelLib.prototype.track_forms = function(query, event_name, properties) { // eslint-disable-line no-unused-vars
     return this._track_dom.call(this, FormTracker, arguments);
 };
 
@@ -1496,15 +1511,16 @@ MixpanelLib.prototype.track_forms = function() {
  * later 'track' call for the same event in the properties sent
  * with the event.
  *
- * ### Usage:
- *
- *     // time an event named 'Registered'
- *     mixpanel.time_event('Registered');
- *     mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
- *
  * When called for a particular event name, the next track call for that event
  * name will include the elapsed time between the 'time_event' and 'track'
  * calls. This value is stored as seconds in the '$duration' property.
+ *
+ * @example
+ * ```js
+ * // time an event named 'Registered'
+ * mixpanel.time_event('Registered');
+ * mixpanel.track('Registered', {'Gender': 'Male', 'Age': 21});
+ * ```
  *
  * @param {String} event_name The name of the event.
  */
@@ -1546,21 +1562,22 @@ var options_for_register = function(days_or_options) {
  * Register a set of super properties, which are included with all
  * events. This will overwrite previous super property values.
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // register 'Gender' as a super property
+ * mixpanel.register({'Gender': 'Female'});
  *
- *     // register 'Gender' as a super property
- *     mixpanel.register({'Gender': 'Female'});
+ * // register several super properties when a user signs up
+ * mixpanel.register({
+ *     'Email': 'jdoe@example.com',
+ *     'Account Type': 'Free'
+ * });
  *
- *     // register several super properties when a user signs up
- *     mixpanel.register({
- *         'Email': 'jdoe@example.com',
- *         'Account Type': 'Free'
- *     });
+ * // register only for the current pageload
+ * mixpanel.register({'Name': 'Pat'}, {persistent: false});
+ * ```
  *
- *     // register only for the current pageload
- *     mixpanel.register({'Name': 'Pat'}, {persistent: false});
- *
- * @param {Object} properties An associative array of properties to store about the user
+ * @param {Object} props An associative array of properties to store about the user
  * @param {Number|Object} [days_or_options] Options object or number of days since the user's last visit to store the super properties (only valid for persisted props)
  * @param {boolean} [days_or_options.days] - number of days since the user's last visit to store the super properties (only valid for persisted props)
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
@@ -1586,24 +1603,25 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * Register a set of super properties only once. This will not
  * overwrite previous super property values, unlike register().
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // register a super property for the first time only
+ * mixpanel.register_once({
+ *     'First Login Date': new Date().toISOString()
+ * });
  *
- *     // register a super property for the first time only
- *     mixpanel.register_once({
- *         'First Login Date': new Date().toISOString()
- *     });
+ * // register once, only for the current pageload
+ * mixpanel.register_once({
+ *     'First interaction time': new Date().toISOString()
+ * }, 'None', {persistent: false});
+ * ```
  *
- *     // register once, only for the current pageload
- *     mixpanel.register_once({
- *         'First interaction time': new Date().toISOString()
- *     }, 'None', {persistent: false});
- *
- * ### Notes:
+ * @remarks
  *
  * If default_value is specified, current super properties
  * with that value will be overwritten.
  *
- * @param {Object} properties An associative array of properties to store about the user
+ * @param {Object} props An associative array of properties to store about the user
  * @param {*} [default_value] Value to override if already set in super properties (ex: 'False') Default: 'None'
  * @param {Number|Object} [days_or_options] Options object or number of days since the user's last visit to store the super properties (only valid for persisted props)
  * @param {boolean} [days_or_options.days] - number of days since the user's last visit to store the super properties (only valid for persisted props)
@@ -1674,7 +1692,7 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * typically after login or signup. We recommend against using
  * identify for anonymous visitors to your site.
  *
- * ### Notes:
+ * @remarks
  * If your project has
  * <a href="https://help.mixpanel.com/hc/en-us/articles/360039133851">ID Merge</a>
  * enabled, the identify method will connect pre- and
@@ -1686,7 +1704,7 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * to the same user identity. If ID Merge is disabled, alias can
  * be used to connect pre- and post-registration events.
  *
- * @param {String} [unique_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
+ * @param {String} [new_distinct_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
 MixpanelLib.prototype.identify = function(
     new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
@@ -1775,7 +1793,7 @@ MixpanelLib.prototype.reset = function() {
  * Returns the current distinct id of the user. This is either the id automatically
  * generated by the library or the id that has been passed by a call to identify().
  *
- * ### Notes:
+ * @remarks
  *
  * get_distinct_id() can only be called after the Mixpanel library has finished loading.
  * init() has a loaded function available to handle this automatically. For example:
@@ -1815,7 +1833,7 @@ MixpanelLib.prototype.get_distinct_id = function() {
  *     // this is invalid as 'new_id' already points to 'existing_id'
  *     mixpanel.alias('new_id', 'newer_id');
  *
- * ### Notes:
+ * @remarks
  *
  * If your project does not have
  * <a href="https://help.mixpanel.com/hc/en-us/articles/360039133851">ID Merge</a>
@@ -2004,7 +2022,7 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *     }
  *
  *
- * @param {Object} config A dictionary of new configuration values to update
+ * @param {Partial<import('./index.d.ts').Config>} config A dictionary of new configuration values to update; see the Config type for the available options.
  */
 MixpanelLib.prototype.set_config = function(config) {
     if (_.isObject(config)) {
@@ -2094,7 +2112,7 @@ MixpanelLib.prototype._run_hook = function(hook_name) {
  * Returns the value of the super property named property_name. If no such
  * property is set, get_property() will return the undefined value.
  *
- * ### Notes:
+ * @remarks
  *
  * get_property() can only be called after the Mixpanel library has finished loading.
  * init() has a loaded function available to handle this automatically. For example:
@@ -2240,20 +2258,21 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
 /**
  * Opt the user in to data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // opt user in
+ * mixpanel.opt_in_tracking();
  *
- *     // opt user in
- *     mixpanel.opt_in_tracking();
- *
- *     // opt user in with specific event name, properties, cookie configuration
- *     mixpanel.opt_in_tracking({
- *         track_event_name: 'User opted in',
- *         track_event_properties: {
- *             'Email': 'jdoe@example.com'
- *         },
- *         cookie_expiration: 30,
- *         secure_cookie: true
- *     });
+ * // opt user in with specific event name, properties, cookie configuration
+ * mixpanel.opt_in_tracking({
+ *     track_event_name: 'User opted in',
+ *     track_event_properties: {
+ *         'Email': 'jdoe@example.com'
+ *     },
+ *     cookie_expiration: 30,
+ *     secure_cookie: true
+ * });
+ * ```
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {function} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
@@ -2280,16 +2299,17 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
 /**
  * Opt the user out of data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // opt user out
+ * mixpanel.opt_out_tracking();
  *
- *     // opt user out
- *     mixpanel.opt_out_tracking();
- *
- *     // opt user out with different cookie configuration from Mixpanel instance
- *     mixpanel.opt_out_tracking({
- *         cookie_expiration: 30,
- *         secure_cookie: true
- *     });
+ * // opt user out with different cookie configuration from Mixpanel instance
+ * mixpanel.opt_out_tracking({
+ *     cookie_expiration: 30,
+ *     secure_cookie: true
+ * });
+ * ```
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.delete_user=true] If true, will delete the currently identified user's profile and clear all charges after opting the user out
@@ -2321,10 +2341,11 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
 /**
  * Check whether the user has opted in to data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage:
- *
- *     var has_opted_in = mixpanel.has_opted_in_tracking();
- *     // use has_opted_in value
+ * @example
+ * ```js
+ * var has_opted_in = mixpanel.has_opted_in_tracking();
+ * // use has_opted_in value
+ * ```
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
@@ -2338,10 +2359,11 @@ MixpanelLib.prototype.has_opted_in_tracking = function(options) {
 /**
  * Check whether the user has opted out of data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage:
- *
- *     var has_opted_out = mixpanel.has_opted_out_tracking();
- *     // use has_opted_out value
+ * @example
+ * ```js
+ * var has_opted_out = mixpanel.has_opted_out_tracking();
+ * // use has_opted_out value
+ * ```
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
@@ -2355,17 +2377,18 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
 /**
  * Clear the user's opt in/out status of data tracking and cookies/localstorage for this Mixpanel instance
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // clear user's opt-in/out status
+ * mixpanel.clear_opt_in_out_tracking();
  *
- *     // clear user's opt-in/out status
- *     mixpanel.clear_opt_in_out_tracking();
- *
- *     // clear user's opt-in/out status with specific cookie configuration - should match
- *     // configuration used when opt_in_tracking/opt_out_tracking methods were called.
- *     mixpanel.clear_opt_in_out_tracking({
- *         cookie_expiration: 30,
- *         secure_cookie: true
- *     });
+ * // clear user's opt-in/out status with specific cookie configuration - should match
+ * // configuration used when opt_in_tracking/opt_out_tracking methods were called.
+ * mixpanel.clear_opt_in_out_tracking({
+ *     cookie_expiration: 30,
+ *     secure_cookie: true
+ * });
+ * ```
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.enable_persistence=true] If true, will re-enable sdk persistence
@@ -2420,53 +2443,56 @@ MixpanelLib.prototype.remove_hook = function(hook_name, hook_fn) {
 // EXPORTS (for closure compiler)
 
 // MixpanelLib Exports
-MixpanelLib.prototype['init']                               = MixpanelLib.prototype.init;
-MixpanelLib.prototype['reset']                              = MixpanelLib.prototype.reset;
-MixpanelLib.prototype['enable']                             = MixpanelLib.prototype.enable;
-MixpanelLib.prototype['disable']                            = MixpanelLib.prototype.disable;
-MixpanelLib.prototype['time_event']                         = MixpanelLib.prototype.time_event;
-MixpanelLib.prototype['track']                              = MixpanelLib.prototype.track;
-MixpanelLib.prototype['track_links']                        = MixpanelLib.prototype.track_links;
-MixpanelLib.prototype['track_forms']                        = MixpanelLib.prototype.track_forms;
-MixpanelLib.prototype['track_pageview']                     = MixpanelLib.prototype.track_pageview;
-MixpanelLib.prototype['register']                           = MixpanelLib.prototype.register;
-MixpanelLib.prototype['register_once']                      = MixpanelLib.prototype.register_once;
-MixpanelLib.prototype['unregister']                         = MixpanelLib.prototype.unregister;
-MixpanelLib.prototype['identify']                           = MixpanelLib.prototype.identify;
-MixpanelLib.prototype['alias']                              = MixpanelLib.prototype.alias;
-MixpanelLib.prototype['name_tag']                           = MixpanelLib.prototype.name_tag;
-MixpanelLib.prototype['set_config']                         = MixpanelLib.prototype.set_config;
-MixpanelLib.prototype['get_config']                         = MixpanelLib.prototype.get_config;
-MixpanelLib.prototype['get_api_host']                       = MixpanelLib.prototype.get_api_host;
-MixpanelLib.prototype['get_property']                       = MixpanelLib.prototype.get_property;
-MixpanelLib.prototype['get_distinct_id']                    = MixpanelLib.prototype.get_distinct_id;
-MixpanelLib.prototype['toString']                           = MixpanelLib.prototype.toString;
-MixpanelLib.prototype['opt_out_tracking']                   = MixpanelLib.prototype.opt_out_tracking;
-MixpanelLib.prototype['opt_in_tracking']                    = MixpanelLib.prototype.opt_in_tracking;
-MixpanelLib.prototype['has_opted_out_tracking']             = MixpanelLib.prototype.has_opted_out_tracking;
-MixpanelLib.prototype['has_opted_in_tracking']              = MixpanelLib.prototype.has_opted_in_tracking;
-MixpanelLib.prototype['clear_opt_in_out_tracking']          = MixpanelLib.prototype.clear_opt_in_out_tracking;
-MixpanelLib.prototype['get_group']                          = MixpanelLib.prototype.get_group;
-MixpanelLib.prototype['set_group']                          = MixpanelLib.prototype.set_group;
-MixpanelLib.prototype['add_group']                          = MixpanelLib.prototype.add_group;
-MixpanelLib.prototype['remove_group']                       = MixpanelLib.prototype.remove_group;
-MixpanelLib.prototype['add_hook']                           = MixpanelLib.prototype.add_hook;
-MixpanelLib.prototype['remove_hook']                        = MixpanelLib.prototype.remove_hook;
-MixpanelLib.prototype['track_with_groups']                  = MixpanelLib.prototype.track_with_groups;
-MixpanelLib.prototype['start_batch_senders']                = MixpanelLib.prototype.start_batch_senders;
-MixpanelLib.prototype['stop_batch_senders']                 = MixpanelLib.prototype.stop_batch_senders;
-MixpanelLib.prototype['start_session_recording']            = MixpanelLib.prototype.start_session_recording;
-MixpanelLib.prototype['stop_session_recording']             = MixpanelLib.prototype.stop_session_recording;
-MixpanelLib.prototype['pause_session_recording']            = MixpanelLib.prototype.pause_session_recording;
-MixpanelLib.prototype['resume_session_recording']           = MixpanelLib.prototype.resume_session_recording;
-MixpanelLib.prototype['get_session_recording_properties']   = MixpanelLib.prototype.get_session_recording_properties;
-MixpanelLib.prototype['get_session_replay_url']             = MixpanelLib.prototype.get_session_replay_url;
-MixpanelLib.prototype['get_tab_id']                         = MixpanelLib.prototype.get_tab_id;
-MixpanelLib.prototype['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
+// (assigned through an alias: a second `MixpanelLib.prototype[...]` declaration of each method would
+// make TypeScript type them as `any`, which breaks the generated API docs)
+var MixpanelLibProto = MixpanelLib.prototype;
+MixpanelLibProto['init']                               = MixpanelLibProto.init;
+MixpanelLibProto['reset']                              = MixpanelLibProto.reset;
+MixpanelLibProto['enable']                             = MixpanelLibProto.enable;
+MixpanelLibProto['disable']                            = MixpanelLibProto.disable;
+MixpanelLibProto['time_event']                         = MixpanelLibProto.time_event;
+MixpanelLibProto['track']                              = MixpanelLibProto.track;
+MixpanelLibProto['track_links']                        = MixpanelLibProto.track_links;
+MixpanelLibProto['track_forms']                        = MixpanelLibProto.track_forms;
+MixpanelLibProto['track_pageview']                     = MixpanelLibProto.track_pageview;
+MixpanelLibProto['register']                           = MixpanelLibProto.register;
+MixpanelLibProto['register_once']                      = MixpanelLibProto.register_once;
+MixpanelLibProto['unregister']                         = MixpanelLibProto.unregister;
+MixpanelLibProto['identify']                           = MixpanelLibProto.identify;
+MixpanelLibProto['alias']                              = MixpanelLibProto.alias;
+MixpanelLibProto['name_tag']                           = MixpanelLibProto.name_tag;
+MixpanelLibProto['set_config']                         = MixpanelLibProto.set_config;
+MixpanelLibProto['get_config']                         = MixpanelLibProto.get_config;
+MixpanelLibProto['get_api_host']                       = MixpanelLibProto.get_api_host;
+MixpanelLibProto['get_property']                       = MixpanelLibProto.get_property;
+MixpanelLibProto['get_distinct_id']                    = MixpanelLibProto.get_distinct_id;
+MixpanelLibProto['toString']                           = MixpanelLibProto.toString;
+MixpanelLibProto['opt_out_tracking']                   = MixpanelLibProto.opt_out_tracking;
+MixpanelLibProto['opt_in_tracking']                    = MixpanelLibProto.opt_in_tracking;
+MixpanelLibProto['has_opted_out_tracking']             = MixpanelLibProto.has_opted_out_tracking;
+MixpanelLibProto['has_opted_in_tracking']              = MixpanelLibProto.has_opted_in_tracking;
+MixpanelLibProto['clear_opt_in_out_tracking']          = MixpanelLibProto.clear_opt_in_out_tracking;
+MixpanelLibProto['get_group']                          = MixpanelLibProto.get_group;
+MixpanelLibProto['set_group']                          = MixpanelLibProto.set_group;
+MixpanelLibProto['add_group']                          = MixpanelLibProto.add_group;
+MixpanelLibProto['remove_group']                       = MixpanelLibProto.remove_group;
+MixpanelLibProto['add_hook']                           = MixpanelLibProto.add_hook;
+MixpanelLibProto['remove_hook']                        = MixpanelLibProto.remove_hook;
+MixpanelLibProto['track_with_groups']                  = MixpanelLibProto.track_with_groups;
+MixpanelLibProto['start_batch_senders']                = MixpanelLibProto.start_batch_senders;
+MixpanelLibProto['stop_batch_senders']                 = MixpanelLibProto.stop_batch_senders;
+MixpanelLibProto['start_session_recording']            = MixpanelLibProto.start_session_recording;
+MixpanelLibProto['stop_session_recording']             = MixpanelLibProto.stop_session_recording;
+MixpanelLibProto['pause_session_recording']            = MixpanelLibProto.pause_session_recording;
+MixpanelLibProto['resume_session_recording']           = MixpanelLibProto.resume_session_recording;
+MixpanelLibProto['get_session_recording_properties']   = MixpanelLibProto.get_session_recording_properties;
+MixpanelLibProto['get_session_replay_url']             = MixpanelLibProto.get_session_replay_url;
+MixpanelLibProto['get_tab_id']                         = MixpanelLibProto.get_tab_id;
+MixpanelLibProto['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
 
 // Exports intended only for testing
-MixpanelLib.prototype['__get_recorder']                     = MixpanelLib.prototype.__get_recorder;
-MixpanelLib.prototype['__get_recording_init_promise']       = MixpanelLib.prototype.__get_recording_init_promise;
+MixpanelLibProto['__get_recorder']                     = MixpanelLibProto.__get_recorder;
+MixpanelLibProto['__get_recording_init_promise']       = MixpanelLibProto.__get_recording_init_promise;
 
 // MixpanelPersistence Exports
 MixpanelPersistence.prototype['properties']            = MixpanelPersistence.prototype.properties;
@@ -2629,3 +2655,5 @@ export function init_as_module(bundle_loader) {
 
     return mixpanel_master;
 }
+
+export { MixpanelLib };

@@ -24,6 +24,9 @@ if [ ! -z "$DIST" ]; then
     echo 'Generating CycloneDX SBOM'
     npm run sbom
 
+    echo 'Generating API docs'
+    npm run build-docs
+
     # typescript examples require dist files
     echo 'Building TypeScript examples'
     pushd examples/typescript; npm ci && npm run build; popd
