@@ -1197,6 +1197,14 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(function(event_name, pro
         this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
     }
 
+    // Intentionally not checking skip_hooks here. on_track is intended to fire for all events
+    ret = this._run_hook('on_track', event_name, properties);
+    if (ret === null) {
+        return;
+    }
+    event_name = ret[0];
+    properties = ret[1];
+
     this._start_recording_on_event(event_name, properties);
 
     var data = {
