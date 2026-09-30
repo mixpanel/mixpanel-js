@@ -583,5 +583,16 @@ describe(`RequestQueue`, function() {
       expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
       expect(await queue.readFromStorage()).to.eql([]);
     });
+
+    it(`resolves and reports the error when storage fails to remove the queue`, async function() {
+      const err = new Error(`Connection to Indexed Database server lost`);
+      sinon.stub(queue.queueStorage, `removeItem`).returns(Promise.reject(err));
+      const reportError = sinon.stub(queue, `reportError`);
+
+      await queue.clear();
+
+      expect(queue.memQueue).to.be.empty;
+      expect(reportError.calledOnceWith(`Error clearing queue`, err)).to.be.true;
+    });
   });
 });
