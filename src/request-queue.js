@@ -356,6 +356,9 @@ RequestQueue.prototype.clear = function () {
         return this.ensureInit()
             .then(_.bind(function () {
                 return this.queueStorage.removeItem(this.storageKey);
+            }, this))
+            .catch(_.bind(function (err) {
+                this.reportError('Error clearing queue', err);
             }, this));
     } else {
         return Promise.resolve();
