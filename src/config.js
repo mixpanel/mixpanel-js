@@ -1,6 +1,6 @@
 export var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.83.0'
+    LIB_VERSION: '2.84.0-rc1'
 };
 
 // Window global names for async modules
