@@ -319,6 +319,10 @@ export interface Config {
       property: string,
       options?: Partial<RegisterOptions>
     ) => string | Partial<RegisterOptions> | null;
+    on_track?: (
+      event_name: string,
+      properties: Dict
+    ) => string | Array<string | Dict> | null;
   };
 }
 

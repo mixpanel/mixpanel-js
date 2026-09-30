@@ -42,6 +42,43 @@ export function trackTests(mixpanel) {
 
       expect(containsObj(trackResult.properties, expectedProps)).to.equal(true, `Nothing strange happened to properties`);
     });
+
+    it(`runs on_track hooks with merged properties, and applies their changes`, () => {
+      const observed = [];
+      mixpanel.test.register({super_prop: `from superprops`});
+      mixpanel.test.add_hook(`on_track`, (eventName, properties) => {
+        observed.push({eventName, properties});
+        return [eventName, Object.assign({}, properties, {added_by_hook: true})];
+      });
+
+      const data = mixpanel.test.track(`testing`, {foo: `bar`});
+
+      expect(observed).to.have.lengthOf(1);
+      expect(observed[0].eventName).to.equal(`testing`);
+      expect(observed[0].properties).to.include({
+        foo: `bar`,
+        super_prop: `from superprops`,
+        token,
+        distinct_id: data.properties.distinct_id,
+      });
+      expect(data.properties.added_by_hook).to.equal(true, `hook changes reach the outbound payload`);
+    });
+
+    it(`runs on_track hooks for $identify`, () => {
+      const observed = [];
+      mixpanel.test.add_hook(`on_track`, (eventName, properties) => {
+        observed.push({eventName, properties});
+        return [eventName, properties];
+      });
+      const anonId = mixpanel.test.get_distinct_id();
+      const newId = randName();
+
+      mixpanel.test.identify(newId);
+
+      const identify = observed.find((o) => o.eventName === `$identify`);
+      expect(identify, `$identify is observed`).to.not.equal(undefined);
+      expect(identify.properties).to.include({distinct_id: newId, $anon_distinct_id: anonId});
+    });
   });
 
   describe(`enable`, function() {
