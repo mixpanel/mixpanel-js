@@ -14,7 +14,7 @@
         "eol-last": "error",
         "eqeqeq": "error",
         "indent":
-            [2, 4, {"SwitchCase": 1}],
+            [2, 4, {"SwitchCase": 1, "CallExpression": {"arguments": "off"}}],
         "linebreak-style": [
             "error",
             "unix"

@@ -5,9 +5,9 @@ import { _ } from './utils';
 
 /**
  * Mixpanel Group Object
- * @constructor
+ * @class
  */
-var MixpanelGroup = function() {};
+function MixpanelGroup() {}
 
 _.extend(MixpanelGroup.prototype, apiActions);
 
@@ -17,25 +17,27 @@ MixpanelGroup.prototype._init = function(mixpanel_instance, group_key, group_id)
     this._group_id = group_id;
 };
 
+MixpanelGroup.prototype.set = addOptOutCheckMixpanelGroup(
 /**
  * Set properties on a group.
  *
- * ### Usage:
+ * @example
+ * ```js
+ * mixpanel.get_group('company', 'mixpanel').set('Location', '405 Howard');
  *
- *     mixpanel.get_group('company', 'mixpanel').set('Location', '405 Howard');
- *
- *     // or set multiple properties at once
- *     mixpanel.get_group('company', 'mixpanel').set({
- *          'Location': '405 Howard',
- *          'Founded' : 2009,
- *     });
- *     // properties can be strings, integers, dates, or lists
+ * // or set multiple properties at once
+ * mixpanel.get_group('company', 'mixpanel').set({
+ *      'Location': '405 Howard',
+ *      'Founded' : 2009,
+ * });
+ * // properties can be strings, integers, dates, or lists
+ * ```
  *
  * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [to] A value to set on the given property name
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype.set = addOptOutCheckMixpanelGroup(function(prop, to, callback) {
+function(prop, to, callback) {
     var data = this.set_action(prop, to);
     if (_.isObject(prop)) {
         callback = to;
@@ -43,27 +45,29 @@ MixpanelGroup.prototype.set = addOptOutCheckMixpanelGroup(function(prop, to, cal
     return this._send_request(data, callback);
 });
 
+MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(
 /**
  * Set properties on a group, only if they do not yet exist.
  * This will not overwrite previous group property values, unlike
  * group.set().
  *
- * ### Usage:
+ * @example
+ * ```js
+ * mixpanel.get_group('company', 'mixpanel').set_once('Location', '405 Howard');
  *
- *     mixpanel.get_group('company', 'mixpanel').set_once('Location', '405 Howard');
- *
- *     // or set multiple properties at once
- *     mixpanel.get_group('company', 'mixpanel').set_once({
- *          'Location': '405 Howard',
- *          'Founded' : 2009,
- *     });
- *     // properties can be strings, integers, lists or dates
+ * // or set multiple properties at once
+ * mixpanel.get_group('company', 'mixpanel').set_once({
+ *      'Location': '405 Howard',
+ *      'Founded' : 2009,
+ * });
+ * // properties can be strings, integers, lists or dates
+ * ```
  *
  * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
  * @param {*} [to] A value to set on the given property name
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to, callback) {
+function(prop, to, callback) {
     var data = this.set_once_action(prop, to);
     if (_.isObject(prop)) {
         callback = to;
@@ -71,34 +75,38 @@ MixpanelGroup.prototype.set_once = addOptOutCheckMixpanelGroup(function(prop, to
     return this._send_request(data, callback);
 });
 
+MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(
 /**
  * Unset properties on a group permanently.
  *
- * ### Usage:
- *
- *     mixpanel.get_group('company', 'mixpanel').unset('Founded');
+ * @example
+ * ```js
+ * mixpanel.get_group('company', 'mixpanel').unset('Founded');
+ * ```
  *
  * @param {String} prop The name of the property.
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype.unset = addOptOutCheckMixpanelGroup(function(prop, callback) {
+function(prop, callback) {
     var data = this.unset_action(prop);
     return this._send_request(data, callback);
 });
 
+MixpanelGroup.prototype.union = addOptOutCheckMixpanelGroup(
 /**
  * Merge a given list with a list-valued group property, excluding duplicate values.
  *
- * ### Usage:
- *
- *     // merge a value to a list, creating it if needed
- *     mixpanel.get_group('company', 'mixpanel').union('Location', ['San Francisco', 'London']);
+ * @example
+ * ```js
+ * // merge a value to a list, creating it if needed
+ * mixpanel.get_group('company', 'mixpanel').union('Location', ['San Francisco', 'London']);
+ * ```
  *
  * @param {String} list_name Name of the property.
  * @param {Array} values Values to merge with the given property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype.union = addOptOutCheckMixpanelGroup(function(list_name, values, callback) {
+function(list_name, values, callback) {
     if (_.isObject(list_name)) {
         callback = values;
     }
@@ -106,33 +114,37 @@ MixpanelGroup.prototype.union = addOptOutCheckMixpanelGroup(function(list_name, 
     return this._send_request(data, callback);
 });
 
+MixpanelGroup.prototype['delete'] = addOptOutCheckMixpanelGroup(
 /**
  * Permanently delete a group.
  *
- * ### Usage:
- *
- *     mixpanel.get_group('company', 'mixpanel').delete();
+ * @example
+ * ```js
+ * mixpanel.get_group('company', 'mixpanel').delete();
+ * ```
  *
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype['delete'] = addOptOutCheckMixpanelGroup(function(callback) {
+function(callback) {
     // bracket notation above prevents a minification error related to reserved words
     var data = this.delete_action();
     return this._send_request(data, callback);
 });
 
+MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(
 /**
  * Remove a property from a group. The value will be ignored if doesn't exist.
  *
- * ### Usage:
- *
- *     mixpanel.get_group('company', 'mixpanel').remove('Location', 'London');
+ * @example
+ * ```js
+ * mixpanel.get_group('company', 'mixpanel').remove('Location', 'London');
+ * ```
  *
  * @param {String} list_name Name of the property.
  * @param {Object} value Value to remove from the given group property
  * @param {Function} [callback] If provided, the callback will be called after the tracking event
  */
-MixpanelGroup.prototype.remove = addOptOutCheckMixpanelGroup(function(list_name, value, callback) {
+function(list_name, value, callback) {
     var data = this.remove_action(list_name, value);
     return this._send_request(data, callback);
 });
@@ -164,11 +176,14 @@ MixpanelGroup.prototype.toString = function() {
 };
 
 // MixpanelGroup Exports
-MixpanelGroup.prototype['remove']   = MixpanelGroup.prototype.remove;
-MixpanelGroup.prototype['set']      = MixpanelGroup.prototype.set;
-MixpanelGroup.prototype['set_once'] = MixpanelGroup.prototype.set_once;
-MixpanelGroup.prototype['union']    = MixpanelGroup.prototype.union;
-MixpanelGroup.prototype['unset']    = MixpanelGroup.prototype.unset;
+// (assigned through an alias: a second `MixpanelGroup.prototype[...]` declaration of each method would
+// make TypeScript type them as `any`, which breaks the generated API docs)
+var MixpanelGroupProto = MixpanelGroup.prototype;
+MixpanelGroupProto['remove']   = MixpanelGroupProto.remove;
+MixpanelGroupProto['set']      = MixpanelGroupProto.set;
+MixpanelGroupProto['set_once'] = MixpanelGroupProto.set_once;
+MixpanelGroupProto['union']    = MixpanelGroupProto.union;
+MixpanelGroupProto['unset']    = MixpanelGroupProto.unset;
 MixpanelGroup.prototype['toString'] = MixpanelGroup.prototype.toString;
 
 export {MixpanelGroup};

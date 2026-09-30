@@ -26,8 +26,7 @@
     "build-test-polyfill": "webpack tests/vendor/core-js-polyfills.src.js  tests/vendor/core-js-polyfills.js",
     "sbom": "cyclonedx-npm --omit dev --mc-type library --validate --output-reproducible --output-format JSON --output-file dist/mixpanel-browser.cdx.json",
     "build-browser-tests": "npx rollup -c tests/browser/client/rollup.config.mjs -w",
-    "dox": "node doc/build-docs.js",
-    "dox-publish": "rdme docs:single doc/readme.io/javascript-full-api-reference.md --key=$RDME_API_KEY --version=$RDME_DOC_VERSION",
+    "build-docs": "typedoc --options doc/typedoc.json",
     "test-server": "echo 'Browse to localhost:3001/tests' && node testServer.js",
     "test-server:background": "screen -S testServer -X stuff $^C; screen -X -S testServer quit; screen -d -m -S testServer bash -c 'npm run test-server; exec bash' && wait-on --timeout 10000 http://localhost:3001/tests",
     "lint": "eslint ./src",
@@ -78,7 +77,6 @@
     "chromedriver": "134.0.3",
     "cookie-parser": "1.3.4",
     "core-js": "3.6.5",
-    "dox": "0.9.0",
     "eslint": "4.18.2",
     "express": "5.2.1",
     "fake-indexeddb": "6.0.0",
@@ -89,12 +87,16 @@
     "mocha": "11.1.0",
     "morgan": "1.9.1",
     "pug": "3.0.3",
-    "rdme": "7.5.0",
     "request": "2.88.0",
     "rollup": "4.34.9",
     "rollup-plugin-esbuild": "6.2.1",
     "sinon": "8.1.1",
     "sinon-chai": "3.5.0",
+    "typedoc": "0.28.20",
+    "typedoc-plugin-frontmatter": "1.3.2",
+    "typedoc-plugin-markdown": "4.13.1",
+    "typedoc-plugin-merge-modules": "7.0.0",
+    "typescript": "5.9.3",
     "wait-on": "8.0.3",
     "wdio-ctrf-json-reporter": "0.0.13",
     "webpack": "1.12.2"
@@ -103,7 +105,7 @@
     "@mixpanel/rrweb": "2.0.0-alpha.18.6",
     "@mixpanel/rrweb-plugin-console-record": "2.0.0-alpha.18.6",
     "@mixpanel/rrweb-utils": "2.0.0-alpha.18.6",
-    "json-logic-js": "2.0.5",
-    "@types/json-logic-js": "2.0.5"
+    "@types/json-logic-js": "2.0.5",
+    "json-logic-js": "2.0.5"
   }
 }

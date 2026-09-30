@@ -14,9 +14,9 @@ import { _, console } from './utils';
 
 /**
  * Mixpanel People Object
- * @constructor
+ * @class
  */
-var MixpanelPeople = function() {};
+function MixpanelPeople() {}
 
 _.extend(MixpanelPeople.prototype, apiActions);
 
@@ -24,26 +24,28 @@ MixpanelPeople.prototype._init = function(mixpanel_instance) {
     this._mixpanel = mixpanel_instance;
 };
 
-/*
+MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(
+/**
 * Set properties on a user record.
 *
-* ### Usage:
+* @example
+* ```js
+* mixpanel.people.set('gender', 'm');
 *
-*     mixpanel.people.set('gender', 'm');
-*
-*     // or set multiple properties at once
-*     mixpanel.people.set({
-*         'Company': 'Acme',
-*         'Plan': 'Premium',
-*         'Upgrade date': new Date()
-*     });
-*     // properties can be strings, integers, dates, or lists
+* // or set multiple properties at once
+* mixpanel.people.set({
+*     'Company': 'Acme',
+*     'Plan': 'Premium',
+*     'Upgrade date': new Date()
+* });
+* // properties can be strings, integers, dates, or lists
+* ```
 *
 * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
 * @param {*} [to] A value to set on the given property name
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
+function(prop, to, callback) {
     var data = this.set_action(prop, to);
     if (_.isObject(prop)) {
         callback = to;
@@ -62,28 +64,30 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(function(prop, to, c
     return this._send_request(data, callback);
 });
 
-/*
+MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(
+/**
 * Set properties on a user record, only if they do not yet exist.
 * This will not overwrite previous people property values, unlike
 * people.set().
 *
-* ### Usage:
+* @example
+* ```js
+* mixpanel.people.set_once('First Login Date', new Date());
 *
-*     mixpanel.people.set_once('First Login Date', new Date());
+* // or set multiple properties at once
+* mixpanel.people.set_once({
+*     'First Login Date': new Date(),
+*     'Starting Plan': 'Premium'
+* });
 *
-*     // or set multiple properties at once
-*     mixpanel.people.set_once({
-*         'First Login Date': new Date(),
-*         'Starting Plan': 'Premium'
-*     });
-*
-*     // properties can be strings, integers or dates
+* // properties can be strings, integers or dates
+* ```
 *
 * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and values.
 * @param {*} [to] A value to set on the given property name
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, to, callback) {
+function(prop, to, callback) {
     var data = this.set_once_action(prop, to);
     if (_.isObject(prop)) {
         callback = to;
@@ -91,50 +95,54 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(function(prop, 
     return this._send_request(data, callback);
 });
 
-/*
+MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(
+/**
 * Unset properties on a user record (permanently removes the properties and their values from a profile).
 *
-* ### Usage:
+* @example
+* ```js
+* mixpanel.people.unset('gender');
 *
-*     mixpanel.people.unset('gender');
-*
-*     // or unset multiple properties at once
-*     mixpanel.people.unset(['gender', 'Company']);
+* // or unset multiple properties at once
+* mixpanel.people.unset(['gender', 'Company']);
+* ```
 *
 * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(function(prop, callback) {
+function(prop, callback) {
     var data = this.unset_action(prop);
     return this._send_request(data, callback);
 });
 
-/*
+MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(
+/**
 * Increment/decrement numeric people analytics properties.
 *
-* ### Usage:
+* @example
+* ```js
+* mixpanel.people.increment('page_views', 1);
 *
-*     mixpanel.people.increment('page_views', 1);
+* // or, for convenience, if you're just incrementing a counter by
+* // 1, you can simply do
+* mixpanel.people.increment('page_views');
 *
-*     // or, for convenience, if you're just incrementing a counter by
-*     // 1, you can simply do
-*     mixpanel.people.increment('page_views');
+* // to decrement a counter, pass a negative number
+* mixpanel.people.increment('credits_left', -1);
 *
-*     // to decrement a counter, pass a negative number
-*     mixpanel.people.increment('credits_left', -1);
-*
-*     // like mixpanel.people.set(), you can increment multiple
-*     // properties at once:
-*     mixpanel.people.increment({
-*         counter1: 1,
-*         counter2: 6
-*     });
+* // like mixpanel.people.set(), you can increment multiple
+* // properties at once:
+* mixpanel.people.increment({
+*     counter1: 1,
+*     counter2: 6
+* });
+* ```
 *
 * @param {Object|String} prop If a string, this is the name of the property. If an object, this is an associative array of names and numeric values.
 * @param {Number} [by] An amount to increment the given property
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop, by, callback) {
+function(prop, by, callback) {
     var data = {};
     var $add = {};
     if (_.isObject(prop)) {
@@ -162,26 +170,28 @@ MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(function(prop,
     return this._send_request(data, callback);
 });
 
-/*
+MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(
+/**
 * Append a value to a list-valued people analytics property.
 *
-* ### Usage:
+* @example
+* ```js
+* // append a value to a list, creating it if needed
+* mixpanel.people.append('pages_visited', 'homepage');
 *
-*     // append a value to a list, creating it if needed
-*     mixpanel.people.append('pages_visited', 'homepage');
-*
-*     // like mixpanel.people.set(), you can append multiple
-*     // properties at once:
-*     mixpanel.people.append({
-*         list1: 'bob',
-*         list2: 123
-*     });
+* // like mixpanel.people.set(), you can append multiple
+* // properties at once:
+* mixpanel.people.append({
+*     list1: 'bob',
+*     list2: 123
+* });
+* ```
 *
 * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
 * @param {*} [value] value An item to append to the list
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
+function(list_name, value, callback) {
     if (_.isObject(list_name)) {
         callback = value;
     }
@@ -189,18 +199,20 @@ MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(function(list_nam
     return this._send_request(data, callback);
 });
 
-/*
+MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(
+/**
 * Remove a value from a list-valued people analytics property.
 *
-* ### Usage:
-*
-*     mixpanel.people.remove('School', 'UCB');
+* @example
+* ```js
+* mixpanel.people.remove('School', 'UCB');
+* ```
 *
 * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
 * @param {*} [value] value Item to remove from the list
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(list_name, value, callback) {
+function(list_name, value, callback) {
     if (_.isObject(list_name)) {
         callback = value;
     }
@@ -208,33 +220,35 @@ MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(function(list_nam
     return this._send_request(data, callback);
 });
 
-/*
+MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(
+/**
 * Merge a given list with a list-valued people analytics property,
 * excluding duplicate values.
 *
-* ### Usage:
+* @example
+* ```js
+* // merge a value to a list, creating it if needed
+* mixpanel.people.union('pages_visited', 'homepage');
 *
-*     // merge a value to a list, creating it if needed
-*     mixpanel.people.union('pages_visited', 'homepage');
+* // like mixpanel.people.set(), you can append multiple
+* // properties at once:
+* mixpanel.people.union({
+*     list1: 'bob',
+*     list2: 123
+* });
 *
-*     // like mixpanel.people.set(), you can append multiple
-*     // properties at once:
-*     mixpanel.people.union({
-*         list1: 'bob',
-*         list2: 123
-*     });
-*
-*     // like mixpanel.people.append(), you can append multiple
-*     // values to the same list:
-*     mixpanel.people.union({
-*         list1: ['bob', 'billy']
-*     });
+* // like mixpanel.people.append(), you can append multiple
+* // values to the same list:
+* mixpanel.people.union({
+*     list1: ['bob', 'billy']
+* });
+* ```
 *
 * @param {Object|String} list_name If a string, this is the name of the property. If an object, this is an associative array of names and values.
-* @param {*} [value] Value / values to merge with the given property
+* @param {*} [values] Value / values to merge with the given property
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name, values, callback) {
+function(list_name, values, callback) {
     if (_.isObject(list_name)) {
         callback = values;
     }
@@ -242,37 +256,40 @@ MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(function(list_name
     return this._send_request(data, callback);
 });
 
-/*
+MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(
+/**
  * Record that you have charged the current user a certain amount
  * of money. Charges recorded with track_charge() will appear in the
  * Mixpanel revenue report.
  *
- * ### Usage:
+ * @example
+ * ```js
+ * // charge a user $50
+ * mixpanel.people.track_charge(50);
  *
- *     // charge a user $50
- *     mixpanel.people.track_charge(50);
- *
- *     // charge a user $30.50 on the 2nd of january
- *     mixpanel.people.track_charge(30.50, {
- *         '$time': new Date('jan 1 2012')
- *     });
+ * // charge a user $30.50 on the 2nd of january
+ * mixpanel.people.track_charge(30.50, {
+ *     '$time': new Date('jan 1 2012')
+ * });
+ * ```
  *
  * @param {Number} amount The amount of money charged to the current user
  * @param {Object} [properties] An associative array of properties associated with the charge
  * @param {Function} [callback] If provided, the callback will be called when the server responds
  * @deprecated
  */
-MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(function() {
+function(amount, properties, callback) { // eslint-disable-line no-unused-vars
     console.error('mixpanel.people.track_charge() is deprecated and no longer has any effect.');
 });
 
-/*
+/**
  * Permanently clear all revenue report transactions from the
  * current user's people analytics profile.
  *
- * ### Usage:
- *
- *     mixpanel.people.clear_charges();
+ * @example
+ * ```js
+ * mixpanel.people.clear_charges();
+ * ```
  *
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  * @deprecated
@@ -281,14 +298,15 @@ MixpanelPeople.prototype.clear_charges = function(callback) {
     return this.set('$transactions', [], callback);
 };
 
-/*
+/**
 * Permanently deletes the current people analytics profile from
 * Mixpanel (using the current distinct_id).
 *
-* ### Usage:
-*
-*     // remove the all data you have stored about the current user
-*     mixpanel.people.delete_user();
+* @example
+* ```js
+* // remove the all data you have stored about the current user
+* mixpanel.people.delete_user();
+* ```
 *
 */
 MixpanelPeople.prototype.delete_user = function() {
@@ -458,16 +476,19 @@ MixpanelPeople.prototype._is_reserved_property = function(prop) {
 };
 
 // MixpanelPeople Exports
-MixpanelPeople.prototype['set']           = MixpanelPeople.prototype.set;
-MixpanelPeople.prototype['set_once']      = MixpanelPeople.prototype.set_once;
-MixpanelPeople.prototype['unset']         = MixpanelPeople.prototype.unset;
-MixpanelPeople.prototype['increment']     = MixpanelPeople.prototype.increment;
-MixpanelPeople.prototype['append']        = MixpanelPeople.prototype.append;
-MixpanelPeople.prototype['remove']        = MixpanelPeople.prototype.remove;
-MixpanelPeople.prototype['union']         = MixpanelPeople.prototype.union;
-MixpanelPeople.prototype['track_charge']  = MixpanelPeople.prototype.track_charge;
-MixpanelPeople.prototype['clear_charges'] = MixpanelPeople.prototype.clear_charges;
-MixpanelPeople.prototype['delete_user']   = MixpanelPeople.prototype.delete_user;
+// (assigned through an alias: a second `MixpanelPeople.prototype[...]` declaration of each method would
+// make TypeScript type them as `any`, which breaks the generated API docs)
+var MixpanelPeopleProto = MixpanelPeople.prototype;
+MixpanelPeopleProto['set']           = MixpanelPeopleProto.set;
+MixpanelPeopleProto['set_once']      = MixpanelPeopleProto.set_once;
+MixpanelPeopleProto['unset']         = MixpanelPeopleProto.unset;
+MixpanelPeopleProto['increment']     = MixpanelPeopleProto.increment;
+MixpanelPeopleProto['append']        = MixpanelPeopleProto.append;
+MixpanelPeopleProto['remove']        = MixpanelPeopleProto.remove;
+MixpanelPeopleProto['union']         = MixpanelPeopleProto.union;
+MixpanelPeopleProto['track_charge']  = MixpanelPeopleProto.track_charge;
+MixpanelPeopleProto['clear_charges'] = MixpanelPeopleProto.clear_charges;
+MixpanelPeopleProto['delete_user']   = MixpanelPeopleProto.delete_user;
 MixpanelPeople.prototype['toString']      = MixpanelPeople.prototype.toString;
 
 export { MixpanelPeople };

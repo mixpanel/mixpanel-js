@@ -98,8 +98,9 @@ export function hasOptedOut(token, options) {
  * Wrap a MixpanelLib method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
  * If the user has opted out, return early instead of executing the method.
  * If a callback argument was provided, execute it passing the 0 error code.
- * @param {function} method - wrapped method to be executed if the user has not opted out
- * @returns {*} the result of executing method OR undefined if the user has opted out
+ * @template {Function} M
+ * @param {M} method - wrapped method to be executed if the user has not opted out
+ * @returns {M} the wrapped method
  */
 export function addOptOutCheckMixpanelLib(method) {
     return _addOptOutCheck(method, function(name) {
@@ -111,8 +112,9 @@ export function addOptOutCheckMixpanelLib(method) {
  * Wrap a MixpanelPeople method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
  * If the user has opted out, return early instead of executing the method.
  * If a callback argument was provided, execute it passing the 0 error code.
- * @param {function} method - wrapped method to be executed if the user has not opted out
- * @returns {*} the result of executing method OR undefined if the user has opted out
+ * @template {Function} M
+ * @param {M} method - wrapped method to be executed if the user has not opted out
+ * @returns {M} the wrapped method
  */
 export function addOptOutCheckMixpanelPeople(method) {
     return _addOptOutCheck(method, function(name) {
@@ -124,8 +126,9 @@ export function addOptOutCheckMixpanelPeople(method) {
  * Wrap a MixpanelGroup method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
  * If the user has opted out, return early instead of executing the method.
  * If a callback argument was provided, execute it passing the 0 error code.
- * @param {function} method - wrapped method to be executed if the user has not opted out
- * @returns {*} the result of executing method OR undefined if the user has opted out
+ * @template {Function} M
+ * @param {M} method - wrapped method to be executed if the user has not opted out
+ * @returns {M} the wrapped method
  */
 export function addOptOutCheckMixpanelGroup(method) {
     return _addOptOutCheck(method, function(name) {

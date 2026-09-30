@@ -76,10 +76,9 @@ To regenerate just that file: `npm run sbom`.
 In the future we plan to automate the last step with a headless browser to streamline development (although
 Mixpanel production releases are tested against a large matrix of browsers and operating systems).
 
-## Generating and publishing documentation
-- Create bundled source build: `npm run build-dist`
-- Generate Markdown: `npm run dox` (result is at `doc/readme.io/javascript-full-api-reference.md`)
-- Publish to readme.io via the [rdme](https://www.npmjs.com/package/rdme) util: `RDME_API_KEY=<API_KEY> RDME_DOC_VERSION=<version> npm run dox-publish`
+## Generating documentation
+- Generate Markdown with [typedoc](https://typedoc.org) from the JSDoc in `src/` and the types in `src/index.d.ts`: `npm run build-docs` (result is at `doc/readme.io/javascript-full-api-reference.md`, configuration in `doc/typedoc.json`)
+- The docs are also regenerated as part of `npm run build-dist`
 
 ## Thanks
 For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx, @pkaminski, @austince, @danielbaker, @mkdai, @wolever, @dpraul, @chriszamierowski, @JoaoGomesTW, @@aliyalcinkaya, @chrisdeely, @dylan-asos, @chrisknu
