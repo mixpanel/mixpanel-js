@@ -319,6 +319,10 @@ export interface Config {
       property: string,
       options?: Partial<RegisterOptions>
     ) => string | Partial<RegisterOptions> | null;
+    on_track?: (
+      event_name: string,
+      properties: Dict
+    ) => string | Array<string | Dict> | null;
   };
 }
 
@@ -339,6 +343,7 @@ export type Response = VerboseResponse | NormalResponse;
 
 export type Callback = (response: Response) => void;
 
+/** @hidden */
 export interface People {
   set(prop: string, to: any, callback?: Callback): void;
   set(prop: Dict, callback?: Callback): void;
@@ -362,6 +367,7 @@ export interface People {
   delete_user(): void;
 }
 
+/** @hidden */
 export interface Group {
   remove(list_name: string, value: string, callback?: Callback): Group;
   set<Prop extends string | Dict>(
@@ -436,6 +442,7 @@ export interface FlagsManager {
   when_ready(): Promise<void>;
 }
 
+/** @hidden */
 export interface Mixpanel {
   add_group(group_key: string, group_id: string, callback?: Callback): void;
   alias(alias: string, original?: string): void;
@@ -511,6 +518,7 @@ export interface Mixpanel {
   get_session_recording_properties(): { $mp_replay_id?: string } | {};
 }
 
+/** @hidden */
 export interface OverridedMixpanel extends Mixpanel {
   init(token: string, config: Partial<Config>, name: string): Mixpanel;
   init(token: string, config?: Partial<Config>): undefined;
