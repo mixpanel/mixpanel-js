@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.83.0'
+        LIB_VERSION: '2.84.0-rc1'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -20943,8 +20943,9 @@
      * Wrap a MixpanelLib method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
      * If the user has opted out, return early instead of executing the method.
      * If a callback argument was provided, execute it passing the 0 error code.
-     * @param {function} method - wrapped method to be executed if the user has not opted out
-     * @returns {*} the result of executing method OR undefined if the user has opted out
+     * @template {Function} M
+     * @param {M} method - wrapped method to be executed if the user has not opted out
+     * @returns {M} the wrapped method
      */
     function addOptOutCheckMixpanelLib(method) {
         return _addOptOutCheck(method, function(name) {
@@ -21615,6 +21616,9 @@
             return this.ensureInit()
                 .then(_.bind(function () {
                     return this.queueStorage.removeItem(this.storageKey);
+                }, this))
+                .catch(_.bind(function (err) {
+                    this.reportError('Error clearing queue', err);
                 }, this));
         } else {
             return PromisePolyfill.resolve();
@@ -23368,6 +23372,11 @@
             var eventsJson = JSON.stringify(data);
             Object.assign(reqParams, this.getUserIdInfo());
 
+            var sendUncompressed = function() {
+                reqParams['format'] = 'body';
+                this._sendRequest(replayId, reqParams, eventsJson, callback);
+            }.bind(this);
+
             if (canUseCompressionStream(userAgent, navigator.vendor, windowOpera)) {
                 var jsonStream = new Blob([eventsJson], {type: 'application/json'}).stream();
                 var gzipStream = jsonStream.pipeThrough(new CompressionStream('gzip'));
@@ -23376,10 +23385,12 @@
                     .then(function(compressedBlob) {
                         reqParams['format'] = 'gzip';
                         this._sendRequest(replayId, reqParams, compressedBlob, callback);
+                    }.bind(this), function(err) {
+                        this.reportError('Error compressing session recording batch; sending uncompressed', err);
+                        sendUncompressed();
                     }.bind(this));
             } else {
-                reqParams['format'] = 'body';
-                this._sendRequest(replayId, reqParams, eventsJson, callback);
+                sendUncompressed();
             }
         }
     });

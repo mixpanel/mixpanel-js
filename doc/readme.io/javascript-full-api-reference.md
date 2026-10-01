@@ -1730,6 +1730,7 @@ mixpanel.people.unset(['gender', 'Company']);
 | `hooks.before_send_events?` | (`event`) => [`BeforeSendHookPayload`](#beforesendhookpayload) \| `null` | - |
 | `hooks.before_track?` | (`event_name`, `properties`) => `string` \| (`string` \| [`Dict`](#dict))[] \| `null` | - |
 | `hooks.before_unregister?` | (`property`, `options?`) => `string` \| `Partial`\<[`RegisterOptions`](#registeroptions)\> \| `null` | - |
+| `hooks.on_track?` | (`event_name`, `properties`) => `string` \| (`string` \| [`Dict`](#dict))[] \| `null` | - |
 | <a id="property-ignore_dnt"></a> `ignore_dnt` | `boolean` | - |
 | <a id="property-img"></a> `img` | `boolean` | - |
 | <a id="property-inapp_link_new_window"></a> `inapp_link_new_window` | `boolean` | - |
