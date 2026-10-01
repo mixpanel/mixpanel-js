@@ -11,7 +11,7 @@
  * These functions are used internally by the SDK and are not intended to be publicly exposed.
  */
 
-import { _, console } from './utils';
+import { _, console, getLocalStorage, localStorageSupported } from './utils';
 import { window } from './window';
 
 /**
@@ -192,6 +192,27 @@ function _getStorageValue(token, options) {
 }
 
 /**
+ * Get the persistence type the opt-out check should read. opt_out_tracking() saves the flag
+ * in localStorage if it can be written, otherwise in a cookie. Read that store first, and
+ * the other one if no flag is there.
+ * @param {string} token - Mixpanel project tracking token
+ * @param {string} persistenceType - configured persistence type
+ * @param {string} [persistencePrefix] - custom prefix used in the cookie/localstorage name
+ * @returns {string} the persistence type to read
+ */
+function _getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix) {
+    if (persistenceType !== 'localStorage') {
+        return persistenceType;
+    }
+    var writtenTo = localStorageSupported(getLocalStorage()) ? 'localStorage' : 'cookie';
+    var hasFlag = _getStorageValue(token, {persistenceType: writtenTo, persistencePrefix: persistencePrefix}) !== null;
+    if (hasFlag) {
+        return writtenTo;
+    }
+    return writtenTo === 'localStorage' ? 'cookie' : 'localStorage';
+}
+
+/**
  * Check whether the user has set the DNT/doNotTrack setting to true in their browser
  * @param {Object} [options]
  * @param {string} [options.window] - alternate window object to check; used to force various DNT settings in browser tests
@@ -281,7 +302,7 @@ function _addOptOutCheck(method, getConfigValue) {
             if (token) { // if there was an issue getting the token, continue method execution as normal
                 optedOut = hasOptedOut(token, {
                     ignoreDnt: ignoreDnt,
-                    persistenceType: persistenceType,
+                    persistenceType: _getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix),
                     persistencePrefix: persistencePrefix,
                     window: win
                 });
