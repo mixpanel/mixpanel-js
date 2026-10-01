@@ -603,6 +603,65 @@ describe(`GDPR utils`, function() {
         });
       });
     });
+
+    describe(`with localStorage configured`, function() {
+      function trackWithLocalStorageConfigured(token) {
+        setupMocks(() => ({token, opt_out_tracking_persistence_type: `localStorage`}));
+        mixpanelLib.track(trackEventName, trackProperties);
+      }
+
+      function makeLocalStorageWritesFail() {
+        sinon.stub(window.Storage.prototype, `setItem`).throws(new Error(`QuotaExceededError`));
+      }
+
+      afterEach(function() {
+        if (window.Storage.prototype.setItem.restore) {
+          window.Storage.prototype.setItem.restore();
+        }
+      });
+
+      it(`should not call the wrapped method if the opt-out is only in a cookie`, function() {
+        TOKENS.forEach(token => {
+          gdpr.optOut(token, {persistenceType: `cookie`});
+          trackWithLocalStorageConfigured(token);
+
+          expect(track.notCalled).to.be.true;
+        });
+      });
+
+      it(`should call the wrapped method if usable localStorage holds an opt-in over a cookie opt-out`, function() {
+        TOKENS.forEach(token => {
+          gdpr.optOut(token, {persistenceType: `cookie`});
+          gdpr.optIn(token, {persistenceType: `localStorage`});
+          trackWithLocalStorageConfigured(token);
+
+          expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
+        });
+      });
+
+      it(`should not call the wrapped method if localStorage rejects writes but holds an opt-out`, function() {
+        TOKENS.forEach(token => gdpr.optOut(token, {persistenceType: `localStorage`}));
+        makeLocalStorageWritesFail();
+
+        TOKENS.forEach(token => {
+          trackWithLocalStorageConfigured(token);
+
+          expect(track.notCalled).to.be.true;
+        });
+      });
+
+      it(`should not call the wrapped method if localStorage rejects writes and the cookie holds a newer opt-out`, function() {
+        TOKENS.forEach(token => gdpr.optIn(token, {persistenceType: `localStorage`}));
+        makeLocalStorageWritesFail();
+
+        TOKENS.forEach(token => {
+          gdpr.optOut(token, {persistenceType: `cookie`});
+          trackWithLocalStorageConfigured(token);
+
+          expect(track.notCalled).to.be.true;
+        });
+      });
+    });
   });
 
   describe(`addOptOutCheckMixpanelPeople`, function() {
