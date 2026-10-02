@@ -561,3 +561,28 @@ describe(`_.getQueryParam`, function() {
     expect(_.getQueryParam(`https://example.com/?a\\b=z`, `a\\b`)).to.equal(`z`);
   });
 });
+
+describe(`_.encodeDates`, function() {
+  it(`encodes top-level Date values`, function() {
+    const encoded = _.encodeDates({ created: new Date(Date.UTC(2020, 0, 2, 3, 4, 5)) });
+    expect(encoded.created).to.equal(`2020-01-02T03:04:05`);
+  });
+
+  it(`encodes nested Date values`, function() {
+    const encoded = _.encodeDates({ meta: { created: new Date(Date.UTC(2020, 0, 2, 3, 4, 5)) } });
+    expect(encoded.meta.created).to.equal(`2020-01-02T03:04:05`);
+  });
+
+  it(`does not mutate the object passed in`, function() {
+    const original = { created: new Date(Date.UTC(2020, 0, 2, 3, 4, 5)) };
+    _.encodeDates(original);
+    expect(_.isDate(original.created)).to.be.true;
+  });
+
+  it(`does not mutate nested Date values on the object passed in`, function() {
+    const nestedDate = new Date(Date.UTC(2020, 0, 2, 3, 4, 5));
+    const original = { meta: { created: nestedDate } };
+    _.encodeDates(original);
+    expect(_.isDate(original.meta.created)).to.be.true;
+  });
+});

@@ -323,7 +323,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
     var date_encoded_data = _.encodeDates(data);
 
     if (!this._identify_called()) {
-        this._enqueue(data);
+        this._enqueue(date_encoded_data);
         if (!_.isUndefined(callback)) {
             if (this._get_config('verbose')) {
                 callback({status: -1, error: null});
