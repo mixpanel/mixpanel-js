@@ -11,8 +11,8 @@
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
     // Constants that are injected at build-time for the names of async modules.
-    var RECORDER_FILENAME = 'mixpanel-recorder-BpYsSIpn.js';
-    var TARGETING_FILENAME = 'mixpanel-targeting-BG9lK29R.js';
+    var RECORDER_FILENAME = 'mixpanel-recorder-CKbMQE4W.js';
+    var TARGETING_FILENAME = 'mixpanel-targeting-D0V2yc5g.js';
 
     // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
     var win;
@@ -721,14 +721,18 @@
     };
 
     _.encodeDates = function(obj) {
+        // build a copy so the caller's object (and any nested objects) are not mutated
+        var encoded = _.isArray(obj) ? [] : {};
         _.each(obj, function(v, k) {
             if (_.isDate(v)) {
-                obj[k] = _.formatDate(v);
+                encoded[k] = _.formatDate(v);
             } else if (_.isObject(v)) {
-                obj[k] = _.encodeDates(v); // recurse
+                encoded[k] = _.encodeDates(v); // recurse
+            } else {
+                encoded[k] = v;
             }
         });
-        return obj;
+        return encoded;
     };
 
     _.timestamp = function() {
@@ -1945,7 +1949,7 @@
                 'Firefox iOS': /FxiOS\/(\d+(\.\d+)?)/,
                 'Konqueror': /Konqueror:(\d+(\.\d+)?)/,
                 'BlackBerry': /BlackBerry (\d+(\.\d+)?)/,
-                'Android Mobile': /android\s(\d+(\.\d+)?)/,
+                'Android Mobile': /Android\s(\d+(\.\d+)?)/,
                 'Samsung Internet': /SamsungBrowser\/(\d+(\.\d+)?)/,
                 'Internet Explorer': /(rv:|MSIE )(\d+(\.\d+)?)/,
                 'Mozilla': /rv:(\d+(\.\d+)?)/,
@@ -6569,6 +6573,27 @@
     }
 
     /**
+     * Get the persistence type the opt-out check should read. opt_out_tracking() saves the flag
+     * in localStorage if it can be written, otherwise in a cookie. Read that store first, and
+     * the other one if no flag is there.
+     * @param {string} token - Mixpanel project tracking token
+     * @param {string} persistenceType - configured persistence type
+     * @param {string} [persistencePrefix] - custom prefix used in the cookie/localstorage name
+     * @returns {string} the persistence type to read
+     */
+    function _getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix) {
+        if (persistenceType !== 'localStorage') {
+            return persistenceType;
+        }
+        var writtenTo = localStorageSupported(getLocalStorage()) ? 'localStorage' : 'cookie';
+        var hasFlag = _getStorageValue(token, {persistenceType: writtenTo, persistencePrefix: persistencePrefix}) !== null;
+        if (hasFlag) {
+            return writtenTo;
+        }
+        return writtenTo === 'localStorage' ? 'cookie' : 'localStorage';
+    }
+
+    /**
      * Check whether the user has set the DNT/doNotTrack setting to true in their browser
      * @param {Object} [options]
      * @param {string} [options.window] - alternate window object to check; used to force various DNT settings in browser tests
@@ -6658,7 +6683,7 @@
                 if (token) { // if there was an issue getting the token, continue method execution as normal
                     optedOut = hasOptedOut(token, {
                         ignoreDnt: ignoreDnt,
-                        persistenceType: persistenceType,
+                        persistenceType: _getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix),
                         persistencePrefix: persistencePrefix,
                         window: win
                     });
@@ -7316,7 +7341,7 @@
         var date_encoded_data = _.encodeDates(data);
 
         if (!this._identify_called()) {
-            this._enqueue(data);
+            this._enqueue(date_encoded_data);
             if (!_.isUndefined(callback)) {
                 if (this._get_config('verbose')) {
                     callback({status: -1, error: null});
