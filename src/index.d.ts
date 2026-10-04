@@ -274,6 +274,8 @@ export interface Config {
   batch_flush_interval_ms: number;
   batch_request_timeout_ms: number;
   recorder_src: string;
+  targeting_src: string;
+  lib_base_path: string;
   record_block_class: string | RegExp;
   record_block_selector: string;
   record_console: boolean;
