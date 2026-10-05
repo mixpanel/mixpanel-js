@@ -1,3 +1,13 @@
+**2.84.0** (5 Oct 2026)
+
+- Adds an `on_track` hook (under `hooks` config) that is called for every tracked event with the event name and its merged properties. It can return a modified event name/properties or `null` to drop the event, and is not bypassed by `skip_hooks`.
+- Fixes `people.set` (and other people calls) mutating the object passed in: Date values were being converted to strings in place. Dates are now encoded on a copy, so the caller's object is left untouched.
+- Fixes `$browser_version` being `null` for Android Mobile browsers, caused by a lower-case `android` in the version regex.
+- Fixes opt-out checks when `localStorage` is unusable: `opt_out_tracking()` falls back to saving the flag in a cookie, but the opt-out check only read `localStorage`, so the opt-out was not honored. The check now reads whichever store the flag was written to.
+- Fixes session recording to send a batch uncompressed (and report the error) when gzip compression fails, instead of silently dropping it.
+- Fixes request queue `clear()` so a failure to clear persisted storage is reported rather than leaving the returned promise rejected.
+- Replaces the `dox`/`rdme` API docs tooling with TypeDoc and regenerates the API reference; the TypeScript definitions and JSDoc were updated to match.
+
 **2.83.0** (8 Sep 2026)
 
 - Adds `semver` and `date` custom operators for Feature Flags runtime targeting (first-time-event) rules, alongside the existing operators.
