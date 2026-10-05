@@ -81,4 +81,4 @@ Mixpanel production releases are tested against a large matrix of browsers and o
 - The docs are also regenerated as part of `npm run build-dist`
 
 ## Thanks
-For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx, @pkaminski, @austince, @danielbaker, @mkdai, @wolever, @dpraul, @chriszamierowski, @JoaoGomesTW, @@aliyalcinkaya, @chrisdeely, @dylan-asos, @chrisknu
+For patches and support: @bohanyang, @dehau, @drubin, @D1plo1d, @feychenie, @mogstad, @pfhayes, @sandorfr, @stefansedich, @gfx, @pkaminski, @austince, @danielbaker, @mkdai, @wolever, @dpraul, @chriszamierowski, @JoaoGomesTW, @@aliyalcinkaya, @chrisdeely, @dylan-asos, @chrisknu, @pkuczynski, @sarmah-rup
