@@ -472,327 +472,130 @@ describe(`GDPR utils`, function() {
     });
   });
 
-  describe(`addOptOutCheckMixpanelLib`, function() {
-    const trackEventName = `єνєηт`;
-    const trackProperties = {'𝖕𝖗𝖔𝖕𝖊𝖗𝖙𝖞': `𝓿𝓪𝓵𝓾𝓮`};
-    let getConfig, track, mixpanelLib;
-
-    function setupMocks(getConfigFunc, options) {
-      getConfig = sinon.spy(name => getConfigFunc()[name]);
-      track = sinon.spy();
-      mixpanelLib = {
-        get_config: getConfig,
-        track: gdpr.addOptOutCheckMixpanelLib(track, options),
-      };
+  describe(`getOptOutCheckPersistenceType`, function() {
+    function makeLocalStorageWritesFail() {
+      sinon.stub(window.Storage.prototype, `setItem`).throws(new Error(`QuotaExceededError`));
     }
 
-    forPersistenceTypes(function(persistenceType) {
-      it(`should call the wrapped method if the user is neither opted in or opted out`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
+    afterEach(function() {
+      if (window.Storage.prototype.setItem.restore) {
+        window.Storage.prototype.setItem.restore();
+      }
+    });
 
-          mixpanelLib.track(trackEventName, trackProperties);
+    it(`should read the cookie if that is the configured persistence type`, function() {
+      TOKENS.forEach(token => {
+        gdpr.optOut(token, {persistenceType: `localStorage`});
 
-          expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
-        });
-      });
-
-      it(`should call the wrapped method if the user is opted in`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelLib.track(trackEventName, trackProperties);
-
-          expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
-        });
-      });
-
-      it(`should not call the wrapped method if the user is opted out`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-
-          gdpr.optOut(token, {persistenceType});
-          mixpanelLib.track(trackEventName, trackProperties);
-
-          expect(track.notCalled).to.be.true;
-        });
-      });
-
-      it(`should not invoke the callback directly if the user is neither opted in or opted out`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-          const callback = sinon.spy();
-
-          mixpanelLib.track(trackEventName, trackProperties, callback);
-
-          expect(callback.notCalled).to.be.true;
-        });
-      });
-
-      it(`should not invoke the callback directly if the user is opted in`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-          const callback = sinon.spy();
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelLib.track(trackEventName, trackProperties, callback);
-
-          expect(callback.notCalled).to.be.true;
-        });
-      });
-
-      it(`should invoke the callback directly if the user is opted out`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-          const callback = sinon.spy();
-
-          gdpr.optOut(token, {persistenceType});
-          mixpanelLib.track(trackEventName, trackProperties, callback);
-
-          expect(callback.calledOnceWith(0)).to.be.true;
-        });
-      });
-
-      it(`should call the wrapped method if there is no token available`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token: null, opt_out_tracking_persistence_type: persistenceType}));
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelLib.track(trackEventName, trackProperties);
-
-          expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
-        });
-      });
-
-      it(`should call the wrapped method if an unexpected error occurs`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => {
-            throw new Error(`Unexpected error!`);
-          });
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelLib.track(trackEventName, trackProperties);
-
-          expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
-        });
-      });
-
-      it(`should allow use of a custom "persistence prefix" string`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({
-            token,
-            opt_out_tracking_persistence_type: persistenceType,
-            opt_out_tracking_cookie_prefix: CUSTOM_PERSISTENCE_PREFIX,
-          }));
-
-          gdpr.optOut(token, {persistenceType, persistencePrefix: CUSTOM_PERSISTENCE_PREFIX});
-          mixpanelLib.track(trackEventName, trackProperties);
-
-          expect(track.notCalled).to.be.true;
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelLib.track(trackEventName, trackProperties);
-
-          expect(track.notCalled).to.be.true;
-
-          gdpr.optIn(token, {persistenceType, persistencePrefix: CUSTOM_PERSISTENCE_PREFIX});
-          mixpanelLib.track(trackEventName, trackProperties);
-
-          expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
-        });
+        expect(gdpr.getOptOutCheckPersistenceType(token, `cookie`)).to.equal(`cookie`);
       });
     });
 
-    describe(`with localStorage configured`, function() {
-      function trackWithLocalStorageConfigured(token) {
-        setupMocks(() => ({token, opt_out_tracking_persistence_type: `localStorage`}));
-        mixpanelLib.track(trackEventName, trackProperties);
-      }
+    it(`should read the cookie if the flag is only in a cookie`, function() {
+      TOKENS.forEach(token => {
+        gdpr.optOut(token, {persistenceType: `cookie`});
 
-      function makeLocalStorageWritesFail() {
-        sinon.stub(window.Storage.prototype, `setItem`).throws(new Error(`QuotaExceededError`));
-      }
-
-      afterEach(function() {
-        if (window.Storage.prototype.setItem.restore) {
-          window.Storage.prototype.setItem.restore();
-        }
+        expect(gdpr.getOptOutCheckPersistenceType(token, `localStorage`)).to.equal(`cookie`);
       });
+    });
 
-      it(`should not call the wrapped method if the opt-out is only in a cookie`, function() {
-        TOKENS.forEach(token => {
-          gdpr.optOut(token, {persistenceType: `cookie`});
-          trackWithLocalStorageConfigured(token);
+    it(`should read usable localStorage over a cookie if both hold a flag`, function() {
+      TOKENS.forEach(token => {
+        gdpr.optOut(token, {persistenceType: `cookie`});
+        gdpr.optIn(token, {persistenceType: `localStorage`});
 
-          expect(track.notCalled).to.be.true;
-        });
+        expect(gdpr.getOptOutCheckPersistenceType(token, `localStorage`)).to.equal(`localStorage`);
       });
+    });
 
-      it(`should call the wrapped method if usable localStorage holds an opt-in over a cookie opt-out`, function() {
-        TOKENS.forEach(token => {
-          gdpr.optOut(token, {persistenceType: `cookie`});
-          gdpr.optIn(token, {persistenceType: `localStorage`});
-          trackWithLocalStorageConfigured(token);
+    it(`should read localStorage if it rejects writes but holds the only flag`, function() {
+      TOKENS.forEach(token => gdpr.optOut(token, {persistenceType: `localStorage`}));
+      makeLocalStorageWritesFail();
 
-          expect(track.calledOnceWith(trackEventName, trackProperties)).to.be.true;
-        });
+      TOKENS.forEach(token => {
+        expect(gdpr.getOptOutCheckPersistenceType(token, `localStorage`)).to.equal(`localStorage`);
       });
+    });
 
-      it(`should not call the wrapped method if localStorage rejects writes but holds an opt-out`, function() {
-        TOKENS.forEach(token => gdpr.optOut(token, {persistenceType: `localStorage`}));
-        makeLocalStorageWritesFail();
+    it(`should read the cookie over localStorage if localStorage rejects writes`, function() {
+      TOKENS.forEach(token => gdpr.optIn(token, {persistenceType: `localStorage`}));
+      makeLocalStorageWritesFail();
 
-        TOKENS.forEach(token => {
-          trackWithLocalStorageConfigured(token);
+      TOKENS.forEach(token => {
+        gdpr.optOut(token, {persistenceType: `cookie`});
 
-          expect(track.notCalled).to.be.true;
-        });
+        expect(gdpr.getOptOutCheckPersistenceType(token, `localStorage`)).to.equal(`cookie`);
       });
+    });
 
-      it(`should not call the wrapped method if localStorage rejects writes and the cookie holds a newer opt-out`, function() {
-        TOKENS.forEach(token => gdpr.optIn(token, {persistenceType: `localStorage`}));
-        makeLocalStorageWritesFail();
+    it(`should use a custom "persistence prefix" string`, function() {
+      TOKENS.forEach(token => {
+        gdpr.optOut(token, {persistenceType: `cookie`, persistencePrefix: CUSTOM_PERSISTENCE_PREFIX});
+        gdpr.optIn(token, {persistenceType: `localStorage`});
 
-        TOKENS.forEach(token => {
-          gdpr.optOut(token, {persistenceType: `cookie`});
-          trackWithLocalStorageConfigured(token);
-
-          expect(track.notCalled).to.be.true;
-        });
+        expect(gdpr.getOptOutCheckPersistenceType(token, `localStorage`, CUSTOM_PERSISTENCE_PREFIX)).to.equal(`cookie`);
       });
     });
   });
 
-  describe(`addOptOutCheckMixpanelPeople`, function() {
-    const setPropertyName = '𝖕𝖗𝖔𝖕𝖊𝖗𝖙𝖞';
-    const setPropertyValue = `𝓿𝓪𝓵𝓾𝓮`;
-    let getConfig, set, mixpanelPeople;
+  [
+    {wrapperName: `addOptOutCheckMixpanelLib`, makeOwner: mixpanelInstance => mixpanelInstance},
+    {wrapperName: `addOptOutCheckMixpanelPeople`, makeOwner: mixpanelInstance => ({_mixpanel: mixpanelInstance})},
+    {wrapperName: `addOptOutCheckMixpanelGroup`, makeOwner: mixpanelInstance => ({_mixpanel: mixpanelInstance})},
+    {wrapperName: `addOptOutCheckSessionRecording`, makeOwner: mixpanelInstance => ({_mixpanel: mixpanelInstance})},
+  ].forEach(function({wrapperName, makeOwner}) {
+    describe(wrapperName, function() {
+      const eventName = `єνєηт`;
+      const eventProperties = {'𝖕𝖗𝖔𝖕𝖊𝖗𝖙𝖞': `𝓿𝓪𝓵𝓾𝓮`};
+      let wrappedMethod, owner;
 
-    function setupMocks(getConfigFunc, options) {
-      getConfig = sinon.spy(name => getConfigFunc()[name]);
-      set = sinon.spy();
-      mixpanelPeople = {
-        _get_config: getConfig,
-        set: gdpr.addOptOutCheckMixpanelPeople(set, options),
-      };
-    }
+      function setupMocks(hasOptedOutTracking) {
+        wrappedMethod = sinon.stub().returns(`result`);
+        owner = makeOwner({has_opted_out_tracking: hasOptedOutTracking});
+        owner.method = gdpr[wrapperName](wrappedMethod);
+      }
 
-    forPersistenceTypes(function(persistenceType) {
-      it(`should call the wrapped method if the user is neither opted in or opted out`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
+      it(`should call the wrapped method if the user is not opted out`, function() {
+        setupMocks(() => false);
 
-          mixpanelPeople.set(setPropertyName, setPropertyValue);
-
-          expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
-        });
-      });
-
-      it(`should call the wrapped method if the user is opted in`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelPeople.set(setPropertyName, setPropertyValue);
-
-          expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
-        });
+        expect(owner.method(eventName, eventProperties)).to.equal(`result`);
+        expect(wrappedMethod.calledOnceWith(eventName, eventProperties)).to.be.true;
+        expect(wrappedMethod.calledOn(owner)).to.be.true;
       });
 
       it(`should not call the wrapped method if the user is opted out`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
+        setupMocks(() => true);
 
-          gdpr.optOut(token, {persistenceType});
-          mixpanelPeople.set(setPropertyName, setPropertyValue);
-
-          expect(set.notCalled).to.be.true;
-        });
+        expect(owner.method(eventName, eventProperties)).to.be.undefined;
+        expect(wrappedMethod.notCalled).to.be.true;
       });
 
-      it(`should not invoke the callback directly if the user is neither opted in or opted out`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-          const callback = sinon.spy();
+      it(`should not invoke the callback directly if the user is not opted out`, function() {
+        setupMocks(() => false);
+        const callback = sinon.spy();
 
-          mixpanelPeople.set(setPropertyName, setPropertyValue, callback);
+        owner.method(eventName, eventProperties, callback);
 
-          expect(callback.notCalled).to.be.true;
-        });
-      });
-
-      it(`should not invoke the callback directly if the user is opted in`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-          const callback = sinon.spy();
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelPeople.set(setPropertyName, setPropertyValue, callback);
-
-          expect(callback.notCalled).to.be.true;
-        });
+        expect(callback.notCalled).to.be.true;
       });
 
       it(`should invoke the callback directly if the user is opted out`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token, opt_out_tracking_persistence_type: persistenceType}));
-          const callback = sinon.spy();
+        setupMocks(() => true);
+        const callback = sinon.spy();
 
-          gdpr.optOut(token, {persistenceType});
-          mixpanelPeople.set(setPropertyName, setPropertyValue, callback);
+        owner.method(eventName, eventProperties, callback);
 
-          expect(callback.calledOnceWith(0)).to.be.true;
-        });
-      });
-
-      it(`should call the wrapped method if there is no token available`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({token: null, opt_out_tracking_persistence_type: persistenceType}));
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelPeople.set(setPropertyName, setPropertyValue);
-
-          expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
-        });
+        expect(callback.calledOnceWith(0)).to.be.true;
       });
 
       it(`should call the wrapped method if an unexpected error occurs`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => {
-            throw new Error(`Unexpected error!`);
-          });
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelPeople.set(setPropertyName, setPropertyValue);
-
-          expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
+        setupMocks(() => {
+          throw new Error(`Unexpected error!`);
         });
-      });
 
-      it(`should allow use of a custom "persistence prefix" string`, function() {
-        TOKENS.forEach(token => {
-          setupMocks(() => ({
-            token,
-            opt_out_tracking_persistence_type: persistenceType,
-            opt_out_tracking_cookie_prefix: CUSTOM_PERSISTENCE_PREFIX,
-          }));
+        owner.method(eventName, eventProperties);
 
-          gdpr.optOut(token, {persistenceType, persistencePrefix: CUSTOM_PERSISTENCE_PREFIX});
-          mixpanelPeople.set(setPropertyName, setPropertyValue);
-
-          expect(set.notCalled).to.be.true;
-
-          gdpr.optIn(token, {persistenceType});
-          mixpanelPeople.set(setPropertyName, setPropertyValue);
-
-          expect(set.notCalled).to.be.true;
-
-          gdpr.optIn(token, {persistenceType, persistencePrefix: CUSTOM_PERSISTENCE_PREFIX});
-          mixpanelPeople.set(setPropertyName, setPropertyValue);
-
-          expect(set.calledOnceWith(setPropertyName, setPropertyValue)).to.be.true;
-        });
+        expect(wrappedMethod.calledOnceWith(eventName, eventProperties)).to.be.true;
       });
     });
   });

@@ -46,4 +46,8 @@ export class MockMixpanelLib {
   get_tab_id () {
     return `test-tab-id`;
   }
+
+  has_opted_out_tracking() {
+    return false;
+  }
 }
