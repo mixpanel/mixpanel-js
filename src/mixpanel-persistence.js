@@ -55,10 +55,14 @@ var MixpanelPersistence = function(config) {
     var storage_type = config['persistence'];
     if (storage_type !== 'cookie' && storage_type !== 'localStorage') {
         console.critical('Unknown persistence type ' + storage_type + '; falling back to cookie');
-        storage_type = config['persistence'] = 'cookie';
+        config['persistence'] = 'cookie';
     }
 
-    if (storage_type === 'localStorage' && _.localStorage.is_supported()) {
+    this._open_storage(config);
+};
+
+MixpanelPersistence.prototype._open_storage = function(config) {
+    if (config['persistence'] === 'localStorage' && _.localStorage.is_supported()) {
         this.storage = _.localStorage;
     } else {
         this.storage = _.cookie;
