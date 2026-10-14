@@ -103,8 +103,8 @@ export function hasOptedOut(token, options) {
  * @returns {M} the wrapped method
  */
 export function addOptOutCheckMixpanelLib(method) {
-    return _addOptOutCheck(method, function(name) {
-        return this.get_config(name);
+    return _addOptOutCheck(method, function() {
+        return this;
     });
 }
 
@@ -117,9 +117,7 @@ export function addOptOutCheckMixpanelLib(method) {
  * @returns {M} the wrapped method
  */
 export function addOptOutCheckMixpanelPeople(method) {
-    return _addOptOutCheck(method, function(name) {
-        return this._get_config(name);
-    });
+    return _addOptOutCheck(method, _getOwningMixpanelInstance);
 }
 
 /**
@@ -131,9 +129,40 @@ export function addOptOutCheckMixpanelPeople(method) {
  * @returns {M} the wrapped method
  */
 export function addOptOutCheckMixpanelGroup(method) {
-    return _addOptOutCheck(method, function(name) {
-        return this._get_config(name);
-    });
+    return _addOptOutCheck(method, _getOwningMixpanelInstance);
+}
+
+/**
+ * Wrap a SessionRecording method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
+ * If the user has opted out, return early instead of executing the method.
+ * If a callback argument was provided, execute it passing the 0 error code.
+ * @template {Function} M
+ * @param {M} method - wrapped method to be executed if the user has not opted out
+ * @returns {M} the wrapped method
+ */
+export function addOptOutCheckSessionRecording(method) {
+    return _addOptOutCheck(method, _getOwningMixpanelInstance);
+}
+
+/**
+ * Get the persistence type to read the opt-in/out flag from. MixpanelLib._gdpr_call_func writes
+ * the flag to localStorage if it passes the localStorageSupported probe, otherwise to a cookie.
+ * Read that store first, and the other one if no flag is there.
+ * @param {string} token - Mixpanel project tracking token
+ * @param {string} persistenceType - configured persistence type
+ * @param {string} [persistencePrefix] - custom prefix used in the cookie/localstorage name
+ * @returns {string} the persistence type to read
+ */
+export function getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix) {
+    if (persistenceType !== 'localStorage') {
+        return persistenceType;
+    }
+    var writtenTo = localStorageSupported(getLocalStorage()) ? 'localStorage' : 'cookie';
+    var hasFlag = _getStorageValue(token, {persistenceType: writtenTo, persistencePrefix: persistencePrefix}) !== null;
+    if (hasFlag) {
+        return writtenTo;
+    }
+    return writtenTo === 'localStorage' ? 'cookie' : 'localStorage';
 }
 
 /**
@@ -156,6 +185,10 @@ export function clearOptInOut(token, options) {
 }
 
 /** Private **/
+
+function _getOwningMixpanelInstance() {
+    return this._mixpanel;
+}
 
 /**
  * Get storage util
@@ -189,27 +222,6 @@ function _getStorageKey(token, options) {
  */
 function _getStorageValue(token, options) {
     return _getStorage(options).get(_getStorageKey(token, options));
-}
-
-/**
- * Get the persistence type the opt-out check should read. opt_out_tracking() saves the flag
- * in localStorage if it can be written, otherwise in a cookie. Read that store first, and
- * the other one if no flag is there.
- * @param {string} token - Mixpanel project tracking token
- * @param {string} persistenceType - configured persistence type
- * @param {string} [persistencePrefix] - custom prefix used in the cookie/localstorage name
- * @returns {string} the persistence type to read
- */
-function _getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix) {
-    if (persistenceType !== 'localStorage') {
-        return persistenceType;
-    }
-    var writtenTo = localStorageSupported(getLocalStorage()) ? 'localStorage' : 'cookie';
-    var hasFlag = _getStorageValue(token, {persistenceType: writtenTo, persistencePrefix: persistencePrefix}) !== null;
-    if (hasFlag) {
-        return writtenTo;
-    }
-    return writtenTo === 'localStorage' ? 'cookie' : 'localStorage';
 }
 
 /**
@@ -285,28 +297,15 @@ function _optInOut(optValue, token, options) {
  * If the user has opted out, return early instead of executing the method.
  * If a callback argument was provided, execute it passing the 0 error code.
  * @param {function} method - wrapped method to be executed if the user has not opted out
- * @param {function} getConfigValue - getter function for the Mixpanel API token and other options to be used with opt-out check
+ * @param {function} getMixpanelInstance - getter for the MixpanelLib instance whose opt-out status gates the method
  * @returns {*} the result of executing method OR undefined if the user has opted out
  */
-function _addOptOutCheck(method, getConfigValue) {
+function _addOptOutCheck(method, getMixpanelInstance) {
     return function() {
         var optedOut = false;
 
         try {
-            var token = getConfigValue.call(this, 'token');
-            var ignoreDnt = getConfigValue.call(this, 'ignore_dnt');
-            var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
-            var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
-            var win = getConfigValue.call(this, 'window'); // used to override window during browser tests
-
-            if (token) { // if there was an issue getting the token, continue method execution as normal
-                optedOut = hasOptedOut(token, {
-                    ignoreDnt: ignoreDnt,
-                    persistenceType: _getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix),
-                    persistencePrefix: persistencePrefix,
-                    window: win
-                });
-            }
+            optedOut = getMixpanelInstance.call(this).has_opted_out_tracking();
         } catch(err) {
             console.error('Unexpected error when checking tracking opt-out status: ' + err);
         }

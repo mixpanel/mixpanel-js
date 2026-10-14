@@ -20,7 +20,8 @@ import {
     hasOptedIn,
     hasOptedOut,
     clearOptInOut,
-    addOptOutCheckMixpanelLib
+    addOptOutCheckMixpanelLib,
+    getOptOutCheckPersistenceType
 } from './gdpr-utils';
 
 /*
@@ -2160,10 +2161,10 @@ MixpanelLib.prototype._gdpr_init = function() {
 
     // try to convert opt-in/out cookies to localStorage if possible
     if (is_localStorage_requested && _.localStorage.is_supported()) {
-        if (!this.has_opted_in_tracking() && this.has_opted_in_tracking({'persistence_type': 'cookie'})) {
+        if (!this.has_opted_in_tracking({'persistence_type': 'localStorage'}) && this.has_opted_in_tracking({'persistence_type': 'cookie'})) {
             this.opt_in_tracking({'enable_persistence': false});
         }
-        if (!this.has_opted_out_tracking() && this.has_opted_out_tracking({'persistence_type': 'cookie'})) {
+        if (!this.has_opted_out_tracking({'persistence_type': 'localStorage'}) && this.has_opted_out_tracking({'persistence_type': 'cookie'})) {
             this.opt_out_tracking({'clear_persistence': false});
         }
         this.clear_opt_in_out_tracking({
@@ -2252,6 +2253,31 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
         crossSubdomainCookie: options['cross_subdomain_cookie'],
         secureCookie: options['secure_cookie'],
         ignoreDnt: options['ignore_dnt']
+    });
+};
+
+// check an opt-in/out status, reading the store that holds the flag unless options name one
+MixpanelLib.prototype._gdpr_check_status = function(func, options) {
+    options = _.extend({
+        'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
+        'ignore_dnt': this.get_config('ignore_dnt')
+    }, options);
+
+    var token = this.get_config('token');
+    var persistence_type = options['persistence_type'];
+    if (!persistence_type) {
+        persistence_type = getOptOutCheckPersistenceType(
+            token, this.get_config('opt_out_tracking_persistence_type'), options['cookie_prefix']
+        );
+    } else if (!_.localStorage.is_supported()) {
+        persistence_type = 'cookie';
+    }
+
+    return func(token, {
+        persistenceType: persistence_type,
+        persistencePrefix: options['cookie_prefix'],
+        ignoreDnt: options['ignore_dnt'],
+        window: this.get_config('window') // used to override window during browser tests
     });
 };
 
@@ -2348,12 +2374,12 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
  * ```
  *
  * @param {Object} [options] A dictionary of config options to override
- * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
+ * @param {string} [options.persistence_type] Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @returns {boolean} current opt-in status
  */
 MixpanelLib.prototype.has_opted_in_tracking = function(options) {
-    return this._gdpr_call_func(hasOptedIn, options);
+    return this._gdpr_check_status(hasOptedIn, options);
 };
 
 /**
@@ -2366,12 +2392,12 @@ MixpanelLib.prototype.has_opted_in_tracking = function(options) {
  * ```
  *
  * @param {Object} [options] A dictionary of config options to override
- * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
+ * @param {string} [options.persistence_type] Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @returns {boolean} current opt-out status
  */
 MixpanelLib.prototype.has_opted_out_tracking = function(options) {
-    return this._gdpr_call_func(hasOptedOut, options);
+    return this._gdpr_check_status(hasOptedOut, options);
 };
 
 /**

@@ -11,7 +11,7 @@ import {
     RECORDING_EVENTS_STORE_NAME,
     RECORDER_VERSION_DATA
 } from './idb-config';
-import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
+import { addOptOutCheckSessionRecording } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
 import { Config } from '../config';
@@ -184,13 +184,6 @@ SessionRecording.prototype.unloadPersistedData = function () {
 
 SessionRecording.prototype.getConfig = function(configVar) {
     return this._mixpanel.get_config(configVar);
-};
-
-// Alias for getConfig, used by the common addOptOutCheckMixpanelLib function which
-// reaches into this class instance and expects the snake case version of the function.
-// eslint-disable-next-line camelcase
-SessionRecording.prototype.get_config = function(configVar) {
-    return this.getConfig(configVar);
 };
 
 SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
@@ -372,7 +365,7 @@ SessionRecording.prototype.isRrwebStopped = function () {
  */
 SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
     var onOptOut = function (code) {
-        // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
+        // addOptOutCheckSessionRecording invokes this function with code=0 when the user has opted out
         if (code === 0) {
             this.stopRecording();
             cb({error: 'Tracking has been opted out, stopping recording.'});
@@ -472,7 +465,7 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
     });
 };
 
-SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (data, options, callback) {
+SessionRecording.prototype._flushEvents = addOptOutCheckSessionRecording(function (data, options, callback) {
     var numEvents = data.length;
 
     if (numEvents > 0) {

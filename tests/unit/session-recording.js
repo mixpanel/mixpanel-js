@@ -13,7 +13,6 @@ import { setupFakeIDB, idbGetItem, idbSetItem, idbCreateDatabase } from './test-
 import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 import { setupRrwebMock } from './test-utils/mock-rrweb';
 import { RECORD_ENQUEUE_THROTTLE_MS } from '../../src/recorder/utils';
-import { _ } from '../../src/utils';
 
 describe(`SessionRecording`, function() {
   let replayId,
@@ -412,12 +411,7 @@ describe(`SessionRecording`, function() {
     clock.tick(RECORD_ENQUEUE_THROTTLE_MS);
     await sessionRecording.__enqueuePromise;
 
-    sinon.stub(_.localStorage, `get`).callsFake(function (key) {
-      if (key === `__mp_opt_in_out_test-token`) {
-        return `0`;
-      }
-      return null;
-    });
+    sinon.stub(mockMixpanelInstance, `has_opted_out_tracking`).returns(true);
 
     clock.tick(1000);
     mockRrweb.emit(EventType.IncrementalSnapshot, IncrementalSource.MouseInteraction);
