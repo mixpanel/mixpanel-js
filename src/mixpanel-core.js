@@ -344,63 +344,18 @@ MixpanelLib.prototype._init = function(token, config, name) {
     };
     this._remote_settings_strict_disabled = false;
 
-    // set up request queueing/batching
     this.request_batchers = {};
-    this._batch_requests = this.get_config('batch_requests');
-    if (this._batch_requests) {
-        if (!_.localStorage.is_supported(true) || !USE_XHR) {
-            this._batch_requests = false;
-            console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
-            _.each(this.get_batcher_configs(), function(batcher_config) {
-                console.log('Clearing batch queue ' + batcher_config.queue_key);
-                _.localStorage.remove(batcher_config.queue_key);
-            });
-        } else {
-            this.init_batchers();
-            if (sendBeacon && window.addEventListener) {
-                // Before page closes or hides (user tabs away etc), attempt to flush any events
-                // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
-                // events will not be removed from the persistent store; if the site is loaded again,
-                // the events will be flushed again on startup and deduplicated on the Mixpanel server
-                // side.
-                // There is no reliable way to capture only page close events, so we lean on the
-                // visibilitychange and pagehide events as recommended at
-                // https://developer.mozilla.org/en-US/docs/Web/API/Window/unload_event#usage_notes.
-                // These events fire when the user clicks away from the current page/tab, so will occur
-                // more frequently than page unload, but are the only mechanism currently for capturing
-                // this scenario somewhat reliably.
-                var flush_on_unload = _.bind(function() {
-                    if (!this.request_batchers.events.stopped) {
-                        this.request_batchers.events.flush({unloading: true});
-                    }
-                }, this);
-                window.addEventListener('pagehide', function(ev) {
-                    if (ev['persisted']) {
-                        flush_on_unload();
-                    }
-                });
-                window.addEventListener('visibilitychange', function() {
-                    if (document['visibilityState'] === 'hidden') {
-                        flush_on_unload();
-                    }
-                });
-            }
-        }
-    }
+    this._init_batching();
 
     this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
     this.unpersisted_superprops = {};
     this._gdpr_init();
 
-    var uuid = _.UUID();
+    // There is no need to set the distinct id
+    // or the device id if something was already stored
+    // in the persistence
     if (!this.get_distinct_id()) {
-        // There is no need to set the distinct id
-        // or the device id if something was already stored
-        // in the persitence
-        this.register_once({
-            'distinct_id': DEVICE_ID_PREFIX + uuid,
-            '$device_id': uuid
-        }, '');
+        this._init_device_id();
     }
 
     this.flags = new FeatureFlagManager({
@@ -431,6 +386,99 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     this.autocapture = new Autocapture(this);
     this.autocapture.init();
+};
+
+MixpanelLib.prototype._init_batching = function() {
+    this._batch_requests = this.get_config('batch_requests');
+    if (!this._batch_requests) {
+        return;
+    }
+    if (!_.localStorage.is_supported(true) || !USE_XHR) {
+        this._batch_requests = false;
+        console.log('Turning off Mixpanel request-queueing; needs XHR and localStorage support');
+        _.each(this.get_batcher_configs(), function(batcher_config) {
+            console.log('Clearing batch queue ' + batcher_config.queue_key);
+            _.localStorage.remove(batcher_config.queue_key);
+        });
+        return;
+    }
+
+    if (!this.are_batchers_initialized()) {
+        var batcher_for = _.bind(function(attrs) {
+            return new RequestBatcher(
+                attrs.queue_key,
+                {
+                    libConfig: this['config'],
+                    errorReporter: this.get_config('error_reporter'),
+                    sendRequestFunc: _.bind(function(data, options, cb) {
+                        var api_routes = this.get_config('api_routes');
+                        this._send_request(
+                            this.get_api_host(attrs.api_name) + '/' + api_routes[attrs.api_name],
+                            this._encode_data_for_request(data),
+                            options,
+                            this._prepare_callback(cb, data)
+                        );
+                    }, this),
+                    beforeSendHook: _.bind(function(item) {
+                        var ret = this._run_hook('before_send_' + attrs.type, item);
+                        if (ret) {
+                            return ret[0];
+                        } else {
+                            return null;
+                        }
+                    }, this),
+                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
+                    usePersistence: true,
+                }
+            );
+        }, this);
+        var batcher_configs = this.get_batcher_configs();
+        this.request_batchers = {
+            events: batcher_for(batcher_configs.events),
+            people: batcher_for(batcher_configs.people),
+            groups: batcher_for(batcher_configs.groups)
+        };
+    }
+    if (this.get_config('batch_autostart')) {
+        this.start_batch_senders();
+    }
+
+    if (sendBeacon && window.addEventListener) {
+        // Before page closes or hides (user tabs away etc), attempt to flush any events
+        // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
+        // events will not be removed from the persistent store; if the site is loaded again,
+        // the events will be flushed again on startup and deduplicated on the Mixpanel server
+        // side.
+        // There is no reliable way to capture only page close events, so we lean on the
+        // visibilitychange and pagehide events as recommended at
+        // https://developer.mozilla.org/en-US/docs/Web/API/Window/unload_event#usage_notes.
+        // These events fire when the user clicks away from the current page/tab, so will occur
+        // more frequently than page unload, but are the only mechanism currently for capturing
+        // this scenario somewhat reliably.
+        var flush_on_unload = _.bind(function() {
+            if (!this.request_batchers.events.stopped) {
+                this.request_batchers.events.flush({unloading: true});
+            }
+        }, this);
+        window.addEventListener('pagehide', function(ev) {
+            if (ev['persisted']) {
+                flush_on_unload();
+            }
+        });
+        window.addEventListener('visibilitychange', function() {
+            if (document['visibilityState'] === 'hidden') {
+                flush_on_unload();
+            }
+        });
+    }
+};
+
+MixpanelLib.prototype._init_device_id = function() {
+    var uuid = _.UUID();
+    this.register_once({
+        'distinct_id': DEVICE_ID_PREFIX + uuid,
+        '$device_id': uuid
+    }, '');
 };
 
 /**
@@ -919,48 +967,6 @@ MixpanelLib.prototype.get_batcher_configs = function() {
         groups: {type: 'groups', api_name: 'groups', queue_key: queue_prefix + '_gr'}
     };
     return this._batcher_configs;
-};
-
-MixpanelLib.prototype.init_batchers = function() {
-    if (!this.are_batchers_initialized()) {
-        var batcher_for = _.bind(function(attrs) {
-            return new RequestBatcher(
-                attrs.queue_key,
-                {
-                    libConfig: this['config'],
-                    errorReporter: this.get_config('error_reporter'),
-                    sendRequestFunc: _.bind(function(data, options, cb) {
-                        var api_routes = this.get_config('api_routes');
-                        this._send_request(
-                            this.get_api_host(attrs.api_name) + '/' + api_routes[attrs.api_name],
-                            this._encode_data_for_request(data),
-                            options,
-                            this._prepare_callback(cb, data)
-                        );
-                    }, this),
-                    beforeSendHook: _.bind(function(item) {
-                        var ret = this._run_hook('before_send_' + attrs.type, item);
-                        if (ret) {
-                            return ret[0];
-                        } else {
-                            return null;
-                        }
-                    }, this),
-                    stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
-                    usePersistence: true,
-                }
-            );
-        }, this);
-        var batcher_configs = this.get_batcher_configs();
-        this.request_batchers = {
-            events: batcher_for(batcher_configs.events),
-            people: batcher_for(batcher_configs.people),
-            groups: batcher_for(batcher_configs.groups)
-        };
-    }
-    if (this.get_config('batch_autostart')) {
-        this.start_batch_senders();
-    }
 };
 
 MixpanelLib.prototype.start_batch_senders = function() {
@@ -1781,11 +1787,7 @@ MixpanelLib.prototype.reset = function() {
     this.stop_session_recording();
     this['persistence'].clear();
     this._flags.identify_called = false;
-    var uuid = _.UUID();
-    this.register_once({
-        'distinct_id': DEVICE_ID_PREFIX + uuid,
-        '$device_id': uuid
-    }, '');
+    this._init_device_id();
     this._check_and_start_session_recording();
     this.flags.reset();
 };
