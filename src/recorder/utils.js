@@ -12,6 +12,14 @@ var isRecordingExpired = function(serializedRecording) {
 
 var RECORD_ENQUEUE_THROTTLE_MS = 250;
 
+/**
+ * Prefix of every recording's batcher key (and so of its shared lock keys) for one Mixpanel instance;
+ * the replay ID completes the key.
+ */
+var getRecordingBatcherKeyPrefix = function(mixpanelInstance) {
+    return '__mprec_' + mixpanelInstance.get_config('name') + '_' + mixpanelInstance.get_config('token') + '_';
+};
+
 var validateAllowedOrigins = function(origins, logger) {
     if (!_.isArray(origins)) {
         if (origins) {
@@ -36,6 +44,7 @@ var validateAllowedOrigins = function(origins, logger) {
 };
 
 export {
+    getRecordingBatcherKeyPrefix,
     isRecordingExpired,
     RECORD_ENQUEUE_THROTTLE_MS,
     validateAllowedOrigins

@@ -1,12 +1,20 @@
 import { Promise } from '../promise-polyfill';
+import { SharedLock } from '../shared-lock';
 import { IDBStorageWrapper } from '../storage/indexed-db';
+import { _, getLocalStorage } from '../utils';
 import {
     MIXPANEL_BROWSER_DB_NAME,
     RECORDING_REGISTRY_STORE_NAME,
     RECORDER_VERSION_DATA
 } from './idb-config';
 import { SessionRecording } from './session-recording';
-import { isRecordingExpired } from './utils';
+import { getRecordingBatcherKeyPrefix, isRecordingExpired } from './utils';
+
+// SharedLock keeps its state in <key>:X, <key>:Y and <key>:Z
+var LOCK_STORAGE_KEY_REGEX = /^(.+):[XYZ]$/;
+
+// well past the recording lock timeout, so a lock this idle is not in use by any tab
+var ORPHANED_LOCK_MIN_IDLE_MS = 60 * 1000;
 
 /**
  * Module for handling the storage and retrieval of recording metadata as well as any active recordings.
@@ -112,6 +120,13 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
             return this.idb.getAll();
         }.bind(this))
         .then(function (serializedRecordings) {
+            var activeReplayIds = {};
+            _.each(serializedRecordings, function (serializedRecording) {
+                if (!isRecordingExpired(serializedRecording)) {
+                    activeReplayIds[serializedRecording['replayId']] = true;
+                }
+            });
+
             // clean up any expired recordings from the registry, non-expired ones may be active in other tabs
             var unloadPromises = serializedRecordings
                 .filter(function (serializedRecording) {
@@ -130,9 +145,44 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
                         .catch(this.handleError.bind(this));
                 }.bind(this));
 
-            return Promise.all(unloadPromises);
+            return Promise.all(unloadPromises).then(function (results) {
+                this.clearOrphanedLocks(activeReplayIds);
+                return results;
+            }.bind(this));
         }.bind(this))
         .catch(this.handleError.bind(this));
+};
+
+/**
+ * Remove lock keys left in localStorage by recordings that are not active anywhere, e.g. when a tab
+ * closed while holding its lock. Each recording has its own lock key, so nothing else ever revisits them.
+ * @param {Object<string, boolean>} activeReplayIds
+ */
+RecordingRegistry.prototype.clearOrphanedLocks = function (activeReplayIds) {
+    var storage = this.sharedLockStorage || getLocalStorage();
+    if (!storage) {
+        return;
+    }
+
+    var keyPrefix = getRecordingBatcherKeyPrefix(this.mixpanelInstance);
+    try {
+        var orphanedLockKeys = {};
+        for (var i = 0; i < storage.length; i++) {
+            var match = LOCK_STORAGE_KEY_REGEX.exec(storage.key(i));
+            if (match && match[1].indexOf(keyPrefix) === 0 && !activeReplayIds[match[1].slice(keyPrefix.length)]) {
+                orphanedLockKeys[match[1]] = true;
+            }
+        }
+
+        _.each(_.keys(orphanedLockKeys), function (lockKey) {
+            var lock = new SharedLock(lockKey, {storage: storage});
+            if (lock.isIdleFor(ORPHANED_LOCK_MIN_IDLE_MS)) {
+                lock.clear();
+            }
+        });
+    } catch (err) {
+        this.errorReporter('Error clearing orphaned recording locks', err);
+    }
 };
 
 export { RecordingRegistry };

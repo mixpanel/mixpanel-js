@@ -166,5 +166,76 @@ describe(`RecordingRegistry`, function() {
       const differentTabStoredEvents = await idbGetItem(`mixpanelRecordingEvents`, BATCHER_PREFIX + `diff-replay-id`);
       expect(differentTabStoredEvents).to.have.lengthOf(2);
     });
+
+    describe(`lock keys left in localStorage`, function () {
+      const STALE_HOLDER_ID = `${NOW_MS - 10 * 60 * 1000}|0.5`;
+      const RECENT_HOLDER_ID = `${NOW_MS - 1000}|0.5`;
+
+      const setLockKeys = (lockKey, holderId) => {
+        localStorage.setItem(`${lockKey}:X`, holderId);
+        localStorage.setItem(`${lockKey}:Y`, holderId);
+        localStorage.setItem(`${lockKey}:Z`, `1`);
+      };
+
+      const hasLockKeys = (lockKey) => [`:X`, `:Y`, `:Z`].some(
+        (suffix) => localStorage.getItem(lockKey + suffix) !== null
+      );
+
+      beforeEach(async function () {
+        await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingRegistry`, `mixpanelRecordingEvents`]);
+      });
+
+      it(`removes locks of recordings that are no longer in the registry`, async function () {
+        setLockKeys(BATCHER_PREFIX + `gone-replay-id`, STALE_HOLDER_ID);
+        localStorage.setItem(BATCHER_PREFIX + `other-gone-replay-id:Y`, STALE_HOLDER_ID);
+
+        await recordingRegistry.flushInactiveRecordings();
+
+        expect(hasLockKeys(BATCHER_PREFIX + `gone-replay-id`)).to.be.false;
+        expect(hasLockKeys(BATCHER_PREFIX + `other-gone-replay-id`)).to.be.false;
+      });
+
+      it(`removes the lock of an expired recording it flushed`, async function () {
+        const expiredRecording = Object.assign({}, SERIALIZED_RECORDING, {
+          maxExpires: NOW_MS - 1000,
+          tabId: `test-expired-tab-id`,
+          replayId: `expired-replay-id`,
+        });
+        await idbSetItem(`mixpanelRecordingRegistry`, `test-expired-tab-id`, expiredRecording);
+        setLockKeys(BATCHER_PREFIX + `expired-replay-id`, STALE_HOLDER_ID);
+
+        await recordingRegistry.flushInactiveRecordings();
+
+        expect(hasLockKeys(BATCHER_PREFIX + `expired-replay-id`)).to.be.false;
+      });
+
+      it(`keeps the lock of a recording still active in another tab`, async function () {
+        const otherTabRecording = Object.assign({}, SERIALIZED_RECORDING, {tabId: `test-diff-tab-id`, replayId: `diff-replay-id`});
+        await idbSetItem(`mixpanelRecordingRegistry`, `test-diff-tab-id`, otherTabRecording);
+        setLockKeys(BATCHER_PREFIX + `diff-replay-id`, STALE_HOLDER_ID);
+
+        await recordingRegistry.flushInactiveRecordings();
+
+        expect(hasLockKeys(BATCHER_PREFIX + `diff-replay-id`)).to.be.true;
+      });
+
+      it(`keeps a lock that was claimed recently`, async function () {
+        setLockKeys(BATCHER_PREFIX + `unregistered-replay-id`, RECENT_HOLDER_ID);
+
+        await recordingRegistry.flushInactiveRecordings();
+
+        expect(hasLockKeys(BATCHER_PREFIX + `unregistered-replay-id`)).to.be.true;
+      });
+
+      it(`leaves other instances' locks and the event queue locks alone`, async function () {
+        setLockKeys(`__mprec_other_instance_test-token_some-replay-id`, STALE_HOLDER_ID);
+        setLockKeys(`__mpq_test-token_ev`, STALE_HOLDER_ID);
+
+        await recordingRegistry.flushInactiveRecordings();
+
+        expect(hasLockKeys(`__mprec_other_instance_test-token_some-replay-id`)).to.be.true;
+        expect(hasLockKeys(`__mpq_test-token_ev`)).to.be.true;
+      });
+    });
   });
 });

@@ -204,6 +204,51 @@ describe(`SharedLock`, function() {
     });
   });
 
+  describe(`clear()`, function() {
+    it(`removes the lock's keys and nothing else`, function() {
+      acquireLockForPid(sharedLock, `foobar`);
+      localStorage.setItem(`some-key:Z`, `1`);
+      localStorage.setItem(`other-key:Y`, `foobar`);
+
+      sharedLock.clear();
+
+      expect(localStorage.getItem(`some-key:X`)).to.be.null;
+      expect(localStorage.getItem(`some-key:Y`)).to.be.null;
+      expect(localStorage.getItem(`some-key:Z`)).to.be.null;
+      expect(localStorage.getItem(`other-key:Y`)).to.equal(`foobar`);
+    });
+  });
+
+  describe(`isIdleFor()`, function() {
+    it(`is true when nobody has tried to take the lock`, function() {
+      expect(sharedLock.isIdleFor(TIMEOUT_MS)).to.be.true;
+    });
+
+    it(`is false while a caller is holding the lock`, async function() {
+      sharedLock.withLock(function() {
+        return new Promise(function() {});
+      });
+      await clock.tickAsync(TIMEOUT_MS - 1);
+
+      expect(sharedLock.isIdleFor(TIMEOUT_MS)).to.be.false;
+    });
+
+    it(`is true once the holder started acquiring longer ago than the given time`, async function() {
+      sharedLock.withLock(function() {
+        return new Promise(function() {});
+      });
+      await clock.tickAsync(TIMEOUT_MS + 1);
+
+      expect(sharedLock.isIdleFor(TIMEOUT_MS)).to.be.true;
+    });
+
+    it(`is false when a holder ID has no timestamp`, function() {
+      acquireLockForPid(sharedLock, `foobar`);
+
+      expect(sharedLock.isIdleFor(TIMEOUT_MS)).to.be.false;
+    });
+  });
+
   describe(`when storage is null`, function() {
     it(`rejects withLock immediately`, async function() {
       const nullLock = new SharedLock(`some-key`, {storage: null, timeoutMS: TIMEOUT_MS});
