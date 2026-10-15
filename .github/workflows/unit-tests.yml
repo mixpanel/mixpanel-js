@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # a leaked timer or handle keeps mocha running; fail instead of hanging for hours
+    timeout-minutes: 15
 
     permissions:
       contents: read
