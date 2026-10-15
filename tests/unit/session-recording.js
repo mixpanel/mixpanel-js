@@ -316,6 +316,31 @@ describe(`SessionRecording`, function() {
     expect(queueAfterFlush).to.be.undefined;
   });
 
+  it(`removes the lock keys left by a tab that closed while holding the recording's lock`, async function() {
+    await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingEvents`]);
+    const startTime = 1737870254055;
+    const recordingToUnload = SessionRecording.deserialize({
+      replayId: `some-other-replay-id`,
+      seqNo: 5,
+      replayStartTime: startTime,
+      idleExpires: startTime + 30 * 60 * 1000,
+      maxExpires: startTime + 24 * 60 * 60 * 1000,
+      tabId: `test-some-other-tab-id`,
+    }, {mixpanelInstance: mockMixpanelInstance, sharedLockStorage: localStorage});
+
+    const lockKey = `__mprec_mp_test_test-token_some-other-replay-id`;
+    const deadTabHolderId = `${startTime}|0.5`;
+    localStorage.setItem(`${lockKey}:X`, deadTabHolderId);
+    localStorage.setItem(`${lockKey}:Y`, deadTabHolderId);
+    localStorage.setItem(`${lockKey}:Z`, `1`);
+
+    await recordingToUnload.unloadPersistedData();
+
+    expect(localStorage.getItem(`${lockKey}:X`)).to.be.null;
+    expect(localStorage.getItem(`${lockKey}:Y`)).to.be.null;
+    expect(localStorage.getItem(`${lockKey}:Z`)).to.be.null;
+  });
+
   it(`aborts recording and doesn't flush if there is no full snapshot on the first sequence`, async function() {
     sessionRecording.startRecording();
 

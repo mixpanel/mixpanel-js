@@ -15,7 +15,7 @@ import { addOptOutCheckMixpanelLib } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
 import { Config } from '../config';
-import { RECORD_ENQUEUE_THROTTLE_MS, validateAllowedOrigins } from './utils';
+import { getRecordingBatcherKeyPrefix, RECORD_ENQUEUE_THROTTLE_MS, validateAllowedOrigins } from './utils';
 import { shouldMaskInput, shouldMaskText, getPrivacyConfig } from './masking';
 import { getRecordNetworkPlugin } from './rrweb-network-plugin';
 
@@ -120,7 +120,7 @@ var SessionRecording = function(options) {
     var usePersistence = localStorageSupported(options.sharedLockStorage || getLocalStorage(), true) && !this.getConfig('disable_persistence');
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
-    this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
+    this.batcherKey = getRecordingBatcherKeyPrefix(this._mixpanel) + this.replayId;
     this.queueStorage = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_EVENTS_STORE_NAME, RECORDER_VERSION_DATA);
     this.batcher = new RequestBatcher(this.batcherKey, {
         errorReporter: this.reportError.bind(this),
@@ -179,6 +179,11 @@ SessionRecording.prototype.unloadPersistedData = function () {
             .then(function () {
                 return this.queueStorage.removeItem(this.batcherKey);
             }.bind(this));
+    }.bind(this)).then(function () {
+        // the lock key is unique to this recording, so if a tab closed while holding it nothing else would remove it
+        if (this.batcher.queue.lock) {
+            this.batcher.queue.lock.clear();
+        }
     }.bind(this));
 };
 

@@ -151,4 +151,40 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
     }, this));
 };
 
+/**
+ * Remove the lock's keys from storage. Only safe once nothing can be holding or
+ * waiting for the lock anymore, e.g. after the resource it guarded was deleted.
+ */
+SharedLock.prototype.clear = function() {
+    try {
+        _.each([':X', ':Y', ':Z'], function(suffix) {
+            this.storage.removeItem(this.storageKey + suffix);
+        }, this);
+    } catch(err) {
+        logger.error('Error clearing lock on ' + this.storageKey, err);
+    }
+};
+
+/**
+ * Whether nobody has tried to take the lock within the last `idleMS`, judging by
+ * the time at the start of each holder ID (see withLock). A holder ID without a
+ * time, i.e. a pid passed to withLock, counts as recent.
+ */
+SharedLock.prototype.isIdleFor = function(idleMS) {
+    var now = new Date().getTime();
+    var holderIds = [
+        this.storage.getItem(this.storageKey + ':X'),
+        this.storage.getItem(this.storageKey + ':Y')
+    ];
+    for (var i = 0; i < holderIds.length; i++) {
+        if (holderIds[i]) {
+            var acquireStartTime = Number(holderIds[i].split('|')[0]);
+            if (isNaN(acquireStartTime) || now - acquireStartTime < idleMS) {
+                return false;
+            }
+        }
+    }
+    return true;
+};
+
 export { SharedLock };
