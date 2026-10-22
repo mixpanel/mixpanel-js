@@ -5,9 +5,19 @@ on:
     branches: [master, '**/*-rc']
   pull_request:
 
+# A new push to a PR cancels its older run, which frees the Sauce tunnels and sessions it holds.
+# Pushes to master and release branches each get their own group, so none of their runs is
+# cancelled or skipped.
+concurrency:
+  group: integration-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Passing jobs take up to about an hour under load; a hung one would otherwise hold its Sauce
+    # tunnel for GitHub's 6-hour default
+    timeout-minutes: 120
 
     permissions:
       contents: read
