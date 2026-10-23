@@ -587,9 +587,10 @@ SessionRecording.prototype._getRecordMinMs = function() {
  */
 SessionRecording.prototype._getMaskFn = function(shouldMaskFn, privacyConfig) {
     return function(text, element) {
-        // prevent visual artifacts from random whitespace
+        // whitespace-only text has nothing to mask, and dropping it would join adjacent words
+        // (e.g. a space text node between two inline elements)
         if (!text.trim().length) {
-            return '';
+            return text;
         }
 
         var shouldMask = true;
