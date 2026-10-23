@@ -557,13 +557,14 @@ describe(`SessionRecording`, function() {
       reportErrorSpy.restore();
     });
 
-    it(`returns empty string for whitespace-only text`, function() {
+    it(`preserves whitespace-only text unmasked`, function() {
       const maskFn = sessionRecording._getMaskFn(shouldMaskFnStub, mockPrivacyConfig);
 
-      expect(maskFn(`   `, mockElement)).to.equal(``);
-      expect(maskFn(`\t\t\t`, mockElement)).to.equal(``);
-      expect(maskFn(`\n\n`, mockElement)).to.equal(``);
-      expect(maskFn(`  \n\t  `, mockElement)).to.equal(``);
+      expect(maskFn(` `, mockElement)).to.equal(` `);
+      expect(maskFn(`   `, mockElement)).to.equal(`   `);
+      expect(maskFn(`\t\t\t`, mockElement)).to.equal(`\t\t\t`);
+      expect(maskFn(`\n\n`, mockElement)).to.equal(`\n\n`);
+      expect(maskFn(`  \n\t  `, mockElement)).to.equal(`  \n\t  `);
       expect(maskFn(``, mockElement)).to.equal(``);
 
       // shouldMaskFn should not be called for whitespace-only text
