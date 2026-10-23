@@ -255,7 +255,11 @@ RecorderManager.prototype._setupChildFrameListener = function(allowedOrigins, lo
         if (data && data['type'] === IFRAME_HANDSHAKE_RESPONSE && data['token'] === self.getMpConfig('token') && data['replayId']) {
             self._parentReplayId = data['replayId'];
             if (data['distinctId']) {
-                self.mixpanelInstance['identify'](data['distinctId']);
+                if (data['companyId'] && self.getMpConfig('hierarchical_groups')) {
+                    self.mixpanelInstance['identify']({'user_id': data['distinctId'], 'company_id': data['companyId']});
+                } else {
+                    self.mixpanelInstance['identify'](data['distinctId']);
+                }
             }
             self._parentFrameRetryActive = false;
             window.removeEventListener('message', self._childFrameMessageHandler);
@@ -317,6 +321,9 @@ RecorderManager.prototype._setupParentFrameListener = function(allowedOrigins) {
                 response['token'] = self.getMpConfig('token');
                 response['replayId'] = replayId;
                 response['distinctId'] = self.getDistinctId();
+                if (self.getMpConfig('hierarchical_groups')) {
+                    response['companyId'] = self.mixpanelInstance['get_property']('$company_id');
+                }
                 event.source.postMessage(response, event.origin);
             }
         }

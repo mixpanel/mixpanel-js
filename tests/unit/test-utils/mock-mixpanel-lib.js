@@ -28,6 +28,14 @@ export class MockMixpanelLib {
     return `test-distinct-id`;
   }
 
+  _get_stored_distinct_id() {
+    return this.get_distinct_id();
+  }
+
+  _is_hierarchical_groups() {
+    return !!this._config['hierarchical_groups'];
+  }
+
   get_config(configVar) {
     return this._config[configVar];
   }
@@ -38,6 +46,7 @@ export class MockMixpanelLib {
 
   get_property (propName) {
     return {
+      'distinct_id': this.get_distinct_id(),
       '$device_id': `test-device-id`,
       '$user_id': `test-user-id`,
     }[propName];

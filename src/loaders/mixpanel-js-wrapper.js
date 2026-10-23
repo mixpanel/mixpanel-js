@@ -18,6 +18,7 @@ import './mixpanel-jslib-snippet';
         'get_config',
         'get_distinct_id',
         'get_group',
+        'get_identity',
         'get_property',
         'has_opted_in_tracking',
         'has_opted_out_tracking',

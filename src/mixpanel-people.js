@@ -8,9 +8,13 @@ import {
     APPEND_ACTION,
     REMOVE_ACTION,
     UNION_ACTION,
+    DELETE_ACTION,
     apiActions
 } from './api-actions';
 import { _, console } from './utils';
+
+// /groups has no $add or $append
+var GROUP_PROFILE_ACTIONS = [SET_ACTION, SET_ONCE_ACTION, UNSET_ACTION, UNION_ACTION, REMOVE_ACTION, DELETE_ACTION];
 
 /**
  * Mixpanel People Object
@@ -314,7 +318,7 @@ MixpanelPeople.prototype.delete_user = function() {
         console.error('mixpanel.people.delete_user() requires you to call identify() first');
         return;
     }
-    var data = {'$delete': this._mixpanel.get_distinct_id()};
+    var data = {'$delete': this._mixpanel._get_stored_distinct_id()};
     return this._send_request(data);
 };
 
@@ -323,8 +327,12 @@ MixpanelPeople.prototype.toString = function() {
 };
 
 MixpanelPeople.prototype._send_request = function(data, callback) {
+    if (this._mixpanel._is_hierarchical_groups() && this._identify_called()) {
+        return this._send_hierarchical_request(data, callback);
+    }
+
     data['$token'] = this._get_config('token');
-    data['$distinct_id'] = this._mixpanel.get_distinct_id();
+    data['$distinct_id'] = this._mixpanel._get_stored_distinct_id();
     var device_id = this._mixpanel.get_property('$device_id');
     var user_id = this._mixpanel.get_property('$user_id');
     var had_persisted_distinct_id = this._mixpanel.get_property('$had_persisted_distinct_id');
@@ -358,6 +366,53 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
         endpoint: this._mixpanel.get_api_host('people') + '/' +  this._get_config('api_routes')['engage'],
         batcher: this._mixpanel.request_batchers.people
     }, callback);
+};
+
+// On a hierarchical groups project a user profile is a group profile keyed by $user_id within
+// the user's company, so it is written through /groups and supports only what /groups supports.
+// Updates made before identify() wait in the people queue and arrive here once it runs.
+MixpanelPeople.prototype._send_hierarchical_request = function(data, callback) {
+    // Called before $token and the identity keys are added, so the action is the only key
+    var action = _.keys(data)[0];
+    if (!_.include(GROUP_PROFILE_ACTIONS, action)) {
+        return this._drop_hierarchical_request(action + ' is not supported for hierarchical groups projects, ' +
+            'whose user profiles are group profiles keyed by $user_id. Supported operations are ' +
+            GROUP_PROFILE_ACTIONS.join(', ') + ', so increment, append and track_charge have no hierarchical ' +
+            'groups equivalent. The update was dropped.', callback);
+    }
+
+    var user_id = this._mixpanel.get_property('$user_id');
+    var company_id = this._mixpanel.get_property('$company_id');
+    if (!user_id || !company_id) {
+        return this._drop_hierarchical_request('User profile updates for hierarchical groups projects need a ' +
+            'user and a company. Call identify({user_id: user_id, company_id: company_id}) first. The ' +
+            action + ' update was dropped.', callback);
+    }
+
+    var group_data = {};
+    group_data[action] = action === DELETE_ACTION ? '' : data[action];
+    group_data['$token'] = this._get_config('token');
+    group_data['$group_key'] = '$user_id';
+    group_data['$group_id'] = user_id;
+    group_data['$company_id'] = company_id;
+
+    return this._mixpanel._track_or_batch({
+        type: 'groups',
+        data: _.encodeDates(group_data),
+        endpoint: this._mixpanel.get_api_host('groups') + '/' +  this._get_config('api_routes')['groups'],
+        batcher: this._mixpanel.request_batchers.groups
+    }, callback);
+};
+
+MixpanelPeople.prototype._drop_hierarchical_request = function(message, callback) {
+    this._mixpanel.report_error(message);
+    if (!_.isUndefined(callback)) {
+        if (this._get_config('verbose')) {
+            callback({status: 0, error: message});
+        } else {
+            callback(0);
+        }
+    }
 };
 
 MixpanelPeople.prototype._get_config = function(conf_var) {

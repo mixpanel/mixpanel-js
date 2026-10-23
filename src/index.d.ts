@@ -213,6 +213,19 @@ export interface BeforeSendHookPayload {
   properties: Record<string, any>;
 }
 
+/** Who to identify: on a hierarchical groups project, a user and their company. */
+export interface Identity {
+  user_id: string | number;
+  company_id?: string;
+}
+
+/** Who events are currently attributed to. Unset values are null. */
+export interface CurrentIdentity {
+  user_id: string | null;
+  company_id: string | null;
+  device_id: string | null;
+}
+
 export interface Config {
   api_host: string;
   api_routes: {
@@ -297,6 +310,11 @@ export interface Config {
   record_heatmap_data: boolean;
   remote_settings_mode: RemoteSettingType;
   record_sessions_percent: number;
+  /**
+   * The project uses hierarchical groups. Set it in init() to match the project; it cannot be
+   * changed afterwards.
+   */
+  hierarchical_groups: boolean;
   hooks: {
     before_identify?: (new_distinct_id: string) => string | null;
     before_register?: (
@@ -450,13 +468,15 @@ export interface Mixpanel {
   disable(events?: string[]): void;
   flags: FlagsManager;
   get_config(prop_name?: string): any;
+  /** @deprecated Use get_identity() instead. */
   get_distinct_id(): any;
   get_group(group_key: string, group_id: string): Group;
+  get_identity(): CurrentIdentity;
   get_property(property_name: string): any;
   get_session_replay_url(): string;
   has_opted_in_tracking(options?: Partial<HasOptedInOutOptions>): boolean;
   has_opted_out_tracking(options?: Partial<HasOptedInOutOptions>): boolean;
-  identify(unique_id?: string): any;
+  identify(unique_id?: string | Identity): any;
   init(token: string, config: Partial<Config>, name?: string): Mixpanel;
   opt_in_tracking(options?: Partial<InTrackingOptions>): void;
   opt_out_tracking(options?: Partial<OutTrackingOptions>): void;
@@ -535,8 +555,10 @@ export function clear_opt_in_out_tracking(
 ): void;
 export function disable(events?: string[]): void;
 export function get_config(prop_name?: string): any;
+/** @deprecated Use get_identity() instead. */
 export function get_distinct_id(): any;
 export function get_group(group_key: string, group_id: string): Group;
+export function get_identity(): CurrentIdentity;
 export function get_property(property_name: string): any;
 export function has_opted_in_tracking(
   options?: Partial<HasOptedInOutOptions>
@@ -544,7 +566,7 @@ export function has_opted_in_tracking(
 export function has_opted_out_tracking(
   options?: Partial<HasOptedInOutOptions>
 ): boolean;
-export function identify(unique_id?: string): any;
+export function identify(unique_id?: string | Identity): any;
 export function init(
   token: string,
   config: Partial<Config>,

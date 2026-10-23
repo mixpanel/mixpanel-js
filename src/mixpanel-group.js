@@ -150,6 +150,22 @@ function(list_name, value, callback) {
 });
 
 MixpanelGroup.prototype._send_request = function(data, callback) {
+    if (this._mixpanel._is_hierarchical_groups()) {
+        // Hierarchical groups require $company_id at the top level of every /groups write
+        var company_id = this._mixpanel.get_property('$company_id');
+        if (!company_id) {
+            var message = 'Group profile updates for hierarchical groups projects require a company. Call ' +
+                'identify({user_id: user_id, company_id: company_id}) first. The update to ' +
+                this._group_key + '=' + this._group_id + ' was dropped.';
+            this._mixpanel.report_error(message);
+            if (!_.isUndefined(callback)) {
+                callback(this._get_config('verbose') ? {status: 0, error: message} : 0);
+            }
+            return;
+        }
+        data['$company_id'] = company_id;
+    }
+
     data['$group_key'] = this._group_key;
     data['$group_id'] = this._group_id;
     data['$token'] = this._get_config('token');

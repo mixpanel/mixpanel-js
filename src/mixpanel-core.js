@@ -60,6 +60,7 @@ var INIT_SNIPPET = 1;
 /** @const */ var PAYLOAD_TYPE_BASE64   = 'base64';
 /** @const */ var PAYLOAD_TYPE_JSON     = 'json';
 /** @const */ var DEVICE_ID_PREFIX      = '$device:';
+/** @const */ var COMPANY_ID_KEY        = '$company_id';
 /** @const */ var SETTING_STRICT        = 'strict';
 /** @const */ var SETTING_FALLBACK      = 'fallback';
 /** @const */ var SETTING_DISABLED      = 'disabled';
@@ -107,6 +108,7 @@ var DEFAULT_CONFIG = {
     'api_payload_format':                PAYLOAD_TYPE_BASE64,
     'app_host':                          'https://mixpanel.com',
     'autocapture':                       false,
+    'hierarchical_groups':               false,
     'cdn':                               'https://cdn.mxpnl.com',
     'cross_site_cookie':                 false,
     'cross_subdomain_cookie':            true,
@@ -313,6 +315,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
 
     this.hooks = {};
 
+    // Hierarchical groups is a property of the project, fixed for the life of the instance
+    this._hierarchical_groups = !!config['hierarchical_groups'];
+
     this.set_config(_.extend({}, DEFAULT_CONFIG, variable_features, config, {
         'name': name,
         'token': token,
@@ -325,7 +330,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         setConfigFunc: _.bind(this.set_config, this),
         getTabIdFunc: _.bind(this.get_tab_id, this),
         reportErrorFunc: _.bind(this.report_error, this),
-        getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        getDistinctIdFunc: _.bind(this._get_stored_distinct_id, this),
         recorderSrc: this.get_config('recorder_src'),
         targetingSrc: this.get_config('targeting_src'),
         libBasePath: this.get_config('lib_base_path'),
@@ -392,7 +397,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this._gdpr_init();
 
     var uuid = _.UUID();
-    if (!this.get_distinct_id()) {
+    if (!this._get_stored_distinct_id()) {
         // There is no need to set the distinct id
         // or the device id if something was already stored
         // in the persitence
@@ -1704,11 +1709,51 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * to the same user identity. If ID Merge is disabled, alias can
  * be used to connect pre- and post-registration events.
  *
- * @param {String} [new_distinct_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
+ * On a project that uses hierarchical groups (the `hierarchical_groups` init option),
+ * identify with an object naming the user and their company. Mixpanel builds the user's
+ * distinct id from `$company_id` and `$user_id`, so the company is part of the user's
+ * identity: the same user id in two companies is two users. Every later event, people
+ * update and session recording carries `$company_id` beside `$user_id` and `$device_id`,
+ * until the next identify or reset(). Identifying the current user with a different company
+ * is an identity change, as switching users is.
+ *
+ * ```js
+ * mixpanel.identify({user_id: 'user_123', company_id: 'acme'});
+ * ```
+ *
+ * An object without `company_id` is the same as passing the user id. On any other project
+ * Mixpanel ignores `$company_id`, so an object naming a company is reported as an error and
+ * nothing is identified. The library owns the device id; a `device_id` on the object is ignored.
+ *
+ * @param {String|{user_id: String, company_id?: String}} [new_distinct_id] A string that uniquely identifies a user, or on a hierarchical groups project an object naming the user and their company. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
 MixpanelLib.prototype.identify = function(
     new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
+    var company_id = null;
+    if (_.isObject(new_distinct_id)) {
+        var identity = new_distinct_id;
+        var user_id = identity['user_id'];
+        company_id = _.isUndefined(identity['company_id']) ? null : identity['company_id'];
+        if (!(_.isString(user_id) || _.isNumber(user_id)) || user_id === '') {
+            this.report_error('identify() needs a user_id; nothing was identified');
+            return -1;
+        }
+        if (company_id !== null && (!_.isString(company_id) || company_id === '')) {
+            this.report_error('identify() company_id must be a non-empty string; nothing was identified');
+            return -1;
+        }
+        if (company_id !== null && !this._hierarchical_groups) {
+            this.report_error('identify() with a company_id requires the hierarchical_groups init option. ' +
+                'Mixpanel ignores $company_id on other projects, so nothing was identified.');
+            return -1;
+        }
+        if (identity['device_id'] && identity['device_id'] !== this.get_property('$device_id')) {
+            console.error('identify() ignored device_id ' + identity['device_id'] + ': the library owns the device id');
+        }
+        new_distinct_id = user_id;
+    }
+
     // Optional Parameters
     //  _set_callback:function  A callback to be run if and when the People set queue is flushed
     //  _add_callback:function  A callback to be run if and when the People add queue is flushed
@@ -1724,7 +1769,11 @@ MixpanelLib.prototype.identify = function(
         new_distinct_id = ret[0];
     }
 
-    var previous_distinct_id = this.get_distinct_id();
+    var previous_distinct_id = this._get_stored_distinct_id();
+    // A user in another company is another user, so a new company is an identity change
+    var company_changed = this._hierarchical_groups && company_id !== null &&
+        company_id !== this.get_property(COMPANY_ID_KEY);
+    var identity_changed = new_distinct_id !== previous_distinct_id || company_changed;
     if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
         // we allow the following condition if previous distinct_id is same as new_distinct_id
         // so that you can force flush people updates for anonymous profiles.
@@ -1733,6 +1782,20 @@ MixpanelLib.prototype.identify = function(
             return -1;
         }
         this.register({'$user_id': new_distinct_id});
+    }
+
+    if (this._hierarchical_groups && new_distinct_id) {
+        if (company_id !== null) {
+            if (company_changed) {
+                this._register_single(COMPANY_ID_KEY, company_id);
+            }
+        } else if (new_distinct_id !== previous_distinct_id) {
+            // The previous company belonged to the previous user
+            this.unregister(COMPANY_ID_KEY);
+            console.error('identify() without a company on a hierarchical groups project. Mixpanel ignores the ' +
+                'user id until an event carries a company, so these events stay under the device. ' +
+                'Use identify({user_id: user_id, company_id: company_id}).');
+        }
     }
 
     if (!this.get_property('$device_id')) {
@@ -1757,7 +1820,7 @@ MixpanelLib.prototype.identify = function(
 
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
-    if (new_distinct_id !== previous_distinct_id) {
+    if (identity_changed) {
         this.track('$identify', {
             'distinct_id': new_distinct_id,
             '$anon_distinct_id': previous_distinct_id
@@ -1765,7 +1828,7 @@ MixpanelLib.prototype.identify = function(
     }
 
     // check feature flags again if distinct id has changed
-    if (new_distinct_id !== previous_distinct_id) {
+    if (identity_changed) {
         this.flags.fetchFlags().catch(function() {
             console.error('[flags] Error fetching flags during identify');
         });
@@ -1804,9 +1867,63 @@ MixpanelLib.prototype.reset = function() {
  *             distinct_id = mixpanel.get_distinct_id();
  *         }
  *     });
+ *
+ * On a hierarchical groups project Mixpanel builds the distinct id from the company and the
+ * user, so once both are known this returns `$company:{company_id}|$user:{user_id}`. Until a
+ * company is known Mixpanel ignores the user id and keeps the user under the device, so this
+ * returns the `$device:` form. The combined form is Mixpanel's own format and cannot be parsed
+ * back when either id contains `|`.
+ *
+ * @deprecated Use get_identity() instead. Its user, company and device ids are what every
+ * Mixpanel SDK accepts directly, so nothing has to build or parse a combined id.
  */
 MixpanelLib.prototype.get_distinct_id = function() {
+    var distinct_id = this._get_stored_distinct_id();
+    if (!this._hierarchical_groups) {
+        return distinct_id;
+    }
+    var user_id = this.get_property('$user_id');
+    if (!user_id) {
+        // Anonymous, so already $device:{device_id}
+        return distinct_id;
+    }
+    var company_id = this.get_property(COMPANY_ID_KEY);
+    if (company_id) {
+        return '$company:' + company_id + '|$user:' + user_id;
+    }
+    // Mixpanel ignores a user id without a company while the event carries a device id
+    var device_id = this.get_property('$device_id');
+    return device_id ? DEVICE_ID_PREFIX + device_id : distinct_id;
+};
+
+/**
+ * Returns who events are currently attributed to: the identified user, their company on a
+ * hierarchical groups project, and the device id. Pass it to Mixpanel's server-side SDKs so
+ * their data resolves to the same user. Unset values are null.
+ *
+ * ```js
+ * mixpanel.get_identity();
+ * // {user_id: 'user_123', company_id: 'acme', device_id: '3f6c...'}
+ * ```
+ *
+ * @returns {{user_id: (String|null), company_id: (String|null), device_id: (String|null)}}
+ */
+MixpanelLib.prototype.get_identity = function() {
+    var identity = {};
+    identity['user_id'] = this.get_property('$user_id') || null;
+    identity['company_id'] = (this._hierarchical_groups && this.get_property(COMPANY_ID_KEY)) || null;
+    identity['device_id'] = this.get_property('$device_id') || null;
+    return identity;
+};
+
+// The distinct_id stored in persistence and sent on events. On a hierarchical groups project
+// ingestion resolves the user from the identity properties, so the combined form is never sent.
+MixpanelLib.prototype._get_stored_distinct_id = function() {
     return this.get_property('distinct_id');
+};
+
+MixpanelLib.prototype._is_hierarchical_groups = function() {
+    return this._hierarchical_groups === true;
 };
 
 /**
@@ -1856,7 +1973,7 @@ MixpanelLib.prototype.alias = function(alias, original) {
 
     var _this = this;
     if (_.isUndefined(original)) {
-        original = this.get_distinct_id();
+        original = this._get_stored_distinct_id();
     }
     if (alias !== original) {
         this._register_single(ALIAS_ID_KEY, alias);
@@ -2027,6 +2144,11 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
 MixpanelLib.prototype.set_config = function(config) {
     if (_.isObject(config)) {
         _.extend(this['config'], config);
+
+        if (!_.isUndefined(this._hierarchical_groups) && !!this['config']['hierarchical_groups'] !== this._hierarchical_groups) {
+            this.report_error('hierarchical_groups can only be set in init(); it is fixed for the life of the instance');
+            this['config']['hierarchical_groups'] = this._hierarchical_groups;
+        }
 
         var new_batch_size = config['batch_size'];
         if (new_batch_size) {
@@ -2466,6 +2588,7 @@ MixpanelLibProto['get_config']                         = MixpanelLibProto.get_co
 MixpanelLibProto['get_api_host']                       = MixpanelLibProto.get_api_host;
 MixpanelLibProto['get_property']                       = MixpanelLibProto.get_property;
 MixpanelLibProto['get_distinct_id']                    = MixpanelLibProto.get_distinct_id;
+MixpanelLibProto['get_identity']                       = MixpanelLibProto.get_identity;
 MixpanelLibProto['toString']                           = MixpanelLibProto.toString;
 MixpanelLibProto['opt_out_tracking']                   = MixpanelLibProto.opt_out_tracking;
 MixpanelLibProto['opt_in_tracking']                    = MixpanelLibProto.opt_in_tracking;

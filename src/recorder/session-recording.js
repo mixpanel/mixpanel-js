@@ -149,7 +149,9 @@ SessionRecording.prototype.getUserIdInfo = function () {
     }
 
     var userIdInfo = {
-        'distinct_id': String(this._mixpanel.get_distinct_id()),
+        // The stored id, as events send: on a hierarchical groups project the user is
+        // resolved from the identity keys, not from a combined distinct id
+        'distinct_id': String(this._mixpanel.get_property('distinct_id')),
     };
 
     // send ID management props if they exist
@@ -160,6 +162,12 @@ SessionRecording.prototype.getUserIdInfo = function () {
     var userId = this._mixpanel.get_property('$user_id');
     if (userId) {
         userIdInfo['$user_id'] = userId;
+    }
+    if (this._mixpanel.get_config('hierarchical_groups')) {
+        var companyId = this._mixpanel.get_property('$company_id');
+        if (companyId) {
+            userIdInfo['$company_id'] = companyId;
+        }
     }
     return userIdInfo;
 };
