@@ -16,10 +16,15 @@ const STORE_TO_DB_NAME = {
   [FLAGS_STORE_NAME]: MIXPANEL_FLAGS_DB_NAME,
 };
 
+// jsdom-global's cleanup deletes the global DOMException, which fake-indexeddb throws when a
+// transaction aborts
+const NODE_DOM_EXCEPTION = global.DOMException;
+
 export function setupFakeIDB() {
   beforeEach(function () {
     window.indexedDB = new IDBFactory();
     window.IDBDatabase = IDBDatabase;
+    global.DOMException = global.DOMException || NODE_DOM_EXCEPTION;
   });
 
   afterEach(function () {

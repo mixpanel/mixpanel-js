@@ -8,6 +8,8 @@ import sinon from 'sinon';
 import { acquireLockForPid } from './test-utils/lock';
 import { RequestQueue } from '../../src/request-queue';
 import { LocalStorageWrapper } from '../../src/storage/local-storage';
+import { buildConsentGate } from '../../src/consent-gate';
+import { ALLOW_ALL_CONSENT_GATE } from './test-utils/consent-gate';
 
 const DEFAULT_FLUSH_INTERVAL = 10000;
 const START_TIME = 50000;
@@ -26,6 +28,7 @@ describe(`RequestQueue`, function() {
       queueStorage: new LocalStorageWrapper(localStorage),
       sharedLockStorage: localStorage,
       usePersistence: true,
+      consentGate: ALLOW_ALL_CONSENT_GATE,
     });
   });
 
@@ -83,6 +86,7 @@ describe(`RequestQueue`, function() {
         sharedLockStorage: localStorage,
         pid: `first-holder`,
         usePersistence: true,
+        consentGate: ALLOW_ALL_CONSENT_GATE,
       });
       const firstItem = {event: `first`};
       acquireLockForPid(queue.lock, `first-holder`);
@@ -160,6 +164,7 @@ describe(`RequestQueue`, function() {
             sharedLockStorage: localStorage,
             pid: `mypid`,
             usePersistence: true,
+            consentGate: ALLOW_ALL_CONSENT_GATE,
           });
           sinon.stub(localStorage, `setItem`)
             .withArgs(`fake-rq-key:Y`, `mypid`)
@@ -562,6 +567,43 @@ describe(`RequestQueue`, function() {
       const unstringifyable = {};
       unstringifyable.foo = unstringifyable; // circular reference
       expect(await queue.saveToStorage(unstringifyable)).not.to.be.ok;
+    });
+  });
+
+  describe(`consentGate`, function() {
+    it(`writes nothing for an enqueue that was already under way when it started returning true`, async function() {
+      let blocked = false;
+      queue = new RequestQueue(`fake-rq-key`, {
+        queueStorage: new LocalStorageWrapper(localStorage),
+        sharedLockStorage: localStorage,
+        usePersistence: true,
+        consentGate: buildConsentGate(() => !blocked, () => false),
+      });
+
+      const enqueued = queue.enqueue({event: `foo`, properties: {bar: `baz`}}, DEFAULT_FLUSH_INTERVAL);
+      blocked = true;
+
+      expect(await enqueued).to.equal(false);
+      expect(localStorage.getItem(`fake-rq-key`)).to.be.null;
+    });
+
+    it(`takes no storage lock for a throttled enqueue that runs after it started returning false`, async function() {
+      let blocked = false;
+      queue = new RequestQueue(`fake-rq-key`, {
+        queueStorage: new LocalStorageWrapper(localStorage),
+        sharedLockStorage: localStorage,
+        usePersistence: true,
+        enqueueThrottleMs: 1000,
+        consentGate: buildConsentGate(() => !blocked, () => false),
+      });
+      localStorage.clear();
+
+      const enqueued = queue.enqueue({event: `foo`, properties: {bar: `baz`}}, DEFAULT_FLUSH_INTERVAL);
+      blocked = true;
+      await clock.tickAsync(1000);
+
+      expect(await enqueued).to.equal(false);
+      expect(localStorage.length).to.equal(0);
     });
   });
 

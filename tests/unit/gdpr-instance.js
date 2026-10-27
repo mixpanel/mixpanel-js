@@ -27,7 +27,7 @@ describe(`opt-out status on a Mixpanel instance`, function() {
       const {loadNoop} = require(`../../src/loaders/bundle-loaders`);
       mixpanel = init_as_module(loadNoop);
       utils = require(`../../src/utils`);
-      gdpr = require(`../../src/gdpr-utils`);
+      gdpr = require(`../../src/opt-out-flag`);
       window.localStorage.clear();
     },
   });
@@ -51,6 +51,19 @@ describe(`opt-out status on a Mixpanel instance`, function() {
     expect(instance.has_opted_out_tracking()).to.equal(expected);
     expect(callback.calledWith(0)).to.equal(expected);
   }
+
+  it(`should keep persistence off after an opt-out when the config changes`, function() {
+    const instance = mixpanel.init(TOKEN, {
+      persistence: `localStorage`,
+      opt_out_tracking_persistence_type: `localStorage`,
+      batch_requests: false,
+    }, `gdpr_instance`);
+    instance.opt_out_tracking();
+
+    instance.set_config({debug: false});
+
+    expect(window.localStorage.getItem(`mp_${TOKEN}_mixpanel`)).to.equal(null);
+  });
 
   it(`should be opted out everywhere if localStorage rejects writes but holds an opt-out`, function() {
     const instance = initInstance();

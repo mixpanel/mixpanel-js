@@ -38,11 +38,21 @@ import { _, console, JSONStringify } from './utils';
     EVENT_TIMERS_KEY
 ];
 
+// the store while persistence is off: nothing is read or written
+/** @const */ var NULL_STORAGE = {
+    parse: function() { return null; },
+    set: function() {}
+};
+
 /**
  * Mixpanel Persistence Object
  * @constructor
+ * @param {Object} config
+ * @param {Object} [options]
+ * @param {boolean} [options.closed] start closed, keeping props in memory without reading, writing
+ * or probing storage until open()
  */
-var MixpanelPersistence = function(config) {
+var MixpanelPersistence = function(config, options) {
     this['props'] = {};
     this.campaign_params_saved = false;
 
@@ -57,21 +67,23 @@ var MixpanelPersistence = function(config) {
         console.critical('Unknown persistence type ' + storage_type + '; falling back to cookie');
         config['persistence'] = 'cookie';
     }
+    this.storage_type = config['persistence'];
 
-    this._open_storage(config);
+    this.closed = true;
+    this.storage = NULL_STORAGE;
+    this.update_config(config);
+    if (!(options && options.closed)) {
+        this.open();
+    }
 };
 
-MixpanelPersistence.prototype._open_storage = function(config) {
-    if (config['persistence'] === 'localStorage' && _.localStorage.is_supported()) {
-        this.storage = _.localStorage;
+MixpanelPersistence.prototype._choose_backend = function() {
+    if (this.storage_type === 'localStorage' && _.localStorage.is_supported()) {
+        this.backend = _.localStorage;
     } else {
-        this.storage = _.cookie;
+        this.backend = _.cookie;
     }
-
-    this.load();
-    this.update_config(config);
-    this.upgrade();
-    this.save();
+    this.storage = this.backend;
 };
 
 MixpanelPersistence.prototype.properties = function() {
@@ -89,8 +101,6 @@ MixpanelPersistence.prototype.properties = function() {
 };
 
 MixpanelPersistence.prototype.load = function() {
-    if (this.disabled) { return; }
-
     var entry = this.storage.parse(this.name);
 
     if (entry) {
@@ -104,7 +114,7 @@ MixpanelPersistence.prototype.upgrade = function() {
 
     // if transferring from cookie to localStorage or vice-versa, copy existing
     // super properties over to new storage mode
-    if (this.storage === _.localStorage) {
+    if (this.backend === _.localStorage) {
         old_cookie = _.cookie.parse(this.name);
 
         _.cookie.remove(this.name);
@@ -113,7 +123,7 @@ MixpanelPersistence.prototype.upgrade = function() {
         if (old_cookie) {
             this.register_once(old_cookie);
         }
-    } else if (this.storage === _.cookie) {
+    } else if (this.backend === _.cookie) {
         old_localstorage = _.localStorage.parse(this.name);
 
         _.localStorage.remove(this.name);
@@ -125,8 +135,6 @@ MixpanelPersistence.prototype.upgrade = function() {
 };
 
 MixpanelPersistence.prototype.save = function() {
-    if (this.disabled) { return; }
-
     this.storage.set(
         this.name,
         JSONStringify(this['props']),
@@ -144,9 +152,11 @@ MixpanelPersistence.prototype.load_prop = function(key) {
 };
 
 MixpanelPersistence.prototype.remove = function() {
+    // persistence that started closed has no backend until it opens
+    if (!this.backend) { return; }
     // remove both domain and subdomain cookies
-    this.storage.remove(this.name, false, this.cookie_domain);
-    this.storage.remove(this.name, true, this.cookie_domain);
+    this.backend.remove(this.name, false, this.cookie_domain);
+    this.backend.remove(this.name, true, this.cookie_domain);
 };
 
 // removes the storage entry and deletes all loaded data
@@ -235,11 +245,67 @@ MixpanelPersistence.prototype.update_config = function(config) {
     this.set_secure(config['secure_cookie']);
 };
 
+/**
+ * Turn persistence off or on for the disable_persistence config. Consent closes it separately, so a
+ * config change doesn't reopen what consent closed.
+ * @param {boolean} disabled
+ */
 MixpanelPersistence.prototype.set_disabled = function(disabled) {
     this.disabled = disabled;
-    if (this.disabled) {
+    this._update_storage();
+};
+
+/**
+ * Stop reading and writing storage, and remove the stored entry. The props stay in memory.
+ */
+MixpanelPersistence.prototype.close = function() {
+    if (this.closed) { return; }
+    this.closed = true;
+    this._update_storage();
+};
+
+/**
+ * Read and write storage again, saving the props in memory to it.
+ */
+MixpanelPersistence.prototype.open = function() {
+    if (!this.closed) { return; }
+    this.closed = false;
+    if (!this.backend) {
+        // what the page set while closed goes on top of what's stored
+        var memory_props = this['props'];
+        this['props'] = {};
+        this._choose_backend();
+        this.load();
+        _.extend(this['props'], memory_props);
+        // nothing is written until _update_storage, which writes nothing while persistence is
+        // disabled
+        this.storage = NULL_STORAGE;
+        this.upgrade();
+        // remove any copy an earlier config left at another cookie scope or in the other store
+        this.remove_stored_entry();
+    }
+    this._update_storage();
+};
+
+/**
+ * Delete the stored entry from both backends at every cookie scope, whether or not storage is
+ * open: an earlier page load or config may have left one anywhere.
+ */
+MixpanelPersistence.prototype.remove_stored_entry = function() {
+    _.cookie.remove(this.name);
+    _.cookie.remove(this.name, true);
+    if (this.cookie_domain) {
+        _.cookie.remove(this.name, false, this.cookie_domain);
+    }
+    _.localStorage.remove(this.name);
+};
+
+MixpanelPersistence.prototype._update_storage = function() {
+    if (this.disabled || this.closed) {
+        this.storage = NULL_STORAGE;
         this.remove();
     } else {
+        this.storage = this.backend;
         this.save();
     }
 };

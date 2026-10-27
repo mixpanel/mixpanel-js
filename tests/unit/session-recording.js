@@ -4,6 +4,7 @@
 
 import { expect } from 'chai';
 import { SessionRecording } from '../../src/recorder/session-recording';
+import { consentGateFor } from '../../src/consent-gate';
 import { IncrementalSource, EventType } from '@mixpanel/rrweb-types';
 
 import sinon from 'sinon';
@@ -45,6 +46,7 @@ describe(`SessionRecording`, function() {
 
     sessionRecording = new SessionRecording({
       mixpanelInstance: mockMixpanelInstance,
+      consentGate: consentGateFor(mockMixpanelInstance),
       replayId: replayId,
       onIdleTimeout: onIdleTimeoutSpy,
       onMaxLengthReached: onMaxLengthReachedSpy,
@@ -179,7 +181,7 @@ describe(`SessionRecording`, function() {
     // clock time should not affect deserialized times
     clock.tick(10 * 60 * 1000);
 
-    const deserializedRecording = SessionRecording.deserialize(serializedRecording, {mixpanelInstance: mockMixpanelInstance});
+    const deserializedRecording = SessionRecording.deserialize(serializedRecording, {mixpanelInstance: mockMixpanelInstance, consentGate: consentGateFor(mockMixpanelInstance)});
     expect(deserializedRecording.replayId).to.equal(replayId);
     expect(deserializedRecording.replayStartTime).to.equal(NOW_MS);
     expect(deserializedRecording.lastEventTimestamp).to.equal(NOW_MS + 100);
@@ -207,6 +209,7 @@ describe(`SessionRecording`, function() {
 
     const deserializedRecording = SessionRecording.deserialize(serializedRecording, {
       mixpanelInstance: mockMixpanelInstance,
+      consentGate: consentGateFor(mockMixpanelInstance),
       onMaxLengthReached: onMaxLengthReachedSpy,
       rrwebRecord: mockRrweb.recordStub
     });
@@ -232,7 +235,7 @@ describe(`SessionRecording`, function() {
       idleExpires: startTime + 30 * 60 * 1000,
       maxExpires: startTime + 24 * 60 * 60 * 1000,
       tabId: `test-some-other-tab-id`,
-    }, {mixpanelInstance: mockMixpanelInstance, sharedLockStorage: localStorage});
+    }, {mixpanelInstance: mockMixpanelInstance, consentGate: consentGateFor(mockMixpanelInstance), sharedLockStorage: localStorage});
 
     const persistedEvents = [
       {type: EventType.IncrementalSnapshot, timestamp: startTime + 10, data: {source: IncrementalSource.MouseInteraction}},
@@ -289,7 +292,7 @@ describe(`SessionRecording`, function() {
       maxExpires: startTime + 24 * 60 * 60 * 1000,
       tabId: `test-some-other-tab-id`,
       lastEventTimestamp: lastEventTimestamp,
-    }, {mixpanelInstance: mockMixpanelInstance, sharedLockStorage: localStorage});
+    }, {mixpanelInstance: mockMixpanelInstance, consentGate: consentGateFor(mockMixpanelInstance), sharedLockStorage: localStorage});
 
     const persistedEvents = [
       {timestamp: startTime + 10, data: {source: IncrementalSource.MouseInteraction}},
@@ -429,11 +432,21 @@ describe(`SessionRecording`, function() {
     expect(queue.length).to.equal(0, `batcher should have removed the items from IDB`);
   });
 
+  it(`does not send a batch prepared before an opt-out`, function() {
+    sessionRecording.startRecording();
+    sinon.stub(mockMixpanelInstance, `has_opted_out_tracking`).returns(true);
+
+    sessionRecording._sendRequest(replayId, {}, `compressed-batch`, sinon.spy());
+
+    expect(fetchStub.called).to.be.false;
+  });
+
   describe(`validateAllowedOrigins via startRecording`, function() {
     it(`non-array config doesn't crash recording`, function() {
       const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': `https://a.com`});
       const rec = new SessionRecording({
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         replayId: `test-replay-id`,
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,
@@ -450,6 +463,7 @@ describe(`SessionRecording`, function() {
       const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [42, `https://valid.com`]});
       const rec = new SessionRecording({
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         replayId: `test-replay-id`,
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,
@@ -465,6 +479,7 @@ describe(`SessionRecording`, function() {
       const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [`not-a-url`, `https://valid.com`]});
       const rec = new SessionRecording({
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         replayId: `test-replay-id`,
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,
@@ -480,6 +495,7 @@ describe(`SessionRecording`, function() {
       const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [`not-a-url`, 42]});
       const rec = new SessionRecording({
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         replayId: `test-replay-id`,
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,
@@ -495,6 +511,7 @@ describe(`SessionRecording`, function() {
       const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [`https://a.com`, `https://b.com`]});
       const rec = new SessionRecording({
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         replayId: `test-replay-id`,
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,
@@ -513,6 +530,7 @@ describe(`SessionRecording`, function() {
       ]});
       const rec = new SessionRecording({
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         replayId: `test-replay-id`,
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,
@@ -528,6 +546,7 @@ describe(`SessionRecording`, function() {
       const customMixpanel = new MockMixpanelLib({'record_allowed_iframe_origins': [`data:text/html,test`]});
       const rec = new SessionRecording({
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         replayId: `test-replay-id`,
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,
@@ -635,6 +654,7 @@ describe(`SessionRecording`, function() {
         tabId: `test-tab-id`,
       }, {
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,
       });
@@ -666,6 +686,7 @@ describe(`SessionRecording`, function() {
 
       const rec = new SessionRecording({
         mixpanelInstance: customMixpanel,
+        consentGate: consentGateFor(customMixpanel),
         replayId: `min-ms-test-replay`,
         rrwebRecord: mockRrweb.recordStub,
         sharedLockStorage: localStorage,

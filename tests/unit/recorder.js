@@ -370,16 +370,16 @@ describe(`Recorder`, function() {
       expect(idbOpenSpy.callCount).to.equal(0);
     });
 
-    it(`deletes the active recording when recording is stopped and disable_persistence=true`, async function () {
+    it(`leaves the active recording in the registry when recording is stopped and disable_persistence=true`, async function () {
       await verifyBasicRecording();
       const getConfigStub = sinon.stub(MockMixpanelLib.prototype, 'get_config');
       getConfigStub.withArgs('disable_persistence').returns(true);
       getConfigStub.callThrough();
 
       await recorder.stopRecording();
-      
+
       const storedRecording = await idbGetItem(`mixpanelRecordingRegistry`, `test-tab-id`);
-      expect(storedRecording).to.not.exist;
+      expect(storedRecording).to.exist;
     });
   });
 });

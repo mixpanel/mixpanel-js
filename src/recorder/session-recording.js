@@ -11,7 +11,6 @@ import {
     RECORDING_EVENTS_STORE_NAME,
     RECORDER_VERSION_DATA
 } from './idb-config';
-import { addOptOutCheckSessionRecording } from '../gdpr-utils';
 import { RequestBatcher } from '../request-batcher';
 
 import { Config } from '../config';
@@ -61,6 +60,8 @@ function isUserEvent(ev) {
 /**
  * @typedef {Object} SessionRecordingOptions
  * @property {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
+ * @property {import('../consent-gate').ConsentGate} options.consentGate - what the recording asks
+ * before it stores or sends
  * @property {String} [options.replayId] - unique uuid for a single replay
  * @property {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
  * @property {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
@@ -91,6 +92,7 @@ function isUserEvent(ev) {
  */
 var SessionRecording = function(options) {
     this._mixpanel = options.mixpanelInstance;
+    this.consentGate = options.consentGate;
     this._onIdleTimeout = options.onIdleTimeout || NOOP_FUNC;
     this._onMaxLengthReached = options.onMaxLengthReached || NOOP_FUNC;
     this._onBatchSent = options.onBatchSent || NOOP_FUNC;
@@ -117,7 +119,7 @@ var SessionRecording = function(options) {
 
     // disable persistence if localStorage is not supported
     // request-queue will automatically disable persistence if indexedDB fails to initialize
-    var usePersistence = localStorageSupported(options.sharedLockStorage || getLocalStorage(), true) && !this.getConfig('disable_persistence');
+    var usePersistence = localStorageSupported(options.sharedLockStorage || getLocalStorage(), true) && this.consentGate.allowsPersistence();
 
     // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
     this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
@@ -131,6 +133,7 @@ var SessionRecording = function(options) {
         sharedLockStorage: options.sharedLockStorage,
         usePersistence: usePersistence,
         stopAllBatchingFunc: this.stopRecording.bind(this),
+        consentGate: this.consentGate,
 
         // increased throttle and shared lock timeout because recording events are very high frequency.
         // this will minimize the amount of lock contention between enqueued events.
@@ -360,19 +363,15 @@ SessionRecording.prototype.isRrwebStopped = function () {
 
 
 /**
- * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
- * we stop recording and dump any queued events if the user has opted out.
+ * Flushes the current batch of events to the server, or stops recording if consent stops the calls.
  */
 SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
-    var onOptOut = function (code) {
-        // addOptOutCheckSessionRecording invokes this function with code=0 when the user has opted out
-        if (code === 0) {
-            this.stopRecording();
-            cb({error: 'Tracking has been opted out, stopping recording.'});
-        }
-    }.bind(this);
-
-    this._flushEvents(data, options, cb, onOptOut);
+    if (!this.consentGate.allowsApiCalls()) {
+        this.stopRecording();
+        cb({error: 'Tracking has been opted out, stopping recording.'});
+        return;
+    }
+    this._flushEvents(data, options, cb);
 };
 
 /**
@@ -428,7 +427,12 @@ SessionRecording.prototype._getApiRoute = function () {
     return this.getConfig('api_routes')['record'];
 };
 
+// consent can be withdrawn while the batch is compressed, so it is checked again before sending
 SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
+    if (!this.consentGate.allowsApiCalls()) {
+        callback(0);
+        return;
+    }
     var onSuccess = function (response, responseBody) {
         // Update batch specific props only if the request was successful to guarantee ordering.
         // RequestBatcher will always flush the next batch after the previous one succeeds.
@@ -465,7 +469,7 @@ SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, r
     });
 };
 
-SessionRecording.prototype._flushEvents = addOptOutCheckSessionRecording(function (data, options, callback) {
+SessionRecording.prototype._flushEvents = function(data, options, callback) {
     var numEvents = data.length;
 
     if (numEvents > 0) {
@@ -532,7 +536,7 @@ SessionRecording.prototype._flushEvents = addOptOutCheckSessionRecording(functio
             sendUncompressed();
         }
     }
-});
+};
 
 
 SessionRecording.prototype.reportError = function(msg, err) {

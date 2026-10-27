@@ -2,6 +2,7 @@ import chai, { expect } from "chai";
 import sinon from "sinon";
 import sinonChai from "sinon-chai";
 
+import { window } from "../../src/window";
 import { setupFakeIDB } from "./test-utils/indexed-db";
 import {
   FeatureFlagPersistence,
@@ -335,15 +336,24 @@ describe(`FeatureFlagPersistence`, function () {
     });
 
     it(`is a no-op when disable_persistence is true`, async function () {
-      const persistence = new FeatureFlagPersistence({
+      const seed = makePersistence();
+      await seed.save(context, new Map([[`flagA`, { key: `varA`, value: `1` }]]));
+      const disabledInstance = new FeatureFlagPersistence({
         variantLookupPolicy: VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS,
       }, TEST_TOKEN, function() { return true; });
-      const initSpy = sinon.spy(persistence.idb, `init`);
+      const openSpy = sinon.spy(window.indexedDB, `open`);
 
-      await persistence.clear();
+      await disabledInstance.clear();
 
-      expect(initSpy).to.not.have.been.called;
+      expect(openSpy).to.not.have.been.called;
       sinon.restore();
+    });
+
+    it(`doesn't create the database on a device that has none`, async function () {
+      await makePersistence().clear();
+
+      const databases = await window.indexedDB.databases();
+      expect(databases.map(database => database.name)).to.not.include(`mixpanelFlagsDb`);
     });
   });
 });

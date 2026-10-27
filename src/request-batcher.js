@@ -22,7 +22,8 @@ var RequestBatcher = function(storageKey, options) {
         sharedLockStorage: options.sharedLockStorage,
         sharedLockTimeoutMS: options.sharedLockTimeoutMS,
         usePersistence: options.usePersistence,
-        enqueueThrottleMs: options.enqueueThrottleMs
+        enqueueThrottleMs: options.enqueueThrottleMs,
+        consentGate: options.consentGate
     });
 
     this.libConfig = options.libConfig;

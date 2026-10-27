@@ -17,11 +17,12 @@ var RecordingRegistry = function (options) {
     this.idb = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA);
     this.errorReporter = options.errorReporter;
     this.mixpanelInstance = options.mixpanelInstance;
+    this.consentGate = options.consentGate;
     this.sharedLockStorage = options.sharedLockStorage;
 };
 
 RecordingRegistry.prototype.isPersistenceEnabled = function() {
-    return !this.mixpanelInstance.get_config('disable_persistence');
+    return this.consentGate.allowsPersistence();
 };
 
 RecordingRegistry.prototype.handleError = function (err) {
@@ -32,6 +33,7 @@ RecordingRegistry.prototype.handleError = function (err) {
  * @param {import('./session-recording').SerializedRecording} serializedRecording
  */
 RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
+    // a recording that resumes after consent stops storage writes nothing
     if (!this.isPersistenceEnabled()) {
         return Promise.resolve();
     }
@@ -68,13 +70,10 @@ RecordingRegistry.prototype.getActiveRecording = function () {
 };
 
 RecordingRegistry.prototype.clearActiveRecording = function () {
-    if (this.isPersistenceEnabled()) {
-        // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
-        // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
-        return this.markActiveRecordingExpired();
-    } else {
-        return this.deleteActiveRecording();
-    }
+    // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
+    // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+    // without persistence the entry is left as it is, and its unsent events wait for a load that allows them.
+    return this.markActiveRecordingExpired();
 };
 
 RecordingRegistry.prototype.markActiveRecordingExpired = function () {
@@ -86,16 +85,6 @@ RecordingRegistry.prototype.markActiveRecordingExpired = function () {
             }
         }.bind(this))
         .catch(this.handleError.bind(this));
-};
-
-RecordingRegistry.prototype.deleteActiveRecording = function () {
-    // avoid initializing IDB if this registry instance hasn't already written a recording
-    if (this.idb.isInitialized()) {
-        return this.idb.removeItem(this.mixpanelInstance.get_tab_id())
-            .catch(this.handleError.bind(this));
-    } else {
-        return Promise.resolve();
-    }
 };
 
 /**
@@ -120,6 +109,7 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
                 .map(function (serializedRecording) {
                     var sessionRecording = SessionRecording.deserialize(serializedRecording, {
                         mixpanelInstance: this.mixpanelInstance,
+                        consentGate: this.consentGate,
                         sharedLockStorage: this.sharedLockStorage
                     });
                     return sessionRecording.unloadPersistedData()

@@ -3,6 +3,7 @@ import sinon from "sinon";
 import { RecorderManager } from "../../src/recorder-manager";
 import { window } from "../../src/window";
 import { RECORDER_GLOBAL_NAME, TARGETING_GLOBAL_NAME, RECORDER_FILENAME, TARGETING_FILENAME } from "../../src/config";
+import { ALLOW_ALL_CONSENT_GATE } from "./test-utils/consent-gate";
 
 describe(`RecorderManager`, function() {
   let recorderManager;
@@ -34,7 +35,8 @@ describe(`RecorderManager`, function() {
       getTabIdFunc: () => `test-tab-id`,
       reportErrorFunc: sinon.stub(),
       getDistinctIdFunc: getDistinctIdStub,
-      loadExtraBundle: sinon.stub()
+      loadExtraBundle: sinon.stub(),
+      consentGate: ALLOW_ALL_CONSENT_GATE
     });
   });
 
@@ -242,7 +244,8 @@ describe(`RecorderManager`, function() {
         getTabIdFunc: () => `test-tab-id`,
         reportErrorFunc: sinon.stub(),
         getDistinctIdFunc: getDistinctIdStub,
-        loadExtraBundle: loadExtraBundleStub
+        loadExtraBundle: loadExtraBundleStub,
+        consentGate: ALLOW_ALL_CONSENT_GATE
       };
       return new RecorderManager(Object.assign(defaults, opts));
     }

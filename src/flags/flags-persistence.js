@@ -160,17 +160,24 @@ FeatureFlagPersistence.prototype.save = function(context, flagsMap, pendingFirst
     });
 };
 
+/**
+ * Remove the persisted variants, without creating the database.
+ * @returns {Promise}
+ */
 FeatureFlagPersistence.prototype.clear = function() {
     if (this.isGloballyDisabled()) {
         return Promise.resolve();
     }
-    return this.idb.init().then(_.bind(function() {
-        return this.idb.removeItem(this.persistedVariantsKey);
-    }, this)).then(function() {
+    var variantsKey = this.persistedVariantsKey;
+    var existingIdb = new IDBStorageWrapper(MIXPANEL_FLAGS_DB_NAME, FLAGS_STORE_NAME, FLAGS_VERSION_DATA, {createIfMissing: false});
+    return existingIdb.init().then(function() {
+        return existingIdb.removeItem(variantsKey);
+    }).then(function() {
         logger.log('Cleared persisted variants from IndexedDB');
     }).catch(function(error) {
-        logger.error('Failed to clear persisted variants from IndexedDB:', error);
+        // usually the device has no database, so there's nothing to clear
+        logger.log('No persisted variants cleared from IndexedDB:', error);
     });
 };
 
-export { FeatureFlagPersistence, VariantLookupPolicy, FLAGS_STORE_NAME, PERSISTED_VARIANTS_KEY_PREFIX };
+export { FeatureFlagPersistence, VariantLookupPolicy, FLAGS_STORE_NAME, MIXPANEL_FLAGS_DB_NAME, PERSISTED_VARIANTS_KEY_PREFIX };

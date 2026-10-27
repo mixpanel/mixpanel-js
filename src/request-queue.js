@@ -33,6 +33,7 @@ var RequestQueue = function (storageKey, options) {
         });
     }
     this.reportError = options.errorReporter || _.bind(logger.error, logger);
+    this.consentGate = options.consentGate;
 
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
@@ -84,7 +85,7 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
         'payload': item
     };
 
-    if (!this.usePersistence) {
+    if (!this._persists()) {
         this.memQueue.push(queueEntry);
         return Promise.resolve(true);
     } else {
@@ -92,7 +93,20 @@ RequestQueue.prototype.enqueue = function (item, flushInterval) {
     }
 };
 
+/**
+ * Whether the queue is kept in storage now: with persistence, and while consent allows storing.
+ * The lock writes storage keys too, so nothing that takes it runs without this.
+ * @returns {boolean}
+ */
+RequestQueue.prototype._persists = function () {
+    return this.usePersistence && this.consentGate.allowsStoring();
+};
+
 RequestQueue.prototype._enqueuePersisted = function (queueEntries) {
+    // a throttled enqueue can run after consent stops storage; its items are dropped
+    if (!this._persists()) {
+        return Promise.resolve(false);
+    }
     var enqueueItem = _.bind(function () {
         return this.ensureInit()
             .then(_.bind(function () {
@@ -192,7 +206,7 @@ RequestQueue.prototype.removeItemsByID = function (ids) {
     });
 
     this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-    if (!this.usePersistence) {
+    if (!this._persists()) {
         return Promise.resolve(true);
     } else {
         var removeFromStorage = _.bind(function () {
@@ -280,7 +294,7 @@ var updatePayloads = function (existingItems, itemsToUpdate) {
  */
 RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
     this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
-    if (!this.usePersistence) {
+    if (!this._persists()) {
         return Promise.resolve(true);
     } else {
         return this.lock
@@ -335,11 +349,14 @@ RequestQueue.prototype.readFromStorage = function () {
 RequestQueue.prototype.saveToStorage = function (queue) {
     return this.ensureInit()
         .then(_.bind(function () {
-            return this.queueStorage.setItem(this.storageKey, queue);
+            // a save that started before consent stopped storage writes nothing
+            if (!this._persists()) {
+                return false;
+            }
+            return this.queueStorage.setItem(this.storageKey, queue).then(function () {
+                return true;
+            });
         }, this))
-        .then(function () {
-            return true;
-        })
         .catch(_.bind(function (err) {
             this.reportError('Error saving queue', err);
             return false;

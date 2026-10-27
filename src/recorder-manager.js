@@ -32,6 +32,8 @@ var RecorderManager = function(initOptions) {
     this.getTabId = initOptions.getTabIdFunc;
     this.reportError = initOptions.reportErrorFunc;
     this.getDistinctId = initOptions.getDistinctIdFunc;
+    // recording stores the session before it sends it
+    this.consentGate = initOptions.consentGate;
     this.loadExtraBundle = initOptions.loadExtraBundle;
     this.recorderSrc = initOptions.recorderSrc;
     this.targetingSrc = initOptions.targetingSrc;
@@ -43,8 +45,8 @@ var RecorderManager = function(initOptions) {
 };
 
 RecorderManager.prototype.shouldLoadRecorder = function() {
-    if (this.getMpConfig('disable_persistence')) {
-        console.log('Load recorder check skipped due to disable_persistence config');
+    if (!this.consentGate.allowsPersistence()) {
+        console.log('Load recorder check skipped without persistence');
         return Promise.resolve(false);
     }
 
@@ -71,6 +73,10 @@ RecorderManager.prototype.shouldLoadRecorder = function() {
 };
 
 RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, rate) {
+    if (!this.consentGate.allowsStoring()) {
+        console.log('Session recording skipped without consent');
+        return Promise.resolve();
+    }
     if (!window['MutationObserver']) {
         console.critical('Browser does not support MutationObserver; skipping session recording');
         return Promise.resolve();
@@ -79,6 +85,11 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
     var loadRecorder = _.bind(function(startNewIfInactive) {
         return new Promise(_.bind(function(resolve) {
             var handleLoadedRecorder = safewrap(_.bind(function() {
+                // consent can be withdrawn while the bundle loads
+                if (!this.consentGate.allowsStoring()) {
+                    resolve();
+                    return;
+                }
                 this._recorder = this._recorder || new window[RECORDER_GLOBAL_NAME](this.mixpanelInstance);
                 this._recorder['resumeRecording'](startNewIfInactive);
                 resolve();

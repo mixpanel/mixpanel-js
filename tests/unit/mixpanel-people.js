@@ -2,6 +2,7 @@ import { expect } from 'chai';
 
 import { MixpanelPeople } from '../../src/mixpanel-people';
 import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
+import { ALLOW_ALL_CONSENT_GATE } from './test-utils/consent-gate';
 
 describe(`MixpanelPeople`, function() {
   describe(`set before identify`, function() {
@@ -13,7 +14,7 @@ describe(`MixpanelPeople`, function() {
         _add_to_people_queue: (action, data) => queued.push({action, data}),
       };
       const people = new MixpanelPeople();
-      people._init(mockMixpanel);
+      people._init(mockMixpanel, ALLOW_ALL_CONSENT_GATE);
 
       const created = new Date(Date.UTC(2020, 0, 2, 3, 4, 5));
       const props = {created};

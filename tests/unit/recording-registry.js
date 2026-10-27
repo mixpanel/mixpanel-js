@@ -5,6 +5,8 @@ import { window } from '../../src/window';
 import localStorage from 'localStorage';
 import { setupFakeIDB, idbGetItem, idbSetItem, idbCreateDatabase } from './test-utils/indexed-db';
 import { RecordingRegistry } from '../../src/recorder/recording-registry';
+import { buildConsentGate } from '../../src/consent-gate';
+import { consentGateFor } from '../../src/consent-gate';
 import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 
 describe(`RecordingRegistry`, function() {
@@ -37,6 +39,7 @@ describe(`RecordingRegistry`, function() {
 
     recordingRegistry = new RecordingRegistry({
       mixpanelInstance: mockMixpanelInstance,
+      consentGate: consentGateFor(mockMixpanelInstance),
       errorReporter: console.error,
       sharedLockStorage: localStorage
     });
@@ -92,20 +95,22 @@ describe(`RecordingRegistry`, function() {
     });
   });
 
-  describe(`deleteActiveRecording()`, function () {
-    it(`deletes the active recording`, async function() {
+  describe(`clearActiveRecording()`, function () {
+    it(`leaves the entry alone, without opening the database, when persistence isn't allowed`, async function() {
       await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingRegistry`]);
-      await recordingRegistry.setActiveRecording(SERIALIZED_RECORDING);
-
-      await recordingRegistry.deleteActiveRecording();
-      const storedRecording = await idbGetItem(`mixpanelRecordingRegistry`, `test-tab-id`);
-      expect(storedRecording).to.not.exist;
-    });
-
-    it(`doesn't try to open the database if it is not initialized (no recording to delete)`, async function() {
+      await idbSetItem(`mixpanelRecordingRegistry`, `test-tab-id`, SERIALIZED_RECORDING);
+      recordingRegistry = new RecordingRegistry({
+        mixpanelInstance: mockMixpanelInstance,
+        consentGate: buildConsentGate(capability => capability !== `store`, () => false),
+        errorReporter: console.error,
+        sharedLockStorage: localStorage,
+      });
       const idbOpenSpy = sinon.spy(window.indexedDB, `open`);
-      await recordingRegistry.deleteActiveRecording();
-      expect(idbOpenSpy.callCount).to.be.equal(0);
+
+      await recordingRegistry.clearActiveRecording();
+
+      expect(idbOpenSpy.callCount).to.equal(0);
+      expect(await idbGetItem(`mixpanelRecordingRegistry`, `test-tab-id`)).to.deep.equal(SERIALIZED_RECORDING);
     });
   });
 
@@ -165,6 +170,32 @@ describe(`RecordingRegistry`, function() {
       expect(differentTabStoredRecordin).to.deep.equal(differentTabRecording);
       const differentTabStoredEvents = await idbGetItem(`mixpanelRecordingEvents`, BATCHER_PREFIX + `diff-replay-id`);
       expect(differentTabStoredEvents).to.have.lengthOf(2);
+    });
+
+    it(`sends no recovered recording when the registry's consent gate stops the calls`, async function() {
+      recordingRegistry = new RecordingRegistry({
+        mixpanelInstance: mockMixpanelInstance,
+        consentGate: buildConsentGate(capability => capability !== `api_calls`, () => false),
+        errorReporter: () => {},
+        sharedLockStorage: localStorage,
+      });
+      await idbCreateDatabase(`mixpanelBrowserDb`, 1, [`mixpanelRecordingRegistry`, `mixpanelRecordingEvents`]);
+      const lastEventTime = NOW_MS - 10 * 1000;
+      const expiredRecording = Object.assign({}, SERIALIZED_RECORDING, {
+        maxExpires: NOW_MS - 1000,
+        tabId: `test-expired-tab-id`,
+        replayId: `expired-replay-id`,
+        // a later batch needs no full snapshot to send, so only the gate stops it
+        seqNo: 12,
+      });
+      await idbSetItem(`mixpanelRecordingRegistry`, `test-expired-tab-id`, expiredRecording);
+      await idbSetItem(`mixpanelRecordingEvents`, BATCHER_PREFIX + `expired-replay-id`, [
+        {id: 1, payload: {type: 3, timestamp: lastEventTime, data: {source: 4}}, flushAfter: lastEventTime},
+      ]);
+
+      await recordingRegistry.flushInactiveRecordings();
+
+      expect(fetchStub.called).to.be.false;
     });
   });
 });

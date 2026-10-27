@@ -65,11 +65,15 @@ var FeatureFlagManager = function(initOptions) {
     this.setMpConfig = initOptions.setConfigFunc;
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
+    this.consentGate = initOptions.consentGate;
     this.loadExtraBundle = initOptions.loadExtraBundle || function() {};
     this.targetingSrc = initOptions.targetingSrc || '';
 };
 
 FeatureFlagManager.prototype.init = function() {
+    if (!this.consentGate.allowsFetching()) {
+        return;
+    }
     if (!this.minApisSupported()) {
         logger.critical('Feature Flags unavailable: missing minimum required APIs');
         return;
@@ -85,7 +89,7 @@ FeatureFlagManager.prototype.init = function() {
     this.persistence = new FeatureFlagPersistence(
         this.getConfig(CONFIG_PERSISTENCE),
         this.getMpConfig('token'),
-        _.bind(function() { return this.getMpConfig('disable_persistence'); }, this)
+        _.bind(function() { return !this.consentGate.allowsPersistence(); }, this)
     );
 
     this.persistenceLoadedPromise = this.persistence.loadFlagsFromStorage(this._buildContext())
@@ -153,7 +157,7 @@ FeatureFlagManager.prototype.getConfig = function(key) {
 };
 
 FeatureFlagManager.prototype.isSystemEnabled = function() {
-    return !!this.getMpConfig(FLAGS_CONFIG_KEY);
+    return !!this.getMpConfig(FLAGS_CONFIG_KEY) && this.consentGate.allowsFetching();
 };
 
 FeatureFlagManager.prototype.updateContext = function(newContext, options) {
@@ -182,6 +186,14 @@ FeatureFlagManager.prototype.areFlagsReady = function() {
         logger.error('Feature Flags not enabled');
     }
     return !!this.flags;
+};
+
+/**
+ * Delete this token's persisted variants, also before init() and when persistence isn't allowed.
+ * @returns {Promise}
+ */
+FeatureFlagManager.prototype.clearPersistedVariants = function() {
+    return new FeatureFlagPersistence(null, this.getMpConfig('token')).clear();
 };
 
 FeatureFlagManager.prototype.fetchFlags = function() {
@@ -479,6 +491,9 @@ FeatureFlagManager.prototype.getFirstTimeEventApiRoute = function(flagId) {
 };
 
 FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, firstTimeEventHash) {
+    if (!this.consentGate.allowsFetching()) {
+        return Promise.resolve();
+    }
     var distinctId = this.getMpProperty('distinct_id');
     var traceparent = generateTraceparent();
 
