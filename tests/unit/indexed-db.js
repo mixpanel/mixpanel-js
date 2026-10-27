@@ -66,4 +66,49 @@ describe(`IDBStorageWrapper`, function() {
     expect(value).to.eql({foo: `bar`});
     expect(transactionStub.callCount).to.equal(3);
   });
+
+  describe(`createIfMissing: false`, function() {
+    const existingOnly = () => new IDBStorageWrapper(
+      MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA, {createIfMissing: false}
+    );
+    // a database whose creation was aborted is left at version 0, which browsers' databases() leaves
+    // out (IndexedDB spec, IDBFactory.databases()) and fake-indexeddb's doesn't
+    const databaseNames = async () => (await window.indexedDB.databases())
+      .filter(database => database.version !== 0)
+      .map(database => database.name);
+
+    it(`opens a database the device has`, async function() {
+      await idbWrapper.init();
+      await idbWrapper.setItem(`drop`, {n: 1});
+
+      const existing = existingOnly();
+      await existing.init();
+      await existing.removeItem(`drop`);
+
+      expect(await idbWrapper.getItem(`drop`)).to.be.undefined;
+    });
+
+    it(`creates no database, without opening one the browser doesn't list`, async function() {
+      const open = sinon.spy(window.indexedDB, `open`);
+
+      let rejected = false;
+      await existingOnly().init().catch(() => { rejected = true; });
+
+      expect(rejected).to.equal(true);
+      expect(open.called).to.equal(false);
+      expect(await databaseNames()).to.deep.equal([]);
+    });
+
+    it(`creates no database in a browser that can't list them`, async function() {
+      const databases = window.indexedDB.databases;
+      window.indexedDB.databases = undefined;
+
+      let rejected = false;
+      await existingOnly().init().catch(() => { rejected = true; });
+
+      window.indexedDB.databases = databases;
+      expect(rejected).to.equal(true);
+      expect(await databaseNames()).to.deep.equal([]);
+    });
+  });
 });

@@ -7,12 +7,14 @@ import { window } from "../../src/window";
 import { Config } from "../../src/config";
 
 import { FeatureFlagManager } from "../../src/flags/index";
+import { buildConsentGate } from "../../src/consent-gate";
 import { eventMatchesCriteria } from "../../src/targeting/event-matcher";
 import {
   FeatureFlagPersistence,
   VariantLookupPolicy,
 } from "../../src/flags/flags-persistence";
 import { setupFakeIDB } from "./test-utils/indexed-db";
+import { ALLOW_ALL_CONSENT_GATE } from "./test-utils/consent-gate";
 
 chai.use(sinonChai);
 
@@ -76,6 +78,7 @@ describe(`FeatureFlagManager`, function () {
       loadExtraBundle: sinon.stub().callsFake((src, callback) => {
         callback();
       }),
+      consentGate: ALLOW_ALL_CONSENT_GATE,
     };
 
     flagManager = new FeatureFlagManager(initOptions);
@@ -535,6 +538,42 @@ describe(`FeatureFlagManager`, function () {
         expect(flag.key).to.equal(`treatment`);
         expect(flag.value).to.equal(true);
         expect(flag.experiment_id).to.equal(123);
+      });
+
+      it(`records nothing when tracking is blocked before the check`, async function () {
+        let blocked = false;
+        const manager = new FeatureFlagManager(
+          Object.assign({}, initOptions, {consentGate: buildConsentGate(() => !blocked, () => false)})
+        );
+        await manager.init();
+        sinon.resetHistory();
+
+        blocked = true;
+        await manager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+
+        expect(mockFetch).not.to.have.been.called;
+      });
+
+      it(`records nothing when tracking is blocked while the targeting bundle loads`, async function () {
+        let blocked = false;
+        const manager = new FeatureFlagManager(
+          Object.assign({}, initOptions, {consentGate: buildConsentGate(() => !blocked, () => false)})
+        );
+        await manager.init();
+        sinon.resetHistory();
+
+        let resolveTargeting;
+        window[`__mp_targeting`] = new Promise(resolve => {
+          resolveTargeting = resolve;
+        });
+
+        // passes the entry check while consent still holds, then suspends on the bundle
+        const checked = manager.checkFirstTimeEvents(`Dashboard Viewed`, {});
+        blocked = true;
+        resolveTargeting({eventMatchesCriteria: () => ({matches: true})});
+        await checked;
+
+        expect(mockFetch).not.to.have.been.called;
       });
 
       it(`does not match event with different name`, async function () {
@@ -1401,6 +1440,28 @@ describe(`FeatureFlagManager`, function () {
     });
   });
 
+  describe(`clearPersistedVariants`, function () {
+    setupFakeIDB();
+
+    it(`removes the saved variants once consent stops allowing persistence`, async function () {
+      mockConfig.flags.persistence = { variantLookupPolicy: VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS };
+      let consentAllows = true;
+      flagManager = new FeatureFlagManager(
+        Object.assign({}, initOptions, {consentGate: buildConsentGate(() => consentAllows, () => false)})
+      );
+      await flagManager.init();
+      const variantsKey = flagManager.persistence.persistedVariantsKey;
+      const reader = new FeatureFlagPersistence(null, mockConfig.token);
+      await reader.idb.init();
+      expect(await reader.idb.getItem(variantsKey)).to.exist;
+
+      consentAllows = false;
+      await flagManager.clearPersistedVariants();
+
+      expect(await reader.idb.getItem(variantsKey)).to.be.undefined;
+    });
+  });
+
   describe(`getAllVariants`, function () {
     setupFakeIDB();
 
@@ -1466,9 +1527,11 @@ describe(`FeatureFlagManager`, function () {
       expect(flagManager.activatedFirstTimeEvents).to.deep.equal({});
     });
 
-    it(`with disable_persistence: true, ignores seeded IDB and effectively becomes networkOnly`, async function () {
+    it(`without persistence allowed, ignores seeded IDB and effectively becomes networkOnly`, async function () {
       mockConfig.flags.persistence = { variantLookupPolicy: VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS };
-      mockConfig.disable_persistence = true;
+      flagManager = new FeatureFlagManager(
+        Object.assign({}, initOptions, {consentGate: buildConsentGate(() => true, key => key === `disable_persistence`)})
+      );
       await seedPersistedVariants(VariantLookupPolicy.PERSISTENCE_UNTIL_NETWORK_SUCCESS, `test-distinct-id`, `test-device-id`, {
         flagA: { key: `seeded`, value: `cached` },
       });

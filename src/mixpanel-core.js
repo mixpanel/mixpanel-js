@@ -14,15 +14,7 @@ import {
     PEOPLE_DISTINCT_ID_KEY,
     ALIAS_ID_KEY
 } from './mixpanel-persistence';
-import {
-    optIn,
-    optOut,
-    hasOptedIn,
-    hasOptedOut,
-    clearOptInOut,
-    addOptOutCheckMixpanelLib,
-    getOptOutCheckPersistenceType
-} from './gdpr-utils';
+import { ConsentManager } from './consent-manager';
 
 /*
  * Mixpanel JS Library
@@ -140,6 +132,7 @@ var DEFAULT_CONFIG = {
     'opt_out_persistence_by_default':    false,
     'opt_out_tracking_persistence_type': 'localStorage',
     'opt_out_tracking_cookie_prefix':    null,
+    'consent_mode':                      null,
     'property_blacklist':                [],
     'xhr_headers':                       {}, // { header: value, header2: value }
     'ignore_dnt':                        false,
@@ -206,26 +199,9 @@ var create_mplib = function(token, config, name) {
     instance._init(token, config, name);
 
     instance['people'] = new MixpanelPeople();
-    instance['people']._init(instance);
+    instance['people']._init(instance, instance._consent);
 
-    if (!instance.get_config('skip_first_touch_marketing')) {
-        // We need null UTM params in the object because
-        // UTM parameters act as a tuple. If any UTM param
-        // is present, then we set all UTM params including
-        // empty ones together
-        var utm_params = _.info.campaignParams(null);
-        var initial_utm_params = {};
-        var has_utm = false;
-        _.each(utm_params, function(utm_value, utm_key) {
-            initial_utm_params['initial_' + utm_key] = utm_value;
-            if (utm_value) {
-                has_utm = true;
-            }
-        });
-        if (has_utm) {
-            instance['people'].set_once(initial_utm_params);
-        }
-    }
+    instance._set_first_touch_people_properties();
 
     // if any instance on the page has debug = true, we set the
     // global debug to be true
@@ -320,6 +296,19 @@ MixpanelLib.prototype._init = function(token, config, name) {
         'callback_fn': ((name === PRIMARY_INSTANCE_NAME) ? name : PRIMARY_INSTANCE_NAME + '.' + name) + '._jsc'
     }));
 
+    this._consent = new ConsentManager({
+        getConfigFunc: _.bind(this.get_config, this),
+        // looks track up at each call, so a wrapper added after init sees it
+        trackFunc: _.bind(function() {
+            return this.track.apply(this, arguments);
+        }, this),
+        setPersistenceDisabledFunc: _.bind(this._set_persistence_disabled, this),
+        deleteUserFunc: _.bind(this._delete_user_for_opt_out, this),
+        startTrackingFunc: _.bind(this._start_tracking, this),
+        stopTrackingFunc: _.bind(this._stop_tracking, this),
+        purgeIdentifiersFunc: _.bind(this._purge_stored_identifiers, this)
+    });
+
     this.recorderManager = new RecorderManager({
         mixpanelInstance: this,
         getConfigFunc: _.bind(this.get_config, this),
@@ -327,6 +316,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         getTabIdFunc: _.bind(this.get_tab_id, this),
         reportErrorFunc: _.bind(this.report_error, this),
         getDistinctIdFunc: _.bind(this.get_distinct_id, this),
+        consentGate: this._consent,
         recorderSrc: this.get_config('recorder_src'),
         targetingSrc: this.get_config('targeting_src'),
         libBasePath: this.get_config('lib_base_path'),
@@ -345,18 +335,15 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this._remote_settings_strict_disabled = false;
 
     this.request_batchers = {};
-    this._init_batching();
-
-    this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config']);
-    this.unpersisted_superprops = {};
-    this._gdpr_init();
-
-    // There is no need to set the distinct id
-    // or the device id if something was already stored
-    // in the persistence
-    if (!this.get_distinct_id()) {
-        this._init_device_id();
+    // without consent to store, the props stay in memory, and batching and the services wait for
+    // _start_tracking()
+    var allows_storage = this._consent.allowsStoring();
+    if (allows_storage) {
+        this._init_batching();
     }
+
+    this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config'], {closed: !allows_storage});
+    this.unpersisted_superprops = {};
 
     this.flags = new FeatureFlagManager({
         getFullApiRoute: _.bind(function() {
@@ -366,12 +353,52 @@ MixpanelLib.prototype._init = function(token, config, name) {
         setConfigFunc: _.bind(this.set_config, this),
         getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this),
+        consentGate: this._consent,
         loadExtraBundle: load_extra_bundle,
         targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME)
     });
-    this.flags.init();
     this['flags'] = this.flags;
 
+    this._consent.init();
+    if (allows_storage) {
+        this._start_services();
+    }
+
+    this.autocapture = new Autocapture(this);
+    this.autocapture.init();
+};
+
+MixpanelLib.prototype._set_first_touch_people_properties = function() {
+    if (this.get_config('skip_first_touch_marketing')) {
+        return;
+    }
+    // We need null UTM params in the object because
+    // UTM parameters act as a tuple. If any UTM param
+    // is present, then we set all UTM params including
+    // empty ones together
+    var utm_params = _.info.campaignParams(null);
+    var initial_utm_params = {};
+    var has_utm = false;
+    _.each(utm_params, function(utm_value, utm_key) {
+        initial_utm_params['initial_' + utm_key] = utm_value;
+        if (utm_value) {
+            has_utm = true;
+        }
+    });
+    if (has_utm) {
+        this['people'].set_once(initial_utm_params);
+    }
+};
+
+// the services that store or send on their own; at init, and again on an opt-in under 'require_consent'
+MixpanelLib.prototype._start_services = function() {
+    // There is no need to set the distinct id
+    // or the device id if something was already stored
+    // in the persistence
+    if (!this.get_distinct_id()) {
+        this._init_device_id();
+    }
+    this.flags.init();
     this._init_tab_id();
 
     // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
@@ -383,9 +410,63 @@ MixpanelLib.prototype._init = function(token, config, name) {
     } else {
         this.__session_recording_init_promise = this._check_and_start_session_recording();
     }
+};
 
-    this.autocapture = new Autocapture(this);
-    this.autocapture.init();
+/**
+ * Start tracking when consent starts allowing storage: batching, storage and the services, then
+ * what the page did before consent.
+ */
+MixpanelLib.prototype._start_tracking = function() {
+    if (!this._batch_requests) {
+        this._init_batching();
+    }
+    this['persistence'].open();
+    this._start_services();
+
+    // an identify() held from before consent goes first, so the people updates below go to that user
+    var held_identify = this._consent.takeHeldIdentify();
+    if (held_identify) {
+        this.identify.apply(this, held_identify);
+    }
+    // first-touch and referrer properties were dropped before consent; an init with consent sends
+    // them from create_mplib and _loaded instead
+    this._set_first_touch_people_properties();
+    this['people'].set_once(this['persistence'].get_referrer_info());
+};
+
+/**
+ * Stop tracking when consent stops allowing storage: stop sending, recording and storing. The
+ * props stay in memory, so an opt-in later on the page keeps the visitor's ID.
+ */
+MixpanelLib.prototype._stop_tracking = function() {
+    this.stop_batch_senders();
+    this.flags.reset();
+    this['persistence'].close();
+    this.recorderManager.stopSessionRecording();
+};
+
+/**
+ * Delete everything stored about the visitor except the decision itself and unsent replay: the
+ * persistence entry, queued requests, the tab ID and flag variants. Unsent replay stays on the
+ * device; the recorder only loads, and so only uploads it, once consent allows storage again. Run
+ * whenever consent doesn't allow storage, at init and after each decision.
+ */
+MixpanelLib.prototype._purge_stored_identifiers = function() {
+    this['persistence'].remove_stored_entry();
+    _.each(this.get_batcher_configs(), function(batcher_config) {
+        _.localStorage.remove(batcher_config.queue_key);
+    });
+    this._remove_tab_id();
+    this.flags.clearPersistedVariants();
+};
+
+MixpanelLib.prototype._remove_tab_id = function() {
+    this.tab_id = null;
+    // the support check probes storage by writing a key, which isn't allowed here; removing a key
+    // the browser doesn't have costs nothing and is handled where storage isn't there at all
+    var key_suffix = this._tab_id_key_suffix();
+    _.sessionStorage.remove('mp_tab_id_' + key_suffix);
+    _.sessionStorage.remove('mp_gen_new_tab_id_' + key_suffix);
 };
 
 MixpanelLib.prototype._init_batching = function() {
@@ -429,6 +510,7 @@ MixpanelLib.prototype._init_batching = function() {
                     }, this),
                     stopAllBatchingFunc: _.bind(this.stop_batch_senders, this),
                     usePersistence: true,
+                    consentGate: this._consent,
                 }
             );
         }, this);
@@ -438,38 +520,39 @@ MixpanelLib.prototype._init_batching = function() {
             people: batcher_for(batcher_configs.people),
             groups: batcher_for(batcher_configs.groups)
         };
-    }
-    if (this.get_config('batch_autostart')) {
-        this.start_batch_senders();
-    }
 
-    if (sendBeacon && window.addEventListener) {
-        // Before page closes or hides (user tabs away etc), attempt to flush any events
-        // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
-        // events will not be removed from the persistent store; if the site is loaded again,
-        // the events will be flushed again on startup and deduplicated on the Mixpanel server
-        // side.
-        // There is no reliable way to capture only page close events, so we lean on the
-        // visibilitychange and pagehide events as recommended at
-        // https://developer.mozilla.org/en-US/docs/Web/API/Window/unload_event#usage_notes.
-        // These events fire when the user clicks away from the current page/tab, so will occur
-        // more frequently than page unload, but are the only mechanism currently for capturing
-        // this scenario somewhat reliably.
-        var flush_on_unload = _.bind(function() {
-            if (!this.request_batchers.events.stopped) {
-                this.request_batchers.events.flush({unloading: true});
-            }
-        }, this);
-        window.addEventListener('pagehide', function(ev) {
-            if (ev['persisted']) {
-                flush_on_unload();
-            }
-        });
-        window.addEventListener('visibilitychange', function() {
-            if (document['visibilityState'] === 'hidden') {
-                flush_on_unload();
-            }
-        });
+        if (sendBeacon && window.addEventListener) {
+            // Before page closes or hides (user tabs away etc), attempt to flush any events
+            // queued up via navigator.sendBeacon. Since sendBeacon doesn't report success/failure,
+            // events will not be removed from the persistent store; if the site is loaded again,
+            // the events will be flushed again on startup and deduplicated on the Mixpanel server
+            // side.
+            // There is no reliable way to capture only page close events, so we lean on the
+            // visibilitychange and pagehide events as recommended at
+            // https://developer.mozilla.org/en-US/docs/Web/API/Window/unload_event#usage_notes.
+            // These events fire when the user clicks away from the current page/tab, so will occur
+            // more frequently than page unload, but are the only mechanism currently for capturing
+            // this scenario somewhat reliably.
+            var flush_on_unload = _.bind(function() {
+                if (!this.request_batchers.events.stopped) {
+                    this.request_batchers.events.flush({unloading: true});
+                }
+            }, this);
+            window.addEventListener('pagehide', function(ev) {
+                if (ev['persisted']) {
+                    flush_on_unload();
+                }
+            });
+            window.addEventListener('visibilitychange', function() {
+                if (document['visibilityState'] === 'hidden') {
+                    flush_on_unload();
+                }
+            });
+        }
+    }
+    // a page that started the senders before consent expects them running once it's given
+    if (this.get_config('batch_autostart') || this._batchers_were_started) {
+        this.start_batch_senders();
     }
 };
 
@@ -485,12 +568,16 @@ MixpanelLib.prototype._init_device_id = function() {
  * Assigns a unique UUID to this tab / window by leveraging sessionStorage.
  * This is primarily used for session recording, where data must be isolated to the current tab.
  */
+MixpanelLib.prototype._tab_id_key_suffix = function() {
+    return this.get_config('name') + '_' + this.get_config('token');
+};
+
 MixpanelLib.prototype._init_tab_id = function() {
-    if (this.get_config('disable_persistence')) {
-        console.log('Tab ID initialization skipped due to disable_persistence config');
+    if (!this._consent.allowsPersistence()) {
+        console.log('Tab ID initialization skipped without persistence');
     } else if (_.sessionStorage.is_supported()) {
         try {
-            var key_suffix = this.get_config('name') + '_' + this.get_config('token');
+            var key_suffix = this._tab_id_key_suffix();
             var tab_id_key = 'mp_tab_id_' + key_suffix;
 
             // A flag is used to determine if sessionStorage is copied over and we need to generate a new tab ID.
@@ -521,9 +608,12 @@ MixpanelLib.prototype.get_tab_id = function () {
     return this.tab_id || null;
 };
 
-MixpanelLib.prototype._check_and_start_session_recording = addOptOutCheckMixpanelLib(function(force_start) {
+MixpanelLib.prototype._check_and_start_session_recording = function(force_start) {
+    if (!this._consent.allowsApiCalls()) {
+        return;
+    }
     return this.recorderManager.checkAndStartSessionRecording(force_start);
-});
+};
 
 MixpanelLib.prototype._start_recording_on_event = safewrap(function(event_name, properties) {
     // Wait for recording init to complete before evaluating event triggers.
@@ -613,7 +703,7 @@ MixpanelLib.prototype._dom_loaded = function() {
         this._track_dom.apply(this, item);
     }, this);
 
-    if (!this.has_opted_out_tracking()) {
+    if (this._consent.allowsApiCalls()) {
         _.each(this.__request_queue, function(item) {
             this._send_request.apply(this, item);
         }, this);
@@ -674,6 +764,15 @@ MixpanelLib.prototype._prepare_callback = function(callback, data) {
 
 MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     var succeeded = true;
+
+    // event, people and group requests all pass here; flags and replay ask the gate themselves
+    if (!this._consent.allowsSending()) {
+        console.log('Request dropped without consent');
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return false;
+    }
 
     if (ENQUEUE_REQUESTS) {
         this.__request_queue.push(arguments);
@@ -832,6 +931,10 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
 };
 
 MixpanelLib.prototype._fetch_remote_settings = function(mode) {
+    if (!this._consent.allowsFetching()) {
+        return Promise.resolve();
+    }
+
     var self = this;
     var disableRecordingIfStrict = function() {
         if (mode === 'strict') {
@@ -1106,7 +1209,6 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
     return request_enqueued_or_initiated && truncated_data;
 };
 
-MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(
 /**
  * Track an event. This is the most important and
  * frequently used Mixpanel function.
@@ -1131,7 +1233,17 @@ MixpanelLib.prototype.track = addOptOutCheckMixpanelLib(
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
-function(event_name, properties, options, callback) {
+MixpanelLib.prototype.track = function(event_name, properties, options, callback) {
+    if (!callback && typeof options === 'function') {
+        callback = options;
+        options = null;
+    }
+    if (!this._consent.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     var ret;
     if (!(options && options.skip_hooks)) {
         ret = this._run_hook('before_track', event_name, properties);
@@ -1143,10 +1255,6 @@ function(event_name, properties, options, callback) {
         }
     }
 
-    if (!callback && typeof options === 'function') {
-        callback = options;
-        options = null;
-    }
     options = options || {};
     var transport = options['transport']; // external API, don't minify 'transport' prop
     if (transport) {
@@ -1237,9 +1345,8 @@ function(event_name, properties, options, callback) {
     }
 
     return ret;
-});
+};
 
-MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(
 /**
  * Register the current user into one/many groups.
  *
@@ -1255,7 +1362,13 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  *
  */
-function(group_key, group_ids, callback) {
+MixpanelLib.prototype.set_group = function(group_key, group_ids, callback) {
+    if (!this._consent.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     if (!_.isArray(group_ids)) {
         group_ids = [group_ids];
     }
@@ -1263,9 +1376,8 @@ function(group_key, group_ids, callback) {
     prop[group_key] = group_ids;
     this.register(prop);
     return this['people'].set(group_key, group_ids, callback);
-});
+};
 
-MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(
 /**
  * Add a new group for this user.
  *
@@ -1278,7 +1390,13 @@ MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(
  * @param {*} group_id A valid Mixpanel property type
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
-function(group_key, group_id, callback) {
+MixpanelLib.prototype.add_group = function(group_key, group_id, callback) {
+    if (!this._consent.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     var old_values = this.get_property(group_key);
     var prop = {};
     if (old_values === undefined) {
@@ -1292,9 +1410,8 @@ function(group_key, group_id, callback) {
         }
     }
     return this['people'].union(group_key, group_id, callback);
-});
+};
 
-MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(
 /**
  * Remove a group from this user.
  *
@@ -1307,7 +1424,13 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(
  * @param {*} group_id A valid Mixpanel property type
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
-function(group_key, group_id, callback) {
+MixpanelLib.prototype.remove_group = function(group_key, group_id, callback) {
+    if (!this._consent.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     var old_value = this.get_property(group_key);
     // if the value doesn't exist, the persistent store is unchanged
     if (old_value !== undefined) {
@@ -1321,9 +1444,8 @@ function(group_key, group_id, callback) {
         }
     }
     return this['people'].remove(group_key, group_id, callback);
-});
+};
 
-MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(
 /**
  * Track an event with specific groups.
  *
@@ -1337,7 +1459,7 @@ MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(
  * @param {Object=} groups An object mapping group name keys to one or more values
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
-function(event_name, properties, groups, callback) {
+MixpanelLib.prototype.track_with_groups = function(event_name, properties, groups, callback) {
     var tracking_props = _.extend({}, properties || {});
     _.each(groups, function(v, k) {
         if (v !== null && v !== undefined) {
@@ -1345,7 +1467,7 @@ function(event_name, properties, groups, callback) {
         }
     });
     return this.track(event_name, tracking_props, callback);
-});
+};
 
 MixpanelLib.prototype._create_map_key = function (group_key, group_id) {
     return group_key + '_' + JSON.stringify(group_id);
@@ -1372,13 +1494,12 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
     var group = this._cached_groups[map_key];
     if (group === undefined || group._group_key !== group_key || group._group_id !== group_id) {
         group = new MixpanelGroup();
-        group._init(this, group_key, group_id);
+        group._init(this, group_key, group_id, this._consent);
         this._cached_groups[map_key] = group;
     }
     return group;
 };
 
-MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(
 /**
  * Track a default Mixpanel page view event, which includes extra default event properties to
  * improve page view data.
@@ -1424,7 +1545,7 @@ MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(
  * @returns {Boolean|Object} If the tracking request was successfully initiated/queued, an object
  * with the tracking payload sent to the API server is returned; otherwise false.
  */
-function(properties, options) {
+MixpanelLib.prototype.track_pageview = function(properties, options) {
     if (typeof properties !== 'object') {
         properties = {};
     }
@@ -1448,7 +1569,7 @@ function(properties, options) {
     }
 
     return this.track(event_name, event_properties);
-});
+};
 
 /**
  * Track clicks on a set of document elements. Selector must be a
@@ -1711,6 +1832,10 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * to the same user identity. If ID Merge is disabled, alias can
  * be used to connect pre- and post-registration events.
  *
+ * With consent_mode 'require_consent', the latest call made before the visitor consents is held in
+ * memory, without storing or sending anything, and applied if they opt in on the same page. reset()
+ * discards it.
+ *
  * @param {String} [new_distinct_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
 MixpanelLib.prototype.identify = function(
@@ -1723,6 +1848,12 @@ MixpanelLib.prototype.identify = function(
     //  _set_once_callback:function  A callback to be run if and when the People set_once queue is flushed
     //  _union_callback:function  A callback to be run if and when the People union queue is flushed
     //  _unset_callback:function  A callback to be run if and when the People unset queue is flushed
+    if (!this._consent.allowsStoring()) {
+        this._consent.holdIdentify(Array.prototype.slice.call(arguments));
+        console.log('identify() held until consent');
+        return;
+    }
+
     var ret = this._run_hook('before_identify', new_distinct_id);
 
     if (ret === null) {
@@ -1787,7 +1918,11 @@ MixpanelLib.prototype.reset = function() {
     this.stop_session_recording();
     this['persistence'].clear();
     this._flags.identify_called = false;
-    this._init_device_id();
+    this._consent.takeHeldIdentify();
+    // before consent the device ID is minted on opt-in instead
+    if (this._consent.allowsStoring()) {
+        this._init_device_id();
+    }
     this._check_and_start_session_recording();
     this.flags.reset();
 };
@@ -1849,6 +1984,11 @@ MixpanelLib.prototype.get_distinct_id = function() {
  * @param {String} [original] The current identifier being used for this user.
  */
 MixpanelLib.prototype.alias = function(alias, original) {
+    if (!this._consent.allowsStoring()) {
+        console.log('alias() dropped without consent');
+        return;
+    }
+
     // If the $people_distinct_id key exists in persistence, there has been a previous
     // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
     // this ID, as it will duplicate users.
@@ -1978,6 +2118,11 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // customize the name of cookie/localStorage set by opt-in/opt-out methods
  *       opt_out_tracking_cookie_prefix: null
  *
+ *       // what happens before the visitor decides: 'no_consent_required' (unset) or
+ *       // 'require_consent'. opt_out_tracking_by_default applies only when it's unset.
+ *       // Fixed at init.
+ *       consent_mode: null
+ *
  *       // type of persistent store for super properties (cookie/
  *       // localStorage) if set to 'localStorage', any existing
  *       // mixpanel cookie value with the same persistence_name
@@ -2029,6 +2174,11 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  */
 MixpanelLib.prototype.set_config = function(config) {
     if (_.isObject(config)) {
+        if (this._consent && 'consent_mode' in config && config['consent_mode'] !== this.get_config('consent_mode')) {
+            console.critical('consent_mode can only be set at init; ignoring the change');
+            config = _.extend({}, config);
+            delete config['consent_mode'];
+        }
         _.extend(this['config'], config);
 
         var new_batch_size = config['batch_size'];
@@ -2157,130 +2307,42 @@ MixpanelLib.prototype._event_is_disabled = function(event_name) {
         _.include(this.__disabled_events, event_name);
 };
 
-// perform some housekeeping around GDPR opt-in/out state
-MixpanelLib.prototype._gdpr_init = function() {
-    var is_localStorage_requested = this.get_config('opt_out_tracking_persistence_type') === 'localStorage';
-
-    // try to convert opt-in/out cookies to localStorage if possible
-    if (is_localStorage_requested && _.localStorage.is_supported()) {
-        if (!this.has_opted_in_tracking({'persistence_type': 'localStorage'}) && this.has_opted_in_tracking({'persistence_type': 'cookie'})) {
-            this.opt_in_tracking({'enable_persistence': false});
-        }
-        if (!this.has_opted_out_tracking({'persistence_type': 'localStorage'}) && this.has_opted_out_tracking({'persistence_type': 'cookie'})) {
-            this.opt_out_tracking({'clear_persistence': false});
-        }
-        this.clear_opt_in_out_tracking({
-            'persistence_type': 'cookie',
-            'enable_persistence': false
-        });
-    }
-
-    // check whether the user has already opted out - if so, clear & disable persistence
-    if (this.has_opted_out_tracking()) {
-        this._gdpr_update_persistence({'clear_persistence': true});
-
-    // check whether we should opt out by default
-    // note: we don't clear persistence here by default since opt-out default state is often
-    //       used as an initial state while GDPR information is being collected
-    } else if (!this.has_opted_in_tracking() && (
-        this.get_config('opt_out_tracking_by_default') || _.cookie.get('mp_optout')
-    )) {
-        _.cookie.remove('mp_optout');
-        this.opt_out_tracking({
-            'clear_persistence': this.get_config('opt_out_persistence_by_default')
-        });
-    }
+/**
+ * Whether consent allows something now; see ConsentManager.allows. The separately built recorder
+ * bundle calls this by its quoted name.
+ * @param {string} capability
+ * @returns {boolean}
+ */
+MixpanelLib.prototype._consent_allows = function(capability) {
+    return this._consent.allows(capability);
 };
 
 /**
- * Enable or disable persistence based on options
- * only enable/disable if persistence is not already in this state
- * @param {boolean} [options.clear_persistence] If true, will delete all data stored by the sdk in persistence and disable it
- * @param {boolean} [options.enable_persistence] If true, will re-enable sdk persistence
+ * Turn persistence, batching and recording off, or back on after an opt-in. Batching only restarts
+ * if it was running before, so an opt-in doesn't start it for the first time.
+ * @param {boolean} disabled
  */
-MixpanelLib.prototype._gdpr_update_persistence = function(options) {
-    var disabled;
-    if (options && options['clear_persistence']) {
-        disabled = true;
-    } else if (options && options['enable_persistence']) {
-        disabled = false;
+MixpanelLib.prototype._set_persistence_disabled = function(disabled) {
+    if (disabled) {
+        this['persistence'].close();
     } else {
-        return;
-    }
-
-    if (!this.get_config('disable_persistence') && this['persistence'].disabled !== disabled) {
-        this['persistence'].set_disabled(disabled);
+        this['persistence'].open();
     }
 
     if (disabled) {
         this.stop_batch_senders();
         this.stop_session_recording();
-    } else {
-        // only start batchers after opt-in if they have previously been started
-        // in order to avoid unintentionally starting up batching for the first time
-        if (this._batchers_were_started) {
-            this.start_batch_senders();
-        }
+    } else if (this._batchers_were_started) {
+        this.start_batch_senders();
     }
 };
 
-// call a base gdpr function after constructing the appropriate token and options args
-MixpanelLib.prototype._gdpr_call_func = function(func, options) {
-    options = _.extend({
-        'track': _.bind(this.track, this),
-        'persistence_type': this.get_config('opt_out_tracking_persistence_type'),
-        'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
-        'cookie_expiration': this.get_config('cookie_expiration'),
-        'cross_site_cookie': this.get_config('cross_site_cookie'),
-        'cross_subdomain_cookie': this.get_config('cross_subdomain_cookie'),
-        'cookie_domain': this.get_config('cookie_domain'),
-        'secure_cookie': this.get_config('secure_cookie'),
-        'ignore_dnt': this.get_config('ignore_dnt')
-    }, options);
-
-    // check if localStorage can be used for recording opt out status, fall back to cookie if not
-    if (!_.localStorage.is_supported()) {
-        options['persistence_type'] = 'cookie';
+// delete the identified user's profile and charges, which the opt-out about to happen would block
+MixpanelLib.prototype._delete_user_for_opt_out = function() {
+    if (this['people'] && this['people']._identify_called()) {
+        this['people'].delete_user();
+        this['people'].clear_charges();
     }
-
-    return func(this.get_config('token'), {
-        track: options['track'],
-        trackEventName: options['track_event_name'],
-        trackProperties: options['track_properties'],
-        persistenceType: options['persistence_type'],
-        persistencePrefix: options['cookie_prefix'],
-        cookieDomain: options['cookie_domain'],
-        cookieExpiration: options['cookie_expiration'],
-        crossSiteCookie: options['cross_site_cookie'],
-        crossSubdomainCookie: options['cross_subdomain_cookie'],
-        secureCookie: options['secure_cookie'],
-        ignoreDnt: options['ignore_dnt']
-    });
-};
-
-// check an opt-in/out status, reading the store that holds the flag unless options name one
-MixpanelLib.prototype._gdpr_check_status = function(func, options) {
-    options = _.extend({
-        'cookie_prefix': this.get_config('opt_out_tracking_cookie_prefix'),
-        'ignore_dnt': this.get_config('ignore_dnt')
-    }, options);
-
-    var token = this.get_config('token');
-    var persistence_type = options['persistence_type'];
-    if (!persistence_type) {
-        persistence_type = getOptOutCheckPersistenceType(
-            token, this.get_config('opt_out_tracking_persistence_type'), options['cookie_prefix']
-        );
-    } else if (!_.localStorage.is_supported()) {
-        persistence_type = 'cookie';
-    }
-
-    return func(token, {
-        persistenceType: persistence_type,
-        persistencePrefix: options['cookie_prefix'],
-        ignoreDnt: options['ignore_dnt'],
-        window: this.get_config('window') // used to override window during browser tests
-    });
 };
 
 /**
@@ -2302,6 +2364,10 @@ MixpanelLib.prototype._gdpr_check_status = function(func, options) {
  * });
  * ```
  *
+ * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
+ * cookie config: the storage options and enable_persistence below don't apply, and the track
+ * options do.
+ *
  * @param {Object} [options] A dictionary of config options to override
  * @param {function} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
  * @param {string} [options.track_event_name=$opt_in] Event name to be used for tracking the opt-in action
@@ -2316,12 +2382,7 @@ MixpanelLib.prototype._gdpr_check_status = function(func, options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.opt_in_tracking = function(options) {
-    options = _.extend({
-        'enable_persistence': true
-    }, options);
-
-    this._gdpr_call_func(optIn, options);
-    this._gdpr_update_persistence(options);
+    this._consent.optIn(options);
 };
 
 /**
@@ -2339,6 +2400,10 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * });
  * ```
  *
+ * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
+ * cookie config: the storage options, clear_persistence and delete_user below don't apply. The
+ * stored identifiers are deleted instead, and no $delete is sent.
+ *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.delete_user=true] If true, will delete the currently identified user's profile and clear all charges after opting the user out
  * @param {boolean} [options.clear_persistence=true] If true, will delete all data stored by the sdk in persistence
@@ -2351,19 +2416,7 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.opt_out_tracking = function(options) {
-    options = _.extend({
-        'clear_persistence': true,
-        'delete_user': true
-    }, options);
-
-    // delete user and clear charges since these methods may be disabled by opt-out
-    if (options['delete_user'] && this['people'] && this['people']._identify_called()) {
-        this['people'].delete_user();
-        this['people'].clear_charges();
-    }
-
-    this._gdpr_call_func(optOut, options);
-    this._gdpr_update_persistence(options);
+    this._consent.optOut(options);
 };
 
 /**
@@ -2375,13 +2428,15 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
  * // use has_opted_in value
  * ```
  *
+ * With consent_mode 'require_consent' the options don't apply.
+ *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.persistence_type] Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @returns {boolean} current opt-in status
  */
 MixpanelLib.prototype.has_opted_in_tracking = function(options) {
-    return this._gdpr_check_status(hasOptedIn, options);
+    return this._consent.hasOptedIn(options);
 };
 
 /**
@@ -2393,13 +2448,16 @@ MixpanelLib.prototype.has_opted_in_tracking = function(options) {
  * // use has_opted_out value
  * ```
  *
+ * With consent_mode 'require_consent' the options don't apply, and a stored refusal or Do Not Track
+ * counts as opted out.
+ *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.persistence_type] Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
  * @returns {boolean} current opt-out status
  */
 MixpanelLib.prototype.has_opted_out_tracking = function(options) {
-    return this._gdpr_check_status(hasOptedOut, options);
+    return this._consent.hasOptedOut(options);
 };
 
 /**
@@ -2418,6 +2476,11 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  * });
  * ```
  *
+ * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
+ * cookie config: the storage options and enable_persistence below don't apply. Clearing also
+ * deletes the device's stored identifiers, and on a page tracking after an opt-in it stops
+ * tracking.
+ *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.enable_persistence=true] If true, will re-enable sdk persistence
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
@@ -2429,12 +2492,7 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  * @param {boolean} [options.secure_cookie] Whether the opt-in cookie is set as secure or not (overrides value specified in this Mixpanel instance's config)
  */
 MixpanelLib.prototype.clear_opt_in_out_tracking = function(options) {
-    options = _.extend({
-        'enable_persistence': true
-    }, options);
-
-    this._gdpr_call_func(clearOptInOut, options);
-    this._gdpr_update_persistence(options);
+    this._consent.clear(options);
 };
 
 MixpanelLib.prototype.report_error = function(msg, err) {
@@ -2498,6 +2556,7 @@ MixpanelLibProto['toString']                           = MixpanelLibProto.toStri
 MixpanelLibProto['opt_out_tracking']                   = MixpanelLibProto.opt_out_tracking;
 MixpanelLibProto['opt_in_tracking']                    = MixpanelLibProto.opt_in_tracking;
 MixpanelLibProto['has_opted_out_tracking']             = MixpanelLibProto.has_opted_out_tracking;
+MixpanelLibProto['_consent_allows']                    = MixpanelLibProto._consent_allows;
 MixpanelLibProto['has_opted_in_tracking']              = MixpanelLibProto.has_opted_in_tracking;
 MixpanelLibProto['clear_opt_in_out_tracking']          = MixpanelLibProto.clear_opt_in_out_tracking;
 MixpanelLibProto['get_group']                          = MixpanelLibProto.get_group;

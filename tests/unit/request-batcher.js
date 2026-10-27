@@ -10,6 +10,7 @@ chai.use(sinonChai);
 
 import { RequestBatcher } from '../../src/request-batcher';
 import {mapValues} from 'lodash';
+import { ALLOW_ALL_CONSENT_GATE } from './test-utils/consent-gate';
 
 const LOCALSTORAGE_KEY = `fake-rb-key`;
 const START_TIME = 100000;
@@ -46,6 +47,7 @@ describe(`RequestBatcher`, function() {
       queueStorage: new LocalStorageWrapper(localStorage),
       sharedLockStorage: localStorage,
       usePersistence: true,
+      consentGate: ALLOW_ALL_CONSENT_GATE,
     }, optionOverrides));
   }
 

@@ -33,13 +33,13 @@ function assertPersistenceValue(persistenceType, token, value, persistencePrefix
   }
 }
 
-describe(`GDPR utils`, function() {
+describe(`opt-out flag`, function() {
   // these imports must be re-required before each test
   // so that they reference the correct jsdom document
   let _window, _, gdpr;
 
   jsdomSetup({
-    reImportModules: [`../../src/window`, `../../src/utils`, `../../src/gdpr-utils`],
+    reImportModules: [`../../src/window`, `../../src/utils`, `../../src/opt-out-flag`],
     beforeCallback: modules => {
       [_window, _, gdpr] = modules;
       window.localStorage.clear();
@@ -534,68 +534,6 @@ describe(`GDPR utils`, function() {
         gdpr.optIn(token, {persistenceType: `localStorage`});
 
         expect(gdpr.getOptOutCheckPersistenceType(token, `localStorage`, CUSTOM_PERSISTENCE_PREFIX)).to.equal(`cookie`);
-      });
-    });
-  });
-
-  [
-    {wrapperName: `addOptOutCheckMixpanelLib`, makeOwner: mixpanelInstance => mixpanelInstance},
-    {wrapperName: `addOptOutCheckMixpanelPeople`, makeOwner: mixpanelInstance => ({_mixpanel: mixpanelInstance})},
-    {wrapperName: `addOptOutCheckMixpanelGroup`, makeOwner: mixpanelInstance => ({_mixpanel: mixpanelInstance})},
-    {wrapperName: `addOptOutCheckSessionRecording`, makeOwner: mixpanelInstance => ({_mixpanel: mixpanelInstance})},
-  ].forEach(function({wrapperName, makeOwner}) {
-    describe(wrapperName, function() {
-      const eventName = `єνєηт`;
-      const eventProperties = {'𝖕𝖗𝖔𝖕𝖊𝖗𝖙𝖞': `𝓿𝓪𝓵𝓾𝓮`};
-      let wrappedMethod, owner;
-
-      function setupMocks(hasOptedOutTracking) {
-        wrappedMethod = sinon.stub().returns(`result`);
-        owner = makeOwner({has_opted_out_tracking: hasOptedOutTracking});
-        owner.method = gdpr[wrapperName](wrappedMethod);
-      }
-
-      it(`should call the wrapped method if the user is not opted out`, function() {
-        setupMocks(() => false);
-
-        expect(owner.method(eventName, eventProperties)).to.equal(`result`);
-        expect(wrappedMethod.calledOnceWith(eventName, eventProperties)).to.be.true;
-        expect(wrappedMethod.calledOn(owner)).to.be.true;
-      });
-
-      it(`should not call the wrapped method if the user is opted out`, function() {
-        setupMocks(() => true);
-
-        expect(owner.method(eventName, eventProperties)).to.be.undefined;
-        expect(wrappedMethod.notCalled).to.be.true;
-      });
-
-      it(`should not invoke the callback directly if the user is not opted out`, function() {
-        setupMocks(() => false);
-        const callback = sinon.spy();
-
-        owner.method(eventName, eventProperties, callback);
-
-        expect(callback.notCalled).to.be.true;
-      });
-
-      it(`should invoke the callback directly if the user is opted out`, function() {
-        setupMocks(() => true);
-        const callback = sinon.spy();
-
-        owner.method(eventName, eventProperties, callback);
-
-        expect(callback.calledOnceWith(0)).to.be.true;
-      });
-
-      it(`should call the wrapped method if an unexpected error occurs`, function() {
-        setupMocks(() => {
-          throw new Error(`Unexpected error!`);
-        });
-
-        owner.method(eventName, eventProperties);
-
-        expect(wrappedMethod.calledOnceWith(eventName, eventProperties)).to.be.true;
       });
     });
   });

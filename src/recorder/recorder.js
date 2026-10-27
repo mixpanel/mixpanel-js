@@ -2,6 +2,7 @@ import { record } from './rrweb-entrypoint';
 import { Promise } from '../promise-polyfill';
 import { SessionRecording } from './session-recording';
 import { RecordingRegistry } from './recording-registry';
+import { consentGateFor } from '../consent-gate';
 
 import { console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
 
@@ -15,12 +16,14 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
     this.mixpanelInstance = mixpanelInstance;
     this.rrwebRecord = rrwebRecord || record;
     this.sharedLockStorage = sharedLockStorage;
+    this.consentGate = consentGateFor(mixpanelInstance);
 
     /**
      * @member {import('./registry').RecordingRegistry}
      */
     this.recordingRegistry = new RecordingRegistry({
         mixpanelInstance: this.mixpanelInstance,
+        consentGate: this.consentGate,
         errorReporter: logger.error,
         sharedLockStorage: sharedLockStorage
     });
@@ -57,6 +60,7 @@ MixpanelRecorder.prototype.startRecording = function(options) {
      */
     var sessionRecordingOptions = {
         mixpanelInstance: this.mixpanelInstance,
+        consentGate: this.consentGate,
         onBatchSent: onBatchSent,
         onIdleTimeout: onIdleTimeout,
         onMaxLengthReached: onMaxLengthReached,

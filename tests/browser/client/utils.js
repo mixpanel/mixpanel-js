@@ -292,6 +292,34 @@ export function getIDBValue(storeName, key) {
   });
 }
 
+export function putIDBValue(storeName, key, value) {
+  const dbName = STORE_TO_DB_NAME[storeName];
+  if (!dbName) {
+    return Promise.reject(new Error(`Unknown IDB store: ${storeName}`));
+  }
+  return new Promise(function (resolve, reject) {
+    const openRequest = window.indexedDB.open(dbName, 1);
+    openRequest.onupgradeneeded = function (ev) {
+      ev.target.result.createObjectStore(storeName);
+    };
+    openRequest.onsuccess = function () {
+      const db = openRequest.result;
+      const txn = db.transaction([storeName], `readwrite`);
+      txn.objectStore(storeName).put(value, key);
+      txn.oncomplete = function () {
+        db.close();
+        resolve();
+      };
+      txn.onerror = function () {
+        db.close();
+        reject(txn.error);
+      };
+    };
+    openRequest.onerror = function () { reject(openRequest.error); };
+    openRequest.onblocked = function () { reject(new Error(`putIDBValue open blocked`)); };
+  });
+}
+
 export async function clearAllStorage() {
   if (window.localStorage) {
     window.localStorage.clear();

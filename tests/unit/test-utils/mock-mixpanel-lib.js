@@ -50,4 +50,8 @@ export class MockMixpanelLib {
   has_opted_out_tracking() {
     return false;
   }
+
+  _consent_allows(capability) {
+    return capability !== `api_calls` || !this.has_opted_out_tracking();
+  }
 }

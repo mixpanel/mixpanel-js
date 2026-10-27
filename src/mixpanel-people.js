@@ -1,5 +1,4 @@
 /* eslint camelcase: "off" */
-import { addOptOutCheckMixpanelPeople } from './gdpr-utils';
 import {
     SET_ACTION,
     SET_ONCE_ACTION,
@@ -20,11 +19,15 @@ function MixpanelPeople() {}
 
 _.extend(MixpanelPeople.prototype, apiActions);
 
-MixpanelPeople.prototype._init = function(mixpanel_instance) {
+/**
+ * @param {Object} mixpanel_instance
+ * @param {import('./consent-gate').ConsentGate} consentGate
+ */
+MixpanelPeople.prototype._init = function(mixpanel_instance, consentGate) {
     this._mixpanel = mixpanel_instance;
+    this.consentGate = consentGate;
 };
 
-MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(
 /**
 * Set properties on a user record.
 *
@@ -45,11 +48,17 @@ MixpanelPeople.prototype.set = addOptOutCheckMixpanelPeople(
 * @param {*} [to] A value to set on the given property name
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-function(prop, to, callback) {
-    var data = this.set_action(prop, to);
+MixpanelPeople.prototype.set = function(prop, to, callback) {
     if (_.isObject(prop)) {
         callback = to;
     }
+    if (!this.consentGate.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
+    var data = this.set_action(prop, to);
     // make sure that the referrer info has been updated and saved
     if (this._get_config('save_referrer')) {
         this._mixpanel['persistence'].update_referrer_info(document.referrer);
@@ -62,9 +71,8 @@ function(prop, to, callback) {
         data[SET_ACTION]
     );
     return this._send_request(data, callback);
-});
+};
 
-MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(
 /**
 * Set properties on a user record, only if they do not yet exist.
 * This will not overwrite previous people property values, unlike
@@ -87,15 +95,20 @@ MixpanelPeople.prototype.set_once = addOptOutCheckMixpanelPeople(
 * @param {*} [to] A value to set on the given property name
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-function(prop, to, callback) {
-    var data = this.set_once_action(prop, to);
+MixpanelPeople.prototype.set_once = function(prop, to, callback) {
     if (_.isObject(prop)) {
         callback = to;
     }
+    if (!this.consentGate.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
+    var data = this.set_once_action(prop, to);
     return this._send_request(data, callback);
-});
+};
 
-MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(
 /**
 * Unset properties on a user record (permanently removes the properties and their values from a profile).
 *
@@ -110,12 +123,17 @@ MixpanelPeople.prototype.unset = addOptOutCheckMixpanelPeople(
 * @param {Array|String} prop If a string, this is the name of the property. If an array, this is a list of property names.
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-function(prop, callback) {
+MixpanelPeople.prototype.unset = function(prop, callback) {
+    if (!this.consentGate.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     var data = this.unset_action(prop);
     return this._send_request(data, callback);
-});
+};
 
-MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(
 /**
 * Increment/decrement numeric people analytics properties.
 *
@@ -142,7 +160,16 @@ MixpanelPeople.prototype.increment = addOptOutCheckMixpanelPeople(
 * @param {Number} [by] An amount to increment the given property
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-function(prop, by, callback) {
+MixpanelPeople.prototype.increment = function(prop, by, callback) {
+    if (_.isObject(prop)) {
+        callback = by;
+    }
+    if (!this.consentGate.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     var data = {};
     var $add = {};
     if (_.isObject(prop)) {
@@ -156,7 +183,6 @@ function(prop, by, callback) {
                 }
             }
         }, this);
-        callback = by;
     } else {
         // convenience: mixpanel.people.increment('property'); will
         // increment 'property' by 1
@@ -168,9 +194,8 @@ function(prop, by, callback) {
     data[ADD_ACTION] = $add;
 
     return this._send_request(data, callback);
-});
+};
 
-MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(
 /**
 * Append a value to a list-valued people analytics property.
 *
@@ -191,15 +216,20 @@ MixpanelPeople.prototype.append = addOptOutCheckMixpanelPeople(
 * @param {*} [value] value An item to append to the list
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-function(list_name, value, callback) {
+MixpanelPeople.prototype.append = function(list_name, value, callback) {
     if (_.isObject(list_name)) {
         callback = value;
     }
+    if (!this.consentGate.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     var data = this.append_action(list_name, value);
     return this._send_request(data, callback);
-});
+};
 
-MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(
 /**
 * Remove a value from a list-valued people analytics property.
 *
@@ -212,15 +242,20 @@ MixpanelPeople.prototype.remove = addOptOutCheckMixpanelPeople(
 * @param {*} [value] value Item to remove from the list
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-function(list_name, value, callback) {
+MixpanelPeople.prototype.remove = function(list_name, value, callback) {
     if (_.isObject(list_name)) {
         callback = value;
     }
+    if (!this.consentGate.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     var data = this.remove_action(list_name, value);
     return this._send_request(data, callback);
-});
+};
 
-MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(
 /**
 * Merge a given list with a list-valued people analytics property,
 * excluding duplicate values.
@@ -248,15 +283,20 @@ MixpanelPeople.prototype.union = addOptOutCheckMixpanelPeople(
 * @param {*} [values] Value / values to merge with the given property
 * @param {Function} [callback] If provided, the callback will be called after tracking the event.
 */
-function(list_name, values, callback) {
+MixpanelPeople.prototype.union = function(list_name, values, callback) {
     if (_.isObject(list_name)) {
         callback = values;
     }
+    if (!this.consentGate.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     var data = this.union_action(list_name, values);
     return this._send_request(data, callback);
-});
+};
 
-MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(
 /**
  * Record that you have charged the current user a certain amount
  * of money. Charges recorded with track_charge() will appear in the
@@ -278,9 +318,15 @@ MixpanelPeople.prototype.track_charge = addOptOutCheckMixpanelPeople(
  * @param {Function} [callback] If provided, the callback will be called when the server responds
  * @deprecated
  */
-function(amount, properties, callback) { // eslint-disable-line no-unused-vars
+MixpanelPeople.prototype.track_charge = function(amount, properties, callback) { // eslint-disable-line no-unused-vars
+    if (!this.consentGate.allowsApiCalls()) {
+        if (_.isFunction(callback)) {
+            callback(0);
+        }
+        return;
+    }
     console.error('mixpanel.people.track_charge() is deprecated and no longer has any effect.');
-});
+};
 
 /**
  * Permanently clear all revenue report transactions from the

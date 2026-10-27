@@ -1781,7 +1781,9 @@ export function recorderTests (mixpanel) {
         const metaEvent = events.find(e => e.type === 4);
         const fullSnapshotEvent = events.find(e => e.type === 2);
         const incrementalSnapshotEvent = events.find(e => e.type === 3);
-        const consoleEvent = events.find(e => e.type === 6 && e.data.plugin.includes(`console`));
+        // debug mode logs the SDK's own messages too, so find the test's by its text
+        const consoleEvent = events.find(e => e.type === 6 && e.data.plugin.includes(`console`) &&
+          e.data.payload.payload[0] === `"test console log message"`);
 
         expect(metaEvent).to.exist;
         expect(fullSnapshotEvent).to.exist;

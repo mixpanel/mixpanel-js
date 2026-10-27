@@ -4,11 +4,13 @@ import { window } from '../window';
 /**
  * @type {import('./wrapper').StorageWrapper}
  */
-var IDBStorageWrapper = function (dbName, storeName, versionData) {
+var IDBStorageWrapper = function (dbName, storeName, versionData, options) {
     this.dbName = dbName;
     this.storeName = storeName;
     this.version = versionData.version;
     this.storeNamesInDb = versionData.storeNames;
+    // false to only open a database the device already has, for cleanup that mustn't create one
+    this.createIfMissing = !options || options.createIfMissing !== false;
     /**
      * @type {Promise<IDBDatabase>|null}
      */
@@ -19,25 +21,47 @@ IDBStorageWrapper.prototype._openDb = function () {
     var dbName = this.dbName;
     var version = this.version;
     var storeNamesInDb = this.storeNamesInDb;
-    return new Promise(function (resolve, reject) {
-        var openRequest = window.indexedDB.open(dbName, version);
-        openRequest['onerror'] = function () {
-            reject(openRequest.error);
-        };
+    var createIfMissing = this.createIfMissing;
+    var open = function () {
+        return new Promise(function (resolve, reject) {
+            var openRequest = window.indexedDB.open(dbName, version);
+            openRequest['onerror'] = function () {
+                reject(openRequest.error);
+            };
 
-        openRequest['onsuccess'] = function () {
-            resolve(openRequest.result);
-        };
+            openRequest['onsuccess'] = function () {
+                resolve(openRequest.result);
+            };
 
-        openRequest['onupgradeneeded'] = function (ev) {
-            var db = ev.target.result;
-
-            storeNamesInDb.forEach(function (storeName) {
-                if (!db.objectStoreNames.contains(storeName)) {
-                    db.createObjectStore(storeName);
+            openRequest['onupgradeneeded'] = function (ev) {
+                if (!createIfMissing && ev['oldVersion'] === 0) {
+                    // aborting fails the open; the new database stays at version 0, which
+                    // databases() doesn't list
+                    openRequest['transaction']['abort']();
+                    return;
                 }
-            });
-        };
+                var db = ev.target.result;
+
+                storeNamesInDb.forEach(function (storeName) {
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        db.createObjectStore(storeName);
+                    }
+                });
+            };
+        });
+    };
+
+    // where the browser lists its databases, a missing one isn't even opened
+    if (createIfMissing || !window.indexedDB['databases']) {
+        return open();
+    }
+    return window.indexedDB['databases']().then(function (databases) {
+        for (var i = 0; i < databases.length; i++) {
+            if (databases[i]['name'] === dbName) {
+                return open();
+            }
+        }
+        return Promise.reject(dbName + ' does not exist');
     });
 };
 
