@@ -218,7 +218,7 @@ mixpanel.add_group('company', 'mixpanel')
 
 ##### alias()
 
-> **alias**(`alias`, `original?`): `boolean` \| `Object` \| `-1` \| `-2`
+> **alias**(`alias`, `original?`): `boolean` \| `Object` \| `-1` \| `-2` \| `undefined`
 
 The alias method creates an alias which Mixpanel will use to
 remap one id to another. Multiple aliases can point to the
@@ -252,7 +252,7 @@ example will not work:
 
 ###### Returns
 
-`boolean` \| `Object` \| `-1` \| `-2`
+`boolean` \| `Object` \| `-1` \| `-2` \| `undefined`
 
 ###### Remarks
 
@@ -302,6 +302,11 @@ mixpanel.clear_opt_in_out_tracking({
     secure_cookie: true
 });
 ```
+
+With consent_mode 'require_consent', the decision is stored with the instance's persistence and
+cookie config: the storage options and enable_persistence below don't apply. Clearing also
+deletes the device's stored identifiers, and on a page tracking after an opt-in it stops
+tracking.
 
 <a id="disable"></a>
 
@@ -483,7 +488,7 @@ Check whether the user has opted in to data tracking and cookies/localstorage fo
 | ------ | ------ | ------ |
 | `options?` | \{ `cookie_prefix?`: `string`; `persistence_type?`: `string`; \} | A dictionary of config options to override |
 | `options.cookie_prefix?` | `string` | Custom prefix to be used in the cookie/localstorage name |
-| `options.persistence_type?` | `string` | Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable |
+| `options.persistence_type?` | `string` | Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag |
 
 ###### Returns
 
@@ -497,6 +502,8 @@ current opt-in status
 var has_opted_in = mixpanel.has_opted_in_tracking();
 // use has_opted_in value
 ```
+
+With consent_mode 'require_consent' the options don't apply.
 
 <a id="has_opted_out_tracking"></a>
 
@@ -512,7 +519,7 @@ Check whether the user has opted out of data tracking and cookies/localstorage f
 | ------ | ------ | ------ |
 | `options?` | \{ `cookie_prefix?`: `string`; `persistence_type?`: `string`; \} | A dictionary of config options to override |
 | `options.cookie_prefix?` | `string` | Custom prefix to be used in the cookie/localstorage name |
-| `options.persistence_type?` | `string` | Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable |
+| `options.persistence_type?` | `string` | Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag |
 
 ###### Returns
 
@@ -527,11 +534,14 @@ var has_opted_out = mixpanel.has_opted_out_tracking();
 // use has_opted_out value
 ```
 
+With consent_mode 'require_consent' the options don't apply, and a stored refusal or Do Not Track
+counts as opted out.
+
 <a id="identify"></a>
 
 ##### identify()
 
-> **identify**(`new_distinct_id?`): `-1` \| `undefined`
+> **identify**(`new_distinct_id?`, ...`args`): `-1` \| `undefined`
 
 Identify a user with a unique ID to track user activity across
 devices, tie a user to their events, and create a user profile.
@@ -547,6 +557,7 @@ identify for anonymous visitors to your site.
 | Parameter | Type | Description |
 | ------ | ------ | ------ |
 | `new_distinct_id?` | `string` | A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used. |
+| ...`args?` | `any`[] | - |
 
 ###### Returns
 
@@ -564,6 +575,10 @@ change the user's local distinct_id to the unique ID you pass.
 Events tracked prior to authentication will not be connected
 to the same user identity. If ID Merge is disabled, alias can
 be used to connect pre- and post-registration events.
+
+With consent_mode 'require_consent', the latest call made before the visitor consents is held in
+memory, without storing or sending anything, and applied if they opt in on the same page. reset()
+discards it.
 
 <a id="init"></a>
 
@@ -665,6 +680,10 @@ mixpanel.opt_in_tracking({
 });
 ```
 
+With consent_mode 'require_consent', the decision is stored with the instance's persistence and
+cookie config: the storage options and enable_persistence below don't apply, and the track
+options do.
+
 <a id="opt_out_tracking"></a>
 
 ##### opt\_out\_tracking()
@@ -704,6 +723,10 @@ mixpanel.opt_out_tracking({
     secure_cookie: true
 });
 ```
+
+With consent_mode 'require_consent', the decision is stored with the instance's persistence and
+cookie config: the storage options, clear_persistence and delete_user below don't apply. The
+stored identifiers are deleted instead, and no $delete is sent.
 
 <a id="push"></a>
 
@@ -936,6 +959,11 @@ The default config is:
 
       // customize the name of cookie/localStorage set by opt-in/opt-out methods
       opt_out_tracking_cookie_prefix: null
+
+      // what happens before the visitor decides: 'no_consent_required' (unset) or
+      // 'require_consent'. opt_out_tracking_by_default applies only when it's unset.
+      // Fixed at init.
+      consent_mode: null
 
       // type of persistent store for super properties (cookie/
       // localStorage) if set to 'localStorage', any existing
@@ -1241,7 +1269,7 @@ may be turned on for tracking page loads automatically.
 
 ##### track\_with\_groups()
 
-> **track\_with\_groups**(`event_name`, `properties`, `groups`, `callback?`): `any`
+> **track\_with\_groups**(`event_name`, `properties`, `groups`, `callback?`): `boolean` \| `Object`
 
 Track an event with specific groups.
 
@@ -1256,7 +1284,7 @@ Track an event with specific groups.
 
 ###### Returns
 
-`any`
+`boolean` \| `Object`
 
 ###### Example
 
@@ -1712,6 +1740,7 @@ mixpanel.people.unset(['gender', 'Company']);
 | <a id="property-batch_requests"></a> `batch_requests` | `boolean` | - |
 | <a id="property-batch_size"></a> `batch_size` | `number` | - |
 | <a id="property-cdn"></a> `cdn` | `string` | - |
+| <a id="property-consent_mode"></a> `consent_mode` | [`ConsentMode`](#consentmode) | - |
 | <a id="property-cookie_domain"></a> `cookie_domain` | `string` | - |
 | <a id="property-cookie_expiration-1"></a> `cookie_expiration` | `number` | - |
 | <a id="property-cookie_name"></a> `cookie_name` | `string` | - |
@@ -2257,6 +2286,20 @@ Once the fetch succeeds, its result replaces the cached variants for the rest of
 #### Returns
 
 `void`
+
+***
+
+<a id="consentmode"></a>
+
+### ConsentMode
+
+> **ConsentMode** = `"no_consent_required"` \| `"require_consent"` \| `null`
+
+What the SDK does before the visitor decides. "no_consent_required" tracks until
+opt_out_tracking(). "require_consent" stores and sends nothing until opt_in_tracking(); with it,
+opt_out_tracking_persistence_type and opt_out_persistence_by_default are ignored, and
+opt_out_tracking_cookie_prefix still names the stored flag. Unset means "no_consent_required";
+opt_out_tracking_by_default applies only when consent_mode is unset.
 
 ***
 

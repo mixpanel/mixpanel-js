@@ -10,6 +10,15 @@ export type Query = string | Element | Element[];
 
 export type RemoteSettingType = "disabled" | "fallback" | "strict";
 
+/**
+ * What the SDK does before the visitor decides. "no_consent_required" tracks until
+ * opt_out_tracking(). "require_consent" stores and sends nothing until opt_in_tracking(); with it,
+ * opt_out_tracking_persistence_type and opt_out_persistence_by_default are ignored, and
+ * opt_out_tracking_cookie_prefix still names the stored flag. Unset means "no_consent_required";
+ * opt_out_tracking_by_default applies only when consent_mode is unset.
+ */
+export type ConsentMode = "no_consent_required" | "require_consent" | null;
+
 
 export interface EventTriggerProps {
     percentage: number;
@@ -267,6 +276,7 @@ export interface Config {
   opt_out_persistence_by_default: boolean;
   opt_out_tracking_persistence_type: Persistence;
   opt_out_tracking_cookie_prefix: string;
+  consent_mode: ConsentMode;
   inapp_protocol: string;
   inapp_link_new_window: boolean;
   ignore_dnt: boolean;
