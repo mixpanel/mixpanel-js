@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.84.0'
+        LIB_VERSION: '2.85.0-rc1'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -20763,11 +20763,13 @@
     /**
      * @type {import('./wrapper').StorageWrapper}
      */
-    var IDBStorageWrapper = function (dbName, storeName, versionData) {
+    var IDBStorageWrapper = function (dbName, storeName, versionData, options) {
         this.dbName = dbName;
         this.storeName = storeName;
         this.version = versionData.version;
         this.storeNamesInDb = versionData.storeNames;
+        // false to only open a database the device already has, for cleanup that mustn't create one
+        this.createIfMissing = !options || options.createIfMissing !== false;
         /**
          * @type {Promise<IDBDatabase>|null}
          */
@@ -20778,25 +20780,47 @@
         var dbName = this.dbName;
         var version = this.version;
         var storeNamesInDb = this.storeNamesInDb;
-        return new PromisePolyfill(function (resolve, reject) {
-            var openRequest = win.indexedDB.open(dbName, version);
-            openRequest['onerror'] = function () {
-                reject(openRequest.error);
-            };
+        var createIfMissing = this.createIfMissing;
+        var open = function () {
+            return new PromisePolyfill(function (resolve, reject) {
+                var openRequest = win.indexedDB.open(dbName, version);
+                openRequest['onerror'] = function () {
+                    reject(openRequest.error);
+                };
 
-            openRequest['onsuccess'] = function () {
-                resolve(openRequest.result);
-            };
+                openRequest['onsuccess'] = function () {
+                    resolve(openRequest.result);
+                };
 
-            openRequest['onupgradeneeded'] = function (ev) {
-                var db = ev.target.result;
-
-                storeNamesInDb.forEach(function (storeName) {
-                    if (!db.objectStoreNames.contains(storeName)) {
-                        db.createObjectStore(storeName);
+                openRequest['onupgradeneeded'] = function (ev) {
+                    if (!createIfMissing && ev['oldVersion'] === 0) {
+                        // aborting fails the open; the new database stays at version 0, which
+                        // databases() doesn't list
+                        openRequest['transaction']['abort']();
+                        return;
                     }
-                });
-            };
+                    var db = ev.target.result;
+
+                    storeNamesInDb.forEach(function (storeName) {
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName);
+                        }
+                    });
+                };
+            });
+        };
+
+        // where the browser lists its databases, a missing one isn't even opened
+        if (createIfMissing || !win.indexedDB['databases']) {
+            return open();
+        }
+        return win.indexedDB['databases']().then(function (databases) {
+            for (var i = 0; i < databases.length; i++) {
+                if (databases[i]['name'] === dbName) {
+                    return open();
+                }
+            }
+            return PromisePolyfill.reject(dbName + ' does not exist');
         });
     };
 
@@ -20895,196 +20919,6 @@
         version: 1,
         storeNames: [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME]
     };
-
-    /**
-     * GDPR utils
-     *
-     * The General Data Protection Regulation (GDPR) is a regulation in EU law on data protection
-     * and privacy for all individuals within the European Union. It addresses the export of personal
-     * data outside the EU. The GDPR aims primarily to give control back to citizens and residents
-     * over their personal data and to simplify the regulatory environment for international business
-     * by unifying the regulation within the EU.
-     *
-     * This set of utilities is intended to enable opt in/out functionality in the Mixpanel JS SDK.
-     * These functions are used internally by the SDK and are not intended to be publicly exposed.
-     */
-
-
-    /**
-     * A function used to track a Mixpanel event (e.g. MixpanelLib.track)
-     * @callback trackFunction
-     * @param {String} event_name The name of the event. This can be anything the user does - 'Button Click', 'Sign Up', 'Item Purchased', etc.
-     * @param {Object} [properties] A set of properties to include with the event you're sending. These describe the user who did the event or details about the event itself.
-     * @param {Function} [callback] If provided, the callback function will be called after tracking the event.
-     */
-
-    /** Public **/
-
-    var GDPR_DEFAULT_PERSISTENCE_PREFIX = '__mp_opt_in_out_';
-
-    /**
-     * Check whether the user has opted out of data tracking and cookies/localstorage for the given token
-     * @param {string} token - Mixpanel project tracking token
-     * @param {Object} [options]
-     * @param {string} [options.persistenceType] Persistence mechanism used - cookie or localStorage
-     * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
-     * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
-     * @returns {boolean} whether the user has opted out of the given opt type
-     */
-    function hasOptedOut(token, options) {
-        if (_hasDoNotTrackFlagOn(options)) {
-            console$1.warn('This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
-            return true;
-        }
-        var optedOut = _getStorageValue(token, options) === '0';
-        if (optedOut) {
-            console$1.warn('You are opted out of Mixpanel tracking. This will prevent the Mixpanel SDK from sending any data.');
-        }
-        return optedOut;
-    }
-
-    /**
-     * Wrap a MixpanelLib method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
-     * If the user has opted out, return early instead of executing the method.
-     * If a callback argument was provided, execute it passing the 0 error code.
-     * @template {Function} M
-     * @param {M} method - wrapped method to be executed if the user has not opted out
-     * @returns {M} the wrapped method
-     */
-    function addOptOutCheckMixpanelLib(method) {
-        return _addOptOutCheck(method, function(name) {
-            return this.get_config(name);
-        });
-    }
-
-    /** Private **/
-
-    /**
-     * Get storage util
-     * @param {Object} [options]
-     * @param {string} [options.persistenceType]
-     * @returns {object} either _.cookie or _.localstorage
-     */
-    function _getStorage(options) {
-        options = options || {};
-        return options.persistenceType === 'localStorage' ? _.localStorage : _.cookie;
-    }
-
-    /**
-     * Get the name of the cookie that is used for the given opt type (tracking, cookie, etc.)
-     * @param {string} token - Mixpanel project tracking token
-     * @param {Object} [options]
-     * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
-     * @returns {string} the name of the cookie for the given opt type
-     */
-    function _getStorageKey(token, options) {
-        options = options || {};
-        return (options.persistencePrefix || GDPR_DEFAULT_PERSISTENCE_PREFIX) + token;
-    }
-
-    /**
-     * Get the value of the cookie that is used for the given opt type (tracking, cookie, etc.)
-     * @param {string} token - Mixpanel project tracking token
-     * @param {Object} [options]
-     * @param {string} [options.persistencePrefix=__mp_opt_in_out] - custom prefix to be used in the cookie/localstorage name
-     * @returns {string} the value of the cookie for the given opt type
-     */
-    function _getStorageValue(token, options) {
-        return _getStorage(options).get(_getStorageKey(token, options));
-    }
-
-    /**
-     * Get the persistence type the opt-out check should read. opt_out_tracking() saves the flag
-     * in localStorage if it can be written, otherwise in a cookie. Read that store first, and
-     * the other one if no flag is there.
-     * @param {string} token - Mixpanel project tracking token
-     * @param {string} persistenceType - configured persistence type
-     * @param {string} [persistencePrefix] - custom prefix used in the cookie/localstorage name
-     * @returns {string} the persistence type to read
-     */
-    function _getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix) {
-        if (persistenceType !== 'localStorage') {
-            return persistenceType;
-        }
-        var writtenTo = localStorageSupported(getLocalStorage()) ? 'localStorage' : 'cookie';
-        var hasFlag = _getStorageValue(token, {persistenceType: writtenTo, persistencePrefix: persistencePrefix}) !== null;
-        if (hasFlag) {
-            return writtenTo;
-        }
-        return writtenTo === 'localStorage' ? 'cookie' : 'localStorage';
-    }
-
-    /**
-     * Check whether the user has set the DNT/doNotTrack setting to true in their browser
-     * @param {Object} [options]
-     * @param {string} [options.window] - alternate window object to check; used to force various DNT settings in browser tests
-     * @param {boolean} [options.ignoreDnt] - flag to ignore browser DNT settings and always return false
-     * @returns {boolean} whether the DNT setting is true
-     */
-    function _hasDoNotTrackFlagOn(options) {
-        if (options && options.ignoreDnt) {
-            return false;
-        }
-        var win$1 = (options && options.window) || win;
-        var nav = win$1['navigator'] || {};
-        var hasDntOn = false;
-
-        _.each([
-            nav['doNotTrack'], // standard
-            nav['msDoNotTrack'],
-            win$1['doNotTrack']
-        ], function(dntValue) {
-            if (_.includes([true, 1, '1', 'yes'], dntValue)) {
-                hasDntOn = true;
-            }
-        });
-
-        return hasDntOn;
-    }
-
-    /**
-     * Wrap a method with a check for whether the user is opted out of data tracking and cookies/localstorage for the given token
-     * If the user has opted out, return early instead of executing the method.
-     * If a callback argument was provided, execute it passing the 0 error code.
-     * @param {function} method - wrapped method to be executed if the user has not opted out
-     * @param {function} getConfigValue - getter function for the Mixpanel API token and other options to be used with opt-out check
-     * @returns {*} the result of executing method OR undefined if the user has opted out
-     */
-    function _addOptOutCheck(method, getConfigValue) {
-        return function() {
-            var optedOut = false;
-
-            try {
-                var token = getConfigValue.call(this, 'token');
-                var ignoreDnt = getConfigValue.call(this, 'ignore_dnt');
-                var persistenceType = getConfigValue.call(this, 'opt_out_tracking_persistence_type');
-                var persistencePrefix = getConfigValue.call(this, 'opt_out_tracking_cookie_prefix');
-                var win = getConfigValue.call(this, 'window'); // used to override window during browser tests
-
-                if (token) { // if there was an issue getting the token, continue method execution as normal
-                    optedOut = hasOptedOut(token, {
-                        ignoreDnt: ignoreDnt,
-                        persistenceType: _getOptOutCheckPersistenceType(token, persistenceType, persistencePrefix),
-                        persistencePrefix: persistencePrefix,
-                        window: win
-                    });
-                }
-            } catch(err) {
-                console$1.error('Unexpected error when checking tracking opt-out status: ' + err);
-            }
-
-            if (!optedOut) {
-                return method.apply(this, arguments);
-            }
-
-            var callback = arguments[arguments.length - 1];
-            if (typeof(callback) === 'function') {
-                callback(0);
-            }
-
-            return;
-        };
-    }
 
     var logger$5 = console_with_prefix('lock');
 
@@ -21318,6 +21152,7 @@
             });
         }
         this.reportError = options.errorReporter || _.bind(logger$4.error, logger$4);
+        this.consentGate = options.consentGate;
 
         this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
 
@@ -21369,7 +21204,7 @@
             'payload': item
         };
 
-        if (!this.usePersistence) {
+        if (!this._persists()) {
             this.memQueue.push(queueEntry);
             return PromisePolyfill.resolve(true);
         } else {
@@ -21377,7 +21212,20 @@
         }
     };
 
+    /**
+     * Whether the queue is kept in storage now: with persistence, and while consent allows storing.
+     * The lock writes storage keys too, so nothing that takes it runs without this.
+     * @returns {boolean}
+     */
+    RequestQueue.prototype._persists = function () {
+        return this.usePersistence && this.consentGate.allowsStoring();
+    };
+
     RequestQueue.prototype._enqueuePersisted = function (queueEntries) {
+        // a throttled enqueue can run after consent stops storage; its items are dropped
+        if (!this._persists()) {
+            return PromisePolyfill.resolve(false);
+        }
         var enqueueItem = _.bind(function () {
             return this.ensureInit()
                 .then(_.bind(function () {
@@ -21477,7 +21325,7 @@
         });
 
         this.memQueue = filterOutIDsAndInvalid(this.memQueue, idSet);
-        if (!this.usePersistence) {
+        if (!this._persists()) {
             return PromisePolyfill.resolve(true);
         } else {
             var removeFromStorage = _.bind(function () {
@@ -21565,7 +21413,7 @@
      */
     RequestQueue.prototype.updatePayloads = function (itemsToUpdate) {
         this.memQueue = updatePayloads(this.memQueue, itemsToUpdate);
-        if (!this.usePersistence) {
+        if (!this._persists()) {
             return PromisePolyfill.resolve(true);
         } else {
             return this.lock
@@ -21620,11 +21468,14 @@
     RequestQueue.prototype.saveToStorage = function (queue) {
         return this.ensureInit()
             .then(_.bind(function () {
-                return this.queueStorage.setItem(this.storageKey, queue);
+                // a save that started before consent stopped storage writes nothing
+                if (!this._persists()) {
+                    return false;
+                }
+                return this.queueStorage.setItem(this.storageKey, queue).then(function () {
+                    return true;
+                });
             }, this))
-            .then(function () {
-                return true;
-            })
             .catch(_.bind(function (err) {
                 this.reportError('Error saving queue', err);
                 return false;
@@ -21669,7 +21520,8 @@
             sharedLockStorage: options.sharedLockStorage,
             sharedLockTimeoutMS: options.sharedLockTimeoutMS,
             usePersistence: options.usePersistence,
-            enqueueThrottleMs: options.enqueueThrottleMs
+            enqueueThrottleMs: options.enqueueThrottleMs,
+            consentGate: options.consentGate
         });
 
         this.libConfig = options.libConfig;
@@ -22940,6 +22792,8 @@
     /**
      * @typedef {Object} SessionRecordingOptions
      * @property {Object} [options.mixpanelInstance] - reference to the core MixpanelLib
+     * @property {import('../consent-gate').ConsentGate} options.consentGate - what the recording asks
+     * before it stores or sends
      * @property {String} [options.replayId] - unique uuid for a single replay
      * @property {Function} [options.onIdleTimeout] - callback when a recording reaches idle timeout
      * @property {Function} [options.onMaxLengthReached] - callback when a recording reaches its maximum length
@@ -22970,6 +22824,7 @@
      */
     var SessionRecording = function(options) {
         this._mixpanel = options.mixpanelInstance;
+        this.consentGate = options.consentGate;
         this._onIdleTimeout = options.onIdleTimeout || NOOP_FUNC;
         this._onMaxLengthReached = options.onMaxLengthReached || NOOP_FUNC;
         this._onBatchSent = options.onBatchSent || NOOP_FUNC;
@@ -22996,7 +22851,7 @@
 
         // disable persistence if localStorage is not supported
         // request-queue will automatically disable persistence if indexedDB fails to initialize
-        var usePersistence = localStorageSupported(options.sharedLockStorage || getLocalStorage(), true) && !this.getConfig('disable_persistence');
+        var usePersistence = localStorageSupported(options.sharedLockStorage || getLocalStorage(), true) && this.consentGate.allowsPersistence();
 
         // each replay has its own batcher key to avoid conflicts between rrweb events of different recordings
         this.batcherKey = '__mprec_' + this.getConfig('name') + '_' + this.getConfig('token') + '_' + this.replayId;
@@ -23010,6 +22865,7 @@
             sharedLockStorage: options.sharedLockStorage,
             usePersistence: usePersistence,
             stopAllBatchingFunc: this.stopRecording.bind(this),
+            consentGate: this.consentGate,
 
             // increased throttle and shared lock timeout because recording events are very high frequency.
             // this will minimize the amount of lock contention between enqueued events.
@@ -23063,13 +22919,6 @@
 
     SessionRecording.prototype.getConfig = function(configVar) {
         return this._mixpanel.get_config(configVar);
-    };
-
-    // Alias for getConfig, used by the common addOptOutCheckMixpanelLib function which
-    // reaches into this class instance and expects the snake case version of the function.
-    // eslint-disable-next-line camelcase
-    SessionRecording.prototype.get_config = function(configVar) {
-        return this.getConfig(configVar);
     };
 
     SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
@@ -23246,19 +23095,15 @@
 
 
     /**
-     * Flushes the current batch of events to the server, but passes an opt-out callback to make sure
-     * we stop recording and dump any queued events if the user has opted out.
+     * Flushes the current batch of events to the server, or stops recording if consent stops the calls.
      */
     SessionRecording.prototype.flushEventsWithOptOut = function (data, options, cb) {
-        var onOptOut = function (code) {
-            // addOptOutCheckMixpanelLib invokes this function with code=0 when the user has opted out
-            if (code === 0) {
-                this.stopRecording();
-                cb({error: 'Tracking has been opted out, stopping recording.'});
-            }
-        }.bind(this);
-
-        this._flushEvents(data, options, cb, onOptOut);
+        if (!this.consentGate.allowsApiCalls()) {
+            this.stopRecording();
+            cb({error: 'Tracking has been opted out, stopping recording.'});
+            return;
+        }
+        this._flushEvents(data, options, cb);
     };
 
     /**
@@ -23314,7 +23159,12 @@
         return this.getConfig('api_routes')['record'];
     };
 
+    // consent can be withdrawn while the batch is compressed, so it is checked again before sending
     SessionRecording.prototype._sendRequest = function(currentReplayId, reqParams, reqBody, callback) {
+        if (!this.consentGate.allowsApiCalls()) {
+            callback(0);
+            return;
+        }
         var onSuccess = function (response, responseBody) {
             // Update batch specific props only if the request was successful to guarantee ordering.
             // RequestBatcher will always flush the next batch after the previous one succeeds.
@@ -23351,7 +23201,7 @@
         });
     };
 
-    SessionRecording.prototype._flushEvents = addOptOutCheckMixpanelLib(function (data, options, callback) {
+    SessionRecording.prototype._flushEvents = function(data, options, callback) {
         var numEvents = data.length;
 
         if (numEvents > 0) {
@@ -23418,7 +23268,7 @@
                 sendUncompressed();
             }
         }
-    });
+    };
 
 
     SessionRecording.prototype.reportError = function(msg, err) {
@@ -23473,9 +23323,10 @@
      */
     SessionRecording.prototype._getMaskFn = function(shouldMaskFn, privacyConfig) {
         return function(text, element) {
-            // prevent visual artifacts from random whitespace
+            // whitespace-only text has nothing to mask, and dropping it would join adjacent words
+            // (e.g. a space text node between two inline elements)
             if (!text.trim().length) {
-                return '';
+                return text;
             }
 
             var shouldMask = true;
@@ -23503,11 +23354,12 @@
         this.idb = new IDBStorageWrapper(MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA);
         this.errorReporter = options.errorReporter;
         this.mixpanelInstance = options.mixpanelInstance;
+        this.consentGate = options.consentGate;
         this.sharedLockStorage = options.sharedLockStorage;
     };
 
     RecordingRegistry.prototype.isPersistenceEnabled = function() {
-        return !this.mixpanelInstance.get_config('disable_persistence');
+        return this.consentGate.allowsPersistence();
     };
 
     RecordingRegistry.prototype.handleError = function (err) {
@@ -23518,6 +23370,7 @@
      * @param {import('./session-recording').SerializedRecording} serializedRecording
      */
     RecordingRegistry.prototype.setActiveRecording = function (serializedRecording) {
+        // a recording that resumes after consent stops storage writes nothing
         if (!this.isPersistenceEnabled()) {
             return PromisePolyfill.resolve();
         }
@@ -23554,13 +23407,10 @@
     };
 
     RecordingRegistry.prototype.clearActiveRecording = function () {
-        if (this.isPersistenceEnabled()) {
-            // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
-            // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
-            return this.markActiveRecordingExpired();
-        } else {
-            return this.deleteActiveRecording();
-        }
+        // mark recording as expired instead of deleting it in case the page unloads mid-flush and doesn't make it to ingestion.
+        // this will ensure the next pageload will flush the remaining events, but not try to continue the recording.
+        // without persistence the entry is left as it is, and its unsent events wait for a load that allows them.
+        return this.markActiveRecordingExpired();
     };
 
     RecordingRegistry.prototype.markActiveRecordingExpired = function () {
@@ -23572,16 +23422,6 @@
                 }
             }.bind(this))
             .catch(this.handleError.bind(this));
-    };
-
-    RecordingRegistry.prototype.deleteActiveRecording = function () {
-        // avoid initializing IDB if this registry instance hasn't already written a recording
-        if (this.idb.isInitialized()) {
-            return this.idb.removeItem(this.mixpanelInstance.get_tab_id())
-                .catch(this.handleError.bind(this));
-        } else {
-            return PromisePolyfill.resolve();
-        }
     };
 
     /**
@@ -23606,6 +23446,7 @@
                     .map(function (serializedRecording) {
                         var sessionRecording = SessionRecording.deserialize(serializedRecording, {
                             mixpanelInstance: this.mixpanelInstance,
+                            consentGate: this.consentGate,
                             sharedLockStorage: this.sharedLockStorage
                         });
                         return sessionRecording.unloadPersistedData()
@@ -23621,6 +23462,79 @@
             .catch(this.handleError.bind(this));
     };
 
+    /**
+     * What the services ask before they store or send on their own. A ConsentManager is one; a new
+     * storage write or network send must ask it too.
+     * @typedef {Object} ConsentGate
+     * @property {function(): boolean} allowsApiCalls whether the public tracking, people, group and
+     * replay methods run
+     * @property {function(): boolean} allowsSending whether tracking requests go out
+     * @property {function(): boolean} allowsFetching whether feature flags and remote settings are
+     * fetched
+     * @property {function(): boolean} allowsStoring whether consent allows storing data about the
+     * visitor; identify() and alias() ask this, since disable_persistence doesn't stop them
+     * @property {function(): boolean} allowsPersistence whether the services may write to browser
+     * storage: consent allows storing, and disable_persistence is off. Without it they keep their data
+     * in memory.
+     */
+
+
+    /**
+     * @param {function(string): boolean} allowsFunc whether consent allows 'api_calls', 'send',
+     * 'fetch' or 'store' now
+     * @param {function(string): *} getConfigFunc
+     * @returns {ConsentGate}
+     */
+    function buildConsentGate(allowsFunc, getConfigFunc) {
+        var gate = {
+            // if asking throws, the call runs
+            allowsApiCalls: function() {
+                try {
+                    return allowsFunc('api_calls');
+                } catch (err) {
+                    console$1.error('Unexpected error when checking tracking opt-out status: ' + err);
+                    return true;
+                }
+            },
+            allowsSending: function() {
+                return allowsFunc('send');
+            },
+            allowsFetching: function() {
+                return allowsFunc('fetch');
+            },
+            allowsStoring: function() {
+                return allowsFunc('store');
+            },
+            allowsPersistence: function() {
+                return gate.allowsStoring() && !getConfigFunc('disable_persistence');
+            }
+        };
+        return gate;
+    }
+
+    /**
+     * The consent gate the recorder bundle builds when it starts, and hands to its services. The core
+     * passes the bundle only its instance, so this asks the core's _consent_allows by its quoted name,
+     * the bundle being built separately. A core without it only knows the opt-out, through
+     * has_opted_out_tracking().
+     * @param {Object} mixpanelInstance
+     * @returns {ConsentGate}
+     */
+    function consentGateFor(mixpanelInstance) {
+        return buildConsentGate(
+            function(capability) {
+                var consentAllows = mixpanelInstance['_consent_allows'];
+                if (typeof consentAllows === 'function') {
+                    return !!consentAllows.call(mixpanelInstance, capability);
+                }
+                return capability !== 'api_calls' || !mixpanelInstance.has_opted_out_tracking();
+            },
+            function(key) {
+                return mixpanelInstance.get_config(key);
+            }
+        );
+    }
+
     var logger = console_with_prefix('recorder');
 
     /**
@@ -23631,12 +23545,14 @@
         this.mixpanelInstance = mixpanelInstance;
         this.rrwebRecord = rrwebRecord || record;
         this.sharedLockStorage = sharedLockStorage;
+        this.consentGate = consentGateFor(mixpanelInstance);
 
         /**
          * @member {import('./registry').RecordingRegistry}
          */
         this.recordingRegistry = new RecordingRegistry({
             mixpanelInstance: this.mixpanelInstance,
+            consentGate: this.consentGate,
             errorReporter: logger.error,
             sharedLockStorage: sharedLockStorage
         });
@@ -23673,6 +23589,7 @@
          */
         var sessionRecordingOptions = {
             mixpanelInstance: this.mixpanelInstance,
+            consentGate: this.consentGate,
             onBatchSent: onBatchSent,
             onIdleTimeout: onIdleTimeout,
             onMaxLengthReached: onMaxLengthReached,
