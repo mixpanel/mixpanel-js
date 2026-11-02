@@ -740,6 +740,167 @@ describe(`Hierarchical groups`, function() {
     });
   });
 
+  describe(`flags`, function() {
+    let fetch;
+
+    beforeEach(function() {
+      fetch = sinon.stub().callsFake(() => Promise.resolve({
+        json: () => Promise.resolve({
+          flags: {
+            checkout_flow: {
+              variant_key: `treatment`,
+              variant_value: true,
+              experiment_id: `exp_1`,
+              is_experiment_active: true,
+            },
+          },
+          pending_first_time_events: [{
+            flag_key: `checkout_flow`,
+            flag_id: `flag_1`,
+            project_id: 123,
+            first_time_event_hash: `HASH`,
+            event_name: `Signed Up`,
+            pending_variant: {variant_key: `pending`, variant_value: `pending`},
+          }],
+        }),
+      }));
+      window.fetch = fetch;
+    });
+
+    afterEach(function() {
+      delete window.fetch;
+    });
+
+    // Waits for the fetch init() starts, so later fetches are the ones under test
+    async function newFlagsInstance(config) {
+      const result = newInstance(Object.assign({flags: true}, config));
+      await result.instance.flags.persistenceLoadedPromise;
+      await result.instance.flags.fetchPromise;
+      return result;
+    }
+
+    function flagsRequests() {
+      return fetch.getCalls().filter(call => call.args[1].method === `GET`);
+    }
+
+    function lastFlagsContext() {
+      const requests = flagsRequests();
+      const url = new URL(requests[requests.length - 1].args[0]);
+      return JSON.parse(url.searchParams.get(`context`));
+    }
+
+    it(`send the user and company in the context after identify`, async function() {
+      const {instance} = await newFlagsInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `company_123`});
+      await instance.flags.fetchPromise;
+
+      expect(lastFlagsContext()).to.deep.equal({
+        distinct_id: `user_123`,
+        device_id: instance.get_property(`$device_id`),
+        $user_id: `user_123`,
+        $company_id: `company_123`,
+      });
+    });
+
+    it(`send no user or company in the context before identify`, async function() {
+      const {instance} = await newFlagsInstance({hierarchical_groups: true});
+
+      expect(flagsRequests()).to.have.length(1);
+      expect(JSON.stringify(lastFlagsContext())).to.equal(JSON.stringify({
+        distinct_id: instance.get_property(`distinct_id`),
+        device_id: instance.get_property(`$device_id`),
+      }));
+    });
+
+    it(`refetch with the new company when it changes`, async function() {
+      const {instance} = await newFlagsInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `company_123`});
+      instance.identify({user_id: `user_123`, company_id: `company_456`});
+      await instance.flags.fetchPromise;
+
+      expect(flagsRequests()).to.have.length(3);
+      expect(lastFlagsContext().$company_id).to.equal(`company_456`);
+      expect(lastFlagsContext().distinct_id).to.equal(`user_123`);
+    });
+
+    it(`let the configured context override the user and company`, async function() {
+      const {instance} = await newFlagsInstance({
+        hierarchical_groups: true,
+        flags: {context: {$company_id: `configured`}},
+      });
+      instance.identify({user_id: `user_123`, company_id: `company_123`});
+      await instance.flags.fetchPromise;
+
+      expect(lastFlagsContext().$company_id).to.equal(`configured`);
+      expect(lastFlagsContext().$user_id).to.equal(`user_123`);
+    });
+
+    it(`send the context unchanged when disabled`, async function() {
+      const {instance} = await newFlagsInstance({});
+      instance.identify(`user_123`);
+      await instance.flags.fetchPromise;
+
+      // $user_id is a super property after identify, but only hierarchical groups sends it
+      expect(instance.get_property(`$user_id`)).to.equal(`user_123`);
+      expect(JSON.stringify(lastFlagsContext())).to.equal(JSON.stringify({
+        distinct_id: `user_123`,
+        device_id: instance.get_property(`$device_id`),
+      }));
+    });
+
+    function firstTimeEventBody() {
+      const posts = fetch.getCalls().filter(call => call.args[1].method === `POST`);
+      expect(posts).to.have.length(1);
+      expect(posts[0].args[0]).to.include(`/flag_1/first-time-events`);
+      return posts[0].args[1].body;
+    }
+
+    it(`send the user and company when recording a first-time event`, async function() {
+      const {instance} = await newFlagsInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `company_123`});
+      await instance.flags.fetchPromise;
+      instance.track(`Signed Up`);
+      // The match waits on the bundled targeting library's promise
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(firstTimeEventBody()).to.equal(JSON.stringify({
+        distinct_id: `user_123`,
+        project_id: 123,
+        first_time_event_hash: `HASH`,
+        $user_id: `user_123`,
+        $company_id: `company_123`,
+      }));
+    });
+
+    it(`record a first-time event unchanged when disabled`, async function() {
+      const {instance} = await newFlagsInstance({});
+      instance.identify(`user_123`);
+      await instance.flags.fetchPromise;
+      instance.track(`Signed Up`);
+      // The match waits on the bundled targeting library's promise
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(firstTimeEventBody()).to.equal(JSON.stringify({
+        distinct_id: `user_123`,
+        project_id: 123,
+        first_time_event_hash: `HASH`,
+      }));
+    });
+
+    it(`track $experiment_started with the user and company`, async function() {
+      const {instance, sent} = await newFlagsInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `company_123`});
+      await instance.flags.fetchPromise;
+      instance.flags.get_variant_sync(`checkout_flow`, null);
+
+      const props = lastEvent(sent, `$experiment_started`);
+      expect(props[`Experiment name`]).to.equal(`checkout_flow`);
+      expect(props.$user_id).to.equal(`user_123`);
+      expect(props.$company_id).to.equal(`company_123`);
+      expect(props.distinct_id).to.equal(`user_123`);
+    });
+  });
+
   describe(`session recording`, function() {
     function userIdInfo(config, properties) {
       const mock = new MockMixpanelLib(config);

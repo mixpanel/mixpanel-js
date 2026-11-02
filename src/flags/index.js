@@ -66,6 +66,7 @@ var FeatureFlagManager = function(initOptions) {
     this.getMpProperty = initOptions.getPropertyFunc;
     this.track = initOptions.trackingFunc;
     this.loadExtraBundle = initOptions.loadExtraBundle || function() {};
+    this.isHierarchicalGroups = initOptions.isHierarchicalGroupsFunc || function() { return false; };
     this.targetingSrc = initOptions.targetingSrc || '';
 };
 
@@ -110,8 +111,23 @@ FeatureFlagManager.prototype.init = function() {
 FeatureFlagManager.prototype._buildContext = function() {
     return _.extend(
         {'distinct_id': this.getMpProperty('distinct_id'), 'device_id': this.getMpProperty('$device_id')},
+        this._getHierarchicalGroupsIdentity(),
         this.getConfig(CONFIG_CONTEXT)
     );
+};
+
+// On a hierarchical groups project the flags service needs the user and the company, which
+// are both known once identify has named them. Until then it gets what other projects send.
+FeatureFlagManager.prototype._getHierarchicalGroupsIdentity = function() {
+    if (!this.isHierarchicalGroups()) {
+        return null;
+    }
+    var userId = this.getMpProperty('$user_id');
+    var companyId = this.getMpProperty('$company_id');
+    if (!userId || !companyId) {
+        return null;
+    }
+    return {'$user_id': userId, '$company_id': companyId};
 };
 
 FeatureFlagManager.prototype.reset = function() {
@@ -488,11 +504,11 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
     searchParams.set('$lib_version', Config.LIB_VERSION);
     var url = this.getFirstTimeEventApiRoute(flagId) + '?' + searchParams.toString();
 
-    var payload = {
+    var payload = _.extend({
         'distinct_id': distinctId,
         'project_id': projectId,
         'first_time_event_hash': firstTimeEventHash
-    };
+    }, this._getHierarchicalGroupsIdentity());
 
     logger.log('Recording first-time event for flag: ' + flagId);
 

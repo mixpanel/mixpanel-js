@@ -415,6 +415,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         setConfigFunc: _.bind(this.set_config, this),
         getPropertyFunc: _.bind(this.get_property, this),
         trackingFunc: _.bind(this.track, this),
+        isHierarchicalGroupsFunc: _.bind(this._is_hierarchical_groups, this),
         loadExtraBundle: load_extra_bundle,
         targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME)
     });
