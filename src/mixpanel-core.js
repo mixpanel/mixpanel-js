@@ -1427,19 +1427,21 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
  * @example
  * ```js
  * mixpanel.identify({user_id: 'user_123', company_id: 'acme'});
- * mixpanel.get_company().set('tier', 'enterprise');
+ * var company = mixpanel.get_company();
+ * if (company) {
+ *     company.set('tier', 'enterprise');
+ * }
  * ```
  *
  * @remarks
  *
  * Only for projects that use hierarchical groups (the `hierarchical_groups` init option). On any
- * other project, or before a company is identified, the returned group reports every update as
- * an error and drops it, so it is never null.
+ * other project, or before a company is identified, this reports an error and returns null.
  *
  * The company is fixed when this is called, so a group kept across reset() or a new identify()
  * still updates the earlier company.
  *
- * @returns {Object} A MixpanelGroup identifier
+ * @returns {Object|null} A MixpanelGroup identifier, or null when there is no company
  */
 MixpanelLib.prototype.get_company = function() {
     var reason;
@@ -1453,10 +1455,8 @@ MixpanelLib.prototype.get_company = function() {
         }
         reason = 'get_company() needs a company. Call identify({user_id: user_id, company_id: company_id}) first.';
     }
-    var group = new MixpanelGroup();
-    group._init(this, COMPANY_ID_KEY, null);
-    group._unavailable_reason = reason;
-    return group;
+    this.report_error(reason);
+    return null;
 };
 
 MixpanelLib.prototype.track_pageview = addOptOutCheckMixpanelLib(

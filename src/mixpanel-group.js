@@ -150,11 +150,6 @@ function(list_name, value, callback) {
 });
 
 MixpanelGroup.prototype._send_request = function(data, callback) {
-    // Set by get_company() when there is no company to update
-    if (this._unavailable_reason) {
-        return this._drop_request(this._unavailable_reason + ' The update was dropped.', callback);
-    }
-
     if (this._mixpanel._is_hierarchical_groups()) {
         // Hierarchical groups require $company_id at the top level of every /groups write
         var company_id = this._mixpanel.get_property('$company_id');

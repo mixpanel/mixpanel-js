@@ -21,34 +21,44 @@
 
     // The same group profile operations, for the company and for the custom team_id group
     function groupActions(label, group) {
+        // get_company() returns null when there is no company to update
+        function update(action) {
+            var target = group();
+            if (target) {
+                action(target);
+            } else {
+                log('No ' + label + ' to update');
+            }
+        }
+
         return [
             [label + ': Set Property', function() {
                 log('Setting a ' + label + ' property');
-                group().set('tier', 'enterprise');
+                update(function(g) { g.set('tier', 'enterprise'); });
             }],
             [label + ': Set Properties (Map)', function() {
                 log('Setting multiple ' + label + ' properties');
-                group().set({size: 12, region: 'us'});
+                update(function(g) { g.set({size: 12, region: 'us'}); });
             }],
             [label + ': Set Property Once', function() {
                 log('Setting a ' + label + ' property once');
-                group().set_once('created', '2026-10-27');
+                update(function(g) { g.set_once('created', '2026-10-27'); });
             }],
             [label + ': Union Property', function() {
                 log('Union ' + label + ' property');
-                group().union('tags', ['js']);
+                update(function(g) { g.union('tags', ['js']); });
             }],
             [label + ': Remove Property', function() {
                 log('Removing from ' + label + ' property');
-                group().remove('tags', 'js');
+                update(function(g) { g.remove('tags', 'js'); });
             }],
             [label + ': Unset Property', function() {
                 log('Unsetting a ' + label + ' property');
-                group().unset('tier');
+                update(function(g) { g.unset('tier'); });
             }],
             [label + ': Delete Group', function() {
                 log('Deleting ' + label + ' group');
-                group()['delete']();
+                update(function(g) { g['delete'](); });
             }]
         ];
     }

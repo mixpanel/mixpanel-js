@@ -479,7 +479,7 @@ export interface Mixpanel {
   get_config(prop_name?: string): any;
   /** @deprecated Use get_identity() instead. */
   get_distinct_id(): any;
-  get_company(): Group;
+  get_company(): Group | null;
   get_group(group_key: string, group_id: string): Group;
   get_identity(): CurrentIdentity;
   get_property(property_name: string): any;
@@ -567,7 +567,7 @@ export function disable(events?: string[]): void;
 export function get_config(prop_name?: string): any;
 /** @deprecated Use get_identity() instead. */
 export function get_distinct_id(): any;
-export function get_company(): Group;
+export function get_company(): Group | null;
 export function get_group(group_key: string, group_id: string): Group;
 export function get_identity(): CurrentIdentity;
 export function get_property(property_name: string): any;

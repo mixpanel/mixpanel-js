@@ -580,27 +580,24 @@ describe(`Hierarchical groups`, function() {
       expect(instance.get_company()).to.equal(instance.get_group(`$company_id`, `acme`));
     });
 
-    it(`drops updates before identify`, function() {
-      const {instance, sent} = newInstance({hierarchical_groups: true});
-      const company = instance.get_company();
-      const callback = sinon.spy();
-      company.set(`tier`, `enterprise`, callback);
-      company.delete();
+    it(`returns null before identify`, function() {
+      const {instance} = newInstance({hierarchical_groups: true});
 
-      expect(groupMessages(sent)).to.be.empty;
-      expect(callback.calledOnceWith(0)).to.be.true;
+      expect(instance.get_company()).to.be.null;
+      expect(reportedErrors.filter(error => error.includes(`get_company()`))).to.have.length(1);
       expect(reported(`get_company() needs a company. Call identify({user_id: user_id, ` +
-        `company_id: company_id}) first. The update was dropped.`)).to.be.true;
+        `company_id: company_id}) first.`)).to.be.true;
+      expect(reported(`The update was dropped.`)).to.be.false;
     });
 
-    it(`drops updates when disabled`, function() {
-      const {instance, sent} = newInstance();
-      instance.get_company().set(`tier`, `enterprise`);
+    it(`returns null when disabled`, function() {
+      const {instance} = newInstance();
 
-      expect(groupMessages(sent)).to.be.empty;
-      expect(peopleMessages(sent)).to.be.empty;
+      expect(instance.get_company()).to.be.null;
+      expect(reportedErrors.filter(error => error.includes(`get_company()`))).to.have.length(1);
       expect(reported(`get_company() is only for hierarchical groups projects, enabled ` +
-        `with the hierarchical_groups init option. The update was dropped.`)).to.be.true;
+        `with the hierarchical_groups init option.`)).to.be.true;
+      expect(reported(`The update was dropped.`)).to.be.false;
     });
 
     it(`keeps the company it was called with`, function() {

@@ -564,7 +564,7 @@ describe(`Hierarchical groups scenarios`, function() {
   });
 
   it(`Set Company Property Before Identify (Unsupported)`, function() {
-    instance.get_company().set(`tier`, `enterprise`);
+    expect(instance.get_company()).to.be.null;
 
     assertNothingSent();
   });
