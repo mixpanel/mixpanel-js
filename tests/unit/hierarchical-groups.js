@@ -521,11 +521,31 @@ describe(`Hierarchical groups`, function() {
       expect(groupMessages(sent)[0].$unset).to.deep.equal([`team`]);
     });
 
-    it(`leaves track_with_groups unchanged`, function() {
+    it(`tracks track_with_groups with a single value`, function() {
       const {instance, sent} = identified();
       instance.track_with_groups(`Viewed Report`, {}, {team: `finance`});
 
       expect(lastEvent(sent, `Viewed Report`).team).to.equal(`finance`);
+    });
+
+    it(`drops track_with_groups with a list`, function() {
+      const {instance, sent} = identified();
+      const callback = sinon.spy();
+      instance.track_with_groups(`Viewed Report`, {}, {region: `emea`, team: [`finance`]}, callback);
+      instance.track_with_groups(`Viewed Report`, {}, {team: [`finance`, `sales`]});
+
+      expect(events(sent, `Viewed Report`)).to.be.empty;
+      expect(callback.calledOnceWith(0)).to.be.true;
+      expect(reported(`track_with_groups with a list is not supported for hierarchical groups ` +
+        `projects, which allow one team per user. Use one group id per key. The event was dropped.`)).to.be.true;
+    });
+
+    it(`passes a list through track_with_groups when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.track_with_groups(`Viewed Report`, {}, {team: [`finance`, `sales`]});
+
+      expect(lastEvent(sent, `Viewed Report`).team).to.deep.equal([`finance`, `sales`]);
+      expect(reportedErrors).to.be.empty;
     });
 
     it(`stays a list when disabled`, function() {

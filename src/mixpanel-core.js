@@ -1374,12 +1374,32 @@ MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(
  * mixpanel.track_with_groups('purchase', {'product': 'iphone'}, {'University': ['UCB', 'UCLA']})
  * ```
  *
+ * On a hierarchical groups project a user belongs to one group per group key, so a list of group
+ * IDs for any key is reported as an error and the event is dropped.
+ *
  * @param {String} event_name The name of the event (see `mixpanel.track()`)
  * @param {Object=} properties A set of properties to include with the event you're sending (see `mixpanel.track()`)
  * @param {Object=} groups An object mapping group name keys to one or more values
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 function(event_name, properties, groups, callback) {
+    if (this._hierarchical_groups) {
+        var list_key = null;
+        _.each(groups, function(v, k) {
+            if (list_key === null && _.isArray(v)) {
+                list_key = k;
+            }
+        });
+        if (list_key !== null) {
+            var message = 'track_with_groups with a list is not supported for hierarchical groups projects, ' +
+                'which allow one ' + list_key + ' per user. Use one group id per key. The event was dropped.';
+            this.report_error(message);
+            if (_.isFunction(callback)) {
+                callback(this.get_config('verbose') ? {status: 0, error: message} : 0);
+            }
+            return;
+        }
+    }
     var tracking_props = _.extend({}, properties || {});
     _.each(groups, function(v, k) {
         if (v !== null && v !== undefined) {
