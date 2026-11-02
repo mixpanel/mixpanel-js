@@ -2247,11 +2247,6 @@ MixpanelLib.prototype.set_config = function(config) {
     if (_.isObject(config)) {
         _.extend(this['config'], config);
 
-        if (!_.isUndefined(this._hierarchical_groups) && !!this['config']['hierarchical_groups'] !== this._hierarchical_groups) {
-            this.report_error('hierarchical_groups can only be set in init(); it is fixed for the life of the instance');
-            this['config']['hierarchical_groups'] = this._hierarchical_groups;
-        }
-
         var new_batch_size = config['batch_size'];
         if (new_batch_size) {
             _.each(this.request_batchers, function(batcher) {

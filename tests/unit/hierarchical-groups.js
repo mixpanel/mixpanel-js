@@ -734,11 +734,10 @@ describe(`Hierarchical groups`, function() {
   });
 
   describe(`config`, function() {
-    it(`cannot be changed after init`, function() {
+    it(`is read once in init`, function() {
       const {instance} = newInstance({hierarchical_groups: true});
       instance.set_config({hierarchical_groups: false});
 
-      expect(instance.get_config(`hierarchical_groups`)).to.be.true;
       instance.identify({user_id: `user_123`, company_id: `acme`});
       expect(instance.get_identity().company_id).to.equal(`acme`);
     });

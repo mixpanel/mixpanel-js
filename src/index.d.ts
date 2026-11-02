@@ -320,8 +320,8 @@ export interface Config {
   remote_settings_mode: RemoteSettingType;
   record_sessions_percent: number;
   /**
-   * The project uses hierarchical groups. Set it in init() to match the project; it cannot be
-   * changed afterwards.
+   * The project uses hierarchical groups. Set it in init() to match the project; it is read once
+   * there, so changing it afterwards has no effect.
    */
   hierarchical_groups: boolean;
   hooks: {
