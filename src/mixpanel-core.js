@@ -1771,6 +1771,32 @@ MixpanelLib.prototype._register_single = function(prop, value) {
     this.register(props);
 };
 
+// Why an identity can't be used on this project, or null when it can. Callers add what was dropped.
+MixpanelLib.prototype._identity_error = function(identity) {
+    if (!_.isObject(identity)) {
+        return this._hierarchical_groups ? 'identify(string) is not supported for hierarchical groups projects, ' +
+            'which identify a user by company and user id. Use identify({user_id: user_id, company_id: company_id}).' : null;
+    }
+    var user_id = identity['user_id'];
+    var company_id = _.isUndefined(identity['company_id']) ? null : identity['company_id'];
+    var has_user_id = (_.isString(user_id) || _.isNumber(user_id)) && user_id !== '';
+    if (this._hierarchical_groups) {
+        if (!has_user_id || !_.isString(company_id) || company_id === '') {
+            return 'Can\'t identify ' + JSONStringify(identity) + ': hierarchical groups projects identify a user ' +
+                'by company and user id, so both are required.';
+        }
+    } else {
+        if (!has_user_id) {
+            return 'Can\'t identify ' + JSONStringify(identity) + ' without a user_id.';
+        }
+        if (company_id !== null) {
+            return 'Can\'t identify ' + JSONStringify(identity) + ': a company requires the hierarchical_groups ' +
+                'init option. Mixpanel ignores $company_id on other projects.';
+        }
+    }
+    return null;
+};
+
 /**
  * Identify a user with a unique ID to track user activity across
  * devices, tie a user to their events, and create a user profile.
@@ -1824,36 +1850,19 @@ MixpanelLib.prototype.identify = function(
         if (this.has_opted_out_tracking()) {
             return -1;
         }
+        var identity_error = this._identity_error(identity);
+        if (identity_error) {
+            this.report_error(identity_error + ' Nothing was identified.');
+            return -1;
+        }
         var user_id = identity['user_id'];
         company_id = _.isUndefined(identity['company_id']) ? null : identity['company_id'];
-        var has_user_id = (_.isString(user_id) || _.isNumber(user_id)) && user_id !== '';
-        if (this._hierarchical_groups) {
-            if (!has_user_id || !_.isString(company_id) || company_id === '') {
-                this.report_error('Can\'t identify ' + JSONStringify(identity) + ': hierarchical groups projects ' +
-                    'identify a user by company and user id, so both are required. Nothing was identified.');
-                return -1;
-            }
-        } else {
-            if (!has_user_id) {
-                this.report_error('Can\'t identify ' + JSONStringify(identity) + ' without a user_id. ' +
-                    'Nothing was identified.');
-                return -1;
-            }
-            if (company_id !== null) {
-                this.report_error('Can\'t identify ' + JSONStringify(identity) + ': a company requires the ' +
-                    'hierarchical_groups init option. Mixpanel ignores $company_id on other projects, so ' +
-                    'nothing was identified.');
-                return -1;
-            }
-        }
         if (identity['device_id'] && identity['device_id'] !== this.get_property('$device_id')) {
             console.error('identify() ignored device_id ' + identity['device_id'] + ': the library owns the device id');
         }
         new_distinct_id = user_id;
     } else if (this._hierarchical_groups) {
-        this.report_error('identify(string) is not supported for hierarchical groups projects, which identify a ' +
-            'user by company and user id. Use identify({user_id: user_id, company_id: company_id}). ' +
-            'Nothing was identified.');
+        this.report_error(this._identity_error(new_distinct_id) + ' Nothing was identified.');
         return -1;
     }
 
@@ -2503,7 +2512,7 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
  * ```
  *
  * @param {Object} [options] A dictionary of config options to override
- * @param {Object} [options.identity] The user to identify once opted in, before the opt-in event is tracked: on a hierarchical groups project, `{user_id, company_id}`. Passed to identify()
+ * @param {Object} [options.identity] The user to identify once opted in, before the opt-in event is tracked: on a hierarchical groups project, `{user_id, company_id}`. Passed to identify(). An identity identify() would refuse is reported, and the user stays opted out
  * @param {function} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
  * @param {string} [options.track_event_name=$opt_in] Event name to be used for tracking the opt-in action
  * @param {Object} [options.track_properties] Set of properties to be tracked along with the opt-in action
@@ -2523,6 +2532,11 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
 
     var identity = options['identity'];
     var has_identity = !_.isUndefined(identity) && identity !== null;
+    var identity_error = has_identity && this._identity_error(identity);
+    if (identity_error) {
+        this.report_error(identity_error + ' The user is still opted out.');
+        return;
+    }
     var track = _.isUndefined(options['track']) ? _.bind(this.track, this) : options['track'];
     if (has_identity && track) {
         // Identify once opted in and before the opt-in event, so the event carries the identity

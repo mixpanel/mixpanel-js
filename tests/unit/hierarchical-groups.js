@@ -627,6 +627,27 @@ describe(`Hierarchical groups`, function() {
       expect(events(sent, `$identify`)).to.have.length(2);
     });
 
+    it(`stays opted out for a string identity`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: `user_123`});
+
+      expect(instance.has_opted_out_tracking()).to.be.true;
+      expect(events(sent, `$opt_in`)).to.be.empty;
+      expect(reported(`identify(string) is not supported`)).to.be.true;
+      expect(reported(`The user is still opted out.`)).to.be.true;
+    });
+
+    it(`stays opted out for an identity without a company`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: {user_id: `user_123`}});
+
+      expect(instance.has_opted_out_tracking()).to.be.true;
+      expect(events(sent, `$opt_in`)).to.be.empty;
+      expect(reported(`so both are required. The user is still opted out.`)).to.be.true;
+    });
+
     it(`opts in with an identity and properties`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
       instance.opt_out_tracking();
@@ -677,6 +698,16 @@ describe(`Hierarchical groups`, function() {
       instance.opt_in_tracking({identity: {user_id: `user_123`}});
 
       expect(lastEvent(sent, `$opt_in`).$user_id).to.equal(`user_123`);
+    });
+
+    it(`stays opted out for an identity naming a company when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: {user_id: `user_123`, company_id: `acme`}});
+
+      expect(instance.has_opted_out_tracking()).to.be.true;
+      expect(events(sent, `$opt_in`)).to.be.empty;
+      expect(reported(`a company requires the hierarchical_groups init option`)).to.be.true;
     });
 
     it(`still clears charges on opt-out when disabled`, function() {
