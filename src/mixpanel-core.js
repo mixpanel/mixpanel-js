@@ -331,6 +331,7 @@ MixpanelLib.prototype._init = function(token, config, name) {
         getTabIdFunc: _.bind(this.get_tab_id, this),
         reportErrorFunc: _.bind(this.report_error, this),
         getDistinctIdFunc: _.bind(this._get_stored_distinct_id, this),
+        getIdentityFunc: _.bind(this.get_identity, this),
         recorderSrc: this.get_config('recorder_src'),
         targetingSrc: this.get_config('targeting_src'),
         libBasePath: this.get_config('lib_base_path'),

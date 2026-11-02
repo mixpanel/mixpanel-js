@@ -116,6 +116,27 @@ describe(`RecorderManager`, function() {
       expect(url).to.include(`token=test-token`);
     });
 
+    it(`should add the user and company on a hierarchical groups project`, function() {
+      recorderManager.getIdentity = () => ({user_id: `user_123`, company_id: `acme`, device_id: `dev`});
+      recorderManager._recorder = mockRecorder;
+
+      const url = recorderManager.getSessionReplayUrl();
+
+      expect(url).to.include(`distinct_id=test-distinct-id`);
+      expect(url).to.include(`%24user_id=user_123`);
+      expect(url).to.include(`%24company_id=acme`);
+    });
+
+    it(`should leave the URL unchanged without a company`, function() {
+      recorderManager.getIdentity = () => ({user_id: `user_123`, company_id: null, device_id: `dev`});
+      recorderManager._recorder = mockRecorder;
+
+      const url = recorderManager.getSessionReplayUrl();
+
+      expect(url).to.not.include(`user_id`);
+      expect(url).to.not.include(`company_id`);
+    });
+
     it(`should properly encode URL parameters`, function() {
       getDistinctIdStub.returns(`user+with spaces`);
       mockRecorder.replayId = `replay/with/slashes`;

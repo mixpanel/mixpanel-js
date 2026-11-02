@@ -32,6 +32,7 @@ var RecorderManager = function(initOptions) {
     this.getTabId = initOptions.getTabIdFunc;
     this.reportError = initOptions.reportErrorFunc;
     this.getDistinctId = initOptions.getDistinctIdFunc;
+    this.getIdentity = initOptions.getIdentityFunc;
     this.loadExtraBundle = initOptions.loadExtraBundle;
     this.recorderSrc = initOptions.recorderSrc;
     this.targetingSrc = initOptions.targetingSrc;
@@ -217,11 +218,18 @@ RecorderManager.prototype.getSessionReplayUrl = function() {
     var replay_url = null;
     var replay_id = this.getSessionReplayId();
     if (replay_id) {
-        var query_params = _.HTTPBuildQuery({
+        var params = {
             'replay_id': replay_id,
             'distinct_id': this.getDistinctId(),
             'token': this.getMpConfig('token')
-        });
+        };
+        // On a hierarchical groups project the redirect builds the profile's distinct id from these
+        var identity = this.getIdentity && this.getIdentity();
+        if (identity && identity['user_id'] && identity['company_id']) {
+            params['$user_id'] = identity['user_id'];
+            params['$company_id'] = identity['company_id'];
+        }
+        var query_params = _.HTTPBuildQuery(params);
         replay_url = 'https://mixpanel.com/projects/replay-redirect?' + query_params;
     }
     return replay_url;
