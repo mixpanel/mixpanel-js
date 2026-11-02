@@ -1248,12 +1248,24 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(
  * mixpanel.set_group('company', 128746312)
  * ```
  *
+ * On a hierarchical groups project a user belongs to one group per group key, so the group is
+ * stored as a single value rather than a list, and an array of group IDs is reported as an
+ * error and dropped.
+ *
  * @param {String} group_key Group key
  * @param {Array|String|Number} group_ids An array of group IDs, or a singular group ID
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  *
  */
 function(group_key, group_ids, callback) {
+    if (this._hierarchical_groups) {
+        // Mixpanel would read a list as the name of one group, not as membership in each
+        if (_.isArray(group_ids)) {
+            return this._drop_single_group_only('set_group with a list', group_key, callback);
+        }
+        this._register_single(group_key, group_ids);
+        return this['people'].set(group_key, group_ids, callback);
+    }
     if (!_.isArray(group_ids)) {
         group_ids = [group_ids];
     }
@@ -1272,11 +1284,17 @@ MixpanelLib.prototype.add_group = addOptOutCheckMixpanelLib(
  * mixpanel.add_group('company', 'mixpanel')
  * ```
  *
+ * A hierarchical groups project allows one group per group key, so this is reported as an
+ * error and dropped there. Use set_group(group_key, group_id) instead.
+ *
  * @param {String} group_key Group key
  * @param {*} group_id A valid Mixpanel property type
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 function(group_key, group_id, callback) {
+    if (this._hierarchical_groups) {
+        return this._drop_single_group_only('add_group', group_key, callback);
+    }
     var old_values = this.get_property(group_key);
     var prop = {};
     if (old_values === undefined) {
@@ -1301,11 +1319,27 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(
  * mixpanel.remove_group('company', 'mixpanel')
  * ```
  *
+ * On a hierarchical groups project this clears the group key when the user belongs to
+ * group_id, and does nothing otherwise.
+ *
  * @param {String} group_key Group key
  * @param {*} group_id A valid Mixpanel property type
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 function(group_key, group_id, callback) {
+    if (this._hierarchical_groups) {
+        var current = this.get_property(group_key);
+        // A one-item list, stored by an earlier version or before hierarchical groups was enabled,
+        // counts as that item
+        if (_.isArray(current) && current.length === 1) {
+            current = current[0];
+        }
+        if (current === undefined || current !== group_id) {
+            return;
+        }
+        this.unregister(group_key);
+        return this['people'].unset(group_key, callback);
+    }
     var old_value = this.get_property(group_key);
     // if the value doesn't exist, the persistent store is unchanged
     if (old_value !== undefined) {
@@ -1320,6 +1354,15 @@ function(group_key, group_id, callback) {
     }
     return this['people'].remove(group_key, group_id, callback);
 });
+
+MixpanelLib.prototype._drop_single_group_only = function(operation, group_key, callback) {
+    var message = operation + ' is not supported for hierarchical groups projects, which allow one ' +
+        group_key + ' per user. Use set_group(group_key, group_id). The update was dropped.';
+    this.report_error(message);
+    if (_.isFunction(callback)) {
+        callback(this.get_config('verbose') ? {status: 0, error: message} : 0);
+    }
+};
 
 MixpanelLib.prototype.track_with_groups = addOptOutCheckMixpanelLib(
 /**
@@ -1373,6 +1416,46 @@ MixpanelLib.prototype.get_group = function (group_key, group_id) {
         group._init(this, group_key, group_id);
         this._cached_groups[map_key] = group;
     }
+    return group;
+};
+
+/**
+ * Returns the identified user's company profile on a hierarchical groups project, as a group to
+ * set properties on. This is get_group('$company_id', company_id) with the company from the last
+ * identify().
+ *
+ * @example
+ * ```js
+ * mixpanel.identify({user_id: 'user_123', company_id: 'acme'});
+ * mixpanel.get_company().set('tier', 'enterprise');
+ * ```
+ *
+ * @remarks
+ *
+ * Only for projects that use hierarchical groups (the `hierarchical_groups` init option). On any
+ * other project, or before a company is identified, the returned group reports every update as
+ * an error and drops it, so it is never null.
+ *
+ * The company is fixed when this is called, so a group kept across reset() or a new identify()
+ * still updates the earlier company.
+ *
+ * @returns {Object} A MixpanelGroup identifier
+ */
+MixpanelLib.prototype.get_company = function() {
+    var reason;
+    if (!this._hierarchical_groups) {
+        reason = 'get_company() is only for hierarchical groups projects, enabled with the ' +
+            'hierarchical_groups init option.';
+    } else {
+        var company_id = this.get_property(COMPANY_ID_KEY);
+        if (company_id) {
+            return this.get_group(COMPANY_ID_KEY, company_id);
+        }
+        reason = 'get_company() needs a company. Call identify({user_id: user_id, company_id: company_id}) first.';
+    }
+    var group = new MixpanelGroup();
+    group._init(this, COMPANY_ID_KEY, null);
+    group._unavailable_reason = reason;
     return group;
 };
 
@@ -1721,11 +1804,15 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * mixpanel.identify({user_id: 'user_123', company_id: 'acme'});
  * ```
  *
- * An object without `company_id` is the same as passing the user id. On any other project
- * Mixpanel ignores `$company_id`, so an object naming a company is reported as an error and
- * nothing is identified. The library owns the device id; a `device_id` on the object is ignored.
+ * A hierarchical groups project needs both ids, so identify with a string, or with an object
+ * missing `user_id` or `company_id`, is reported as an error and nothing is identified there.
  *
- * @param {String|{user_id: String, company_id?: String}} [new_distinct_id] A string that uniquely identifies a user, or on a hierarchical groups project an object naming the user and their company. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
+ * On any other project an object without `company_id` is the same as passing the user id.
+ * Mixpanel ignores `$company_id` there, so an object naming a company is reported as an error
+ * and nothing is identified. The library owns the device id; a `device_id` on the object is
+ * ignored. While the user is opted out, identifying with an object does nothing.
+ *
+ * @param {String|{user_id: String, company_id?: String}} [new_distinct_id] A string that uniquely identifies a user, or an object naming the user and, on a hierarchical groups project, their company. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
 MixpanelLib.prototype.identify = function(
     new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
@@ -1733,25 +1820,40 @@ MixpanelLib.prototype.identify = function(
     var company_id = null;
     if (_.isObject(new_distinct_id)) {
         var identity = new_distinct_id;
+        if (this.has_opted_out_tracking()) {
+            return -1;
+        }
         var user_id = identity['user_id'];
         company_id = _.isUndefined(identity['company_id']) ? null : identity['company_id'];
-        if (!(_.isString(user_id) || _.isNumber(user_id)) || user_id === '') {
-            this.report_error('identify() needs a user_id; nothing was identified');
-            return -1;
-        }
-        if (company_id !== null && (!_.isString(company_id) || company_id === '')) {
-            this.report_error('identify() company_id must be a non-empty string; nothing was identified');
-            return -1;
-        }
-        if (company_id !== null && !this._hierarchical_groups) {
-            this.report_error('identify() with a company_id requires the hierarchical_groups init option. ' +
-                'Mixpanel ignores $company_id on other projects, so nothing was identified.');
-            return -1;
+        var has_user_id = (_.isString(user_id) || _.isNumber(user_id)) && user_id !== '';
+        if (this._hierarchical_groups) {
+            if (!has_user_id || !_.isString(company_id) || company_id === '') {
+                this.report_error('Can\'t identify ' + JSONStringify(identity) + ': hierarchical groups projects ' +
+                    'identify a user by company and user id, so both are required. Nothing was identified.');
+                return -1;
+            }
+        } else {
+            if (!has_user_id) {
+                this.report_error('Can\'t identify ' + JSONStringify(identity) + ' without a user_id. ' +
+                    'Nothing was identified.');
+                return -1;
+            }
+            if (company_id !== null) {
+                this.report_error('Can\'t identify ' + JSONStringify(identity) + ': a company requires the ' +
+                    'hierarchical_groups init option. Mixpanel ignores $company_id on other projects, so ' +
+                    'nothing was identified.');
+                return -1;
+            }
         }
         if (identity['device_id'] && identity['device_id'] !== this.get_property('$device_id')) {
             console.error('identify() ignored device_id ' + identity['device_id'] + ': the library owns the device id');
         }
         new_distinct_id = user_id;
+    } else if (this._hierarchical_groups) {
+        this.report_error('identify(string) is not supported for hierarchical groups projects, which identify a ' +
+            'user by company and user id. Use identify({user_id: user_id, company_id: company_id}). ' +
+            'Nothing was identified.');
+        return -1;
     }
 
     // Optional Parameters
@@ -1784,18 +1886,8 @@ MixpanelLib.prototype.identify = function(
         this.register({'$user_id': new_distinct_id});
     }
 
-    if (this._hierarchical_groups && new_distinct_id) {
-        if (company_id !== null) {
-            if (company_changed) {
-                this._register_single(COMPANY_ID_KEY, company_id);
-            }
-        } else if (new_distinct_id !== previous_distinct_id) {
-            // The previous company belonged to the previous user
-            this.unregister(COMPANY_ID_KEY);
-            console.error('identify() without a company on a hierarchical groups project. Mixpanel ignores the ' +
-                'user id until an event carries a company, so these events stay under the device. ' +
-                'Use identify({user_id: user_id, company_id: company_id}).');
-        }
+    if (company_changed) {
+        this._register_single(COMPANY_ID_KEY, company_id);
     }
 
     if (!this.get_property('$device_id')) {
@@ -1959,10 +2051,20 @@ MixpanelLib.prototype._is_hierarchical_groups = function() {
  * for an account). Do not use alias multiple times for a single
  * user without ID Merge enabled.
  *
+ * A hierarchical groups project identifies a user by their company and user id, which an
+ * alias of one distinct id to another can't express, so alias is reported as an error and
+ * dropped there. Use identify({user_id: user_id, company_id: company_id}) instead.
+ *
  * @param {String} alias A unique identifier that you want to use for this user in the future.
  * @param {String} [original] The current identifier being used for this user.
  */
 MixpanelLib.prototype.alias = function(alias, original) {
+    if (this._hierarchical_groups) {
+        this.report_error('alias is not supported for hierarchical groups projects, which identify a user by ' +
+            'company and user id. Use identify({user_id: user_id, company_id: company_id}). The alias was dropped.');
+        return -1;
+    }
+
     // If the $people_distinct_id key exists in persistence, there has been a previous
     // mixpanel.people.identify() call made for this user. It is VERY BAD to make an alias with
     // this ID, as it will duplicate users.
@@ -2396,7 +2498,16 @@ MixpanelLib.prototype._gdpr_call_func = function(func, options) {
  * });
  * ```
  *
+ * Opting out clears the user's identity, so on a hierarchical groups project pass `identity` to
+ * opt back in with the user's company: the opt-in event and every event after it carry the user
+ * and company.
+ *
+ * ```js
+ * mixpanel.opt_in_tracking({identity: {user_id: 'user_123', company_id: 'acme'}});
+ * ```
+ *
  * @param {Object} [options] A dictionary of config options to override
+ * @param {Object} [options.identity] The user to identify once opted in, before the opt-in event is tracked: on a hierarchical groups project, `{user_id, company_id}`. Passed to identify()
  * @param {function} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
  * @param {string} [options.track_event_name=$opt_in] Event name to be used for tracking the opt-in action
  * @param {Object} [options.track_properties] Set of properties to be tracked along with the opt-in action
@@ -2414,7 +2525,22 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
         'enable_persistence': true
     }, options);
 
+    var identity = options['identity'];
+    var has_identity = !_.isUndefined(identity) && identity !== null;
+    var track = _.isUndefined(options['track']) ? _.bind(this.track, this) : options['track'];
+    if (has_identity && track) {
+        // Identify once opted in and before the opt-in event, so the event carries the identity
+        var _this = this;
+        options['track'] = function() {
+            _this.identify(identity);
+            return track.apply(this, arguments);
+        };
+    }
+
     this._gdpr_call_func(optIn, options);
+    if (has_identity && !track) {
+        this.identify(identity);
+    }
     this._gdpr_update_persistence(options);
 };
 
@@ -2434,7 +2560,7 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * ```
  *
  * @param {Object} [options] A dictionary of config options to override
- * @param {boolean} [options.delete_user=true] If true, will delete the currently identified user's profile and clear all charges after opting the user out
+ * @param {boolean} [options.delete_user=true] If true, will delete the currently identified user's profile and clear all charges after opting the user out. On a hierarchical groups project it deletes only the user's profile, never their company or other group profiles
  * @param {boolean} [options.clear_persistence=true] If true, will delete all data stored by the sdk in persistence
  * @param {string} [options.persistence_type=localStorage] Persistence mechanism used - cookie or localStorage - falls back to cookie if localStorage is unavailable
  * @param {string} [options.cookie_prefix=__mp_opt_in_out] Custom prefix to be used in the cookie/localstorage name
@@ -2453,7 +2579,10 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
     // delete user and clear charges since these methods may be disabled by opt-out
     if (options['delete_user'] && this['people'] && this['people']._identify_called()) {
         this['people'].delete_user();
-        this['people'].clear_charges();
+        // track_charge has no hierarchical groups equivalent, so there are no charges to clear
+        if (!this._hierarchical_groups) {
+            this['people'].clear_charges();
+        }
     }
 
     this._gdpr_call_func(optOut, options);
@@ -2596,6 +2725,7 @@ MixpanelLibProto['has_opted_out_tracking']             = MixpanelLibProto.has_op
 MixpanelLibProto['has_opted_in_tracking']              = MixpanelLibProto.has_opted_in_tracking;
 MixpanelLibProto['clear_opt_in_out_tracking']          = MixpanelLibProto.clear_opt_in_out_tracking;
 MixpanelLibProto['get_group']                          = MixpanelLibProto.get_group;
+MixpanelLibProto['get_company']                        = MixpanelLibProto.get_company;
 MixpanelLibProto['set_group']                          = MixpanelLibProto.set_group;
 MixpanelLibProto['add_group']                          = MixpanelLibProto.add_group;
 MixpanelLibProto['remove_group']                       = MixpanelLibProto.remove_group;

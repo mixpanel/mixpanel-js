@@ -15,6 +15,7 @@ import './mixpanel-jslib-snippet';
         'clear_opt_in_out_tracking',
         'disable',
         /* Ignore getters
+        'get_company',
         'get_config',
         'get_distinct_id',
         'get_group',

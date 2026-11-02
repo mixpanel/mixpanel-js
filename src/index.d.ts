@@ -45,6 +45,11 @@ export interface ClearOptOutInOutOptions extends HasOptedInOutOptions {
 }
 
 export interface InTrackingOptions extends ClearOptOutInOutOptions {
+  /**
+   * The user to identify once opted in, before the opt-in event is tracked. On a hierarchical
+   * groups project, the user and their company.
+   */
+  identity: Identity;
   track: () => void;
   track_event_name: string;
   track_properties: Dict;
@@ -213,10 +218,14 @@ export interface BeforeSendHookPayload {
   properties: Record<string, any>;
 }
 
-/** Who to identify: on a hierarchical groups project, a user and their company. */
+/**
+ * Who to identify: on a hierarchical groups project, a user and their company, both required.
+ * device_id is ignored, since the library owns the device id.
+ */
 export interface Identity {
   user_id: string | number;
   company_id?: string;
+  device_id?: string;
 }
 
 /** Who events are currently attributed to. Unset values are null. */
@@ -470,6 +479,7 @@ export interface Mixpanel {
   get_config(prop_name?: string): any;
   /** @deprecated Use get_identity() instead. */
   get_distinct_id(): any;
+  get_company(): Group;
   get_group(group_key: string, group_id: string): Group;
   get_identity(): CurrentIdentity;
   get_property(property_name: string): any;
@@ -557,6 +567,7 @@ export function disable(events?: string[]): void;
 export function get_config(prop_name?: string): any;
 /** @deprecated Use get_identity() instead. */
 export function get_distinct_id(): any;
+export function get_company(): Group;
 export function get_group(group_key: string, group_id: string): Group;
 export function get_identity(): CurrentIdentity;
 export function get_property(property_name: string): any;

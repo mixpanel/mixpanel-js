@@ -150,18 +150,18 @@ function(list_name, value, callback) {
 });
 
 MixpanelGroup.prototype._send_request = function(data, callback) {
+    // Set by get_company() when there is no company to update
+    if (this._unavailable_reason) {
+        return this._drop_request(this._unavailable_reason + ' The update was dropped.', callback);
+    }
+
     if (this._mixpanel._is_hierarchical_groups()) {
         // Hierarchical groups require $company_id at the top level of every /groups write
         var company_id = this._mixpanel.get_property('$company_id');
         if (!company_id) {
-            var message = 'Group profile updates for hierarchical groups projects require a company. Call ' +
-                'identify({user_id: user_id, company_id: company_id}) first. The update to ' +
-                this._group_key + '=' + this._group_id + ' was dropped.';
-            this._mixpanel.report_error(message);
-            if (!_.isUndefined(callback)) {
-                callback(this._get_config('verbose') ? {status: 0, error: message} : 0);
-            }
-            return;
+            return this._drop_request('Group profile updates for hierarchical groups projects require a company. ' +
+                'Call identify({user_id: user_id, company_id: company_id}) first. The update to ' +
+                this._group_key + '=' + this._group_id + ' was dropped.', callback);
         }
         data['$company_id'] = company_id;
     }
@@ -177,6 +177,13 @@ MixpanelGroup.prototype._send_request = function(data, callback) {
         endpoint: this._mixpanel.get_api_host('groups') + '/' +  this._get_config('api_routes')['groups'],
         batcher: this._mixpanel.request_batchers.groups
     }, callback);
+};
+
+MixpanelGroup.prototype._drop_request = function(message, callback) {
+    this._mixpanel.report_error(message);
+    if (!_.isUndefined(callback)) {
+        callback(this._get_config('verbose') ? {status: 0, error: message} : 0);
+    }
 };
 
 MixpanelGroup.prototype._is_reserved_property = function(prop) {

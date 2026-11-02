@@ -295,10 +295,18 @@ function(amount, properties, callback) { // eslint-disable-line no-unused-vars
  * mixpanel.people.clear_charges();
  * ```
  *
+ * On a hierarchical groups project, which can't track charges, this is reported as an error
+ * and dropped.
+ *
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  * @deprecated
  */
 MixpanelPeople.prototype.clear_charges = function(callback) {
+    // track_charge has no hierarchical groups equivalent, so there are no charges to clear
+    if (this._mixpanel._is_hierarchical_groups()) {
+        return this._drop_hierarchical_request('clear_charges is not supported for hierarchical groups ' +
+            'projects, which can\'t track_charge. The update was dropped.', callback);
+    }
     return this.set('$transactions', [], callback);
 };
 
@@ -327,8 +335,19 @@ MixpanelPeople.prototype.toString = function() {
 };
 
 MixpanelPeople.prototype._send_request = function(data, callback) {
-    if (this._mixpanel._is_hierarchical_groups() && this._identify_called()) {
-        return this._send_hierarchical_request(data, callback);
+    if (this._mixpanel._is_hierarchical_groups()) {
+        // Called before $token and the identity keys are added, so the action is the only key
+        var action = _.keys(data)[0];
+        if (!_.include(GROUP_PROFILE_ACTIONS, action)) {
+            // Dropped before it can be queued, so identify() never retries it
+            return this._drop_hierarchical_request(action + ' is not supported for hierarchical groups projects, ' +
+                'whose user profiles are group profiles keyed by $user_id. Supported operations are [' +
+                GROUP_PROFILE_ACTIONS.join(', ') + '], so increment, append and track_charge have no ' +
+                'hierarchical groups equivalent. The update was dropped.', callback);
+        }
+        if (this._identify_called()) {
+            return this._send_hierarchical_request(action, data, callback);
+        }
     }
 
     data['$token'] = this._get_config('token');
@@ -371,16 +390,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
 // On a hierarchical groups project a user profile is a group profile keyed by $user_id within
 // the user's company, so it is written through /groups and supports only what /groups supports.
 // Updates made before identify() wait in the people queue and arrive here once it runs.
-MixpanelPeople.prototype._send_hierarchical_request = function(data, callback) {
-    // Called before $token and the identity keys are added, so the action is the only key
-    var action = _.keys(data)[0];
-    if (!_.include(GROUP_PROFILE_ACTIONS, action)) {
-        return this._drop_hierarchical_request(action + ' is not supported for hierarchical groups projects, ' +
-            'whose user profiles are group profiles keyed by $user_id. Supported operations are ' +
-            GROUP_PROFILE_ACTIONS.join(', ') + ', so increment, append and track_charge have no hierarchical ' +
-            'groups equivalent. The update was dropped.', callback);
-    }
-
+MixpanelPeople.prototype._send_hierarchical_request = function(action, data, callback) {
     var user_id = this._mixpanel.get_property('$user_id');
     var company_id = this._mixpanel.get_property('$company_id');
     if (!user_id || !company_id) {

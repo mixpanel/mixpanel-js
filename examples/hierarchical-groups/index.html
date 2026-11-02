@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hierarchical Groups</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0 auto;
+            max-width: 480px;
+            padding: 16px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        input {
+            box-sizing: border-box;
+            font-size: 15px;
+            padding: 8px;
+            width: 100%;
+        }
+        h2 {
+            font-size: 15px;
+            margin: 20px 0 4px;
+        }
+        button {
+            display: block;
+            font-size: 15px;
+            margin-top: 8px;
+            padding: 10px;
+            width: 100%;
+        }
+        #status {
+            color: #666;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hierarchical Groups</h1>
+
+    <label for="user-id">User ID</label>
+    <input id="user-id" value="tyler_js">
+    <label for="company-id">Company ID</label>
+    <input id="company-id" value="violet_tiger">
+    <label for="team-id">Team ID</label>
+    <input id="team-id" value="js_team">
+
+    <p id="status">Loading the library...</p>
+    <div id="actions"></div>
+
+    <!-- Load the library built from this repo (npm run build) instead of the CDN -->
+    <script>window.MIXPANEL_CUSTOM_LIB_URL = '../../build/mixpanel.js';</script>
+    <script src="../../src/loaders/mixpanel-jslib-snippet.js"></script>
+    <script src="hierarchical-groups.js"></script>
+</body>
+</html>

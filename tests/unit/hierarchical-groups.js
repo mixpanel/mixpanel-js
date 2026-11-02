@@ -13,13 +13,19 @@ import { MockMixpanelLib } from './test-utils/mock-mixpanel-lib';
 
 let mixpanel;
 let instanceCount = 0;
+// Messages passed to error_reporter, which report_error calls for every dropped call
+let reportedErrors = [];
+
+function reported(message) {
+  return reportedErrors.some(error => error.includes(message));
+}
 
 function newInstance(config) {
   instanceCount++;
   const instance = mixpanel.init(`hg-token-${instanceCount}`, Object.assign({
     persistence: `localStorage`,
     batch_requests: false,
-    error_reporter: () => {},
+    error_reporter: error => reportedErrors.push(error.message),
   }, config), `hg_${instanceCount}`);
   const sent = [];
   instance._track_or_batch = (options, callback) => {
@@ -70,6 +76,7 @@ describe(`Hierarchical groups`, function() {
   });
 
   beforeEach(function() {
+    reportedErrors = [];
     sinon.stub(console, `error`);
   });
 
@@ -125,31 +132,49 @@ describe(`Hierarchical groups`, function() {
       expect(lastEvent(sent, `Viewed Report`).$company_id).to.equal(`globex`);
     });
 
-    it(`keeps the company when the same user identifies without one`, function() {
-      const {instance} = newInstance({hierarchical_groups: true});
-      instance.identify({user_id: `user_123`, company_id: `acme`});
-      instance.identify(`user_123`);
+    it(`rejects a distinct id`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      const anonymous = instance.get_distinct_id();
+      expect(instance.identify(`user_123`)).to.equal(-1);
+      expect(instance.identify()).to.equal(-1);
 
-      expect(instance.get_identity().company_id).to.equal(`acme`);
+      expect(instance.get_distinct_id()).to.equal(anonymous);
+      expect(instance.get_identity().user_id).to.be.null;
+      expect(events(sent, `$identify`)).to.be.empty;
+      expect(reported(`identify(string) is not supported for hierarchical groups projects`)).to.be.true;
     });
 
-    it(`clears the company when a new user identifies without one`, function() {
+    it(`keeps the current identity when given a distinct id`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
       instance.identify({user_id: `user_123`, company_id: `acme`});
       instance.identify(`user_456`);
       instance.track(`Viewed Report`);
 
-      expect(instance.get_identity().company_id).to.be.null;
-      const props = lastEvent(sent, `Viewed Report`);
-      expect(props.$user_id).to.equal(`user_456`);
-      expect(props).to.not.have.property(`$company_id`);
+      expect(instance.get_identity().user_id).to.equal(`user_123`);
+      expect(instance.get_identity().company_id).to.equal(`acme`);
+      expect(lastEvent(sent, `Viewed Report`).$company_id).to.equal(`acme`);
+      expect(events(sent, `$identify`)).to.have.length(1);
     });
 
-    it(`treats an identity without a company as identify(user_id)`, function() {
+    it(`rejects an identity without a company`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
-      instance.identify({user_id: `user_123`});
+      const anonymous = instance.get_distinct_id();
+      expect(instance.identify({user_id: `user_123`})).to.equal(-1);
+
+      expect(instance.get_distinct_id()).to.equal(anonymous);
+      expect(instance.get_identity().user_id).to.be.null;
+      expect(events(sent, `$identify`)).to.be.empty;
+      expect(reported(`Can't identify {"user_id":"user_123"}: hierarchical groups projects ` +
+        `identify a user by company and user id, so both are required. Nothing was identified.`)).to.be.true;
+    });
+
+    it(`keeps the current identity when given one without a company`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.identify({user_id: `user_456`});
 
       expect(instance.get_identity().user_id).to.equal(`user_123`);
+      expect(instance.get_identity().company_id).to.equal(`acme`);
       expect(events(sent, `$identify`)).to.have.length(1);
     });
 
@@ -157,10 +182,31 @@ describe(`Hierarchical groups`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
       const anonymous = instance.get_distinct_id();
       expect(instance.identify({company_id: `acme`})).to.equal(-1);
+      expect(instance.identify({user_id: null, company_id: `acme`})).to.equal(-1);
       expect(instance.identify({user_id: ``, company_id: `acme`})).to.equal(-1);
       expect(instance.identify({user_id: `user_123`, company_id: ``})).to.equal(-1);
+      expect(instance.identify({user_id: `user_123`, company_id: null})).to.equal(-1);
 
       expect(instance.get_distinct_id()).to.equal(anonymous);
+      expect(instance.get_identity().company_id).to.be.null;
+      expect(events(sent, `$identify`)).to.be.empty;
+    });
+
+    it(`lets the company override a stale super property`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.register({'$company_id': `stale`});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`).$company_id).to.equal(`acme`);
+    });
+
+    it(`does nothing while opted out`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.opt_out_tracking();
+      expect(instance.identify({user_id: `user_123`, company_id: `acme`})).to.equal(-1);
+
+      expect(instance.get_identity().company_id).to.be.null;
       expect(events(sent, `$identify`)).to.be.empty;
     });
 
@@ -177,11 +223,48 @@ describe(`Hierarchical groups`, function() {
     it(`clears the company on reset`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
       instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.set_group(`team`, `finance`);
       instance.reset();
       instance.track(`Opened`);
 
+      expect(instance.get_identity().user_id).to.be.null;
       expect(instance.get_identity().company_id).to.be.null;
-      expect(lastEvent(sent, `Opened`)).to.not.have.property(`$company_id`);
+      const props = lastEvent(sent, `Opened`);
+      expect(props).to.not.have.property(`$company_id`);
+      expect(props).to.not.have.property(`team`);
+    });
+
+    it(`can identify again after reset`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.reset();
+      instance.identify({user_id: `user_456`, company_id: `globex`});
+      instance.track(`Viewed Report`);
+
+      const props = lastEvent(sent, `Viewed Report`);
+      expect(props.$user_id).to.equal(`user_456`);
+      expect(props.$company_id).to.equal(`globex`);
+      expect(events(sent, `$identify`)).to.have.length(2);
+    });
+  });
+
+  describe(`alias`, function() {
+    it(`is dropped`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      expect(instance.alias(`new_id`)).to.equal(-1);
+
+      expect(events(sent, `$create_alias`)).to.be.empty;
+      expect(instance.get_identity().user_id).to.equal(`user_123`);
+      expect(reported(`alias is not supported for hierarchical groups projects`)).to.be.true;
+    });
+
+    it(`still works when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.identify(`user_123`);
+      instance.alias(`new_id`);
+
+      expect(events(sent, `$create_alias`)).to.have.length(1);
     });
   });
 
@@ -218,6 +301,28 @@ describe(`Hierarchical groups`, function() {
       const {instance} = newInstance({hierarchical_groups: true});
       instance.identify(`user_123`);
       expect(instance.get_distinct_id()).to.equal(`$device:` + instance.get_property(`$device_id`));
+    });
+
+    it(`stays on the device for a user identified before hierarchical groups was enabled`, function() {
+      const {instance} = newInstance({hierarchical_groups: true});
+      instance.register({'$user_id': `user_123`, 'distinct_id': `user_123`});
+      expect(instance.get_distinct_id()).to.equal(`$device:` + instance.get_property(`$device_id`));
+    });
+
+    it(`returns to the device form on reset`, function() {
+      const {instance} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.reset();
+      expect(instance.get_distinct_id()).to.equal(`$device:` + instance.get_property(`$device_id`));
+    });
+
+    it(`report no company when disabled`, function() {
+      const {instance} = newInstance();
+      instance.identify(`user_123`);
+      expect(instance.get_identity()).to.deep.equal({
+        user_id: `user_123`, company_id: null, device_id: instance.get_property(`$device_id`),
+      });
+      expect(instance.get_distinct_id()).to.equal(`user_123`);
     });
   });
 
@@ -263,10 +368,25 @@ describe(`Hierarchical groups`, function() {
       instance.people.increment(`logins`, 1, callback);
       instance.people.append(`history`, `a`);
       instance.people.track_charge(9.99);
+      instance.people.clear_charges();
 
       expect(groupMessages(sent)).to.be.empty;
       expect(peopleMessages(sent)).to.be.empty;
       expect(callback.calledOnceWith(0)).to.be.true;
+      expect(reported(`$add is not supported for hierarchical groups projects, whose user ` +
+        `profiles are group profiles keyed by $user_id. Supported operations are [$set, $set_once, $unset, ` +
+        `$union, $remove, $delete]`)).to.be.true;
+      expect(reported(`clear_charges is not supported for hierarchical groups projects`)).to.be.true;
+    });
+
+    it(`drops unsupported operations made before identify instead of queueing them`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.people.increment(`logins`, 1);
+      instance.people.append(`history`, `a`);
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+
+      expect(groupMessages(sent)).to.be.empty;
+      expect(peopleMessages(sent)).to.be.empty;
     });
 
     it(`queues updates made before identify and writes them to /groups after`, function() {
@@ -281,12 +401,26 @@ describe(`Hierarchical groups`, function() {
       expect(messages[0].$company_id).to.equal(`acme`);
     });
 
-    it(`drops updates for a user with no company`, function() {
+    it(`stay queued while only a distinct id was given`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
       instance.identify(`user_123`);
       instance.people.set(`plan`, `pro`);
 
       expect(groupMessages(sent)).to.be.empty;
+      expect(peopleMessages(sent)).to.be.empty;
+    });
+
+    it(`delete the user on opt-out without clearing charges`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.opt_out_tracking();
+
+      const messages = groupMessages(sent);
+      expect(messages).to.have.length(1);
+      expect(messages[0]).to.have.property(`$delete`);
+      expect(messages[0].$group_key).to.equal(`$user_id`);
+      expect(messages[0].$group_id).to.equal(`user_123`);
+      expect(messages[0].$company_id).to.equal(`acme`);
       expect(peopleMessages(sent)).to.be.empty;
     });
 
@@ -298,7 +432,109 @@ describe(`Hierarchical groups`, function() {
       const messages = groupMessages(sent);
       expect(messages).to.have.length(1);
       expect(messages[0].$group_key).to.equal(`$user_id`);
-      expect(messages[0].$set.team).to.deep.equal([`finance`]);
+      expect(messages[0].$set.team).to.equal(`finance`);
+      expect(peopleMessages(sent)).to.be.empty;
+    });
+  });
+
+  describe(`custom group membership`, function() {
+    function identified() {
+      const created = newInstance({hierarchical_groups: true});
+      created.instance.identify({user_id: `user_123`, company_id: `acme`});
+      return created;
+    }
+
+    it(`sends a single value on events`, function() {
+      const {instance, sent} = identified();
+      instance.set_group(`team`, `finance`);
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`).team).to.equal(`finance`);
+      expect(instance.get_property(`team`)).to.equal(`finance`);
+    });
+
+    it(`drops set_group with a list`, function() {
+      const {instance, sent} = identified();
+      const callback = sinon.spy();
+      instance.set_group(`team`, [`finance`], callback);
+      instance.set_group(`team`, [`finance`, `sales`]);
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`)).to.not.have.property(`team`);
+      expect(groupMessages(sent)).to.be.empty;
+      expect(callback.calledOnceWith(0)).to.be.true;
+      expect(reported(`set_group with a list is not supported for hierarchical groups ` +
+        `projects, which allow one team per user. Use set_group(group_key, group_id). The update was dropped.`)).to.be.true;
+    });
+
+    it(`drops add_group`, function() {
+      const {instance, sent} = identified();
+      instance.add_group(`team`, `finance`);
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`)).to.not.have.property(`team`);
+      expect(groupMessages(sent)).to.be.empty;
+      expect(reported(`add_group is not supported for hierarchical groups projects`)).to.be.true;
+    });
+
+    it(`drops add_group to a second group`, function() {
+      const {instance, sent} = identified();
+      instance.set_group(`team`, `finance`);
+      instance.add_group(`team`, `sales`);
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`).team).to.equal(`finance`);
+      expect(groupMessages(sent)).to.have.length(1);
+    });
+
+    it(`clears the group on remove_group`, function() {
+      const {instance, sent} = identified();
+      instance.set_group(`team`, `finance`);
+      instance.remove_group(`team`, `finance`);
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`)).to.not.have.property(`team`);
+      const messages = groupMessages(sent);
+      expect(messages).to.have.length(2);
+      expect(messages[1].$unset).to.deep.equal([`team`]);
+      expect(messages[1].$group_key).to.equal(`$user_id`);
+    });
+
+    it(`does nothing on remove_group of another group`, function() {
+      const {instance, sent} = identified();
+      instance.set_group(`team`, `finance`);
+      instance.remove_group(`team`, `sales`);
+      instance.remove_group(`region`, `emea`);
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`).team).to.equal(`finance`);
+      expect(groupMessages(sent)).to.have.length(1);
+    });
+
+    it(`clears a list stored before hierarchical groups on remove_group`, function() {
+      const {instance, sent} = identified();
+      instance.register({team: [`finance`]});
+      instance.remove_group(`team`, `finance`);
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`)).to.not.have.property(`team`);
+      expect(groupMessages(sent)[0].$unset).to.deep.equal([`team`]);
+    });
+
+    it(`leaves track_with_groups unchanged`, function() {
+      const {instance, sent} = identified();
+      instance.track_with_groups(`Viewed Report`, {}, {team: `finance`});
+
+      expect(lastEvent(sent, `Viewed Report`).team).to.equal(`finance`);
+    });
+
+    it(`stays a list when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.set_group(`team`, `finance`);
+      instance.add_group(`team`, `sales`);
+      instance.track(`Viewed Report`);
+
+      expect(lastEvent(sent, `Viewed Report`).team).to.deep.equal([`finance`, `sales`]);
     });
   });
 
@@ -323,6 +559,137 @@ describe(`Hierarchical groups`, function() {
       instance.get_group(`team`, `finance`).set(`size`, 12);
 
       expect(groupMessages(sent)).to.be.empty;
+      expect(reported(`Group profile updates for hierarchical groups projects require a ` +
+        `company. Call identify({user_id: user_id, company_id: company_id}) first. The update to team=finance ` +
+        `was dropped.`)).to.be.true;
+    });
+  });
+
+  describe(`get_company`, function() {
+    it(`updates the identified company`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.get_company().set(`tier`, `enterprise`);
+
+      const messages = groupMessages(sent);
+      expect(messages).to.have.length(1);
+      expect(messages[0].$group_key).to.equal(`$company_id`);
+      expect(messages[0].$group_id).to.equal(`acme`);
+      expect(messages[0].$company_id).to.equal(`acme`);
+      expect(messages[0].$set.tier).to.equal(`enterprise`);
+      expect(instance.get_company()).to.equal(instance.get_group(`$company_id`, `acme`));
+    });
+
+    it(`drops updates before identify`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      const company = instance.get_company();
+      const callback = sinon.spy();
+      company.set(`tier`, `enterprise`, callback);
+      company.delete();
+
+      expect(groupMessages(sent)).to.be.empty;
+      expect(callback.calledOnceWith(0)).to.be.true;
+      expect(reported(`get_company() needs a company. Call identify({user_id: user_id, ` +
+        `company_id: company_id}) first. The update was dropped.`)).to.be.true;
+    });
+
+    it(`drops updates when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.get_company().set(`tier`, `enterprise`);
+
+      expect(groupMessages(sent)).to.be.empty;
+      expect(peopleMessages(sent)).to.be.empty;
+      expect(reported(`get_company() is only for hierarchical groups projects, enabled ` +
+        `with the hierarchical_groups init option. The update was dropped.`)).to.be.true;
+    });
+
+    it(`keeps the company it was called with`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      const company = instance.get_company();
+      instance.identify({user_id: `user_123`, company_id: `globex`});
+      company.set(`tier`, `enterprise`);
+
+      expect(groupMessages(sent)[0].$group_id).to.equal(`acme`);
+    });
+  });
+
+  describe(`opt in and out`, function() {
+    it(`opts in with an identity`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.opt_out_tracking();
+      instance.reset();
+      instance.opt_in_tracking({identity: {user_id: `user_123`, company_id: `acme`}});
+
+      expect(instance.has_opted_out_tracking()).to.be.false;
+      const props = lastEvent(sent, `$opt_in`);
+      expect(props.$user_id).to.equal(`user_123`);
+      expect(props.$company_id).to.equal(`acme`);
+      expect(instance.get_identity().company_id).to.equal(`acme`);
+      expect(events(sent, `$identify`)).to.have.length(2);
+    });
+
+    it(`opts in with an identity and properties`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({
+        identity: {user_id: `user_123`, company_id: `acme`},
+        track_properties: {source: `settings`},
+      });
+
+      const props = lastEvent(sent, `$opt_in`);
+      expect(props.source).to.equal(`settings`);
+      expect(props.$company_id).to.equal(`acme`);
+    });
+
+    it(`identifies even when the opt-in event is not tracked`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: {user_id: `user_123`, company_id: `acme`}, track: null});
+
+      expect(events(sent, `$opt_in`)).to.be.empty;
+      expect(instance.get_identity().company_id).to.equal(`acme`);
+    });
+
+    it(`still opts in without arguments`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.opt_out_tracking();
+      instance.opt_in_tracking();
+
+      expect(instance.has_opted_out_tracking()).to.be.false;
+      expect(events(sent, `$opt_in`)).to.have.length(1);
+    });
+
+    it(`opts in anonymously after reset without an identity`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.opt_out_tracking();
+      instance.reset();
+      instance.opt_in_tracking({identity: null, track_properties: {source: `settings`}});
+
+      const props = lastEvent(sent, `$opt_in`);
+      expect(props.source).to.equal(`settings`);
+      expect(props).to.not.have.property(`$company_id`);
+      expect(props).to.not.have.property(`$user_id`);
+    });
+
+    it(`opts in with an identity naming only a user when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: {user_id: `user_123`}});
+
+      expect(lastEvent(sent, `$opt_in`).$user_id).to.equal(`user_123`);
+    });
+
+    it(`still clears charges on opt-out when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.identify(`user_123`);
+      instance.opt_out_tracking();
+
+      const people = peopleMessages(sent);
+      expect(people.map(m => Object.keys(m).find(k => k === `$delete` || k === `$set`))).to.deep.equal([`$delete`, `$set`]);
+      expect(people[1].$set.$transactions).to.deep.equal([]);
     });
   });
 
@@ -337,9 +704,16 @@ describe(`Hierarchical groups`, function() {
     });
 
     it(`accepts an identity without a company`, function() {
-      const {instance} = newInstance();
+      const {instance, sent} = newInstance();
       instance.identify({user_id: `user_123`});
       expect(instance.get_distinct_id()).to.equal(`user_123`);
+      expect(events(sent, `$identify`)).to.have.length(1);
+    });
+
+    it(`rejects an identity without a user`, function() {
+      const {instance} = newInstance();
+      expect(instance.identify({company_id: null})).to.equal(-1);
+      expect(reported(`without a user_id. Nothing was identified.`)).to.be.true;
     });
 
     it(`sends people updates to /engage and groups without a company`, function() {

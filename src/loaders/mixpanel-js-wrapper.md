@@ -99,6 +99,7 @@ window._mixpanel(
 
 Because the wrapper only pipes commands to the actual `window.mixpanel` interface, the wrapper cannot be used for get-methods. So the following commands **are not** supported by the wrapper:
 
+`get_company`
 `get_config`
 `get_distinct_id`
 `get_group`
