@@ -789,6 +789,17 @@ describe(`Hierarchical groups`, function() {
       instance.identify({user_id: `user_123`, company_id: `acme`});
       expect(instance.get_identity().company_id).to.equal(`acme`);
     });
+
+    it(`keeps reporting the init value after set_config`, function() {
+      const {instance: enabled} = newInstance({hierarchical_groups: true});
+      enabled.set_config({hierarchical_groups: false});
+      expect(enabled.get_config(`hierarchical_groups`)).to.equal(true);
+
+      // a remote setting or set_config can't turn session recording's checks on for a legacy project
+      const {instance: disabled} = newInstance();
+      disabled.set_config({hierarchical_groups: true});
+      expect(disabled.get_config(`hierarchical_groups`)).to.equal(false);
+    });
   });
 
   describe(`flags`, function() {

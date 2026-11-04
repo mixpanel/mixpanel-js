@@ -2277,6 +2277,8 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
 MixpanelLib.prototype.set_config = function(config) {
     if (_.isObject(config)) {
         _.extend(this['config'], config);
+        // Hierarchical groups is fixed at init, so a later set_config or remote setting can't change it
+        this['config']['hierarchical_groups'] = this._hierarchical_groups;
 
         var new_batch_size = config['batch_size'];
         if (new_batch_size) {
