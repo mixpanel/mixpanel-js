@@ -49,7 +49,7 @@ export interface InTrackingOptions extends ClearOptOutInOutOptions {
    * The user to identify once opted in, before the opt-in event is tracked. On a hierarchical
    * groups project, the user and their company.
    */
-  identity: Identity;
+  identity: MixpanelIdentity;
   track: () => void;
   track_event_name: string;
   track_properties: Dict;
@@ -219,20 +219,16 @@ export interface BeforeSendHookPayload {
 }
 
 /**
- * Who to identify: on a hierarchical groups project, a user and their company, both required.
- * device_id is ignored, since the library owns the device id.
+ * A user, and on a hierarchical groups project their company.
+ *
+ * Passed to identify(), where a hierarchical groups project requires both user_id and company_id
+ * and device_id is ignored, since the library owns the device id. Returned by get_identity() with
+ * every value present and unset values null.
  */
-export interface Identity {
-  user_id: string | number;
-  company_id?: string;
-  device_id?: string;
-}
-
-/** Who events are currently attributed to. Unset values are null. */
-export interface CurrentIdentity {
+export interface MixpanelIdentity {
   user_id: string | null;
-  company_id: string | null;
-  device_id: string | null;
+  company_id?: string | null;
+  device_id?: string | null;
 }
 
 export interface Config {
@@ -481,12 +477,12 @@ export interface Mixpanel {
   get_distinct_id(): any;
   get_company(): Group | null;
   get_group(group_key: string, group_id: string): Group;
-  get_identity(): CurrentIdentity;
+  get_identity(): Readonly<Required<MixpanelIdentity>>;
   get_property(property_name: string): any;
   get_session_replay_url(): string;
   has_opted_in_tracking(options?: Partial<HasOptedInOutOptions>): boolean;
   has_opted_out_tracking(options?: Partial<HasOptedInOutOptions>): boolean;
-  identify(unique_id?: string | Identity): any;
+  identify(unique_id?: string | MixpanelIdentity): any;
   init(token: string, config: Partial<Config>, name?: string): Mixpanel;
   opt_in_tracking(options?: Partial<InTrackingOptions>): void;
   opt_out_tracking(options?: Partial<OutTrackingOptions>): void;
@@ -569,7 +565,7 @@ export function get_config(prop_name?: string): any;
 export function get_distinct_id(): any;
 export function get_company(): Group | null;
 export function get_group(group_key: string, group_id: string): Group;
-export function get_identity(): CurrentIdentity;
+export function get_identity(): Readonly<Required<MixpanelIdentity>>;
 export function get_property(property_name: string): any;
 export function has_opted_in_tracking(
   options?: Partial<HasOptedInOutOptions>
@@ -577,7 +573,7 @@ export function has_opted_in_tracking(
 export function has_opted_out_tracking(
   options?: Partial<HasOptedInOutOptions>
 ): boolean;
-export function identify(unique_id?: string | Identity): any;
+export function identify(unique_id?: string | MixpanelIdentity): any;
 export function init(
   token: string,
   config: Partial<Config>,
