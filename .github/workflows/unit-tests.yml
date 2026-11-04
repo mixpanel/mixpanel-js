@@ -29,7 +29,7 @@ jobs:
       - run: npm run build-dist
 
       - name: Test Report
-        uses: dorny/test-reporter@7b7927aa7da8b82e81e755810cb51f39941a2cc7 # v2
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v2
         if: success() || failure()
         with:
           name: Unit Tests
