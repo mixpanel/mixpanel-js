@@ -926,7 +926,6 @@ describe(`Hierarchical groups`, function() {
       await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(firstTimeEventBody()).to.equal(JSON.stringify({
-        distinct_id: `user_123`,
         project_id: 123,
         first_time_event_hash: `HASH`,
         $user_id: `user_123`,

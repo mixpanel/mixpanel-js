@@ -504,11 +504,12 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
     searchParams.set('$lib_version', Config.LIB_VERSION);
     var url = this.getFirstTimeEventApiRoute(flagId) + '?' + searchParams.toString();
 
-    var payload = _.extend({
-        'distinct_id': distinctId,
+    // On a hierarchical groups project the user is $user_id and $company_id, so no distinct_id
+    var hierarchicalGroupsIdentity = this._getHierarchicalGroupsIdentity();
+    var payload = _.extend(hierarchicalGroupsIdentity ? {} : {'distinct_id': distinctId}, {
         'project_id': projectId,
         'first_time_event_hash': firstTimeEventHash
-    }, this._getHierarchicalGroupsIdentity());
+    }, hierarchicalGroupsIdentity);
 
     logger.log('Recording first-time event for flag: ' + flagId);
 
