@@ -1995,10 +1995,8 @@ MixpanelLib.prototype.reset = function() {
  * user, so once both are known this returns `$company:{company_id}|$user:{user_id}`. Until a
  * company is known Mixpanel ignores the user id and keeps the user under the device, so this
  * returns the `$device:` form. The combined form is Mixpanel's own format and cannot be parsed
- * back when either id contains `|`.
- *
- * @deprecated Use get_identity() instead. Its user, company and device ids are what every
- * Mixpanel SDK accepts directly, so nothing has to build or parse a combined id.
+ * back when either id contains `|`, so don't use this on hierarchical groups projects: prefer
+ * get_identity(), whose user, company and device ids every Mixpanel SDK accepts directly.
  */
 MixpanelLib.prototype.get_distinct_id = function() {
     var distinct_id = this._get_stored_distinct_id();

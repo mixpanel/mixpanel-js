@@ -473,7 +473,7 @@ export interface Mixpanel {
   disable(events?: string[]): void;
   flags: FlagsManager;
   get_config(prop_name?: string): any;
-  /** @deprecated Use get_identity() instead. */
+  /** Not for hierarchical groups projects; prefer get_identity() there. */
   get_distinct_id(): any;
   get_company(): Group | null;
   get_group(group_key: string, group_id: string): Group;
@@ -561,7 +561,7 @@ export function clear_opt_in_out_tracking(
 ): void;
 export function disable(events?: string[]): void;
 export function get_config(prop_name?: string): any;
-/** @deprecated Use get_identity() instead. */
+/** Not for hierarchical groups projects; prefer get_identity() there. */
 export function get_distinct_id(): any;
 export function get_company(): Group | null;
 export function get_group(group_key: string, group_id: string): Group;
