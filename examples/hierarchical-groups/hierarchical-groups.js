@@ -2,7 +2,7 @@
 (function() {
     // Hierarchical groups is an init-time option, so this page uses its own named instance
     // ("hg") and project rather than the default mixpanel instance.
-    var MIXPANEL_HG_PROJECT_TOKEN = '0d15128ec05aa2ba0fb3d45185f63a11';
+    var MIXPANEL_HG_PROJECT_TOKEN = 'YOUR_HG_PROJECT_TOKEN';
 
     // Filter the browser console on "HGDemo" to see each button's header line. With debug on, the
     // library logs its own warnings and dropped calls right after it.
