@@ -1,3 +1,13 @@
+**2.85.0** (5 Nov 2026)
+
+- Adds a `consent_mode` config. With `consent_mode: 'require_consent'`, the SDK stores and sends nothing (no events, people/group updates, flag fetches, remote settings or session recording) until `opt_in_tracking()` is called. An `identify()` made before consent is held and applied on opt-in. `opt_out_tracking()` (or Do Not Track, unless `ignore_dnt` is set) stops everything on the page at once and deletes stored identifiers, queued batches and persisted flag variants; unsent session replay data stays on the device and is only uploaded after consent is given again. The decision is stored with the identity persistence, so subdomains that share the cookie also share the decision. `opt_out_tracking_by_default`, `opt_out_tracking_persistence_type`, `opt_out_persistence_by_default` and the `opt_in_tracking()`/`opt_out_tracking()` persistence and `delete_user` options are ignored in this mode. If `consent_mode` is unset, opt-out works as before; `opt_out_tracking_by_default` applies only when `consent_mode` is unset. An unrecognized `consent_mode` value is treated as `'require_consent'`.
+- Fixes persistence being written again after an opt-out: any `set_config()` call after `opt_out_tracking()` re-enabled saving super properties to cookie/localStorage.
+- Fixes spaces between inline elements disappearing from session replays: the mask function dropped whitespace-only text nodes, so adjacent words were joined.
+- Fixes session replay events being left in IndexedDB with nothing to upload them when a recording stopped under `disable_persistence`. The registry entry is now kept, and the events are uploaded on a later page load.
+- Stops `init()` from creating an empty `mixpanelFlagsDb` IndexedDB database when no flag variants have been saved.
+- Moves all opt-out/consent logic into one internal `ConsentManager` that the request queue, flags, session recording and core consult before storing, sending or fetching. Splits `gdpr-utils.js` into `opt-out-flag.js` and the consent modules, and splits `init()` setup into helpers. No public API changes besides `consent_mode`.
+- Ports the GDPR and `disable_persistence` QUnit tests to the browser test suite.
+
 **2.84.0** (5 Oct 2026)
 
 - Adds an `on_track` hook (under `hooks` config) that is called for every tracked event with the event name and its merged properties. It can return a modified event name/properties or `null` to drop the event, and is not bypassed by `skip_hooks`.
