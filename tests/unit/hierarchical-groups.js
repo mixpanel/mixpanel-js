@@ -94,8 +94,8 @@ describe(`Hierarchical groups`, function() {
       expect(props.$user_id).to.equal(`user_123`);
       expect(props.$company_id).to.equal(`acme`);
       expect(props.$device_id).to.equal(instance.get_property(`$device_id`));
-      // The stored id; ingestion resolves the user from the identity keys
-      expect(props.distinct_id).to.equal(`user_123`);
+      // No distinct_id; ingestion resolves the user from the identity keys
+      expect(props).to.not.have.property(`distinct_id`);
     });
 
     it(`carry the new company on $identify`, function() {
@@ -958,7 +958,7 @@ describe(`Hierarchical groups`, function() {
       expect(props[`Experiment name`]).to.equal(`checkout_flow`);
       expect(props.$user_id).to.equal(`user_123`);
       expect(props.$company_id).to.equal(`company_123`);
-      expect(props.distinct_id).to.equal(`user_123`);
+      expect(props).to.not.have.property(`distinct_id`);
     });
   });
 

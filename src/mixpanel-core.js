@@ -1188,12 +1188,18 @@ function(event_name, properties, options, callback) {
     // don't write to the persistence properties object and info
     // properties object by passing in a new object
 
+    var persisted_properties = this['persistence'].properties();
+    // On a hierarchical groups project an identified user is $user_id and $company_id, so no distinct_id
+    if (this._hierarchical_groups && persisted_properties['$user_id'] && persisted_properties[COMPANY_ID_KEY]) {
+        delete persisted_properties['distinct_id'];
+    }
+
     // update properties with pageview info and super-properties
     properties = _.extend(
         {},
         _.info.properties({'mp_loader': this.get_config('mp_loader')}),
         marketing_properties,
-        this['persistence'].properties(),
+        persisted_properties,
         this.unpersisted_superprops,
         this.get_session_recording_properties(),
         properties
@@ -1944,10 +1950,10 @@ MixpanelLib.prototype.identify = function(
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
     if (identity_changed) {
-        this.track('$identify', {
-            'distinct_id': new_distinct_id,
+        // A hierarchical groups identify always names a company, so the event sends no distinct_id
+        this.track('$identify', _.extend(this._hierarchical_groups ? {} : {'distinct_id': new_distinct_id}, {
             '$anon_distinct_id': previous_distinct_id
-        }, {skip_hooks: true});
+        }), {skip_hooks: true});
     }
 
     // check feature flags again if distinct id has changed

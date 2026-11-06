@@ -83,7 +83,7 @@ function assertAnonymous(props) {
 }
 
 function assertIdentified(props) {
-  expect(props.distinct_id).to.equal(USER_ID);
+  expect(props).to.not.have.property(`distinct_id`);
   expect(props.$user_id).to.equal(USER_ID);
   expect(props.$company_id).to.equal(COMPANY_ID);
   expect(props.$device_id).to.equal(deviceId());
