@@ -136,7 +136,6 @@ describe(`Hierarchical groups scenarios`, function() {
   });
 
   it(`Identify`, function() {
-    const anonymousDistinctId = `$device:${deviceId()}`;
     identify();
 
     // The first identify also writes the initial referrer, which init() queues as a set_once
@@ -146,12 +145,8 @@ describe(`Hierarchical groups scenarios`, function() {
     expect(referrer[0].data.$group_key).to.equal(`$user_id`);
     expect(referrer[0].data.$company_id).to.equal(COMPANY_ID);
 
-    const identifies = sent.filter(s => s.endpoint === TRACK);
-    expect(identifies).to.have.length(1);
-    expect(identifies[0].data.event).to.equal(`$identify`);
-    const props = identifies[0].data.properties;
-    assertIdentified(props);
-    expect(props.$anon_distinct_id).to.equal(anonymousDistinctId);
+    // No $identify: the next event's identity keys tie the device to the user
+    expect(sent.filter(s => s.endpoint === TRACK)).to.be.empty;
   });
 
   it(`Track (Identified)`, function() {
@@ -490,9 +485,9 @@ describe(`Hierarchical groups scenarios`, function() {
     clearSent();
     instance.opt_in_tracking({identity: {user_id: USER_ID, company_id: COMPANY_ID}});
 
-    // $identify and $opt_in, in that order, both carrying the user and company
+    // Only $opt_in, carrying the user and company
     const events = sent.filter(s => s.endpoint === TRACK);
-    expect(events.map(s => s.data.event)).to.deep.equal([`$identify`, `$opt_in`]);
+    expect(events.map(s => s.data.event)).to.deep.equal([`$opt_in`]);
     events.forEach(s => assertIdentified(s.data.properties));
     expect(sent.filter(s => s.endpoint === ENGAGE)).to.be.empty;
     expect(instance.has_opted_out_tracking()).to.be.false;

@@ -1852,7 +1852,8 @@ MixpanelLib.prototype._identity_error = function(identity) {
  * identity: the same user id in two companies is two users. Every later event, people
  * update and session recording carries `$company_id` beside `$user_id` and `$device_id`,
  * until the next identify or reset(). Identifying the current user with a different company
- * is an identity change, as switching users is.
+ * is an identity change, as switching users is. No `$identify` event is tracked: Mixpanel ties
+ * the device to the user from the `$device_id`, `$user_id` and `$company_id` on later events.
  *
  * ```js
  * mixpanel.identify({user_id: 'user_123', company_id: 'acme'});
@@ -1949,11 +1950,13 @@ MixpanelLib.prototype.identify = function(
 
     // send an $identify event any time the distinct_id is changing - logic on the server
     // will determine whether or not to do anything with it.
-    if (identity_changed) {
-        // A hierarchical groups identify always names a company, so the event sends no distinct_id
-        this.track('$identify', _.extend(this._hierarchical_groups ? {} : {'distinct_id': new_distinct_id}, {
+    // A hierarchical groups project ties the device to the user from the identity keys on later
+    // events, so it has no $identify
+    if (identity_changed && !this._hierarchical_groups) {
+        this.track('$identify', {
+            'distinct_id': new_distinct_id,
             '$anon_distinct_id': previous_distinct_id
-        }), {skip_hooks: true});
+        }, {skip_hooks: true});
     }
 
     // check feature flags again if distinct id has changed

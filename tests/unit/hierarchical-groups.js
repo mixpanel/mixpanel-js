@@ -98,13 +98,16 @@ describe(`Hierarchical groups`, function() {
       expect(props).to.not.have.property(`distinct_id`);
     });
 
-    it(`carry the new company on $identify`, function() {
+    it(`track no $identify, and carry the identity keys on the next event`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
       instance.identify({user_id: `user_123`, company_id: `acme`});
+      expect(events(sent, `$identify`)).to.be.empty;
 
-      const props = lastEvent(sent, `$identify`);
+      instance.track(`Viewed Report`);
+      const props = lastEvent(sent, `Viewed Report`);
       expect(props.$company_id).to.equal(`acme`);
       expect(props.$user_id).to.equal(`user_123`);
+      expect(props.$device_id).to.equal(instance.get_property(`$device_id`));
     });
 
     it(`carry no company while anonymous`, function() {
@@ -122,11 +125,10 @@ describe(`Hierarchical groups`, function() {
     it(`treats a company change as an identity change`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
       instance.identify({user_id: `user_123`, company_id: `acme`});
-      instance.identify({user_id: `user_123`, company_id: `acme`});
-      expect(events(sent, `$identify`)).to.have.length(1);
+      expect(instance.get_distinct_id()).to.equal(`$company:acme|$user:user_123`);
 
       instance.identify({user_id: `user_123`, company_id: `globex`});
-      expect(events(sent, `$identify`)).to.have.length(2);
+      expect(instance.get_distinct_id()).to.equal(`$company:globex|$user:user_123`);
 
       instance.track(`Viewed Report`);
       expect(lastEvent(sent, `Viewed Report`).$company_id).to.equal(`globex`);
@@ -153,7 +155,6 @@ describe(`Hierarchical groups`, function() {
       expect(instance.get_identity().user_id).to.equal(`user_123`);
       expect(instance.get_identity().company_id).to.equal(`acme`);
       expect(lastEvent(sent, `Viewed Report`).$company_id).to.equal(`acme`);
-      expect(events(sent, `$identify`)).to.have.length(1);
     });
 
     it(`rejects an identity without a company`, function() {
@@ -175,7 +176,6 @@ describe(`Hierarchical groups`, function() {
 
       expect(instance.get_identity().user_id).to.equal(`user_123`);
       expect(instance.get_identity().company_id).to.equal(`acme`);
-      expect(events(sent, `$identify`)).to.have.length(1);
     });
 
     it(`ignores invalid identities`, function() {
@@ -244,7 +244,6 @@ describe(`Hierarchical groups`, function() {
       const props = lastEvent(sent, `Viewed Report`);
       expect(props.$user_id).to.equal(`user_456`);
       expect(props.$company_id).to.equal(`globex`);
-      expect(events(sent, `$identify`)).to.have.length(2);
     });
   });
 
@@ -283,7 +282,7 @@ describe(`Hierarchical groups`, function() {
       instance.identify({user_id: `user_123`, company_id: `acme`});
       instance.identify(instance.get_identity());
 
-      expect(events(sent, `$identify`)).to.have.length(1);
+      expect(instance.get_distinct_id()).to.equal(`$company:acme|$user:user_123`);
     });
 
     it(`returns the device form before identify`, function() {
@@ -644,7 +643,7 @@ describe(`Hierarchical groups`, function() {
       expect(props.$user_id).to.equal(`user_123`);
       expect(props.$company_id).to.equal(`acme`);
       expect(instance.get_identity().company_id).to.equal(`acme`);
-      expect(events(sent, `$identify`)).to.have.length(2);
+      expect(events(sent, `$identify`)).to.be.empty;
     });
 
     it(`stays opted out for a string identity`, function() {
