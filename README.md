@@ -27,13 +27,15 @@ NOTE: the default `mixpanel-browser` bundle includes a bundled `mixpanel-recorde
 
 To load the core SDK with no option of session recording:
 ```javascript
-import mixpanel from 'mixpanel-browser/src/loaders/loader-module-core';
+import mixpanel from 'mixpanel-browser/core';
 ```
 
 To load the core SDK and optionally load session recording and targeting bundles asynchronously (via script tag):
 ```javascript
-import mixpanel from 'mixpanel-browser/src/loaders/loader-module-with-async-modules';
+import mixpanel from 'mixpanel-browser/async-modules';
 ```
+
+Both are prebuilt bundles with ES module, CommonJS and TypeScript entrypoints. For a minimal app that calls `init` and `track`, they cut the Mixpanel code in a minified bundle from about 128 KiB to about 36 KiB gzipped (run `npm run bundle-size` to reproduce). The older `mixpanel-browser/src/loaders/loader-module-core` and `mixpanel-browser/src/loaders/loader-module-with-async-modules` imports still work.
 
 ## Use as a browser JavaScript module
 

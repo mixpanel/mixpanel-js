@@ -2,7 +2,9 @@
   "name": "mixpanel-browser",
   "version": "2.85.0",
   "files": [
+    "async-modules",
     "CHANGELOG.md",
+    "core",
     "dist",
     "doc",
     "LICENSE",
@@ -42,7 +44,8 @@
     "integration-test:sauce": "wdio run tests/browser/wdio.sauce.mjs",
     "integration-test": "DEV=1 npm run integration-test:local:watch",
     "integration-test:full": "npm run integration-test:local:watch",
-    "validate": "npm ls"
+    "validate": "npm ls",
+    "bundle-size": "node tests/bundle-size.mjs"
   },
   "types": "./src/index.d.ts",
   "repository": {
