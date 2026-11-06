@@ -1563,6 +1563,21 @@ _.info = {
         }
         var matches = userAgent.match(regex);
         if (!matches) {
+            // WKWebView-based browsers (in-app browsers, embedded webviews) omit
+            // the "Version/x" token. WebKit ships with iOS, so fall back to the
+            // OS version in "CPU iPhone OS 17_4". Since iOS 26, WebKit freezes
+            // that token at 18_6/18_6_2/18_7, so 18.6 and above is ambiguous
+            // and is left as null.
+            // https://bugs.webkit.org/show_bug.cgi?id=298260
+            if (browser === 'Mobile Safari') {
+                var osMatches = userAgent.match(/OS (\d+)_(\d+)/);
+                if (osMatches) {
+                    var osVersion = parseFloat(osMatches[1] + '.' + osMatches[2]);
+                    if (osVersion < 18.6) {
+                        return osVersion;
+                    }
+                }
+            }
             return null;
         }
         return parseFloat(matches[matches.length - 2]);
