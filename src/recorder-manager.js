@@ -225,7 +225,7 @@ RecorderManager.prototype.getSessionReplayUrl = function() {
         };
         // On a hierarchical groups project the redirect builds the profile's distinct id from these
         var identity = this.getIdentity && this.getIdentity();
-        if (identity && identity['user_id'] && identity['company_id']) {
+        if (identity && _.isPresentId(identity['user_id']) && identity['company_id']) {
             params['$user_id'] = identity['user_id'];
             params['$company_id'] = identity['company_id'];
         }

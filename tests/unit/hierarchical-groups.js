@@ -1108,6 +1108,37 @@ describe(`Hierarchical groups`, function() {
       expect(lastEvent(sent, `Viewed Report`).$user_id).to.equal(0);
     });
 
+    it(`sends events for user_id 0 without a distinct_id`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: 0, company_id: `acme`});
+      instance.track(`Viewed Report`);
+
+      const props = lastEvent(sent, `Viewed Report`);
+      expect(props.$user_id).to.equal(0);
+      expect(props.$company_id).to.equal(`acme`);
+      expect(props).to.not.have.property(`distinct_id`);
+    });
+
+    it(`returns the combined distinct id for user_id 0`, function() {
+      const {instance} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: 0, company_id: `acme`});
+      expect(instance.get_distinct_id()).to.equal(`$company:acme|$user:0`);
+    });
+
+    it(`writes user profile updates for user_id 0 to /groups`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: 0, company_id: `acme`});
+      instance.people.set(`plan`, `pro`);
+
+      const messages = groupMessages(sent);
+      expect(messages).to.have.length(1);
+      expect(messages[0].$group_key).to.equal(`$user_id`);
+      expect(messages[0].$group_id).to.equal(0);
+      expect(messages[0].$company_id).to.equal(`acme`);
+      expect(messages[0].$set.plan).to.equal(`pro`);
+      expect(reportedErrors).to.be.empty;
+    });
+
     it(`fully identifies user_id 0 when disabled`, function() {
       const {instance, sent} = newInstance();
       instance.identify({user_id: 0});

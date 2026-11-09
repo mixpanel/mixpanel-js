@@ -393,7 +393,7 @@ MixpanelPeople.prototype._send_request = function(data, callback) {
 MixpanelPeople.prototype._send_hierarchical_request = function(action, data, callback) {
     var user_id = this._mixpanel.get_property('$user_id');
     var company_id = this._mixpanel.get_property('$company_id');
-    if (!user_id || !company_id) {
+    if (!_.isPresentId(user_id) || !company_id) {
         return this._drop_hierarchical_request('User profile updates for hierarchical groups projects need a ' +
             'user and a company. Call identify({user_id: user_id, company_id: company_id}) first. The ' +
             action + ' update was dropped.', callback);

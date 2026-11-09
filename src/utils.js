@@ -290,6 +290,11 @@ _.isObject = function(obj) {
     return (obj === Object(obj) && !_.isArray(obj));
 };
 
+// True for an id that names someone: anything but null, undefined or '', so 0 is an id
+_.isPresentId = function(id) {
+    return id !== null && !_.isUndefined(id) && id !== '';
+};
+
 // True only for plain objects, not functions, boxed primitives or other built-ins
 _.isPlainObject = function(obj) {
     return toString.call(obj) === '[object Object]';

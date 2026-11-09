@@ -1192,7 +1192,7 @@ function(event_name, properties, options, callback) {
 
     var persisted_properties = this['persistence'].properties();
     // On a hierarchical groups project an identified user is $user_id and $company_id, so no distinct_id
-    if (this._hierarchical_groups && persisted_properties['$user_id'] && persisted_properties[COMPANY_ID_KEY]) {
+    if (this._hierarchical_groups && _.isPresentId(persisted_properties['$user_id']) && persisted_properties[COMPANY_ID_KEY]) {
         delete persisted_properties['distinct_id'];
     }
 
@@ -2002,9 +2002,7 @@ MixpanelLib.prototype.identify = function(
         company_id !== this.get_property(COMPANY_ID_KEY);
     var identity_changed = new_distinct_id !== previous_distinct_id || company_changed;
     // An identity's user_id can be 0, which a string identify treats as no id
-    var has_new_id = from_identity ?
-        !_.isUndefined(new_distinct_id) && new_distinct_id !== null && new_distinct_id !== '' :
-        new_distinct_id;
+    var has_new_id = from_identity ? _.isPresentId(new_distinct_id) : new_distinct_id;
     if (has_new_id && previous_distinct_id !== new_distinct_id) {
         // we allow the following condition if previous distinct_id is same as new_distinct_id
         // so that you can force flush people updates for anonymous profiles.
@@ -2104,7 +2102,7 @@ MixpanelLib.prototype.get_distinct_id = function() {
         return distinct_id;
     }
     var user_id = this.get_property('$user_id');
-    if (!user_id) {
+    if (!_.isPresentId(user_id)) {
         // Anonymous, so already $device:{device_id}
         return distinct_id;
     }
@@ -2132,7 +2130,7 @@ MixpanelLib.prototype.get_distinct_id = function() {
 MixpanelLib.prototype.get_identity = function() {
     var identity = {};
     var user_id = this.get_property('$user_id');
-    identity['user_id'] = _.isUndefined(user_id) || user_id === '' ? null : user_id;
+    identity['user_id'] = _.isPresentId(user_id) ? user_id : null;
     identity['company_id'] = (this._hierarchical_groups && this.get_property(COMPANY_ID_KEY)) || null;
     identity['device_id'] = this.get_property('$device_id') || null;
     return identity;

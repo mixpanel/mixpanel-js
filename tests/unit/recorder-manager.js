@@ -127,6 +127,16 @@ describe(`RecorderManager`, function() {
       expect(url).to.include(`%24company_id=acme`);
     });
 
+    it(`should add user_id 0 on a hierarchical groups project`, function() {
+      recorderManager.getIdentity = () => ({user_id: 0, company_id: `acme`, device_id: `dev`});
+      recorderManager._recorder = mockRecorder;
+
+      const url = recorderManager.getSessionReplayUrl();
+
+      expect(url).to.include(`%24user_id=0`);
+      expect(url).to.include(`%24company_id=acme`);
+    });
+
     it(`should leave the URL unchanged without a company`, function() {
       recorderManager.getIdentity = () => ({user_id: `user_123`, company_id: null, device_id: `dev`});
       recorderManager._recorder = mockRecorder;
