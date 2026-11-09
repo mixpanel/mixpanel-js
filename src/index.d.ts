@@ -49,7 +49,7 @@ export interface InTrackingOptions extends ClearOptOutInOutOptions {
    * The user to identify once opted in, before the opt-in event is tracked. On a hierarchical
    * groups project, the user and their company.
    */
-  identity: MixpanelIdentity;
+  identity?: MixpanelIdentity;
   track: () => void;
   track_event_name: string;
   track_properties: Dict;
@@ -324,8 +324,9 @@ export interface Config {
   /**
    * The project uses hierarchical groups. Set it in init() to match the project; it is read once
    * there, so changing it afterwards has no effect.
+   * @default false
    */
-  hierarchical_groups: boolean;
+  hierarchical_groups?: boolean;
   hooks: {
     before_identify?: (new_distinct_id: string) => string | null;
     before_register?: (
