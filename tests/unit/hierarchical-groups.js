@@ -880,6 +880,16 @@ describe(`Hierarchical groups`, function() {
       });
     });
 
+    it(`send user_id 0 and the company in the context`, async function() {
+      const {instance} = await newFlagsInstance({hierarchical_groups: true});
+      instance.identify({user_id: 0, company_id: `acme`});
+      await instance.flags.fetchPromise;
+
+      const context = lastFlagsContext();
+      expect(context.$user_id).to.equal(0);
+      expect(context.$company_id).to.equal(`acme`);
+    });
+
     it(`send no user or company in the context before identify`, async function() {
       const {instance} = await newFlagsInstance({hierarchical_groups: true});
 

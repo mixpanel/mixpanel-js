@@ -124,7 +124,7 @@ FeatureFlagManager.prototype._getHierarchicalGroupsIdentity = function() {
     }
     var userId = this.getMpProperty('$user_id');
     var companyId = this.getMpProperty('$company_id');
-    if (!userId || !companyId) {
+    if (!_.isPresentId(userId) || !companyId) {
         return null;
     }
     return {'$user_id': userId, '$company_id': companyId};
