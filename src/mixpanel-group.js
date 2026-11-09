@@ -151,8 +151,10 @@ function(list_name, value, callback) {
 
 MixpanelGroup.prototype._send_request = function(data, callback) {
     if (this._mixpanel._is_hierarchical_groups()) {
-        // Hierarchical groups require $company_id at the top level of every /groups write
-        var company_id = this._mixpanel.get_property('$company_id');
+        // Hierarchical groups require $company_id at the top level of every /groups write. A company
+        // group is its own company; any other group belongs to the identified company
+        var company_id = this._group_key === '$company_id' ? this._group_id :
+            this._mixpanel.get_property('$company_id');
         if (!company_id) {
             return this._drop_request('Group profile updates for hierarchical groups projects require a company. ' +
                 'Call identify({user_id: user_id, company_id: company_id}) first. The update to ' +

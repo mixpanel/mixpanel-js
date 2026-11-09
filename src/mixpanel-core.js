@@ -1169,6 +1169,8 @@ function(event_name, properties, options, callback) {
 
     // set defaults
     properties = _.extend({}, properties);
+    var caller_company = this._hierarchical_groups && Object.prototype.hasOwnProperty.call(properties, COMPANY_ID_KEY) ?
+        {value: properties[COMPANY_ID_KEY]} : null;
     properties['token'] = this.get_config('token');
 
     // set $duration if time_event was previously called for this event
@@ -1208,10 +1210,34 @@ function(event_name, properties, options, callback) {
     var property_blacklist = this.get_config('property_blacklist');
     if (_.isArray(property_blacklist)) {
         _.each(property_blacklist, function(blacklisted_prop) {
+            if (this._hierarchical_groups && blacklisted_prop === COMPANY_ID_KEY) {
+                if (!this._warned_company_blacklist) {
+                    this._warned_company_blacklist = true;
+                    this.report_error('property_blacklist ignored ' + COMPANY_ID_KEY + ': events on hierarchical groups ' +
+                        'projects always carry the identified company');
+                }
+                return;
+            }
             delete properties[blacklisted_prop];
-        });
+        }, this);
     } else {
         this.report_error('Invalid value for property_blacklist config: ' + property_blacklist);
+    }
+
+    if (caller_company) {
+        // The company comes from identify(), so a caller's $company_id never reaches the event
+        var identified_company = this.get_property(COMPANY_ID_KEY);
+        if (identified_company) {
+            properties[COMPANY_ID_KEY] = identified_company;
+            if (caller_company.value !== identified_company) {
+                this.report_error('track() replaced ' + COMPANY_ID_KEY + ' ' + JSONStringify(caller_company.value) +
+                    ' with the identified company ' + JSONStringify(identified_company));
+            }
+        } else {
+            delete properties[COMPANY_ID_KEY];
+            this.report_error('track() removed ' + COMPANY_ID_KEY + ' ' + JSONStringify(caller_company.value) +
+                ': no company is identified. Set it with identify({user_id: user_id, company_id: company_id})');
+        }
     }
 
     // Intentionally not checking skip_hooks here. on_track is intended to fire for all events
@@ -1259,6 +1285,8 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(
  * On a hierarchical groups project a user belongs to one group per group key, so the group is
  * stored as a single value rather than a list, and an array of group IDs is reported as an
  * error and dropped.
+ * The company is set with identify(), so set_group and remove_group with the `$company_id`
+ * group key are reported as errors and dropped there.
  *
  * @param {String} group_key Group key
  * @param {Array|String|Number} group_ids An array of group IDs, or a singular group ID
@@ -1266,6 +1294,9 @@ MixpanelLib.prototype.set_group = addOptOutCheckMixpanelLib(
  *
  */
 function(group_key, group_ids, callback) {
+    if (this._refuse_reserved_company('set_group', [group_key], callback)) {
+        return;
+    }
     if (this._hierarchical_groups) {
         // Mixpanel would read a list as the name of one group, not as membership in each
         if (_.isArray(group_ids)) {
@@ -1335,6 +1366,9 @@ MixpanelLib.prototype.remove_group = addOptOutCheckMixpanelLib(
  * @param {Function} [callback] If provided, the callback will be called after tracking the event.
  */
 function(group_key, group_id, callback) {
+    if (this._refuse_reserved_company('remove_group', [group_key], callback)) {
+        return;
+    }
     if (this._hierarchical_groups) {
         var current = this.get_property(group_key);
         // A one-item list, stored by an earlier version or before hierarchical groups was enabled,
@@ -1693,12 +1727,22 @@ var options_for_register = function(days_or_options) {
  * mixpanel.register({'Name': 'Pat'}, {persistent: false});
  * ```
  *
+ * On a hierarchical groups project the company is set with identify(), so register,
+ * register_once or unregister with `$company_id` is reported as an error and nothing is changed.
+ *
  * @param {Object} props An associative array of properties to store about the user
  * @param {Number|Object} [days_or_options] Options object or number of days since the user's last visit to store the super properties (only valid for persisted props)
  * @param {boolean} [days_or_options.days] - number of days since the user's last visit to store the super properties (only valid for persisted props)
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register = function(props, days_or_options) {
+    if (this._refuse_reserved_company('register', own_keys(props))) {
+        return;
+    }
+    this._register(props, days_or_options);
+};
+
+MixpanelLib.prototype._register = function(props, days_or_options) {
     var ret = this._run_hook('before_register', props, days_or_options);
     if (ret === null) {
         return;
@@ -1744,6 +1788,9 @@ MixpanelLib.prototype.register = function(props, days_or_options) {
  * @param {boolean} [days_or_options.persistent=true] - whether to put in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.register_once = function(props, default_value, days_or_options) {
+    if (this._refuse_reserved_company('register_once', own_keys(props))) {
+        return;
+    }
     var ret = this._run_hook('before_register_once', props, default_value, days_or_options);
     if (ret === null) {
         return;
@@ -1776,6 +1823,9 @@ MixpanelLib.prototype.register_once = function(props, default_value, days_or_opt
  * @param {boolean} [options.persistent=true] - whether to look in persistent storage (cookie/localStorage)
  */
 MixpanelLib.prototype.unregister = function(property, options) {
+    if (this._refuse_reserved_company('unregister', [property])) {
+        return;
+    }
     var ret = this._run_hook('before_unregister', property, options);
     if (ret === null) {
         return;
@@ -1795,7 +1845,38 @@ MixpanelLib.prototype.unregister = function(property, options) {
 MixpanelLib.prototype._register_single = function(prop, value) {
     var props = {};
     props[prop] = value;
-    this.register(props);
+    // Internal writes, including the identified company, skip the reserved key check
+    this._register(props);
+};
+
+// An id that is an empty or whitespace-only string, which identifies no one
+var is_blank = function(id) {
+    return /^\s*$/.test(id);
+};
+
+// On a hierarchical groups project the company comes from identify(), so public super property
+// and group calls can't set or clear $company_id. Reports the refused call and returns true.
+MixpanelLib.prototype._refuse_reserved_company = function(operation, keys, callback) {
+    if (!this._hierarchical_groups || !_.include(keys, COMPANY_ID_KEY)) {
+        return false;
+    }
+    var message = operation + ' can\'t change ' + COMPANY_ID_KEY + ' on hierarchical groups projects: the company is ' +
+        'set with identify({user_id: user_id, company_id: company_id}). Nothing was changed.';
+    this.report_error(message);
+    if (_.isFunction(callback)) {
+        callback(this.get_config('verbose') ? {status: 0, error: message} : 0);
+    }
+    return true;
+};
+
+var own_keys = function(obj) {
+    var keys = [];
+    if (_.isObject(obj)) {
+        _.each(obj, function(v, k) {
+            keys.push(k);
+        });
+    }
+    return keys;
 };
 
 // Why an identity can't be used on this project, or null when it can. Callers add what was dropped.
@@ -1806,9 +1887,13 @@ MixpanelLib.prototype._identity_error = function(identity) {
     }
     var user_id = identity['user_id'];
     var company_id = _.isUndefined(identity['company_id']) ? null : identity['company_id'];
-    var has_user_id = (_.isString(user_id) || _.isNumber(user_id)) && user_id !== '';
+    var has_user_id = (_.isString(user_id) && !is_blank(user_id)) || _.isNumber(user_id);
+    if (has_user_id && _.isString(user_id) && user_id.indexOf(DEVICE_ID_PREFIX) === 0) {
+        return 'Can\'t identify ' + JSONStringify(identity) + ': a user_id can\'t start with ' + DEVICE_ID_PREFIX +
+            ', which marks an anonymous device id.';
+    }
     if (this._hierarchical_groups) {
-        if (!has_user_id || !_.isString(company_id) || company_id === '') {
+        if (!has_user_id || !_.isString(company_id) || is_blank(company_id)) {
             return 'Can\'t identify ' + JSONStringify(identity) + ': hierarchical groups projects identify a user ' +
                 'by company and user id, so both are required.';
         }
@@ -1873,6 +1958,7 @@ MixpanelLib.prototype.identify = function(
     new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     var company_id = null;
+    var from_identity = false;
     if (_.isPlainObject(new_distinct_id)) {
         var identity = new_distinct_id;
         if (this.has_opted_out_tracking()) {
@@ -1889,6 +1975,7 @@ MixpanelLib.prototype.identify = function(
             console.error('identify() ignored device_id ' + identity['device_id'] + ': the library owns the device id');
         }
         new_distinct_id = user_id;
+        from_identity = true;
     } else if (this._hierarchical_groups) {
         this.report_error(this._identity_error(new_distinct_id) + ' Nothing was identified.');
         return -1;
@@ -1914,7 +2001,11 @@ MixpanelLib.prototype.identify = function(
     var company_changed = this._hierarchical_groups && company_id !== null &&
         company_id !== this.get_property(COMPANY_ID_KEY);
     var identity_changed = new_distinct_id !== previous_distinct_id || company_changed;
-    if (new_distinct_id && previous_distinct_id !== new_distinct_id) {
+    // An identity's user_id can be 0, which a string identify treats as no id
+    var has_new_id = from_identity ?
+        !_.isUndefined(new_distinct_id) && new_distinct_id !== null && new_distinct_id !== '' :
+        new_distinct_id;
+    if (has_new_id && previous_distinct_id !== new_distinct_id) {
         // we allow the following condition if previous distinct_id is same as new_distinct_id
         // so that you can force flush people updates for anonymous profiles.
         if (typeof new_distinct_id === 'string' && new_distinct_id.indexOf(DEVICE_ID_PREFIX) === 0) {
@@ -2040,7 +2131,8 @@ MixpanelLib.prototype.get_distinct_id = function() {
  */
 MixpanelLib.prototype.get_identity = function() {
     var identity = {};
-    identity['user_id'] = this.get_property('$user_id') || null;
+    var user_id = this.get_property('$user_id');
+    identity['user_id'] = _.isUndefined(user_id) || user_id === '' ? null : user_id;
     identity['company_id'] = (this._hierarchical_groups && this.get_property(COMPANY_ID_KEY)) || null;
     identity['device_id'] = this.get_property('$device_id') || null;
     return identity;

@@ -196,7 +196,8 @@ describe(`Hierarchical groups`, function() {
 
     it(`lets the company override a stale super property`, function() {
       const {instance, sent} = newInstance({hierarchical_groups: true});
-      instance.register({'$company_id': `stale`});
+      // Stored before hierarchical groups was enabled; register() refuses $company_id now
+      instance.persistence.register({'$company_id': `stale`});
       instance.identify({user_id: `user_123`, company_id: `acme`});
       instance.track(`Viewed Report`);
 
@@ -999,6 +1000,383 @@ describe(`Hierarchical groups`, function() {
     it(`never sends a company when disabled`, function() {
       const info = userIdInfo({}, {'$company_id': `acme`});
       expect(info).to.not.have.property(`$company_id`);
+    });
+  });
+
+  describe(`identity checks`, function() {
+    const DEVICE_MESSAGE = `a user_id can't start with $device:, which marks an anonymous device id. ` +
+      `Nothing was identified.`;
+
+    it(`refuses a $device: user_id`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      const anonymous = instance.get_distinct_id();
+      expect(instance.identify({user_id: `$device:abc`, company_id: `acme`})).to.equal(-1);
+
+      expect(reported(`Can't identify {"user_id":"$device:abc","company_id":"acme"}: ` + DEVICE_MESSAGE)).to.be.true;
+      expect(instance.get_distinct_id()).to.equal(anonymous);
+      expect(instance.get_identity().user_id).to.be.null;
+      expect(instance.get_identity().company_id).to.be.null;
+      expect(events(sent, `$identify`)).to.be.empty;
+    });
+
+    it(`refuses a $device: user_id when disabled`, function() {
+      const {instance, sent} = newInstance();
+      const anonymous = instance.get_distinct_id();
+      expect(instance.identify({user_id: `$device:abc`})).to.equal(-1);
+
+      expect(reported(`Can't identify {"user_id":"$device:abc"}: ` + DEVICE_MESSAGE)).to.be.true;
+      expect(instance.get_distinct_id()).to.equal(anonymous);
+      expect(events(sent, `$identify`)).to.be.empty;
+    });
+
+    it(`keeps the string identify $device: check when disabled`, function() {
+      const {instance} = newInstance();
+      expect(instance.identify(`$device:abc`)).to.equal(-1);
+      expect(reported(`distinct_id cannot have $device: prefix`)).to.be.true;
+      expect(reported(`a user_id can't start with $device:`)).to.be.false;
+    });
+
+    it(`keeps the user opted out for a $device: user_id`, function() {
+      const {instance} = newInstance({hierarchical_groups: true});
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: {user_id: `$device:abc`, company_id: `acme`}});
+
+      expect(instance.has_opted_out_tracking()).to.be.true;
+      expect(reported(`a user_id can't start with $device:, which marks an anonymous device id. ` +
+        `The user is still opted out.`)).to.be.true;
+    });
+
+    it(`keeps the user opted out for a $device: user_id when disabled`, function() {
+      const {instance} = newInstance();
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: {user_id: `$device:abc`}});
+
+      expect(instance.has_opted_out_tracking()).to.be.true;
+      expect(reported(`a user_id can't start with $device:`)).to.be.true;
+    });
+
+    it(`treats whitespace-only ids as empty`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      const anonymous = instance.get_distinct_id();
+      expect(instance.identify({user_id: `   `, company_id: `acme`})).to.equal(-1);
+      expect(instance.identify({user_id: `user_123`, company_id: ` \t\n`})).to.equal(-1);
+
+      expect(reported(`Can't identify {"user_id":"   ","company_id":"acme"}: hierarchical groups projects ` +
+        `identify a user by company and user id, so both are required. Nothing was identified.`)).to.be.true;
+      expect(reported(`Can't identify {"user_id":"user_123","company_id":" \\t\\n"}: hierarchical groups ` +
+        `projects identify a user by company and user id, so both are required.`)).to.be.true;
+      expect(instance.get_distinct_id()).to.equal(anonymous);
+      expect(events(sent, `$identify`)).to.be.empty;
+    });
+
+    it(`treats a whitespace-only user_id as empty when disabled`, function() {
+      const {instance} = newInstance();
+      const anonymous = instance.get_distinct_id();
+      expect(instance.identify({user_id: ` `})).to.equal(-1);
+      expect(reported(`Can't identify {"user_id":" "} without a user_id. Nothing was identified.`)).to.be.true;
+      expect(instance.get_distinct_id()).to.equal(anonymous);
+    });
+
+    it(`keeps whitespace-only opt-in identities opted out`, function() {
+      const {instance} = newInstance({hierarchical_groups: true});
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: {user_id: `user_123`, company_id: `  `}});
+      expect(instance.has_opted_out_tracking()).to.be.true;
+      expect(reported(`so both are required. The user is still opted out.`)).to.be.true;
+    });
+
+    it(`keeps ids with surrounding spaces as given`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: ` user_123 `, company_id: ` acme `});
+      instance.track(`Viewed Report`);
+
+      expect(instance.get_identity().user_id).to.equal(` user_123 `);
+      expect(instance.get_identity().company_id).to.equal(` acme `);
+      const props = lastEvent(sent, `Viewed Report`);
+      expect(props.$user_id).to.equal(` user_123 `);
+      expect(props.$company_id).to.equal(` acme `);
+    });
+
+    it(`fully identifies user_id 0`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: 0, company_id: `acme`});
+      instance.track(`Viewed Report`);
+
+      expect(instance.get_property(`$user_id`)).to.equal(0);
+      expect(instance.get_identity().user_id).to.equal(0);
+      expect(instance.get_identity().company_id).to.equal(`acme`);
+      expect(lastEvent(sent, `Viewed Report`).$user_id).to.equal(0);
+    });
+
+    it(`fully identifies user_id 0 when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.identify({user_id: 0});
+
+      expect(instance.get_property(`$user_id`)).to.equal(0);
+      expect(instance.get_identity().user_id).to.equal(0);
+      expect(instance.get_distinct_id()).to.equal(0);
+      expect(events(sent, `$identify`)).to.have.length(1);
+    });
+
+    it(`keeps the string identify(0) behavior when disabled`, function() {
+      const {instance} = newInstance();
+      instance.identify(0);
+
+      // As on master: the distinct id changes, but no $user_id is registered
+      expect(instance.get_distinct_id()).to.equal(0);
+      expect(instance.get_property(`$user_id`)).to.be.undefined;
+      expect(instance.get_identity().user_id).to.be.null;
+    });
+  });
+
+  describe(`company group profiles`, function() {
+    it(`kept across a company switch update their own company`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      const company = instance.get_company();
+      instance.identify({user_id: `user_123`, company_id: `globex`});
+      company.set(`tier`, `enterprise`);
+
+      const message = groupMessages(sent)[0];
+      expect(message.$group_key).to.equal(`$company_id`);
+      expect(message.$group_id).to.equal(`acme`);
+      expect(message.$company_id).to.equal(`acme`);
+    });
+
+    it(`kept across reset still send`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      const company = instance.get_company();
+      instance.reset();
+      company.set(`tier`, `enterprise`);
+
+      const messages = groupMessages(sent);
+      expect(messages).to.have.length(1);
+      expect(messages[0].$group_id).to.equal(`acme`);
+      expect(messages[0].$company_id).to.equal(`acme`);
+    });
+
+    it(`send before identify`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.get_group(`$company_id`, `acme`).set(`tier`, `enterprise`);
+
+      const messages = groupMessages(sent);
+      expect(messages).to.have.length(1);
+      expect(messages[0].$group_key).to.equal(`$company_id`);
+      expect(messages[0].$group_id).to.equal(`acme`);
+      expect(messages[0].$company_id).to.equal(`acme`);
+    });
+
+    it(`leave custom groups on the current company`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      const team = instance.get_group(`team`, `finance`);
+      instance.identify({user_id: `user_123`, company_id: `globex`});
+      team.set(`size`, 12);
+
+      const message = groupMessages(sent)[0];
+      expect(message.$group_key).to.equal(`team`);
+      expect(message.$company_id).to.equal(`globex`);
+    });
+
+    it(`carry no company when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.get_group(`$company_id`, `acme`).set(`tier`, `enterprise`);
+      instance.get_group(`team`, `finance`).set(`size`, 12);
+
+      const messages = groupMessages(sent);
+      expect(messages).to.have.length(2);
+      expect(messages[0]).to.deep.equal({
+        $set: {tier: `enterprise`}, $group_key: `$company_id`, $group_id: `acme`, $token: instance.get_config(`token`),
+      });
+      expect(messages[1]).to.not.have.property(`$company_id`);
+    });
+  });
+
+  describe(`reserved $company_id`, function() {
+    const RESERVED = `can't change $company_id on hierarchical groups projects: the company is set with ` +
+      `identify({user_id: user_id, company_id: company_id}). Nothing was changed.`;
+
+    function identified(config) {
+      const created = newInstance(Object.assign({hierarchical_groups: true}, config));
+      created.instance.identify({user_id: `user_123`, company_id: `acme`});
+      return created;
+    }
+
+    it(`refuses register with $company_id, registering nothing`, function() {
+      const {instance} = identified();
+      instance.register({'$company_id': `globex`, plan: `pro`});
+      instance.register({'$company_id': `globex`, plan: `pro`}, {persistent: false});
+
+      expect(reported(`register ` + RESERVED)).to.be.true;
+      expect(instance.get_property(`$company_id`)).to.equal(`acme`);
+      expect(instance.get_property(`plan`)).to.be.undefined;
+      expect(instance.unpersisted_superprops).to.not.have.property(`plan`);
+    });
+
+    it(`refuses register_once with $company_id, registering nothing`, function() {
+      const {instance} = newInstance({hierarchical_groups: true});
+      instance.register_once({'$company_id': `globex`, plan: `pro`});
+
+      expect(reported(`register_once ` + RESERVED)).to.be.true;
+      expect(instance.get_property(`$company_id`)).to.be.undefined;
+      expect(instance.get_property(`plan`)).to.be.undefined;
+    });
+
+    it(`refuses unregister of $company_id`, function() {
+      const {instance} = identified();
+      instance.unregister(`$company_id`);
+
+      expect(reported(`unregister ` + RESERVED)).to.be.true;
+      expect(instance.get_identity().company_id).to.equal(`acme`);
+    });
+
+    it(`refuses set_group and remove_group with $company_id, sending nothing`, function() {
+      const {instance, sent} = identified();
+      const before = sent.length;
+      const callback = sinon.spy();
+      instance.set_group(`$company_id`, `globex`, callback);
+      instance.remove_group(`$company_id`, `acme`);
+
+      expect(reported(`set_group ` + RESERVED)).to.be.true;
+      expect(reported(`remove_group ` + RESERVED)).to.be.true;
+      expect(callback.calledOnceWith(0)).to.be.true;
+      expect(sent.length).to.equal(before);
+      expect(instance.get_identity().company_id).to.equal(`acme`);
+    });
+
+    it(`still refuses add_group with $company_id`, function() {
+      const {instance} = identified();
+      instance.add_group(`$company_id`, `globex`);
+      expect(reported(`add_group is not supported for hierarchical groups projects`)).to.be.true;
+      expect(instance.get_identity().company_id).to.equal(`acme`);
+    });
+
+    it(`leaves $user_id and other keys alone`, function() {
+      const {instance} = newInstance({hierarchical_groups: true});
+      instance.register({'$user_id': `user_123`, plan: `pro`});
+      expect(instance.get_property(`$user_id`)).to.equal(`user_123`);
+      expect(instance.get_property(`plan`)).to.equal(`pro`);
+      expect(reportedErrors).to.be.empty;
+    });
+
+    it(`keeps identify, reset and opt-out working`, function() {
+      const {instance} = identified();
+      instance.identify({user_id: `user_123`, company_id: `globex`});
+      expect(instance.get_identity().company_id).to.equal(`globex`);
+      instance.reset();
+      expect(instance.get_identity().company_id).to.be.null;
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.opt_out_tracking();
+      instance.opt_in_tracking({identity: {user_id: `user_456`, company_id: `initech`}});
+      expect(instance.get_identity().company_id).to.equal(`initech`);
+      expect(reportedErrors).to.be.empty;
+    });
+
+    it(`is not reserved when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.identify(`user_123`);
+      instance.register({'$company_id': `acme`});
+      expect(instance.get_property(`$company_id`)).to.equal(`acme`);
+      instance.unregister(`$company_id`);
+      expect(instance.get_property(`$company_id`)).to.be.undefined;
+      instance.register_once({'$company_id': `acme`});
+      expect(instance.get_property(`$company_id`)).to.equal(`acme`);
+      instance.set_group(`$company_id`, `globex`);
+      expect(instance.get_property(`$company_id`)).to.deep.equal([`globex`]);
+      instance.remove_group(`$company_id`, `globex`);
+      expect(instance.get_property(`$company_id`)).to.be.undefined;
+      expect(peopleMessages(sent)).to.not.be.empty;
+      expect(reportedErrors).to.be.empty;
+    });
+  });
+
+  describe(`event $company_id`, function() {
+    it(`replaces a caller's $company_id with the identified company`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.track(`Viewed Report`, {'$company_id': `globex`, plan: `pro`});
+
+      const props = lastEvent(sent, `Viewed Report`);
+      expect(props.$company_id).to.equal(`acme`);
+      expect(props.plan).to.equal(`pro`);
+      expect(reported(`track() replaced $company_id "globex" with the identified company "acme"`)).to.be.true;
+    });
+
+    it(`does not warn when the caller's $company_id matches`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.track(`Viewed Report`, {'$company_id': `acme`});
+
+      expect(lastEvent(sent, `Viewed Report`).$company_id).to.equal(`acme`);
+      expect(reportedErrors).to.be.empty;
+    });
+
+    it(`replaces a $company_id passed to track_with_groups`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.track_with_groups(`Viewed Report`, {}, {'$company_id': `globex`, team: `finance`});
+
+      const props = lastEvent(sent, `Viewed Report`);
+      expect(props.$company_id).to.equal(`acme`);
+      expect(props.team).to.equal(`finance`);
+      expect(reported(`track() replaced $company_id "globex"`)).to.be.true;
+    });
+
+    it(`removes a caller's $company_id before a company is identified, and still sends`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true});
+      instance.track(`Opened`, {'$company_id': `globex`, plan: `pro`});
+      instance.track_with_groups(`Grouped`, {}, {'$company_id': `globex`});
+
+      expect(lastEvent(sent, `Opened`)).to.not.have.property(`$company_id`);
+      expect(lastEvent(sent, `Opened`).plan).to.equal(`pro`);
+      expect(lastEvent(sent, `Grouped`)).to.not.have.property(`$company_id`);
+      expect(reported(`track() removed $company_id "globex": no company is identified. Set it with ` +
+        `identify({user_id: user_id, company_id: company_id})`)).to.be.true;
+    });
+
+    it(`sends a caller's $company_id unchanged when disabled`, function() {
+      const {instance, sent} = newInstance();
+      instance.track(`Opened`, {'$company_id': `globex`});
+      instance.track_with_groups(`Grouped`, {}, {'$company_id': `initech`});
+
+      expect(lastEvent(sent, `Opened`).$company_id).to.equal(`globex`);
+      expect(lastEvent(sent, `Grouped`).$company_id).to.equal(`initech`);
+      expect(reportedErrors).to.be.empty;
+    });
+  });
+
+  describe(`property_blacklist`, function() {
+    it(`never strips $company_id, and warns once`, function() {
+      const {instance, sent} = newInstance({hierarchical_groups: true, property_blacklist: [`$company_id`, `plan`]});
+      instance.identify({user_id: `user_123`, company_id: `acme`});
+      instance.track(`First`, {plan: `pro`});
+      instance.track(`Second`);
+
+      expect(lastEvent(sent, `First`).$company_id).to.equal(`acme`);
+      expect(lastEvent(sent, `First`)).to.not.have.property(`plan`);
+      expect(lastEvent(sent, `Second`).$company_id).to.equal(`acme`);
+      expect(reportedErrors).to.deep.equal([`property_blacklist ignored $company_id: events on hierarchical ` +
+        `groups projects always carry the identified company`]);
+    });
+
+    it(`warns once per instance`, function() {
+      const first = newInstance({hierarchical_groups: true, property_blacklist: [`$company_id`]});
+      const second = newInstance({hierarchical_groups: true, property_blacklist: [`$company_id`]});
+      first.instance.track(`A`);
+      first.instance.track(`B`);
+      second.instance.track(`A`);
+
+      expect(reportedErrors.filter(error => error.includes(`property_blacklist`))).to.have.length(2);
+    });
+
+    it(`strips $company_id when disabled`, function() {
+      const {instance, sent} = newInstance({property_blacklist: [`$company_id`]});
+      instance.register({'$company_id': `acme`});
+      instance.track(`Opened`, {'$company_id': `globex`});
+
+      expect(lastEvent(sent, `Opened`)).to.not.have.property(`$company_id`);
+      expect(reportedErrors).to.be.empty;
     });
   });
 });
