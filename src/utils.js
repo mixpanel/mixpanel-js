@@ -290,6 +290,11 @@ _.isObject = function(obj) {
     return (obj === Object(obj) && !_.isArray(obj));
 };
 
+// True only for plain objects, not functions, boxed primitives or other built-ins
+_.isPlainObject = function(obj) {
+    return toString.call(obj) === '[object Object]';
+};
+
 _.isEmptyObject = function(obj) {
     if (_.isObject(obj)) {
         for (var key in obj) {

@@ -1800,7 +1800,7 @@ MixpanelLib.prototype._register_single = function(prop, value) {
 
 // Why an identity can't be used on this project, or null when it can. Callers add what was dropped.
 MixpanelLib.prototype._identity_error = function(identity) {
-    if (!_.isObject(identity)) {
+    if (!_.isPlainObject(identity)) {
         return this._hierarchical_groups ? 'identify(string) is not supported for hierarchical groups projects, ' +
             'which identify a user by company and user id. Use identify({user_id: user_id, company_id: company_id}).' : null;
     }
@@ -1873,7 +1873,7 @@ MixpanelLib.prototype.identify = function(
     new_distinct_id, _set_callback, _add_callback, _append_callback, _set_once_callback, _union_callback, _unset_callback, _remove_callback
 ) {
     var company_id = null;
-    if (_.isObject(new_distinct_id)) {
+    if (_.isPlainObject(new_distinct_id)) {
         var identity = new_distinct_id;
         if (this.has_opted_out_tracking()) {
             return -1;

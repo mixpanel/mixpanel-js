@@ -139,6 +139,8 @@ describe(`Hierarchical groups`, function() {
       const anonymous = instance.get_distinct_id();
       expect(instance.identify(`user_123`)).to.equal(-1);
       expect(instance.identify()).to.equal(-1);
+      expect(instance.identify(new String(`user_123`))).to.equal(-1); // eslint-disable-line no-new-wrappers
+      expect(instance.identify(function() {})).to.equal(-1);
 
       expect(instance.get_distinct_id()).to.equal(anonymous);
       expect(instance.get_identity().user_id).to.be.null;
@@ -761,6 +763,20 @@ describe(`Hierarchical groups`, function() {
       const {instance} = newInstance();
       expect(instance.identify({company_id: null})).to.equal(-1);
       expect(reported(`without a user_id. Nothing was identified.`)).to.be.true;
+    });
+
+    it(`treats a boxed string as a distinct id, not an identity`, function() {
+      const {instance, sent} = newInstance();
+      expect(instance.identify(new String(`user_123`))).to.not.equal(-1); // eslint-disable-line no-new-wrappers
+      expect(String(instance.get_distinct_id())).to.equal(`user_123`);
+      expect(events(sent, `$identify`)).to.have.length(1);
+      expect(reportedErrors).to.be.empty;
+    });
+
+    it(`treats a function as a distinct id, not an identity`, function() {
+      const {instance} = newInstance();
+      expect(instance.identify(function() {})).to.not.equal(-1);
+      expect(reportedErrors).to.be.empty;
     });
 
     it(`sends people updates to /engage and groups without a company`, function() {
