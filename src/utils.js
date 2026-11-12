@@ -8,6 +8,10 @@ var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Maximum allowed value for minimum session recording length
 var MAX_VALUE_FOR_MIN_RECORDING_MS = 8 * 1000; // 8 seconds
 
+var EV_HASHCHANGE = 'hashchange';
+var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
+var EV_POPSTATE = 'popstate';
+
 /*
  * Saved references to long variable names, so that closure compiler can
  * minimize file size.
@@ -917,6 +921,28 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
     return tmp_arr.join(arg_separator);
 };
 
+// Keep parameter names for diagnostics, but redact credentials from telemetry.
+var SENSITIVE_URL_PARAMS = ['mp_preview_token'];
+_.sanitizeUrl = function(url) {
+    try {
+        if (!url || typeof url !== 'string') {
+            return url;
+        }
+        // Process query strings in both the URL and hash routes, preserving the rest.
+        return url.replace(/\?[^#]*/g, function(query) {
+            return '?' + query.slice(1).split('&').map(function(pair) {
+                var separatorIndex = pair.indexOf('=');
+                var encodedKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
+                var key = new URLSearchParams(encodedKey + '=').keys().next().value;
+                return SENSITIVE_URL_PARAMS.indexOf(key) !== -1 ? encodedKey + '=REDACTED' : pair;
+            }).join('&');
+        });
+    } catch (err) {
+        // Best effort: sanitization must not prevent telemetry from being sent.
+        return url;
+    }
+};
+
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
@@ -1619,7 +1645,7 @@ _.info = {
     },
 
     currentUrl: function() {
-        return window.location.href;
+        return _.sanitizeUrl(window.location.href);
     },
 
     properties: function(extra_props) {
@@ -1629,7 +1655,7 @@ _.info = {
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
             '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
-            '$referrer': document.referrer,
+            '$referrer': _.sanitizeUrl(document.referrer),
             '$referring_domain': _.info.referringDomain(document.referrer),
             '$device': _.info.device(userAgent)
         }), {
@@ -1659,7 +1685,7 @@ _.info = {
             'current_domain': window.location.hostname,
             'current_url_path': window.location.pathname,
             'current_url_protocol': window.location.protocol,
-            'current_url_search': window.location.search
+            'current_url_search': _.sanitizeUrl(window.location.search)
         });
     }
 };
@@ -1810,6 +1836,9 @@ export {
     console_with_prefix,
     console,
     document,
+    EV_HASHCHANGE,
+    EV_MP_LOCATION_CHANGE,
+    EV_POPSTATE,
     extract_domain,
     generateTraceparent,
     JSONParse,

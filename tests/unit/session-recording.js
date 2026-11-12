@@ -76,6 +76,16 @@ describe(`SessionRecording`, function() {
     expect(sessionRecording.isRrwebStopped()).to.be.true;
   });
 
+  it(`redacts preview credentials from replay page metadata`, function() {
+    sessionRecording.startRecording();
+    const enqueue = sinon.stub(sessionRecording.batcher, `enqueue`).resolves();
+    mockRrweb.recordStub.firstCall.args[0].emit({
+      type: EventType.Meta, timestamp: NOW_MS,
+      data: { href: `https://customer.test/?mp_preview_token=secret&x=1#/route` }
+    });
+    expect(enqueue.firstCall.args[0].data.href).to.equal(`https://customer.test/?mp_preview_token=REDACTED&x=1#/route`);
+  });
+
   it(`flushes the batcher when stopRecording is called`, function() {
     sessionRecording.startRecording();
     expect(flushSpy.calledOnce).to.be.true;

@@ -1,3 +1,5 @@
+import {sharedPreviewTests} from './suites/sharedPreviews';
+import {visualExperimentsTests} from './suites/visualExperiments';
 import {trackTests} from './suites/track';
 import {batchRequestsTests} from './suites/batchRequests';
 import {recorderTests} from './suites/recorder';
@@ -18,6 +20,8 @@ export const ALL_TESTS = [
   autocaptureTests,
   recorderTests,
   flagsTests,
+  sharedPreviewTests,
+  visualExperimentsTests,
   remoteSettingsTests,
   bundleCompatTests,
   domTrackersTests,

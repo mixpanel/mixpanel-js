@@ -134,6 +134,9 @@ FeatureFlagPersistence.prototype.save = function(context, flagsMap, pendingFirst
 
     var flagVariants = {};
     flagsMap.forEach(function(variant, key) {
+        if (variant['is_preview'] === true) {
+            return;
+        }
         flagVariants[key] = {
             'variant_key': variant['key'],
             'variant_value': variant['value'],
@@ -143,12 +146,20 @@ FeatureFlagPersistence.prototype.save = function(context, flagsMap, pendingFirst
         };
     });
 
+    var persistedPendingEvents = {};
+    _.each(pendingFirstTimeEvents || {}, function(event, key) {
+        var flag = flagsMap.get(event['flag_key']);
+        if (!flag || flag['is_preview'] !== true) {
+            persistedPendingEvents[key] = event;
+        }
+    });
+
     var data = {
         'persistedAt': Date.now(),
         'distinctId': context && context['distinct_id'],
         'context': context,
         'flagVariants': flagVariants,
-        'pendingFirstTimeEvents': pendingFirstTimeEvents || {}
+        'pendingFirstTimeEvents': persistedPendingEvents
     };
 
     return this.idb.init().then(_.bind(function() {

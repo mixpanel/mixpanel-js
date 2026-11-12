@@ -4,6 +4,7 @@ import { MAX_RECORDING_MS, _, console, userAgent, document, navigator, slice, NO
 import { window } from './window';
 import { Autocapture } from './autocapture';
 import { FeatureFlagManager } from './flags';
+import { VisualExperimentsManager } from './visual-experiments';
 import { RecorderManager } from './recorder-manager';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
@@ -119,6 +120,8 @@ var DEFAULT_CONFIG = {
     'save_referrer':                     true,
     'test':                              false,
     'verbose':                           false,
+    'visual_experiments':                false,
+    'visual_experiments_hide_timeout_ms': 2000,
     'img':                               false,
     'debug':                             false,
     'track_links_timeout':               300,
@@ -345,6 +348,16 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config'], {closed: !allows_storage});
     this.unpersisted_superprops = {};
 
+    this.visualExperiments = new VisualExperimentsManager({
+        getConfigFunc: _.bind(this.get_config, this),
+        getVariantsFunc: _.bind(function() {
+            return this.flags.getAllVariantsSync();
+        }, this),
+        trackExposureFunc: _.bind(function(featureName, feature) {
+            this.flags.trackVisualExposure(featureName, feature);
+        }, this)
+    });
+    this.visualExperiments.init();
     this.flags = new FeatureFlagManager({
         getFullApiRoute: _.bind(function() {
             return this.get_api_host('flags') + '/' + this.get_config('api_routes')['flags'];
@@ -355,9 +368,14 @@ MixpanelLib.prototype._init = function(token, config, name) {
         trackingFunc: _.bind(this.track, this),
         consentGate: this._consent,
         loadExtraBundle: load_extra_bundle,
-        targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME)
+        targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME),
+        visualExperiments: this.visualExperiments
     });
     this['flags'] = this.flags;
+    var experimentsApi = this.visualExperiments.getExperimentsApi();
+    if (experimentsApi) {
+        this['experiments'] = experimentsApi;
+    }
 
     this._consent.init();
     if (allows_storage) {
@@ -2576,6 +2594,7 @@ MixpanelLibProto['get_session_recording_properties']   = MixpanelLibProto.get_se
 MixpanelLibProto['get_session_replay_url']             = MixpanelLibProto.get_session_replay_url;
 MixpanelLibProto['get_tab_id']                         = MixpanelLibProto.get_tab_id;
 MixpanelLibProto['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
+MixpanelLibProto['SDK_VERSION']                        = Config.LIB_VERSION;
 
 // Exports intended only for testing
 MixpanelLibProto['__get_recorder']                     = MixpanelLibProto.__get_recorder;

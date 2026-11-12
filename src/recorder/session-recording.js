@@ -273,6 +273,9 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     try {
         this._stopRecording = this._rrwebRecord({
             'emit': function (ev) {
+                if (ev.type === EventType.Meta && ev.data) {
+                    ev.data.href = _.sanitizeUrl(ev.data.href);
+                }
                 if (this.idleExpires && this.idleExpires < ev.timestamp) {
                     this._onIdleTimeout();
                     return;

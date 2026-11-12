@@ -59,6 +59,21 @@ import mixpanel from 'mixpanel-browser';
 mixpanel.init('YOUR_TOKEN', {autocapture: true, debug: true, persistence: 'localStorage'});
 ```
 
+## Visual experiments
+
+Enable both flag delivery and visual experiments to load production variants or shared preview links:
+
+```js
+mixpanel.init('YOUR_TOKEN', {
+  flags: true,
+  visual_experiments: true,
+});
+```
+
+`flags` may also be a configuration object. Both options default to `false`.
+With only `visual_experiments: true`, the `mixpanel.experiments` authoring API is
+available, but production variants and shared previews are not fetched.
+
 ## Building bundles for release
 - Install development dependencies: `npm install`
 - Build: `npm run build-dist`
