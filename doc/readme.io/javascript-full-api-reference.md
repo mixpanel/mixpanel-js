@@ -1807,6 +1807,8 @@ mixpanel.people.unset(['gender', 'Company']);
 | <a id="property-track_pageview"></a> `track_pageview` | [`TrackPageView`](#trackpageview) | - |
 | <a id="property-upgrade"></a> `upgrade` | `boolean` | - |
 | <a id="property-verbose"></a> `verbose` | `boolean` | - |
+| <a id="property-visual_experiments"></a> `visual_experiments` | `boolean` | Enables no-code visual experiments: the SDK replays a matched variant's visual changes (scoped to the authored page) and exposes the `mixpanel.experiments` namespace the Mixpanel extension drives during authoring. Production variants and shared preview links also require `flags: true` (or a flags configuration object) to enable fetching. With flags disabled, the local authoring API remains available without fetching variants. **Example** `mixpanel.init('YOUR_TOKEN', { flags: true, visual_experiments: true });` **Default** `false` |
+| <a id="property-visual_experiments_hide_timeout_ms"></a> `visual_experiments_hide_timeout_ms` | `number` | Failsafe timeout (ms) for the visual-experiments anti-flicker: the maximum time page content stays hidden while a matched variant loads before it is revealed automatically. Only has effect when `visual_experiments` is enabled. **Default** `2000` |
 | <a id="property-xhr_headers"></a> `xhr_headers` | [`XhrHeadersDef`](#xhrheadersdef) | - |
 
 ***
@@ -1831,6 +1833,84 @@ mixpanel.people.unset(['gender', 'Company']);
 | ------ | ------ |
 | <a id="property-percentage"></a> `percentage` | `number` |
 | <a id="property-property_filters"></a> `property_filters?` | `RulesLogic` |
+
+***
+
+<a id="experimentsmanager"></a>
+
+### ExperimentsManager
+
+`mixpanel.experiments`: the visual-experiments authoring surface, present only
+when the `visual_experiments` init option is enabled. The Mixpanel extension
+(and page scripts) drive live preview through these methods.
+
+#### Methods
+
+<a id="applyvisualchanges"></a>
+
+##### applyVisualChanges()
+
+> **applyVisualChanges**(`mutations`): `void`
+
+Replace the editor preview while preserving unrelated live experiments. An empty list clears the preview.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `mutations` | [`VisualChangeMutation`](#visualchangemutation)[] |
+
+###### Returns
+
+`void`
+
+<a id="endeditorsession"></a>
+
+##### endEditorSession()
+
+> **endEditorSession**(`experiment_id`): `void`
+
+Clear the preview and restore the current page's delivered experiment changes.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `experiment_id` | `string` |
+
+###### Returns
+
+`void`
+
+<a id="revertvisualchanges"></a>
+
+##### revertVisualChanges()
+
+> **revertVisualChanges**(): `void`
+
+Clear the editor preview while preserving unrelated live experiments.
+
+###### Returns
+
+`void`
+
+<a id="starteditorsession"></a>
+
+##### startEditorSession()
+
+> **startEditorSession**(`experiment_id`): `void`
+
+Suppress this experiment's live changes while authoring a preview on the current page.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `experiment_id` | `string` |
+
+###### Returns
+
+`void`
 
 ***
 
@@ -2047,6 +2127,7 @@ mixpanel.people.unset(['gender', 'Company']);
 | <a id="property-experiment_id"></a> `experiment_id?` | `string` | - |
 | <a id="property-fallback_reason"></a> `fallback_reason?` | [`FlagsFallbackReason`](#flagsfallbackreason) | Undefined on success; set when `variant_source === 'fallback'`. |
 | <a id="property-is_experiment_active"></a> `is_experiment_active?` | `boolean` | - |
+| <a id="property-is_preview"></a> `is_preview?` | `boolean` | Shared preview; excluded from exposure tracking and persisted assignments. |
 | <a id="property-is_qa_tester"></a> `is_qa_tester?` | `boolean` | - |
 | <a id="property-key"></a> `key` | `string` | - |
 | <a id="property-persisted_at_in_ms"></a> `persisted_at_in_ms?` | `number` | - |
@@ -2451,3 +2532,14 @@ for the specific reason behind a fallback.
 ### VerboseResponse
 
 > **VerboseResponse** = \{ `error`: `null`; `status`: `1`; \} \| \{ `error`: `string`; `status`: `0`; \}
+
+***
+
+<a id="visualchangemutation"></a>
+
+### VisualChangeMutation
+
+> **VisualChangeMutation** = \{ `attribute`: `string`; `selector`: `string`; `type`: `"setAttribute"`; `value`: `string`; \} \| \{ `selector`: `string`; `type`: `"setText"`; `value`: `string`; \} \| \{ `property`: `string`; `selector`: `string`; `type`: `"setStyle"`; `value`: `string`; \} \| \{ `add`: `string`[]; `remove`: `string`[]; `selector`: `string`; `type`: `"setClasses"`; \} \| \{ `attributes`: `Record`\<`string`, `string`\>; `selector`: `string`; `type`: `"setAttributes"`; \} \| \{ `selector`: `string`; `type`: `"hide"`; \}
+
+A single visual-experiment mutation. Text edits use `setText`, which sets
+textContent; there is no innerHTML mutation.

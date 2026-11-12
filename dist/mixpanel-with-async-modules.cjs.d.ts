@@ -253,6 +253,26 @@ export interface Config {
   save_referrer: boolean;
   test: boolean;
   verbose: boolean;
+  /**
+   * Enables no-code visual experiments: the SDK replays a matched variant's
+   * visual changes (scoped to the authored page) and exposes the
+   * `mixpanel.experiments` namespace the Mixpanel extension drives during
+   * authoring.
+   * Production variants and shared preview links also require `flags: true`
+   * (or a flags configuration object) to enable fetching. With flags disabled,
+   * the local authoring API remains available without fetching variants.
+   * @example
+   * mixpanel.init('YOUR_TOKEN', { flags: true, visual_experiments: true });
+   * @default false
+   */
+  visual_experiments: boolean;
+  /**
+   * Failsafe timeout (ms) for the visual-experiments anti-flicker: the maximum
+   * time page content stays hidden while a matched variant loads before it is
+   * revealed automatically. Only has effect when `visual_experiments` is enabled.
+   * @default 2000
+   */
+  visual_experiments_hide_timeout_ms: number;
   img: boolean;
   /**
    * @default false
@@ -421,6 +441,8 @@ export interface FlagsVariant {
   experiment_id?: string;
   is_experiment_active?: boolean;
   is_qa_tester?: boolean;
+  /** Shared preview; excluded from exposure tracking and persisted assignments. */
+  is_preview?: boolean;
   variant_source?: FlagsVariantSource;
   /** Undefined on success; set when `variant_source === 'fallback'`. */
   fallback_reason?: FlagsFallbackReason;
@@ -452,12 +474,46 @@ export interface FlagsManager {
   when_ready(): Promise<void>;
 }
 
+/**
+ * A single visual-experiment mutation. Text edits use `setText`, which sets
+ * textContent; there is no innerHTML mutation.
+ */
+export type VisualChangeMutation =
+  | { type: "setAttribute"; selector: string; attribute: string; value: string }
+  | { type: "setText"; selector: string; value: string }
+  | { type: "setStyle"; selector: string; property: string; value: string }
+  | { type: "setClasses"; selector: string; add: string[]; remove: string[] }
+  | { type: "setAttributes"; selector: string; attributes: Record<string, string> }
+  | { type: "hide"; selector: string };
+
+/**
+ * `mixpanel.experiments`: the visual-experiments authoring surface, present only
+ * when the `visual_experiments` init option is enabled. The Mixpanel extension
+ * (and page scripts) drive live preview through these methods.
+ */
+export interface ExperimentsManager {
+  /** Replace the editor preview while preserving unrelated live experiments. An empty list clears the preview. */
+  applyVisualChanges(mutations: VisualChangeMutation[]): void;
+  /** Clear the editor preview while preserving unrelated live experiments. */
+  revertVisualChanges(): void;
+  /** Suppress this experiment's live changes while authoring a preview on the current page. */
+  startEditorSession(experiment_id: string): void;
+  /** Clear the preview and restore the current page's delivered experiment changes. */
+  endEditorSession(experiment_id: string): void;
+}
+
 /** @hidden */
 export interface Mixpanel {
+  readonly SDK_VERSION: string;
   add_group(group_key: string, group_id: string, callback?: Callback): void;
   alias(alias: string, original?: string): void;
   clear_opt_in_out_tracking(options?: Partial<ClearOptOutInOutOptions>): void;
   disable(events?: string[]): void;
+  /**
+   * Present only when the `visual_experiments` init option is enabled; otherwise
+   * undefined.
+   */
+  experiments?: ExperimentsManager;
   flags: FlagsManager;
   get_config(prop_name?: string): any;
   get_distinct_id(): any;
