@@ -136,7 +136,7 @@ FeatureFlagManager.prototype.init = function() {
 };
 
 FeatureFlagManager.prototype._getPreviewToken = function() {
-    return new URLSearchParams((window.location && window.location.search) || '').get('mp_preview_token') || '';
+    return _.getPreviewToken();
 };
 
 FeatureFlagManager.prototype._buildContext = function() {
