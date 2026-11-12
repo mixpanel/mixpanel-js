@@ -1318,8 +1318,18 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
     return tmp_arr.join(arg_separator);
 };
 
+var PREVIEW_TOKEN_PARAM = 'mp_preview_token';
+
+_.getPreviewToken = function() {
+    try {
+        return new URLSearchParams((win.location && win.location.search) || '').get(PREVIEW_TOKEN_PARAM) || '';
+    } catch (err) {
+        return '';
+    }
+};
+
 // Keep parameter names for diagnostics, but redact credentials from telemetry.
-var SENSITIVE_URL_PARAMS = ['mp_preview_token'];
+var SENSITIVE_URL_PARAMS = [PREVIEW_TOKEN_PARAM];
 _.sanitizeUrl = function(url) {
     try {
         if (!url || typeof url !== 'string') {
@@ -4485,7 +4495,7 @@ FeatureFlagManager.prototype.init = function() {
 };
 
 FeatureFlagManager.prototype._getPreviewToken = function() {
-    return new URLSearchParams((win.location && win.location.search) || '').get('mp_preview_token') || '';
+    return _.getPreviewToken();
 };
 
 FeatureFlagManager.prototype._buildContext = function() {
@@ -6253,6 +6263,10 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
     }
     if (!win['MutationObserver']) {
         console.critical('Browser does not support MutationObserver; skipping session recording');
+        return PromisePolyfill.resolve();
+    }
+    if (_.getPreviewToken()) {
+        console.log('Session recording skipped on a visual experiment preview page');
         return PromisePolyfill.resolve();
     }
 
