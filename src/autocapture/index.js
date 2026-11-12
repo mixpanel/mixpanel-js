@@ -1,10 +1,11 @@
-import { _, document, safewrap, safewrapClass, urlMatchesRegexList } from '../utils';
+import { _, document, EV_MP_LOCATION_CHANGE, safewrap, safewrapClass, urlMatchesRegexList } from '../utils';
 import { window } from '../window';
 import {
     getPolyfillScrollEndFunction, getPropsForDOMEvent, logger, minDOMApisSupported,
-    EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_MP_LOCATION_CHANGE, EV_LOAD,
-    EV_POPSTATE, EV_SCROLL, EV_SCROLLEND, EV_SUBMIT, EV_VISIBILITYCHANGE
+    EV_CHANGE, EV_CLICK, EV_LOAD,
+    EV_SCROLL, EV_SCROLLEND, EV_SUBMIT, EV_VISIBILITYCHANGE
 } from './utils';
+import { ensureLocationChangeListeners } from '../navigation';
 import { RageClickTracker } from './rageclick';
 import { DeadClickTracker, DEFAULT_DEAD_CLICK_TIMEOUT_MS } from './deadclick';
 
@@ -176,37 +177,12 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
 };
 
 Autocapture.prototype.initPageListeners = function() {
-    window.removeEventListener(EV_POPSTATE, this.listenerPopstate);
-    window.removeEventListener(EV_HASHCHANGE, this.listenerHashchange);
-
     if (!this.pageviewTrackingConfig() && !this.getConfig(CONFIG_TRACK_PAGE_LEAVE) && !this.mp.get_config('record_heatmap_data')) {
-        // These are all the configs that use these listeners
+        // These are all the configs that use the location-change signal.
         return;
     }
 
-    this.listenerPopstate = function() {
-        window.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-    };
-    this.listenerHashchange = function() {
-        window.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-    };
-
-    window.addEventListener(EV_POPSTATE, this.listenerPopstate);
-    window.addEventListener(EV_HASHCHANGE, this.listenerHashchange);
-    var nativePushState = window.history.pushState;
-    if (typeof nativePushState === 'function') {
-        window.history.pushState = function(state, unused, url) {
-            nativePushState.call(window.history, state, unused, url);
-            window.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-        };
-    }
-    var nativeReplaceState = window.history.replaceState;
-    if (typeof nativeReplaceState === 'function') {
-        window.history.replaceState = function(state, unused, url) {
-            nativeReplaceState.call(window.history, state, unused, url);
-            window.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-        };
-    }
+    ensureLocationChangeListeners();
 };
 
 Autocapture.prototype._getClickTrackingConfig = function(configKey) {

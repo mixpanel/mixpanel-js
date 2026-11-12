@@ -1,4 +1,4 @@
-import { _, console_with_prefix, generateTraceparent, safewrapClass } from '../utils'; // eslint-disable-line camelcase
+import { _, console_with_prefix, generateTraceparent, NOOP_FUNC, safewrapClass } from '../utils'; // eslint-disable-line camelcase
 import { window } from '../window';
 import { Config, TARGETING_GLOBAL_NAME } from '../config';
 import {
@@ -43,6 +43,16 @@ var FALLBACK_REASON_FLAG_NOT_FOUND = 'FLAG_NOT_FOUND';
 var FALLBACK_REASON_NOT_READY = 'NOT_READY';
 var FALLBACK_REASON_BACKEND_ERROR = 'BACKEND_ERROR';
 
+// $experiment_type values on $experiment_started
+var EXPERIMENT_TYPE_FEATURE_FLAG = 'feature_flag';
+var EXPERIMENT_TYPE_VISUAL = 'visual';
+
+var NOOP_VISUAL_EXPERIMENTS = {
+    onFlagsDelivered: NOOP_FUNC,
+    onDeliverySettled: NOOP_FUNC,
+    onReset: NOOP_FUNC
+};
+
 var withFallbackSource = function(fallback, reason) {
     var extras = {'variant_source': 'fallback'};
     if (reason) {
@@ -68,6 +78,7 @@ var FeatureFlagManager = function(initOptions) {
     this.consentGate = initOptions.consentGate;
     this.loadExtraBundle = initOptions.loadExtraBundle || function() {};
     this.targetingSrc = initOptions.targetingSrc || '';
+    this.visualExperiments = initOptions.visualExperiments || NOOP_VISUAL_EXPERIMENTS;
 };
 
 FeatureFlagManager.prototype.init = function() {
@@ -76,11 +87,14 @@ FeatureFlagManager.prototype.init = function() {
     }
     if (!this.minApisSupported()) {
         logger.critical('Feature Flags unavailable: missing minimum required APIs');
+        this.visualExperiments.onDeliverySettled();
         return;
     }
 
+    this._previewToken = this._getPreviewToken();
     this.flags = null;
     this.trackedFeatures = new Set();
+    this.trackedVisualExposures = new Set();
     this.pendingFirstTimeEvents = {};
     this.activatedFirstTimeEvents = {};
     this._loadedPersistedAtMs = null;
@@ -92,23 +106,37 @@ FeatureFlagManager.prototype.init = function() {
         _.bind(function() { return !this.consentGate.allowsPersistence(); }, this)
     );
 
-    this.persistenceLoadedPromise = this.persistence.loadFlagsFromStorage(this._buildContext())
+    // Preview links must await the server-selected variant before any cached
+    // assignment can apply visual changes or report an exposure.
+    this.persistenceLoadedPromise = (this._previewToken ? Promise.resolve(null) :
+        this.persistence.loadFlagsFromStorage(this._buildContext()))
         .then(_.bind(function(loaded) {
             if (loaded) {
                 this.flags = loaded.flags;
                 this.pendingFirstTimeEvents = loaded.pendingFirstTimeEvents;
                 this._loadedPersistedAtMs = loaded.persistedAtMs;
                 this._loadedTtlMs = loaded.ttlMs;
+                this.visualExperiments.onFlagsDelivered(this.flags);
             }
         }, this));
 
-    return this.persistenceLoadedPromise
+    var initPromise = this.persistenceLoadedPromise
         .then(_.bind(function() {
             return this.fetchFlags();
         }, this))
         .catch(function() {
             logger.error('Error initializing feature flags');
         });
+
+    // Settle even when initialization completes without delivering variants
+    // (flags disabled, no variants, or a failed request).
+    var settled = _.bind(this.visualExperiments.onDeliverySettled, this.visualExperiments);
+    initPromise.then(settled, settled);
+    return initPromise;
+};
+
+FeatureFlagManager.prototype._getPreviewToken = function() {
+    return new URLSearchParams((window.location && window.location.search) || '').get('mp_preview_token') || '';
 };
 
 FeatureFlagManager.prototype._buildContext = function() {
@@ -127,6 +155,8 @@ FeatureFlagManager.prototype.reset = function() {
     this.pendingFirstTimeEvents = {};
     this.activatedFirstTimeEvents = {};
     this.trackedFeatures = new Set();
+    this.trackedVisualExposures = new Set();
+    this.visualExperiments.onReset();
     this.fetchPromise = null;
     this._fetchInProgressStartTime = null;
     this._loadedPersistedAtMs = null;
@@ -211,19 +241,36 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     searchParams.set('token', this.getMpConfig('token'));
     searchParams.set('mp_lib', 'web');
     searchParams.set('$lib_version', Config.LIB_VERSION);
+    this._previewToken = this._getPreviewToken();
+    if (this._previewToken) {
+        searchParams.set('mp_preview_token', this._previewToken);
+    }
     var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
     this._fetchInProgressStartTime = Date.now();
-    this.fetchPromise = this.fetch.call(window, url, {
+    var fetchOptions = {
         'method': 'GET',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
             'traceparent': traceparent
         }
-    }).then(function(response) {
+    };
+    if (this._previewToken) {
+        fetchOptions['referrerPolicy'] = 'no-referrer';
+    }
+    this.fetchPromise = this.fetch.call(window, url, fetchOptions).then(function(response) {
         this.markFetchComplete();
         return response.json();
     }.bind(this)).then(function(responseBody) {
+        if (responseBody['preview_error']) {
+            var previewErrorCode = responseBody['preview_error']['code'];
+            // Only log the API's known diagnostic codes, never arbitrary response
+            // contents that could include the preview credential.
+            if (previewErrorCode !== 'invalid_preview_token' && previewErrorCode !== 'preview_unavailable') {
+                previewErrorCode = 'unknown_preview_error';
+            }
+            logger.warn('Shared preview unavailable (' + previewErrorCode + '); using normal flags');
+        }
         var responseFlags = responseBody['flags'];
         if (!responseFlags) {
             throw new Error('No flags in API response');
@@ -236,11 +283,20 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             // Check if this flag has any activated first-time events this session
             var hasActivatedEvent = false;
             var prefix = key + ':';
-            _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
-                if (eventKey.startsWith(prefix)) {
-                    hasActivatedEvent = true;
-                }
-            });
+            if (data['is_preview'] === true) {
+                // A preview takes precedence over first-time-event stickiness.
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    if (eventKey.startsWith(prefix)) {
+                        delete this.activatedFirstTimeEvents[eventKey];
+                    }
+                }, this);
+            } else {
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    if (eventKey.startsWith(prefix)) {
+                        hasActivatedEvent = true;
+                    }
+                });
+            }
 
             if (hasActivatedEvent) {
                 // Preserve the activated variant, don't overwrite with server's current variant
@@ -250,14 +306,18 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                 }
             } else {
                 // Use server's current variant
-                flags.set(key, {
+                var variant = {
                     'key': data['variant_key'],
                     'value': data['variant_value'],
                     'experiment_id': data['experiment_id'],
                     'is_experiment_active': data['is_experiment_active'],
                     'is_qa_tester': data['is_qa_tester'],
                     'variant_source': 'network'
-                });
+                };
+                if (data['is_preview'] === true) {
+                    variant['is_preview'] = true;
+                }
+                flags.set(key, variant);
             }
         }, this);
 
@@ -266,6 +326,9 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         if (topLevelDefinitions && topLevelDefinitions.length > 0) {
             _.each(topLevelDefinitions, function(def) {
                 var flagKey = def['flag_key'];
+                if (flags.has(flagKey) && flags.get(flagKey)['is_preview']) {
+                    return;
+                }
                 var eventKey = getPendingEventKey(flagKey, def['first_time_event_hash']);
 
                 // Skip if this specific event has already been activated this session
@@ -299,10 +362,12 @@ FeatureFlagManager.prototype.fetchFlags = function() {
 
         this.flags = flags;
         this.trackedFeatures = new Set();
+        this.trackedVisualExposures = new Set();
         this.pendingFirstTimeEvents = pendingFirstTimeEvents;
         this._loadedPersistedAtMs = null;
         this._loadedTtlMs = null;
         this._traceparent = traceparent;
+        this.visualExperiments.onFlagsDelivered(this.flags);
 
         this._loadTargetingIfNeeded();
 
@@ -310,6 +375,10 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     }.bind(this)).catch(function(error) {
         if (this._fetchInProgressStartTime) {
             this.markFetchComplete();
+        }
+        // Fetch implementations can include the request URL in their errors.
+        if (this._previewToken) {
+            error = new Error('Error fetching preview flags');
         }
         logger.error(error);
         throw error;
@@ -420,12 +489,16 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
  */
 FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, properties, targeting) {
     var recordings = [];
+    var activated = false;
     _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
         if (this.activatedFirstTimeEvents[eventKey]) {
             return;
         }
 
         var flagKey = pendingEvent['flag_key'];
+        if (this.flags && this.flags.has(flagKey) && this.flags.get(flagKey)['is_preview']) {
+            return;
+        }
 
         // Use targeting module to check if event matches
         var matchResult;
@@ -474,7 +547,9 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
 
         this.flags.set(flagKey, newVariant);
         this.trackedFeatures.delete(flagKey);
+        this.trackedVisualExposures.delete(flagKey);
         this.activatedFirstTimeEvents[eventKey] = true;
+        activated = true;
 
         recordings.push(this.recordFirstTimeEvent(
             pendingEvent['flag_id'],
@@ -482,6 +557,9 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
             pendingEvent['first_time_event_hash']
         ));
     }, this);
+    if (activated) {
+        this.visualExperiments.onFlagsDelivered(this.flags);
+    }
     return Promise.all(recordings);
 };
 
@@ -679,16 +757,22 @@ function isPresent(v) {
     return v !== undefined && v !== null;
 }
 
-FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) {
-    if (this.trackedFeatures.has(featureName)) {
+FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature, experimentType) {
+    if (feature['is_preview'] === true) {
         return;
     }
-    this.trackedFeatures.add(featureName);
+    // Code reads and visual applies dedupe independently so each exposure type
+    // is recorded (and distinguishable) even when the other happened first.
+    var tracked = experimentType === EXPERIMENT_TYPE_VISUAL ? this.trackedVisualExposures : this.trackedFeatures;
+    if (tracked.has(featureName)) {
+        return;
+    }
+    tracked.add(featureName);
 
     var trackingProperties = {
         'Experiment name': featureName,
         'Variant name': feature['key'],
-        '$experiment_type': 'feature_flag',
+        '$experiment_type': experimentType || EXPERIMENT_TYPE_FEATURE_FLAG,
         'Variant fetch start time': isPresent(this._fetchStartTime) ? new Date(this._fetchStartTime).toISOString() : null,
         'Variant fetch complete time': isPresent(this._fetchCompleteTime) ? new Date(this._fetchCompleteTime).toISOString() : null,
         'Variant fetch latency (ms)': this._fetchLatency,
@@ -715,6 +799,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
     }
 
     this.track('$experiment_started', trackingProperties);
+};
+
+FeatureFlagManager.prototype.trackVisualExposure = function(featureName, feature) {
+    this.trackFeatureCheck(featureName, feature, EXPERIMENT_TYPE_VISUAL);
 };
 
 FeatureFlagManager.prototype.whenReady = function() {

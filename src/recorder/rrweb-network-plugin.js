@@ -308,7 +308,7 @@ function tryReadFetchBody(r) {
                 );
         } catch (e) {
             clearTimeout(timeout);
-            resolve('Failed to read body: ' + String(e));
+            resolve('Failed to read body: ' + _.sanitizeUrl(String(e)));
         }
     });
 }
@@ -448,7 +448,7 @@ function initXhrObserver(cb, win, options) {
                     )
                         .then(function(entry) {
                             if (!entry) {
-                                logger.error('Failed to get performance entry for XHR request to ' + req.url);
+                                logger.error('Failed to get performance entry for XHR request to ' + _.sanitizeUrl(req.url));
                                 return;
                             }
                             /** @type {NetworkRequest} */
@@ -468,7 +468,7 @@ function initXhrObserver(cb, win, options) {
                             cb({ requests: [request] });
                         })
                         .catch(function(e) {
-                            logger.error('Error recording XHR request to ' + req.url + ': ' + String(e));
+                            logger.error('Error recording XHR request to ' + _.sanitizeUrl(req.url) + ': ' + _.sanitizeUrl(String(e)));
                         });
                 });
 
@@ -584,7 +584,7 @@ export function initFetchObserver(cb, win, options) {
                 })
                 .then(function(entry) {
                     if (!entry) {
-                        logger.error('Failed to get performance entry for fetch request to ' + req.url);
+                        logger.error('Failed to get performance entry for fetch request to ' + _.sanitizeUrl(req.url));
                         return;
                     }
                     /** @type {NetworkRequest} */
@@ -604,7 +604,7 @@ export function initFetchObserver(cb, win, options) {
                     cb({ requests: [request] });
                 })
                 .catch(function (e) {
-                    logger.error('Error recording fetch request to ' + req.url + ': ' + String(e));
+                    logger.error('Error recording fetch request to ' + _.sanitizeUrl(req.url) + ': ' + _.sanitizeUrl(String(e)));
                 });
 
             return originalFetchPromise;
@@ -643,6 +643,9 @@ function initNetworkObserver(callback, win, options) {
             return !shouldIgnoreUrl && !networkOptions.ignoreRequestFn(request);
         });
         if (requests.length > 0 || data.isInitial) {
+            requests = requests.map(function(request) {
+                return Object.assign({}, request, { url: _.sanitizeUrl(request.url) });
+            });
             callback(Object.assign({}, data, { requests: requests }));
         }
     };

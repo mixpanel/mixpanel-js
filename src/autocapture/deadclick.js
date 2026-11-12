@@ -1,4 +1,5 @@
-import { EV_CHANGE, EV_HASHCHANGE, EV_INPUT, EV_SCROLLEND, EV_SELECT, EV_SUBMIT, EV_TOGGLE, isDefinitelyNonInteractive, logger } from './utils';
+import { EV_HASHCHANGE } from '../utils';
+import { EV_CHANGE, EV_INPUT, EV_SCROLLEND, EV_SELECT, EV_SUBMIT, EV_TOGGLE, isDefinitelyNonInteractive, logger } from './utils';
 import { ShadowDOMObserver } from './shadow-dom-observer';
 
 /** @const */ var DEFAULT_DEAD_CLICK_TIMEOUT_MS = 500;
