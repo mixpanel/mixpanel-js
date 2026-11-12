@@ -1207,8 +1207,18 @@
         return tmp_arr.join(arg_separator);
     };
 
+    var PREVIEW_TOKEN_PARAM = 'mp_preview_token';
+
+    _.getPreviewToken = function() {
+        try {
+            return new URLSearchParams((win.location && win.location.search) || '').get(PREVIEW_TOKEN_PARAM) || '';
+        } catch (err) {
+            return '';
+        }
+    };
+
     // Keep parameter names for diagnostics, but redact credentials from telemetry.
-    var SENSITIVE_URL_PARAMS = ['mp_preview_token'];
+    var SENSITIVE_URL_PARAMS = [PREVIEW_TOKEN_PARAM];
     _.sanitizeUrl = function(url) {
         try {
             if (!url || typeof url !== 'string') {
