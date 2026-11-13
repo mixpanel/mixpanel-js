@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.85.0'
+        LIB_VERSION: '2.86.0'
     };
     var RECORDER_GLOBAL_NAME = '__mp_recorder';
 
@@ -19889,6 +19889,38 @@
         return tmp_arr.join(arg_separator);
     };
 
+    var PREVIEW_TOKEN_PARAM = 'mp_preview_token';
+
+    _.getPreviewToken = function() {
+        try {
+            return new URLSearchParams((win.location && win.location.search) || '').get(PREVIEW_TOKEN_PARAM) || '';
+        } catch (err) {
+            return '';
+        }
+    };
+
+    // Keep parameter names for diagnostics, but redact credentials from telemetry.
+    var SENSITIVE_URL_PARAMS = [PREVIEW_TOKEN_PARAM];
+    _.sanitizeUrl = function(url) {
+        try {
+            if (!url || typeof url !== 'string') {
+                return url;
+            }
+            // Process query strings in both the URL and hash routes, preserving the rest.
+            return url.replace(/\?[^#]*/g, function(query) {
+                return '?' + query.slice(1).split('&').map(function(pair) {
+                    var separatorIndex = pair.indexOf('=');
+                    var encodedKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
+                    var key = new URLSearchParams(encodedKey + '=').keys().next().value;
+                    return SENSITIVE_URL_PARAMS.indexOf(key) !== -1 ? encodedKey + '=REDACTED' : pair;
+                }).join('&');
+            });
+        } catch (err) {
+            // Best effort: sanitization must not prevent telemetry from being sent.
+            return url;
+        }
+    };
+
     _.getQueryParam = function(url, param) {
         // Expects a raw URL
 
@@ -20591,7 +20623,7 @@
         },
 
         currentUrl: function() {
-            return win.location.href;
+            return _.sanitizeUrl(win.location.href);
         },
 
         properties: function(extra_props) {
@@ -20601,7 +20633,7 @@
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
                 '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
-                '$referrer': document$1.referrer,
+                '$referrer': _.sanitizeUrl(document$1.referrer),
                 '$referring_domain': _.info.referringDomain(document$1.referrer),
                 '$device': _.info.device(userAgent)
             }), {
@@ -20631,7 +20663,7 @@
                 'current_domain': win.location.hostname,
                 'current_url_path': win.location.pathname,
                 'current_url_protocol': win.location.protocol,
-                'current_url_search': win.location.search
+                'current_url_search': _.sanitizeUrl(win.location.search)
             });
         }
     };
@@ -22381,7 +22413,7 @@
                     );
             } catch (e) {
                 clearTimeout(timeout);
-                resolve('Failed to read body: ' + String(e));
+                resolve('Failed to read body: ' + _.sanitizeUrl(String(e)));
             }
         });
     }
@@ -22521,7 +22553,7 @@
                         )
                             .then(function(entry) {
                                 if (!entry) {
-                                    logger$2.error('Failed to get performance entry for XHR request to ' + req.url);
+                                    logger$2.error('Failed to get performance entry for XHR request to ' + _.sanitizeUrl(req.url));
                                     return;
                                 }
                                 /** @type {NetworkRequest} */
@@ -22541,7 +22573,7 @@
                                 cb({ requests: [request] });
                             })
                             .catch(function(e) {
-                                logger$2.error('Error recording XHR request to ' + req.url + ': ' + String(e));
+                                logger$2.error('Error recording XHR request to ' + _.sanitizeUrl(req.url) + ': ' + _.sanitizeUrl(String(e)));
                             });
                     });
 
@@ -22657,7 +22689,7 @@
                     })
                     .then(function(entry) {
                         if (!entry) {
-                            logger$2.error('Failed to get performance entry for fetch request to ' + req.url);
+                            logger$2.error('Failed to get performance entry for fetch request to ' + _.sanitizeUrl(req.url));
                             return;
                         }
                         /** @type {NetworkRequest} */
@@ -22677,7 +22709,7 @@
                         cb({ requests: [request] });
                     })
                     .catch(function (e) {
-                        logger$2.error('Error recording fetch request to ' + req.url + ': ' + String(e));
+                        logger$2.error('Error recording fetch request to ' + _.sanitizeUrl(req.url) + ': ' + _.sanitizeUrl(String(e)));
                     });
 
                 return originalFetchPromise;
@@ -22716,6 +22748,9 @@
                 return !shouldIgnoreUrl && !networkOptions.ignoreRequestFn(request);
             });
             if (requests.length > 0 || data.isInitial) {
+                requests = requests.map(function(request) {
+                    return Object.assign({}, request, { url: _.sanitizeUrl(request.url) });
+                });
                 callback(Object.assign({}, data, { requests: requests }));
             }
         };
@@ -23005,6 +23040,9 @@
         try {
             this._stopRecording = this._rrwebRecord({
                 'emit': function (ev) {
+                    if (ev.type === EventType.Meta && ev.data) {
+                        ev.data.href = _.sanitizeUrl(ev.data.href);
+                    }
                     if (this.idleExpires && this.idleExpires < ev.timestamp) {
                         this._onIdleTimeout();
                         return;

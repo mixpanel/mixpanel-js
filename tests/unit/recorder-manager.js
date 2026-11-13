@@ -250,6 +250,64 @@ describe(`RecorderManager`, function() {
       return new RecorderManager(Object.assign(defaults, opts));
     }
 
+    describe(`preview pages`, function() {
+      let originalSearch;
+
+      beforeEach(function() {
+        originalSearch = window.location.search;
+        window.location.search = `?x=1&mp_preview_token=signed.token`;
+        loadExtraBundleStub.callsFake((_src, callback) => {
+          window[RECORDER_GLOBAL_NAME] = sinon.stub().returns({
+            'resumeRecording': sinon.stub()
+          });
+          callback();
+        });
+      });
+
+      afterEach(function() {
+        window.location.search = originalSearch;
+      });
+
+      it(`does not start a recording when the page URL carries a preview token`, async function() {
+        const manager = createManagerWithOpts({ libBasePath: `/base/` });
+
+        await manager.checkAndStartSessionRecording(true);
+
+        expect(loadExtraBundleStub.called).to.be.false;
+        expect(manager.getRecorder()).to.be.null;
+      });
+
+      it(`does not resume a recording in progress on a preview page`, async function() {
+        const resumeRecording = sinon.stub();
+        window[RECORDER_GLOBAL_NAME] = sinon.stub().returns({ 'resumeRecording': resumeRecording });
+        mockConfig[`record_sessions_percent`] = 100;
+        const manager = createManagerWithOpts({ libBasePath: `/base/` });
+
+        await manager.checkAndStartSessionRecording();
+
+        expect(window[RECORDER_GLOBAL_NAME].called).to.be.false;
+        expect(resumeRecording.called).to.be.false;
+      });
+
+      it(`does not start a recording from an event trigger on a preview page`, function() {
+        mockConfig[`recording_event_triggers`] = { 'test_event': { 'percentage': 100 } };
+        const manager = createManagerWithOpts({ libBasePath: `/base/` });
+
+        manager.startRecordingOnEvent(`test_event`, {});
+
+        expect(loadExtraBundleStub.called).to.be.false;
+      });
+
+      it(`starts a recording once the preview token is gone from the URL`, async function() {
+        window.location.search = `?x=1`;
+        const manager = createManagerWithOpts({ libBasePath: `/base/` });
+
+        await manager.checkAndStartSessionRecording(true);
+
+        expect(loadExtraBundleStub.calledOnce).to.be.true;
+      });
+    });
+
     describe(`recorderSrc`, function() {
       it(`should use recorderSrc when provided`, async function() {
         const manager = createManagerWithOpts({

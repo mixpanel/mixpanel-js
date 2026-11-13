@@ -27,7 +27,7 @@
     }
 
     var Config = {
-        LIB_VERSION: '2.85.0'
+        LIB_VERSION: '2.86.0'
     };
 
     // Window global names for async modules
@@ -1207,6 +1207,38 @@
         return tmp_arr.join(arg_separator);
     };
 
+    var PREVIEW_TOKEN_PARAM = 'mp_preview_token';
+
+    _.getPreviewToken = function() {
+        try {
+            return new URLSearchParams((win.location && win.location.search) || '').get(PREVIEW_TOKEN_PARAM) || '';
+        } catch (err) {
+            return '';
+        }
+    };
+
+    // Keep parameter names for diagnostics, but redact credentials from telemetry.
+    var SENSITIVE_URL_PARAMS = [PREVIEW_TOKEN_PARAM];
+    _.sanitizeUrl = function(url) {
+        try {
+            if (!url || typeof url !== 'string') {
+                return url;
+            }
+            // Process query strings in both the URL and hash routes, preserving the rest.
+            return url.replace(/\?[^#]*/g, function(query) {
+                return '?' + query.slice(1).split('&').map(function(pair) {
+                    var separatorIndex = pair.indexOf('=');
+                    var encodedKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
+                    var key = new URLSearchParams(encodedKey + '=').keys().next().value;
+                    return SENSITIVE_URL_PARAMS.indexOf(key) !== -1 ? encodedKey + '=REDACTED' : pair;
+                }).join('&');
+            });
+        } catch (err) {
+            // Best effort: sanitization must not prevent telemetry from being sent.
+            return url;
+        }
+    };
+
     _.getQueryParam = function(url, param) {
         // Expects a raw URL
 
@@ -1900,7 +1932,7 @@
         },
 
         currentUrl: function() {
-            return win.location.href;
+            return _.sanitizeUrl(win.location.href);
         },
 
         properties: function(extra_props) {
@@ -1910,7 +1942,7 @@
             return _.extend(_.strip_empty_properties({
                 '$os': _.info.os(),
                 '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
-                '$referrer': document.referrer,
+                '$referrer': _.sanitizeUrl(document.referrer),
                 '$referring_domain': _.info.referringDomain(document.referrer),
                 '$device': _.info.device(userAgent)
             }), {
@@ -1940,7 +1972,7 @@
                 'current_domain': win.location.hostname,
                 'current_url_path': win.location.pathname,
                 'current_url_protocol': win.location.protocol,
-                'current_url_search': win.location.search
+                'current_url_search': _.sanitizeUrl(win.location.search)
             });
         }
     };

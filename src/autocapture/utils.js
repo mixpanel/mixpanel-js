@@ -6,11 +6,8 @@ import { window } from '../window';
 
 var EV_CHANGE = 'change';
 var EV_CLICK = 'click';
-var EV_HASHCHANGE = 'hashchange';
 var EV_INPUT = 'input';
 var EV_LOAD = 'load';
-var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
-var EV_POPSTATE = 'popstate';
 // TODO scrollend isn't available in Safari: document or polyfill?
 var EV_SCROLLEND = 'scrollend';
 var EV_SCROLL = 'scroll';
@@ -780,7 +777,7 @@ function getClickEventTargetElement(event) {
 }
 
 export {
-    EV_CHANGE, EV_CLICK, EV_HASHCHANGE, EV_INPUT, EV_LOAD,EV_MP_LOCATION_CHANGE, EV_POPSTATE,
+    EV_CHANGE, EV_CLICK, EV_INPUT, EV_LOAD,
     EV_SCROLL, EV_SCROLLEND, EV_SELECT, EV_SUBMIT, EV_TOGGLE, EV_VISIBILITYCHANGE,
     elementLooksSensitive,
     getClickEventComposedPath,

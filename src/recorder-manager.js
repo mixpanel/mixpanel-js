@@ -81,6 +81,10 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
         console.critical('Browser does not support MutationObserver; skipping session recording');
         return Promise.resolve();
     }
+    if (_.getPreviewToken()) {
+        console.log('Session recording skipped on a visual experiment preview page');
+        return Promise.resolve();
+    }
 
     var loadRecorder = _.bind(function(startNewIfInactive) {
         return new Promise(_.bind(function(resolve) {

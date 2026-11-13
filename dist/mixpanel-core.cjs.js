@@ -2,7 +2,7 @@
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.85.0'
+    LIB_VERSION: '2.86.0'
 };
 
 // Window global names for async modules
@@ -97,7 +97,7 @@ schedulingQueue = (function Queue() {
     };
 })();
 
-function schedule(fn,self) {
+function schedule$1(fn,self) {
     schedulingQueue.add(fn,self);
     if (!cycle) {
         cycle = timer(schedulingQueue.drain);
@@ -175,7 +175,7 @@ function resolve(msg) {
     try {
         // eslint-disable-next-line no-cond-assign
         if (_then = isThenable(msg)) {
-            schedule(function(){
+            schedule$1(function(){
                 var defWrapper = new MakeDefWrapper(self);
                 try {
                     _then.call(msg,
@@ -192,7 +192,7 @@ function resolve(msg) {
             self.msg = msg;
             self.state = 1;
             if (self.chain.length > 0) {
-                schedule(notify,self);
+                schedule$1(notify,self);
             }
         }
     }
@@ -217,7 +217,7 @@ function reject(msg) {
     self.msg = msg;
     self.state = 2;
     if (self.chain.length > 0) {
-        schedule(notify,self);
+        schedule$1(notify,self);
     }
 }
 
@@ -282,7 +282,7 @@ function NpoPromise(executor) {
         def.chain.push(o);
 
         if (def.state !== 0) {
-            schedule(notify,def);
+            schedule$1(notify,def);
         }
 
         return o.promise;
@@ -404,6 +404,10 @@ if (typeof Promise !== 'undefined' && Promise.toString().indexOf('[native code]'
 
 // Maximum allowed session recording length
 var MAX_RECORDING_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+var EV_HASHCHANGE = 'hashchange';
+var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
+var EV_POPSTATE = 'popstate';
 
 /*
  * Saved references to long variable names, so that closure compiler can
@@ -1314,6 +1318,38 @@ _.HTTPBuildQuery = function(formdata, arg_separator) {
     return tmp_arr.join(arg_separator);
 };
 
+var PREVIEW_TOKEN_PARAM = 'mp_preview_token';
+
+_.getPreviewToken = function() {
+    try {
+        return new URLSearchParams((win.location && win.location.search) || '').get(PREVIEW_TOKEN_PARAM) || '';
+    } catch (err) {
+        return '';
+    }
+};
+
+// Keep parameter names for diagnostics, but redact credentials from telemetry.
+var SENSITIVE_URL_PARAMS = [PREVIEW_TOKEN_PARAM];
+_.sanitizeUrl = function(url) {
+    try {
+        if (!url || typeof url !== 'string') {
+            return url;
+        }
+        // Process query strings in both the URL and hash routes, preserving the rest.
+        return url.replace(/\?[^#]*/g, function(query) {
+            return '?' + query.slice(1).split('&').map(function(pair) {
+                var separatorIndex = pair.indexOf('=');
+                var encodedKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
+                var key = new URLSearchParams(encodedKey + '=').keys().next().value;
+                return SENSITIVE_URL_PARAMS.indexOf(key) !== -1 ? encodedKey + '=REDACTED' : pair;
+            }).join('&');
+        });
+    } catch (err) {
+        // Best effort: sanitization must not prevent telemetry from being sent.
+        return url;
+    }
+};
+
 _.getQueryParam = function(url, param) {
     // Expects a raw URL
 
@@ -2016,7 +2052,7 @@ _.info = {
     },
 
     currentUrl: function() {
-        return win.location.href;
+        return _.sanitizeUrl(win.location.href);
     },
 
     properties: function(extra_props) {
@@ -2026,7 +2062,7 @@ _.info = {
         return _.extend(_.strip_empty_properties({
             '$os': _.info.os(),
             '$browser': _.info.browser(userAgent, navigator.vendor, windowOpera),
-            '$referrer': document$1.referrer,
+            '$referrer': _.sanitizeUrl(document$1.referrer),
             '$referring_domain': _.info.referringDomain(document$1.referrer),
             '$device': _.info.device(userAgent)
         }), {
@@ -2056,7 +2092,7 @@ _.info = {
             'current_domain': win.location.hostname,
             'current_url_path': win.location.pathname,
             'current_url_protocol': win.location.protocol,
-            'current_url_search': win.location.search
+            'current_url_search': _.sanitizeUrl(win.location.search)
         });
     }
 };
@@ -2183,11 +2219,8 @@ _['NPO']                    = NpoPromise;
 
 var EV_CHANGE = 'change';
 var EV_CLICK = 'click';
-var EV_HASHCHANGE = 'hashchange';
 var EV_INPUT = 'input';
 var EV_LOAD = 'load';
-var EV_MP_LOCATION_CHANGE = 'mp_locationchange';
-var EV_POPSTATE = 'popstate';
 // TODO scrollend isn't available in Safari: document or polyfill?
 var EV_SCROLLEND = 'scrollend';
 var EV_SCROLL = 'scroll';
@@ -2282,7 +2315,7 @@ var EVENT_HANDLER_ATTRIBUTES = [
 
 var MAX_DEPTH = 5;
 
-var logger$6 = console_with_prefix('autocapture');
+var logger$9 = console_with_prefix('autocapture');
 
 
 function getClasses(el) {
@@ -2546,7 +2579,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return false;
             }
         } catch (err) {
-            logger$6.critical('Error while checking element in allowElementCallback', err);
+            logger$9.critical('Error while checking element in allowElementCallback', err);
             return false;
         }
     }
@@ -2563,7 +2596,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return true;
             }
         } catch (err) {
-            logger$6.critical('Error while checking selector: ' + sel, err);
+            logger$9.critical('Error while checking selector: ' + sel, err);
         }
     }
     return false;
@@ -2578,7 +2611,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                 return true;
             }
         } catch (err) {
-            logger$6.critical('Error while checking element in blockElementCallback', err);
+            logger$9.critical('Error while checking element in blockElementCallback', err);
             return true;
         }
     }
@@ -2592,7 +2625,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                     return true;
                 }
             } catch (err) {
-                logger$6.critical('Error while checking selector: ' + sel, err);
+                logger$9.critical('Error while checking selector: ' + sel, err);
             }
         }
     }
@@ -2956,6 +2989,80 @@ function getClickEventTargetElement(event) {
     return event['target'] || event['srcElement'];
 }
 
+/* eslint camelcase: "off" */
+
+
+// Shared SPA location-change detector. Normalizes the four ways a single-page app
+// can change the URL without a full reload — history.pushState, history.replaceState,
+// popstate (back/forward), hashchange — into a single synthetic window event,
+// EV_MP_LOCATION_CHANGE. Both autocapture (pageview / page-leave tracking) and
+// visual experiments consume this event; keeping the detection here means the
+// History API is patched exactly once regardless of how many features need it.
+
+var inBrowser = function() {
+    return typeof win !== 'undefined' && !!win['document'];
+};
+
+// Guard so the History API is patched and the popstate/hashchange listeners are
+// added at most once per page, even if multiple features (and multiple Mixpanel
+// instances) call ensureLocationChangeListeners.
+var installed = false;
+
+var dispatchLocationChange = function() {
+    win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
+};
+
+/**
+ * Idempotently install the SPA location-change detector. Patches
+ * history.pushState / history.replaceState and listens for popstate / hashchange,
+ * each dispatching a single EV_MP_LOCATION_CHANGE window event. Safe to call
+ * repeatedly and safe outside a browser (no-op).
+ */
+function ensureLocationChangeListeners() {
+    if (installed || !inBrowser()) {
+        return;
+    }
+    installed = true;
+
+    win.addEventListener(EV_POPSTATE, dispatchLocationChange);
+    win.addEventListener(EV_HASHCHANGE, dispatchLocationChange);
+
+    var history = win['history'];
+    if (history) {
+        var nativePushState = history.pushState;
+        if (typeof nativePushState === 'function') {
+            history.pushState = function(state, unused, url) {
+                nativePushState.call(history, state, unused, url);
+                dispatchLocationChange();
+            };
+        }
+        var nativeReplaceState = history.replaceState;
+        if (typeof nativeReplaceState === 'function') {
+            history.replaceState = function(state, unused, url) {
+                nativeReplaceState.call(history, state, unused, url);
+                dispatchLocationChange();
+            };
+        }
+    }
+}
+
+/**
+ * Subscribe to SPA location changes. Ensures the detector is installed, then adds
+ * the handler for EV_MP_LOCATION_CHANGE. Returns a teardown that removes it.
+ * @param {Function} handler
+ * @returns {Function} unsubscribe
+ */
+function onLocationChange(handler) {
+    if (!inBrowser() || typeof handler !== 'function') {
+        return function() {};
+    }
+    ensureLocationChangeListeners();
+    win.addEventListener(EV_MP_LOCATION_CHANGE, handler);
+    return function() {
+        win.removeEventListener(EV_MP_LOCATION_CHANGE, handler);
+    };
+}
+
 /** @const */ var DEFAULT_RAGE_CLICK_THRESHOLD_PX = 30;
 /** @const */ var DEFAULT_RAGE_CLICK_TIMEOUT_MS = 1000;
 /** @const */ var DEFAULT_RAGE_CLICK_CLICK_COUNT = 4;
@@ -3056,7 +3163,7 @@ ShadowDOMObserver.prototype.observeShadowRoot = function(shadowRoot) {
         observer.observe(shadowRoot, this.observerConfig);
         this.shadowObservers.push(observer);
     } catch (e) {
-        logger$6.critical('Error while observing shadow root', e);
+        logger$9.critical('Error while observing shadow root', e);
     }
 };
 
@@ -3067,7 +3174,7 @@ ShadowDOMObserver.prototype.start = function() {
     }
 
     if (!weakSetSupported()) {
-        logger$6.critical('Shadow DOM observation unavailable: WeakSet not supported');
+        logger$9.critical('Shadow DOM observation unavailable: WeakSet not supported');
         return;
     }
 
@@ -3083,7 +3190,7 @@ ShadowDOMObserver.prototype.stop = function() {
         try {
             this.shadowObservers[i].disconnect();
         } catch (e) {
-            logger$6.critical('Error while disconnecting shadow DOM observer', e);
+            logger$9.critical('Error while disconnecting shadow DOM observer', e);
         }
     }
     this.shadowObservers = [];
@@ -3271,7 +3378,7 @@ DeadClickTracker.prototype.startTracking = function() {
 
             this.mutationObserver.observe(document.body || document.documentElement, MUTATION_OBSERVER_CONFIG);
         } catch (e) {
-            logger$6.critical('Error while setting up mutation observer', e);
+            logger$9.critical('Error while setting up mutation observer', e);
         }
     }
 
@@ -3286,7 +3393,7 @@ DeadClickTracker.prototype.startTracking = function() {
             );
             this.shadowDOMObserver.start();
         } catch (e) {
-            logger$6.critical('Error while setting up shadow DOM observer', e);
+            logger$9.critical('Error while setting up shadow DOM observer', e);
             this.shadowDOMObserver = null;
         }
     }
@@ -3313,7 +3420,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             listener.target.removeEventListener(listener.event, listener.handler, listener.options);
         } catch (e) {
-            logger$6.critical('Error while removing event listener', e);
+            logger$9.critical('Error while removing event listener', e);
         }
     }
     this.eventListeners = [];
@@ -3322,7 +3429,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             this.mutationObserver.disconnect();
         } catch (e) {
-            logger$6.critical('Error while disconnecting mutation observer', e);
+            logger$9.critical('Error while disconnecting mutation observer', e);
         }
         this.mutationObserver = null;
     }
@@ -3331,7 +3438,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             this.shadowDOMObserver.stop();
         } catch (e) {
-            logger$6.critical('Error while stopping shadow DOM observer', e);
+            logger$9.critical('Error while stopping shadow DOM observer', e);
         }
         this.shadowDOMObserver = null;
     }
@@ -3409,7 +3516,7 @@ var Autocapture = function(mp) {
 
 Autocapture.prototype.init = function() {
     if (!minDOMApisSupported()) {
-        logger$6.critical('Autocapture unavailable: missing required DOM APIs');
+        logger$9.critical('Autocapture unavailable: missing required DOM APIs');
         return;
     }
     this.initPageListeners();
@@ -3449,7 +3556,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
         try {
             return !urlMatchesRegexList(currentUrl, allowUrlRegexes);
         } catch (err) {
-            logger$6.critical('Error while checking block URL regexes: ', err);
+            logger$9.critical('Error while checking block URL regexes: ', err);
             return true;
         }
     }
@@ -3462,7 +3569,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
     try {
         return urlMatchesRegexList(currentUrl, blockUrlRegexes);
     } catch (err) {
-        logger$6.critical('Error while checking block URL regexes: ', err);
+        logger$9.critical('Error while checking block URL regexes: ', err);
         return true;
     }
 };
@@ -3505,37 +3612,12 @@ Autocapture.prototype.trackDomEvent = function(ev, mpEventName) {
 };
 
 Autocapture.prototype.initPageListeners = function() {
-    win.removeEventListener(EV_POPSTATE, this.listenerPopstate);
-    win.removeEventListener(EV_HASHCHANGE, this.listenerHashchange);
-
     if (!this.pageviewTrackingConfig() && !this.getConfig(CONFIG_TRACK_PAGE_LEAVE) && !this.mp.get_config('record_heatmap_data')) {
-        // These are all the configs that use these listeners
+        // These are all the configs that use the location-change signal.
         return;
     }
 
-    this.listenerPopstate = function() {
-        win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-    };
-    this.listenerHashchange = function() {
-        win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-    };
-
-    win.addEventListener(EV_POPSTATE, this.listenerPopstate);
-    win.addEventListener(EV_HASHCHANGE, this.listenerHashchange);
-    var nativePushState = win.history.pushState;
-    if (typeof nativePushState === 'function') {
-        win.history.pushState = function(state, unused, url) {
-            nativePushState.call(win.history, state, unused, url);
-            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-        };
-    }
-    var nativeReplaceState = win.history.replaceState;
-    if (typeof nativeReplaceState === 'function') {
-        win.history.replaceState = function(state, unused, url) {
-            nativeReplaceState.call(win.history, state, unused, url);
-            win.dispatchEvent(new Event(EV_MP_LOCATION_CHANGE));
-        };
-    }
+    ensureLocationChangeListeners();
 };
 
 Autocapture.prototype._getClickTrackingConfig = function(configKey) {
@@ -3600,7 +3682,7 @@ Autocapture.prototype._initScrollDepthTracking = function() {
         return;
     }
 
-    logger$6.log('Initializing scroll depth tracking');
+    logger$9.log('Initializing scroll depth tracking');
 
     this.maxScrollViewDepth = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
 
@@ -3626,7 +3708,7 @@ Autocapture.prototype.initClickTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
-    logger$6.log('Initializing click tracking');
+    logger$9.log('Initializing click tracking');
 
     this.listenerClick = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
@@ -3645,7 +3727,7 @@ Autocapture.prototype.initDeadClickTracking = function() {
         return;
     }
 
-    logger$6.log('Initializing dead click tracking');
+    logger$9.log('Initializing dead click tracking');
     if (!this._deadClickTracker) {
         this._deadClickTracker = new DeadClickTracker(function(deadClickEvent) {
             this.trackDomEvent(deadClickEvent, MP_EV_DEAD_CLICK);
@@ -3679,7 +3761,7 @@ Autocapture.prototype.initInputTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_INPUT)) {
         return;
     }
-    logger$6.log('Initializing input tracking');
+    logger$9.log('Initializing input tracking');
 
     this.listenerChange = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
@@ -3696,7 +3778,7 @@ Autocapture.prototype.initPageviewTracking = function() {
     if (!this.pageviewTrackingConfig() && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
-    logger$6.log('Initializing pageview tracking');
+    logger$9.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
     var tracked = false;
@@ -3736,7 +3818,7 @@ Autocapture.prototype.initPageviewTracking = function() {
             }
             if (didPathChange) {
                 this.lastScrollCheckpoint = 0;
-                logger$6.log('Path change: re-initializing scroll depth checkpoints');
+                logger$9.log('Path change: re-initializing scroll depth checkpoints');
             }
         }
     }.bind(this));
@@ -3751,7 +3833,7 @@ Autocapture.prototype.initRageClickTracking = function() {
         return;
     }
 
-    logger$6.log('Initializing rage click tracking');
+    logger$9.log('Initializing rage click tracking');
     if (!this._rageClickTracker) {
         this._rageClickTracker = new RageClickTracker();
     }
@@ -3781,7 +3863,7 @@ Autocapture.prototype.initScrollTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
     }
-    logger$6.log('Initializing scroll tracking');
+    logger$9.log('Initializing scroll tracking');
     this.lastScrollCheckpoint = 0;
 
     var scrollTrackFunction = function() {
@@ -3818,7 +3900,7 @@ Autocapture.prototype.initScrollTracking = function() {
                 }
             }
         } catch (err) {
-            logger$6.critical('Error while calculating scroll percentage', err);
+            logger$9.critical('Error while calculating scroll percentage', err);
         }
         if (shouldTrack) {
             this.mp.track(MP_EV_SCROLL, props);
@@ -3836,7 +3918,7 @@ Autocapture.prototype.initSubmitTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
         return;
     }
-    logger$6.log('Initializing submit tracking');
+    logger$9.log('Initializing submit tracking');
 
     this.listenerSubmit = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
@@ -3858,7 +3940,7 @@ Autocapture.prototype.initPageLeaveTracking = function() {
         return;
     }
 
-    logger$6.log('Initializing page visibility tracking.');
+    logger$9.log('Initializing page visibility tracking.');
     this._initScrollDepthTracking();
     var previousTrackedUrl = _.info.currentUrl();
 
@@ -4093,7 +4175,7 @@ IDBStorageWrapper.prototype.getAll = function () {
     });
 };
 
-var logger$5 = console_with_prefix('flags');
+var logger$8 = console_with_prefix('flags');
 
 var MIXPANEL_FLAGS_DB_NAME = 'mixpanelFlagsDb';
 var FLAGS_STORE_NAME = 'mixpanelFlags';
@@ -4148,14 +4230,14 @@ FeatureFlagPersistence.prototype._isConfigValid = function() {
     }
 
     if (VALID_POLICIES.indexOf(config['variantLookupPolicy']) === -1) {
-        logger$5.error('Invalid variantLookupPolicy:', config['variantLookupPolicy']);
+        logger$8.error('Invalid variantLookupPolicy:', config['variantLookupPolicy']);
         return false;
     }
 
     if (config['persistenceTtlMs'] !== undefined &&
         config['persistenceTtlMs'] !== null &&
         config['persistenceTtlMs'] <= 0) {
-        logger$5.error('If provided, persistenceTtlMs must be a positive number. Provided value:', config['persistenceTtlMs']);
+        logger$8.error('If provided, persistenceTtlMs must be a positive number. Provided value:', config['persistenceTtlMs']);
         return false;
     }
 
@@ -4177,17 +4259,17 @@ FeatureFlagPersistence.prototype.loadFlagsFromStorage = function(context) {
         return this.idb.getItem(this.persistedVariantsKey);
     }, this)).then(_.bind(function(data) {
         if (!data) {
-            logger$5.log('No persisted variants found in IndexedDB');
+            logger$8.log('No persisted variants found in IndexedDB');
             return null;
         }
 
         if (ttlMs && Date.now() - data['persistedAt'] >= ttlMs) {
-            logger$5.log('Persisted variants are expiring');
+            logger$8.log('Persisted variants are expiring');
             return null;
         }
 
         if (!context || data['distinctId'] !== context['distinct_id']) {
-            logger$5.log('Persisted variants found, but for a different distinct_id so clearing.');
+            logger$8.log('Persisted variants found, but for a different distinct_id so clearing.');
             return clearAndReturnNull();
         }
 
@@ -4205,7 +4287,7 @@ FeatureFlagPersistence.prototype.loadFlagsFromStorage = function(context) {
             });
         });
 
-        logger$5.log('Loaded', persistedFlags.size, 'variants from IndexedDB for distinct_id', data['distinctId']);
+        logger$8.log('Loaded', persistedFlags.size, 'variants from IndexedDB for distinct_id', data['distinctId']);
 
         return {
             flags: persistedFlags,
@@ -4214,7 +4296,7 @@ FeatureFlagPersistence.prototype.loadFlagsFromStorage = function(context) {
             ttlMs: ttlMs
         };
     }, this)).catch(_.bind(function(error) {
-        logger$5.error('Failed to load persisted variants from IndexedDB, so clearing', error);
+        logger$8.error('Failed to load persisted variants from IndexedDB, so clearing', error);
         return clearAndReturnNull();
     }, this));
 };
@@ -4226,6 +4308,9 @@ FeatureFlagPersistence.prototype.save = function(context, flagsMap, pendingFirst
 
     var flagVariants = {};
     flagsMap.forEach(function(variant, key) {
+        if (variant['is_preview'] === true) {
+            return;
+        }
         flagVariants[key] = {
             'variant_key': variant['key'],
             'variant_value': variant['value'],
@@ -4235,20 +4320,28 @@ FeatureFlagPersistence.prototype.save = function(context, flagsMap, pendingFirst
         };
     });
 
+    var persistedPendingEvents = {};
+    _.each(pendingFirstTimeEvents || {}, function(event, key) {
+        var flag = flagsMap.get(event['flag_key']);
+        if (!flag || flag['is_preview'] !== true) {
+            persistedPendingEvents[key] = event;
+        }
+    });
+
     var data = {
         'persistedAt': Date.now(),
         'distinctId': context && context['distinct_id'],
         'context': context,
         'flagVariants': flagVariants,
-        'pendingFirstTimeEvents': pendingFirstTimeEvents || {}
+        'pendingFirstTimeEvents': persistedPendingEvents
     };
 
     return this.idb.init().then(_.bind(function() {
         return this.idb.setItem(this.persistedVariantsKey, data);
     }, this)).then(function() {
-        logger$5.log('Saved', flagsMap.size, 'variants to IndexedDB for distinct_id', data['distinctId']);
+        logger$8.log('Saved', flagsMap.size, 'variants to IndexedDB for distinct_id', data['distinctId']);
     }).catch(function(error) {
-        logger$5.error('Failed to persist variants to IndexedDB:', error);
+        logger$8.error('Failed to persist variants to IndexedDB:', error);
     });
 };
 
@@ -4265,14 +4358,14 @@ FeatureFlagPersistence.prototype.clear = function() {
     return existingIdb.init().then(function() {
         return existingIdb.removeItem(variantsKey);
     }).then(function() {
-        logger$5.log('Cleared persisted variants from IndexedDB');
+        logger$8.log('Cleared persisted variants from IndexedDB');
     }).catch(function(error) {
         // usually the device has no database, so there's nothing to clear
-        logger$5.log('No persisted variants cleared from IndexedDB:', error);
+        logger$8.log('No persisted variants cleared from IndexedDB:', error);
     });
 };
 
-var logger$4 = console_with_prefix('flags');
+var logger$7 = console_with_prefix('flags');
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';
@@ -4309,6 +4402,16 @@ var FALLBACK_REASON_FLAG_NOT_FOUND = 'FLAG_NOT_FOUND';
 var FALLBACK_REASON_NOT_READY = 'NOT_READY';
 var FALLBACK_REASON_BACKEND_ERROR = 'BACKEND_ERROR';
 
+// $experiment_type values on $experiment_started
+var EXPERIMENT_TYPE_FEATURE_FLAG = 'feature_flag';
+var EXPERIMENT_TYPE_VISUAL = 'visual';
+
+var NOOP_VISUAL_EXPERIMENTS = {
+    onFlagsDelivered: NOOP_FUNC,
+    onDeliverySettled: NOOP_FUNC,
+    onReset: NOOP_FUNC
+};
+
 var withFallbackSource = function(fallback, reason) {
     var extras = {'variant_source': 'fallback'};
     if (reason) {
@@ -4334,6 +4437,7 @@ var FeatureFlagManager = function(initOptions) {
     this.consentGate = initOptions.consentGate;
     this.loadExtraBundle = initOptions.loadExtraBundle || function() {};
     this.targetingSrc = initOptions.targetingSrc || '';
+    this.visualExperiments = initOptions.visualExperiments || NOOP_VISUAL_EXPERIMENTS;
 };
 
 FeatureFlagManager.prototype.init = function() {
@@ -4341,12 +4445,15 @@ FeatureFlagManager.prototype.init = function() {
         return;
     }
     if (!this.minApisSupported()) {
-        logger$4.critical('Feature Flags unavailable: missing minimum required APIs');
+        logger$7.critical('Feature Flags unavailable: missing minimum required APIs');
+        this.visualExperiments.onDeliverySettled();
         return;
     }
 
+    this._previewToken = this._getPreviewToken();
     this.flags = null;
     this.trackedFeatures = new Set();
+    this.trackedVisualExposures = new Set();
     this.pendingFirstTimeEvents = {};
     this.activatedFirstTimeEvents = {};
     this._loadedPersistedAtMs = null;
@@ -4358,23 +4465,37 @@ FeatureFlagManager.prototype.init = function() {
         _.bind(function() { return !this.consentGate.allowsPersistence(); }, this)
     );
 
-    this.persistenceLoadedPromise = this.persistence.loadFlagsFromStorage(this._buildContext())
+    // Preview links must await the server-selected variant before any cached
+    // assignment can apply visual changes or report an exposure.
+    this.persistenceLoadedPromise = (this._previewToken ? Promise.resolve(null) :
+        this.persistence.loadFlagsFromStorage(this._buildContext()))
         .then(_.bind(function(loaded) {
             if (loaded) {
                 this.flags = loaded.flags;
                 this.pendingFirstTimeEvents = loaded.pendingFirstTimeEvents;
                 this._loadedPersistedAtMs = loaded.persistedAtMs;
                 this._loadedTtlMs = loaded.ttlMs;
+                this.visualExperiments.onFlagsDelivered(this.flags);
             }
         }, this));
 
-    return this.persistenceLoadedPromise
+    var initPromise = this.persistenceLoadedPromise
         .then(_.bind(function() {
             return this.fetchFlags();
         }, this))
         .catch(function() {
-            logger$4.error('Error initializing feature flags');
+            logger$7.error('Error initializing feature flags');
         });
+
+    // Settle even when initialization completes without delivering variants
+    // (flags disabled, no variants, or a failed request).
+    var settled = _.bind(this.visualExperiments.onDeliverySettled, this.visualExperiments);
+    initPromise.then(settled, settled);
+    return initPromise;
+};
+
+FeatureFlagManager.prototype._getPreviewToken = function() {
+    return _.getPreviewToken();
 };
 
 FeatureFlagManager.prototype._buildContext = function() {
@@ -4393,6 +4514,8 @@ FeatureFlagManager.prototype.reset = function() {
     this.pendingFirstTimeEvents = {};
     this.activatedFirstTimeEvents = {};
     this.trackedFeatures = new Set();
+    this.trackedVisualExposures = new Set();
+    this.visualExperiments.onReset();
     this.fetchPromise = null;
     this._fetchInProgressStartTime = null;
     this._loadedPersistedAtMs = null;
@@ -4401,7 +4524,7 @@ FeatureFlagManager.prototype.reset = function() {
     return this.persistence.clear().then(_.bind(function() {
         return this.fetchFlags();
     }, this)).catch(function() {
-        logger$4.error('Error during flags reset');
+        logger$7.error('Error during flags reset');
     });
 };
 
@@ -4428,7 +4551,7 @@ FeatureFlagManager.prototype.isSystemEnabled = function() {
 
 FeatureFlagManager.prototype.updateContext = function(newContext, options) {
     if (!this.isSystemEnabled()) {
-        logger$4.critical('Feature Flags not enabled, cannot update context');
+        logger$7.critical('Feature Flags not enabled, cannot update context');
         return Promise.resolve();
     }
 
@@ -4443,13 +4566,13 @@ FeatureFlagManager.prototype.updateContext = function(newContext, options) {
     configUpdate[FLAGS_CONFIG_KEY] = ffConfig;
     this.setMpConfig(configUpdate);
     return this.fetchFlags().catch(function() {
-        logger$4.error('Error fetching flags during updateContext');
+        logger$7.error('Error fetching flags during updateContext');
     });
 };
 
 FeatureFlagManager.prototype.areFlagsReady = function() {
     if (!this.isSystemEnabled()) {
-        logger$4.error('Feature Flags not enabled');
+        logger$7.error('Feature Flags not enabled');
     }
     return !!this.flags;
 };
@@ -4470,26 +4593,43 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var context = this._buildContext();
     var distinctId = context['distinct_id'];
     var traceparent = generateTraceparent();
-    logger$4.log('Fetching flags for distinct ID: ' + distinctId);
+    logger$7.log('Fetching flags for distinct ID: ' + distinctId);
 
     var searchParams = new URLSearchParams();
     searchParams.set('context', JSON.stringify(context));
     searchParams.set('token', this.getMpConfig('token'));
     searchParams.set('mp_lib', 'web');
     searchParams.set('$lib_version', Config.LIB_VERSION);
+    this._previewToken = this._getPreviewToken();
+    if (this._previewToken) {
+        searchParams.set('mp_preview_token', this._previewToken);
+    }
     var url = this.getFullApiRoute() + '?' + searchParams.toString();
 
     this._fetchInProgressStartTime = Date.now();
-    this.fetchPromise = this.fetch.call(win, url, {
+    var fetchOptions = {
         'method': 'GET',
         'headers': {
             'Authorization': 'Basic ' + btoa(this.getMpConfig('token') + ':'),
             'traceparent': traceparent
         }
-    }).then(function(response) {
+    };
+    if (this._previewToken) {
+        fetchOptions['referrerPolicy'] = 'no-referrer';
+    }
+    this.fetchPromise = this.fetch.call(win, url, fetchOptions).then(function(response) {
         this.markFetchComplete();
         return response.json();
     }.bind(this)).then(function(responseBody) {
+        if (responseBody['preview_error']) {
+            var previewErrorCode = responseBody['preview_error']['code'];
+            // Only log the API's known diagnostic codes, never arbitrary response
+            // contents that could include the preview credential.
+            if (previewErrorCode !== 'invalid_preview_token' && previewErrorCode !== 'preview_unavailable') {
+                previewErrorCode = 'unknown_preview_error';
+            }
+            logger$7.warn('Shared preview unavailable (' + previewErrorCode + '); using normal flags');
+        }
         var responseFlags = responseBody['flags'];
         if (!responseFlags) {
             throw new Error('No flags in API response');
@@ -4502,11 +4642,20 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             // Check if this flag has any activated first-time events this session
             var hasActivatedEvent = false;
             var prefix = key + ':';
-            _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
-                if (eventKey.startsWith(prefix)) {
-                    hasActivatedEvent = true;
-                }
-            });
+            if (data['is_preview'] === true) {
+                // A preview takes precedence over first-time-event stickiness.
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    if (eventKey.startsWith(prefix)) {
+                        delete this.activatedFirstTimeEvents[eventKey];
+                    }
+                }, this);
+            } else {
+                _.each(this.activatedFirstTimeEvents, function(activated, eventKey) {
+                    if (eventKey.startsWith(prefix)) {
+                        hasActivatedEvent = true;
+                    }
+                });
+            }
 
             if (hasActivatedEvent) {
                 // Preserve the activated variant, don't overwrite with server's current variant
@@ -4516,14 +4665,18 @@ FeatureFlagManager.prototype.fetchFlags = function() {
                 }
             } else {
                 // Use server's current variant
-                flags.set(key, {
+                var variant = {
                     'key': data['variant_key'],
                     'value': data['variant_value'],
                     'experiment_id': data['experiment_id'],
                     'is_experiment_active': data['is_experiment_active'],
                     'is_qa_tester': data['is_qa_tester'],
                     'variant_source': 'network'
-                });
+                };
+                if (data['is_preview'] === true) {
+                    variant['is_preview'] = true;
+                }
+                flags.set(key, variant);
             }
         }, this);
 
@@ -4532,6 +4685,9 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         if (topLevelDefinitions && topLevelDefinitions.length > 0) {
             _.each(topLevelDefinitions, function(def) {
                 var flagKey = def['flag_key'];
+                if (flags.has(flagKey) && flags.get(flagKey)['is_preview']) {
+                    return;
+                }
                 var eventKey = getPendingEventKey(flagKey, def['first_time_event_hash']);
 
                 // Skip if this specific event has already been activated this session
@@ -4565,10 +4721,12 @@ FeatureFlagManager.prototype.fetchFlags = function() {
 
         this.flags = flags;
         this.trackedFeatures = new Set();
+        this.trackedVisualExposures = new Set();
         this.pendingFirstTimeEvents = pendingFirstTimeEvents;
         this._loadedPersistedAtMs = null;
         this._loadedTtlMs = null;
         this._traceparent = traceparent;
+        this.visualExperiments.onFlagsDelivered(this.flags);
 
         this._loadTargetingIfNeeded();
 
@@ -4577,7 +4735,11 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         if (this._fetchInProgressStartTime) {
             this.markFetchComplete();
         }
-        logger$4.error(error);
+        // Fetch implementations can include the request URL in their errors.
+        if (this._previewToken) {
+            error = new Error('Error fetching preview flags');
+        }
+        logger$7.error(error);
         throw error;
     }.bind(this));
 
@@ -4589,7 +4751,7 @@ FeatureFlagManager.prototype.loadFlags = function() {
         return Promise.resolve();
     }
     if (!this.trackedFeatures) {
-        logger$4.error('loadFlags called before init');
+        logger$7.error('loadFlags called before init');
         return Promise.resolve();
     }
     if (this._fetchInProgressStartTime) {
@@ -4600,7 +4762,7 @@ FeatureFlagManager.prototype.loadFlags = function() {
 
 FeatureFlagManager.prototype.markFetchComplete = function() {
     if (!this._fetchInProgressStartTime) {
-        logger$4.error('Fetch in progress started time not set, cannot mark fetch complete');
+        logger$7.error('Fetch in progress started time not set, cannot mark fetch complete');
         return;
     }
     this._fetchStartTime = this._fetchInProgressStartTime;
@@ -4622,7 +4784,7 @@ FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
 
     if (hasPropertyFilters) {
         this.getTargeting().then(function() {
-            logger$4.log('targeting loaded for property filter evaluation');
+            logger$7.log('targeting loaded for property filter evaluation');
         });
     }
 };
@@ -4637,7 +4799,7 @@ FeatureFlagManager.prototype.getTargeting = function() {
         this.loadExtraBundle.bind(this),
         this.targetingSrc
     ).catch(function(error) {
-        logger$4.error('Failed to load targeting: ' + error);
+        logger$7.error('Failed to load targeting: ' + error);
     }.bind(this));
 };
 
@@ -4686,19 +4848,23 @@ FeatureFlagManager.prototype.checkFirstTimeEvents = function(eventName, properti
  */
 FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, properties, targeting) {
     var recordings = [];
+    var activated = false;
     _.each(this.pendingFirstTimeEvents, function(pendingEvent, eventKey) {
         if (this.activatedFirstTimeEvents[eventKey]) {
             return;
         }
 
         var flagKey = pendingEvent['flag_key'];
+        if (this.flags && this.flags.has(flagKey) && this.flags.get(flagKey)['is_preview']) {
+            return;
+        }
 
         // Use targeting module to check if event matches
         var matchResult;
 
         // If no targeting library and event has property filters, skip it
         if (!targeting && pendingEvent['property_filters'] && !_.isEmptyObject(pendingEvent['property_filters'])) {
-            logger$4.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
+            logger$7.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
             return;
         }
 
@@ -4721,7 +4887,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         }
 
         if (matchResult.error) {
-            logger$4.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
+            logger$7.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
             return;
         }
 
@@ -4729,7 +4895,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
             return;
         }
 
-        logger$4.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
+        logger$7.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
 
         var newVariant = {
             'key': pendingEvent['pending_variant']['variant_key'],
@@ -4740,7 +4906,9 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
 
         this.flags.set(flagKey, newVariant);
         this.trackedFeatures.delete(flagKey);
+        this.trackedVisualExposures.delete(flagKey);
         this.activatedFirstTimeEvents[eventKey] = true;
+        activated = true;
 
         recordings.push(this.recordFirstTimeEvent(
             pendingEvent['flag_id'],
@@ -4748,6 +4916,9 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
             pendingEvent['first_time_event_hash']
         ));
     }, this);
+    if (activated) {
+        this.visualExperiments.onFlagsDelivered(this.flags);
+    }
     return Promise.all(recordings);
 };
 
@@ -4775,7 +4946,7 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
         'first_time_event_hash': firstTimeEventHash
     };
 
-    logger$4.log('Recording first-time event for flag: ' + flagId);
+    logger$7.log('Recording first-time event for flag: ' + flagId);
 
     // The caller chains this so it can wait for the recording to settle. The catch below keeps the
     // returned promise resolved on failure, so a dropped request never rejects the chain.
@@ -4789,14 +4960,14 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
         'body': JSON.stringify(payload)
     }).catch(function(error) {
         // Silent failure - cohort sync will catch up
-        logger$4.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
+        logger$7.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
     });
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
     if (!this.persistenceLoadedPromise) {
         return new Promise(function(resolve) {
-            logger$4.critical('Feature Flags not initialized');
+            logger$7.critical('Feature Flags not initialized');
             resolve(withFallbackSource(fallback, FALLBACK_REASON_NOT_READY));
         });
     }
@@ -4815,7 +4986,7 @@ FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
             return this.fetchPromise.then(_.bind(function() {
                 return this.getVariantSync(featureName, fallback);
             }, this)).catch(function(error) {
-                logger$4.error(error);
+                logger$7.error(error);
                 return withFallbackSource(fallback, FALLBACK_REASON_BACKEND_ERROR);
             });
         }
@@ -4825,7 +4996,7 @@ FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
             return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
         }
         return this.fetchPromise.then(serve).catch(_.bind(function(error) {
-            logger$4.error(error);
+            logger$7.error(error);
             // If the fetch failure still left usable state (e.g. persistence hit under
             // a different policy config), serve from cache. Otherwise stamp
             // BACKEND_ERROR so callers can distinguish "backend is down" from
@@ -4846,16 +5017,16 @@ FeatureFlagManager.prototype._loadedPersistenceIsStale = function() {
 
 FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
     if (this._loadedPersistenceIsStale()) {
-        logger$4.log('Loaded persisted variants are past TTL so returning fallback for "' + featureName + '"');
+        logger$7.log('Loaded persisted variants are past TTL so returning fallback for "' + featureName + '"');
         return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
     }
     if (!this.areFlagsReady()) {
-        logger$4.log('Flags not loaded yet');
+        logger$7.log('Flags not loaded yet');
         return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
     }
     var feature = this.flags.get(featureName);
     if (!feature) {
-        logger$4.log('No flag found: "' + featureName + '"');
+        logger$7.log('No flag found: "' + featureName + '"');
         return withFallbackSource(fallback, FALLBACK_REASON_FLAG_NOT_FOUND);
     }
     this.trackFeatureCheck(featureName, feature);
@@ -4864,7 +5035,7 @@ FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
 
 FeatureFlagManager.prototype.getAllVariants = function() {
     if (!this.persistenceLoadedPromise) {
-        logger$4.critical('Feature Flags not initialized');
+        logger$7.critical('Feature Flags not initialized');
         return Promise.resolve(new Map());
     }
 
@@ -4882,7 +5053,7 @@ FeatureFlagManager.prototype.getAllVariants = function() {
             return this.fetchPromise.then(_.bind(function() {
                 return this.getAllVariantsSync();
             }, this)).catch(function(error) {
-                logger$4.error(error);
+                logger$7.error(error);
                 return new Map();
             });
         }
@@ -4897,7 +5068,7 @@ FeatureFlagManager.prototype.getAllVariants = function() {
 
 FeatureFlagManager.prototype.getAllVariantsSync = function() {
     if (this._loadedPersistenceIsStale()) {
-        logger$4.log('Loaded persisted variants are past TTL so returning empty Map');
+        logger$7.log('Loaded persisted variants are past TTL so returning empty Map');
         return new Map();
     }
     return this.flags || new Map();
@@ -4907,14 +5078,14 @@ FeatureFlagManager.prototype.getVariantValue = function(featureName, fallbackVal
     return this.getVariant(featureName, {'value': fallbackValue}).then(function(feature) {
         return feature['value'];
     }).catch(function(error) {
-        logger$4.error(error);
+        logger$7.error(error);
         return fallbackValue;
     });
 };
 
 // TODO remove deprecated method
 FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
-    logger$4.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
+    logger$7.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
     return this.getVariantValue(featureName, fallbackValue);
 };
 
@@ -4926,7 +5097,7 @@ FeatureFlagManager.prototype.isEnabled = function(featureName, fallbackValue) {
     return this.getVariantValue(featureName).then(function() {
         return this.isEnabledSync(featureName, fallbackValue);
     }.bind(this)).catch(function(error) {
-        logger$4.error(error);
+        logger$7.error(error);
         return fallbackValue;
     });
 };
@@ -4935,7 +5106,7 @@ FeatureFlagManager.prototype.isEnabledSync = function(featureName, fallbackValue
     fallbackValue = fallbackValue || false;
     var val = this.getVariantValueSync(featureName, fallbackValue);
     if (val !== true && val !== false) {
-        logger$4.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
+        logger$7.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
         val = fallbackValue;
     }
     return val;
@@ -4945,16 +5116,22 @@ function isPresent(v) {
     return v !== undefined && v !== null;
 }
 
-FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) {
-    if (this.trackedFeatures.has(featureName)) {
+FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature, experimentType) {
+    if (feature['is_preview'] === true) {
         return;
     }
-    this.trackedFeatures.add(featureName);
+    // Code reads and visual applies dedupe independently so each exposure type
+    // is recorded (and distinguishable) even when the other happened first.
+    var tracked = experimentType === EXPERIMENT_TYPE_VISUAL ? this.trackedVisualExposures : this.trackedFeatures;
+    if (tracked.has(featureName)) {
+        return;
+    }
+    tracked.add(featureName);
 
     var trackingProperties = {
         'Experiment name': featureName,
         'Variant name': feature['key'],
-        '$experiment_type': 'feature_flag',
+        '$experiment_type': experimentType || EXPERIMENT_TYPE_FEATURE_FLAG,
         'Variant fetch start time': isPresent(this._fetchStartTime) ? new Date(this._fetchStartTime).toISOString() : null,
         'Variant fetch complete time': isPresent(this._fetchCompleteTime) ? new Date(this._fetchCompleteTime).toISOString() : null,
         'Variant fetch latency (ms)': this._fetchLatency,
@@ -4981,6 +5158,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature) 
     }
 
     this.track('$experiment_started', trackingProperties);
+};
+
+FeatureFlagManager.prototype.trackVisualExposure = function(featureName, feature) {
+    this.trackFeatureCheck(featureName, feature, EXPERIMENT_TYPE_VISUAL);
 };
 
 FeatureFlagManager.prototype.whenReady = function() {
@@ -5017,6 +5198,959 @@ FeatureFlagManager.prototype['get_feature_data'] = FeatureFlagManager.prototype.
 
 // Exports intended only for testing
 FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getTargeting;
+
+/* eslint camelcase: "off" */
+
+
+var logger$6 = console_with_prefix('visual-experiments');
+
+// The supported mutation types: setAttribute, setText, setStyle, setClasses,
+// setAttributes, hide. The backend validates persisted variants to this same set,
+// so anything outside it never reaches replay; the extension drives the same
+// dispatch during authoring. Unknown types are logged and skipped. Text edits go
+// through setText (textContent), never innerHTML, so no markup is ever parsed.
+
+// The engine needs a queryable DOM plus MutationObserver, requestAnimationFrame,
+// and WeakSet. If any is missing the engine no-ops instead of partially applying.
+var minApisSupported = function() {
+    return !!(win && win['document'] &&
+        typeof win['document'].querySelectorAll === 'function' &&
+        typeof win['MutationObserver'] === 'function' &&
+        typeof win['requestAnimationFrame'] === 'function' &&
+        typeof WeakSet !== 'undefined');
+};
+
+var query = function(selector) {
+    try {
+        return win['document'].querySelectorAll(selector);
+    } catch (err) {
+        logger$6.error('Invalid selector: ' + selector, err);
+        return [];
+    }
+};
+
+var schedule = function(fn) {
+    win['requestAnimationFrame'](fn);
+};
+
+// A mutation only reaches the elements its selector matches when its turn
+// comes, and a later mutation in the same set can make an earlier selector
+// match (e.g. a class it adds). Each apply therefore runs another pass while
+// the previous one reached an element for the first time or wrote a class or
+// attribute, up to this cap. The DOM does not change between passes other than
+// through those writes, so passes converge; the cap guards anyway.
+var MAX_APPLY_PASSES = 3;
+
+// Values whose scheme can execute script when placed in a URL-bearing attribute
+// (href, src, formaction, xlink:href, ...). Control chars/whitespace are stripped
+// before the test because browsers ignore them within a scheme (e.g. "java\tscript:").
+var DANGEROUS_URI_VALUE = /^(?:javascript|vbscript):|^data:text\/html/i;
+
+// Reject attributes that can introduce script/active content when set from a
+// persisted or authored value: any inline event handler (on*), iframe srcdoc
+// (full HTML injection), and URL-bearing attributes carrying an executable scheme.
+// setAttribute and setAttributes (which delegates here) both go through this guard.
+var isUnsafeAttribute = function(name, value) {
+    if (!name) {
+        return true;
+    }
+    var lower = ('' + name).toLowerCase();
+    if (lower.indexOf('on') === 0) {
+        return true;
+    }
+    if (lower === 'srcdoc') {
+        return true;
+    }
+    if (typeof value === 'string' && DANGEROUS_URI_VALUE.test(value.replace(/[\u0000-\u0020]+/g, ''))) {
+        return true;
+    }
+    return false;
+};
+
+// Per-mutation "already applied" tracker. A WeakSet lets re-rendered nodes (new
+// object identities) be detected as dirty without leaking removed nodes.
+var makeTracker = function() {
+    return new WeakSet();
+};
+
+/**
+ * VisualChangeEngine applies typed visual-change mutations to the live DOM,
+ * keeps an undo stack so a set can be reverted, and re-applies changes when the
+ * page re-renders via a MutationObserver. State is per-instance so two Mixpanel
+ * instances on one page do not share an undo stack.
+ * @constructor
+ */
+var VisualChangeEngine = function() {
+    this._undoStack = [];
+    this._currentMutations = [];
+    // Parallel to _currentMutations: a WeakSet of elements already mutated for
+    // each mutation, so re-application only touches new/re-rendered nodes.
+    this._appliedSets = [];
+    // Optional per-set callback, invoked once per mutation index the first time
+    // that mutation actually changes an element (possibly later, via the
+    // observer). _firstApplyReported is parallel to _currentMutations. Reports are
+    // queued in _pendingFirstApply and delivered only after the apply pass ends,
+    // so the callback never runs while the engine is mid-mutation.
+    this._onFirstApply = null;
+    this._firstApplyReported = [];
+    this._pendingFirstApply = [];
+    this._observer = null;
+    this._reapplyScheduled = false;
+    // True while a body-not-yet-parsed observer-start retry is queued (at most one).
+    this._observerStartPending = false;
+};
+
+// firstApply=false is a re-apply onto a node whose value a re-render clobbered:
+// re-write only when diverged and never record undo (the baseline was captured
+// on first apply). Returns true when a class or attribute was written, since
+// those writes can change what other selectors in the set match.
+VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstApply) {
+    var type = mutation['type'];
+    if (type === 'setAttribute') {
+        var attr = mutation['attribute'];
+        if (isUnsafeAttribute(attr, mutation['value'])) {
+            logger$6.warn('Ignoring unsafe attribute mutation: ' + attr);
+            return false;
+        }
+        if (!firstApply) {
+            if (el.getAttribute(attr) === mutation['value']) {
+                return false;
+            }
+            el.setAttribute(attr, mutation['value']);
+            return true;
+        }
+        var hadAttr = el.hasAttribute(attr);
+        var prev = hadAttr ? el.getAttribute(attr) : null;
+        el.setAttribute(attr, mutation['value']);
+        this._undoStack.push(function() {
+            if (hadAttr) {
+                el.setAttribute(attr, prev);
+            } else {
+                el.removeAttribute(attr);
+            }
+        });
+        return true;
+    } else if (type === 'setText') {
+        // Replaces the element's text via textContent, not innerHTML: the value is
+        // treated as plain text (no markup is parsed, no scripts/handlers run), so
+        // this is safe to apply from persisted variants. Covers the editor's
+        // text-editing use case without the innerHTML XSS surface.
+        if (!firstApply) {
+            if (el.textContent !== mutation['value']) {
+                el.textContent = mutation['value'];
+            }
+            return;
+        }
+        // Retain the actual nodes so undo restores nested elements, their state,
+        // and event listeners rather than recreating flattened text or markup.
+        var prevChildren = [];
+        for (var child = el.firstChild; child; child = child.nextSibling) {
+            prevChildren.push(child);
+        }
+        el.textContent = mutation['value'];
+        this._undoStack.push(function() {
+            el.textContent = '';
+            for (var i = 0; i < prevChildren.length; i++) {
+                el.appendChild(prevChildren[i]);
+            }
+        });
+    } else if (type === 'setAttributes') {
+        var attrs = mutation['attributes'] || {};
+        var wroteAttr = false;
+        _.each(attrs, function(value, attrKey) {
+            if (this._applyOneToElement({
+                'type': 'setAttribute',
+                'attribute': attrKey,
+                'value': value,
+                'selector': mutation['selector']
+            }, el, firstApply)) {
+                wroteAttr = true;
+            }
+        }, this);
+        return wroteAttr;
+    } else if (type === 'setStyle') {
+        var prop = mutation['property'];
+        if (!firstApply) {
+            if (el.style.getPropertyValue(prop) !== mutation['value']) {
+                el.style.setProperty(prop, mutation['value']);
+            }
+            return;
+        }
+        var prevValue = el.style.getPropertyValue(prop);
+        var prevPriority = el.style.getPropertyPriority(prop);
+        el.style.setProperty(prop, mutation['value']);
+        this._undoStack.push(function() {
+            if (prevValue) {
+                el.style.setProperty(prop, prevValue, prevPriority);
+            } else {
+                el.style.removeProperty(prop);
+            }
+        });
+    } else if (type === 'setClasses') {
+        var toAdd = mutation['add'] || [];
+        var toRemove = mutation['remove'] || [];
+        var added = [];
+        var removed = [];
+        for (var a = 0; a < toAdd.length; a++) {
+            if (!el.classList.contains(toAdd[a])) {
+                el.classList.add(toAdd[a]);
+                added.push(toAdd[a]);
+            }
+        }
+        for (var r = 0; r < toRemove.length; r++) {
+            if (el.classList.contains(toRemove[r])) {
+                el.classList.remove(toRemove[r]);
+                removed.push(toRemove[r]);
+            }
+        }
+        // add/remove above is idempotent (contains-guarded); only record undo once.
+        if (firstApply) {
+            this._undoStack.push(function() {
+                for (var i = 0; i < added.length; i++) {
+                    el.classList.remove(added[i]);
+                }
+                for (var j = 0; j < removed.length; j++) {
+                    el.classList.add(removed[j]);
+                }
+            });
+        }
+        return added.length > 0 || removed.length > 0;
+    } else if (type === 'hide') {
+        this._applyOneToElement({
+            'type': 'setStyle',
+            'property': 'display',
+            'value': 'none',
+            'selector': mutation['selector']
+        }, el, firstApply);
+    } else {
+        logger$6.warn('Ignoring unsupported mutation type: ' + type);
+    }
+    return false;
+};
+
+// Apply the mutation at the given index to every matched element. New nodes are
+// applied for the first time (captured on the undo stack); already-tracked nodes
+// are re-applied idempotently so an in-place re-render can't lose the variant.
+// Returns whether another pass may now match more (see MAX_APPLY_PASSES).
+VisualChangeEngine.prototype._applyOne = function(index) {
+    var mutation = this._currentMutations[index];
+    if (!mutation || !mutation['type'] || !mutation['selector']) {
+        logger$6.warn('Skipping malformed mutation', mutation);
+        return false;
+    }
+    var applied = this._appliedSets[index];
+    var els = query(mutation['selector']);
+    if (!els || !els.length) {
+        return false;
+    }
+    var passAgain = false;
+    for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var firstApply = !applied.has(el);
+        if (firstApply) {
+            applied.add(el);
+            passAgain = true;
+        }
+        // A first apply that changed the element records an undo entry; skipped
+        // (unsafe/unsupported) mutations do not.
+        var undoDepth = this._undoStack.length;
+        try {
+            if (this._applyOneToElement(mutation, el, firstApply)) {
+                passAgain = true;
+            }
+        } catch (err) {
+            logger$6.error('Mutation failed for selector ' + mutation['selector'], err);
+        }
+        if (firstApply && this._undoStack.length > undoDepth) {
+            this._queueFirstApply(index);
+        }
+    }
+    return passAgain;
+};
+
+VisualChangeEngine.prototype._applyAll = function() {
+    for (var pass = 0; pass < MAX_APPLY_PASSES; pass++) {
+        var passAgain = false;
+        for (var i = 0; i < this._currentMutations.length; i++) {
+            if (this._applyOne(i)) {
+                passAgain = true;
+            }
+        }
+        if (!passAgain) {
+            return;
+        }
+    }
+};
+
+VisualChangeEngine.prototype._queueFirstApply = function(index) {
+    if (!this._onFirstApply || this._firstApplyReported[index]) {
+        return;
+    }
+    this._firstApplyReported[index] = true;
+    this._pendingFirstApply.push(index);
+};
+
+// Deliver queued first-apply reports. Runs after an apply pass completes; the
+// callback (exposure tracking, and anything a before_track hook does) may
+// revert or replace the set, in which case the remaining reports are stale and
+// dropped.
+VisualChangeEngine.prototype._flushFirstApply = function() {
+    var callback = this._onFirstApply;
+    var pending = this._pendingFirstApply;
+    this._pendingFirstApply = [];
+    for (var i = 0; i < pending.length; i++) {
+        if (this._onFirstApply !== callback) {
+            return;
+        }
+        try {
+            callback(pending[i]);
+        } catch (err) {
+            logger$6.error('Visual changes onFirstApply callback failed', err);
+        }
+    }
+};
+
+VisualChangeEngine.prototype._startObserverIfNeeded = function() {
+    if (!this._currentMutations.length) {
+        return;
+    }
+    // Flags can settle before <body> exists. Retry on the next frame until it
+    // appears, then attach and re-apply; one retry at a time, dropped if reverted.
+    if (!win['document'].body) {
+        if (this._observerStartPending) {
+            return;
+        }
+        this._observerStartPending = true;
+        var pendingSelf = this;
+        schedule(function() {
+            pendingSelf._observerStartPending = false;
+            if (!pendingSelf._currentMutations.length) {
+                return;
+            }
+            pendingSelf._startObserverIfNeeded();
+            if (pendingSelf._observer) {
+                pendingSelf._reapplyDirty();
+            }
+        });
+        return;
+    }
+    if (!this._observer) {
+        var self = this;
+        this._observer = new win['MutationObserver'](function() {
+            if (self._reapplyScheduled || !self._currentMutations.length) {
+                return;
+            }
+            self._reapplyScheduled = true;
+            schedule(function() {
+                self._reapplyScheduled = false;
+                self._reapplyDirty();
+            });
+        });
+    }
+    // attributes/characterData (not just childList) so an in-place overwrite of a
+    // matched node triggers a re-apply. Reconnect after each engine write pass.
+    this._observer.observe(win['document'].body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true
+    });
+};
+
+VisualChangeEngine.prototype._pauseObserver = function() {
+    if (this._observer) {
+        // Observer notifications arrive asynchronously, so a synchronous
+        // "currently mutating" flag cannot filter our writes. Disconnect before
+        // writing instead. Pending records can be discarded because apply and
+        // reapply query the current DOM for every mutation.
+        this._observer.disconnect();
+    }
+};
+
+VisualChangeEngine.prototype._stopObserverIfIdle = function() {
+    if (this._observer && !this._currentMutations.length) {
+        this._observer.disconnect();
+        this._observer = null;
+    }
+};
+
+// Re-apply the current set to only the elements that are newly dirty (added or
+// re-rendered). No full revert/reapply cycle.
+VisualChangeEngine.prototype._reapplyDirty = function() {
+    if (!this._currentMutations.length) {
+        return;
+    }
+    this._pauseObserver();
+    try {
+        this._applyAll();
+    } finally {
+        this._startObserverIfNeeded();
+    }
+    this._flushFirstApply();
+};
+
+/**
+ * Apply an array of typed visual-change mutations to the live DOM. Replaces any
+ * prior set: reverts the previous undo stack first, then applies the new list.
+ * Safe to call repeatedly; bad selectors are logged and skipped, never thrown.
+ * @param {Array<Object>} mutations
+ * @param {function(number)} [onFirstApply] called once per mutation index the
+ *   first time that mutation changes an element, including later re-applies
+ *   triggered by the observer. Not called for mutations that never apply.
+ *   Invoked after the apply pass completes, never mid-mutation.
+ */
+VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApply) {
+    if (!minApisSupported() || !mutations || !mutations.length) {
+        return;
+    }
+    this._pauseObserver();
+    try {
+        if (this._undoStack.length) {
+            this._revertInternal();
+        }
+        this._currentMutations = mutations.slice();
+        this._onFirstApply = onFirstApply || null;
+        this._firstApplyReported = [];
+        this._pendingFirstApply = [];
+        this._appliedSets = [];
+        for (var i = 0; i < this._currentMutations.length; i++) {
+            this._appliedSets.push(makeTracker());
+        }
+        this._applyAll();
+    } finally {
+        this._startObserverIfNeeded();
+    }
+    this._flushFirstApply();
+};
+
+VisualChangeEngine.prototype._revertInternal = function() {
+    while (this._undoStack.length) {
+        var undoFn = this._undoStack.pop();
+        try {
+            undoFn();
+        } catch (err) {
+            logger$6.error('Revert failed', err);
+        }
+    }
+    this._appliedSets = [];
+};
+
+/**
+ * Undo the last-applied set of visual changes. Idempotent.
+ */
+VisualChangeEngine.prototype.revertVisualChanges = function() {
+    if (!minApisSupported()) {
+        return;
+    }
+    this._pauseObserver();
+    try {
+        this._revertInternal();
+        this._currentMutations = [];
+        this._onFirstApply = null;
+        this._firstApplyReported = [];
+        this._pendingFirstApply = [];
+    } finally {
+        this._stopObserverIfIdle();
+        this._startObserverIfNeeded();
+    }
+};
+
+safewrapClass(VisualChangeEngine);
+
+/* eslint camelcase: "off" */
+
+
+var logger$5 = console_with_prefix('visual-experiments');
+
+// Injected once to hide the page while a visual-experiment variant loads. Hiding
+// <html> (rather than <body>) works even when the snippet runs before the body
+// is parsed, and opacity preserves layout so the reveal is a clean fade-in.
+var STYLE_ID = 'mp-antiflicker-style';
+var HIDE_CLASS = 'mp-antiflicker-hide';
+var HIDE_CSS = 'html.' + HIDE_CLASS + '{opacity:0 !important}';
+
+// Failsafe ceiling on how long the page may stay hidden. Kept short so a slow or
+// failed flag delivery never leaves the user staring at a blank page; the real
+// reveal normally fires much sooner, as soon as flags settle.
+var DEFAULT_TIMEOUT_MS = 2000;
+
+// The hide (one HIDE_CLASS + one <style>) is shared DOM state; named instances
+// each own a controller but share it. Reference-count contributors so the last
+// one to reveal tears it down — otherwise the first to settle unhides while
+// another variant is still pending.
+var activeHideCount = 0;
+
+/**
+ * Anti-flicker controller for visual experiments. hide() synchronously hides the
+ * page (via an injected <style> + a class on <html>) and arms a failsafe timer;
+ * reveal() removes the style and class. Both are idempotent and safe outside a
+ * browser. State is per-instance so one Mixpanel instance's reveal cannot race
+ * another's.
+ * @constructor
+ * @param {number} [timeoutMs] Failsafe: max time the page stays hidden before an
+ *   automatic reveal. Falls back to 2000ms when not a positive number.
+ */
+var AntiFlickerController = function(timeoutMs) {
+    this._timeoutMs = (typeof timeoutMs === 'number' && timeoutMs > 0) ? timeoutMs : DEFAULT_TIMEOUT_MS;
+    this._timer = null;
+    this._styleEl = null;
+    // Whether the page is hidden is derived from the DOM (see _isHidden); only the
+    // one-way "revealed" latch — which cannot be read back from the DOM once the
+    // class is removed — is tracked as a flag, so we never re-hide after revealing.
+    this._revealed = false;
+    // Whether this instance currently counts toward activeHideCount.
+    this._contributingToHide = false;
+};
+
+// Hidden state is a function of the live DOM, not a cached flag.
+AntiFlickerController.prototype._isHidden = function() {
+    return !!win['document'].documentElement &&
+        !!win['document'].documentElement.classList &&
+        win['document'].documentElement.classList.contains(HIDE_CLASS);
+};
+
+/**
+ * Hide the page content. No-op if already hidden/revealed or outside a browser.
+ * Starts a failsafe timer that reveals the page even if no variant ever applies.
+ */
+AntiFlickerController.prototype.hide = function() {
+    // Guard on this instance's own state, not _isHidden(): a later instance must
+    // still register even when an earlier one already added the class.
+    if (!win['document'].documentElement || this._revealed || this._contributingToHide) {
+        return;
+    }
+    var doc = win['document'];
+    try {
+        // First contributor injects the shared style + class; later ones reuse it.
+        if (activeHideCount === 0 && !this._isHidden()) {
+            var styleEl = doc.createElement('style');
+            styleEl.type = 'text/css';
+            styleEl.id = STYLE_ID;
+            styleEl.appendChild(doc.createTextNode(HIDE_CSS));
+            (doc.head || doc.documentElement).appendChild(styleEl);
+            doc.documentElement.classList.add(HIDE_CLASS);
+            this._styleEl = styleEl;
+        }
+        activeHideCount++;
+        this._contributingToHide = true;
+
+        var self = this;
+        this._timer = win['setTimeout'](function() {
+            logger$5.log('Anti-flicker failsafe reached; revealing page');
+            self.reveal();
+        }, this._timeoutMs);
+    } catch (err) {
+        logger$5.error('Anti-flicker hide failed', err);
+        // Never leave the page hidden because of a failure here.
+        this.reveal();
+    }
+};
+
+/**
+ * Reveal the page content (remove the injected style + class) and cancel the
+ * failsafe timer. Idempotent and safe to call before hide().
+ */
+AntiFlickerController.prototype.reveal = function() {
+    if (this._revealed) {
+        return;
+    }
+    // Cancel the failsafe first so its callback cannot re-enter reveal mid-run.
+    if (this._timer) {
+        clearTimeout(this._timer);
+        this._timer = null;
+    }
+    if (!win['document'].documentElement) {
+        if (this._contributingToHide) {
+            this._contributingToHide = false;
+            if (activeHideCount > 0) {
+                activeHideCount--;
+            }
+        }
+        this._revealed = true;
+        return;
+    }
+    try {
+        // Release this instance's hold; only the last contributor tears down.
+        if (this._contributingToHide) {
+            this._contributingToHide = false;
+            if (activeHideCount > 0) {
+                activeHideCount--;
+            }
+        }
+        this._styleEl = null;
+        if (activeHideCount === 0) {
+            var docEl = win['document'].documentElement;
+            if (docEl && docEl.classList) {
+                docEl.classList.remove(HIDE_CLASS);
+            }
+            // By id, not this._styleEl: the last to reveal may not be the injector.
+            var styleEl = win['document'].getElementById(STYLE_ID);
+            if (styleEl && styleEl.parentNode) {
+                styleEl.parentNode.removeChild(styleEl);
+            }
+        }
+        // Latch only once the page is actually shown: if the removal above threw,
+        // we leave _revealed false so a later reveal() can retry rather than
+        // believing we revealed while the page is still hidden.
+        this._revealed = true;
+    } catch (err) {
+        logger$5.error('Anti-flicker reveal failed', err);
+    }
+};
+
+safewrapClass(AntiFlickerController);
+
+/* eslint camelcase: "off" */
+
+
+var logger$4 = console_with_prefix('visual-experiments');
+
+var CONFIG_ENABLED = 'visual_experiments';
+var CONFIG_HIDE_TIMEOUT_MS = 'visual_experiments_hide_timeout_ms';
+
+var EMPTY_VARIANTS = { forEach: NOOP_FUNC };
+
+// Upper bound on the length of JSON.stringify(visualChanges) for one variant
+// (or one editor preview), measured in UTF-16 code units. Checked per variant
+// so one oversized variant cannot block the valid ones delivered alongside it.
+var MAX_PAYLOAD_LENGTH = 32 * 1024;
+
+var payloadTooLarge = function(mutations) {
+    try {
+        return JSON.stringify(mutations).length > MAX_PAYLOAD_LENGTH;
+    } catch (err) {
+        // Non-serializable payload (cycles, etc.) is not something the engine
+        // should touch.
+        return true;
+    }
+};
+
+// Normalize a pathname for comparison: ensure a leading slash and drop a single
+// trailing slash (keeping root "/") so "/foo" and "/foo/" are treated as equal.
+var normalizePathname = function(pathname) {
+    if (!pathname) {
+        return '/';
+    }
+    if (pathname.charAt(0) !== '/') {
+        pathname = '/' + pathname;
+    }
+    if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
+        pathname = pathname.slice(0, -1);
+    }
+    return pathname;
+};
+
+// Compare a persisted page url against the current location by origin + pathname
+// (query string and hash ignored). Uses a throwaway anchor to parse robustly
+// without assuming URL is available. Returns false when parsing is not possible.
+var urlMatchesCurrentPage = function(url) {
+    if (!url) {
+        return false;
+    }
+    var loc = win && win['location'];
+    var doc = win && win['document'];
+    if (!loc || !doc || !doc.createElement) {
+        return false;
+    }
+    var a = doc.createElement('a');
+    a.href = url;
+    if (a.protocol + '//' + a.host !== loc.protocol + '//' + loc.host) {
+        return false;
+    }
+    return normalizePathname(a.pathname) === normalizePathname(loc.pathname);
+};
+
+// A stable key for the current page at the granularity visual-change scoping uses
+// (origin + normalized pathname; query/hash ignored). Returns null outside a browser.
+var currentPageKey = function() {
+    var loc = win && win['location'];
+    if (!loc) {
+        return null;
+    }
+    return loc.protocol + '//' + loc.host + normalizePathname(loc.pathname);
+};
+
+/**
+ * VisualExperimentsManager: delivers visual-experiment variants to the page and
+ * hosts the editor's preview session. The flags manager hands it each delivered
+ * variant set through onFlagsDelivered; it decides which $mp.visualChanges apply
+ * to the current page, drives the engine, and reports exposures back.
+ * @constructor
+ * @param {Object} options
+ * @param {function(string)} options.getConfigFunc
+ * @param {function(): Object} [options.getVariantsFunc] current delivered variants
+ *   (a Map or any object with forEach), used to replay on navigation and editing
+ * @param {function(string, Object)} [options.trackExposureFunc] called with the
+ *   flag key and variant the first time a variant is visible on the page
+ * @param {Function} [options.applyVisualChangesFunc] engine override for tests
+ * @param {Function} [options.revertVisualChangesFunc] engine override for tests
+ * @param {Function} [options.onSettledFunc] anti-flicker override for tests
+ */
+var VisualExperimentsManager = function(options) {
+    options = options || {};
+    this.getMpConfig = options.getConfigFunc || NOOP_FUNC;
+    this.getVariants = options.getVariantsFunc || NOOP_FUNC;
+    this.trackExposure = options.trackExposureFunc || NOOP_FUNC;
+    this.applyVisualChangesFunc = options.applyVisualChangesFunc || NOOP_FUNC;
+    this.revertVisualChangesFunc = options.revertVisualChangesFunc || NOOP_FUNC;
+    this.onSettledFunc = options.onSettledFunc || NOOP_FUNC;
+    this._settled = false;
+    // origin+pathname the set was last (re)applied for, so an SPA navigation that
+    // does not change the matched page is a cheap no-op.
+    this._lastReplayedPageKey = null;
+    // experiment_ids whose delivered changes are withheld because an editor
+    // session is authoring them; the live preview is the sole driver.
+    this._suppressedExperiments = {};
+    // Editor state is separate from delivered flags. The preview is composed
+    // with unrelated experiments on every delivery and navigation.
+    this._editorSession = null;
+    this._editorPreview = null;
+    // Bumped by onReset so an engine first-apply report for a set applied under
+    // the previous identity is not tracked as the new identity's exposure.
+    this._applyGeneration = 0;
+};
+
+VisualExperimentsManager.prototype.isEnabled = function() {
+    return !!this.getMpConfig(CONFIG_ENABLED);
+};
+
+/**
+ * Set up the engine, hide the page for anti-flicker, and expose the editor API.
+ * No-op unless the visual_experiments init option is enabled. Must run before
+ * flag delivery starts so the hide precedes any variant application.
+ */
+VisualExperimentsManager.prototype.init = function() {
+    if (!this.isEnabled() || this._engine) {
+        return;
+    }
+    var engine = this._engine = new VisualChangeEngine();
+    this._antiFlicker = new AntiFlickerController(this.getMpConfig(CONFIG_HIDE_TIMEOUT_MS));
+
+    if (this.applyVisualChangesFunc === NOOP_FUNC) {
+        this.applyVisualChangesFunc = _.bind(engine.applyVisualChanges, engine);
+    }
+    if (this.revertVisualChangesFunc === NOOP_FUNC) {
+        this.revertVisualChangesFunc = _.bind(engine.revertVisualChanges, engine);
+    }
+    if (this.onSettledFunc === NOOP_FUNC) {
+        this.onSettledFunc = _.bind(this._antiFlicker.reveal, this._antiFlicker);
+    }
+
+    // The extension calls this API through its MAIN-world bridge. Quoted keys
+    // preserve the public mixpanel.experiments contract through minification.
+    this._experimentsApi = {
+        'applyVisualChanges': _.bind(this._applyEditorPreview, this),
+        'revertVisualChanges': _.bind(this._revertEditorPreview, this),
+        'startEditorSession': _.bind(this._startEditorSession, this),
+        'endEditorSession': _.bind(this._endEditorSession, this)
+    };
+
+    this._antiFlicker.hide();
+    this._navTeardown = onLocationChange(_.bind(this.applyForCurrentPage, this));
+};
+
+VisualExperimentsManager.prototype.getExperimentsApi = function() {
+    return this._experimentsApi;
+};
+
+/**
+ * A variant set has been delivered (from persistence or the network). Applies the
+ * matching visual changes for the current page and reports exposures.
+ * @param {Object} flagsMap Map of flag key to variant
+ */
+VisualExperimentsManager.prototype.onFlagsDelivered = function(flagsMap) {
+    if (!flagsMap || !flagsMap.forEach) {
+        return;
+    }
+    this._applyForFlags(flagsMap);
+};
+
+/**
+ * Flag delivery has finished for this page load, with or without variants.
+ * Reveals the page once; later calls are no-ops.
+ */
+VisualExperimentsManager.prototype.onDeliverySettled = function() {
+    if (this._settled) {
+        return;
+    }
+    this._settled = true;
+    this.onSettledFunc();
+};
+
+/**
+ * The visitor identity was reset. Exposure reports still pending from the
+ * previous identity's set are discarded, and that identity's changes are
+ * cleared rather than left in place until the next delivery arrives.
+ */
+VisualExperimentsManager.prototype.onReset = function() {
+    this._applyGeneration++;
+    this._refresh();
+};
+
+// Re-run page-scoped replay against the already-delivered variants, without a
+// fetch. Deduped so navigating without changing the matched page is a no-op.
+VisualExperimentsManager.prototype.applyForCurrentPage = function() {
+    var key = currentPageKey();
+    if (key !== null && key === this._lastReplayedPageKey) {
+        return;
+    }
+    this._refresh();
+};
+
+// Withhold a single experiment's delivered changes while an editor session is
+// authoring it, and re-apply the rest at once.
+VisualExperimentsManager.prototype.suppressExperiment = function(experimentId) {
+    if (!experimentId || this._suppressedExperiments[experimentId]) {
+        return;
+    }
+    this._suppressedExperiments[experimentId] = true;
+    this._refresh();
+};
+
+VisualExperimentsManager.prototype.unsuppressExperiment = function(experimentId) {
+    if (experimentId) {
+        delete this._suppressedExperiments[experimentId];
+    }
+};
+
+VisualExperimentsManager.prototype._applyEditorPreview = function(mutations) {
+    if (!_.isArray(mutations)) {
+        return;
+    }
+    this._editorPreview = {
+        pageKey: this._editorSession ? this._editorSession.pageKey : currentPageKey(),
+        mutations: mutations.slice()
+    };
+    this._refresh();
+};
+
+VisualExperimentsManager.prototype._revertEditorPreview = function() {
+    this._editorPreview = null;
+    this._refresh();
+};
+
+VisualExperimentsManager.prototype._startEditorSession = function(experimentId) {
+    var pageKey = currentPageKey();
+    // Repeated starts preserve edits only while authoring the same page.
+    if (!experimentId || (this._editorSession && this._editorSession.experimentId === experimentId &&
+        this._editorSession.pageKey === pageKey)) {
+        return;
+    }
+    if (this._editorSession) {
+        this.unsuppressExperiment(this._editorSession.experimentId);
+    }
+    this._editorSession = { experimentId: experimentId, pageKey: pageKey };
+    this._editorPreview = null;
+    this.suppressExperiment(experimentId);
+};
+
+VisualExperimentsManager.prototype._endEditorSession = function(experimentId) {
+    if (!this._editorSession || this._editorSession.experimentId !== experimentId) {
+        return;
+    }
+    this._editorSession = null;
+    this._editorPreview = null;
+    this.unsuppressExperiment(experimentId);
+    this._refresh();
+};
+
+// Re-apply against the current delivered variants. Works before any delivery
+// (and without the flag-fetch APIs) so the editor is usable standalone.
+VisualExperimentsManager.prototype._refresh = function() {
+    var variants = this.getVariants();
+    this._applyForFlags((variants && variants.forEach) ? variants : EMPTY_VARIANTS);
+};
+
+// Aggregate $mp.visualChanges across every variant whose $mp.url matches the
+// current page, compose the editor preview, and apply them in a single call.
+// Applying per-variant would let the engine's auto-revert wipe an earlier
+// variant's changes when a later one has its own set.
+VisualExperimentsManager.prototype._applyForFlags = function(flagsMap) {
+    var self = this;
+    var generation = this._applyGeneration;
+    var allVisualChanges = [];
+    // Parallel to allVisualChanges: the [flagKey, variant] each mutation came from.
+    var mutationSources = [];
+    // [flagKey, variant] for variants on this page that carry no mutations: a
+    // control arm (or an unedited variant) is exposed by reaching the page.
+    var pageExposures = [];
+    flagsMap.forEach(function(variant, flagKey) {
+        if (variant && self._suppressedExperiments[variant['experiment_id']]) {
+            return;
+        }
+        var value = variant && variant['value'];
+        var mp = value && value['$mp'];
+        if (!mp) {
+            return;
+        }
+        if (!urlMatchesCurrentPage(mp['url'])) {
+            return;
+        }
+        var visualChanges = mp['visualChanges'];
+        if (!visualChanges || !visualChanges.length) {
+            // Controls bypass the engine, so check the setting explicitly here.
+            // The disabled engine already prevents treatment exposure callbacks.
+            if (self.isEnabled()) {
+                pageExposures.push([flagKey, variant]);
+            }
+            return;
+        }
+        if (payloadTooLarge(visualChanges)) {
+            logger$4.error('Ignoring visual changes for ' + flagKey + ' exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
+            return;
+        }
+        allVisualChanges = allVisualChanges.concat(visualChanges);
+        for (var i = 0; i < visualChanges.length; i++) {
+            mutationSources.push([flagKey, variant]);
+        }
+    });
+    var preview = this._editorPreview;
+    if (preview && preview.pageKey === currentPageKey()) {
+        if (payloadTooLarge(preview.mutations)) {
+            logger$4.error('Ignoring editor preview exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
+        } else {
+            // Preview wins any conflicts with live changes. It has no source entries,
+            // so the first-apply callback cannot report preview mutations as exposures.
+            allVisualChanges = allVisualChanges.concat(preview.mutations);
+        }
+    }
+    // Each variant is reported once per applied set, however many of its
+    // mutations land.
+    var reported = [];
+    var report = function(source) {
+        if (!source || generation !== self._applyGeneration || _.include(reported, source[0])) {
+            return;
+        }
+        reported.push(source[0]);
+        try {
+            self.trackExposure(source[0], source[1]);
+        } catch (err) {
+            logger$4.error('Visual exposure tracking failed', err);
+        }
+    };
+    if (allVisualChanges.length) {
+        // The engine reports each mutation the first time it actually changes an
+        // element (which may be later, once the target renders), so a variant is
+        // only counted as exposed once the user can see it.
+        this.applyVisualChangesFunc(allVisualChanges, function(mutationIndex) {
+            report(mutationSources[mutationIndex]);
+        });
+    } else {
+        // No matching live changes or preview, including an empty control preview:
+        // clear the previous set rather than leaving it applied.
+        this.revertVisualChangesFunc();
+    }
+    // A variant with nothing to apply has no first-apply report, so it is tracked
+    // as soon as the page is matched. A tracking hook may reset the visitor, which
+    // discards that visitor's remaining exposures.
+    for (var k = 0; k < pageExposures.length; k++) {
+        report(pageExposures[k]);
+    }
+    this._lastReplayedPageKey = currentPageKey();
+    this.onDeliverySettled();
+};
+
+safewrapClass(VisualExperimentsManager);
 
 var MIXPANEL_BROWSER_DB_NAME = 'mixpanelBrowserDb';
 var RECORDING_EVENTS_STORE_NAME = 'mixpanelRecordingEvents';
@@ -5129,6 +6263,10 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
     }
     if (!win['MutationObserver']) {
         console.critical('Browser does not support MutationObserver; skipping session recording');
+        return PromisePolyfill.resolve();
+    }
+    if (_.getPreviewToken()) {
+        console.log('Session recording skipped on a visual experiment preview page');
         return PromisePolyfill.resolve();
     }
 
@@ -7539,6 +8677,7 @@ MixpanelPersistence.prototype.update_search_keyword = function(referrer) {
 
 // EXPORTED METHOD, we test this directly.
 MixpanelPersistence.prototype.update_referrer_info = function(referrer) {
+    referrer = _.sanitizeUrl(referrer);
     // If referrer doesn't exist, we want to note the fact that it was type-in traffic.
     this.register_once({
         '$initial_referrer': referrer || '$direct',
@@ -8819,6 +9958,8 @@ var DEFAULT_CONFIG = {
     'save_referrer':                     true,
     'test':                              false,
     'verbose':                           false,
+    'visual_experiments':                false,
+    'visual_experiments_hide_timeout_ms': 2000,
     'img':                               false,
     'debug':                             false,
     'track_links_timeout':               300,
@@ -9045,6 +10186,16 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this['persistence'] = this['cookie'] = new MixpanelPersistence(this['config'], {closed: !allows_storage});
     this.unpersisted_superprops = {};
 
+    this.visualExperiments = new VisualExperimentsManager({
+        getConfigFunc: _.bind(this.get_config, this),
+        getVariantsFunc: _.bind(function() {
+            return this.flags.getAllVariantsSync();
+        }, this),
+        trackExposureFunc: _.bind(function(featureName, feature) {
+            this.flags.trackVisualExposure(featureName, feature);
+        }, this)
+    });
+    this.visualExperiments.init();
     this.flags = new FeatureFlagManager({
         getFullApiRoute: _.bind(function() {
             return this.get_api_host('flags') + '/' + this.get_config('api_routes')['flags'];
@@ -9055,9 +10206,14 @@ MixpanelLib.prototype._init = function(token, config, name) {
         trackingFunc: _.bind(this.track, this),
         consentGate: this._consent,
         loadExtraBundle: load_extra_bundle,
-        targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME)
+        targetingSrc: this.get_config('targeting_src') || (this.get_config('lib_base_path') + TARGETING_FILENAME),
+        visualExperiments: this.visualExperiments
     });
     this['flags'] = this.flags;
+    var experimentsApi = this.visualExperiments.getExperimentsApi();
+    if (experimentsApi) {
+        this['experiments'] = experimentsApi;
+    }
 
     this._consent.init();
     if (allows_storage) {
@@ -11276,6 +12432,7 @@ MixpanelLibProto['get_session_recording_properties']   = MixpanelLibProto.get_se
 MixpanelLibProto['get_session_replay_url']             = MixpanelLibProto.get_session_replay_url;
 MixpanelLibProto['get_tab_id']                         = MixpanelLibProto.get_tab_id;
 MixpanelLibProto['DEFAULT_API_ROUTES']                 = DEFAULT_API_ROUTES;
+MixpanelLibProto['SDK_VERSION']                        = Config.LIB_VERSION;
 
 // Exports intended only for testing
 MixpanelLibProto['__get_recorder']                     = MixpanelLibProto.__get_recorder;
