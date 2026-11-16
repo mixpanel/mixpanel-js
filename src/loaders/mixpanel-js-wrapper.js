@@ -31,6 +31,7 @@ import './mixpanel-jslib-snippet';
         /* Ignore push
         'push',
         */
+        'object_to_tracking',
         'register',
         'register_once',
         'remove_group',

@@ -8,6 +8,7 @@ import { VisualExperimentsManager } from './visual-experiments';
 import { RecorderManager } from './recorder-manager';
 import { FormTracker, LinkTracker } from './dom-trackers';
 import { RequestBatcher } from './request-batcher';
+import { Promise } from './promise-polyfill';
 import { MixpanelGroup } from './mixpanel-group';
 import { MixpanelPeople } from './mixpanel-people';
 import {
@@ -16,6 +17,7 @@ import {
     ALIAS_ID_KEY
 } from './mixpanel-persistence';
 import { ConsentManager } from './consent-manager';
+import { exemptEventProperties } from './exempt-events';
 
 /*
  * Mixpanel JS Library
@@ -136,6 +138,7 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_persistence_type': 'localStorage',
     'opt_out_tracking_cookie_prefix':    null,
     'consent_mode':                      null,
+    'consent_exempt_allowlist':          {}, // {events: [...], properties: [...]} added to the exempt defaults
     'property_blacklist':                [],
     'xhr_headers':                       {}, // { header: value, header2: value }
     'ignore_dnt':                        false,
@@ -380,6 +383,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this._consent.init();
     if (allows_storage) {
         this._start_services();
+    } else if (this._consent.allowsExemptMeasurement()) {
+        // remote settings can turn on the autocapture the exempt events come from
+        this._fetch_remote_settings();
     }
 
     this.autocapture = new Autocapture(this);
@@ -408,7 +414,8 @@ MixpanelLib.prototype._set_first_touch_people_properties = function() {
     }
 };
 
-// the services that store or send on their own; at init, and again on an opt-in under 'require_consent'
+// the services that store or send on their own; at init, and again on an opt-in under
+// 'require_consent' or 'exempt'
 MixpanelLib.prototype._start_services = function() {
     // There is no need to set the distinct id
     // or the device id if something was already stored
@@ -422,7 +429,7 @@ MixpanelLib.prototype._start_services = function() {
     // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
     var mode = this.get_config('remote_settings_mode');
     if (mode === SETTING_STRICT || mode === SETTING_FALLBACK) {
-        this.__session_recording_init_promise = this._fetch_remote_settings(mode).then(_.bind(function() {
+        this.__session_recording_init_promise = this._fetch_remote_settings().then(_.bind(function() {
             return this._check_and_start_session_recording();
         }, this));
     } else {
@@ -721,7 +728,8 @@ MixpanelLib.prototype._dom_loaded = function() {
         this._track_dom.apply(this, item);
     }, this);
 
-    if (this._consent.allowsApiCalls()) {
+    // _send_request checks each request's consent again
+    if (this._consent.allowsApiCalls() || this._consent.allowsExemptMeasurement()) {
         _.each(this.__request_queue, function(item) {
             this._send_request.apply(this, item);
         }, this);
@@ -783,8 +791,10 @@ MixpanelLib.prototype._prepare_callback = function(callback, data) {
 MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     var succeeded = true;
 
-    // event, people and group requests all pass here; flags and replay ask the gate themselves
-    if (!this._consent.allowsSending()) {
+    // event, people and group requests pass here; flags and replay ask the gate themselves
+    var is_exempt_event = _.isObject(options) && options.exempt_measurement === true;
+    var allowed = is_exempt_event ? this._consent.allowsExemptMeasurement() : this._consent.allowsSending();
+    if (!allowed) {
         console.log('Request dropped without consent');
         if (_.isFunction(callback)) {
             callback(0);
@@ -948,9 +958,21 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     return succeeded;
 };
 
-MixpanelLib.prototype._fetch_remote_settings = function(mode) {
-    if (!this._consent.allowsFetching()) {
+/**
+ * Once per page, so an opt-in reuses the fetch exempt measurement made.
+ * @returns {Promise}
+ */
+MixpanelLib.prototype._fetch_remote_settings = function() {
+    var mode = this.get_config('remote_settings_mode');
+    if (mode !== SETTING_STRICT && mode !== SETTING_FALLBACK) {
         return Promise.resolve();
+    }
+    // carries only the token and SDK version
+    if (!this._consent.allowsFetching() && !this._consent.allowsExemptMeasurement()) {
+        return Promise.resolve();
+    }
+    if (this._remote_settings_promise) {
+        return this._remote_settings_promise;
     }
 
     var self = this;
@@ -988,7 +1010,7 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
         'signal': abortController.signal
     };
 
-    return window['fetch'](full_url, fetchOptions).then(function(response) {
+    this._remote_settings_promise = window['fetch'](full_url, fetchOptions).then(function(response) {
         clearTimeout(timeout_id);
         if (!response['ok']) {
             console.critical('Network response was not ok');
@@ -1022,6 +1044,7 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
         console.critical('Failed to fetch remote settings', err);
         disableRecordingIfStrict();
     });
+    return this._remote_settings_promise;
 };
 
 /**
@@ -1181,6 +1204,16 @@ MixpanelLib.prototype._encode_data_for_request = function(data) {
     return {'data': encoded_data};
 };
 
+/**
+ * @param {string} event_name
+ * @param {Object} properties
+ * @returns {Object|null} what's sent for the event before consent, or null if it isn't sent
+ */
+MixpanelLib.prototype._exempt_event_properties = function(event_name, properties) {
+    var consent_exempt_allowlist = this.get_config('consent_exempt_allowlist');
+    return exemptEventProperties(event_name, properties, _.isObject(consent_exempt_allowlist) ? consent_exempt_allowlist : {});
+};
+
 // internal method for handling track vs batch-enqueue logic
 MixpanelLib.prototype._track_or_batch = function(options, callback) {
     var truncated_data = _.truncate(options.data, 255);
@@ -1233,6 +1266,10 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  *
  * To track link clicks or form submissions, see track_links() or track_forms().
  *
+ * With consent_mode 'exempt', until an opt-in only anonymous page views, clicks, scrolls and page
+ * exits are sent (see consent_exempt_allowlist). The before_send_events hook doesn't run on them;
+ * on_track does, before the filter.
+ *
  * @example
  * ```js
  * // track an event named 'Registered'
@@ -1256,7 +1293,9 @@ MixpanelLib.prototype.track = function(event_name, properties, options, callback
         callback = options;
         options = null;
     }
-    if (!this._consent.allowsApiCalls()) {
+    // before consent under 'exempt', only the anonymous audience events go out
+    var exempt_measurement = this._consent.allowsExemptMeasurement();
+    if (!exempt_measurement && !this._consent.allowsApiCalls()) {
         if (_.isFunction(callback)) {
             callback(0);
         }
@@ -1342,6 +1381,16 @@ MixpanelLib.prototype.track = function(event_name, properties, options, callback
     event_name = ret[0];
     properties = ret[1];
 
+    // filtered here, before anything else sees the event; exempt sends skip before_send_events,
+    // so no hook adds to it after this
+    if (exempt_measurement) {
+        properties = this._exempt_event_properties(event_name, properties);
+        if (!properties) {
+            callback(0);
+            return;
+        }
+    }
+
     this._start_recording_on_event(event_name, properties);
 
     var data = {
@@ -1353,8 +1402,9 @@ MixpanelLib.prototype.track = function(event_name, properties, options, callback
         data: data,
         endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
-        should_send_immediately: should_send_immediately,
-        send_request_options: options
+        // batching stores the queue, so exempt events go one per request
+        should_send_immediately: should_send_immediately || exempt_measurement,
+        send_request_options: exempt_measurement ? _.extend({}, options, {exempt_measurement: true, skip_hooks: true}) : options
     }, callback);
 
     // Check for first-time event matches
@@ -1850,9 +1900,9 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * to the same user identity. If ID Merge is disabled, alias can
  * be used to connect pre- and post-registration events.
  *
- * With consent_mode 'require_consent', the latest call made before the visitor consents is held in
- * memory, without storing or sending anything, and applied if they opt in on the same page. reset()
- * discards it.
+ * With consent_mode 'require_consent' or 'exempt', the latest call made before the visitor consents
+ * is held in memory, without storing or sending anything, and applied if they opt in on the same
+ * page. reset() and object_to_tracking() discard it.
  *
  * @param {String} [new_distinct_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
@@ -2136,10 +2186,13 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // customize the name of cookie/localStorage set by opt-in/opt-out methods
  *       opt_out_tracking_cookie_prefix: null
  *
- *       // what happens before the visitor decides: 'no_consent_required' (unset) or
- *       // 'require_consent'. opt_out_tracking_by_default applies only when it's unset.
- *       // Fixed at init.
+ *       // what happens before the visitor decides: 'no_consent_required' (unset),
+ *       // 'require_consent' or 'exempt'. opt_out_tracking_by_default applies only when
+ *       // it's unset. Fixed at init.
  *       consent_mode: null
+ *
+ *       // extra events and properties consent_mode 'exempt' sends before consent
+ *       consent_exempt_allowlist: {events: [], properties: []}
  *
  *       // type of persistent store for super properties (cookie/
  *       // localStorage) if set to 'localStorage', any existing
@@ -2382,9 +2435,9 @@ MixpanelLib.prototype._delete_user_for_opt_out = function() {
  * });
  * ```
  *
- * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
- * cookie config: the storage options and enable_persistence below don't apply, and the track
- * options do.
+ * With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+ * persistence and cookie config: the storage options and enable_persistence below don't apply, and
+ * the track options do.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {function} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
@@ -2418,9 +2471,10 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * });
  * ```
  *
- * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
- * cookie config: the storage options, clear_persistence and delete_user below don't apply. The
- * stored identifiers are deleted instead, and no $delete is sent.
+ * With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+ * persistence and cookie config: the storage options, clear_persistence and delete_user below don't
+ * apply. The stored identifiers are deleted instead, and no $delete is sent. Under 'exempt', the
+ * visitor stays exempt; object_to_tracking() stops that.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.delete_user=true] If true, will delete the currently identified user's profile and clear all charges after opting the user out
@@ -2438,6 +2492,22 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
 };
 
 /**
+ * Stop all tracking, exempt measurement included, for the objection link in your privacy policy.
+ * Outside consent_mode 'exempt' it works as opt_out_tracking(). opt_in_tracking() and
+ * clear_opt_in_out_tracking() lift it; opt_out_tracking() doesn't.
+ *
+ * @example
+ * ```js
+ * mixpanel.object_to_tracking();
+ * ```
+ *
+ * @param {Object} [options] The same options as opt_out_tracking
+ */
+MixpanelLib.prototype.object_to_tracking = function(options) {
+    this._consent.objectTo(options);
+};
+
+/**
  * Check whether the user has opted in to data tracking and cookies/localstorage for this Mixpanel instance
  *
  * @example
@@ -2446,7 +2516,8 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
  * // use has_opted_in value
  * ```
  *
- * With consent_mode 'require_consent' the options don't apply.
+ * With consent_mode 'require_consent' or 'exempt' the options don't apply, and a stored objection
+ * counts as not opted in.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.persistence_type] Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag
@@ -2466,8 +2537,8 @@ MixpanelLib.prototype.has_opted_in_tracking = function(options) {
  * // use has_opted_out value
  * ```
  *
- * With consent_mode 'require_consent' the options don't apply, and a stored refusal or Do Not Track
- * counts as opted out.
+ * With consent_mode 'require_consent' or 'exempt' the options don't apply, and a stored refusal, an
+ * objection or Do Not Track counts as opted out.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.persistence_type] Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag
@@ -2494,10 +2565,10 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  * });
  * ```
  *
- * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
- * cookie config: the storage options and enable_persistence below don't apply. Clearing also
- * deletes the device's stored identifiers, and on a page tracking after an opt-in it stops
- * tracking.
+ * With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+ * persistence and cookie config: the storage options and enable_persistence below don't apply.
+ * Clearing also deletes the device's stored identifiers, and on a page tracking after an opt-in it
+ * stops tracking.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.enable_persistence=true] If true, will re-enable sdk persistence
@@ -2572,6 +2643,7 @@ MixpanelLibProto['get_property']                       = MixpanelLibProto.get_pr
 MixpanelLibProto['get_distinct_id']                    = MixpanelLibProto.get_distinct_id;
 MixpanelLibProto['toString']                           = MixpanelLibProto.toString;
 MixpanelLibProto['opt_out_tracking']                   = MixpanelLibProto.opt_out_tracking;
+MixpanelLibProto['object_to_tracking']                 = MixpanelLibProto.object_to_tracking;
 MixpanelLibProto['opt_in_tracking']                    = MixpanelLibProto.opt_in_tracking;
 MixpanelLibProto['has_opted_out_tracking']             = MixpanelLibProto.has_opted_out_tracking;
 MixpanelLibProto['_consent_allows']                    = MixpanelLibProto._consent_allows;

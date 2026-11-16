@@ -61,7 +61,7 @@ var ConsentManager = function(options) {
 /**
  * Whether the visitor's current state allows something. The rest of the SDK asks the ConsentGate
  * methods built on this.
- * @param {string} capability 'api_calls', 'send', 'fetch' or 'store'
+ * @param {string} capability 'api_calls', 'send', 'fetch', 'store' or 'exempt_measurement'
  * @returns {boolean}
  */
 ConsentManager.prototype.allows = function(capability) {
@@ -72,7 +72,7 @@ ConsentManager.prototype.allows = function(capability) {
 };
 
 /**
- * @returns {string}
+ * @returns {ConsentState}
  */
 ConsentManager.prototype.state = function() {
     return this.decisions.state();
@@ -131,6 +131,15 @@ ConsentManager.prototype.optIn = function(options) {
  */
 ConsentManager.prototype.optOut = function(options) {
     this.decisions.optOut(options);
+};
+
+/**
+ * Object to all tracking, which also drops a held identify().
+ * @param {Object} [options] object_to_tracking() options
+ */
+ConsentManager.prototype.objectTo = function(options) {
+    this.heldIdentify = null;
+    this.decisions.objectTo(options);
 };
 
 /**

@@ -6,10 +6,12 @@ import { FLAGS_STORE_NAME, MIXPANEL_FLAGS_DB_NAME, PERSISTED_VARIANTS_KEY_PREFIX
 import { RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME } from "../../../../src/recorder/idb-config";
 
 // the modes that store and send nothing identifying before consent
-const CONSENT_REQUIRED_MODES = [`require_consent`];
+const CONSENT_REQUIRED_MODES = [`require_consent`, `exempt`];
 
 export function consentRequiredTests(mixpanel) {
   CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, function() {
+    const SENDS_EXEMPT_EVENTS = mode === `exempt`;
+    const SENDS = SENDS_EXEMPT_EVENTS ? `sends only anonymous events` : `sends nothing`;
     let token, idbOpenSpy, xhrSendSpy, fetchSpy, beaconSpy;
 
     const REAL_CONFIG = {
@@ -23,6 +25,9 @@ export function consentRequiredTests(mixpanel) {
       lib_base_path: `./static/build/async-modules/`,
       debug: true,
     };
+
+    const DEFAULT_BATCH_FLUSH_INTERVAL_MS = 5000;
+    const FAKED_TIMERS = [`setTimeout`, `clearTimeout`, `setInterval`, `clearInterval`];
 
     function initConsentRequired(config, name = `test`) {
       return new Promise(resolve => {
@@ -47,6 +52,30 @@ export function consentRequiredTests(mixpanel) {
         .filter(body => body.includes(token) || body.includes(btoa(token + `:`)));
     }
 
+    function requestsFor(eventName) {
+      return requestsWithToken().filter(body => body.includes(`"event":"${eventName}"`));
+    }
+
+    // runs the timers that could still send something, past the batch flush interval
+    async function runPendingSends(clock) {
+      await clock.tickAsync(DEFAULT_BATCH_FLUSH_INTERVAL_MS * 2);
+    }
+
+    // under 'exempt', only the exempt events, one per request and without distinct_id or device ID;
+    // ingestion still sees the request IP
+    function expectOnlyExemptRequests() {
+      const requests = requestsWithToken();
+      if (!SENDS_EXEMPT_EVENTS) {
+        expect(requests).to.deep.equal([]);
+        return;
+      }
+      requests.forEach(body => {
+        expect(body).to.include(`"$mp_exempt":true`);
+        expect(body).to.not.include(`distinct_id`);
+        expect(body).to.not.include(`$device_id`);
+      });
+    }
+
     beforeEach(async () => {
       token = randName();
       await clearAllStorage();
@@ -58,11 +87,13 @@ export function consentRequiredTests(mixpanel) {
 
     afterEach(async () => {
       sinon.restore();
+      localStorage.removeItem(`__mp_objection_${token}`);
+      document.cookie = `__mp_objection_${token}=; max-age=0; path=/`;
       await clearAllLibInstances(mixpanel);
     });
 
     [`localStorage`, `cookie`].forEach(persistence => {
-      it(`stores nothing and sends nothing before consent, with ${persistence} persistence`, async () => {
+      it(`stores nothing and ${SENDS} before consent, with ${persistence} persistence`, async () => {
         await initConsentRequired({persistence});
         const button = document.createElement(`button`);
         document.body.appendChild(button);
@@ -81,7 +112,10 @@ export function consentRequiredTests(mixpanel) {
         const openedDbNames = idbOpenSpy.getCalls().map(call => call.args[0]);
         expect(openedDbNames.filter(name => !cleanedDbNames.includes(name))).to.deep.equal([]);
         expect(await getIDBValue(FLAGS_STORE_NAME, PERSISTED_VARIANTS_KEY_PREFIX + token)).to.equal(undefined);
-        expect(requestsWithToken()).to.deep.equal([]);
+        expectOnlyExemptRequests();
+        if (SENDS_EXEMPT_EVENTS) {
+          expect(requestsWithToken().some(body => body.includes(`$mp_web_page_view`))).to.equal(true);
+        }
         expect(mixpanel.test.get_distinct_id()).to.equal(undefined);
       });
     });
@@ -101,7 +135,7 @@ export function consentRequiredTests(mixpanel) {
       expect(storageKeysWithToken(localStorage)).to.deep.equal([]);
       expect(storageKeysWithToken(sessionStorage)).to.deep.equal([]);
       expect(cookiesWithToken()).to.deep.equal([]);
-      expect(requestsWithToken()).to.deep.equal([]);
+      expectOnlyExemptRequests();
       expect(mixpanel.test.get_distinct_id()).to.equal(undefined);
     });
 
@@ -115,11 +149,11 @@ export function consentRequiredTests(mixpanel) {
 
       expect(await getIDBValue(RECORDING_EVENTS_STORE_NAME, replayKey)).to.not.equal(undefined);
       expect(await getIDBValue(RECORDING_REGISTRY_STORE_NAME, `$tab-stale`)).to.not.equal(undefined);
-      expect(requestsWithToken()).to.deep.equal([]);
+      expectOnlyExemptRequests();
     });
 
     [`localStorage`, `cookie`].forEach(persistence => {
-      it(`keeps only the decision and sends nothing after a consented visitor withdraws, with ${persistence} persistence`, async () => {
+      it(`keeps only the decision and ${SENDS} after a consented visitor withdraws, with ${persistence} persistence`, async () => {
         await initConsentRequired({persistence, batch_requests: true});
         mixpanel.test.opt_in_tracking();
         await untilDone(() => requestsWithToken().some(body => body.includes(`$opt_in`)));
@@ -144,7 +178,7 @@ export function consentRequiredTests(mixpanel) {
         }
         expect(storageKeysWithToken(sessionStorage)).to.deep.equal([]);
         expect(await getIDBValue(FLAGS_STORE_NAME, PERSISTED_VARIANTS_KEY_PREFIX + token)).to.equal(undefined);
-        expect(requestsWithToken()).to.deep.equal([]);
+        expectOnlyExemptRequests();
       });
     });
 
@@ -202,8 +236,36 @@ export function consentRequiredTests(mixpanel) {
 
       expect(await getIDBValue(RECORDING_REGISTRY_STORE_NAME, tabId)).to.not.equal(undefined);
       expect(storageKeysWithToken(sessionStorage)).to.deep.equal([]);
-      expect(requestsWithToken()).to.deep.equal([]);
+      // a withdrawal under 'exempt' goes back to exempt measurement, whose autocapture may send
+      // anonymous events; the replay stays unsent either way
+      expectOnlyExemptRequests();
     });
+
+    if (SENDS_EXEMPT_EVENTS) {
+      it(`drops what on_track adds to an exempt event, and skips before_send_events`, async () => {
+        const beforeSendEvents = sinon.spy(data => data);
+        await initConsentRequired({
+          hooks: {
+            on_track: (eventName, properties) => [eventName, Object.assign({}, properties, {
+              plan: `pro`,
+              distinct_id: `account-1`,
+              $current_url: `https://example.com/home?email=visitor@example.com`,
+            })],
+            before_send_events: beforeSendEvents,
+          },
+        });
+
+        mixpanel.test.track(`$mp_click`);
+
+        const [body] = requestsFor(`$mp_click`);
+        expect(body).to.include(`"$mp_exempt":true`);
+        expect(body).to.include(`"$current_url":"https://example.com/home"`);
+        expect(body).to.not.include(`email=`);
+        expect(body).to.not.include(`"plan"`);
+        expect(beforeSendEvents.called).to.equal(false);
+        expectOnlyExemptRequests();
+      });
+    }
 
     it(`keeps blocking after a refusal, across page loads`, async () => {
       await initConsentRequired();
@@ -213,11 +275,38 @@ export function consentRequiredTests(mixpanel) {
       xhrSendSpy.resetHistory();
 
       await initConsentRequired({}, `reloaded`);
+      const clock = sinon.useFakeTimers({toFake: FAKED_TIMERS});
       mixpanel.reloaded.track(`after refusal`);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await runPendingSends(clock);
 
       expect(mixpanel.reloaded.has_opted_out_tracking()).to.equal(true);
       expect(requestsWithToken().filter(body => body.includes(`after refusal`))).to.deep.equal([]);
+    });
+
+    it(`keeps blocking after an objection, across page loads`, async () => {
+      await initConsentRequired();
+      mixpanel.test.track(`$mp_click`);
+      mixpanel.test.track(`before objection`);
+      expect(requestsFor(`$mp_click`).length > 0).to.equal(SENDS_EXEMPT_EVENTS);
+      expect(requestsFor(`before objection`)).to.deep.equal([]);
+
+      mixpanel.test.object_to_tracking();
+      // a reload drops the instance but keeps the stored decision, so this teardown leaves it alone
+      await clearLibInstance(mixpanel, mixpanel.test, false);
+      xhrSendSpy.resetHistory();
+      fetchSpy.resetHistory();
+      if (beaconSpy) {
+        beaconSpy.resetHistory();
+      }
+
+      await initConsentRequired({}, `reloaded`);
+      const clock = sinon.useFakeTimers({toFake: FAKED_TIMERS});
+      mixpanel.reloaded.track(`$mp_click`);
+      mixpanel.reloaded.track(`after objection`);
+      await runPendingSends(clock);
+
+      expect(mixpanel.reloaded.has_opted_out_tracking()).to.equal(true);
+      expect(requestsWithToken()).to.deep.equal([]);
     });
   }));
 }

@@ -12,13 +12,15 @@
  * @property {function(): boolean} allowsPersistence whether the services may write to browser
  * storage: consent allows storing, and disable_persistence is off. Without it they keep their data
  * in memory.
+ * @property {function(): boolean} allowsExemptMeasurement whether 'exempt' events go out and remote
+ * settings are fetched before consent
  */
 
 import { console } from './utils';
 
 /**
  * @param {function(string): boolean} allowsFunc whether consent allows 'api_calls', 'send',
- * 'fetch' or 'store' now
+ * 'fetch', 'store' or 'exempt_measurement' now
  * @param {function(string): *} getConfigFunc
  * @returns {ConsentGate}
  */
@@ -44,6 +46,9 @@ function buildConsentGate(allowsFunc, getConfigFunc) {
         },
         allowsPersistence: function() {
             return gate.allowsStoring() && !getConfigFunc('disable_persistence');
+        },
+        allowsExemptMeasurement: function() {
+            return allowsFunc('exempt_measurement');
         }
     };
     return gate;
@@ -53,7 +58,7 @@ function buildConsentGate(allowsFunc, getConfigFunc) {
  * The consent gate the recorder bundle builds when it starts, and hands to its services. The core
  * passes the bundle only its instance, so this asks the core's _consent_allows by its quoted name,
  * the bundle being built separately. A core without it only knows the opt-out, through
- * has_opted_out_tracking().
+ * has_opted_out_tracking(), and has no exempt mode.
  * @param {Object} mixpanelInstance
  * @returns {ConsentGate}
  */
@@ -63,6 +68,9 @@ function consentGateFor(mixpanelInstance) {
             var consentAllows = mixpanelInstance['_consent_allows'];
             if (typeof consentAllows === 'function') {
                 return !!consentAllows.call(mixpanelInstance, capability);
+            }
+            if (capability === 'exempt_measurement') {
+                return false;
             }
             return capability !== 'api_calls' || !mixpanelInstance.has_opted_out_tracking();
         },
