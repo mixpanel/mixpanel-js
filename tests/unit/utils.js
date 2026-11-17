@@ -217,6 +217,58 @@ describe(`_.info helper methods`, function() {
     it(`parses the version for "Android Mobile" browsers`, function() {
       expect(_.info.browserVersion(androidMobileUA, ``, false)).to.equal(4.4);
     });
+
+    describe(`Apple WebKit`, function() {
+      var appleVendor = `Apple Computer, Inc.`;
+
+      // WKWebView-based UAs (in-app browsers, React Native WebView default UA)
+      // do not include the "Version/x" token that Safari itself sends.
+      var iPhoneWebViewUA = `Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`;
+      var iPadWebViewUA = `Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`;
+      var mobileSafariUA = `Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1`;
+      var macWebViewUA = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)`;
+      var mobileUAWithoutVersionOrOS = `Mozilla/5.0 AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`;
+
+      it(`falls back to the iOS version for iPhone WKWebView UAs without "Version/"`, function() {
+        expect(_.info.browser(iPhoneWebViewUA, appleVendor, false)).to.equal(`Mobile Safari`);
+        expect(_.info.browserVersion(iPhoneWebViewUA, appleVendor, false)).to.equal(17.4);
+      });
+
+      it(`falls back to the iOS version for iPad WKWebView UAs without "Version/"`, function() {
+        expect(_.info.browser(iPadWebViewUA, appleVendor, false)).to.equal(`Mobile Safari`);
+        expect(_.info.browserVersion(iPadWebViewUA, appleVendor, false)).to.equal(17.4);
+      });
+
+      it(`prefers "Version/" over the OS version for Mobile Safari`, function() {
+        expect(_.info.browser(mobileSafariUA, appleVendor, false)).to.equal(`Mobile Safari`);
+        expect(_.info.browserVersion(mobileSafariUA, appleVendor, false)).to.equal(16.5);
+      });
+
+      it(`does not fall back to the OS version for desktop Safari UAs without "Version/"`, function() {
+        expect(_.info.browser(macWebViewUA, appleVendor, false)).to.equal(`Safari`);
+        expect(_.info.browserVersion(macWebViewUA, appleVendor, false)).to.equal(null);
+      });
+
+      it(`keeps major.minor of the iOS version below the frozen range`, function() {
+        var webViewUA185 = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`;
+        var webViewUA1801 = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`;
+        expect(_.info.browserVersion(webViewUA185, appleVendor, false)).to.equal(18.5);
+        expect(_.info.browserVersion(webViewUA1801, appleVendor, false)).to.equal(18);
+      });
+
+      it(`returns null for iOS 26+ WKWebView UAs with the frozen OS token`, function() {
+        var frozenWebViewUA186 = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`;
+        var frozenWebViewUA187 = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`;
+        expect(_.info.browser(frozenWebViewUA187, appleVendor, false)).to.equal(`Mobile Safari`);
+        expect(_.info.browserVersion(frozenWebViewUA186, appleVendor, false)).to.equal(null);
+        expect(_.info.browserVersion(frozenWebViewUA187, appleVendor, false)).to.equal(null);
+      });
+
+      it(`returns null for Mobile Safari UAs with neither "Version/" nor an OS version`, function() {
+        expect(_.info.browser(mobileUAWithoutVersionOrOS, appleVendor, false)).to.equal(`Mobile Safari`);
+        expect(_.info.browserVersion(mobileUAWithoutVersionOrOS, appleVendor, false)).to.equal(null);
+      });
+    });
   });
 });
 
@@ -416,6 +468,7 @@ describe(`canUseCompressionStream`, function() {
     { browser: `Safari 16.5`, userAgent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15` },
     { browser: `Mobile Safari 16.4`, userAgent: `Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Mobile/15E148 Safari/604.1` },
     { browser: `Mobile Safari 16.5`, userAgent: `Mozilla/5.0 (iPad; CPU OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1` },
+    { browser: `Mobile Safari 16.4 WKWebView (no Version/)`, userAgent: `Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148` },
   ].forEach(({ browser, userAgent }) => {
     it(`returns false for ${browser}, userAgent: ${userAgent}`, function() {
       window.CompressionStream = function() {};
