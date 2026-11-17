@@ -27,6 +27,20 @@ const control = (experimentId, url = PAGE_URL) => ({
 });
 const variants = (entries) => new Map(Object.entries(entries));
 
+const IGNORED_PARAM_KEYS = [`mp_preview_token`, `utm_*`, `gclid`, `fbclid`, `msclkid`];
+const patternTarget = (value, overrides = {}) => Object.assign({
+  version: 1,
+  url: { type: `pattern`, value },
+  query: null,
+  hash: null,
+  ignoredParamKeys: IGNORED_PARAM_KEYS,
+}, overrides);
+const targetedTreatment = (experimentId, target, url = PAGE_URL) => ({
+  key: `B`,
+  experiment_id: experimentId,
+  value: { $mp: { url, target, visualChanges: changes } },
+});
+
 // Stand-in for the engine: reports every mutation as applied.
 const engineApplyingEverything = () => sinon.spy((mutations, onFirstApply) => {
   mutations.forEach((mutation, index) => onFirstApply(index));
@@ -73,10 +87,11 @@ describe(`VisualExperimentsManager`, function () {
       `../../src/navigation`,
       `../../src/visual-experiments/engine`,
       `../../src/visual-experiments/anti-flicker`,
+      `../../src/url-matching`,
       `../../src/visual-experiments/index`,
     ],
     beforeCallback: (modules) => {
-      VisualExperimentsManager = modules[4].VisualExperimentsManager;
+      VisualExperimentsManager = modules[5].VisualExperimentsManager;
       config = { visual_experiments: true };
       delivered = new Map();
       apply = sinon.spy();
@@ -436,6 +451,71 @@ describe(`VisualExperimentsManager`, function () {
     it(`fires when delivery ends without any variants`, function () {
       manager.onDeliverySettled();
       expect(settled).to.have.been.calledOnce;
+    });
+  });
+
+  describe(`Target URL rule ($mp.target)`, function () {
+    it(`applies when the target matches, whatever $mp.url says`, function () {
+      manager.onFlagsDelivered(variants({
+        a: targetedTreatment(`exp1`, patternTarget(`http://localhost/*`), `http://localhost/elsewhere`),
+      }));
+      expect(apply).to.have.been.calledOnceWith(changes);
+    });
+
+    it(`skips when the target does not match, even if $mp.url does`, function () {
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, patternTarget(`http://localhost/checkout`)) }));
+      expect(apply).to.not.have.been.called;
+      expect(revert).to.have.been.calledOnce;
+    });
+
+    it(`skips a target with an unknown version instead of falling back to $mp.url`, function () {
+      const target = Object.assign(patternTarget(`http://localhost/pricing`), { version: 2 });
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, target) }));
+      expect(apply).to.not.have.been.called;
+    });
+
+    it(`falls back to $mp.url when the target is null`, function () {
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, null) }));
+      expect(apply).to.have.been.calledOnceWith(changes);
+    });
+
+    it(`matches the query rule against the current page`, function () {
+      const target = patternTarget(`http://localhost/pricing`, { query: { params: [{ key: `plan`, value: `pro` }] } });
+      navigate(`/pricing?plan=pro&utm_source=ad`);
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, target) }));
+      expect(apply).to.have.been.calledOnce;
+
+      navigate(`/pricing?plan=free`);
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, target) }));
+      expect(apply).to.have.been.calledOnce;
+      expect(revert).to.have.been.calledOnce;
+    });
+
+    it(`re-runs matching on SPA navigation that only changes the hash`, function () {
+      delivered = variants({
+        a: targetedTreatment(`exp1`, patternTarget(`http://localhost/pricing`, { hash: { route: `/annual`, params: null } })),
+      });
+      navigate(`/pricing#/monthly`);
+      manager.applyForCurrentPage();
+      expect(apply).to.not.have.been.called;
+
+      navigate(`/pricing#/annual`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+    });
+
+    it(`uses the same matcher for a QA preview variant`, function () {
+      const previewVariant = Object.assign(
+        targetedTreatment(`exp1`, patternTarget(`http://localhost/pricing`, { query: { params: [] } })),
+        { is_preview: true }
+      );
+      navigate(`/pricing?mp_preview_token=abc`);
+      manager.onFlagsDelivered(variants({ a: previewVariant }));
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/pricing?mp_preview_token=abc&plan=pro`);
+      manager.onFlagsDelivered(variants({ a: previewVariant }));
+      expect(apply).to.have.been.calledOnce;
     });
   });
 

@@ -5,6 +5,7 @@ import { window } from '../window';
 import { onLocationChange } from '../navigation';
 import { VisualChangeEngine } from './engine';
 import { AntiFlickerController } from './anti-flicker';
+import { normalizePathname, urlTargetMatches } from '../url-matching';
 
 var logger = console_with_prefix('visual-experiments');
 
@@ -28,21 +29,6 @@ var payloadTooLarge = function(mutations) {
     }
 };
 
-// Normalize a pathname for comparison: ensure a leading slash and drop a single
-// trailing slash (keeping root "/") so "/foo" and "/foo/" are treated as equal.
-var normalizePathname = function(pathname) {
-    if (!pathname) {
-        return '/';
-    }
-    if (pathname.charAt(0) !== '/') {
-        pathname = '/' + pathname;
-    }
-    if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
-        pathname = pathname.slice(0, -1);
-    }
-    return pathname;
-};
-
 // Compare a persisted page url against the current location by origin + pathname
 // (query string and hash ignored). Uses a throwaway anchor to parse robustly
 // without assuming URL is available. Returns false when parsing is not possible.
@@ -63,6 +49,16 @@ var urlMatchesCurrentPage = function(url) {
     return normalizePathname(a.pathname) === normalizePathname(loc.pathname);
 };
 
+// A variant applies to the current page by its structured Target URL rule
+// ($mp.target) when it has one, and otherwise by its persisted page url.
+var variantMatchesCurrentPage = function(mp) {
+    var target = mp['target'];
+    if (target !== undefined && target !== null) {
+        return urlTargetMatches(target, window && window['location']);
+    }
+    return urlMatchesCurrentPage(mp['url']);
+};
+
 // A stable key for the current page at the granularity visual-change scoping uses
 // (origin + normalized pathname; query/hash ignored). Returns null outside a browser.
 var currentPageKey = function() {
@@ -71,6 +67,18 @@ var currentPageKey = function() {
         return null;
     }
     return loc.protocol + '//' + loc.host + normalizePathname(loc.pathname);
+};
+
+// The key SPA replay dedupes on. A $mp.target rule can match on the query string
+// and hash, so while any delivered variant carries one, a change to either must
+// re-run matching. Returns null outside a browser.
+var replayKey = function(includeQueryAndHash) {
+    var key = currentPageKey();
+    if (key === null || !includeQueryAndHash) {
+        return key;
+    }
+    var loc = window['location'];
+    return key + (loc.search || '') + (loc.hash || '');
 };
 
 /**
@@ -98,9 +106,12 @@ var VisualExperimentsManager = function(options) {
     this.revertVisualChangesFunc = options.revertVisualChangesFunc || NOOP_FUNC;
     this.onSettledFunc = options.onSettledFunc || NOOP_FUNC;
     this._settled = false;
-    // origin+pathname the set was last (re)applied for, so an SPA navigation that
+    // replayKey the set was last (re)applied for, so an SPA navigation that
     // does not change the matched page is a cheap no-op.
     this._lastReplayedPageKey = null;
+    // Whether the last applied set had a $mp.target rule, which makes the query
+    // string and hash part of the replay key.
+    this._replayKeyIncludesQueryAndHash = false;
     // experiment_ids whose delivered changes are withheld because an editor
     // session is authoring them; the live preview is the sole driver.
     this._suppressedExperiments = {};
@@ -193,7 +204,7 @@ VisualExperimentsManager.prototype.onReset = function() {
 // Re-run page-scoped replay against the already-delivered variants, without a
 // fetch. Deduped so navigating without changing the matched page is a no-op.
 VisualExperimentsManager.prototype.applyForCurrentPage = function() {
-    var key = currentPageKey();
+    var key = replayKey(this._replayKeyIncludesQueryAndHash);
     if (key !== null && key === this._lastReplayedPageKey) {
         return;
     }
@@ -264,8 +275,9 @@ VisualExperimentsManager.prototype._refresh = function() {
     this._applyForFlags((variants && variants.forEach) ? variants : EMPTY_VARIANTS);
 };
 
-// Aggregate $mp.visualChanges across every variant whose $mp.url matches the
-// current page, compose the editor preview, and apply them in a single call.
+// Aggregate $mp.visualChanges across every variant that matches the current
+// page ($mp.target, or $mp.url when there is no target), compose the editor
+// preview, and apply them in a single call.
 // Applying per-variant would let the engine's auto-revert wipe an earlier
 // variant's changes when a later one has its own set.
 VisualExperimentsManager.prototype._applyForFlags = function(flagsMap) {
@@ -277,6 +289,7 @@ VisualExperimentsManager.prototype._applyForFlags = function(flagsMap) {
     // [flagKey, variant] for variants on this page that carry no mutations: a
     // control arm (or an unedited variant) is exposed by reaching the page.
     var pageExposures = [];
+    var anyTarget = false;
     flagsMap.forEach(function(variant, flagKey) {
         if (variant && self._suppressedExperiments[variant['experiment_id']]) {
             return;
@@ -286,7 +299,10 @@ VisualExperimentsManager.prototype._applyForFlags = function(flagsMap) {
         if (!mp) {
             return;
         }
-        if (!urlMatchesCurrentPage(mp['url'])) {
+        if (mp['target'] !== undefined && mp['target'] !== null) {
+            anyTarget = true;
+        }
+        if (!variantMatchesCurrentPage(mp)) {
             return;
         }
         var visualChanges = mp['visualChanges'];
@@ -349,7 +365,8 @@ VisualExperimentsManager.prototype._applyForFlags = function(flagsMap) {
     for (var k = 0; k < pageExposures.length; k++) {
         report(pageExposures[k]);
     }
-    this._lastReplayedPageKey = currentPageKey();
+    this._replayKeyIncludesQueryAndHash = anyTarget;
+    this._lastReplayedPageKey = replayKey(anyTarget);
     this.onDeliverySettled();
 };
 

@@ -6,7 +6,8 @@
  * header and body recording more restrictive by requiring an allowlist instead of content type / blocklist.
  *
  */
-import { urlMatchesRegexList, console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
+import { console_with_prefix, _ } from '../utils'; // eslint-disable-line camelcase
+import { urlMatchesRegexList } from '../url-matching';
 
 var logger = console_with_prefix('network-plugin');
 

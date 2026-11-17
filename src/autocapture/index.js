@@ -1,4 +1,5 @@
-import { _, document, EV_MP_LOCATION_CHANGE, safewrap, safewrapClass, urlMatchesRegexList } from '../utils';
+import { _, document, EV_MP_LOCATION_CHANGE, safewrap, safewrapClass } from '../utils';
+import { urlMatchesRegexList } from '../url-matching';
 import { window } from '../window';
 import {
     getPolyfillScrollEndFunction, getPropsForDOMEvent, logger, minDOMApisSupported,
