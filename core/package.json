@@ -1,0 +1,8 @@
+{
+  "name": "mixpanel-browser/core",
+  "private": true,
+  "description": "Core Mixpanel SDK without the bundled session recorder or targeting modules",
+  "main": "../dist/mixpanel-core.cjs.js",
+  "module": "../dist/mixpanel-core.module.js",
+  "types": "../dist/mixpanel-core.module.d.ts"
+}

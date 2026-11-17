@@ -392,6 +392,11 @@ const ALL_BUILDS = [
         name: `mixpanel`,
         format: `cjs`,
       },
+      {
+        file: `build/mixpanel-core.module.js`,
+        name: `mixpanel`,
+        format: `es`,
+      },
     ],
     plugins: [
       aliasRrweb(),
@@ -416,6 +421,11 @@ const ALL_BUILDS = [
         file: `build/mixpanel-with-async-recorder.cjs.js`,
         name: `mixpanel`,
         format: `cjs`,
+      },
+      {
+        file: `build/mixpanel-with-async-modules.module.js`,
+        name: `mixpanel`,
+        format: `es`,
       },
     ],
     plugins: [

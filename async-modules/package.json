@@ -1,0 +1,8 @@
+{
+  "name": "mixpanel-browser/async-modules",
+  "private": true,
+  "description": "Core Mixpanel SDK that loads the session recorder and targeting modules from the CDN when they are needed",
+  "main": "../dist/mixpanel-with-async-modules.cjs.js",
+  "module": "../dist/mixpanel-with-async-modules.module.js",
+  "types": "../dist/mixpanel-with-async-modules.module.d.ts"
+}
