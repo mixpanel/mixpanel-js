@@ -237,6 +237,8 @@ describe(`_.isBlockedUA`, function() {
     `Mozilla/5.0 (compatible;PetalBot;+http://aspiegel.com/petalbot)`,
     `Mozilla/5.0(Linux;Android7.0;) AppleWebKit/537.36(KHTML,likeGecko) MobileSafari/537.36(compatible;PetalBot;+http://aspiegel.com/petalbot)`,
     `Mozilla/5.0 (compatible; Pinterestbot/1.0; +http://www.pinterest.com/bot.html)`,
+    `Pinterestbot/1.0`,
+    `Pinterest/0.2 (+https://www.pinterest.com/bot.html)`,
     `APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)`,
     `Mediapartners-Google`,
     `Mozilla/5.0 (Linux; Android 5.0; SM-G920A) AppleWebKit (KHTML, like Gecko) Chrome Mobile Safari (compatible; AdsBot-Google-Mobile; +http://www.google.com/mobile/adsbot.html)`,
@@ -253,6 +255,16 @@ describe(`_.isBlockedUA`, function() {
   ].forEach((ua) => {
     it(`should block bot user agent: ${ua}`, () => {
       expect(_.isBlockedUA(ua)).to.be.true;
+    });
+  });
+
+  [
+    `Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Pinterest/iOS`,
+    `Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 [Pinterest/Android]`,
+    `Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/15E148 Safari/604.1`,
+  ].forEach((ua) => {
+    it(`should allow browser user agent: ${ua}`, () => {
+      expect(_.isBlockedUA(ua)).to.be.false;
     });
   });
 });

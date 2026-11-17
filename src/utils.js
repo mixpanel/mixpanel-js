@@ -871,7 +871,9 @@ var BLOCKED_UA_STRS = [
     'chrome-lighthouse',
     'facebookexternal',
     'petalbot',
-    'pinterest',
+    // The Pinterest app also includes Pinterest in its browser user agent.
+    'pinterestbot',
+    'pinterest.com/bot.html',
     'screaming frog',
     'yahoo! slurp',
     'yandex',
