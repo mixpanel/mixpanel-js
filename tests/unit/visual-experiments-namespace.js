@@ -392,7 +392,7 @@ describe(`Visual experiments mixpanel.experiments namespace`, function () {
       expect(trackSpy.getCalls().some(call => call.args[1][`Experiment name`] === `headline`)).to.be.false;
     });
 
-    it(`restarts the same experiment on a different page without carrying previews between pages`, function () {
+    it(`restarts the same experiment outside its target without carrying the old preview`, function () {
       mixpanel.experiments.startEditorSession(`exp-a`);
       mixpanel.experiments.applyVisualChanges(preview);
       const fetchCount = fetchStub.callCount;
@@ -414,8 +414,10 @@ describe(`Visual experiments mixpanel.experiments namespace`, function () {
       expect(document.querySelector(`h1`).textContent).to.equal(`Other page preview`);
       expect(document.querySelector(`aside`).textContent).to.equal(`Other page`);
 
+      // The preview also follows the experiment's own target, /pricing.
       global.window.history.pushState({}, ``, `/pricing`);
-      expect(document.querySelector(`h1`).textContent).to.equal(`Original headline`);
+      expect(document.querySelector(`h1`).textContent).to.equal(`Other page preview`);
+      expect(document.querySelector(`aside`).textContent).to.equal(`Original sidebar`);
       global.window.history.pushState({}, ``, `/other`);
       expect(document.querySelector(`h1`).textContent).to.equal(`Other page preview`);
       expect(fetchStub.callCount).to.equal(fetchCount);

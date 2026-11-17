@@ -101,6 +101,47 @@ var VisualChangeEngine = function() {
     this._observerStartPending = false;
 };
 
+// Each undo entry records the element it restores, so entries for elements the
+// page has since removed can be dropped without reverting the live ones.
+VisualChangeEngine.prototype._pushUndo = function(el, undo) {
+    this._undoStack.push({ el: el, undo: undo });
+};
+
+var isAttached = function(el) {
+    if (typeof el.isConnected === 'boolean') {
+        return el.isConnected;
+    }
+    return window['document'].documentElement.contains(el);
+};
+
+// Restore and drop undo entries for detached elements. Their closures hold the
+// old nodes (and, for setText, their original children), so on a page that
+// keeps replacing matched elements they would otherwise accumulate until the
+// next full apply or revert. A detached element can still come back: another
+// entry's setText undo re-attaches the children it saved, and the page may
+// re-insert a node it removed. Running the undo before dropping it means such a
+// node returns in its original state, and forgetting it in the applied sets
+// means a re-inserted node is applied (and its undo recorded) afresh.
+VisualChangeEngine.prototype._pruneDetachedUndo = function() {
+    var kept = [];
+    for (var i = this._undoStack.length - 1; i >= 0; i--) {
+        var entry = this._undoStack[i];
+        if (isAttached(entry.el)) {
+            kept.push(entry);
+            continue;
+        }
+        try {
+            entry.undo();
+        } catch (err) {
+            logger.error('Revert failed', err);
+        }
+        for (var j = 0; j < this._appliedSets.length; j++) {
+            this._appliedSets[j]['delete'](entry.el);
+        }
+    }
+    this._undoStack = kept.reverse();
+};
+
 // firstApply=false is a re-apply onto a node whose value a re-render clobbered:
 // re-write only when diverged and never record undo (the baseline was captured
 // on first apply). Returns true when a class or attribute was written, since
@@ -123,7 +164,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         var hadAttr = el.hasAttribute(attr);
         var prev = hadAttr ? el.getAttribute(attr) : null;
         el.setAttribute(attr, mutation['value']);
-        this._undoStack.push(function() {
+        this._pushUndo(el, function() {
             if (hadAttr) {
                 el.setAttribute(attr, prev);
             } else {
@@ -149,9 +190,15 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
             prevChildren.push(child);
         }
         el.textContent = mutation['value'];
-        this._undoStack.push(function() {
+        // A saved child the page has since moved elsewhere in the live document
+        // stays where the page put it, both on revert and when pruning a
+        // detached element.
+        this._pushUndo(el, function() {
             el.textContent = '';
             for (var i = 0; i < prevChildren.length; i++) {
+                if (isAttached(prevChildren[i])) {
+                    continue;
+                }
                 el.appendChild(prevChildren[i]);
             }
         });
@@ -180,7 +227,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         var prevValue = el.style.getPropertyValue(prop);
         var prevPriority = el.style.getPropertyPriority(prop);
         el.style.setProperty(prop, mutation['value']);
-        this._undoStack.push(function() {
+        this._pushUndo(el, function() {
             if (prevValue) {
                 el.style.setProperty(prop, prevValue, prevPriority);
             } else {
@@ -206,7 +253,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         }
         // add/remove above is idempotent (contains-guarded); only record undo once.
         if (firstApply) {
-            this._undoStack.push(function() {
+            this._pushUndo(el, function() {
                 for (var i = 0; i < added.length; i++) {
                     el.classList.remove(added[i]);
                 }
@@ -383,6 +430,7 @@ VisualChangeEngine.prototype._reapplyDirty = function() {
     }
     this._pauseObserver();
     try {
+        this._pruneDetachedUndo();
         this._applyAll();
     } finally {
         this._startObserverIfNeeded();
@@ -426,9 +474,9 @@ VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApp
 
 VisualChangeEngine.prototype._revertInternal = function() {
     while (this._undoStack.length) {
-        var undoFn = this._undoStack.pop();
+        var entry = this._undoStack.pop();
         try {
-            undoFn();
+            entry.undo();
         } catch (err) {
             logger.error('Revert failed', err);
         }

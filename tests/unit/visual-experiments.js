@@ -48,6 +48,7 @@ const engineApplyingEverything = () => sinon.spy((mutations, onFirstApply) => {
 
 describe(`VisualExperimentsManager`, function () {
   let VisualExperimentsManager;
+  let VisualChangeEngine;
   let manager;
   let config;
   let delivered;
@@ -91,6 +92,7 @@ describe(`VisualExperimentsManager`, function () {
       `../../src/visual-experiments/index`,
     ],
     beforeCallback: (modules) => {
+      VisualChangeEngine = modules[2].VisualChangeEngine;
       VisualExperimentsManager = modules[5].VisualExperimentsManager;
       config = { visual_experiments: true };
       delivered = new Map();
@@ -563,6 +565,219 @@ describe(`VisualExperimentsManager`, function () {
     });
   });
 
+  describe(`navigation re-targeting (matched-set dedup)`, function () {
+    const itemTarget = patternTarget(`http://localhost/item/*`);
+
+    it(`re-evaluates a query-only navigation`, function () {
+      delivered = variants({
+        a: targetedTreatment(`exp1`, patternTarget(`http://localhost/pricing`, { query: { params: [{ key: `plan`, value: `pro` }] } })),
+      });
+      navigate(`/pricing?plan=free`);
+      manager.applyForCurrentPage();
+      expect(apply).to.not.have.been.called;
+
+      navigate(`/pricing?plan=pro`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/pricing?plan=free`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledTwice;
+    });
+
+    it(`re-evaluates a hash-only navigation`, function () {
+      delivered = variants({
+        a: targetedTreatment(`exp1`, patternTarget(`http://localhost/pricing`, { hash: { route: `/annual`, params: null } })),
+      });
+      navigate(`/pricing#/annual`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/pricing#/monthly`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledOnce;
+    });
+
+    it(`keeps the matched set of a navigation made from an exposure hook`, function () {
+      const controlPage = `http://localhost/home`;
+      const treatmentPage = `http://localhost/item/1`;
+      manager = build({
+        trackExposureFunc: sinon.spy((flagKey) => {
+          if (flagKey === `a`) {
+            navigate(`/item/1`);
+            manager.applyForCurrentPage();
+          }
+        }),
+      });
+      delivered = variants({
+        a: control(`exp1`, controlPage),
+        b: treatment(`exp2`, changes, treatmentPage),
+      });
+      navigate(`/home`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/home`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledTwice;
+    });
+
+    it(`does not revert and reapply on a path change under the same pattern`, function () {
+      delivered = variants({ a: targetedTreatment(`exp1`, itemTarget) });
+      navigate(`/item/123`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnce;
+
+      navigate(`/item/456`);
+      manager.applyForCurrentPage();
+      navigate(`/item/456?ref=home#reviews`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnce;
+      expect(revert).to.not.have.been.called;
+    });
+
+    it(`releases replaced elements while navigating under the same pattern with the real engine`, async function () {
+      const frames = [];
+      global.window.requestAnimationFrame = callback => frames.push(callback);
+      const engine = new VisualChangeEngine();
+      apply = sinon.spy((mutations, onFirstApply) => engine.applyVisualChanges(mutations, onFirstApply));
+      manager = build({ revertVisualChangesFunc: () => engine.revertVisualChanges() });
+      delivered = variants({ a: targetedTreatment(`exp1`, itemTarget) });
+
+      document.body.innerHTML = `<button class="cta">Item 0</button>`;
+      navigate(`/item/0`);
+      manager.applyForCurrentPage();
+      const undoDepthPerPage = engine._undoStack.length;
+      expect(undoDepthPerPage).to.equal(changes.length);
+
+      for (let page = 1; page <= 5; page++) {
+        navigate(`/item/${page}`);
+        manager.applyForCurrentPage();
+        document.body.innerHTML = `<button class="cta">Item ${page}</button>`;
+        await Promise.resolve();
+        while (frames.length) {
+          frames.shift()();
+        }
+        const button = document.querySelector(`.cta`);
+        expect(button.getAttribute(`data-variant`)).to.equal(`B`);
+        expect(button.style.color).to.equal(`red`);
+        expect(engine._undoStack.length).to.equal(undoDepthPerPage);
+      }
+      expect(apply).to.have.been.calledOnce;
+
+      engine.revertVisualChanges();
+      const button = document.querySelector(`.cta`);
+      expect(button.hasAttribute(`data-variant`)).to.be.false;
+      expect(button.style.color).to.equal(``);
+    });
+
+    it(`restores a child that a parent's setText detached when reverting with the real engine`, async function () {
+      const frames = [];
+      global.window.requestAnimationFrame = callback => frames.push(callback);
+      const engine = new VisualChangeEngine();
+      document.body.innerHTML = `<div class="card"><span class="badge">New</span></div>`;
+      const badge = document.querySelector(`.badge`);
+
+      engine.applyVisualChanges([
+        { type: `setStyle`, selector: `.badge`, property: `color`, value: `red` },
+        { type: `setText`, selector: `.card`, value: `Replaced` },
+      ]);
+      expect(badge.isConnected).to.be.false;
+
+      document.body.appendChild(document.createElement(`p`));
+      await Promise.resolve();
+      while (frames.length) {
+        frames.shift()();
+      }
+
+      engine.revertVisualChanges();
+      const restoredBadge = document.querySelector(`.card .badge`);
+      expect(restoredBadge).to.equal(badge);
+      expect(restoredBadge.textContent).to.equal(`New`);
+      expect(restoredBadge.style.color).to.equal(``);
+    });
+
+    it(`leaves a child the page moved into the live document in place when its setText parent is removed`, async function () {
+      const frames = [];
+      global.window.requestAnimationFrame = callback => frames.push(callback);
+      const engine = new VisualChangeEngine();
+      document.body.innerHTML = `<div class="card"><span class="badge">New</span></div><div class="shelf"></div>`;
+      const card = document.querySelector(`.card`);
+      const badge = document.querySelector(`.badge`);
+      const shelf = document.querySelector(`.shelf`);
+
+      engine.applyVisualChanges([{ type: `setText`, selector: `.card`, value: `Replaced` }]);
+      shelf.appendChild(badge);
+      card.remove();
+      await Promise.resolve();
+      while (frames.length) {
+        frames.shift()();
+      }
+
+      expect(badge.parentNode).to.equal(shelf);
+      expect(engine._undoStack.length).to.equal(0);
+    });
+
+    it(`leaves a child the page moved elsewhere in place when reverting setText`, function () {
+      const engine = new VisualChangeEngine();
+      document.body.innerHTML = `<div class="card"><span class="badge">New</span><em class="note">Hi</em></div><div class="shelf"></div>`;
+      const card = document.querySelector(`.card`);
+      const badge = document.querySelector(`.badge`);
+      const note = document.querySelector(`.note`);
+      const shelf = document.querySelector(`.shelf`);
+
+      engine.applyVisualChanges([{ type: `setText`, selector: `.card`, value: `Replaced` }]);
+      shelf.appendChild(badge);
+      engine.revertVisualChanges();
+
+      expect(badge.parentNode).to.equal(shelf);
+      expect(note.parentNode).to.equal(card);
+      expect(card.textContent).to.equal(`Hi`);
+    });
+
+    it(`reapplies when a navigation changes the matched set`, function () {
+      delivered = variants({
+        a: targetedTreatment(`exp1`, itemTarget),
+        b: treatment(`exp2`, otherChanges, `http://localhost/item/456`),
+      });
+      navigate(`/item/123`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/item/456`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledTwice;
+      expect(apply.lastCall.args[0]).to.deep.equal(changes.concat(otherChanges));
+
+      navigate(`/item/789`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledThrice;
+      expect(apply.lastCall.args[0]).to.deep.equal(changes);
+    });
+
+    it(`reapplies when the same flag is delivered with a different variant`, function () {
+      delivered = variants({ a: targetedTreatment(`exp1`, itemTarget) });
+      navigate(`/item/123`);
+      manager.applyForCurrentPage();
+
+      delivered = variants({ a: Object.assign(targetedTreatment(`exp1`, itemTarget), { key: `C` }) });
+      navigate(`/item/456`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledTwice;
+    });
+
+    it(`keeps the no-target fallback scoped by origin and pathname`, function () {
+      delivered = variants({ a: treatment(`exp1`) });
+      navigate(`/pricing?campaign=test#details`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnce;
+
+      navigate(`/item/123`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledOnce;
+    });
+  });
+
   describe(`editor sessions`, function () {
     beforeEach(function () {
       delivered = variants({ a: treatment(`exp-a`), b: treatment(`exp-b`, otherChanges) });
@@ -628,7 +843,7 @@ describe(`VisualExperimentsManager`, function () {
       expect(revert).to.have.been.called;
     });
 
-    it(`scopes the preview to the page where it was authored`, function () {
+    it(`scopes the preview by the edited experiment's $mp.url when it has no target`, function () {
       manager._startEditorSession(`exp-a`);
       manager._applyEditorPreview(preview);
 
@@ -661,6 +876,94 @@ describe(`VisualExperimentsManager`, function () {
       manager._startEditorSession(`exp-a`);
       expect(manager._editorPreview).to.equal(null);
       expect(manager._editorSession.pageKey).to.equal(`http://localhost/other`);
+    });
+
+    describe(`preview following the edited experiment's target`, function () {
+      beforeEach(function () {
+        delivered = variants({
+          a: targetedTreatment(`exp-a`, patternTarget(`http://localhost/item/*`)),
+          b: treatment(`exp-b`, otherChanges),
+        });
+        navigate(`/item/1`);
+        manager.applyForCurrentPage();
+        apply.resetHistory();
+        revert.resetHistory();
+      });
+
+      it(`applies on any matching page and reverts on a non-matching one`, function () {
+        manager._startEditorSession(`exp-a`);
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+
+        navigate(`/item/2?tab=specs`);
+        manager.applyForCurrentPage();
+        expect(apply).to.have.been.calledOnce;
+        expect(revert).to.have.been.calledOnce;
+
+        navigate(`/other`);
+        manager.applyForCurrentPage();
+        expect(revert).to.have.been.calledTwice;
+
+        navigate(`/item/3`);
+        manager.applyForCurrentPage();
+        expect(apply).to.have.been.calledTwice;
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+      });
+
+      it(`applies a preview sent after navigating away from where the session started`, function () {
+        manager._startEditorSession(`exp-a`);
+        navigate(`/item/2`);
+        manager.applyForCurrentPage();
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+      });
+
+      it(`also applies on the authoring page when it is outside the target`, function () {
+        navigate(`/pricing`);
+        manager._startEditorSession(`exp-a`);
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(otherChanges.concat(preview));
+
+        navigate(`/item/2`);
+        manager.applyForCurrentPage();
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+
+        navigate(`/other`);
+        manager.applyForCurrentPage();
+        expect(revert).to.have.been.calledOnce;
+      });
+
+      it(`does not apply a preview sent on a page outside the target`, function () {
+        manager._startEditorSession(`exp-a`);
+        navigate(`/pricing`);
+        manager.applyForCurrentPage();
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(otherChanges);
+      });
+
+      it(`keeps the preview when the same session restarts on another matching page`, function () {
+        manager._startEditorSession(`exp-a`);
+        manager._applyEditorPreview(preview);
+
+        navigate(`/item/2`);
+        manager._startEditorSession(`exp-a`);
+        expect(manager._editorPreview.mutations).to.deep.equal(preview);
+      });
+
+      it(`applies only on the authored page when the edited experiment is not delivered`, function () {
+        delivered = variants({ b: treatment(`exp-b`, otherChanges) });
+        manager._startEditorSession(`exp-a`);
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+
+        navigate(`/item/2`);
+        manager.applyForCurrentPage();
+        expect(revert).to.have.been.calledTwice;
+
+        navigate(`/item/1`);
+        manager.applyForCurrentPage();
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+      });
     });
 
     it(`switching experiments releases the previous one and withholds the new one`, function () {
