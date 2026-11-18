@@ -157,14 +157,14 @@ FeatureFlagManager.prototype.reset = function() {
     this.trackedFeatures = new Set();
     this.trackedVisualExposures = new Set();
     this.visualExperiments.onReset();
-    this.fetchPromise = null;
     this._fetchInProgressStartTime = null;
     this._loadedPersistedAtMs = null;
     this._loadedTtlMs = null;
 
-    return this.persistence.clear().then(_.bind(function() {
+    this.fetchPromise = this.persistence.clear().then(_.bind(function() {
         return this.fetchFlags();
-    }, this)).catch(function() {
+    }, this));
+    return this.fetchPromise.catch(function() {
         logger.error('Error during flags reset');
     });
 };

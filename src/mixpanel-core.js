@@ -1970,11 +1970,9 @@ MixpanelLib.prototype.identify = function(
         }, {skip_hooks: true});
     }
 
-    // check feature flags again if distinct id has changed
+    // reset feature flags if distinct id has changed
     if (new_distinct_id !== previous_distinct_id) {
-        this.flags.fetchFlags().catch(function() {
-            console.error('[flags] Error fetching flags during identify');
-        });
+        this.flags.reset();
     }
 };
 
