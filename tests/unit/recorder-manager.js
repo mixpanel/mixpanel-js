@@ -308,6 +308,50 @@ describe(`RecorderManager`, function() {
       });
     });
 
+    describe(`stop while the recorder bundle loads`, function() {
+      let bundleCallbacks;
+      let resumeRecording;
+
+      beforeEach(function() {
+        bundleCallbacks = [];
+        resumeRecording = sinon.stub();
+        loadExtraBundleStub.callsFake((_src, callback) => {
+          bundleCallbacks.push(callback);
+        });
+      });
+
+      function finishBundleLoad(index) {
+        window[RECORDER_GLOBAL_NAME] = sinon.stub().returns({ 'resumeRecording': resumeRecording });
+        bundleCallbacks[index]();
+      }
+
+      it(`does not start a recording stopped before the bundle loaded`, async function() {
+        const manager = createManagerWithOpts({ libBasePath: `/base/` });
+
+        const started = manager.checkAndStartSessionRecording(true);
+        manager.stopSessionRecording();
+        finishBundleLoad(0);
+        await started;
+
+        expect(resumeRecording.called).to.be.false;
+        expect(manager.getRecorder()).to.be.null;
+      });
+
+      it(`starts a recording requested again after the stop`, async function() {
+        const manager = createManagerWithOpts({ libBasePath: `/base/` });
+
+        const first = manager.checkAndStartSessionRecording(true);
+        manager.stopSessionRecording();
+        const second = manager.checkAndStartSessionRecording(true);
+        finishBundleLoad(0);
+        bundleCallbacks[1]();
+        await Promise.all([first, second]);
+
+        expect(resumeRecording.calledOnce).to.be.true;
+        expect(resumeRecording.firstCall.args[0]).to.be.true;
+      });
+    });
+
     describe(`recorderSrc`, function() {
       it(`should use recorderSrc when provided`, async function() {
         const manager = createManagerWithOpts({

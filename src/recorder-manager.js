@@ -40,6 +40,7 @@ var RecorderManager = function(initOptions) {
     this.libBasePath = initOptions.libBasePath;
 
     this._recorder = null;
+    this._stopCount = 0;
     this._parentReplayId = null;
     this._parentFrameRetryInterval = null;
 };
@@ -87,10 +88,11 @@ RecorderManager.prototype.checkAndStartSessionRecording = function(force_start, 
     }
 
     var loadRecorder = _.bind(function(startNewIfInactive) {
+        var stopCount = this._stopCount;
         return new Promise(_.bind(function(resolve) {
             var handleLoadedRecorder = safewrap(_.bind(function() {
-                // consent can be withdrawn while the bundle loads
-                if (!this.consentGate.allowsStoring()) {
+                // consent can be withdrawn, or the recording stopped, while the bundle loads
+                if (!this.consentGate.allowsStoring() || this._stopCount !== stopCount) {
                     resolve();
                     return;
                 }
@@ -195,6 +197,7 @@ RecorderManager.prototype.startRecordingOnEvent = function(event_name, propertie
 };
 
 RecorderManager.prototype.stopSessionRecording = function() {
+    this._stopCount++;
     if (this._recorder) {
         return this._recorder['stopRecording']();
     }
