@@ -797,6 +797,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature, 
     if (isPresent(feature['ttl_in_ms'])) {
         trackingProperties['$ttl_in_ms'] = feature['ttl_in_ms'];
     }
+    // Set by the visual-experiments module on visual exposures only.
+    if (isPresent(feature['matched_url'])) {
+        trackingProperties['$matched_url'] = feature['matched_url'];
+    }
 
     this.track('$experiment_started', trackingProperties);
 };

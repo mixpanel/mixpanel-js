@@ -87,14 +87,6 @@ var VisualChangeEngine = function() {
     // Parallel to _currentMutations: a WeakSet of elements already mutated for
     // each mutation, so re-application only touches new/re-rendered nodes.
     this._appliedSets = [];
-    // Optional per-set callback, invoked once per mutation index the first time
-    // that mutation actually changes an element (possibly later, via the
-    // observer). _firstApplyReported is parallel to _currentMutations. Reports are
-    // queued in _pendingFirstApply and delivered only after the apply pass ends,
-    // so the callback never runs while the engine is mid-mutation.
-    this._onFirstApply = null;
-    this._firstApplyReported = [];
-    this._pendingFirstApply = [];
     this._observer = null;
     this._reapplyScheduled = false;
     // True while a body-not-yet-parsed observer-start retry is queued (at most one).
@@ -299,18 +291,12 @@ VisualChangeEngine.prototype._applyOne = function(index) {
             applied.add(el);
             passAgain = true;
         }
-        // A first apply that changed the element records an undo entry; skipped
-        // (unsafe/unsupported) mutations do not.
-        var undoDepth = this._undoStack.length;
         try {
             if (this._applyOneToElement(mutation, el, firstApply)) {
                 passAgain = true;
             }
         } catch (err) {
             logger.error('Mutation failed for selector ' + mutation['selector'], err);
-        }
-        if (firstApply && this._undoStack.length > undoDepth) {
-            this._queueFirstApply(index);
         }
     }
     return passAgain;
@@ -326,34 +312,6 @@ VisualChangeEngine.prototype._applyAll = function() {
         }
         if (!passAgain) {
             return;
-        }
-    }
-};
-
-VisualChangeEngine.prototype._queueFirstApply = function(index) {
-    if (!this._onFirstApply || this._firstApplyReported[index]) {
-        return;
-    }
-    this._firstApplyReported[index] = true;
-    this._pendingFirstApply.push(index);
-};
-
-// Deliver queued first-apply reports. Runs after an apply pass completes; the
-// callback (exposure tracking, and anything a before_track hook does) may
-// revert or replace the set, in which case the remaining reports are stale and
-// dropped.
-VisualChangeEngine.prototype._flushFirstApply = function() {
-    var callback = this._onFirstApply;
-    var pending = this._pendingFirstApply;
-    this._pendingFirstApply = [];
-    for (var i = 0; i < pending.length; i++) {
-        if (this._onFirstApply !== callback) {
-            return;
-        }
-        try {
-            callback(pending[i]);
-        } catch (err) {
-            logger.error('Visual changes onFirstApply callback failed', err);
         }
     }
 };
@@ -435,7 +393,6 @@ VisualChangeEngine.prototype._reapplyDirty = function() {
     } finally {
         this._startObserverIfNeeded();
     }
-    this._flushFirstApply();
 };
 
 /**
@@ -443,12 +400,8 @@ VisualChangeEngine.prototype._reapplyDirty = function() {
  * prior set: reverts the previous undo stack first, then applies the new list.
  * Safe to call repeatedly; bad selectors are logged and skipped, never thrown.
  * @param {Array<Object>} mutations
- * @param {function(number)} [onFirstApply] called once per mutation index the
- *   first time that mutation changes an element, including later re-applies
- *   triggered by the observer. Not called for mutations that never apply.
- *   Invoked after the apply pass completes, never mid-mutation.
  */
-VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApply) {
+VisualChangeEngine.prototype.applyVisualChanges = function(mutations) {
     if (!minApisSupported() || !mutations || !mutations.length) {
         return;
     }
@@ -458,9 +411,6 @@ VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApp
             this._revertInternal();
         }
         this._currentMutations = mutations.slice();
-        this._onFirstApply = onFirstApply || null;
-        this._firstApplyReported = [];
-        this._pendingFirstApply = [];
         this._appliedSets = [];
         for (var i = 0; i < this._currentMutations.length; i++) {
             this._appliedSets.push(makeTracker());
@@ -469,7 +419,6 @@ VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApp
     } finally {
         this._startObserverIfNeeded();
     }
-    this._flushFirstApply();
 };
 
 VisualChangeEngine.prototype._revertInternal = function() {
@@ -495,9 +444,6 @@ VisualChangeEngine.prototype.revertVisualChanges = function() {
     try {
         this._revertInternal();
         this._currentMutations = [];
-        this._onFirstApply = null;
-        this._firstApplyReported = [];
-        this._pendingFirstApply = [];
     } finally {
         this._stopObserverIfIdle();
         this._startObserverIfNeeded();

@@ -25,7 +25,13 @@ const control = (experimentId, url = PAGE_URL) => ({
   experiment_id: experimentId,
   value: { $mp: { url, visualChanges: [] } },
 });
+// Both arms of one flag carry the same cross-variant $mp.exposureSelectors.
+const withSelectors = (variant, exposureSelectors) => Object.assign({}, variant, {
+  value: { $mp: Object.assign({}, variant.value.$mp, { exposureSelectors }) },
+});
 const variants = (entries) => new Map(Object.entries(entries));
+// The variant as reported: a copy carrying the page url it matched on.
+const reportedVariant = (variant, matchedUrl = PAGE_URL) => Object.assign({}, variant, { matched_url: matchedUrl });
 
 const IGNORED_PARAM_KEYS = [`mp_preview_token`, `utm_*`, `gclid`, `fbclid`, `msclkid`];
 const patternTarget = (value, overrides = {}) => Object.assign({
@@ -39,11 +45,6 @@ const targetedTreatment = (experimentId, target, url = PAGE_URL) => ({
   key: `B`,
   experiment_id: experimentId,
   value: { $mp: { url, target, visualChanges: changes } },
-});
-
-// Stand-in for the engine: reports every mutation as applied.
-const engineApplyingEverything = () => sinon.spy((mutations, onFirstApply) => {
-  mutations.forEach((mutation, index) => onFirstApply(index));
 });
 
 describe(`VisualExperimentsManager`, function () {
@@ -89,11 +90,12 @@ describe(`VisualExperimentsManager`, function () {
       `../../src/visual-experiments/engine`,
       `../../src/visual-experiments/anti-flicker`,
       `../../src/url-matching`,
+      `../../src/visual-experiments/exposure-watcher`,
       `../../src/visual-experiments/index`,
     ],
     beforeCallback: (modules) => {
       VisualChangeEngine = modules[2].VisualChangeEngine;
-      VisualExperimentsManager = modules[5].VisualExperimentsManager;
+      VisualExperimentsManager = modules[6].VisualExperimentsManager;
       config = { visual_experiments: true };
       delivered = new Map();
       apply = sinon.spy();
@@ -158,8 +160,6 @@ describe(`VisualExperimentsManager`, function () {
       });
 
       it(`does not report an oversized variant`, function () {
-        apply = engineApplyingEverything();
-        manager = build();
         manager.onFlagsDelivered(variants({ a: treatment(`exp1`, huge), b: treatment(`exp2`, otherChanges) }));
         expect(track).to.have.been.calledOnce;
         expect(track.firstCall.args[0]).to.equal(`b`);
@@ -269,42 +269,58 @@ describe(`VisualExperimentsManager`, function () {
   });
 
   describe(`exposure reporting`, function () {
-    beforeEach(function () {
-      apply = engineApplyingEverything();
-      manager = build();
-    });
+    // MutationObserver callbacks run as microtasks.
+    const flushObservers = () => new Promise((resolve) => setTimeout(resolve, 0));
+    const addElement = (className) => {
+      const el = global.document.createElement(`div`);
+      el.className = className;
+      global.document.body.appendChild(el);
+      return el;
+    };
+    const reportedKeys = () => track.getCalls().map((call) => call.args[0]);
 
-    it(`reports the flag key and variant once its changes apply`, function () {
+    it(`reports the flag key and variant without waiting for the engine`, function () {
       const variant = treatment(`exp1`);
       manager.onFlagsDelivered(variants({ a: variant }));
-      expect(track).to.have.been.calledOnceWith(`a`, variant);
+      expect(track).to.have.been.calledOnceWith(`a`, reportedVariant(variant));
     });
 
-    it(`does not report when the engine applies none of the changes`, function () {
-      manager = build({ applyVisualChangesFunc: sinon.spy() });
-      manager.onFlagsDelivered(variants({ a: treatment(`exp1`) }));
-      expect(track).to.not.have.been.called;
+    it(`reports the full matched page url, query string and hash included`, function () {
+      navigate(`/pricing?plan=pro#faq`);
+      manager.onFlagsDelivered(variants({ a: treatment(`exp1`), b: control(`exp2`) }));
+      const matchedUrls = track.getCalls().map((call) => call.args[1].matched_url);
+      expect(matchedUrls).to.deep.equal([`${PAGE_URL}?plan=pro#faq`, `${PAGE_URL}?plan=pro#faq`]);
     });
 
-    it(`reports when the engine applies a change after delivery`, function () {
-      let onFirstApply;
-      manager = build({ applyVisualChangesFunc: (mutations, callback) => { onFirstApply = callback; } });
-      manager.onFlagsDelivered(variants({ a: treatment(`exp1`) }));
-      expect(track).to.not.have.been.called;
+    it(`reports the url the target matched on when the selector appears later`, async function () {
+      navigate(`/pricing?plan=pro`);
+      delivered = variants({ a: withSelectors(control(`exp1`), [`.hero`]) });
+      manager.onFlagsDelivered(delivered);
+      // A query-only change leaves the matched set unchanged, so nothing re-applies.
+      navigate(`/pricing?plan=team`);
+      manager.applyForCurrentPage();
 
-      onFirstApply(1);
+      const el = global.document.createElement(`div`);
+      el.className = `hero`;
+      global.document.body.appendChild(el);
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(track).to.have.been.calledOnce;
-      expect(track.firstCall.args[0]).to.equal(`a`);
+      expect(track.firstCall.args[1].matched_url).to.equal(`${PAGE_URL}?plan=pro`);
     });
 
-    it(`reports only the variants whose changes applied`, function () {
-      // Mutations 0-1 belong to a, mutation 2 to b; only b's lands.
-      manager = build({ applyVisualChangesFunc: (mutations, onFirstApply) => onFirstApply(2) });
-      manager.onFlagsDelivered(variants({ a: treatment(`exp1`), b: treatment(`exp2`, otherChanges) }));
-      expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`b`]);
+    it(`redacts the preview token from the matched page url`, function () {
+      navigate(`/pricing?mp_preview_token=secret&plan=pro`);
+      manager.onFlagsDelivered(variants({ a: control(`exp1`) }));
+      expect(track.firstCall.args[1].matched_url).to.equal(`${PAGE_URL}?mp_preview_token=REDACTED&plan=pro`);
     });
 
-    it(`reports a variant once however many of its mutations apply`, function () {
+    it(`does not modify the delivered variant`, function () {
+      const variant = control(`exp1`);
+      manager.onFlagsDelivered(variants({ a: variant }));
+      expect(variant).to.not.have.property(`matched_url`);
+    });
+
+    it(`reports a treatment once however many of its mutations it carries`, function () {
       manager.onFlagsDelivered(variants({ a: treatment(`exp1`) }));
       expect(apply.firstCall.args[0]).to.have.length(2);
       expect(track).to.have.been.calledOnce;
@@ -312,7 +328,7 @@ describe(`VisualExperimentsManager`, function () {
 
     it(`reports a flag whose key is an inherited object property name`, function () {
       manager.onFlagsDelivered(variants({ constructor: treatment(`exp1`), toString: treatment(`exp2`, otherChanges) }));
-      expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`constructor`, `toString`]);
+      expect(reportedKeys()).to.deep.equal([`constructor`, `toString`]);
     });
 
     it(`does not report variants without visual changes`, function () {
@@ -346,7 +362,7 @@ describe(`VisualExperimentsManager`, function () {
         const variant = control(`exp1`);
         manager.onFlagsDelivered(variants({ a: variant }));
         expect(apply).to.not.have.been.called;
-        expect(track).to.have.been.calledOnceWith(`a`, variant);
+        expect(track).to.have.been.calledOnceWith(`a`, reportedVariant(variant));
       });
 
       it(`still settles`, function () {
@@ -366,7 +382,7 @@ describe(`VisualExperimentsManager`, function () {
 
       it(`reports alongside a treatment applied on the same page`, function () {
         manager.onFlagsDelivered(variants({ a: treatment(`exp1`), b: control(`exp2`) }));
-        expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`a`, `b`]);
+        expect(reportedKeys()).to.deep.equal([`a`, `b`]);
       });
 
       it(`does not report a suppressed control`, function () {
@@ -376,20 +392,213 @@ describe(`VisualExperimentsManager`, function () {
       });
     });
 
+    describe(`exposure selectors ($mp.exposureSelectors)`, function () {
+      const arms = {
+        treatment: (selectors) => withSelectors(treatment(`exp1`), selectors),
+        control: (selectors) => withSelectors(control(`exp1`), selectors),
+      };
+
+      Object.keys(arms).forEach((arm) => {
+        describe(`for the ${arm}`, function () {
+          it(`reports at once when a selector is present`, function () {
+            addElement(`hero`);
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.missing`, `.hero`]) }));
+            expect(reportedKeys()).to.deep.equal([`a`]);
+          });
+
+          it(`does not report while no selector is present`, async function () {
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.hero`]) }));
+            addElement(`unrelated`);
+            await flushObservers();
+            expect(track).to.not.have.been.called;
+            expect(settled).to.have.been.calledOnce;
+          });
+
+          it(`reports once a selector appears later`, async function () {
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.hero`]) }));
+            expect(track).to.not.have.been.called;
+
+            addElement(`hero`);
+            await flushObservers();
+            expect(reportedKeys()).to.deep.equal([`a`]);
+          });
+
+          it(`reports once an existing element starts matching a selector`, async function () {
+            const el = addElement(`plain`);
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.hero`]) }));
+            el.className = `hero`;
+            await flushObservers();
+            expect(reportedKeys()).to.deep.equal([`a`]);
+          });
+
+          it(`reports on page match when the selector list is empty`, function () {
+            manager.onFlagsDelivered(variants({ a: arms[arm]([]) }));
+            expect(reportedKeys()).to.deep.equal([`a`]);
+          });
+
+          it(`reports once however often the selector re-renders`, async function () {
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.hero`]) }));
+            addElement(`hero`);
+            await flushObservers();
+            addElement(`hero`);
+            await flushObservers();
+            expect(track).to.have.been.calledOnce;
+          });
+        });
+      });
+
+      it(`counts both arms on the same pages`, async function () {
+        // Two visitors' managers on the same page: one in each arm.
+        const controlTrack = sinon.spy();
+        const controlManager = build({ trackExposureFunc: controlTrack });
+        manager.onFlagsDelivered(variants({ a: arms.treatment([`.hero`]) }));
+        controlManager.onFlagsDelivered(variants({ a: arms.control([`.hero`]) }));
+        expect(track).to.not.have.been.called;
+        expect(controlTrack).to.not.have.been.called;
+
+        addElement(`hero`);
+        await flushObservers();
+        expect(track).to.have.been.calledOnce;
+        expect(controlTrack).to.have.been.calledOnce;
+      });
+
+      describe(`with the real engine`, function () {
+        const removeHero = [{ type: `setClasses`, selector: `.hero`, add: [`hero-b`], remove: [`hero`] }];
+        const nextFrame = () => new Promise((resolve) => global.window.requestAnimationFrame(() => resolve()));
+        const buildWithEngine = (trackExposureFunc) => {
+          const engine = new VisualChangeEngine();
+          return build({
+            trackExposureFunc,
+            applyVisualChangesFunc: (mutations) => engine.applyVisualChanges(mutations),
+            revertVisualChangesFunc: () => engine.revertVisualChanges(),
+          });
+        };
+        const engineArms = {
+          treatment: withSelectors(treatment(`exp1`, removeHero), [`.hero`]),
+          control: withSelectors(control(`exp1`), [`.hero`]),
+        };
+
+        Object.keys(engineArms).forEach((arm) => {
+          it(`reports the ${arm} when the treatment removes the selector's class from a present element`, function () {
+            const el = addElement(`hero`);
+            manager = buildWithEngine(track);
+            manager.onFlagsDelivered(variants({ a: engineArms[arm] }));
+            expect(reportedKeys()).to.deep.equal([`a`]);
+            expect(el.classList.contains(`hero`)).to.equal(arm === `control`);
+          });
+
+          it(`reports the ${arm} when the treatment removes the selector's class from a late element`, async function () {
+            manager = buildWithEngine(track);
+            manager.onFlagsDelivered(variants({ a: engineArms[arm] }));
+            expect(track).to.not.have.been.called;
+
+            const el = addElement(`hero`);
+            await flushObservers();
+            await nextFrame();
+            expect(reportedKeys()).to.deep.equal([`a`]);
+            expect(el.classList.contains(`hero`)).to.equal(arm === `control`);
+          });
+        });
+
+        it(`reports the treatment when the network re-delivers the treatment already applied from cache`, async function () {
+          const el = addElement(`hero`);
+          manager = buildWithEngine(track);
+          manager.onFlagsDelivered(variants({ a: engineArms.treatment }));
+          manager.onFlagsDelivered(variants({ a: engineArms.treatment }));
+          await flushObservers();
+          await nextFrame();
+          expect(reportedKeys()).to.deep.equal([`a`, `a`]);
+          expect(el.classList.contains(`hero`)).to.be.false;
+        });
+
+        it(`reports the control when it replaces a treatment that removed the selector's class`, async function () {
+          const el = addElement(`hero`);
+          manager = buildWithEngine(track);
+          manager.onFlagsDelivered(variants({ a: engineArms.treatment }));
+          manager.onFlagsDelivered(variants({ a: engineArms.control }));
+          await flushObservers();
+          await nextFrame();
+          expect(reportedKeys()).to.deep.equal([`a`, `a`]);
+          expect(track.secondCall.args[1].key).to.equal(`control`);
+          expect(el.classList.contains(`hero`)).to.be.true;
+        });
+      });
+
+      it(`waits per flag on that flag's own selectors`, async function () {
+        manager.onFlagsDelivered(variants({
+          a: withSelectors(treatment(`exp1`), [`.hero`]),
+          b: withSelectors(control(`exp2`), [`.footer`]),
+        }));
+        addElement(`footer`);
+        await flushObservers();
+        expect(reportedKeys()).to.deep.equal([`b`]);
+      });
+
+      it(`reports a variant whose selector a tracking hook inserts while reporting an earlier one`, async function () {
+        track = sinon.stub();
+        track.onFirstCall().callsFake(() => addElement(`footer`));
+        manager = build();
+        addElement(`hero`);
+        manager.onFlagsDelivered(variants({
+          a: withSelectors(treatment(`exp1`), [`.hero`]),
+          b: withSelectors(control(`exp2`), [`.footer`]),
+        }));
+        expect(reportedKeys()).to.deep.equal([`a`]);
+
+        await flushObservers();
+        expect(reportedKeys()).to.deep.equal([`a`, `b`]);
+      });
+
+      it(`ignores an invalid selector and still matches a valid one`, function () {
+        addElement(`hero`);
+        manager.onFlagsDelivered(variants({ a: arms.control([`[[invalid`, `.hero`]) }));
+        expect(reportedKeys()).to.deep.equal([`a`]);
+      });
+
+      it(`stops waiting after navigating to a page the variant does not match`, async function () {
+        delivered = variants({ a: arms.treatment([`.hero`]) });
+        manager.applyForCurrentPage();
+        navigate(`/home`);
+        manager.applyForCurrentPage();
+
+        addElement(`hero`);
+        await flushObservers();
+        expect(track).to.not.have.been.called;
+      });
+
+      it(`stops waiting when the set is replaced by one without the variant`, async function () {
+        manager.onFlagsDelivered(variants({ a: arms.treatment([`.hero`]) }));
+        manager.onFlagsDelivered(variants({}));
+
+        addElement(`hero`);
+        await flushObservers();
+        expect(track).to.not.have.been.called;
+      });
+
+      it(`does not report a variant twice when the same set is re-applied while waiting`, async function () {
+        const delivery = variants({ a: arms.treatment([`.hero`]) });
+        manager.onFlagsDelivered(delivery);
+        manager.onFlagsDelivered(delivery);
+
+        addElement(`hero`);
+        await flushObservers();
+        expect(track).to.have.been.calledOnce;
+      });
+    });
+
     describe(`after onReset`, function () {
-      it(`discards a late engine report from the previous set`, function () {
-        let staleOnFirstApply;
-        manager = build({ applyVisualChangesFunc: (mutations, callback) => { staleOnFirstApply = callback; } });
-        manager.onFlagsDelivered(variants({ a: treatment(`exp1`) }));
+      it(`discards an exposure still waiting on a selector from the previous set`, async function () {
+        manager.onFlagsDelivered(variants({ a: withSelectors(treatment(`exp1`), [`.hero`]) }));
         manager.onReset();
 
-        // A previously unmatched element renders after reset.
-        staleOnFirstApply(0);
+        // The selector renders after reset.
+        addElement(`hero`);
+        await flushObservers();
         expect(track).to.not.have.been.called;
       });
 
       [`treatment`, `control`].forEach((firstVariant) => {
-        it(`skips the remaining controls when reporting a ${firstVariant} resets the visitor`, function () {
+        it(`skips the remaining variants when reporting a ${firstVariant} resets the visitor`, function () {
           track = sinon.stub();
           track.onFirstCall().callsFake(() => manager.onReset());
           manager = build();
@@ -397,9 +606,22 @@ describe(`VisualExperimentsManager`, function () {
             first: firstVariant === `treatment` ? treatment(`exp1`) : control(`exp1`),
             pendingControl: control(`exp2`),
           }));
-          expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`first`]);
+          expect(reportedKeys()).to.deep.equal([`first`]);
           expect(settled).to.have.been.calledOnce;
         });
+      });
+
+      it(`skips the remaining selector-gated variants when reporting one resets the visitor`, async function () {
+        track = sinon.stub();
+        track.onFirstCall().callsFake(() => manager.onReset());
+        manager = build();
+        manager.onFlagsDelivered(variants({
+          first: withSelectors(treatment(`exp1`), [`.hero`]),
+          second: withSelectors(control(`exp2`), [`.hero`]),
+        }));
+        addElement(`hero`);
+        await flushObservers();
+        expect(reportedKeys()).to.deep.equal([`first`]);
       });
 
       it(`reports a newly delivered set`, function () {
@@ -557,6 +779,34 @@ describe(`VisualExperimentsManager`, function () {
       expect(track).to.have.been.calledOnce;
     });
 
+    it(`skips the remaining variants when reporting one navigates and re-applies`, function () {
+      track = sinon.stub();
+      track.onFirstCall().callsFake(() => {
+        navigate(`/home`);
+        manager.applyForCurrentPage();
+      });
+      manager = build();
+      delivered = variants({ first: treatment(`exp1`), second: treatment(`exp2`), third: control(`exp3`) });
+      manager.applyForCurrentPage();
+      expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`first`]);
+    });
+
+    it(`keeps the replay state of the set a reporting hook re-applied`, function () {
+      track = sinon.stub();
+      track.onFirstCall().callsFake(() => {
+        delivered = variants({});
+        navigate(`/home`);
+        manager.applyForCurrentPage();
+      });
+      manager = build();
+      delivered = variants({ first: targetedTreatment(`exp1`, patternTarget(`${PAGE_URL}`)) });
+      manager.applyForCurrentPage();
+      // The re-applied set carries no $mp.target, so a query-only change is a no-op.
+      navigate(`/home?tab=2`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledOnce;
+    });
+
     it(`treats missing variants as an empty delivery`, function () {
       manager = build({ getVariantsFunc: () => undefined });
       manager.applyForCurrentPage();
@@ -640,7 +890,7 @@ describe(`VisualExperimentsManager`, function () {
       const frames = [];
       global.window.requestAnimationFrame = callback => frames.push(callback);
       const engine = new VisualChangeEngine();
-      apply = sinon.spy((mutations, onFirstApply) => engine.applyVisualChanges(mutations, onFirstApply));
+      apply = sinon.spy((mutations) => engine.applyVisualChanges(mutations));
       manager = build({ revertVisualChangesFunc: () => engine.revertVisualChanges() });
       delivered = variants({ a: targetedTreatment(`exp1`, itemTarget) });
 
@@ -810,8 +1060,8 @@ describe(`VisualExperimentsManager`, function () {
 
     it(`never reports preview mutations as exposures`, function () {
       delivered = new Map();
-      apply = engineApplyingEverything();
       manager = build();
+      track.resetHistory();
       manager._startEditorSession(`exp-a`);
       manager._applyEditorPreview(preview);
       expect(track).to.not.have.been.called;
