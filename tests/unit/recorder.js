@@ -206,6 +206,15 @@ describe(`Recorder`, function() {
       expect(mockRrweb.recordStub.callCount).to.equal(1);
       expect(recorder.getActiveReplayId()).to.not.equal(`test-replay-id`);
     });
+
+    it(`does not start a new recording when stopped while it reads the registry`, async function () {
+      const resumed = recorder.resumeRecording(true);
+      await recorder.stopRecording();
+      await resumed;
+
+      expect(mockRrweb.recordStub.callCount).to.equal(0);
+      expect(recorder.isRecording()).to.not.be.ok;
+    });
   });
 
   describe(`scenarios with multiple recorders (tabs)`, function () {
