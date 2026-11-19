@@ -27,7 +27,7 @@ if (typeof(window) === 'undefined') {
 
 var Config = {
     DEBUG: false,
-    LIB_VERSION: '2.86.0'
+    LIB_VERSION: '2.87.0-rc1'
 };
 
 // Window global names for async modules
@@ -20814,17 +20814,6 @@ var isOnline = function() {
 
 var NOOP_FUNC = function () {};
 
-var urlMatchesRegexList = function (url, regexList) {
-    var matches = false;
-    for (var i = 0; i < regexList.length; i++) {
-        if (url.match(regexList[i])) {
-            matches = true;
-            break;
-        }
-    }
-    return matches;
-};
-
 var JSONStringify = null, JSONParse = null;
 if (typeof JSON !== 'undefined') {
     JSONStringify = JSON.stringify;
@@ -21029,7 +21018,7 @@ var RECORDER_VERSION_DATA = {
     storeNames: [RECORDING_EVENTS_STORE_NAME, RECORDING_REGISTRY_STORE_NAME]
 };
 
-var logger$c = console_with_prefix('lock');
+var logger$d = console_with_prefix('lock');
 
 /**
  * SharedLock: a mutex built on HTML5 localStorage, to ensure that only one browser
@@ -21081,7 +21070,7 @@ SharedLock.prototype.withLock = function(lockedCB, pid) {
 
         var delay = function(cb) {
             if (new Date().getTime() - startTime > timeoutMS) {
-                logger$c.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
+                logger$d.error('Timeout waiting for mutex on ' + key + '; clearing lock. [' + i + ']');
                 storage.removeItem(keyZ);
                 storage.removeItem(keyY);
                 loop();
@@ -21231,7 +21220,7 @@ LocalStorageWrapper.prototype.removeItem = function (key) {
     }, this));
 };
 
-var logger$b = console_with_prefix('batch');
+var logger$c = console_with_prefix('batch');
 
 /**
  * RequestQueue: queue for batching API requests with localStorage backup for retries.
@@ -21260,7 +21249,7 @@ var RequestQueue = function (storageKey, options) {
             timeoutMS: options.sharedLockTimeoutMS,
         });
     }
-    this.reportError = options.errorReporter || _.bind(logger$b.error, logger$b);
+    this.reportError = options.errorReporter || _.bind(logger$c.error, logger$c);
     this.consentGate = options.consentGate;
 
     this.pid = options.pid || null; // pass pid to test out storage lock contention scenarios
@@ -21613,7 +21602,7 @@ RequestQueue.prototype.clear = function () {
 // maximum interval between request retries after exponential backoff
 var MAX_RETRY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-var logger$a = console_with_prefix('batch');
+var logger$b = console_with_prefix('batch');
 
 /**
  * RequestBatcher: manages the queueing, flushing, retry etc of requests of one
@@ -21742,7 +21731,7 @@ RequestBatcher.prototype.sendRequestPromise = function(data, options) {
  */
 RequestBatcher.prototype.flush = function(options) {
     if (this.requestInProgress) {
-        logger$a.log('Flush: Request already in progress');
+        logger$b.log('Flush: Request already in progress');
         return PromisePolyfill.resolve();
     }
 
@@ -21919,7 +21908,7 @@ RequestBatcher.prototype.flush = function(options) {
             if (options.unloading) {
                 requestOptions.transport = 'sendBeacon';
             }
-            logger$a.log('MIXPANEL REQUEST:', dataForRequest);
+            logger$b.log('MIXPANEL REQUEST:', dataForRequest);
             return this.sendRequestPromise(dataForRequest, requestOptions).then(batchSendCallback);
         }, this))
         .catch(_.bind(function(err) {
@@ -21932,7 +21921,7 @@ RequestBatcher.prototype.flush = function(options) {
  * Log error to global logger and optional user-defined logger.
  */
 RequestBatcher.prototype.reportError = function(msg, err) {
-    logger$a.error.apply(logger$a.error, arguments);
+    logger$b.error.apply(logger$b.error, arguments);
     if (this.errorReporter) {
         try {
             if (!(err instanceof Error)) {
@@ -21940,7 +21929,7 @@ RequestBatcher.prototype.reportError = function(msg, err) {
             }
             this.errorReporter(msg, err);
         } catch(err) {
-            logger$a.error(err);
+            logger$b.error(err);
         }
     }
 };
@@ -22082,7 +22071,7 @@ var EVENT_HANDLER_ATTRIBUTES = [
 
 var MAX_DEPTH = 5;
 
-var logger$9 = console_with_prefix('autocapture');
+var logger$a = console_with_prefix('autocapture');
 
 
 function getClasses(el) {
@@ -22346,7 +22335,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return false;
             }
         } catch (err) {
-            logger$9.critical('Error while checking element in allowElementCallback', err);
+            logger$a.critical('Error while checking element in allowElementCallback', err);
             return false;
         }
     }
@@ -22363,7 +22352,7 @@ function isElementAllowed(el, ev, allowElementCallback, allowSelectors) {
                 return true;
             }
         } catch (err) {
-            logger$9.critical('Error while checking selector: ' + sel, err);
+            logger$a.critical('Error while checking selector: ' + sel, err);
         }
     }
     return false;
@@ -22378,7 +22367,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                 return true;
             }
         } catch (err) {
-            logger$9.critical('Error while checking element in blockElementCallback', err);
+            logger$a.critical('Error while checking element in blockElementCallback', err);
             return true;
         }
     }
@@ -22392,7 +22381,7 @@ function isElementBlocked(el, ev, blockElementCallback, blockSelectors) {
                     return true;
                 }
             } catch (err) {
-                logger$9.critical('Error while checking selector: ' + sel, err);
+                logger$a.critical('Error while checking selector: ' + sel, err);
             }
         }
     }
@@ -22939,6 +22928,540 @@ function shouldMaskText(element, privacyConfig) {
     }
 }
 
+/* eslint camelcase: "off" */
+
+
+// URL matching shared across the SDK. It holds two matchers with different
+// contracts:
+//
+// - urlMatchesRegexList: unanchored. A URL matches when url.match(entry)
+//   succeeds for any entry, where an entry is a RegExp or a regex string. Used
+//   by autocapture's allow/block URL lists and session recording's network
+//   URL lists.
+// - urlTargetMatches: the structured Target URL rule ($mp.target) carried by a
+//   visual-experiment variant. Its regexes are anchored as ^(?:value)$.
+//
+// Target URL payload property names are quoted so they survive minification.
+//
+// The main URL is matched against origin + trailing-slash-normalized pathname
+// only; the query string and hash are matched by their own rule fields. The
+// behavior is pinned by shared test vectors, kept identical across every
+// implementation of this rule (tests/unit/test-data/visual-url-target-vectors.json).
+
+/**
+ * A key/value pair in a Target URL query or hash params rule. A raw * in the
+ * value is a wildcard.
+ * @typedef {Object} TargetUrlParam
+ * @property {string} key
+ * @property {string} value
+ */
+
+/**
+ * The main URL of a Target URL rule, matched against the page's origin and
+ * normalized pathname.
+ * @typedef {Object} TargetUrlMainUrl
+ * @property {'pattern'|'regex'} type - 'pattern' is an absolute http(s) URL
+ *   whose path may use *, ** and :name segments; 'regex' is anchored
+ * @property {string} value
+ */
+
+/**
+ * @typedef {Object} TargetUrlQuery
+ * @property {Array<TargetUrlParam>} params - the page's query keys, apart from
+ *   ignored keys, must equal these keys
+ */
+
+/**
+ * A hash rule. A null route or null params leaves that part unconstrained; a
+ * null route with an empty params list requires the page to have no hash.
+ * @typedef {Object} TargetUrlHash
+ * @property {?string} route - a path pattern compared with the page's hash route
+ * @property {?Array<TargetUrlParam>} params
+ */
+
+/**
+ * A structured Target URL rule ($mp.target), version 1.
+ * @typedef {Object} TargetUrlRule
+ * @property {number} version - must be 1
+ * @property {TargetUrlMainUrl} url
+ * @property {?TargetUrlQuery} query - null leaves the query string unconstrained
+ * @property {?TargetUrlHash} hash - null leaves the hash unconstrained
+ * @property {Array<string>} ignoredParamKeys - query and hash param keys that
+ *   may appear on the page without a rule entry; a trailing * makes an entry a
+ *   key prefix
+ */
+
+/**
+ * A decoded key/value pair parsed from a page's query string or hash.
+ * @typedef {Object} UrlParam
+ * @property {string} key
+ * @property {string} value
+ */
+
+/**
+ * The parts of a page location the Target URL matcher reads, such as
+ * window.location or a parsed anchor element.
+ * @typedef {Object} UrlLocation
+ * @property {string} protocol
+ * @property {string} host
+ * @property {string} pathname
+ * @property {string} [search]
+ * @property {string} [hash]
+ */
+
+var TARGET_VERSION = 1;
+
+var PATH_PARAM_SEGMENT = /^:[A-Za-z0-9_]+$/;
+var HTTP_URL_PREFIX = /^https?:\/\//i;
+
+/**
+ * @param {Object} obj
+ * @param {string} key
+ * @returns {boolean}
+ */
+var hasOwn = function(obj, key) {
+    return Object.prototype.hasOwnProperty.call(obj, key);
+};
+
+/**
+ * Ensure a leading slash and drop a single trailing slash (keeping root "/") so
+ * "/foo" and "/foo/" are treated as equal.
+ * @param {string} pathname
+ * @returns {string}
+ */
+var normalizePathname = function(pathname) {
+    if (!pathname) {
+        return '/';
+    }
+    if (pathname.charAt(0) !== '/') {
+        pathname = '/' + pathname;
+    }
+    if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
+        pathname = pathname.slice(0, -1);
+    }
+    return pathname;
+};
+
+/**
+ * @param {string} text
+ * @returns {string} text with regex metacharacters escaped
+ */
+var escapeRegExp = function(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+/**
+ * @param {string} source
+ * @returns {?RegExp} ^(?:source)$, or null when source is not a valid regex
+ */
+var anchoredRegExp = function(source) {
+    try {
+        return new RegExp('^(?:' + source + ')$');
+    } catch (err) {
+        return null;
+    }
+};
+
+/**
+ * @param {string} source - regex source, anchored before matching
+ * @param {string} text
+ * @returns {boolean} false when source is not a valid regex
+ */
+var regExpMatches = function(source, text) {
+    var regExp = anchoredRegExp(source);
+    return !!regExp && regExp.test(text);
+};
+
+/**
+ * Regex source (unanchored) for a path or hash-route pattern: ** crosses
+ * segments, * stays within one segment, and a segment that is exactly :name
+ * matches one non-empty segment. Everything else is literal.
+ * @param {string} pattern
+ * @returns {string}
+ */
+var pathPatternRegExpSource = function(pattern) {
+    var segments = pattern.split('/');
+    for (var i = 0; i < segments.length; i++) {
+        var segment = segments[i];
+        if (PATH_PARAM_SEGMENT.test(segment)) {
+            segments[i] = '[^/]+';
+            continue;
+        }
+        var doubleStarParts = segment.split('**');
+        for (var j = 0; j < doubleStarParts.length; j++) {
+            var starParts = doubleStarParts[j].split('*');
+            for (var k = 0; k < starParts.length; k++) {
+                starParts[k] = escapeRegExp(starParts[k]);
+            }
+            doubleStarParts[j] = starParts.join('[^/]*');
+        }
+        segments[i] = doubleStarParts.join('.*');
+    }
+    return segments.join('/');
+};
+
+/**
+ * Decode a URL component with + as a space, keeping the raw text when it is
+ * malformed.
+ * @param {string} text
+ * @returns {string}
+ */
+var decodeUrlComponent = function(text) {
+    var withSpaces = text.replace(/\+/g, ' ');
+    try {
+        return decodeURIComponent(withSpaces);
+    } catch (err) {
+        return withSpaces;
+    }
+};
+
+/**
+ * Parse "a=1&b&c=" into decoded key/value pairs; a bare key has an empty value.
+ * @param {string} paramString
+ * @returns {Array<UrlParam>}
+ */
+var parseParamString = function(paramString) {
+    var params = [];
+    var pairs = paramString.split('&');
+    for (var i = 0; i < pairs.length; i++) {
+        var pair = pairs[i];
+        if (!pair) {
+            continue;
+        }
+        var separatorIndex = pair.indexOf('=');
+        var rawKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
+        var rawValue = separatorIndex === -1 ? '' : pair.slice(separatorIndex + 1);
+        params.push({key: decodeUrlComponent(rawKey), value: decodeUrlComponent(rawValue)});
+    }
+    return params;
+};
+
+/**
+ * @param {string} key
+ * @param {Array<string>} ignoredParamKeys - a trailing * makes an entry a key prefix
+ * @returns {boolean}
+ */
+var isIgnoredParamKey = function(key, ignoredParamKeys) {
+    for (var i = 0; i < ignoredParamKeys.length; i++) {
+        var ignoredKey = ignoredParamKeys[i];
+        if (ignoredKey.charAt(ignoredKey.length - 1) === '*') {
+            if (key.indexOf(ignoredKey.slice(0, -1)) === 0) {
+                return true;
+            }
+        } else if (key === ignoredKey) {
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * A raw * in a rule value is a wildcard; %2A decodes to a literal *.
+ * @param {string} rawRuleValue
+ * @param {string} pageValue - already decoded
+ * @returns {boolean}
+ */
+var ruleValueMatches = function(rawRuleValue, pageValue) {
+    var parts = rawRuleValue.split('*');
+    for (var i = 0; i < parts.length; i++) {
+        parts[i] = escapeRegExp(decodeUrlComponent(parts[i]));
+    }
+    return regExpMatches(parts.join('[\\s\\S]*'), pageValue);
+};
+
+/**
+ * The page's keys, apart from ignored keys, must equal the rule's keys, and
+ * every occurrence of a repeated page key must match the rule's value. A rule
+ * that repeats a key never matches. Keys are prefixed in the lookup object so
+ * names like "__proto__" are safe.
+ * @param {Array<TargetUrlParam>} ruleParams
+ * @param {Array<UrlParam>} pageParams
+ * @param {Array<string>} ignoredParamKeys
+ * @returns {boolean}
+ */
+var paramsMatch = function(ruleParams, pageParams, ignoredParamKeys) {
+    var ruleValueByKey = {};
+    var ruleKeyCount = 0;
+    var i;
+    for (i = 0; i < ruleParams.length; i++) {
+        var ruleLookupKey = '$' + ruleParams[i]['key'];
+        if (hasOwn(ruleValueByKey, ruleLookupKey)) {
+            return false;
+        }
+        ruleValueByKey[ruleLookupKey] = ruleParams[i]['value'];
+        ruleKeyCount++;
+    }
+
+    var seenRuleKeys = {};
+    var seenRuleKeyCount = 0;
+    for (i = 0; i < pageParams.length; i++) {
+        var pageKey = pageParams[i].key;
+        var pageLookupKey = '$' + pageKey;
+        if (!hasOwn(ruleValueByKey, pageLookupKey)) {
+            if (isIgnoredParamKey(pageKey, ignoredParamKeys)) {
+                continue;
+            }
+            return false;
+        }
+        if (!ruleValueMatches(ruleValueByKey[pageLookupKey], pageParams[i].value)) {
+            return false;
+        }
+        if (!hasOwn(seenRuleKeys, pageLookupKey)) {
+            seenRuleKeys[pageLookupKey] = true;
+            seenRuleKeyCount++;
+        }
+    }
+    return seenRuleKeyCount === ruleKeyCount;
+};
+
+/**
+ * Split a page hash (without #) into its route and its param string: on the
+ * first ? when present, otherwise the whole hash is params when it contains =
+ * (after an optional leading !), and a route when it doesn't.
+ * @param {string} hash
+ * @returns {{route: string, paramString: string}}
+ */
+var splitPageHash = function(hash) {
+    var questionMarkIndex = hash.indexOf('?');
+    if (questionMarkIndex !== -1) {
+        return {route: hash.slice(0, questionMarkIndex), paramString: hash.slice(questionMarkIndex + 1)};
+    }
+    if (hash.indexOf('=') !== -1) {
+        return {route: '', paramString: hash.charAt(0) === '!' ? hash.slice(1) : hash};
+    }
+    return {route: hash, paramString: ''};
+};
+
+/**
+ * A page hash with no params rule is all route up to the first ?, even when it
+ * contains =.
+ * @param {string} hash - without the leading #
+ * @returns {string}
+ */
+var pageHashRouteOnly = function(hash) {
+    var questionMarkIndex = hash.indexOf('?');
+    return questionMarkIndex === -1 ? hash : hash.slice(0, questionMarkIndex);
+};
+
+/**
+ * Strip one leading ! so hashbang routes (#!/cart) compare as plain routes, then
+ * one trailing / unless the route is exactly /. No leading / is added, since
+ * anchor routes such as #reviews have none.
+ * @param {string} route
+ * @returns {string}
+ */
+var normalizeHashRoute = function(route) {
+    var withoutBang = route.charAt(0) === '!' ? route.slice(1) : route;
+    if (withoutBang.length > 1 && withoutBang.charAt(withoutBang.length - 1) === '/') {
+        return withoutBang.slice(0, -1);
+    }
+    return withoutBang;
+};
+
+/**
+ * @param {string} pageRoute
+ * @returns {string} the percent-decoded route, or pageRoute when it is malformed
+ */
+var decodePageHashRoute = function(pageRoute) {
+    try {
+        return decodeURIComponent(pageRoute);
+    } catch (err) {
+        return pageRoute;
+    }
+};
+
+/**
+ * The page's hash route is percent-decoded before comparison; the rule route is
+ * compared as typed.
+ * @param {string} ruleRoute
+ * @param {string} pageRoute
+ * @returns {boolean}
+ */
+var hashRouteMatches = function(ruleRoute, pageRoute) {
+    return regExpMatches(
+        pathPatternRegExpSource(normalizeHashRoute(ruleRoute)),
+        normalizeHashRoute(decodePageHashRoute(pageRoute))
+    );
+};
+
+/**
+ * @param {TargetUrlRule} target
+ * @param {string} pageHash - without the leading #
+ * @returns {boolean}
+ */
+var hashMatches = function(target, pageHash) {
+    var hash = target['hash'];
+    if (!hash) {
+        return true;
+    }
+    var route = hash['route'];
+    var params = hash['params'];
+    if (route === null && params !== null && params.length === 0) {
+        // "Must have no hash".
+        return pageHash === '';
+    }
+    if (params === null) {
+        return route === null || hashRouteMatches(route, pageHashRouteOnly(pageHash));
+    }
+    var pageHashParts = splitPageHash(pageHash);
+    if (route !== null && !hashRouteMatches(route, pageHashParts.route)) {
+        return false;
+    }
+    return paramsMatch(params, parseParamString(pageHashParts.paramString), target['ignoredParamKeys']);
+};
+
+/**
+ * Parse an absolute http(s) URL. Uses a throwaway anchor so URL support is not
+ * assumed; relative input is rejected up front because an anchor would resolve
+ * it against the current page.
+ * @param {string} url
+ * @returns {?{origin: string, pathname: string}} null when url is not an
+ *   absolute http(s) URL
+ */
+var parseHttpUrl = function(url) {
+    var doc = win && win['document'];
+    if (!url || !HTTP_URL_PREFIX.test(url) || !doc || !doc.createElement) {
+        return null;
+    }
+    var anchor = doc.createElement('a');
+    anchor.href = url;
+    if (anchor.protocol !== 'http:' && anchor.protocol !== 'https:') {
+        return null;
+    }
+    return {origin: anchor.protocol + '//' + anchor.host, pathname: anchor.pathname};
+};
+
+/**
+ * @param {TargetUrlRule} target
+ * @param {string} pageOrigin - protocol + '//' + host
+ * @param {string} pagePathname - already normalized
+ * @returns {boolean}
+ */
+var mainUrlMatches = function(target, pageOrigin, pagePathname) {
+    var url = target['url'];
+    if (url['type'] === 'regex') {
+        return regExpMatches(url['value'], pageOrigin + pagePathname);
+    }
+    var pattern = parseHttpUrl(url['value']);
+    if (!pattern || pattern.origin !== pageOrigin) {
+        return false;
+    }
+    return regExpMatches(pathPatternRegExpSource(normalizePathname(pattern.pathname)), pagePathname);
+};
+
+/**
+ * @param {*} value
+ * @returns {boolean} whether value is a non-null, non-array object
+ */
+var isPlainObject = function(value) {
+    return typeof value === 'object' && value !== null && !_.isArray(value);
+};
+
+/**
+ * @param {*} value
+ * @returns {boolean} whether value is an Array<TargetUrlParam>
+ */
+var isParamList = function(value) {
+    if (!_.isArray(value)) {
+        return false;
+    }
+    for (var i = 0; i < value.length; i++) {
+        if (!isPlainObject(value[i]) || typeof value[i]['key'] !== 'string' ||
+            typeof value[i]['value'] !== 'string') {
+            return false;
+        }
+    }
+    return true;
+};
+
+/**
+ * @param {*} value
+ * @returns {boolean} whether value is an Array<string>
+ */
+var isStringList = function(value) {
+    if (!_.isArray(value)) {
+        return false;
+    }
+    for (var i = 0; i < value.length; i++) {
+        if (typeof value[i] !== 'string') {
+            return false;
+        }
+    }
+    return true;
+};
+
+/**
+ * @param {*} target
+ * @returns {boolean} whether target is a well-formed TargetUrlRule
+ */
+var isValidTarget = function(target) {
+    if (!isPlainObject(target) || target['version'] !== TARGET_VERSION) {
+        return false;
+    }
+    var url = target['url'];
+    if (!isPlainObject(url) || (url['type'] !== 'pattern' && url['type'] !== 'regex') ||
+        typeof url['value'] !== 'string') {
+        return false;
+    }
+    var query = target['query'];
+    if (query !== null && !(isPlainObject(query) && isParamList(query['params']))) {
+        return false;
+    }
+    var hash = target['hash'];
+    if (hash !== null && !(isPlainObject(hash) &&
+        (hash['route'] === null || typeof hash['route'] === 'string') &&
+        (hash['params'] === null || isParamList(hash['params'])))) {
+        return false;
+    }
+    return isStringList(target['ignoredParamKeys']);
+};
+
+/**
+ * Whether a URL matches any entry of a regex list. Matching is unanchored
+ * (url.match(entry)), unlike the anchored Target URL matcher.
+ * @param {string} url
+ * @param {Array<RegExp|string>} regexList
+ * @returns {boolean}
+ */
+var urlMatchesRegexList = function (url, regexList) {
+    var matches = false;
+    for (var i = 0; i < regexList.length; i++) {
+        if (url.match(regexList[i])) {
+            matches = true;
+            break;
+        }
+    }
+    return matches;
+};
+
+/**
+ * Whether a structured Target URL rule matches a page location. A malformed
+ * rule, or one with any version other than 1, never matches.
+ * @param {TargetUrlRule} target - the variant's $mp.target rule
+ * @param {?UrlLocation} location - window.location or a parsed anchor
+ * @returns {boolean}
+ */
+var urlTargetMatches = function(target, location) {
+    if (!isValidTarget(target) || !location) {
+        return false;
+    }
+    var protocol = location.protocol;
+    if (protocol !== 'http:' && protocol !== 'https:') {
+        return false;
+    }
+    var pageOrigin = protocol + '//' + location.host;
+    var pagePathname = normalizePathname(location.pathname);
+    if (!mainUrlMatches(target, pageOrigin, pagePathname)) {
+        return false;
+    }
+    var query = target['query'];
+    if (query && !paramsMatch(query['params'], parseParamString((location.search || '').slice(1)),
+        target['ignoredParamKeys'])) {
+        return false;
+    }
+    return hashMatches(target, (location.hash || '').slice(1));
+};
+
 /**
  * This is a port of the open rrweb network plugin in this PR https://github.com/rrweb-io/rrweb/pull/1105
  * the hope is that eventually this can be replaced with the official plugin once it's published (and we sync the mixpanel rrweb fork)
@@ -22948,7 +23471,7 @@ function shouldMaskText(element, privacyConfig) {
  *
  */
 
-var logger$8 = console_with_prefix('network-plugin');
+var logger$9 = console_with_prefix('network-plugin');
 
 /**
  * Get the time origin for converting performance timestamps to absolute timestamps.
@@ -23100,7 +23623,7 @@ function truncateBody(str) {
         return str;
     }
     if (str.length > MAX_BODY_SIZE) {
-        logger$8.error('Body truncated from ' + str.length + ' to ' + MAX_BODY_SIZE + ' characters');
+        logger$9.error('Body truncated from ' + str.length + ' to ' + MAX_BODY_SIZE + ' characters');
         return str.substring(0, MAX_BODY_SIZE) + '... [truncated]';
     }
     return str;
@@ -23114,7 +23637,7 @@ function truncateBody(str) {
  */
 function initPerformanceObserver(cb, win, options) {
     if (!win.PerformanceObserver) {
-        logger$8.error('PerformanceObserver not supported');
+        logger$9.error('PerformanceObserver not supported');
         return function() {
             //
         };
@@ -23267,7 +23790,7 @@ function getRequestPerformanceEntry(win, initiatorType, url, after, before, atte
         attempt = 0;
     }
     if (attempt > 10) {
-        logger$8.error('Cannot find performance entry');
+        logger$9.error('Cannot find performance entry');
         return Promise.resolve(null);
     }
     var urlPerformanceEntries = /** @type {PerformanceResourceTiming[]} */ (
@@ -23388,7 +23911,7 @@ function initXhrObserver(cb, win, options) {
                     )
                         .then(function(entry) {
                             if (!entry) {
-                                logger$8.error('Failed to get performance entry for XHR request to ' + _.sanitizeUrl(req.url));
+                                logger$9.error('Failed to get performance entry for XHR request to ' + _.sanitizeUrl(req.url));
                                 return;
                             }
                             /** @type {NetworkRequest} */
@@ -23408,7 +23931,7 @@ function initXhrObserver(cb, win, options) {
                             cb({ requests: [request] });
                         })
                         .catch(function(e) {
-                            logger$8.error('Error recording XHR request to ' + _.sanitizeUrl(req.url) + ': ' + _.sanitizeUrl(String(e)));
+                            logger$9.error('Error recording XHR request to ' + _.sanitizeUrl(req.url) + ': ' + _.sanitizeUrl(String(e)));
                         });
                 });
 
@@ -23524,7 +24047,7 @@ function initFetchObserver(cb, win, options) {
                 })
                 .then(function(entry) {
                     if (!entry) {
-                        logger$8.error('Failed to get performance entry for fetch request to ' + _.sanitizeUrl(req.url));
+                        logger$9.error('Failed to get performance entry for fetch request to ' + _.sanitizeUrl(req.url));
                         return;
                     }
                     /** @type {NetworkRequest} */
@@ -23544,7 +24067,7 @@ function initFetchObserver(cb, win, options) {
                     cb({ requests: [request] });
                 })
                 .catch(function (e) {
-                    logger$8.error('Error recording fetch request to ' + _.sanitizeUrl(req.url) + ': ' + _.sanitizeUrl(String(e)));
+                    logger$9.error('Error recording fetch request to ' + _.sanitizeUrl(req.url) + ': ' + _.sanitizeUrl(String(e)));
                 });
 
             return originalFetchPromise;
@@ -23620,7 +24143,7 @@ var getRecordNetworkPlugin = function(options) {
  */
 
 
-var logger$7 = console_with_prefix('recorder');
+var logger$8 = console_with_prefix('recorder');
 var CompressionStream = win['CompressionStream'];
 
 var RECORDER_BATCHER_LIB_CONFIG = {
@@ -23798,14 +24321,14 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
     }
 
     if (this._stopRecording !== null) {
-        logger$7.log('Recording already in progress, skipping startRecording.');
+        logger$8.log('Recording already in progress, skipping startRecording.');
         return;
     }
 
     this.recordMaxMs = this.getConfig('record_max_ms');
     if (this.recordMaxMs > MAX_RECORDING_MS) {
         this.recordMaxMs = MAX_RECORDING_MS;
-        logger$7.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
+        logger$8.critical('record_max_ms cannot be greater than ' + MAX_RECORDING_MS + 'ms. Capping value.');
     }
 
     if (!this.maxExpires) {
@@ -23870,7 +24393,7 @@ SessionRecording.prototype.startRecording = function (shouldStopBatcher) {
         );
     }
 
-    var validatedOrigins = validateAllowedOrigins(this.getConfig('record_allowed_iframe_origins'), logger$7);
+    var validatedOrigins = validateAllowedOrigins(this.getConfig('record_allowed_iframe_origins'), logger$8);
 
     try {
         this._stopRecording = this._rrwebRecord({
@@ -24145,14 +24668,14 @@ SessionRecording.prototype._flushEvents = function(data, options, callback) {
 
 
 SessionRecording.prototype.reportError = function(msg, err) {
-    logger$7.error.apply(logger$7.error, arguments);
+    logger$8.error.apply(logger$8.error, arguments);
     try {
         if (!err && !(msg instanceof Error)) {
             msg = new Error(msg);
         }
         this.getConfig('error_reporter')(msg, err);
     } catch(err) {
-        logger$7.error(err);
+        logger$8.error(err);
     }
 };
 
@@ -24181,7 +24704,7 @@ SessionRecording.prototype._getRecordMinMs = function() {
     var configValue = this.getConfig('record_min_ms');
 
     if (configValue > MAX_VALUE_FOR_MIN_RECORDING_MS) {
-        logger$7.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
+        logger$8.critical('record_min_ms cannot be greater than ' + MAX_VALUE_FOR_MIN_RECORDING_MS + 'ms. Capping value.');
         return MAX_VALUE_FOR_MIN_RECORDING_MS;
     }
 
@@ -24349,12 +24872,14 @@ RecordingRegistry.prototype.flushInactiveRecordings = function () {
  * @property {function(): boolean} allowsPersistence whether the services may write to browser
  * storage: consent allows storing, and disable_persistence is off. Without it they keep their data
  * in memory.
+ * @property {function(): boolean} allowsExemptMeasurement whether 'exempt' events go out and remote
+ * settings are fetched before consent
  */
 
 
 /**
  * @param {function(string): boolean} allowsFunc whether consent allows 'api_calls', 'send',
- * 'fetch' or 'store' now
+ * 'fetch', 'store' or 'exempt_measurement' now
  * @param {function(string): *} getConfigFunc
  * @returns {ConsentGate}
  */
@@ -24380,6 +24905,9 @@ function buildConsentGate(allowsFunc, getConfigFunc) {
         },
         allowsPersistence: function() {
             return gate.allowsStoring() && !getConfigFunc('disable_persistence');
+        },
+        allowsExemptMeasurement: function() {
+            return allowsFunc('exempt_measurement');
         }
     };
     return gate;
@@ -24389,7 +24917,7 @@ function buildConsentGate(allowsFunc, getConfigFunc) {
  * The consent gate the recorder bundle builds when it starts, and hands to its services. The core
  * passes the bundle only its instance, so this asks the core's _consent_allows by its quoted name,
  * the bundle being built separately. A core without it only knows the opt-out, through
- * has_opted_out_tracking().
+ * has_opted_out_tracking(), and has no exempt mode.
  * @param {Object} mixpanelInstance
  * @returns {ConsentGate}
  */
@@ -24400,6 +24928,9 @@ function consentGateFor(mixpanelInstance) {
             if (typeof consentAllows === 'function') {
                 return !!consentAllows.call(mixpanelInstance, capability);
             }
+            if (capability === 'exempt_measurement') {
+                return false;
+            }
             return capability !== 'api_calls' || !mixpanelInstance.has_opted_out_tracking();
         },
         function(key) {
@@ -24408,7 +24939,7 @@ function consentGateFor(mixpanelInstance) {
     );
 }
 
-var logger$6 = console_with_prefix('recorder');
+var logger$7 = console_with_prefix('recorder');
 
 /**
  * Recorder API: bundles rrweb and and exposes methods to start and stop recordings.
@@ -24426,7 +24957,7 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
     this.recordingRegistry = new RecordingRegistry({
         mixpanelInstance: this.mixpanelInstance,
         consentGate: this.consentGate,
-        errorReporter: logger$6.error,
+        errorReporter: logger$7.error,
         sharedLockStorage: sharedLockStorage
     });
     this._flushInactivePromise = this.recordingRegistry.flushInactiveRecordings();
@@ -24438,17 +24969,17 @@ var MixpanelRecorder = function(mixpanelInstance, rrwebRecord, sharedLockStorage
 MixpanelRecorder.prototype.startRecording = function(options) {
     options = options || {};
     if (this.activeRecording && !this.activeRecording.isRrwebStopped()) {
-        logger$6.log('Recording already in progress, skipping startRecording.');
+        logger$7.log('Recording already in progress, skipping startRecording.');
         return;
     }
 
     var onIdleTimeout = function () {
-        logger$6.log('Idle timeout reached, restarting recording.');
+        logger$7.log('Idle timeout reached, restarting recording.');
         this.resetRecording();
     }.bind(this);
 
     var onMaxLengthReached = function () {
-        logger$6.log('Max recording length reached, stopping recording.');
+        logger$7.log('Max recording length reached, stopping recording.');
         this.resetRecording();
     }.bind(this);
 
@@ -24519,7 +25050,7 @@ MixpanelRecorder.prototype.resumeRecording = function (startNewIfInactive) {
             } else if (startNewIfInactive) {
                 return this.startRecording({shouldStopBatcher: false});
             } else {
-                logger$6.log('No resumable recording found.');
+                logger$7.log('No resumable recording found.');
                 return null;
             }
         }.bind(this));
@@ -25512,7 +26043,7 @@ ShadowDOMObserver.prototype.observeShadowRoot = function(shadowRoot) {
         observer.observe(shadowRoot, this.observerConfig);
         this.shadowObservers.push(observer);
     } catch (e) {
-        logger$9.critical('Error while observing shadow root', e);
+        logger$a.critical('Error while observing shadow root', e);
     }
 };
 
@@ -25523,7 +26054,7 @@ ShadowDOMObserver.prototype.start = function() {
     }
 
     if (!weakSetSupported()) {
-        logger$9.critical('Shadow DOM observation unavailable: WeakSet not supported');
+        logger$a.critical('Shadow DOM observation unavailable: WeakSet not supported');
         return;
     }
 
@@ -25539,7 +26070,7 @@ ShadowDOMObserver.prototype.stop = function() {
         try {
             this.shadowObservers[i].disconnect();
         } catch (e) {
-            logger$9.critical('Error while disconnecting shadow DOM observer', e);
+            logger$a.critical('Error while disconnecting shadow DOM observer', e);
         }
     }
     this.shadowObservers = [];
@@ -25727,7 +26258,7 @@ DeadClickTracker.prototype.startTracking = function() {
 
             this.mutationObserver.observe(document.body || document.documentElement, MUTATION_OBSERVER_CONFIG);
         } catch (e) {
-            logger$9.critical('Error while setting up mutation observer', e);
+            logger$a.critical('Error while setting up mutation observer', e);
         }
     }
 
@@ -25742,7 +26273,7 @@ DeadClickTracker.prototype.startTracking = function() {
             );
             this.shadowDOMObserver.start();
         } catch (e) {
-            logger$9.critical('Error while setting up shadow DOM observer', e);
+            logger$a.critical('Error while setting up shadow DOM observer', e);
             this.shadowDOMObserver = null;
         }
     }
@@ -25769,7 +26300,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             listener.target.removeEventListener(listener.event, listener.handler, listener.options);
         } catch (e) {
-            logger$9.critical('Error while removing event listener', e);
+            logger$a.critical('Error while removing event listener', e);
         }
     }
     this.eventListeners = [];
@@ -25778,7 +26309,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             this.mutationObserver.disconnect();
         } catch (e) {
-            logger$9.critical('Error while disconnecting mutation observer', e);
+            logger$a.critical('Error while disconnecting mutation observer', e);
         }
         this.mutationObserver = null;
     }
@@ -25787,7 +26318,7 @@ DeadClickTracker.prototype.stopTracking = function() {
         try {
             this.shadowDOMObserver.stop();
         } catch (e) {
-            logger$9.critical('Error while stopping shadow DOM observer', e);
+            logger$a.critical('Error while stopping shadow DOM observer', e);
         }
         this.shadowDOMObserver = null;
     }
@@ -25865,7 +26396,7 @@ var Autocapture = function(mp) {
 
 Autocapture.prototype.init = function() {
     if (!minDOMApisSupported()) {
-        logger$9.critical('Autocapture unavailable: missing required DOM APIs');
+        logger$a.critical('Autocapture unavailable: missing required DOM APIs');
         return;
     }
     this.initPageListeners();
@@ -25905,7 +26436,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
         try {
             return !urlMatchesRegexList(currentUrl, allowUrlRegexes);
         } catch (err) {
-            logger$9.critical('Error while checking block URL regexes: ', err);
+            logger$a.critical('Error while checking block URL regexes: ', err);
             return true;
         }
     }
@@ -25918,7 +26449,7 @@ Autocapture.prototype.currentUrlBlocked = function() {
     try {
         return urlMatchesRegexList(currentUrl, blockUrlRegexes);
     } catch (err) {
-        logger$9.critical('Error while checking block URL regexes: ', err);
+        logger$a.critical('Error while checking block URL regexes: ', err);
         return true;
     }
 };
@@ -26031,7 +26562,7 @@ Autocapture.prototype._initScrollDepthTracking = function() {
         return;
     }
 
-    logger$9.log('Initializing scroll depth tracking');
+    logger$a.log('Initializing scroll depth tracking');
 
     this.maxScrollViewDepth = Math.max(document$1.documentElement.clientHeight, win.innerHeight || 0);
 
@@ -26057,7 +26588,7 @@ Autocapture.prototype.initClickTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
-    logger$9.log('Initializing click tracking');
+    logger$a.log('Initializing click tracking');
 
     this.listenerClick = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_CLICK) && !this.mp.is_recording_heatmap_data()) {
@@ -26076,7 +26607,7 @@ Autocapture.prototype.initDeadClickTracking = function() {
         return;
     }
 
-    logger$9.log('Initializing dead click tracking');
+    logger$a.log('Initializing dead click tracking');
     if (!this._deadClickTracker) {
         this._deadClickTracker = new DeadClickTracker(function(deadClickEvent) {
             this.trackDomEvent(deadClickEvent, MP_EV_DEAD_CLICK);
@@ -26110,7 +26641,7 @@ Autocapture.prototype.initInputTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_INPUT)) {
         return;
     }
-    logger$9.log('Initializing input tracking');
+    logger$a.log('Initializing input tracking');
 
     this.listenerChange = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_INPUT)) {
@@ -26127,7 +26658,7 @@ Autocapture.prototype.initPageviewTracking = function() {
     if (!this.pageviewTrackingConfig() && !this.mp.get_config('record_heatmap_data')) {
         return;
     }
-    logger$9.log('Initializing pageview tracking');
+    logger$a.log('Initializing pageview tracking');
 
     var previousTrackedUrl = '';
     var tracked = false;
@@ -26167,7 +26698,7 @@ Autocapture.prototype.initPageviewTracking = function() {
             }
             if (didPathChange) {
                 this.lastScrollCheckpoint = 0;
-                logger$9.log('Path change: re-initializing scroll depth checkpoints');
+                logger$a.log('Path change: re-initializing scroll depth checkpoints');
             }
         }
     }.bind(this));
@@ -26182,7 +26713,7 @@ Autocapture.prototype.initRageClickTracking = function() {
         return;
     }
 
-    logger$9.log('Initializing rage click tracking');
+    logger$a.log('Initializing rage click tracking');
     if (!this._rageClickTracker) {
         this._rageClickTracker = new RageClickTracker();
     }
@@ -26212,7 +26743,7 @@ Autocapture.prototype.initScrollTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SCROLL)) {
         return;
     }
-    logger$9.log('Initializing scroll tracking');
+    logger$a.log('Initializing scroll tracking');
     this.lastScrollCheckpoint = 0;
 
     var scrollTrackFunction = function() {
@@ -26249,7 +26780,7 @@ Autocapture.prototype.initScrollTracking = function() {
                 }
             }
         } catch (err) {
-            logger$9.critical('Error while calculating scroll percentage', err);
+            logger$a.critical('Error while calculating scroll percentage', err);
         }
         if (shouldTrack) {
             this.mp.track(MP_EV_SCROLL, props);
@@ -26267,7 +26798,7 @@ Autocapture.prototype.initSubmitTracking = function() {
     if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
         return;
     }
-    logger$9.log('Initializing submit tracking');
+    logger$a.log('Initializing submit tracking');
 
     this.listenerSubmit = function(ev) {
         if (!this.getConfig(CONFIG_TRACK_SUBMIT)) {
@@ -26289,7 +26820,7 @@ Autocapture.prototype.initPageLeaveTracking = function() {
         return;
     }
 
-    logger$9.log('Initializing page visibility tracking.');
+    logger$a.log('Initializing page visibility tracking.');
     this._initScrollDepthTracking();
     var previousTrackedUrl = _.info.currentUrl();
 
@@ -26374,7 +26905,7 @@ var getTargetingPromise = function(loadExtraBundle, targetingSrc) {
     return win[TARGETING_GLOBAL_NAME];
 };
 
-var logger$5 = console_with_prefix('flags');
+var logger$6 = console_with_prefix('flags');
 
 var MIXPANEL_FLAGS_DB_NAME = 'mixpanelFlagsDb';
 var FLAGS_STORE_NAME = 'mixpanelFlags';
@@ -26429,14 +26960,14 @@ FeatureFlagPersistence.prototype._isConfigValid = function() {
     }
 
     if (VALID_POLICIES.indexOf(config['variantLookupPolicy']) === -1) {
-        logger$5.error('Invalid variantLookupPolicy:', config['variantLookupPolicy']);
+        logger$6.error('Invalid variantLookupPolicy:', config['variantLookupPolicy']);
         return false;
     }
 
     if (config['persistenceTtlMs'] !== undefined &&
         config['persistenceTtlMs'] !== null &&
         config['persistenceTtlMs'] <= 0) {
-        logger$5.error('If provided, persistenceTtlMs must be a positive number. Provided value:', config['persistenceTtlMs']);
+        logger$6.error('If provided, persistenceTtlMs must be a positive number. Provided value:', config['persistenceTtlMs']);
         return false;
     }
 
@@ -26458,17 +26989,17 @@ FeatureFlagPersistence.prototype.loadFlagsFromStorage = function(context) {
         return this.idb.getItem(this.persistedVariantsKey);
     }, this)).then(_.bind(function(data) {
         if (!data) {
-            logger$5.log('No persisted variants found in IndexedDB');
+            logger$6.log('No persisted variants found in IndexedDB');
             return null;
         }
 
         if (ttlMs && Date.now() - data['persistedAt'] >= ttlMs) {
-            logger$5.log('Persisted variants are expiring');
+            logger$6.log('Persisted variants are expiring');
             return null;
         }
 
         if (!context || data['distinctId'] !== context['distinct_id']) {
-            logger$5.log('Persisted variants found, but for a different distinct_id so clearing.');
+            logger$6.log('Persisted variants found, but for a different distinct_id so clearing.');
             return clearAndReturnNull();
         }
 
@@ -26486,7 +27017,7 @@ FeatureFlagPersistence.prototype.loadFlagsFromStorage = function(context) {
             });
         });
 
-        logger$5.log('Loaded', persistedFlags.size, 'variants from IndexedDB for distinct_id', data['distinctId']);
+        logger$6.log('Loaded', persistedFlags.size, 'variants from IndexedDB for distinct_id', data['distinctId']);
 
         return {
             flags: persistedFlags,
@@ -26495,7 +27026,7 @@ FeatureFlagPersistence.prototype.loadFlagsFromStorage = function(context) {
             ttlMs: ttlMs
         };
     }, this)).catch(_.bind(function(error) {
-        logger$5.error('Failed to load persisted variants from IndexedDB, so clearing', error);
+        logger$6.error('Failed to load persisted variants from IndexedDB, so clearing', error);
         return clearAndReturnNull();
     }, this));
 };
@@ -26538,9 +27069,9 @@ FeatureFlagPersistence.prototype.save = function(context, flagsMap, pendingFirst
     return this.idb.init().then(_.bind(function() {
         return this.idb.setItem(this.persistedVariantsKey, data);
     }, this)).then(function() {
-        logger$5.log('Saved', flagsMap.size, 'variants to IndexedDB for distinct_id', data['distinctId']);
+        logger$6.log('Saved', flagsMap.size, 'variants to IndexedDB for distinct_id', data['distinctId']);
     }).catch(function(error) {
-        logger$5.error('Failed to persist variants to IndexedDB:', error);
+        logger$6.error('Failed to persist variants to IndexedDB:', error);
     });
 };
 
@@ -26557,14 +27088,14 @@ FeatureFlagPersistence.prototype.clear = function() {
     return existingIdb.init().then(function() {
         return existingIdb.removeItem(variantsKey);
     }).then(function() {
-        logger$5.log('Cleared persisted variants from IndexedDB');
+        logger$6.log('Cleared persisted variants from IndexedDB');
     }).catch(function(error) {
         // usually the device has no database, so there's nothing to clear
-        logger$5.log('No persisted variants cleared from IndexedDB:', error);
+        logger$6.log('No persisted variants cleared from IndexedDB:', error);
     });
 };
 
-var logger$4 = console_with_prefix('flags');
+var logger$5 = console_with_prefix('flags');
 var FLAGS_CONFIG_KEY = 'flags';
 
 var CONFIG_CONTEXT = 'context';
@@ -26644,7 +27175,7 @@ FeatureFlagManager.prototype.init = function() {
         return;
     }
     if (!this.minApisSupported()) {
-        logger$4.critical('Feature Flags unavailable: missing minimum required APIs');
+        logger$5.critical('Feature Flags unavailable: missing minimum required APIs');
         this.visualExperiments.onDeliverySettled();
         return;
     }
@@ -26683,7 +27214,7 @@ FeatureFlagManager.prototype.init = function() {
             return this.fetchFlags();
         }, this))
         .catch(function() {
-            logger$4.error('Error initializing feature flags');
+            logger$5.error('Error initializing feature flags');
         });
 
     // Settle even when initialization completes without delivering variants
@@ -26715,15 +27246,15 @@ FeatureFlagManager.prototype.reset = function() {
     this.trackedFeatures = new Set();
     this.trackedVisualExposures = new Set();
     this.visualExperiments.onReset();
-    this.fetchPromise = null;
     this._fetchInProgressStartTime = null;
     this._loadedPersistedAtMs = null;
     this._loadedTtlMs = null;
 
-    return this.persistence.clear().then(_.bind(function() {
+    this.fetchPromise = this.persistence.clear().then(_.bind(function() {
         return this.fetchFlags();
-    }, this)).catch(function() {
-        logger$4.error('Error during flags reset');
+    }, this));
+    return this.fetchPromise.catch(function() {
+        logger$5.error('Error during flags reset');
     });
 };
 
@@ -26750,7 +27281,7 @@ FeatureFlagManager.prototype.isSystemEnabled = function() {
 
 FeatureFlagManager.prototype.updateContext = function(newContext, options) {
     if (!this.isSystemEnabled()) {
-        logger$4.critical('Feature Flags not enabled, cannot update context');
+        logger$5.critical('Feature Flags not enabled, cannot update context');
         return Promise.resolve();
     }
 
@@ -26765,13 +27296,13 @@ FeatureFlagManager.prototype.updateContext = function(newContext, options) {
     configUpdate[FLAGS_CONFIG_KEY] = ffConfig;
     this.setMpConfig(configUpdate);
     return this.fetchFlags().catch(function() {
-        logger$4.error('Error fetching flags during updateContext');
+        logger$5.error('Error fetching flags during updateContext');
     });
 };
 
 FeatureFlagManager.prototype.areFlagsReady = function() {
     if (!this.isSystemEnabled()) {
-        logger$4.error('Feature Flags not enabled');
+        logger$5.error('Feature Flags not enabled');
     }
     return !!this.flags;
 };
@@ -26792,7 +27323,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
     var context = this._buildContext();
     var distinctId = context['distinct_id'];
     var traceparent = generateTraceparent();
-    logger$4.log('Fetching flags for distinct ID: ' + distinctId);
+    logger$5.log('Fetching flags for distinct ID: ' + distinctId);
 
     var searchParams = new URLSearchParams();
     searchParams.set('context', JSON.stringify(context));
@@ -26827,7 +27358,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
             if (previewErrorCode !== 'invalid_preview_token' && previewErrorCode !== 'preview_unavailable') {
                 previewErrorCode = 'unknown_preview_error';
             }
-            logger$4.warn('Shared preview unavailable (' + previewErrorCode + '); using normal flags');
+            logger$5.warn('Shared preview unavailable (' + previewErrorCode + '); using normal flags');
         }
         var responseFlags = responseBody['flags'];
         if (!responseFlags) {
@@ -26938,7 +27469,7 @@ FeatureFlagManager.prototype.fetchFlags = function() {
         if (this._previewToken) {
             error = new Error('Error fetching preview flags');
         }
-        logger$4.error(error);
+        logger$5.error(error);
         throw error;
     }.bind(this));
 
@@ -26950,7 +27481,7 @@ FeatureFlagManager.prototype.loadFlags = function() {
         return Promise.resolve();
     }
     if (!this.trackedFeatures) {
-        logger$4.error('loadFlags called before init');
+        logger$5.error('loadFlags called before init');
         return Promise.resolve();
     }
     if (this._fetchInProgressStartTime) {
@@ -26961,7 +27492,7 @@ FeatureFlagManager.prototype.loadFlags = function() {
 
 FeatureFlagManager.prototype.markFetchComplete = function() {
     if (!this._fetchInProgressStartTime) {
-        logger$4.error('Fetch in progress started time not set, cannot mark fetch complete');
+        logger$5.error('Fetch in progress started time not set, cannot mark fetch complete');
         return;
     }
     this._fetchStartTime = this._fetchInProgressStartTime;
@@ -26983,7 +27514,7 @@ FeatureFlagManager.prototype._loadTargetingIfNeeded = function() {
 
     if (hasPropertyFilters) {
         this.getTargeting().then(function() {
-            logger$4.log('targeting loaded for property filter evaluation');
+            logger$5.log('targeting loaded for property filter evaluation');
         });
     }
 };
@@ -26998,7 +27529,7 @@ FeatureFlagManager.prototype.getTargeting = function() {
         this.loadExtraBundle.bind(this),
         this.targetingSrc
     ).catch(function(error) {
-        logger$4.error('Failed to load targeting: ' + error);
+        logger$5.error('Failed to load targeting: ' + error);
     }.bind(this));
 };
 
@@ -27063,7 +27594,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
 
         // If no targeting library and event has property filters, skip it
         if (!targeting && pendingEvent['property_filters'] && !_.isEmptyObject(pendingEvent['property_filters'])) {
-            logger$4.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
+            logger$5.warn('Skipping event check for "' + flagKey + '" - property filters require targeting library');
             return;
         }
 
@@ -27086,7 +27617,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
         }
 
         if (matchResult.error) {
-            logger$4.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
+            logger$5.error('Error checking first-time event for flag "' + flagKey + '": ' + matchResult.error);
             return;
         }
 
@@ -27094,7 +27625,7 @@ FeatureFlagManager.prototype._processFirstTimeEventCheck = function(eventName, p
             return;
         }
 
-        logger$4.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
+        logger$5.log('First-time event matched for flag "' + flagKey + '": ' + eventName);
 
         var newVariant = {
             'key': pendingEvent['pending_variant']['variant_key'],
@@ -27145,7 +27676,7 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
         'first_time_event_hash': firstTimeEventHash
     };
 
-    logger$4.log('Recording first-time event for flag: ' + flagId);
+    logger$5.log('Recording first-time event for flag: ' + flagId);
 
     // The caller chains this so it can wait for the recording to settle. The catch below keeps the
     // returned promise resolved on failure, so a dropped request never rejects the chain.
@@ -27159,14 +27690,14 @@ FeatureFlagManager.prototype.recordFirstTimeEvent = function(flagId, projectId, 
         'body': JSON.stringify(payload)
     }).catch(function(error) {
         // Silent failure - cohort sync will catch up
-        logger$4.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
+        logger$5.error('Failed to record first-time event for flag ' + flagId + ': ' + error);
     });
 };
 
 FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
     if (!this.persistenceLoadedPromise) {
         return new Promise(function(resolve) {
-            logger$4.critical('Feature Flags not initialized');
+            logger$5.critical('Feature Flags not initialized');
             resolve(withFallbackSource(fallback, FALLBACK_REASON_NOT_READY));
         });
     }
@@ -27185,7 +27716,7 @@ FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
             return this.fetchPromise.then(_.bind(function() {
                 return this.getVariantSync(featureName, fallback);
             }, this)).catch(function(error) {
-                logger$4.error(error);
+                logger$5.error(error);
                 return withFallbackSource(fallback, FALLBACK_REASON_BACKEND_ERROR);
             });
         }
@@ -27195,7 +27726,7 @@ FeatureFlagManager.prototype.getVariant = function(featureName, fallback) {
             return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
         }
         return this.fetchPromise.then(serve).catch(_.bind(function(error) {
-            logger$4.error(error);
+            logger$5.error(error);
             // If the fetch failure still left usable state (e.g. persistence hit under
             // a different policy config), serve from cache. Otherwise stamp
             // BACKEND_ERROR so callers can distinguish "backend is down" from
@@ -27216,16 +27747,16 @@ FeatureFlagManager.prototype._loadedPersistenceIsStale = function() {
 
 FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
     if (this._loadedPersistenceIsStale()) {
-        logger$4.log('Loaded persisted variants are past TTL so returning fallback for "' + featureName + '"');
+        logger$5.log('Loaded persisted variants are past TTL so returning fallback for "' + featureName + '"');
         return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
     }
     if (!this.areFlagsReady()) {
-        logger$4.log('Flags not loaded yet');
+        logger$5.log('Flags not loaded yet');
         return withFallbackSource(fallback, FALLBACK_REASON_NOT_READY);
     }
     var feature = this.flags.get(featureName);
     if (!feature) {
-        logger$4.log('No flag found: "' + featureName + '"');
+        logger$5.log('No flag found: "' + featureName + '"');
         return withFallbackSource(fallback, FALLBACK_REASON_FLAG_NOT_FOUND);
     }
     this.trackFeatureCheck(featureName, feature);
@@ -27234,7 +27765,7 @@ FeatureFlagManager.prototype.getVariantSync = function(featureName, fallback) {
 
 FeatureFlagManager.prototype.getAllVariants = function() {
     if (!this.persistenceLoadedPromise) {
-        logger$4.critical('Feature Flags not initialized');
+        logger$5.critical('Feature Flags not initialized');
         return Promise.resolve(new Map());
     }
 
@@ -27252,7 +27783,7 @@ FeatureFlagManager.prototype.getAllVariants = function() {
             return this.fetchPromise.then(_.bind(function() {
                 return this.getAllVariantsSync();
             }, this)).catch(function(error) {
-                logger$4.error(error);
+                logger$5.error(error);
                 return new Map();
             });
         }
@@ -27267,7 +27798,7 @@ FeatureFlagManager.prototype.getAllVariants = function() {
 
 FeatureFlagManager.prototype.getAllVariantsSync = function() {
     if (this._loadedPersistenceIsStale()) {
-        logger$4.log('Loaded persisted variants are past TTL so returning empty Map');
+        logger$5.log('Loaded persisted variants are past TTL so returning empty Map');
         return new Map();
     }
     return this.flags || new Map();
@@ -27277,14 +27808,14 @@ FeatureFlagManager.prototype.getVariantValue = function(featureName, fallbackVal
     return this.getVariant(featureName, {'value': fallbackValue}).then(function(feature) {
         return feature['value'];
     }).catch(function(error) {
-        logger$4.error(error);
+        logger$5.error(error);
         return fallbackValue;
     });
 };
 
 // TODO remove deprecated method
 FeatureFlagManager.prototype.getFeatureData = function(featureName, fallbackValue) {
-    logger$4.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
+    logger$5.critical('mixpanel.flags.get_feature_data() is deprecated and will be removed in a future release. Use mixpanel.flags.get_variant_value() instead.');
     return this.getVariantValue(featureName, fallbackValue);
 };
 
@@ -27296,7 +27827,7 @@ FeatureFlagManager.prototype.isEnabled = function(featureName, fallbackValue) {
     return this.getVariantValue(featureName).then(function() {
         return this.isEnabledSync(featureName, fallbackValue);
     }.bind(this)).catch(function(error) {
-        logger$4.error(error);
+        logger$5.error(error);
         return fallbackValue;
     });
 };
@@ -27305,7 +27836,7 @@ FeatureFlagManager.prototype.isEnabledSync = function(featureName, fallbackValue
     fallbackValue = fallbackValue || false;
     var val = this.getVariantValueSync(featureName, fallbackValue);
     if (val !== true && val !== false) {
-        logger$4.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
+        logger$5.error('Feature flag "' + featureName + '" value: ' + val + ' is not a boolean; returning fallback value: ' + fallbackValue);
         val = fallbackValue;
     }
     return val;
@@ -27355,6 +27886,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature, 
     if (isPresent(feature['ttl_in_ms'])) {
         trackingProperties['$ttl_in_ms'] = feature['ttl_in_ms'];
     }
+    // Set by the visual-experiments module on visual exposures only.
+    if (isPresent(feature['matched_url'])) {
+        trackingProperties['$matched_url'] = feature['matched_url'];
+    }
 
     this.track('$experiment_started', trackingProperties);
 };
@@ -27401,7 +27936,7 @@ FeatureFlagManager.prototype['getTargeting'] = FeatureFlagManager.prototype.getT
 /* eslint camelcase: "off" */
 
 
-var logger$3 = console_with_prefix('visual-experiments');
+var logger$4 = console_with_prefix('visual-experiments');
 
 // The supported mutation types: setAttribute, setText, setStyle, setClasses,
 // setAttributes, hide. The backend validates persisted variants to this same set,
@@ -27423,7 +27958,7 @@ var query = function(selector) {
     try {
         return win['document'].querySelectorAll(selector);
     } catch (err) {
-        logger$3.error('Invalid selector: ' + selector, err);
+        logger$4.error('Invalid selector: ' + selector, err);
         return [];
     }
 };
@@ -27485,18 +28020,51 @@ var VisualChangeEngine = function() {
     // Parallel to _currentMutations: a WeakSet of elements already mutated for
     // each mutation, so re-application only touches new/re-rendered nodes.
     this._appliedSets = [];
-    // Optional per-set callback, invoked once per mutation index the first time
-    // that mutation actually changes an element (possibly later, via the
-    // observer). _firstApplyReported is parallel to _currentMutations. Reports are
-    // queued in _pendingFirstApply and delivered only after the apply pass ends,
-    // so the callback never runs while the engine is mid-mutation.
-    this._onFirstApply = null;
-    this._firstApplyReported = [];
-    this._pendingFirstApply = [];
     this._observer = null;
     this._reapplyScheduled = false;
     // True while a body-not-yet-parsed observer-start retry is queued (at most one).
     this._observerStartPending = false;
+};
+
+// Each undo entry records the element it restores, so entries for elements the
+// page has since removed can be dropped without reverting the live ones.
+VisualChangeEngine.prototype._pushUndo = function(el, undo) {
+    this._undoStack.push({ el: el, undo: undo });
+};
+
+var isAttached = function(el) {
+    if (typeof el.isConnected === 'boolean') {
+        return el.isConnected;
+    }
+    return win['document'].documentElement.contains(el);
+};
+
+// Restore and drop undo entries for detached elements. Their closures hold the
+// old nodes (and, for setText, their original children), so on a page that
+// keeps replacing matched elements they would otherwise accumulate until the
+// next full apply or revert. A detached element can still come back: another
+// entry's setText undo re-attaches the children it saved, and the page may
+// re-insert a node it removed. Running the undo before dropping it means such a
+// node returns in its original state, and forgetting it in the applied sets
+// means a re-inserted node is applied (and its undo recorded) afresh.
+VisualChangeEngine.prototype._pruneDetachedUndo = function() {
+    var kept = [];
+    for (var i = this._undoStack.length - 1; i >= 0; i--) {
+        var entry = this._undoStack[i];
+        if (isAttached(entry.el)) {
+            kept.push(entry);
+            continue;
+        }
+        try {
+            entry.undo();
+        } catch (err) {
+            logger$4.error('Revert failed', err);
+        }
+        for (var j = 0; j < this._appliedSets.length; j++) {
+            this._appliedSets[j]['delete'](entry.el);
+        }
+    }
+    this._undoStack = kept.reverse();
 };
 
 // firstApply=false is a re-apply onto a node whose value a re-render clobbered:
@@ -27508,7 +28076,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
     if (type === 'setAttribute') {
         var attr = mutation['attribute'];
         if (isUnsafeAttribute(attr, mutation['value'])) {
-            logger$3.warn('Ignoring unsafe attribute mutation: ' + attr);
+            logger$4.warn('Ignoring unsafe attribute mutation: ' + attr);
             return false;
         }
         if (!firstApply) {
@@ -27521,7 +28089,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         var hadAttr = el.hasAttribute(attr);
         var prev = hadAttr ? el.getAttribute(attr) : null;
         el.setAttribute(attr, mutation['value']);
-        this._undoStack.push(function() {
+        this._pushUndo(el, function() {
             if (hadAttr) {
                 el.setAttribute(attr, prev);
             } else {
@@ -27547,9 +28115,15 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
             prevChildren.push(child);
         }
         el.textContent = mutation['value'];
-        this._undoStack.push(function() {
+        // A saved child the page has since moved elsewhere in the live document
+        // stays where the page put it, both on revert and when pruning a
+        // detached element.
+        this._pushUndo(el, function() {
             el.textContent = '';
             for (var i = 0; i < prevChildren.length; i++) {
+                if (isAttached(prevChildren[i])) {
+                    continue;
+                }
                 el.appendChild(prevChildren[i]);
             }
         });
@@ -27578,7 +28152,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         var prevValue = el.style.getPropertyValue(prop);
         var prevPriority = el.style.getPropertyPriority(prop);
         el.style.setProperty(prop, mutation['value']);
-        this._undoStack.push(function() {
+        this._pushUndo(el, function() {
             if (prevValue) {
                 el.style.setProperty(prop, prevValue, prevPriority);
             } else {
@@ -27604,7 +28178,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         }
         // add/remove above is idempotent (contains-guarded); only record undo once.
         if (firstApply) {
-            this._undoStack.push(function() {
+            this._pushUndo(el, function() {
                 for (var i = 0; i < added.length; i++) {
                     el.classList.remove(added[i]);
                 }
@@ -27622,7 +28196,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
             'selector': mutation['selector']
         }, el, firstApply);
     } else {
-        logger$3.warn('Ignoring unsupported mutation type: ' + type);
+        logger$4.warn('Ignoring unsupported mutation type: ' + type);
     }
     return false;
 };
@@ -27634,7 +28208,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
 VisualChangeEngine.prototype._applyOne = function(index) {
     var mutation = this._currentMutations[index];
     if (!mutation || !mutation['type'] || !mutation['selector']) {
-        logger$3.warn('Skipping malformed mutation', mutation);
+        logger$4.warn('Skipping malformed mutation', mutation);
         return false;
     }
     var applied = this._appliedSets[index];
@@ -27650,18 +28224,12 @@ VisualChangeEngine.prototype._applyOne = function(index) {
             applied.add(el);
             passAgain = true;
         }
-        // A first apply that changed the element records an undo entry; skipped
-        // (unsafe/unsupported) mutations do not.
-        var undoDepth = this._undoStack.length;
         try {
             if (this._applyOneToElement(mutation, el, firstApply)) {
                 passAgain = true;
             }
         } catch (err) {
-            logger$3.error('Mutation failed for selector ' + mutation['selector'], err);
-        }
-        if (firstApply && this._undoStack.length > undoDepth) {
-            this._queueFirstApply(index);
+            logger$4.error('Mutation failed for selector ' + mutation['selector'], err);
         }
     }
     return passAgain;
@@ -27677,34 +28245,6 @@ VisualChangeEngine.prototype._applyAll = function() {
         }
         if (!passAgain) {
             return;
-        }
-    }
-};
-
-VisualChangeEngine.prototype._queueFirstApply = function(index) {
-    if (!this._onFirstApply || this._firstApplyReported[index]) {
-        return;
-    }
-    this._firstApplyReported[index] = true;
-    this._pendingFirstApply.push(index);
-};
-
-// Deliver queued first-apply reports. Runs after an apply pass completes; the
-// callback (exposure tracking, and anything a before_track hook does) may
-// revert or replace the set, in which case the remaining reports are stale and
-// dropped.
-VisualChangeEngine.prototype._flushFirstApply = function() {
-    var callback = this._onFirstApply;
-    var pending = this._pendingFirstApply;
-    this._pendingFirstApply = [];
-    for (var i = 0; i < pending.length; i++) {
-        if (this._onFirstApply !== callback) {
-            return;
-        }
-        try {
-            callback(pending[i]);
-        } catch (err) {
-            logger$3.error('Visual changes onFirstApply callback failed', err);
         }
     }
 };
@@ -27781,11 +28321,11 @@ VisualChangeEngine.prototype._reapplyDirty = function() {
     }
     this._pauseObserver();
     try {
+        this._pruneDetachedUndo();
         this._applyAll();
     } finally {
         this._startObserverIfNeeded();
     }
-    this._flushFirstApply();
 };
 
 /**
@@ -27793,12 +28333,8 @@ VisualChangeEngine.prototype._reapplyDirty = function() {
  * prior set: reverts the previous undo stack first, then applies the new list.
  * Safe to call repeatedly; bad selectors are logged and skipped, never thrown.
  * @param {Array<Object>} mutations
- * @param {function(number)} [onFirstApply] called once per mutation index the
- *   first time that mutation changes an element, including later re-applies
- *   triggered by the observer. Not called for mutations that never apply.
- *   Invoked after the apply pass completes, never mid-mutation.
  */
-VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApply) {
+VisualChangeEngine.prototype.applyVisualChanges = function(mutations) {
     if (!minApisSupported() || !mutations || !mutations.length) {
         return;
     }
@@ -27808,9 +28344,6 @@ VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApp
             this._revertInternal();
         }
         this._currentMutations = mutations.slice();
-        this._onFirstApply = onFirstApply || null;
-        this._firstApplyReported = [];
-        this._pendingFirstApply = [];
         this._appliedSets = [];
         for (var i = 0; i < this._currentMutations.length; i++) {
             this._appliedSets.push(makeTracker());
@@ -27819,16 +28352,15 @@ VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApp
     } finally {
         this._startObserverIfNeeded();
     }
-    this._flushFirstApply();
 };
 
 VisualChangeEngine.prototype._revertInternal = function() {
     while (this._undoStack.length) {
-        var undoFn = this._undoStack.pop();
+        var entry = this._undoStack.pop();
         try {
-            undoFn();
+            entry.undo();
         } catch (err) {
-            logger$3.error('Revert failed', err);
+            logger$4.error('Revert failed', err);
         }
     }
     this._appliedSets = [];
@@ -27845,9 +28377,6 @@ VisualChangeEngine.prototype.revertVisualChanges = function() {
     try {
         this._revertInternal();
         this._currentMutations = [];
-        this._onFirstApply = null;
-        this._firstApplyReported = [];
-        this._pendingFirstApply = [];
     } finally {
         this._stopObserverIfIdle();
         this._startObserverIfNeeded();
@@ -27859,7 +28388,7 @@ safewrapClass(VisualChangeEngine);
 /* eslint camelcase: "off" */
 
 
-var logger$2 = console_with_prefix('visual-experiments');
+var logger$3 = console_with_prefix('visual-experiments');
 
 // Injected once to hide the page while a visual-experiment variant loads. Hiding
 // <html> (rather than <body>) works even when the snippet runs before the body
@@ -27935,11 +28464,11 @@ AntiFlickerController.prototype.hide = function() {
 
         var self = this;
         this._timer = win['setTimeout'](function() {
-            logger$2.log('Anti-flicker failsafe reached; revealing page');
+            logger$3.log('Anti-flicker failsafe reached; revealing page');
             self.reveal();
         }, this._timeoutMs);
     } catch (err) {
-        logger$2.error('Anti-flicker hide failed', err);
+        logger$3.error('Anti-flicker hide failed', err);
         // Never leave the page hidden because of a failure here.
         this.reveal();
     }
@@ -27993,11 +28522,130 @@ AntiFlickerController.prototype.reveal = function() {
         // believing we revealed while the page is still hidden.
         this._revealed = true;
     } catch (err) {
-        logger$2.error('Anti-flicker reveal failed', err);
+        logger$3.error('Anti-flicker reveal failed', err);
     }
 };
 
 safewrapClass(AntiFlickerController);
+
+/* eslint camelcase: "off" */
+
+
+var logger$2 = console_with_prefix('visual-experiments');
+
+var selectorPresent = function(selector) {
+    try {
+        return !!win['document'].querySelector(selector);
+    } catch (err) {
+        logger$2.error('Invalid exposure selector: ' + selector, err);
+        return false;
+    }
+};
+
+var anySelectorPresent = function(selectors) {
+    for (var i = 0; i < selectors.length; i++) {
+        if (selectorPresent(selectors[i])) {
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * ExposureWatcher waits for a visual-experiment variant's $mp.exposureSelectors
+ * to appear in the DOM, the same way the engine waits for the elements it
+ * mutates. The caller checks presence on the untouched page with
+ * anySelectorPresent() before the engine applies a set, and hands only the
+ * variants still missing a selector to watch(). One watcher serves one applied
+ * set; stop() discards everything still waiting.
+ *
+ * The watcher's MutationObserver callback runs in the microtask after a DOM
+ * change, while the engine defers its writes to newly added elements to the
+ * next animation frame. So a late-arriving element is checked before the
+ * engine can change it, and a treatment that removes a selector's class or
+ * attribute does not hide the element from the watcher.
+ * @constructor
+ */
+var ExposureWatcher = function() {
+    // [{selectors, onPresent}] still waiting for a selector to appear.
+    this._pending = [];
+    this._observer = null;
+    this._stopped = false;
+};
+
+/**
+ * Call onPresent once a later DOM change makes at least one of the selectors
+ * present. Presence at the time of the call is not checked: the caller judged
+ * that on the page before the engine changed it. Never runs after stop().
+ * @param {Array<string>} selectors
+ * @param {function()} onPresent
+ */
+ExposureWatcher.prototype.watch = function(selectors, onPresent) {
+    if (this._stopped) {
+        return;
+    }
+    this._pending.push({selectors: selectors, onPresent: onPresent});
+    this._startObserver();
+};
+
+ExposureWatcher.prototype._startObserver = function() {
+    var doc = win && win['document'];
+    if (this._observer || !doc || !doc.documentElement || typeof win['MutationObserver'] !== 'function') {
+        return;
+    }
+    var self = this;
+    this._observer = new win['MutationObserver'](function() {
+        self._checkPending();
+    });
+    // documentElement rather than body so the watch can start before <body> is
+    // parsed. Attributes too, so a selector matched by a class or attribute set
+    // on an existing element counts.
+    this._observer.observe(doc.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true
+    });
+};
+
+ExposureWatcher.prototype._checkPending = function() {
+    var present = [];
+    var stillPending = [];
+    for (var i = 0; i < this._pending.length; i++) {
+        var entry = this._pending[i];
+        (anySelectorPresent(entry.selectors) ? present : stillPending).push(entry);
+    }
+    this._pending = stillPending;
+    if (!stillPending.length) {
+        this._disconnect();
+    }
+    // A callback (exposure tracking, and anything a before_track hook does) may
+    // reset or re-apply, which stops this watcher; the remaining entries are stale.
+    for (var j = 0; j < present.length && !this._stopped; j++) {
+        try {
+            present[j].onPresent();
+        } catch (err) {
+            logger$2.error('Exposure watcher callback failed', err);
+        }
+    }
+};
+
+ExposureWatcher.prototype._disconnect = function() {
+    if (this._observer) {
+        this._observer.disconnect();
+        this._observer = null;
+    }
+};
+
+/**
+ * Stop watching and drop every pending callback. Idempotent.
+ */
+ExposureWatcher.prototype.stop = function() {
+    this._stopped = true;
+    this._pending = [];
+    this._disconnect();
+};
+
+safewrapClass(ExposureWatcher);
 
 /* eslint camelcase: "off" */
 
@@ -28024,21 +28672,6 @@ var payloadTooLarge = function(mutations) {
     }
 };
 
-// Normalize a pathname for comparison: ensure a leading slash and drop a single
-// trailing slash (keeping root "/") so "/foo" and "/foo/" are treated as equal.
-var normalizePathname = function(pathname) {
-    if (!pathname) {
-        return '/';
-    }
-    if (pathname.charAt(0) !== '/') {
-        pathname = '/' + pathname;
-    }
-    if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
-        pathname = pathname.slice(0, -1);
-    }
-    return pathname;
-};
-
 // Compare a persisted page url against the current location by origin + pathname
 // (query string and hash ignored). Uses a throwaway anchor to parse robustly
 // without assuming URL is available. Returns false when parsing is not possible.
@@ -28059,6 +28692,16 @@ var urlMatchesCurrentPage = function(url) {
     return normalizePathname(a.pathname) === normalizePathname(loc.pathname);
 };
 
+// A variant applies to the current page by its structured Target URL rule
+// ($mp.target) when it has one, and otherwise by its persisted page url.
+var variantMatchesCurrentPage = function(mp) {
+    var target = mp['target'];
+    if (target !== undefined && target !== null) {
+        return urlTargetMatches(target, win && win['location']);
+    }
+    return urlMatchesCurrentPage(mp['url']);
+};
+
 // A stable key for the current page at the granularity visual-change scoping uses
 // (origin + normalized pathname; query/hash ignored). Returns null outside a browser.
 var currentPageKey = function() {
@@ -28067,6 +28710,14 @@ var currentPageKey = function() {
         return null;
     }
     return loc.protocol + '//' + loc.host + normalizePathname(loc.pathname);
+};
+
+// The key SPA replay dedupes on: the sorted set of matched variants, each
+// identified by flag key and variant key, and whether the editor preview
+// applies. Navigating between pages that match the same variants (e.g. /item/1
+// to /item/2 under one pattern) leaves the applied set untouched.
+var matchedSetKey = function(matchedVariantIds, previewApplies) {
+    return (previewApplies ? 'preview;' : '') + matchedVariantIds.slice().sort().join(',');
 };
 
 /**
@@ -28080,7 +28731,9 @@ var currentPageKey = function() {
  * @param {function(): Object} [options.getVariantsFunc] current delivered variants
  *   (a Map or any object with forEach), used to replay on navigation and editing
  * @param {function(string, Object)} [options.trackExposureFunc] called with the
- *   flag key and variant the first time a variant is visible on the page
+ *   flag key and variant the first time a variant's page is matched and one of
+ *   its $mp.exposureSelectors is present (or it has none), for every arm alike.
+ *   The variant is a copy carrying 'matched_url', the page url it matched on.
  * @param {Function} [options.applyVisualChangesFunc] engine override for tests
  * @param {Function} [options.revertVisualChangesFunc] engine override for tests
  * @param {Function} [options.onSettledFunc] anti-flicker override for tests
@@ -28094,9 +28747,9 @@ var VisualExperimentsManager = function(options) {
     this.revertVisualChangesFunc = options.revertVisualChangesFunc || NOOP_FUNC;
     this.onSettledFunc = options.onSettledFunc || NOOP_FUNC;
     this._settled = false;
-    // origin+pathname the set was last (re)applied for, so an SPA navigation that
-    // does not change the matched page is a cheap no-op.
-    this._lastReplayedPageKey = null;
+    // matchedSetKey of the set last (re)applied, so an SPA navigation that does
+    // not change which variants match is a cheap no-op.
+    this._lastAppliedMatchedSetKey = null;
     // experiment_ids whose delivered changes are withheld because an editor
     // session is authoring them; the live preview is the sole driver.
     this._suppressedExperiments = {};
@@ -28104,9 +28757,14 @@ var VisualExperimentsManager = function(options) {
     // with unrelated experiments on every delivery and navigation.
     this._editorSession = null;
     this._editorPreview = null;
-    // Bumped by onReset so an engine first-apply report for a set applied under
-    // the previous identity is not tracked as the new identity's exposure.
+    // Bumped by every apply and by onReset. An apply whose generation is no
+    // longer current has been replaced (a re-apply, navigation, or a reset of
+    // the visitor), so its remaining exposures and replay state are stale.
     this._applyGeneration = 0;
+    // Waits for the exposure selectors of the last applied set.
+    this._exposureWatcher = null;
+    // Whether the engine holds an applied set that has not been reverted.
+    this._visualChangesApplied = false;
 };
 
 VisualExperimentsManager.prototype.isEnabled = function() {
@@ -28186,14 +28844,23 @@ VisualExperimentsManager.prototype.onReset = function() {
     this._refresh();
 };
 
-// Re-run page-scoped replay against the already-delivered variants, without a
-// fetch. Deduped so navigating without changing the matched page is a no-op.
+VisualExperimentsManager.prototype._stopExposureWatcher = function() {
+    if (this._exposureWatcher) {
+        this._exposureWatcher.stop();
+        this._exposureWatcher = null;
+    }
+};
+
+// Re-run page-scoped matching against the already-delivered variants, without
+// a fetch, on every navigation. Deduped so a navigation that does not change
+// the matched set is a no-op.
 VisualExperimentsManager.prototype.applyForCurrentPage = function() {
-    var key = currentPageKey();
-    if (key !== null && key === this._lastReplayedPageKey) {
+    var flagsMap = this._currentVariants();
+    var matched = this._matchCurrentPage(flagsMap);
+    if (matched.key === this._lastAppliedMatchedSetKey) {
         return;
     }
-    this._refresh();
+    this._applyForFlags(flagsMap, matched);
 };
 
 // Withhold a single experiment's delivered changes while an editor session is
@@ -28230,9 +28897,10 @@ VisualExperimentsManager.prototype._revertEditorPreview = function() {
 
 VisualExperimentsManager.prototype._startEditorSession = function(experimentId) {
     var pageKey = currentPageKey();
-    // Repeated starts preserve edits only while authoring the same page.
+    // Repeated starts preserve edits while authoring the same page or any page
+    // the preview applies to.
     if (!experimentId || (this._editorSession && this._editorSession.experimentId === experimentId &&
-        this._editorSession.pageKey === pageKey)) {
+        (this._editorSession.pageKey === pageKey || this._editorPreviewMatchesCurrentPage(this._currentVariants())))) {
         return;
     }
     if (this._editorSession) {
@@ -28256,96 +28924,178 @@ VisualExperimentsManager.prototype._endEditorSession = function(experimentId) {
 // Re-apply against the current delivered variants. Works before any delivery
 // (and without the flag-fetch APIs) so the editor is usable standalone.
 VisualExperimentsManager.prototype._refresh = function() {
-    var variants = this.getVariants();
-    this._applyForFlags((variants && variants.forEach) ? variants : EMPTY_VARIANTS);
+    this._applyForFlags(this._currentVariants());
 };
 
-// Aggregate $mp.visualChanges across every variant whose $mp.url matches the
-// current page, compose the editor preview, and apply them in a single call.
-// Applying per-variant would let the engine's auto-revert wipe an earlier
-// variant's changes when a later one has its own set.
-VisualExperimentsManager.prototype._applyForFlags = function(flagsMap) {
+VisualExperimentsManager.prototype._currentVariants = function() {
+    var variants = this.getVariants();
+    return (variants && variants.forEach) ? variants : EMPTY_VARIANTS;
+};
+
+// The delivered variants that apply to the current page ($mp.target, or $mp.url
+// when there is no target), skipping experiments withheld for the editor, as
+// [flagKey, variant, $mp] entries, whether the editor preview applies, and the
+// matchedSetKey over both.
+VisualExperimentsManager.prototype._matchCurrentPage = function(flagsMap) {
     var self = this;
-    var generation = this._applyGeneration;
-    var allVisualChanges = [];
-    // Parallel to allVisualChanges: the [flagKey, variant] each mutation came from.
-    var mutationSources = [];
-    // [flagKey, variant] for variants on this page that carry no mutations: a
-    // control arm (or an unedited variant) is exposed by reaching the page.
-    var pageExposures = [];
+    var matches = [];
+    var matchedVariantIds = [];
     flagsMap.forEach(function(variant, flagKey) {
         if (variant && self._suppressedExperiments[variant['experiment_id']]) {
             return;
         }
         var value = variant && variant['value'];
         var mp = value && value['$mp'];
-        if (!mp) {
+        if (!mp || !variantMatchesCurrentPage(mp)) {
             return;
         }
-        if (!urlMatchesCurrentPage(mp['url'])) {
-            return;
-        }
-        var visualChanges = mp['visualChanges'];
-        if (!visualChanges || !visualChanges.length) {
-            // Controls bypass the engine, so check the setting explicitly here.
-            // The disabled engine already prevents treatment exposure callbacks.
-            if (self.isEnabled()) {
-                pageExposures.push([flagKey, variant]);
-            }
-            return;
-        }
-        if (payloadTooLarge(visualChanges)) {
-            logger$1.error('Ignoring visual changes for ' + flagKey + ' exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
-            return;
-        }
-        allVisualChanges = allVisualChanges.concat(visualChanges);
-        for (var i = 0; i < visualChanges.length; i++) {
-            mutationSources.push([flagKey, variant]);
-        }
+        matches.push([flagKey, variant, mp]);
+        matchedVariantIds.push(JSON.stringify([flagKey, variant['key']]));
     });
-    var preview = this._editorPreview;
-    if (preview && preview.pageKey === currentPageKey()) {
-        if (payloadTooLarge(preview.mutations)) {
-            logger$1.error('Ignoring editor preview exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
-        } else {
-            // Preview wins any conflicts with live changes. It has no source entries,
-            // so the first-apply callback cannot report preview mutations as exposures.
-            allVisualChanges = allVisualChanges.concat(preview.mutations);
+    var previewApplies = this._editorPreviewMatchesCurrentPage(flagsMap);
+    return {
+        matches: matches,
+        previewApplies: previewApplies,
+        key: matchedSetKey(matchedVariantIds, previewApplies)
+    };
+};
+
+// The editor preview applies on the page where it was authored and on any page
+// a delivered variant of the experiment being authored matches ($mp.target, or
+// $mp.url without one), so it follows the experiment's target across navigation.
+VisualExperimentsManager.prototype._editorPreviewMatchesCurrentPage = function(flagsMap) {
+    if (!this._editorPreview) {
+        return false;
+    }
+    if (this._editorPreview.pageKey === currentPageKey()) {
+        return true;
+    }
+    var session = this._editorSession;
+    var editedVariantMatches = false;
+    if (session) {
+        flagsMap.forEach(function(variant) {
+            var value = variant && variant['experiment_id'] === session.experimentId && variant['value'];
+            var mp = value && value['$mp'];
+            editedVariantMatches = editedVariantMatches || (!!mp && variantMatchesCurrentPage(mp));
+        });
+    }
+    return editedVariantMatches;
+};
+
+// Aggregate $mp.visualChanges across every variant that matches the current
+// page ($mp.target, or $mp.url when there is no target), compose the editor
+// preview, and apply them in a single call.
+// Applying per-variant would let the engine's auto-revert wipe an earlier
+// variant's changes when a later one has its own set.
+// Every matching variant, control or treatment, is exposed by the same rule:
+// the page matched and one of its $mp.exposureSelectors is present (at once or
+// later), or it has none. Whether the engine changed an element is irrelevant,
+// so both arms count the same visitors.
+// matched is the _matchCurrentPage result for flagsMap when the caller already
+// computed it.
+VisualExperimentsManager.prototype._applyForFlags = function(flagsMap, matched) {
+    var self = this;
+    var generation = ++this._applyGeneration;
+    var loc = win && win['location'];
+    var matchedUrl = loc ? _.sanitizeUrl(loc.href) : null;
+    var allVisualChanges = [];
+    // [flagKey, variant, exposureSelectors] for every variant on this page.
+    var pageExposures = [];
+    matched = matched || this._matchCurrentPage(flagsMap);
+    // Recorded before any exposure callback runs: a before_track hook may
+    // navigate, and the nested apply's key must not be overwritten by this one.
+    this._lastAppliedMatchedSetKey = matched.key;
+    for (var m = 0; m < matched.matches.length; m++) {
+        var flagKey = matched.matches[m][0];
+        var variant = matched.matches[m][1];
+        var mp = matched.matches[m][2];
+        var visualChanges = mp['visualChanges'];
+        var hasVisualChanges = visualChanges && visualChanges.length;
+        if (hasVisualChanges && payloadTooLarge(visualChanges)) {
+            logger$1.error('Ignoring visual changes for ' + flagKey + ' exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
+            continue;
+        }
+        if (self.isEnabled()) {
+            pageExposures.push([flagKey, variant, mp['exposureSelectors']]);
+        }
+        if (hasVisualChanges) {
+            allVisualChanges = allVisualChanges.concat(visualChanges);
         }
     }
-    // Each variant is reported once per applied set, however many of its
-    // mutations land.
+    // Exposures still waiting on a previous set's page are dropped.
+    this._stopExposureWatcher();
+    // Exposure is judged on the page as it was before any treatment changed it,
+    // so a treatment that removes a selector's class or attribute still counts.
+    // A previously applied set is reverted before selectors are checked; the
+    // revert and the apply below run in one task, so no frame shows the page
+    // between them.
+    var checksSelectors = false;
+    _.each(pageExposures, function(source) {
+        if (source[2] && source[2].length) {
+            checksSelectors = true;
+        }
+    });
+    var revertedPreviousSet = false;
+    if (checksSelectors && this._visualChangesApplied) {
+        this.revertVisualChangesFunc();
+        this._visualChangesApplied = false;
+        revertedPreviousSet = true;
+    }
+    var presentBeforeChanges = _.map(pageExposures, function(source) {
+        var selectors = source[2];
+        return !selectors || !selectors.length || anySelectorPresent(selectors);
+    });
+    if (matched.previewApplies) {
+        if (payloadTooLarge(this._editorPreview.mutations)) {
+            logger$1.error('Ignoring editor preview exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
+        } else {
+            // Preview wins any conflicts with live changes. Preview mutations belong
+            // to no delivered variant, so they are never reported as exposures.
+            allVisualChanges = allVisualChanges.concat(this._editorPreview.mutations);
+        }
+    }
+    if (allVisualChanges.length) {
+        this.applyVisualChangesFunc(allVisualChanges);
+        this._visualChangesApplied = true;
+    } else if (!revertedPreviousSet) {
+        // No matching live changes or preview, including an empty control preview:
+        // clear the previous set rather than leaving it applied.
+        this.revertVisualChangesFunc();
+        this._visualChangesApplied = false;
+    }
+    var watcher = this._exposureWatcher = new ExposureWatcher();
+    // Each variant is reported once per applied set. A tracking hook may reset
+    // the visitor or navigate, which re-applies; either way this set's
+    // remaining exposures are discarded.
     var reported = [];
     var report = function(source) {
-        if (!source || generation !== self._applyGeneration || _.include(reported, source[0])) {
+        if (generation !== self._applyGeneration || _.include(reported, source[0])) {
             return;
         }
         reported.push(source[0]);
         try {
-            self.trackExposure(source[0], source[1]);
+            self.trackExposure(source[0], _.extend({}, source[1], {'matched_url': matchedUrl}));
         } catch (err) {
             logger$1.error('Visual exposure tracking failed', err);
         }
     };
-    if (allVisualChanges.length) {
-        // The engine reports each mutation the first time it actually changes an
-        // element (which may be later, once the target renders), so a variant is
-        // only counted as exposed once the user can see it.
-        this.applyVisualChangesFunc(allVisualChanges, function(mutationIndex) {
-            report(mutationSources[mutationIndex]);
-        });
-    } else {
-        // No matching live changes or preview, including an empty control preview:
-        // clear the previous set rather than leaving it applied.
-        this.revertVisualChangesFunc();
+    // Every watch is registered before any immediate report, so an element a
+    // tracking hook inserts while reporting one variant is seen by the others.
+    _.each(pageExposures, function(source, index) {
+        if (!presentBeforeChanges[index]) {
+            watcher.watch(source[2], function() {
+                report(source);
+            });
+        }
+    });
+    _.each(pageExposures, function(source, index) {
+        if (presentBeforeChanges[index]) {
+            report(source);
+        }
+    });
+    if (generation !== this._applyGeneration) {
+        return;
     }
-    // A variant with nothing to apply has no first-apply report, so it is tracked
-    // as soon as the page is matched. A tracking hook may reset the visitor, which
-    // discards that visitor's remaining exposures.
-    for (var k = 0; k < pageExposures.length; k++) {
-        report(pageExposures[k]);
-    }
-    this._lastReplayedPageKey = currentPageKey();
     this.onDeliverySettled();
 };
 
@@ -30209,32 +30959,39 @@ MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
  *   'send'       tracking requests go out
  *   'fetch'      feature flags and remote settings are fetched
  *   'store'      the services store data about the visitor
+ *   'exempt_measurement'  exempt-events.js events are sent, and remote settings fetched
  */
 
 
 /** @const */ var CONSENT_MODE_NO_CONSENT_REQUIRED = 'no_consent_required';
 /** @const */ var CONSENT_MODE_REQUIRE_CONSENT = 'require_consent';
 
-/** @const */ var CAPABILITIES = ['api_calls', 'send', 'fetch', 'store'];
+/** @const */ var CAPABILITIES = ['api_calls', 'send', 'fetch', 'store', 'exempt_measurement'];
+
+/** @typedef {'none'|'opted_in'|'opted_out'|'objected'} ConsentDecision */
+/** @typedef {'full'|'api_calls_stopped'|'exempt'|'blocked'} ConsentState */
 
 /** @const */ var DECISION_NONE = 'none';
 /** @const */ var DECISION_OPTED_IN = 'opted_in';
 /** @const */ var DECISION_OPTED_OUT = 'opted_out';
-// Do Not Track counts as an objection
+// object_to_tracking(); Do Not Track counts as one too
 /** @const */ var DECISION_OBJECTED = 'objected';
 
 /** @const */ var STATE_FULL = 'full';
 /** @const */ var STATE_API_CALLS_STOPPED = 'api_calls_stopped';
+/** @const */ var STATE_EXEMPT = 'exempt';
 /** @const */ var STATE_BLOCKED = 'blocked';
 
 /** @const */ var CONSENT_STATES = {
     // the SDK works normally, as for a site with no consent rules
-    'full':              {'api_calls': true,  'send': true,  'fetch': true,  'store': true},
+    'full':              {'api_calls': true,  'send': true,  'fetch': true,  'store': true,  'exempt_measurement': false},
     // an opt-out under 'no_consent_required': the public calls do nothing, flags keep loading,
     // and persistence follows the opt-out's clear_persistence and enable_persistence options
-    'api_calls_stopped': {'api_calls': false, 'send': true,  'fetch': true,  'store': true},
+    'api_calls_stopped': {'api_calls': false, 'send': true,  'fetch': true,  'store': true,  'exempt_measurement': false},
+    // 'exempt' before an opt-in, refusals included: only exempt events, nothing stored
+    'exempt':            {'api_calls': false, 'send': false, 'fetch': false, 'store': false, 'exempt_measurement': true},
     // nothing runs, is sent or is stored
-    'blocked':           {'api_calls': false, 'send': false, 'fetch': false, 'store': false}
+    'blocked':           {'api_calls': false, 'send': false, 'fetch': false, 'store': false, 'exempt_measurement': false}
 };
 
 /**
@@ -30243,7 +31000,8 @@ MixpanelPersistence.prototype.remove_event_timer = function(event_name) {
  */
 /** @const */ var CONSENT_MODES = {
     'no_consent_required': {'none': STATE_FULL,    'opted_in': STATE_FULL, 'opted_out': STATE_API_CALLS_STOPPED, 'objected': STATE_API_CALLS_STOPPED},
-    'require_consent':     {'none': STATE_BLOCKED, 'opted_in': STATE_FULL, 'opted_out': STATE_BLOCKED,           'objected': STATE_BLOCKED}
+    'require_consent':     {'none': STATE_BLOCKED, 'opted_in': STATE_FULL, 'opted_out': STATE_BLOCKED,           'objected': STATE_BLOCKED},
+    'exempt':              {'none': STATE_EXEMPT,  'opted_in': STATE_FULL, 'opted_out': STATE_EXEMPT,            'objected': STATE_BLOCKED}
 };
 
 /**
@@ -30264,14 +31022,18 @@ function resolveConsentMode(configuredMode) {
 }
 
 /**
- * The visitor's decision: Do Not Track, then the stored opt-out flag.
+ * The visitor's decision: Do Not Track, then a stored objection, then the stored opt-out flag.
  * @param {boolean} doNotTrack whether Do Not Track is on and not ignored
  * @param {string|null} storedFlag '1', '0', or null when there's none
- * @returns {string}
+ * @param {boolean} [objectionStored] whether an objection is stored
+ * @returns {ConsentDecision}
  */
-function readDecision(doNotTrack, storedFlag) {
+function readDecision(doNotTrack, storedFlag, objectionStored) {
     if (doNotTrack) {
         console$1.warn('This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
+        return DECISION_OBJECTED;
+    }
+    if (objectionStored) {
         return DECISION_OBJECTED;
     }
 
@@ -30504,6 +31266,312 @@ function _optInOut(optValue, token, options) {
 }
 
 /**
+ * Decisions under 'require_consent' and 'exempt', stored with the persistence; an objection has its
+ * own key. Without consent to store, everything about the visitor but the decision is deleted.
+ *
+ * The decision is kept three ways:
+ * - stored (_readDecision): read from storage on each call, so has_opted_out_tracking() sees
+ *   another tab's decision
+ * - this page's (_pageDecision): read once, then set by this page's calls, so a decision applies
+ *   here even if storing it failed
+ * - applied state (state()): this page's decision through the mode table, with Do Not Track read
+ *   only then, so the state changes only at a decision
+ *
+ * Reading writes nothing, so allows() works while the instance is built; init() makes the writes.
+ */
+
+
+/** @const */ var OBJECTION_PREFIX = '__mp_objection_';
+
+/**
+ * @constructor
+ * @param {string} mode
+ * @param {Object} options
+ * @param {function} options.getConfigFunc the instance's get_config
+ * @param {function} options.trackFunc the instance's track, for the $opt_in event
+ * @param {function} options.startTrackingFunc open storage and start the services when the state
+ * starts allowing storage
+ * @param {function} options.stopTrackingFunc stop the services and close storage when it stops
+ * @param {function} options.purgeIdentifiersFunc delete everything stored about the visitor except
+ * the decision
+ */
+var ConsentDecisions = function(mode, options) {
+    this.mode = mode;
+    this.getConfig = options.getConfigFunc;
+    this.track = options.trackFunc;
+    this.startTracking = options.startTrackingFunc;
+    this.stopTracking = options.stopTrackingFunc;
+    this.purgeIdentifiers = options.purgeIdentifiersFunc;
+    // read once, so a set_config() change can't move where the decision is kept
+    this.storageConfig = decisionStorageConfig(this.getConfig);
+    this.store = decisionStore(this.storageConfig);
+    // read from storage the first time they're asked for
+    this.decision = null;
+    this.appliedState = null;
+};
+
+// delete what an earlier page stored without consent
+ConsentDecisions.prototype.init = function() {
+    this._reconcile();
+};
+
+/**
+ * @returns {ConsentState}
+ */
+ConsentDecisions.prototype.state = function() {
+    if (this.appliedState === null) {
+        this.appliedState = this._stateFor(this._pageDecision());
+    }
+    return this.appliedState;
+};
+
+/**
+ * @returns {boolean}
+ */
+ConsentDecisions.prototype.hasOptedIn = function() {
+    return this._readFlag() === '1' && !this._readObjection();
+};
+
+/**
+ * @param {Object} [options] a call's ignore_dnt option
+ * @returns {boolean}
+ */
+ConsentDecisions.prototype.hasOptedOut = function(options) {
+    var decision = this._readDecision(options);
+    return decision === DECISION_OPTED_OUT || decision === DECISION_OBJECTED;
+};
+
+/**
+ * @param {Object} [options] opt_in_tracking() options; only the track options apply
+ */
+ConsentDecisions.prototype.optIn = function(options) {
+    this._decide(DECISION_OPTED_IN, options);
+};
+
+// an opt-out doesn't lift an objection, this page's or one another tab stored; only an opt-in or
+// a clear does
+ConsentDecisions.prototype.optOut = function() {
+    var objected = this._pageDecision() === DECISION_OBJECTED || this._readObjection();
+    this._decide(objected ? DECISION_OBJECTED : DECISION_OPTED_OUT);
+};
+
+// only 'exempt' treats an objection apart from an opt-out
+ConsentDecisions.prototype.objectTo = function() {
+    this._decide(DECISION_OBJECTED);
+};
+
+ConsentDecisions.prototype.clear = function() {
+    this._decide(DECISION_NONE);
+};
+
+/**
+ * Store a decision, move this page's state to match it, and open or close storage when that
+ * changes whether storage is allowed.
+ * @param {ConsentDecision} decision
+ * @param {Object} [options] opt_in_tracking() options
+ */
+ConsentDecisions.prototype._decide = function(decision, options) {
+    options = options || {};
+    var wasStoring = this._allowsStore();
+    this._writeDecision(decision);
+
+    // the state changes before the services start or stop, because they ask it. The page follows
+    // the decision even if storing it failed; Do Not Track still wins.
+    this.decision = decision;
+    this.appliedState = this._stateFor(decision);
+    var storing = this._allowsStore();
+
+    if (wasStoring && !storing) {
+        this.stopTracking();
+    }
+    this._reconcile();
+    if (!wasStoring && storing) {
+        this.startTracking();
+    }
+
+    // after the services start, so it carries the visitor's ID and a recording it triggers finds
+    // replay set up
+    var track = _.isUndefined(options['track']) ? this.track : options['track'];
+    if (decision === DECISION_OPTED_IN && storing && track) {
+        track(options['track_event_name'] || '$opt_in', options['track_properties'], {'send_immediately': true});
+    }
+};
+
+/**
+ * @param {ConsentDecision} decision
+ * @returns {ConsentState}
+ */
+ConsentDecisions.prototype._stateFor = function(decision) {
+    return CONSENT_MODES[this.mode][doNotTrackApplies(this.getConfig) ? DECISION_OBJECTED : decision];
+};
+
+ConsentDecisions.prototype._allowsStore = function() {
+    return CONSENT_STATES[this.state()]['store'] === true;
+};
+
+/**
+ * Make what's stored match the state, whatever an earlier page, SDK version or decision left:
+ * without consent to store, delete everything about the visitor but the decision.
+ */
+ConsentDecisions.prototype._reconcile = function() {
+    if (!this._allowsStore()) {
+        this.purgeIdentifiers();
+    }
+};
+
+/**
+ * Store a decision as the opt-out flag ('1' for an opt-in, '0' for an opt-out or an objection)
+ * and the objection, each removed at every cookie scope first so a copy an earlier config left
+ * can't shadow it. What's already stored isn't written again.
+ * @param {ConsentDecision} decision
+ */
+ConsentDecisions.prototype._writeDecision = function(decision) {
+    var flag = null;
+    if (decision === DECISION_OPTED_IN) {
+        flag = '1';
+    } else if (decision === DECISION_OPTED_OUT || decision === DECISION_OBJECTED) {
+        flag = '0';
+    }
+    if (this._readFlag() !== flag) {
+        this._writeDecisionKey(this._decisionKey(), flag);
+    }
+    var objected = decision === DECISION_OBJECTED;
+    if (this._readObjection() !== objected) {
+        this._writeDecisionKey(objectionKey(this.getConfig('token')), objected ? '1' : null);
+    }
+};
+
+/**
+ * @param {string} key
+ * @param {string|null} value null to remove it
+ */
+ConsentDecisions.prototype._writeDecisionKey = function(key, value) {
+    writeDecisionKey(this.storageConfig, key, value);
+};
+
+ConsentDecisions.prototype._decisionKey = function() {
+    return (this.getConfig('opt_out_tracking_cookie_prefix') || OPT_IN_OUT_FLAG_PREFIX) + this.getConfig('token');
+};
+
+/**
+ * @returns {ConsentDecision} this page's decision, without Do Not Track
+ */
+ConsentDecisions.prototype._pageDecision = function() {
+    if (this.decision === null) {
+        this.decision = readDecision(false, this._readFlag(), this._readObjection());
+    }
+    return this.decision;
+};
+
+/**
+ * @param {Object} [options] a call's ignore_dnt option
+ * @returns {ConsentDecision} the stored decision, with Do Not Track
+ */
+ConsentDecisions.prototype._readDecision = function(options) {
+    return readDecision(doNotTrackApplies(this.getConfig, options), this._readFlag(), this._readObjection());
+};
+
+/**
+ * @returns {string|null} the stored opt-out flag: '1', '0', or null when there's none
+ */
+ConsentDecisions.prototype._readFlag = function() {
+    return this.store.get(this._decisionKey());
+};
+
+/**
+ * @returns {boolean} whether an objection is stored
+ */
+ConsentDecisions.prototype._readObjection = function() {
+    return this.store.get(objectionKey(this.getConfig('token'))) !== null;
+};
+
+/**
+ * Where and how the decision is stored: the store and cookie config the persistence uses.
+ * localStorage is chosen without the support probe, which writes a key.
+ * @typedef {{inLocalStorage: boolean, cookieDomain: string, cookieExpiration: number,
+ *     crossSubdomain: boolean, secure: boolean, crossSite: boolean}} DecisionStorageConfig
+ * @param {function} getConfig the instance's get_config
+ * @returns {DecisionStorageConfig}
+ */
+function decisionStorageConfig(getConfig) {
+    return {
+        inLocalStorage: getConfig('persistence') === 'localStorage' && !!getLocalStorage(),
+        cookieDomain: getConfig('cookie_domain'),
+        cookieExpiration: getConfig('cookie_expiration'),
+        crossSubdomain: getConfig('cross_subdomain_cookie'),
+        secure: getConfig('secure_cookie'),
+        crossSite: getConfig('cross_site_cookie')
+    };
+}
+
+/**
+ * @param {DecisionStorageConfig} storageConfig
+ */
+function decisionStore(storageConfig) {
+    return storageConfig.inLocalStorage ? _.localStorage : _.cookie;
+}
+
+/**
+ * Remove a key at every cookie scope, so a copy an earlier config left can't shadow it, then write it.
+ * @param {DecisionStorageConfig} storageConfig
+ * @param {string} key
+ * @param {string|null} value null to remove it
+ */
+function writeDecisionKey(storageConfig, key, value) {
+    _.cookie.remove(key);
+    _.cookie.remove(key, true);
+    if (storageConfig.cookieDomain) {
+        _.cookie.remove(key, false, storageConfig.cookieDomain);
+    }
+    if (storageConfig.inLocalStorage) {
+        if (value === null) {
+            _.localStorage.remove(key);
+        } else {
+            _.localStorage.set(key, value);
+        }
+    } else if (value !== null) {
+        _.cookie.set(
+            key,
+            value,
+            storageConfig.cookieExpiration,
+            storageConfig.crossSubdomain,
+            storageConfig.secure,
+            storageConfig.crossSite,
+            storageConfig.cookieDomain
+        );
+    }
+}
+
+/**
+ * @param {string} token
+ */
+function objectionKey(token) {
+    return OBJECTION_PREFIX + token;
+}
+
+/**
+ * @param {DecisionStorageConfig} storageConfig
+ * @param {string} token
+ * @returns {boolean} whether an objection is stored
+ */
+function objectionStored(storageConfig, token) {
+    return decisionStore(storageConfig).get(objectionKey(token)) !== null;
+}
+
+/**
+ * Store or remove the objection where 'require_consent' and 'exempt' read it, so it holds when a
+ * site switches to one of them.
+ * @param {DecisionStorageConfig} storageConfig
+ * @param {string} token
+ * @param {boolean} objected
+ */
+function storeObjection(storageConfig, token, objected) {
+    if (objectionStored(storageConfig, token) !== objected) {
+        writeDecisionKey(storageConfig, objectionKey(token), objected ? '1' : null);
+    }
+}
+
+/**
  * Decisions under 'no_consent_required', which is what the opt_out_* configs have always done. The
  * decision is the opt-out flag in opt_out_tracking_persistence_type, read at every check so another
  * tab's decision applies at once. A decision's clear_persistence and enable_persistence options
@@ -30538,15 +31606,12 @@ OptOutFlagDecisions.prototype.init = function() {
     var localStorageRequested = this.getConfig('opt_out_tracking_persistence_type') === 'localStorage';
     if (localStorageRequested && _.localStorage.is_supported()) {
         if (!this.hasOptedIn({'persistence_type': 'localStorage'}) && this.hasOptedIn({'persistence_type': 'cookie'})) {
-            this.optIn({'enable_persistence': false});
+            this._writeFlag(optIn, {});
         }
         if (!this.hasOptedOut({'persistence_type': 'localStorage'}) && this.hasOptedOut({'persistence_type': 'cookie'})) {
             this.optOut({'clear_persistence': false});
         }
-        this.clear({
-            'persistence_type': 'cookie',
-            'enable_persistence': false
-        });
+        this._writeFlag(clearOptInOut, {'persistence_type': 'cookie'});
     }
 
     if (this.hasOptedOut()) {
@@ -30567,7 +31632,7 @@ OptOutFlagDecisions.prototype._optsOutByDefault = function() {
 };
 
 /**
- * @returns {string}
+ * @returns {ConsentState}
  */
 OptOutFlagDecisions.prototype.state = function() {
     return CONSENT_MODES[this.mode][this._readDecision()];
@@ -30596,6 +31661,7 @@ OptOutFlagDecisions.prototype.hasOptedOut = function(options) {
 OptOutFlagDecisions.prototype.optIn = function(options) {
     options = _.extend({'enable_persistence': true}, options);
     this._writeFlag(optIn, options);
+    this._storeObjection(false);
     this._updatePersistence(options);
 };
 
@@ -30618,11 +31684,21 @@ OptOutFlagDecisions.prototype.optOut = function(options) {
 };
 
 /**
+ * An opt-out here, also stored where 'exempt' reads it, so it holds if the site switches modes.
+ * @param {Object} [options] opt_out_tracking() options
+ */
+OptOutFlagDecisions.prototype.objectTo = function(options) {
+    this.optOut(options);
+    this._storeObjection(true);
+};
+
+/**
  * @param {Object} [options] clear_opt_in_out_tracking() options
  */
 OptOutFlagDecisions.prototype.clear = function(options) {
     options = _.extend({'enable_persistence': true}, options);
     this._writeFlag(clearOptInOut, options);
+    this._storeObjection(false);
     this._updatePersistence(options);
 };
 
@@ -30635,6 +31711,13 @@ OptOutFlagDecisions.prototype._updatePersistence = function(options) {
     } else if (options['enable_persistence']) {
         this.setPersistenceDisabled(false);
     }
+};
+
+/**
+ * @param {boolean} objected
+ */
+OptOutFlagDecisions.prototype._storeObjection = function(objected) {
+    storeObjection(decisionStorageConfig(this.getConfig), this.getConfig('token'), objected);
 };
 
 /**
@@ -30677,7 +31760,7 @@ OptOutFlagDecisions.prototype._writeFlag = function(func, options) {
 
 /**
  * @param {Object} [options] persistence_type, cookie_prefix and ignore_dnt to read with
- * @returns {string}
+ * @returns {ConsentDecision}
  */
 OptOutFlagDecisions.prototype._readDecision = function(options) {
     return readDecision(doNotTrackApplies(this.getConfig, options), this._readFlag(options));
@@ -30707,210 +31790,6 @@ OptOutFlagDecisions.prototype._readFlag = function(options) {
         persistenceType: persistenceType,
         persistencePrefix: options['cookie_prefix']
     });
-};
-
-/**
- * Decisions under 'require_consent'. The decision is stored with the persistence, so a subdomain
- * sharing the identity cookie shares it. The state is read once, when the instance is built, and
- * then changed only by this page's decisions; storage opens and closes when it changes, and without
- * consent to store, everything stored about the visitor but the decision is deleted.
- *
- * The constructor reads the stored decision and writes nothing, so the instance can ask allows()
- * while it builds persistence and the services. init() runs once they exist and makes the writes.
- */
-
-
-/**
- * @constructor
- * @param {string} mode
- * @param {Object} options
- * @param {function} options.getConfigFunc the instance's get_config
- * @param {function} options.trackFunc the instance's track, for the $opt_in event
- * @param {function} options.startTrackingFunc open storage and start the services when the state
- * starts allowing storage
- * @param {function} options.stopTrackingFunc stop the services and close storage when it stops
- * @param {function} options.purgeIdentifiersFunc delete everything stored about the visitor except
- * the decision
- */
-var ConsentDecisions = function(mode, options) {
-    this.mode = mode;
-    this.getConfig = options.getConfigFunc;
-    this.track = options.trackFunc;
-    this.startTracking = options.startTrackingFunc;
-    this.stopTracking = options.stopTrackingFunc;
-    this.purgeIdentifiers = options.purgeIdentifiersFunc;
-    // read from storage the first time it's asked for
-    this.appliedState = null;
-};
-
-// delete what an earlier page stored without consent
-ConsentDecisions.prototype.init = function() {
-    this._reconcile();
-};
-
-/**
- * @returns {string}
- */
-ConsentDecisions.prototype.state = function() {
-    if (this.appliedState === null) {
-        this.appliedState = CONSENT_MODES[this.mode][this._readDecision()];
-    }
-    return this.appliedState;
-};
-
-/**
- * @returns {boolean}
- */
-ConsentDecisions.prototype.hasOptedIn = function() {
-    return this._readFlag() === '1';
-};
-
-/**
- * @param {Object} [options] a call's ignore_dnt option
- * @returns {boolean}
- */
-ConsentDecisions.prototype.hasOptedOut = function(options) {
-    var decision = this._readDecision(options);
-    return decision === DECISION_OPTED_OUT || decision === DECISION_OBJECTED;
-};
-
-/**
- * @param {Object} [options] opt_in_tracking() options; only the track options apply
- */
-ConsentDecisions.prototype.optIn = function(options) {
-    this._decide(DECISION_OPTED_IN, options);
-};
-
-ConsentDecisions.prototype.optOut = function() {
-    this._decide(DECISION_OPTED_OUT);
-};
-
-ConsentDecisions.prototype.clear = function() {
-    this._decide(DECISION_NONE);
-};
-
-/**
- * Store a decision, move this page's state to match it, and open or close storage when that
- * changes whether storage is allowed.
- * @param {string} decision
- * @param {Object} [options] opt_in_tracking() options
- */
-ConsentDecisions.prototype._decide = function(decision, options) {
-    options = options || {};
-    var wasStoring = this._allowsStore();
-    this._writeDecision(decision);
-
-    // the state changes before the services start or stop, because they ask it. It follows the
-    // decision even if storing it failed; Do Not Track still wins.
-    this.appliedState = CONSENT_MODES[this.mode][doNotTrackApplies(this.getConfig) ? DECISION_OBJECTED : decision];
-    var storing = this._allowsStore();
-
-    if (wasStoring && !storing) {
-        this.stopTracking();
-    }
-    this._reconcile();
-    if (!wasStoring && storing) {
-        this.startTracking();
-    }
-
-    // after the services start, so it carries the visitor's ID and a recording it triggers finds
-    // replay set up
-    var track = _.isUndefined(options['track']) ? this.track : options['track'];
-    if (decision === DECISION_OPTED_IN && storing && track) {
-        track(options['track_event_name'] || '$opt_in', options['track_properties'], {'send_immediately': true});
-    }
-};
-
-ConsentDecisions.prototype._allowsStore = function() {
-    return CONSENT_STATES[this.state()]['store'] === true;
-};
-
-/**
- * Make what's stored match the state, whatever an earlier page, SDK version or decision left:
- * without consent to store, delete everything about the visitor but the decision.
- */
-ConsentDecisions.prototype._reconcile = function() {
-    if (!this._allowsStore()) {
-        this.purgeIdentifiers();
-    }
-};
-
-/**
- * Store a decision as the opt-out flag ('1' for an opt-in, '0' for an opt-out), removed at every
- * cookie scope first so a copy an earlier config left can't shadow it.
- * @param {string} decision
- */
-ConsentDecisions.prototype._writeDecision = function(decision) {
-    var flag = null;
-    if (decision === DECISION_OPTED_IN) {
-        flag = '1';
-    } else if (decision === DECISION_OPTED_OUT) {
-        flag = '0';
-    }
-    // a decision that's already stored isn't written again
-    if (this._readFlag() === flag) {
-        return;
-    }
-    this._writeDecisionKey(this._decisionKey(), flag);
-};
-
-/**
- * @param {string} key
- * @param {string|null} value null to remove it
- */
-ConsentDecisions.prototype._writeDecisionKey = function(key, value) {
-    var getConfig = this.getConfig;
-    var cookieDomain = getConfig('cookie_domain');
-    _.cookie.remove(key);
-    _.cookie.remove(key, true);
-    if (cookieDomain) {
-        _.cookie.remove(key, false, cookieDomain);
-    }
-    if (this._decisionInLocalStorage()) {
-        if (value === null) {
-            _.localStorage.remove(key);
-        } else {
-            _.localStorage.set(key, value);
-        }
-    } else if (value !== null) {
-        _.cookie.set(
-            key,
-            value,
-            getConfig('cookie_expiration'),
-            getConfig('cross_subdomain_cookie'),
-            getConfig('secure_cookie'),
-            getConfig('cross_site_cookie'),
-            cookieDomain
-        );
-    }
-};
-
-// the store the persistence uses, chosen without the localStorage support probe, which writes a key
-ConsentDecisions.prototype._decisionInLocalStorage = function() {
-    return this.getConfig('persistence') === 'localStorage' && !!getLocalStorage();
-};
-
-ConsentDecisions.prototype._decisionStore = function() {
-    return this._decisionInLocalStorage() ? _.localStorage : _.cookie;
-};
-
-ConsentDecisions.prototype._decisionKey = function() {
-    return (this.getConfig('opt_out_tracking_cookie_prefix') || OPT_IN_OUT_FLAG_PREFIX) + this.getConfig('token');
-};
-
-/**
- * @param {Object} [options] a call's ignore_dnt option
- * @returns {string}
- */
-ConsentDecisions.prototype._readDecision = function(options) {
-    return readDecision(doNotTrackApplies(this.getConfig, options), this._readFlag());
-};
-
-/**
- * @returns {string|null} the stored opt-out flag: '1', '0', or null when there's none
- */
-ConsentDecisions.prototype._readFlag = function() {
-    return this._decisionStore().get(this._decisionKey());
 };
 
 /**
@@ -30965,7 +31844,7 @@ var ConsentManager = function(options) {
 /**
  * Whether the visitor's current state allows something. The rest of the SDK asks the ConsentGate
  * methods built on this.
- * @param {string} capability 'api_calls', 'send', 'fetch' or 'store'
+ * @param {string} capability 'api_calls', 'send', 'fetch', 'store' or 'exempt_measurement'
  * @returns {boolean}
  */
 ConsentManager.prototype.allows = function(capability) {
@@ -30976,7 +31855,7 @@ ConsentManager.prototype.allows = function(capability) {
 };
 
 /**
- * @returns {string}
+ * @returns {ConsentState}
  */
 ConsentManager.prototype.state = function() {
     return this.decisions.state();
@@ -31038,11 +31917,124 @@ ConsentManager.prototype.optOut = function(options) {
 };
 
 /**
+ * Object to all tracking, which also drops a held identify().
+ * @param {Object} [options] object_to_tracking() options
+ */
+ConsentManager.prototype.objectTo = function(options) {
+    this.heldIdentify = null;
+    this.decisions.objectTo(options);
+};
+
+/**
  * @param {Object} [options] clear_opt_in_out_tracking() options
  */
 ConsentManager.prototype.clear = function(options) {
     this.decisions.clear(options);
 };
+
+/**
+ * The anonymous audience events consent_mode 'exempt' sends before consent: page views, clicks,
+ * scrolls and page exits, with properties that can't identify the visitor.
+ */
+
+var EXEMPT_EVENTS = ['$mp_web_page_view', '$mp_click', '$mp_scroll', '$mp_page_leave'];
+
+var EXEMPT_PROPERTIES = [
+    'token',
+    'time',
+    'mp_lib',
+    '$lib_version',
+    '$insert_id',
+    '$mp_autocapture',
+    '$os',
+    '$browser',
+    '$browser_version',
+    '$device',
+    '$referring_domain',
+    '$current_url',
+    'current_page_title',
+    'current_domain',
+    'current_url_path',
+    'current_url_protocol',
+    '$el_attr__href',
+    '$scroll_percentage',
+    '$scroll_checkpoint',
+    '$max_scroll_percentage'
+];
+
+// sent as origin and path
+var URL_PROPERTIES = ['$current_url', '$el_attr__href'];
+
+// what browsers drop before parsing an href: leading and trailing spaces and control characters
+// (everything below '!'), and any tab or newline
+var URL_IGNORED_CHARACTERS = /^[^!-\uffff]+|[^!-\uffff]+$|[\t\n\r]/g;
+// scheme, credentials (up to the last @, as browsers split them), host, path
+var ABSOLUTE_HTTP_URL = /^(https?:\/\/)(?:[^/?#]*@)?([^/?#]*)([^?#]*)/i;
+// a relative URL: no scheme and not protocol-relative, which browsers also read from \\ and /\
+var RELATIVE_URL = /^(?![a-z][a-z0-9+.-]*:|[\\/]{2})([^?#]*)/i;
+
+var SECONDS_PER_HOUR = 3600;
+
+/**
+ * The properties to send for an event before consent, or null if the event isn't sent.
+ * @param {string} eventName
+ * @param {Object} properties the event's properties after property_blacklist
+ * @param {{events: Array<string>|undefined, properties: Array<string>|undefined}} extraAllowed
+ *     the consent_exempt_allowlist config, which adds events and properties to the defaults
+ * @returns {Object|null}
+ */
+function exemptEventProperties(eventName, properties, extraAllowed) {
+    var allowedEvents = EXEMPT_EVENTS.concat(extraAllowed['events'] || []);
+    if (!_.include(allowedEvents, eventName)) {
+        return null;
+    }
+
+    var allowedProperties = EXEMPT_PROPERTIES.concat(extraAllowed['properties'] || []);
+    var exemptProperties = {};
+    _.each(allowedProperties, function(property) {
+        if (Object.prototype.hasOwnProperty.call(properties, property)) {
+            exemptProperties[property] = properties[property];
+        }
+    });
+
+    _.each(URL_PROPERTIES, function(property) {
+        if (property in exemptProperties) {
+            var originAndPath = urlOriginAndPath(exemptProperties[property]);
+            if (originAndPath === null) {
+                delete exemptProperties[property];
+            } else {
+                exemptProperties[property] = originAndPath;
+            }
+        }
+    });
+    if (_.isNumber(exemptProperties['$browser_version'])) {
+        exemptProperties['$browser_version'] = Math.floor(exemptProperties['$browser_version']);
+    }
+    if (_.isNumber(exemptProperties['time'])) {
+        exemptProperties['time'] = Math.floor(exemptProperties['time'] / SECONDS_PER_HOUR) * SECONDS_PER_HOUR;
+    }
+    exemptProperties['$mp_exempt'] = true;
+    return exemptProperties;
+}
+
+/**
+ * An http(s) or relative URL without credentials, query string or fragment; null for any other URL,
+ * such as mailto: or tel: links.
+ * @param {*} url
+ * @returns {string|null}
+ */
+function urlOriginAndPath(url) {
+    if (!_.isString(url)) {
+        return null;
+    }
+    url = url.replace(URL_IGNORED_CHARACTERS, '');
+    var absolute = ABSOLUTE_HTTP_URL.exec(url);
+    if (absolute) {
+        return absolute[1] + absolute[2] + absolute[3];
+    }
+    var relative = RELATIVE_URL.exec(url);
+    return relative ? relative[1] : null;
+}
 
 /* eslint camelcase: "off" */
 
@@ -31165,6 +32157,7 @@ var DEFAULT_CONFIG = {
     'opt_out_tracking_persistence_type': 'localStorage',
     'opt_out_tracking_cookie_prefix':    null,
     'consent_mode':                      null,
+    'consent_exempt_allowlist':          {}, // {events: [...], properties: [...]} added to the exempt defaults
     'property_blacklist':                [],
     'xhr_headers':                       {}, // { header: value, header2: value }
     'ignore_dnt':                        false,
@@ -31409,6 +32402,9 @@ MixpanelLib.prototype._init = function(token, config, name) {
     this._consent.init();
     if (allows_storage) {
         this._start_services();
+    } else if (this._consent.allowsExemptMeasurement()) {
+        // remote settings can turn on the autocapture the exempt events come from
+        this._fetch_remote_settings();
     }
 
     this.autocapture = new Autocapture(this);
@@ -31437,7 +32433,8 @@ MixpanelLib.prototype._set_first_touch_people_properties = function() {
     }
 };
 
-// the services that store or send on their own; at init, and again on an opt-in under 'require_consent'
+// the services that store or send on their own; at init, and again on an opt-in under
+// 'require_consent' or 'exempt'
 MixpanelLib.prototype._start_services = function() {
     // There is no need to set the distinct id
     // or the device id if something was already stored
@@ -31451,7 +32448,7 @@ MixpanelLib.prototype._start_services = function() {
     // Based on remote_settings_mode, fetch remote settings and then start session recording if applicable
     var mode = this.get_config('remote_settings_mode');
     if (mode === SETTING_STRICT || mode === SETTING_FALLBACK) {
-        this.__session_recording_init_promise = this._fetch_remote_settings(mode).then(_.bind(function() {
+        this.__session_recording_init_promise = this._fetch_remote_settings().then(_.bind(function() {
             return this._check_and_start_session_recording();
         }, this));
     } else {
@@ -31750,7 +32747,8 @@ MixpanelLib.prototype._dom_loaded = function() {
         this._track_dom.apply(this, item);
     }, this);
 
-    if (this._consent.allowsApiCalls()) {
+    // _send_request checks each request's consent again
+    if (this._consent.allowsApiCalls() || this._consent.allowsExemptMeasurement()) {
         _.each(this.__request_queue, function(item) {
             this._send_request.apply(this, item);
         }, this);
@@ -31812,8 +32810,10 @@ MixpanelLib.prototype._prepare_callback = function(callback, data) {
 MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     var succeeded = true;
 
-    // event, people and group requests all pass here; flags and replay ask the gate themselves
-    if (!this._consent.allowsSending()) {
+    // event, people and group requests pass here; flags and replay ask the gate themselves
+    var is_exempt_event = _.isObject(options) && options.exempt_measurement === true;
+    var allowed = is_exempt_event ? this._consent.allowsExemptMeasurement() : this._consent.allowsSending();
+    if (!allowed) {
         console$1.log('Request dropped without consent');
         if (_.isFunction(callback)) {
             callback(0);
@@ -31977,9 +32977,21 @@ MixpanelLib.prototype._send_request = function(url, data, options, callback) {
     return succeeded;
 };
 
-MixpanelLib.prototype._fetch_remote_settings = function(mode) {
-    if (!this._consent.allowsFetching()) {
-        return Promise.resolve();
+/**
+ * Once per page, so an opt-in reuses the fetch exempt measurement made.
+ * @returns {Promise}
+ */
+MixpanelLib.prototype._fetch_remote_settings = function() {
+    var mode = this.get_config('remote_settings_mode');
+    if (mode !== SETTING_STRICT && mode !== SETTING_FALLBACK) {
+        return PromisePolyfill.resolve();
+    }
+    // carries only the token and SDK version
+    if (!this._consent.allowsFetching() && !this._consent.allowsExemptMeasurement()) {
+        return PromisePolyfill.resolve();
+    }
+    if (this._remote_settings_promise) {
+        return this._remote_settings_promise;
     }
 
     var self = this;
@@ -31993,7 +33005,7 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
     if (!win['AbortController']) {
         console$1.critical('Remote settings unavailable: missing minimum required APIs');
         disableRecordingIfStrict();
-        return Promise.resolve();
+        return PromisePolyfill.resolve();
     }
 
     var settings_endpoint = this.get_api_host('settings') + '/' + this.get_config('api_routes')['settings'];
@@ -32017,7 +33029,7 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
         'signal': abortController.signal
     };
 
-    return win['fetch'](full_url, fetchOptions).then(function(response) {
+    this._remote_settings_promise = win['fetch'](full_url, fetchOptions).then(function(response) {
         clearTimeout(timeout_id);
         if (!response['ok']) {
             console$1.critical('Network response was not ok');
@@ -32051,6 +33063,7 @@ MixpanelLib.prototype._fetch_remote_settings = function(mode) {
         console$1.critical('Failed to fetch remote settings', err);
         disableRecordingIfStrict();
     });
+    return this._remote_settings_promise;
 };
 
 /**
@@ -32210,6 +33223,16 @@ MixpanelLib.prototype._encode_data_for_request = function(data) {
     return {'data': encoded_data};
 };
 
+/**
+ * @param {string} event_name
+ * @param {Object} properties
+ * @returns {Object|null} what's sent for the event before consent, or null if it isn't sent
+ */
+MixpanelLib.prototype._exempt_event_properties = function(event_name, properties) {
+    var consent_exempt_allowlist = this.get_config('consent_exempt_allowlist');
+    return exemptEventProperties(event_name, properties, _.isObject(consent_exempt_allowlist) ? consent_exempt_allowlist : {});
+};
+
 // internal method for handling track vs batch-enqueue logic
 MixpanelLib.prototype._track_or_batch = function(options, callback) {
     var truncated_data = _.truncate(options.data, 255);
@@ -32262,6 +33285,10 @@ MixpanelLib.prototype._track_or_batch = function(options, callback) {
  *
  * To track link clicks or form submissions, see track_links() or track_forms().
  *
+ * With consent_mode 'exempt', until an opt-in only anonymous page views, clicks, scrolls and page
+ * exits are sent (see consent_exempt_allowlist). The before_send_events hook doesn't run on them;
+ * on_track does, before the filter.
+ *
  * @example
  * ```js
  * // track an event named 'Registered'
@@ -32285,7 +33312,9 @@ MixpanelLib.prototype.track = function(event_name, properties, options, callback
         callback = options;
         options = null;
     }
-    if (!this._consent.allowsApiCalls()) {
+    // before consent under 'exempt', only the anonymous audience events go out
+    var exempt_measurement = this._consent.allowsExemptMeasurement();
+    if (!exempt_measurement && !this._consent.allowsApiCalls()) {
         if (_.isFunction(callback)) {
             callback(0);
         }
@@ -32371,6 +33400,16 @@ MixpanelLib.prototype.track = function(event_name, properties, options, callback
     event_name = ret[0];
     properties = ret[1];
 
+    // filtered here, before anything else sees the event; exempt sends skip before_send_events,
+    // so no hook adds to it after this
+    if (exempt_measurement) {
+        properties = this._exempt_event_properties(event_name, properties);
+        if (!properties) {
+            callback(0);
+            return;
+        }
+    }
+
     this._start_recording_on_event(event_name, properties);
 
     var data = {
@@ -32382,8 +33421,9 @@ MixpanelLib.prototype.track = function(event_name, properties, options, callback
         data: data,
         endpoint: this.get_api_host('events') + '/' + this.get_config('api_routes')['track'],
         batcher: this.request_batchers.events,
-        should_send_immediately: should_send_immediately,
-        send_request_options: options
+        // batching stores the queue, so exempt events go one per request
+        should_send_immediately: should_send_immediately || exempt_measurement,
+        send_request_options: exempt_measurement ? _.extend({}, options, {exempt_measurement: true, skip_hooks: true}) : options
     }, callback);
 
     // Check for first-time event matches
@@ -32879,9 +33919,9 @@ MixpanelLib.prototype._register_single = function(prop, value) {
  * to the same user identity. If ID Merge is disabled, alias can
  * be used to connect pre- and post-registration events.
  *
- * With consent_mode 'require_consent', the latest call made before the visitor consents is held in
- * memory, without storing or sending anything, and applied if they opt in on the same page. reset()
- * discards it.
+ * With consent_mode 'require_consent' or 'exempt', the latest call made before the visitor consents
+ * is held in memory, without storing or sending anything, and applied if they opt in on the same
+ * page. reset() and object_to_tracking() discard it.
  *
  * @param {String} [new_distinct_id] A string that uniquely identifies a user. If not provided, the distinct_id currently in the persistent store (cookie or localStorage) will be used.
  */
@@ -32949,11 +33989,9 @@ MixpanelLib.prototype.identify = function(
         }, {skip_hooks: true});
     }
 
-    // check feature flags again if distinct id has changed
+    // reset feature flags if distinct id has changed
     if (new_distinct_id !== previous_distinct_id) {
-        this.flags.fetchFlags().catch(function() {
-            console$1.error('[flags] Error fetching flags during identify');
-        });
+        this.flags.reset();
     }
 };
 
@@ -33165,10 +34203,13 @@ MixpanelLib.prototype.name_tag = function(name_tag) {
  *       // customize the name of cookie/localStorage set by opt-in/opt-out methods
  *       opt_out_tracking_cookie_prefix: null
  *
- *       // what happens before the visitor decides: 'no_consent_required' (unset) or
- *       // 'require_consent'. opt_out_tracking_by_default applies only when it's unset.
- *       // Fixed at init.
+ *       // what happens before the visitor decides: 'no_consent_required' (unset),
+ *       // 'require_consent' or 'exempt'. opt_out_tracking_by_default applies only when
+ *       // it's unset. Fixed at init.
  *       consent_mode: null
+ *
+ *       // extra events and properties consent_mode 'exempt' sends before consent
+ *       consent_exempt_allowlist: {events: [], properties: []}
  *
  *       // type of persistent store for super properties (cookie/
  *       // localStorage) if set to 'localStorage', any existing
@@ -33411,9 +34452,9 @@ MixpanelLib.prototype._delete_user_for_opt_out = function() {
  * });
  * ```
  *
- * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
- * cookie config: the storage options and enable_persistence below don't apply, and the track
- * options do.
+ * With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+ * persistence and cookie config: the storage options and enable_persistence below don't apply, and
+ * the track options do.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {function} [options.track] Function used for tracking a Mixpanel event to record the opt-in action (default is this Mixpanel instance's track method)
@@ -33447,9 +34488,10 @@ MixpanelLib.prototype.opt_in_tracking = function(options) {
  * });
  * ```
  *
- * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
- * cookie config: the storage options, clear_persistence and delete_user below don't apply. The
- * stored identifiers are deleted instead, and no $delete is sent.
+ * With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+ * persistence and cookie config: the storage options, clear_persistence and delete_user below don't
+ * apply. The stored identifiers are deleted instead, and no $delete is sent. Under 'exempt', the
+ * visitor stays exempt; object_to_tracking() stops that.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.delete_user=true] If true, will delete the currently identified user's profile and clear all charges after opting the user out
@@ -33467,6 +34509,22 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
 };
 
 /**
+ * Stop all tracking, exempt measurement included, for the objection link in your privacy policy.
+ * Outside consent_mode 'exempt' it works as opt_out_tracking(). opt_in_tracking() and
+ * clear_opt_in_out_tracking() lift it; opt_out_tracking() doesn't.
+ *
+ * @example
+ * ```js
+ * mixpanel.object_to_tracking();
+ * ```
+ *
+ * @param {Object} [options] The same options as opt_out_tracking
+ */
+MixpanelLib.prototype.object_to_tracking = function(options) {
+    this._consent.objectTo(options);
+};
+
+/**
  * Check whether the user has opted in to data tracking and cookies/localstorage for this Mixpanel instance
  *
  * @example
@@ -33475,7 +34533,8 @@ MixpanelLib.prototype.opt_out_tracking = function(options) {
  * // use has_opted_in value
  * ```
  *
- * With consent_mode 'require_consent' the options don't apply.
+ * With consent_mode 'require_consent' or 'exempt' the options don't apply, and a stored objection
+ * counts as not opted in.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.persistence_type] Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag
@@ -33495,8 +34554,8 @@ MixpanelLib.prototype.has_opted_in_tracking = function(options) {
  * // use has_opted_out value
  * ```
  *
- * With consent_mode 'require_consent' the options don't apply, and a stored refusal or Do Not Track
- * counts as opted out.
+ * With consent_mode 'require_consent' or 'exempt' the options don't apply, and a stored refusal, an
+ * objection or Do Not Track counts as opted out.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {string} [options.persistence_type] Persistence mechanism to read - cookie or localStorage - falls back to cookie if localStorage is unavailable. Defaults to opt_out_tracking_persistence_type; for localStorage, whichever store holds the flag
@@ -33523,10 +34582,10 @@ MixpanelLib.prototype.has_opted_out_tracking = function(options) {
  * });
  * ```
  *
- * With consent_mode 'require_consent', the decision is stored with the instance's persistence and
- * cookie config: the storage options and enable_persistence below don't apply. Clearing also
- * deletes the device's stored identifiers, and on a page tracking after an opt-in it stops
- * tracking.
+ * With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+ * persistence and cookie config: the storage options and enable_persistence below don't apply.
+ * Clearing also deletes the device's stored identifiers, and on a page tracking after an opt-in it
+ * stops tracking.
  *
  * @param {Object} [options] A dictionary of config options to override
  * @param {boolean} [options.enable_persistence=true] If true, will re-enable sdk persistence
@@ -33601,6 +34660,7 @@ MixpanelLibProto['get_property']                       = MixpanelLibProto.get_pr
 MixpanelLibProto['get_distinct_id']                    = MixpanelLibProto.get_distinct_id;
 MixpanelLibProto['toString']                           = MixpanelLibProto.toString;
 MixpanelLibProto['opt_out_tracking']                   = MixpanelLibProto.opt_out_tracking;
+MixpanelLibProto['object_to_tracking']                 = MixpanelLibProto.object_to_tracking;
 MixpanelLibProto['opt_in_tracking']                    = MixpanelLibProto.opt_in_tracking;
 MixpanelLibProto['has_opted_out_tracking']             = MixpanelLibProto.has_opted_out_tracking;
 MixpanelLibProto['_consent_allows']                    = MixpanelLibProto._consent_allows;
