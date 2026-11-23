@@ -67,6 +67,67 @@ describe(`IDBStorageWrapper`, function() {
     expect(transactionStub.callCount).to.equal(3);
   });
 
+  describe(`when the upgrade fails`, function() {
+    const interceptUpgrade = (makeEvent, makeResult) => {
+      const open = window.indexedDB.open.bind(window.indexedDB);
+      sinon.stub(window.indexedDB, `open`).callsFake(function(name, version) {
+        const request = open(name, version);
+        let handler = null;
+        Object.defineProperty(request, `onupgradeneeded`, {
+          configurable: true,
+          get: () => handler && function(ev) {
+            if (makeResult) {
+              Object.defineProperty(request, `result`, {configurable: true, get: makeResult, set: () => {}});
+            }
+            return handler.call(this, makeEvent(ev));
+          },
+          set: (fn) => { handler = fn; },
+        });
+        return request;
+      });
+    };
+    const uncaught = () => {
+      const errors = [];
+      const listener = (err) => errors.push(err);
+      process.on(`uncaughtException`, listener);
+      return {errors, stop: () => process.removeListener(`uncaughtException`, listener)};
+    };
+
+    it(`reads the database from the request when the event has none`, async function() {
+      interceptUpgrade((ev) => ({oldVersion: ev.oldVersion, target: {}}));
+
+      await idbWrapper.init();
+      await idbWrapper.setItem(`test-key`, {foo: `bar`});
+
+      expect(await idbWrapper.getItem(`test-key`)).to.eql({foo: `bar`});
+    });
+
+    it(`rejects init when no database is available`, async function() {
+      interceptUpgrade((ev) => ({oldVersion: ev.oldVersion, target: {}}), () => undefined);
+      const watcher = uncaught();
+
+      let error = null;
+      await idbWrapper.init().catch((err) => { error = err; });
+      watcher.stop();
+
+      expect(error).to.be.an(`error`);
+      expect(watcher.errors).to.deep.equal([]);
+    });
+
+    it(`rejects init when creating a store throws`, async function() {
+      sinon.stub(window.IDBDatabase.prototype, `createObjectStore`).throws(new Error(`InvalidStateError`));
+      const watcher = uncaught();
+
+      let error = null;
+      await idbWrapper.init().catch((err) => { error = err; });
+      watcher.stop();
+
+      expect(error).to.be.an(`error`);
+      expect(error.message).to.equal(`InvalidStateError`);
+      expect(watcher.errors).to.deep.equal([]);
+    });
+  });
+
   describe(`createIfMissing: false`, function() {
     const existingOnly = () => new IDBStorageWrapper(
       MIXPANEL_BROWSER_DB_NAME, RECORDING_REGISTRY_STORE_NAME, RECORDER_VERSION_DATA, {createIfMissing: false}
