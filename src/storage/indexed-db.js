@@ -40,13 +40,25 @@ IDBStorageWrapper.prototype._openDb = function () {
                     openRequest['transaction']['abort']();
                     return;
                 }
-                var db = ev.target.result;
-
-                storeNamesInDb.forEach(function (storeName) {
-                    if (!db.objectStoreNames.contains(storeName)) {
-                        db.createObjectStore(storeName);
+                try {
+                    var db = openRequest.result || (ev.target && ev.target.result);
+                    if (!db) {
+                        throw new Error('IndexedDB database unavailable during upgrade');
                     }
-                });
+
+                    storeNamesInDb.forEach(function (storeName) {
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName);
+                        }
+                    });
+                } catch (err) {
+                    reject(err);
+                    try {
+                        openRequest['transaction']['abort']();
+                    } catch (abortErr) {
+                        return;
+                    }
+                }
             };
         });
     };
