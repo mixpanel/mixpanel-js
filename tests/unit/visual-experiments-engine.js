@@ -269,10 +269,8 @@ describe(`visual-experiments engine`, function() {
 
     it(`applies a mutation whose target only matches after a later mutation`, function() {
       document.body.innerHTML = `<div id="box">x</div>`;
-      const reported = [];
-      engine.applyVisualChanges(dependent, index => reported.push(index));
+      engine.applyVisualChanges(dependent);
       expect(document.getElementById(`box`).style.color).to.equal(`red`);
-      expect(reported).to.deep.equal([1, 0]);
     });
 
     it(`restores both after a page update removes the class and the style`, async function() {
@@ -467,26 +465,6 @@ describe(`visual-experiments engine`, function() {
       expect(frames).to.have.length(0);
     });
 
-    it(`observes page changes made by first-apply callbacks after observation resumes`, async function() {
-      const frames = [];
-      global.window.requestAnimationFrame = callback => frames.push(callback);
-      document.body.innerHTML = `<div class="target"></div>`;
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `.target`, attribute: `data-variant`, value: `B` },
-      ], () => {
-        const late = document.createElement(`div`);
-        late.className = `target`;
-        document.body.appendChild(late);
-      });
-
-      await Promise.resolve();
-      expect(frames).to.have.length(1);
-      frames.shift()();
-      await Promise.resolve();
-      expect(document.querySelectorAll(`.target[data-variant="B"]`)).to.have.length(2);
-      expect(frames).to.have.length(0);
-    });
-
     it(`re-applies mutations after the targeted element is replaced`, async function() {
       document.body.innerHTML = `<div id="box">v1</div>`;
       engine.applyVisualChanges([
@@ -583,130 +561,6 @@ describe(`visual-experiments engine`, function() {
 
       expect(engine._observer).to.not.equal(null);
       expect(document.getElementById(`late`).getAttribute(`data-variant`)).to.equal(`B`);
-    });
-  });
-
-  describe(`onFirstApply callback`, function() {
-    it(`reports each mutation index once when it changes an element`, function() {
-      document.body.innerHTML = `<div id="a"></div><div id="b"></div><div id="c"></div>`;
-      const reported = [];
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `#a`, attribute: `data-x`, value: `1` },
-        { type: `setAttribute`, selector: `#missing`, attribute: `data-x`, value: `1` },
-        { type: `hide`, selector: `#b, #c` },
-      ], index => reported.push(index));
-      // Index 1 matched nothing; index 2 matched two elements but reports once.
-      expect(reported).to.deep.equal([0, 2]);
-    });
-
-    it(`reports later, once the target element renders`, async function() {
-      const reported = [];
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `#late`, attribute: `data-variant`, value: `B` },
-      ], index => reported.push(index));
-      expect(reported).to.deep.equal([]);
-
-      const late = document.createElement(`div`);
-      late.id = `late`;
-      document.body.appendChild(late);
-      await tick();
-
-      expect(reported).to.deep.equal([0]);
-    });
-
-    it(`does not re-report when a re-render forces a re-apply`, async function() {
-      document.body.innerHTML = `<div id="box">v1</div>`;
-      const reported = [];
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `#box`, attribute: `data-variant`, value: `B` },
-      ], index => reported.push(index));
-
-      document.body.innerHTML = `<div id="box">v2</div>`;
-      await tick();
-
-      expect(document.getElementById(`box`).getAttribute(`data-variant`)).to.equal(`B`);
-      expect(reported).to.deep.equal([0]);
-    });
-
-    it(`does not report a mutation the safety guard skips`, function() {
-      document.body.innerHTML = `<a id="link"></a>`;
-      const reported = [];
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `#link`, attribute: `onclick`, value: `alert(1)` },
-      ], index => reported.push(index));
-      expect(reported).to.deep.equal([]);
-    });
-
-    it(`keeps applying when the callback throws`, function() {
-      document.body.innerHTML = `<div id="a"></div><div id="b"></div>`;
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `#a`, attribute: `data-x`, value: `1` },
-        { type: `setAttribute`, selector: `#b`, attribute: `data-x`, value: `2` },
-      ], () => { throw new Error(`boom`); });
-      expect(document.getElementById(`a`).getAttribute(`data-x`)).to.equal(`1`);
-      expect(document.getElementById(`b`).getAttribute(`data-x`)).to.equal(`2`);
-    });
-
-    it(`reports only after the apply pass has finished mutating`, function() {
-      document.body.innerHTML = `<div class="x"></div><div class="x"></div><div id="y"></div>`;
-      const seenAtReport = [];
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `.x`, attribute: `data-x`, value: `1` },
-        { type: `setAttribute`, selector: `#y`, attribute: `data-y`, value: `1` },
-      ], () => {
-        seenAtReport.push(document.querySelectorAll(`[data-x], [data-y]`).length);
-      });
-      // Every element was already mutated by the time the first report ran.
-      expect(seenAtReport).to.deep.equal([3, 3]);
-    });
-
-    it(`leaves nothing applied when the callback reverts the set`, function() {
-      document.body.innerHTML = `<div class="x"></div><div class="x"></div><div id="y"></div>`;
-      const reported = [];
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `.x`, attribute: `data-x`, value: `1` },
-        { type: `setAttribute`, selector: `#y`, attribute: `data-y`, value: `1` },
-      ], index => {
-        reported.push(index);
-        // e.g. a before_track hook that suppresses the experiment.
-        engine.revertVisualChanges();
-      });
-      expect(reported).to.deep.equal([0]);
-      expect(document.querySelectorAll(`[data-x], [data-y]`)).to.have.length(0);
-    });
-
-    it(`drops stale reports when the callback replaces the set`, function() {
-      document.body.innerHTML = `<div id="a"></div><div id="b"></div>`;
-      const stale = [];
-      const fresh = [];
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `#a`, attribute: `data-x`, value: `1` },
-        { type: `setAttribute`, selector: `#b`, attribute: `data-x`, value: `1` },
-      ], index => {
-        stale.push(index);
-        engine.applyVisualChanges([
-          { type: `setAttribute`, selector: `#b`, attribute: `data-y`, value: `2` },
-        ], i => fresh.push(i));
-      });
-      expect(stale).to.deep.equal([0]);
-      expect(fresh).to.deep.equal([0]);
-      expect(document.getElementById(`a`).hasAttribute(`data-x`)).to.be.false;
-      expect(document.getElementById(`b`).getAttribute(`data-y`)).to.equal(`2`);
-    });
-
-    it(`stops reporting after revert`, async function() {
-      const reported = [];
-      engine.applyVisualChanges([
-        { type: `setAttribute`, selector: `#late`, attribute: `data-x`, value: `1` },
-      ], index => reported.push(index));
-      engine.revertVisualChanges();
-
-      const late = document.createElement(`div`);
-      late.id = `late`;
-      document.body.appendChild(late);
-      await tick();
-
-      expect(reported).to.deep.equal([]);
     });
   });
 

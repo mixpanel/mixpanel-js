@@ -157,14 +157,14 @@ FeatureFlagManager.prototype.reset = function() {
     this.trackedFeatures = new Set();
     this.trackedVisualExposures = new Set();
     this.visualExperiments.onReset();
-    this.fetchPromise = null;
     this._fetchInProgressStartTime = null;
     this._loadedPersistedAtMs = null;
     this._loadedTtlMs = null;
 
-    return this.persistence.clear().then(_.bind(function() {
+    this.fetchPromise = this.persistence.clear().then(_.bind(function() {
         return this.fetchFlags();
-    }, this)).catch(function() {
+    }, this));
+    return this.fetchPromise.catch(function() {
         logger.error('Error during flags reset');
     });
 };
@@ -796,6 +796,10 @@ FeatureFlagManager.prototype.trackFeatureCheck = function(featureName, feature, 
     }
     if (isPresent(feature['ttl_in_ms'])) {
         trackingProperties['$ttl_in_ms'] = feature['ttl_in_ms'];
+    }
+    // Set by the visual-experiments module on visual exposures only.
+    if (isPresent(feature['matched_url'])) {
+        trackingProperties['$matched_url'] = feature['matched_url'];
     }
 
     this.track('$experiment_started', trackingProperties);

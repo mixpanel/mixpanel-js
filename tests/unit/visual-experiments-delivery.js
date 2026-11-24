@@ -224,7 +224,6 @@ describe(`Visual experiments delivery`, function () {
     let applySpy;
     let revertSpy;
     let settledSpy;
-    let engineReports;
 
     const buildPair = () => {
       visual = new VisualExperimentsManager({
@@ -243,12 +242,7 @@ describe(`Visual experiments delivery`, function () {
     }
 
     beforeEach(function () {
-      // Stand-in for the engine: reports every mutation as applied unless a test
-      // swaps in different behavior.
-      engineReports = (mutations, onFirstApply) => {
-        mutations.forEach((mutation, index) => onFirstApply(index));
-      };
-      applySpy = sinon.spy((mutations, onFirstApply) => engineReports(mutations, onFirstApply));
+      applySpy = sinon.spy();
       revertSpy = sinon.spy();
       settledSpy = sinon.spy();
       buildPair();
@@ -274,7 +268,7 @@ describe(`Visual experiments delivery`, function () {
       expect(settledSpy).to.have.been.calledOnce;
     });
 
-    it(`tracks $experiment_started with $experiment_type visual when changes apply`, async function () {
+    it(`tracks $experiment_started with $experiment_type visual once the page is matched`, async function () {
       await flagManager.init();
 
       const calls = experimentStartedCalls();
@@ -285,6 +279,22 @@ describe(`Visual experiments delivery`, function () {
       expect(props[`$experiment_type`]).to.equal(`visual`);
       expect(props[`$experiment_id`]).to.equal(`exp1`);
       expect(props[`$is_experiment_active`]).to.equal(true);
+    });
+
+    it(`tracks the matched page url as $matched_url on visual exposures only`, async function () {
+      // The plain unit environment's location stub has no href.
+      window.location.href = `${PAGE_URL}?plan=pro`;
+      try {
+        await flagManager.init();
+        flagManager.getVariantSync(`visualExperiment`, { key: `fallback`, value: null });
+      } finally {
+        delete window.location.href;
+      }
+
+      const calls = experimentStartedCalls();
+      expect(calls.map((call) => call.args[1][`$experiment_type`])).to.deep.equal([`visual`, `feature_flag`]);
+      expect(calls[0].args[1][`$matched_url`]).to.equal(`${PAGE_URL}?plan=pro`);
+      expect(calls[1].args[1]).to.not.have.property(`$matched_url`);
     });
 
     it(`tracks a control once the page is matched, without an apply`, async function () {
@@ -309,21 +319,30 @@ describe(`Visual experiments delivery`, function () {
       expect(experimentStartedCalls()).to.have.length(0);
     });
 
-    it(`records code and visual exposures separately, whichever comes first`, async function () {
-      let onFirstApply;
-      engineReports = (mutations, callback) => { onFirstApply = callback; };
+    it(`records a visual exposure after a code read of the same flag`, async function () {
+      // Delivery applies nothing while disabled, so code reads the flag first...
+      mockConfig.visual_experiments = false;
       await flagManager.init();
-
-      // Code reads the flag before its visual change has rendered...
       flagManager.getVariantSync(`visualExperiment`, { key: `fallback`, value: null });
-      // ...then the change lands; it must still be recorded as a visual exposure.
-      onFirstApply(0);
+
+      // ...then the page is matched; it must still be recorded as a visual exposure.
+      mockConfig.visual_experiments = true;
+      visual.onFlagsDelivered(flagManager.flags);
       // Repeats of either kind stay deduped.
       flagManager.getVariantSync(`visualExperiment`, { key: `fallback`, value: null });
-      onFirstApply(1);
+      visual.onFlagsDelivered(flagManager.flags);
 
       const types = experimentStartedCalls().map((call) => call.args[1][`$experiment_type`]);
       expect(types).to.deep.equal([`feature_flag`, `visual`]);
+    });
+
+    it(`records a code read after a visual exposure of the same flag`, async function () {
+      await flagManager.init();
+      flagManager.getVariantSync(`visualExperiment`, { key: `fallback`, value: null });
+      flagManager.getVariantSync(`visualExperiment`, { key: `fallback`, value: null });
+
+      const types = experimentStartedCalls().map((call) => call.args[1][`$experiment_type`]);
+      expect(types).to.deep.equal([`visual`, `feature_flag`]);
     });
 
     it(`does not re-track when cached variants are re-applied`, async function () {
@@ -341,24 +360,6 @@ describe(`Visual experiments delivery`, function () {
       await flagManager.reset();
 
       expect(experimentStartedCalls()).to.have.length(2);
-    });
-
-    it(`does not track an apply from before reset() under the new identity`, async function () {
-      let staleOnFirstApply;
-      engineReports = (mutations, callback) => {
-        if (!staleOnFirstApply) {
-          staleOnFirstApply = callback;
-        }
-      };
-      await flagManager.init();
-      // The post-reset fetch hangs, leaving the old set's callback live.
-      mockFetch.returns(new Promise(function () {}));
-      flagManager.reset();
-
-      // A previously unmatched element renders after reset.
-      staleOnFirstApply(0);
-
-      expect(experimentStartedCalls()).to.have.length(0);
     });
 
     [`treatment`, `control`].forEach((firstVariant) => {

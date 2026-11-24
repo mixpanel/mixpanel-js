@@ -12,12 +12,13 @@ export type RemoteSettingType = "disabled" | "fallback" | "strict";
 
 /**
  * What the SDK does before the visitor decides. "no_consent_required" tracks until
- * opt_out_tracking(). "require_consent" stores and sends nothing until opt_in_tracking(); with it,
- * opt_out_tracking_persistence_type and opt_out_persistence_by_default are ignored, and
- * opt_out_tracking_cookie_prefix still names the stored flag. Unset means "no_consent_required";
- * opt_out_tracking_by_default applies only when consent_mode is unset.
+ * opt_out_tracking(). Until opt_in_tracking(), "require_consent" stores and sends nothing, and
+ * "exempt" (CNIL's audience-measurement exemption) stores nothing and sends only anonymous page
+ * views, clicks, scrolls and page exits. With either, opt_out_tracking_persistence_type and
+ * opt_out_persistence_by_default are ignored, and opt_out_tracking_cookie_prefix still names the
+ * stored flag. Unset means "no_consent_required"; opt_out_tracking_by_default applies only then.
  */
-export type ConsentMode = "no_consent_required" | "require_consent" | null;
+export type ConsentMode = "no_consent_required" | "require_consent" | "exempt" | null;
 
 
 export interface EventTriggerProps {
@@ -297,6 +298,8 @@ export interface Config {
   opt_out_tracking_persistence_type: Persistence;
   opt_out_tracking_cookie_prefix: string;
   consent_mode: ConsentMode;
+  /** Events and properties sent before consent under consent_mode 'exempt', on top of the defaults. Whatever is added here is sent without consent. */
+  consent_exempt_allowlist: {events?: string[]; properties?: string[]};
   inapp_protocol: string;
   inapp_link_new_window: boolean;
   ignore_dnt: boolean;
@@ -526,6 +529,7 @@ export interface Mixpanel {
   init(token: string, config: Partial<Config>, name?: string): Mixpanel;
   opt_in_tracking(options?: Partial<InTrackingOptions>): void;
   opt_out_tracking(options?: Partial<OutTrackingOptions>): void;
+  object_to_tracking(options?: Partial<OutTrackingOptions>): void;
   push(item: PushItem): void;
   register(
     props: Dict,
@@ -619,6 +623,7 @@ export function init(
 export function init(token: string, config?: Partial<Config>): undefined;
 export function opt_in_tracking(options?: Partial<InTrackingOptions>): void;
 export function opt_out_tracking(options?: Partial<OutTrackingOptions>): void;
+export function object_to_tracking(options?: Partial<OutTrackingOptions>): void;
 export function push(item: PushItem): void;
 export function register(
   props: Dict,

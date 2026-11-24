@@ -76,6 +76,11 @@ describe(`consent manager`, function() {
     it(`is 'objected' under Do Not Track, whatever the stored flag`, function() {
       expect(readDecision(true, `1`)).to.equal(`objected`);
     });
+
+    it(`is 'objected' with a stored objection, whatever the stored flag`, function() {
+      expect(readDecision(false, `1`, true)).to.equal(`objected`);
+      expect(readDecision(false, null, true)).to.equal(`objected`);
+    });
   });
 
   describe(`mode`, function() {
@@ -87,6 +92,7 @@ describe(`consent manager`, function() {
     it(`is consent_mode when set, whatever opt_out_tracking_by_default says`, function() {
       expect(newManager({consent_mode: `no_consent_required`, opt_out_tracking_by_default: true}).mode).to.equal(`no_consent_required`);
       expect(newManager({consent_mode: `require_consent`}).mode).to.equal(`require_consent`);
+      expect(newManager({consent_mode: `exempt`}).mode).to.equal(`exempt`);
     });
 
     it(`falls back to 'require_consent' for an unknown consent_mode`, function() {
@@ -288,6 +294,16 @@ describe(`consent manager`, function() {
       expect(manager.allows(`api_calls`)).to.equal(false);
     });
 
+    it(`stores an objection that still blocks after a switch to 'exempt', until an opt-in`, function() {
+      const exemptState = () => newManager({consent_mode: `exempt`, persistence: `cookie`}).state();
+
+      newManager({persistence: `cookie`}).objectTo();
+      expect(exemptState()).to.equal(`blocked`);
+
+      newManager({persistence: `cookie`}).optIn();
+      expect(exemptState()).to.not.equal(`blocked`);
+    });
+
     it(`blocks calls under Do Not Track`, function() {
       expect(newManager({window: {navigator: {doNotTrack: `1`}}}).allows(`api_calls`)).to.equal(false);
       expect(newManager({window: {navigator: {doNotTrack: `1`}}, ignore_dnt: true}).allows(`api_calls`)).to.equal(true);
@@ -374,6 +390,23 @@ describe(`consent manager`, function() {
       expect(startTracking.called).to.equal(false);
     });
 
+    it(`applies Do Not Track turning off at the next decision, starting tracking then`, function() {
+      const navigator = {doNotTrack: `1`};
+      const manager = requireConsent({window: {navigator}});
+      manager.optIn();
+
+      // what set_config({ignore_dnt: true}) does to the Do Not Track check
+      navigator.doNotTrack = `0`;
+
+      expect(manager.state()).to.equal(`blocked`);
+      expect(startTracking.called).to.equal(false);
+
+      manager.optIn();
+
+      expect(manager.state()).to.equal(`full`);
+      expect(startTracking.calledOnce).to.equal(true);
+    });
+
     it(`keeps this page's state when another tab decides`, function() {
       const manager = requireConsent();
       expect(manager.state()).to.equal(`blocked`);
@@ -401,6 +434,97 @@ describe(`consent manager`, function() {
       manager.holdIdentify([`user-1`]);
 
       expect(manager.takeHeldIdentify()).to.deep.equal([`user-1`]);
+      expect(manager.takeHeldIdentify()).to.equal(null);
+    });
+  });
+
+  describe(`consent_mode: 'exempt'`, function() {
+    const COOKIE_OBJECTION = `__mp_objection_${TOKEN}`;
+    const exempt = (config = {}) =>
+      newManager(Object.assign({consent_mode: `exempt`, persistence: `cookie`}, config));
+
+    afterEach(function() {
+      sinon.restore();
+    });
+
+    it(`is exempt without a decision and after a withdrawal`, function() {
+      const manager = exempt();
+      manager.init();
+      expect(manager.state()).to.equal(`exempt`);
+
+      manager.optIn();
+      expect(manager.state()).to.equal(`full`);
+
+      manager.optOut();
+      expect(manager.state()).to.equal(`exempt`);
+      expect(purgeIdentifiers.called).to.equal(true);
+    });
+
+    it(`allows only exempt measurement until an opt-in`, function() {
+      const manager = exempt();
+
+      expect(manager.allowsExemptMeasurement()).to.equal(true);
+      [`api_calls`, `send`, `fetch`, `store`].forEach(capability => {
+        expect(manager.allows(capability)).to.equal(false);
+      });
+
+      manager.optIn();
+      expect(manager.allowsSending()).to.equal(true);
+      expect(manager.allowsExemptMeasurement()).to.equal(false);
+    });
+
+    it(`blocks across page loads after an objection, which an opt-out keeps`, function() {
+      const manager = exempt();
+
+      manager.objectTo();
+      manager.optOut();
+
+      expect(manager.state()).to.equal(`blocked`);
+      expect(manager.allowsExemptMeasurement()).to.equal(false);
+      expect(document.cookie).to.contain(`${COOKIE_OBJECTION}=1`);
+      expect(exempt().state()).to.equal(`blocked`);
+      expect(exempt().hasOptedIn()).to.equal(false);
+    });
+
+    it(`keeps an objection on the page through an opt-out even when storing it fails`, function() {
+      const manager = exempt();
+      sinon.stub(manager.decisions, `_writeDecisionKey`);
+
+      manager.objectTo();
+      manager.optOut();
+
+      expect(document.cookie).not.to.contain(COOKIE_OBJECTION);
+      expect(manager.state()).to.equal(`blocked`);
+    });
+
+    it(`keeps an objection another tab stored through this page's opt-out`, function() {
+      const manager = exempt();
+      expect(manager.state()).to.equal(`exempt`);
+
+      exempt().objectTo();
+      manager.optOut();
+
+      expect(manager.state()).to.equal(`blocked`);
+      expect(document.cookie).to.contain(`${COOKIE_OBJECTION}=1`);
+      expect(exempt().state()).to.equal(`blocked`);
+    });
+
+    it(`goes back to no decision on clear, objection included`, function() {
+      const manager = exempt();
+      manager.objectTo();
+
+      manager.clear();
+
+      expect(manager.state()).to.equal(`exempt`);
+      expect(document.cookie).not.to.contain(COOKIE_OBJECTION);
+    });
+
+    it(`drops a held identify() at an objection`, function() {
+      const manager = exempt();
+
+      manager.holdIdentify([`user-1`]);
+      manager.objectTo();
+
       expect(manager.takeHeldIdentify()).to.equal(null);
     });
   });

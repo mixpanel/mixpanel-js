@@ -303,10 +303,10 @@ mixpanel.clear_opt_in_out_tracking({
 });
 ```
 
-With consent_mode 'require_consent', the decision is stored with the instance's persistence and
-cookie config: the storage options and enable_persistence below don't apply. Clearing also
-deletes the device's stored identifiers, and on a page tracking after an opt-in it stops
-tracking.
+With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+persistence and cookie config: the storage options and enable_persistence below don't apply.
+Clearing also deletes the device's stored identifiers, and on a page tracking after an opt-in it
+stops tracking.
 
 <a id="disable"></a>
 
@@ -503,7 +503,8 @@ var has_opted_in = mixpanel.has_opted_in_tracking();
 // use has_opted_in value
 ```
 
-With consent_mode 'require_consent' the options don't apply.
+With consent_mode 'require_consent' or 'exempt' the options don't apply, and a stored objection
+counts as not opted in.
 
 <a id="has_opted_out_tracking"></a>
 
@@ -534,8 +535,8 @@ var has_opted_out = mixpanel.has_opted_out_tracking();
 // use has_opted_out value
 ```
 
-With consent_mode 'require_consent' the options don't apply, and a stored refusal or Do Not Track
-counts as opted out.
+With consent_mode 'require_consent' or 'exempt' the options don't apply, and a stored refusal, an
+objection or Do Not Track counts as opted out.
 
 <a id="identify"></a>
 
@@ -576,9 +577,9 @@ Events tracked prior to authentication will not be connected
 to the same user identity. If ID Merge is disabled, alias can
 be used to connect pre- and post-registration events.
 
-With consent_mode 'require_consent', the latest call made before the visitor consents is held in
-memory, without storing or sending anything, and applied if they opt in on the same page. reset()
-discards it.
+With consent_mode 'require_consent' or 'exempt', the latest call made before the visitor consents
+is held in memory, without storing or sending anything, and applied if they opt in on the same
+page. reset() and object_to_tracking() discard it.
 
 <a id="init"></a>
 
@@ -634,6 +635,32 @@ This value will only be included in Streams data.
 
 ###### Deprecated
 
+<a id="object_to_tracking"></a>
+
+##### object\_to\_tracking()
+
+> **object\_to\_tracking**(`options?`): `void`
+
+Stop all tracking, exempt measurement included, for the objection link in your privacy policy.
+Outside consent_mode 'exempt' it works as opt_out_tracking(). opt_in_tracking() and
+clear_opt_in_out_tracking() lift it; opt_out_tracking() doesn't.
+
+###### Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `options?` | `Object` | The same options as opt_out_tracking |
+
+###### Returns
+
+`void`
+
+###### Example
+
+```js
+mixpanel.object_to_tracking();
+```
+
 <a id="opt_in_tracking"></a>
 
 ##### opt\_in\_tracking()
@@ -680,9 +707,9 @@ mixpanel.opt_in_tracking({
 });
 ```
 
-With consent_mode 'require_consent', the decision is stored with the instance's persistence and
-cookie config: the storage options and enable_persistence below don't apply, and the track
-options do.
+With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+persistence and cookie config: the storage options and enable_persistence below don't apply, and
+the track options do.
 
 <a id="opt_out_tracking"></a>
 
@@ -724,9 +751,10 @@ mixpanel.opt_out_tracking({
 });
 ```
 
-With consent_mode 'require_consent', the decision is stored with the instance's persistence and
-cookie config: the storage options, clear_persistence and delete_user below don't apply. The
-stored identifiers are deleted instead, and no $delete is sent.
+With consent_mode 'require_consent' or 'exempt', the decision is stored with the instance's
+persistence and cookie config: the storage options, clear_persistence and delete_user below don't
+apply. The stored identifiers are deleted instead, and no $delete is sent. Under 'exempt', the
+visitor stays exempt; object_to_tracking() stops that.
 
 <a id="push"></a>
 
@@ -960,10 +988,13 @@ The default config is:
       // customize the name of cookie/localStorage set by opt-in/opt-out methods
       opt_out_tracking_cookie_prefix: null
 
-      // what happens before the visitor decides: 'no_consent_required' (unset) or
-      // 'require_consent'. opt_out_tracking_by_default applies only when it's unset.
-      // Fixed at init.
+      // what happens before the visitor decides: 'no_consent_required' (unset),
+      // 'require_consent' or 'exempt'. opt_out_tracking_by_default applies only when
+      // it's unset. Fixed at init.
       consent_mode: null
+
+      // extra events and properties consent_mode 'exempt' sends before consent
+      consent_exempt_allowlist: {events: [], properties: []}
 
       // type of persistent store for super properties (cookie/
       // localStorage) if set to 'localStorage', any existing
@@ -1091,6 +1122,10 @@ Track an event. This is the most important and
 frequently used Mixpanel function.
 
 To track link clicks or form submissions, see track_links() or track_forms().
+
+With consent_mode 'exempt', until an opt-in only anonymous page views, clicks, scrolls and page
+exits are sent (see consent_exempt_allowlist). The before_send_events hook doesn't run on them;
+on_track does, before the filter.
 
 ###### Parameters
 
@@ -1740,6 +1775,9 @@ mixpanel.people.unset(['gender', 'Company']);
 | <a id="property-batch_requests"></a> `batch_requests` | `boolean` | - |
 | <a id="property-batch_size"></a> `batch_size` | `number` | - |
 | <a id="property-cdn"></a> `cdn` | `string` | - |
+| <a id="property-consent_exempt_allowlist"></a> `consent_exempt_allowlist` | `object` | Events and properties sent before consent under consent_mode 'exempt', on top of the defaults. Whatever is added here is sent without consent. |
+| `consent_exempt_allowlist.events?` | `string`[] | - |
+| `consent_exempt_allowlist.properties?` | `string`[] | - |
 | <a id="property-consent_mode"></a> `consent_mode` | [`ConsentMode`](#consentmode) | - |
 | <a id="property-cookie_domain"></a> `cookie_domain` | `string` | - |
 | <a id="property-cookie_expiration-1"></a> `cookie_expiration` | `number` | - |
@@ -2374,13 +2412,14 @@ Once the fetch succeeds, its result replaces the cached variants for the rest of
 
 ### ConsentMode
 
-> **ConsentMode** = `"no_consent_required"` \| `"require_consent"` \| `null`
+> **ConsentMode** = `"no_consent_required"` \| `"require_consent"` \| `"exempt"` \| `null`
 
 What the SDK does before the visitor decides. "no_consent_required" tracks until
-opt_out_tracking(). "require_consent" stores and sends nothing until opt_in_tracking(); with it,
-opt_out_tracking_persistence_type and opt_out_persistence_by_default are ignored, and
-opt_out_tracking_cookie_prefix still names the stored flag. Unset means "no_consent_required";
-opt_out_tracking_by_default applies only when consent_mode is unset.
+opt_out_tracking(). Until opt_in_tracking(), "require_consent" stores and sends nothing, and
+"exempt" (CNIL's audience-measurement exemption) stores nothing and sends only anonymous page
+views, clicks, scrolls and page exits. With either, opt_out_tracking_persistence_type and
+opt_out_persistence_by_default are ignored, and opt_out_tracking_cookie_prefix still names the
+stored flag. Unset means "no_consent_required"; opt_out_tracking_by_default applies only then.
 
 ***
 

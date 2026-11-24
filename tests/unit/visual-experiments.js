@@ -25,15 +25,31 @@ const control = (experimentId, url = PAGE_URL) => ({
   experiment_id: experimentId,
   value: { $mp: { url, visualChanges: [] } },
 });
+// Both arms of one flag carry the same cross-variant $mp.exposureSelectors.
+const withSelectors = (variant, exposureSelectors) => Object.assign({}, variant, {
+  value: { $mp: Object.assign({}, variant.value.$mp, { exposureSelectors }) },
+});
 const variants = (entries) => new Map(Object.entries(entries));
+// The variant as reported: a copy carrying the page url it matched on.
+const reportedVariant = (variant, matchedUrl = PAGE_URL) => Object.assign({}, variant, { matched_url: matchedUrl });
 
-// Stand-in for the engine: reports every mutation as applied.
-const engineApplyingEverything = () => sinon.spy((mutations, onFirstApply) => {
-  mutations.forEach((mutation, index) => onFirstApply(index));
+const IGNORED_PARAM_KEYS = [`mp_preview_token`, `utm_*`, `gclid`, `fbclid`, `msclkid`];
+const patternTarget = (value, overrides = {}) => Object.assign({
+  version: 1,
+  url: { type: `pattern`, value },
+  query: null,
+  hash: null,
+  ignoredParamKeys: IGNORED_PARAM_KEYS,
+}, overrides);
+const targetedTreatment = (experimentId, target, url = PAGE_URL) => ({
+  key: `B`,
+  experiment_id: experimentId,
+  value: { $mp: { url, target, visualChanges: changes } },
 });
 
 describe(`VisualExperimentsManager`, function () {
   let VisualExperimentsManager;
+  let VisualChangeEngine;
   let manager;
   let config;
   let delivered;
@@ -73,10 +89,13 @@ describe(`VisualExperimentsManager`, function () {
       `../../src/navigation`,
       `../../src/visual-experiments/engine`,
       `../../src/visual-experiments/anti-flicker`,
+      `../../src/url-matching`,
+      `../../src/visual-experiments/exposure-watcher`,
       `../../src/visual-experiments/index`,
     ],
     beforeCallback: (modules) => {
-      VisualExperimentsManager = modules[4].VisualExperimentsManager;
+      VisualChangeEngine = modules[2].VisualChangeEngine;
+      VisualExperimentsManager = modules[6].VisualExperimentsManager;
       config = { visual_experiments: true };
       delivered = new Map();
       apply = sinon.spy();
@@ -141,8 +160,6 @@ describe(`VisualExperimentsManager`, function () {
       });
 
       it(`does not report an oversized variant`, function () {
-        apply = engineApplyingEverything();
-        manager = build();
         manager.onFlagsDelivered(variants({ a: treatment(`exp1`, huge), b: treatment(`exp2`, otherChanges) }));
         expect(track).to.have.been.calledOnce;
         expect(track.firstCall.args[0]).to.equal(`b`);
@@ -252,42 +269,58 @@ describe(`VisualExperimentsManager`, function () {
   });
 
   describe(`exposure reporting`, function () {
-    beforeEach(function () {
-      apply = engineApplyingEverything();
-      manager = build();
-    });
+    // MutationObserver callbacks run as microtasks.
+    const flushObservers = () => new Promise((resolve) => setTimeout(resolve, 0));
+    const addElement = (className) => {
+      const el = global.document.createElement(`div`);
+      el.className = className;
+      global.document.body.appendChild(el);
+      return el;
+    };
+    const reportedKeys = () => track.getCalls().map((call) => call.args[0]);
 
-    it(`reports the flag key and variant once its changes apply`, function () {
+    it(`reports the flag key and variant without waiting for the engine`, function () {
       const variant = treatment(`exp1`);
       manager.onFlagsDelivered(variants({ a: variant }));
-      expect(track).to.have.been.calledOnceWith(`a`, variant);
+      expect(track).to.have.been.calledOnceWith(`a`, reportedVariant(variant));
     });
 
-    it(`does not report when the engine applies none of the changes`, function () {
-      manager = build({ applyVisualChangesFunc: sinon.spy() });
-      manager.onFlagsDelivered(variants({ a: treatment(`exp1`) }));
-      expect(track).to.not.have.been.called;
+    it(`reports the full matched page url, query string and hash included`, function () {
+      navigate(`/pricing?plan=pro#faq`);
+      manager.onFlagsDelivered(variants({ a: treatment(`exp1`), b: control(`exp2`) }));
+      const matchedUrls = track.getCalls().map((call) => call.args[1].matched_url);
+      expect(matchedUrls).to.deep.equal([`${PAGE_URL}?plan=pro#faq`, `${PAGE_URL}?plan=pro#faq`]);
     });
 
-    it(`reports when the engine applies a change after delivery`, function () {
-      let onFirstApply;
-      manager = build({ applyVisualChangesFunc: (mutations, callback) => { onFirstApply = callback; } });
-      manager.onFlagsDelivered(variants({ a: treatment(`exp1`) }));
-      expect(track).to.not.have.been.called;
+    it(`reports the url the target matched on when the selector appears later`, async function () {
+      navigate(`/pricing?plan=pro`);
+      delivered = variants({ a: withSelectors(control(`exp1`), [`.hero`]) });
+      manager.onFlagsDelivered(delivered);
+      // A query-only change leaves the matched set unchanged, so nothing re-applies.
+      navigate(`/pricing?plan=team`);
+      manager.applyForCurrentPage();
 
-      onFirstApply(1);
+      const el = global.document.createElement(`div`);
+      el.className = `hero`;
+      global.document.body.appendChild(el);
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(track).to.have.been.calledOnce;
-      expect(track.firstCall.args[0]).to.equal(`a`);
+      expect(track.firstCall.args[1].matched_url).to.equal(`${PAGE_URL}?plan=pro`);
     });
 
-    it(`reports only the variants whose changes applied`, function () {
-      // Mutations 0-1 belong to a, mutation 2 to b; only b's lands.
-      manager = build({ applyVisualChangesFunc: (mutations, onFirstApply) => onFirstApply(2) });
-      manager.onFlagsDelivered(variants({ a: treatment(`exp1`), b: treatment(`exp2`, otherChanges) }));
-      expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`b`]);
+    it(`redacts the preview token from the matched page url`, function () {
+      navigate(`/pricing?mp_preview_token=secret&plan=pro`);
+      manager.onFlagsDelivered(variants({ a: control(`exp1`) }));
+      expect(track.firstCall.args[1].matched_url).to.equal(`${PAGE_URL}?mp_preview_token=REDACTED&plan=pro`);
     });
 
-    it(`reports a variant once however many of its mutations apply`, function () {
+    it(`does not modify the delivered variant`, function () {
+      const variant = control(`exp1`);
+      manager.onFlagsDelivered(variants({ a: variant }));
+      expect(variant).to.not.have.property(`matched_url`);
+    });
+
+    it(`reports a treatment once however many of its mutations it carries`, function () {
       manager.onFlagsDelivered(variants({ a: treatment(`exp1`) }));
       expect(apply.firstCall.args[0]).to.have.length(2);
       expect(track).to.have.been.calledOnce;
@@ -295,7 +328,7 @@ describe(`VisualExperimentsManager`, function () {
 
     it(`reports a flag whose key is an inherited object property name`, function () {
       manager.onFlagsDelivered(variants({ constructor: treatment(`exp1`), toString: treatment(`exp2`, otherChanges) }));
-      expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`constructor`, `toString`]);
+      expect(reportedKeys()).to.deep.equal([`constructor`, `toString`]);
     });
 
     it(`does not report variants without visual changes`, function () {
@@ -329,7 +362,7 @@ describe(`VisualExperimentsManager`, function () {
         const variant = control(`exp1`);
         manager.onFlagsDelivered(variants({ a: variant }));
         expect(apply).to.not.have.been.called;
-        expect(track).to.have.been.calledOnceWith(`a`, variant);
+        expect(track).to.have.been.calledOnceWith(`a`, reportedVariant(variant));
       });
 
       it(`still settles`, function () {
@@ -349,7 +382,7 @@ describe(`VisualExperimentsManager`, function () {
 
       it(`reports alongside a treatment applied on the same page`, function () {
         manager.onFlagsDelivered(variants({ a: treatment(`exp1`), b: control(`exp2`) }));
-        expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`a`, `b`]);
+        expect(reportedKeys()).to.deep.equal([`a`, `b`]);
       });
 
       it(`does not report a suppressed control`, function () {
@@ -359,20 +392,213 @@ describe(`VisualExperimentsManager`, function () {
       });
     });
 
+    describe(`exposure selectors ($mp.exposureSelectors)`, function () {
+      const arms = {
+        treatment: (selectors) => withSelectors(treatment(`exp1`), selectors),
+        control: (selectors) => withSelectors(control(`exp1`), selectors),
+      };
+
+      Object.keys(arms).forEach((arm) => {
+        describe(`for the ${arm}`, function () {
+          it(`reports at once when a selector is present`, function () {
+            addElement(`hero`);
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.missing`, `.hero`]) }));
+            expect(reportedKeys()).to.deep.equal([`a`]);
+          });
+
+          it(`does not report while no selector is present`, async function () {
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.hero`]) }));
+            addElement(`unrelated`);
+            await flushObservers();
+            expect(track).to.not.have.been.called;
+            expect(settled).to.have.been.calledOnce;
+          });
+
+          it(`reports once a selector appears later`, async function () {
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.hero`]) }));
+            expect(track).to.not.have.been.called;
+
+            addElement(`hero`);
+            await flushObservers();
+            expect(reportedKeys()).to.deep.equal([`a`]);
+          });
+
+          it(`reports once an existing element starts matching a selector`, async function () {
+            const el = addElement(`plain`);
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.hero`]) }));
+            el.className = `hero`;
+            await flushObservers();
+            expect(reportedKeys()).to.deep.equal([`a`]);
+          });
+
+          it(`reports on page match when the selector list is empty`, function () {
+            manager.onFlagsDelivered(variants({ a: arms[arm]([]) }));
+            expect(reportedKeys()).to.deep.equal([`a`]);
+          });
+
+          it(`reports once however often the selector re-renders`, async function () {
+            manager.onFlagsDelivered(variants({ a: arms[arm]([`.hero`]) }));
+            addElement(`hero`);
+            await flushObservers();
+            addElement(`hero`);
+            await flushObservers();
+            expect(track).to.have.been.calledOnce;
+          });
+        });
+      });
+
+      it(`counts both arms on the same pages`, async function () {
+        // Two visitors' managers on the same page: one in each arm.
+        const controlTrack = sinon.spy();
+        const controlManager = build({ trackExposureFunc: controlTrack });
+        manager.onFlagsDelivered(variants({ a: arms.treatment([`.hero`]) }));
+        controlManager.onFlagsDelivered(variants({ a: arms.control([`.hero`]) }));
+        expect(track).to.not.have.been.called;
+        expect(controlTrack).to.not.have.been.called;
+
+        addElement(`hero`);
+        await flushObservers();
+        expect(track).to.have.been.calledOnce;
+        expect(controlTrack).to.have.been.calledOnce;
+      });
+
+      describe(`with the real engine`, function () {
+        const removeHero = [{ type: `setClasses`, selector: `.hero`, add: [`hero-b`], remove: [`hero`] }];
+        const nextFrame = () => new Promise((resolve) => global.window.requestAnimationFrame(() => resolve()));
+        const buildWithEngine = (trackExposureFunc) => {
+          const engine = new VisualChangeEngine();
+          return build({
+            trackExposureFunc,
+            applyVisualChangesFunc: (mutations) => engine.applyVisualChanges(mutations),
+            revertVisualChangesFunc: () => engine.revertVisualChanges(),
+          });
+        };
+        const engineArms = {
+          treatment: withSelectors(treatment(`exp1`, removeHero), [`.hero`]),
+          control: withSelectors(control(`exp1`), [`.hero`]),
+        };
+
+        Object.keys(engineArms).forEach((arm) => {
+          it(`reports the ${arm} when the treatment removes the selector's class from a present element`, function () {
+            const el = addElement(`hero`);
+            manager = buildWithEngine(track);
+            manager.onFlagsDelivered(variants({ a: engineArms[arm] }));
+            expect(reportedKeys()).to.deep.equal([`a`]);
+            expect(el.classList.contains(`hero`)).to.equal(arm === `control`);
+          });
+
+          it(`reports the ${arm} when the treatment removes the selector's class from a late element`, async function () {
+            manager = buildWithEngine(track);
+            manager.onFlagsDelivered(variants({ a: engineArms[arm] }));
+            expect(track).to.not.have.been.called;
+
+            const el = addElement(`hero`);
+            await flushObservers();
+            await nextFrame();
+            expect(reportedKeys()).to.deep.equal([`a`]);
+            expect(el.classList.contains(`hero`)).to.equal(arm === `control`);
+          });
+        });
+
+        it(`reports the treatment when the network re-delivers the treatment already applied from cache`, async function () {
+          const el = addElement(`hero`);
+          manager = buildWithEngine(track);
+          manager.onFlagsDelivered(variants({ a: engineArms.treatment }));
+          manager.onFlagsDelivered(variants({ a: engineArms.treatment }));
+          await flushObservers();
+          await nextFrame();
+          expect(reportedKeys()).to.deep.equal([`a`, `a`]);
+          expect(el.classList.contains(`hero`)).to.be.false;
+        });
+
+        it(`reports the control when it replaces a treatment that removed the selector's class`, async function () {
+          const el = addElement(`hero`);
+          manager = buildWithEngine(track);
+          manager.onFlagsDelivered(variants({ a: engineArms.treatment }));
+          manager.onFlagsDelivered(variants({ a: engineArms.control }));
+          await flushObservers();
+          await nextFrame();
+          expect(reportedKeys()).to.deep.equal([`a`, `a`]);
+          expect(track.secondCall.args[1].key).to.equal(`control`);
+          expect(el.classList.contains(`hero`)).to.be.true;
+        });
+      });
+
+      it(`waits per flag on that flag's own selectors`, async function () {
+        manager.onFlagsDelivered(variants({
+          a: withSelectors(treatment(`exp1`), [`.hero`]),
+          b: withSelectors(control(`exp2`), [`.footer`]),
+        }));
+        addElement(`footer`);
+        await flushObservers();
+        expect(reportedKeys()).to.deep.equal([`b`]);
+      });
+
+      it(`reports a variant whose selector a tracking hook inserts while reporting an earlier one`, async function () {
+        track = sinon.stub();
+        track.onFirstCall().callsFake(() => addElement(`footer`));
+        manager = build();
+        addElement(`hero`);
+        manager.onFlagsDelivered(variants({
+          a: withSelectors(treatment(`exp1`), [`.hero`]),
+          b: withSelectors(control(`exp2`), [`.footer`]),
+        }));
+        expect(reportedKeys()).to.deep.equal([`a`]);
+
+        await flushObservers();
+        expect(reportedKeys()).to.deep.equal([`a`, `b`]);
+      });
+
+      it(`ignores an invalid selector and still matches a valid one`, function () {
+        addElement(`hero`);
+        manager.onFlagsDelivered(variants({ a: arms.control([`[[invalid`, `.hero`]) }));
+        expect(reportedKeys()).to.deep.equal([`a`]);
+      });
+
+      it(`stops waiting after navigating to a page the variant does not match`, async function () {
+        delivered = variants({ a: arms.treatment([`.hero`]) });
+        manager.applyForCurrentPage();
+        navigate(`/home`);
+        manager.applyForCurrentPage();
+
+        addElement(`hero`);
+        await flushObservers();
+        expect(track).to.not.have.been.called;
+      });
+
+      it(`stops waiting when the set is replaced by one without the variant`, async function () {
+        manager.onFlagsDelivered(variants({ a: arms.treatment([`.hero`]) }));
+        manager.onFlagsDelivered(variants({}));
+
+        addElement(`hero`);
+        await flushObservers();
+        expect(track).to.not.have.been.called;
+      });
+
+      it(`does not report a variant twice when the same set is re-applied while waiting`, async function () {
+        const delivery = variants({ a: arms.treatment([`.hero`]) });
+        manager.onFlagsDelivered(delivery);
+        manager.onFlagsDelivered(delivery);
+
+        addElement(`hero`);
+        await flushObservers();
+        expect(track).to.have.been.calledOnce;
+      });
+    });
+
     describe(`after onReset`, function () {
-      it(`discards a late engine report from the previous set`, function () {
-        let staleOnFirstApply;
-        manager = build({ applyVisualChangesFunc: (mutations, callback) => { staleOnFirstApply = callback; } });
-        manager.onFlagsDelivered(variants({ a: treatment(`exp1`) }));
+      it(`discards an exposure still waiting on a selector from the previous set`, async function () {
+        manager.onFlagsDelivered(variants({ a: withSelectors(treatment(`exp1`), [`.hero`]) }));
         manager.onReset();
 
-        // A previously unmatched element renders after reset.
-        staleOnFirstApply(0);
+        // The selector renders after reset.
+        addElement(`hero`);
+        await flushObservers();
         expect(track).to.not.have.been.called;
       });
 
       [`treatment`, `control`].forEach((firstVariant) => {
-        it(`skips the remaining controls when reporting a ${firstVariant} resets the visitor`, function () {
+        it(`skips the remaining variants when reporting a ${firstVariant} resets the visitor`, function () {
           track = sinon.stub();
           track.onFirstCall().callsFake(() => manager.onReset());
           manager = build();
@@ -380,9 +606,22 @@ describe(`VisualExperimentsManager`, function () {
             first: firstVariant === `treatment` ? treatment(`exp1`) : control(`exp1`),
             pendingControl: control(`exp2`),
           }));
-          expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`first`]);
+          expect(reportedKeys()).to.deep.equal([`first`]);
           expect(settled).to.have.been.calledOnce;
         });
+      });
+
+      it(`skips the remaining selector-gated variants when reporting one resets the visitor`, async function () {
+        track = sinon.stub();
+        track.onFirstCall().callsFake(() => manager.onReset());
+        manager = build();
+        manager.onFlagsDelivered(variants({
+          first: withSelectors(treatment(`exp1`), [`.hero`]),
+          second: withSelectors(control(`exp2`), [`.hero`]),
+        }));
+        addElement(`hero`);
+        await flushObservers();
+        expect(reportedKeys()).to.deep.equal([`first`]);
       });
 
       it(`reports a newly delivered set`, function () {
@@ -439,6 +678,71 @@ describe(`VisualExperimentsManager`, function () {
     });
   });
 
+  describe(`Target URL rule ($mp.target)`, function () {
+    it(`applies when the target matches, whatever $mp.url says`, function () {
+      manager.onFlagsDelivered(variants({
+        a: targetedTreatment(`exp1`, patternTarget(`http://localhost/*`), `http://localhost/elsewhere`),
+      }));
+      expect(apply).to.have.been.calledOnceWith(changes);
+    });
+
+    it(`skips when the target does not match, even if $mp.url does`, function () {
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, patternTarget(`http://localhost/checkout`)) }));
+      expect(apply).to.not.have.been.called;
+      expect(revert).to.have.been.calledOnce;
+    });
+
+    it(`skips a target with an unknown version instead of falling back to $mp.url`, function () {
+      const target = Object.assign(patternTarget(`http://localhost/pricing`), { version: 2 });
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, target) }));
+      expect(apply).to.not.have.been.called;
+    });
+
+    it(`falls back to $mp.url when the target is null`, function () {
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, null) }));
+      expect(apply).to.have.been.calledOnceWith(changes);
+    });
+
+    it(`matches the query rule against the current page`, function () {
+      const target = patternTarget(`http://localhost/pricing`, { query: { params: [{ key: `plan`, value: `pro` }] } });
+      navigate(`/pricing?plan=pro&utm_source=ad`);
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, target) }));
+      expect(apply).to.have.been.calledOnce;
+
+      navigate(`/pricing?plan=free`);
+      manager.onFlagsDelivered(variants({ a: targetedTreatment(`exp1`, target) }));
+      expect(apply).to.have.been.calledOnce;
+      expect(revert).to.have.been.calledOnce;
+    });
+
+    it(`re-runs matching on SPA navigation that only changes the hash`, function () {
+      delivered = variants({
+        a: targetedTreatment(`exp1`, patternTarget(`http://localhost/pricing`, { hash: { route: `/annual`, params: null } })),
+      });
+      navigate(`/pricing#/monthly`);
+      manager.applyForCurrentPage();
+      expect(apply).to.not.have.been.called;
+
+      navigate(`/pricing#/annual`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+    });
+
+    it(`uses the same matcher for a QA preview variant`, function () {
+      const previewVariant = Object.assign(
+        targetedTreatment(`exp1`, patternTarget(`http://localhost/pricing`, { query: { params: [] } })),
+        { is_preview: true }
+      );
+      navigate(`/pricing?mp_preview_token=abc`);
+      manager.onFlagsDelivered(variants({ a: previewVariant }));
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/pricing?mp_preview_token=abc&plan=pro`);
+      manager.onFlagsDelivered(variants({ a: previewVariant }));
+      expect(apply).to.have.been.calledOnce;
+    });
+  });
+
   describe(`applyForCurrentPage (SPA re-apply)`, function () {
     it(`applies delivered variants matching the current page`, function () {
       delivered = variants({ a: treatment(`exp1`) });
@@ -475,10 +779,251 @@ describe(`VisualExperimentsManager`, function () {
       expect(track).to.have.been.calledOnce;
     });
 
+    it(`skips the remaining variants when reporting one navigates and re-applies`, function () {
+      track = sinon.stub();
+      track.onFirstCall().callsFake(() => {
+        navigate(`/home`);
+        manager.applyForCurrentPage();
+      });
+      manager = build();
+      delivered = variants({ first: treatment(`exp1`), second: treatment(`exp2`), third: control(`exp3`) });
+      manager.applyForCurrentPage();
+      expect(track.getCalls().map((call) => call.args[0])).to.deep.equal([`first`]);
+    });
+
+    it(`keeps the replay state of the set a reporting hook re-applied`, function () {
+      track = sinon.stub();
+      track.onFirstCall().callsFake(() => {
+        delivered = variants({});
+        navigate(`/home`);
+        manager.applyForCurrentPage();
+      });
+      manager = build();
+      delivered = variants({ first: targetedTreatment(`exp1`, patternTarget(`${PAGE_URL}`)) });
+      manager.applyForCurrentPage();
+      // The re-applied set carries no $mp.target, so a query-only change is a no-op.
+      navigate(`/home?tab=2`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledOnce;
+    });
+
     it(`treats missing variants as an empty delivery`, function () {
       manager = build({ getVariantsFunc: () => undefined });
       manager.applyForCurrentPage();
       expect(apply).to.not.have.been.called;
+      expect(revert).to.have.been.calledOnce;
+    });
+  });
+
+  describe(`navigation re-targeting (matched-set dedup)`, function () {
+    const itemTarget = patternTarget(`http://localhost/item/*`);
+
+    it(`re-evaluates a query-only navigation`, function () {
+      delivered = variants({
+        a: targetedTreatment(`exp1`, patternTarget(`http://localhost/pricing`, { query: { params: [{ key: `plan`, value: `pro` }] } })),
+      });
+      navigate(`/pricing?plan=free`);
+      manager.applyForCurrentPage();
+      expect(apply).to.not.have.been.called;
+
+      navigate(`/pricing?plan=pro`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/pricing?plan=free`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledTwice;
+    });
+
+    it(`re-evaluates a hash-only navigation`, function () {
+      delivered = variants({
+        a: targetedTreatment(`exp1`, patternTarget(`http://localhost/pricing`, { hash: { route: `/annual`, params: null } })),
+      });
+      navigate(`/pricing#/annual`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/pricing#/monthly`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledOnce;
+    });
+
+    it(`keeps the matched set of a navigation made from an exposure hook`, function () {
+      const controlPage = `http://localhost/home`;
+      const treatmentPage = `http://localhost/item/1`;
+      manager = build({
+        trackExposureFunc: sinon.spy((flagKey) => {
+          if (flagKey === `a`) {
+            navigate(`/item/1`);
+            manager.applyForCurrentPage();
+          }
+        }),
+      });
+      delivered = variants({
+        a: control(`exp1`, controlPage),
+        b: treatment(`exp2`, changes, treatmentPage),
+      });
+      navigate(`/home`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/home`);
+      manager.applyForCurrentPage();
+      expect(revert).to.have.been.calledTwice;
+    });
+
+    it(`does not revert and reapply on a path change under the same pattern`, function () {
+      delivered = variants({ a: targetedTreatment(`exp1`, itemTarget) });
+      navigate(`/item/123`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnce;
+
+      navigate(`/item/456`);
+      manager.applyForCurrentPage();
+      navigate(`/item/456?ref=home#reviews`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnce;
+      expect(revert).to.not.have.been.called;
+    });
+
+    it(`releases replaced elements while navigating under the same pattern with the real engine`, async function () {
+      const frames = [];
+      global.window.requestAnimationFrame = callback => frames.push(callback);
+      const engine = new VisualChangeEngine();
+      apply = sinon.spy((mutations) => engine.applyVisualChanges(mutations));
+      manager = build({ revertVisualChangesFunc: () => engine.revertVisualChanges() });
+      delivered = variants({ a: targetedTreatment(`exp1`, itemTarget) });
+
+      document.body.innerHTML = `<button class="cta">Item 0</button>`;
+      navigate(`/item/0`);
+      manager.applyForCurrentPage();
+      const undoDepthPerPage = engine._undoStack.length;
+      expect(undoDepthPerPage).to.equal(changes.length);
+
+      for (let page = 1; page <= 5; page++) {
+        navigate(`/item/${page}`);
+        manager.applyForCurrentPage();
+        document.body.innerHTML = `<button class="cta">Item ${page}</button>`;
+        await Promise.resolve();
+        while (frames.length) {
+          frames.shift()();
+        }
+        const button = document.querySelector(`.cta`);
+        expect(button.getAttribute(`data-variant`)).to.equal(`B`);
+        expect(button.style.color).to.equal(`red`);
+        expect(engine._undoStack.length).to.equal(undoDepthPerPage);
+      }
+      expect(apply).to.have.been.calledOnce;
+
+      engine.revertVisualChanges();
+      const button = document.querySelector(`.cta`);
+      expect(button.hasAttribute(`data-variant`)).to.be.false;
+      expect(button.style.color).to.equal(``);
+    });
+
+    it(`restores a child that a parent's setText detached when reverting with the real engine`, async function () {
+      const frames = [];
+      global.window.requestAnimationFrame = callback => frames.push(callback);
+      const engine = new VisualChangeEngine();
+      document.body.innerHTML = `<div class="card"><span class="badge">New</span></div>`;
+      const badge = document.querySelector(`.badge`);
+
+      engine.applyVisualChanges([
+        { type: `setStyle`, selector: `.badge`, property: `color`, value: `red` },
+        { type: `setText`, selector: `.card`, value: `Replaced` },
+      ]);
+      expect(badge.isConnected).to.be.false;
+
+      document.body.appendChild(document.createElement(`p`));
+      await Promise.resolve();
+      while (frames.length) {
+        frames.shift()();
+      }
+
+      engine.revertVisualChanges();
+      const restoredBadge = document.querySelector(`.card .badge`);
+      expect(restoredBadge).to.equal(badge);
+      expect(restoredBadge.textContent).to.equal(`New`);
+      expect(restoredBadge.style.color).to.equal(``);
+    });
+
+    it(`leaves a child the page moved into the live document in place when its setText parent is removed`, async function () {
+      const frames = [];
+      global.window.requestAnimationFrame = callback => frames.push(callback);
+      const engine = new VisualChangeEngine();
+      document.body.innerHTML = `<div class="card"><span class="badge">New</span></div><div class="shelf"></div>`;
+      const card = document.querySelector(`.card`);
+      const badge = document.querySelector(`.badge`);
+      const shelf = document.querySelector(`.shelf`);
+
+      engine.applyVisualChanges([{ type: `setText`, selector: `.card`, value: `Replaced` }]);
+      shelf.appendChild(badge);
+      card.remove();
+      await Promise.resolve();
+      while (frames.length) {
+        frames.shift()();
+      }
+
+      expect(badge.parentNode).to.equal(shelf);
+      expect(engine._undoStack.length).to.equal(0);
+    });
+
+    it(`leaves a child the page moved elsewhere in place when reverting setText`, function () {
+      const engine = new VisualChangeEngine();
+      document.body.innerHTML = `<div class="card"><span class="badge">New</span><em class="note">Hi</em></div><div class="shelf"></div>`;
+      const card = document.querySelector(`.card`);
+      const badge = document.querySelector(`.badge`);
+      const note = document.querySelector(`.note`);
+      const shelf = document.querySelector(`.shelf`);
+
+      engine.applyVisualChanges([{ type: `setText`, selector: `.card`, value: `Replaced` }]);
+      shelf.appendChild(badge);
+      engine.revertVisualChanges();
+
+      expect(badge.parentNode).to.equal(shelf);
+      expect(note.parentNode).to.equal(card);
+      expect(card.textContent).to.equal(`Hi`);
+    });
+
+    it(`reapplies when a navigation changes the matched set`, function () {
+      delivered = variants({
+        a: targetedTreatment(`exp1`, itemTarget),
+        b: treatment(`exp2`, otherChanges, `http://localhost/item/456`),
+      });
+      navigate(`/item/123`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnceWith(changes);
+
+      navigate(`/item/456`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledTwice;
+      expect(apply.lastCall.args[0]).to.deep.equal(changes.concat(otherChanges));
+
+      navigate(`/item/789`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledThrice;
+      expect(apply.lastCall.args[0]).to.deep.equal(changes);
+    });
+
+    it(`reapplies when the same flag is delivered with a different variant`, function () {
+      delivered = variants({ a: targetedTreatment(`exp1`, itemTarget) });
+      navigate(`/item/123`);
+      manager.applyForCurrentPage();
+
+      delivered = variants({ a: Object.assign(targetedTreatment(`exp1`, itemTarget), { key: `C` }) });
+      navigate(`/item/456`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledTwice;
+    });
+
+    it(`keeps the no-target fallback scoped by origin and pathname`, function () {
+      delivered = variants({ a: treatment(`exp1`) });
+      navigate(`/pricing?campaign=test#details`);
+      manager.applyForCurrentPage();
+      expect(apply).to.have.been.calledOnce;
+
+      navigate(`/item/123`);
+      manager.applyForCurrentPage();
       expect(revert).to.have.been.calledOnce;
     });
   });
@@ -515,8 +1060,8 @@ describe(`VisualExperimentsManager`, function () {
 
     it(`never reports preview mutations as exposures`, function () {
       delivered = new Map();
-      apply = engineApplyingEverything();
       manager = build();
+      track.resetHistory();
       manager._startEditorSession(`exp-a`);
       manager._applyEditorPreview(preview);
       expect(track).to.not.have.been.called;
@@ -548,7 +1093,7 @@ describe(`VisualExperimentsManager`, function () {
       expect(revert).to.have.been.called;
     });
 
-    it(`scopes the preview to the page where it was authored`, function () {
+    it(`scopes the preview by the edited experiment's $mp.url when it has no target`, function () {
       manager._startEditorSession(`exp-a`);
       manager._applyEditorPreview(preview);
 
@@ -581,6 +1126,94 @@ describe(`VisualExperimentsManager`, function () {
       manager._startEditorSession(`exp-a`);
       expect(manager._editorPreview).to.equal(null);
       expect(manager._editorSession.pageKey).to.equal(`http://localhost/other`);
+    });
+
+    describe(`preview following the edited experiment's target`, function () {
+      beforeEach(function () {
+        delivered = variants({
+          a: targetedTreatment(`exp-a`, patternTarget(`http://localhost/item/*`)),
+          b: treatment(`exp-b`, otherChanges),
+        });
+        navigate(`/item/1`);
+        manager.applyForCurrentPage();
+        apply.resetHistory();
+        revert.resetHistory();
+      });
+
+      it(`applies on any matching page and reverts on a non-matching one`, function () {
+        manager._startEditorSession(`exp-a`);
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+
+        navigate(`/item/2?tab=specs`);
+        manager.applyForCurrentPage();
+        expect(apply).to.have.been.calledOnce;
+        expect(revert).to.have.been.calledOnce;
+
+        navigate(`/other`);
+        manager.applyForCurrentPage();
+        expect(revert).to.have.been.calledTwice;
+
+        navigate(`/item/3`);
+        manager.applyForCurrentPage();
+        expect(apply).to.have.been.calledTwice;
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+      });
+
+      it(`applies a preview sent after navigating away from where the session started`, function () {
+        manager._startEditorSession(`exp-a`);
+        navigate(`/item/2`);
+        manager.applyForCurrentPage();
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+      });
+
+      it(`also applies on the authoring page when it is outside the target`, function () {
+        navigate(`/pricing`);
+        manager._startEditorSession(`exp-a`);
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(otherChanges.concat(preview));
+
+        navigate(`/item/2`);
+        manager.applyForCurrentPage();
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+
+        navigate(`/other`);
+        manager.applyForCurrentPage();
+        expect(revert).to.have.been.calledOnce;
+      });
+
+      it(`does not apply a preview sent on a page outside the target`, function () {
+        manager._startEditorSession(`exp-a`);
+        navigate(`/pricing`);
+        manager.applyForCurrentPage();
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(otherChanges);
+      });
+
+      it(`keeps the preview when the same session restarts on another matching page`, function () {
+        manager._startEditorSession(`exp-a`);
+        manager._applyEditorPreview(preview);
+
+        navigate(`/item/2`);
+        manager._startEditorSession(`exp-a`);
+        expect(manager._editorPreview.mutations).to.deep.equal(preview);
+      });
+
+      it(`applies only on the authored page when the edited experiment is not delivered`, function () {
+        delivered = variants({ b: treatment(`exp-b`, otherChanges) });
+        manager._startEditorSession(`exp-a`);
+        manager._applyEditorPreview(preview);
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+
+        navigate(`/item/2`);
+        manager.applyForCurrentPage();
+        expect(revert).to.have.been.calledTwice;
+
+        navigate(`/item/1`);
+        manager.applyForCurrentPage();
+        expect(apply.lastCall.args[0]).to.deep.equal(preview);
+      });
     });
 
     it(`switching experiments releases the previous one and withholds the new one`, function () {

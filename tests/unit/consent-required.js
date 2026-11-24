@@ -7,6 +7,7 @@ import jsdomSetup from './jsdom-setup';
 const TOKEN = `consent-required-token`;
 const SRC_DIR = path.resolve(__dirname, `../../src`);
 const OPT_IN_OUT_KEY = `__mp_opt_in_out_${TOKEN}`;
+const OBJECTION_KEY = `__mp_objection_${TOKEN}`;
 const PERSISTENCE_KEY = `mp_${TOKEN}_mixpanel`;
 const EVENT_QUEUE_KEY = `__mpq_${TOKEN}_ev`;
 const TAB_ID_KEY = name => `mp_tab_id_${name}_${TOKEN}`;
@@ -20,9 +21,10 @@ const REAL_CONFIG = {
 };
 
 // the modes that store and send nothing identifying before consent
-const CONSENT_REQUIRED_MODES = [`require_consent`];
+const CONSENT_REQUIRED_MODES = [`require_consent`, `exempt`];
 
 CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, function() {
+  const SENDS_EXEMPT_EVENTS = mode === `exempt`;
   let mixpanel, loadExtraBundle;
 
   // registered before jsdomSetup so it runs before the jsdom window is torn down
@@ -84,7 +86,7 @@ CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, funct
       expect(instance.get_tab_id()).to.equal(null);
     });
 
-    it(`should open no storage and make no requests with autocapture, replay and flags on`, async function() {
+    it(`should open no storage and send ${SENDS_EXEMPT_EVENTS ? `only exempt events` : `nothing`} with autocapture, replay and flags on`, async function() {
       const setItem = sinon.spy(window.Storage.prototype, `setItem`);
       window.indexedDB = {open: sinon.spy(), databases: () => Promise.resolve([])};
       window.fetch = sinon.spy(() => new Promise(() => {}));
@@ -100,7 +102,17 @@ CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, funct
       expect(window.indexedDB.open.called).to.equal(false);
       expect(window.fetch.called).to.equal(false);
       expect(loadExtraBundle.called).to.equal(false);
-      expect(instance._send_request.called).to.equal(false);
+      const sent = sentEvents(instance);
+      if (SENDS_EXEMPT_EVENTS) {
+        expect(sent.map(event => event.event)).to.include(`$mp_web_page_view`);
+        sent.forEach(event => {
+          expect([`$mp_web_page_view`, `$mp_click`]).to.include(event.event);
+          expect(event.properties.$mp_exempt).to.equal(true);
+          expect(event.properties).to.not.have.property(`distinct_id`);
+        });
+      } else {
+        expect(sent).to.deep.equal([]);
+      }
       expect(instance.are_batchers_initialized()).to.equal(false);
     });
 
@@ -156,6 +168,128 @@ CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, funct
     });
   });
 
+  if (SENDS_EXEMPT_EVENTS) {
+    describe(`exempt events`, function() {
+      it(`should send an allowed event alone, with only the allowed properties`, function() {
+        const instance = initInstance({persistence: `localStorage`});
+        instance.register({plan: `pro`});
+
+        instance.track(`$mp_click`, {
+          $el_attr__href: `https://example.com/pricing?ref=nav#plans`,
+          $el_text: `Pricing`,
+          $current_url: `https://example.com/home?utm_source=ad`,
+          $browser_version: 120.5,
+          utm_source: `ad`,
+        });
+
+        const [event] = sentEvents(instance);
+        expect(instance._send_request.callCount).to.equal(1);
+        expect(instance._send_request.firstCall.args[2].exempt_measurement).to.equal(true);
+        expect(event.event).to.equal(`$mp_click`);
+        expect(event.properties).to.include({
+          token: TOKEN,
+          $mp_exempt: true,
+          $el_attr__href: `https://example.com/pricing`,
+          $current_url: `https://example.com/home`,
+          $browser_version: 120,
+        });
+        expect(event.properties.time % 3600).to.equal(0);
+        [`$el_text`, `utm_source`, `plan`, `distinct_id`, `$device_id`, `$referrer`, `$screen_width`].forEach(
+          property => expect(event.properties).to.not.have.property(property)
+        );
+      });
+
+      it(`should drop what on_track adds that isn't allowed, and skip before_send_events`, function() {
+        const beforeSendEvents = sinon.spy(data => data);
+        const instance = initInstance({
+          hooks: {
+            on_track: (eventName, properties) => [eventName, Object.assign({}, properties, {
+              plan: `pro`,
+              distinct_id: `account-1`,
+              $current_url: `https://example.com/home?email=a@b.c`,
+            })],
+            before_send_events: beforeSendEvents,
+          },
+        });
+
+        instance.track(`$mp_click`, {});
+
+        const [event] = sentEvents(instance);
+        expect(event.properties.$mp_exempt).to.equal(true);
+        expect(event.properties.$current_url).to.equal(`https://example.com/home`);
+        expect(event.properties).to.not.have.property(`distinct_id`);
+        expect(event.properties).to.not.have.property(`plan`);
+        expect(beforeSendEvents.called).to.equal(false);
+      });
+
+      it(`should remove credentials from a URL longer than the truncation length`, function() {
+        const instance = initInstance();
+
+        instance.track(`$mp_click`, {$el_attr__href: `https://user:${`x`.repeat(300)}@example.com/docs`});
+
+        const [event] = sentEvents(instance);
+        expect(event.properties.$el_attr__href).to.equal(`https://example.com/docs`);
+      });
+
+      it(`should drop other events, and people and group calls`, function() {
+        const instance = initInstance();
+        const callback = sinon.spy();
+
+        instance.track(`Purchase`, {}, callback);
+        instance.people.set({name: `visitor`});
+        instance.get_group(`company`, `mixpanel`).set({plan: `pro`});
+
+        expect(callback.calledWith(0)).to.equal(true);
+        expect(instance._send_request.called).to.equal(false);
+      });
+
+      it(`should send the events and properties consent_exempt_allowlist adds`, function() {
+        const instance = initInstance({consent_exempt_allowlist: {events: [`Signup Viewed`], properties: [`step`]}});
+
+        instance.track(`Signup Viewed`, {step: 2, plan: `pro`});
+
+        const [event] = sentEvents(instance);
+        expect(event.event).to.equal(`Signup Viewed`);
+        expect(event.properties.step).to.equal(2);
+        expect(event.properties).to.not.have.property(`plan`);
+      });
+
+      it(`should send exempt events again after a withdrawal, and none after an objection`, function() {
+        const withdrawn = initInstance({}, `consent_required_withdrawn`);
+        withdrawn.opt_in_tracking({track: null});
+        withdrawn.opt_out_tracking();
+        withdrawn._send_request.resetHistory();
+        withdrawn.track_pageview();
+
+        const objected = initInstance({}, `consent_required_objected`);
+        objected.object_to_tracking();
+        objected.track_pageview();
+
+        const [event] = sentEvents(withdrawn);
+        expect(event.event).to.equal(`$mp_web_page_view`);
+        expect(event.properties.$mp_exempt).to.equal(true);
+        expect(event.properties).to.not.have.property(`distinct_id`);
+        expect(objected._send_request.called).to.equal(false);
+      });
+
+      it(`should drop a request not marked exempt, and a marked one after an objection`, function() {
+        const exemptInstance = initInstance({}, `consent_required_exempt`);
+        const objected = initInstance({}, `consent_required_objected`);
+        objected.object_to_tracking();
+        [exemptInstance, objected].forEach(instance => instance._send_request.restore());
+        const xhrSend = sinon.spy(window.XMLHttpRequest.prototype, `send`);
+        const callback = sinon.spy();
+        const url = `https://api-js.mixpanel.com/track/`;
+
+        expect(exemptInstance._send_request(url, {data: `e30=`}, {}, callback)).to.equal(false);
+        expect(objected._send_request(url, {data: `e30=`}, {exempt_measurement: true}, callback)).to.equal(false);
+
+        expect(callback.alwaysCalledWith(0)).to.equal(true);
+        expect(xhrSend.called).to.equal(false);
+      });
+    });
+  }
+
   describe(`opt-in`, function() {
     it(`should store a new device ID and send $opt_in and later events with it`, function() {
       const instance = initInstance({persistence: `localStorage`});
@@ -199,13 +333,14 @@ CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, funct
       }
     });
 
-    it(`should fetch remote settings only after consent`, async function() {
+    it(`should fetch remote settings once, ${SENDS_EXEMPT_EVENTS ? `before` : `only after`} consent`, async function() {
       window.fetch = sinon.spy(() => new Promise(() => {}));
       const instance = initInstance({remote_settings_mode: `strict`});
       const settingsFetches = () => window.fetch.getCalls().filter(call => /settings/.test(call.args[0]));
 
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(settingsFetches()).to.have.length(0);
+      // exempt events take their autocapture config from remote settings
+      expect(settingsFetches()).to.have.length(SENDS_EXEMPT_EVENTS ? 1 : 0);
 
       instance.opt_in_tracking();
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -279,6 +414,16 @@ CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, funct
       expect(instance.get_distinct_id()).to.match(/^\$device:/);
     });
 
+    it(`should discard an identify() held before consent on an objection`, function() {
+      const instance = initInstance();
+      instance.identify(`user-1`);
+      instance.object_to_tracking();
+
+      instance.opt_in_tracking({track: null});
+
+      expect(instance.get_distinct_id()).to.match(/^\$device:/);
+    });
+
     it(`should send $opt_in with its options on a repeated opt-in, and none with track: null`, function() {
       const instance = initInstance();
       instance.opt_in_tracking({track: null});
@@ -314,6 +459,17 @@ CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, funct
       expect(reloaded.get_distinct_id()).to.equal(consented_id);
     });
 
+    it(`should clear an objection`, function() {
+      window.localStorage.setItem(OBJECTION_KEY, `1`);
+      const instance = initInstance({persistence: `localStorage`});
+
+      instance.opt_in_tracking();
+
+      expect(window.localStorage.getItem(OBJECTION_KEY)).to.equal(null);
+      expect(instance.has_opted_out_tracking()).to.equal(false);
+      expect(sentEvents(instance).map(event => event.event)).to.deep.equal([`$opt_in`]);
+    });
+
   });
 
   describe(`opt-out`, function() {
@@ -325,6 +481,61 @@ CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, funct
       expect(document.cookie).to.contain(`${OPT_IN_OUT_KEY}=0`);
       expect(instance.has_opted_out_tracking()).to.equal(true);
       expect(isBlocked(initInstance({}, `consent_required_reloaded`))).to.equal(true);
+    });
+  });
+
+  describe(`objection`, function() {
+    it(`should store the objection under its own key and block across page loads`, function() {
+      const instance = initInstance();
+
+      instance.object_to_tracking();
+
+      expect(document.cookie).to.contain(`${OBJECTION_KEY}=1`);
+      expect(document.cookie).to.contain(`${OPT_IN_OUT_KEY}=0`);
+      expect(instance.has_opted_out_tracking()).to.equal(true);
+
+      const reloaded = initInstance({}, `consent_required_reloaded`);
+      const callback = sinon.spy();
+      reloaded.track(`page`, {}, callback);
+
+      expect(reloaded.has_opted_out_tracking()).to.equal(true);
+      expect(callback.calledWith(0)).to.equal(true);
+      expect(reloaded._send_request.called).to.equal(false);
+    });
+
+    it(`should go back to no decision when the objection is cleared`, function() {
+      const instance = initInstance();
+      instance.object_to_tracking();
+
+      instance.clear_opt_in_out_tracking();
+
+      expect(window.localStorage.getItem(OBJECTION_KEY)).to.equal(null);
+      expect(window.localStorage.getItem(OPT_IN_OUT_KEY)).to.equal(null);
+      expect(instance.has_opted_out_tracking()).to.equal(false);
+      expect(instance.has_opted_in_tracking()).to.equal(false);
+
+      instance.opt_in_tracking();
+
+      expect(isBlocked(instance)).to.equal(false);
+    });
+
+    it(`should store nothing and start no flags, replay or remote settings after an objection`, async function() {
+      window.localStorage.setItem(OPT_IN_OUT_KEY, `1`);
+      window.localStorage.setItem(OBJECTION_KEY, `1`);
+      const setItem = sinon.spy(window.Storage.prototype, `setItem`);
+      window.indexedDB = {open: sinon.spy(), databases: () => Promise.resolve([])};
+      window.fetch = sinon.spy(() => new Promise(() => {}));
+      const instance = initInstance(Object.assign({}, REAL_CONFIG, {remote_settings_mode: `strict`}));
+
+      instance.track_pageview();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(instance.has_opted_out_tracking()).to.equal(true);
+      expect(setItem.called).to.equal(false);
+      expect(window.indexedDB.open.called).to.equal(false);
+      expect(window.fetch.called).to.equal(false);
+      expect(loadExtraBundle.called).to.equal(false);
+      expect(instance._send_request.called).to.equal(false);
     });
   });
 
@@ -492,6 +703,15 @@ CONSENT_REQUIRED_MODES.forEach(mode => describe(`consent_mode: '${mode}'`, funct
       instance.opt_in_tracking();
 
       expect(instance.get_config(`consent_mode`)).to.equal(mode);
+      expect(instance.has_opted_in_tracking()).to.equal(true);
+    });
+
+    it(`should keep finding the decision after set_config() changes persistence`, function() {
+      const instance = initInstance({persistence: `cookie`});
+      instance.opt_in_tracking();
+
+      instance.set_config({persistence: `localStorage`});
+
       expect(instance.has_opted_in_tracking()).to.equal(true);
     });
   });

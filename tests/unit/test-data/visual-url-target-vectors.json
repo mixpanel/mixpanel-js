@@ -1,0 +1,2493 @@
+{
+  "$comment": [
+    "Shared test vectors for the experiment Target URL rule ($mp.target version 1).",
+    "Every implementation of the Target URL matcher runs against every case.",
+    "Hash routes are compared decoded; rule routes are stored as typed.",
+    "Hash routes, on the page and in the rule, drop one leading ! and then one trailing / (a route that is exactly / keeps it); no leading / is added, so #reviews has route reviews.",
+    "Source of truth: this file is the canonical copy of these vectors."
+  ],
+  "cases": [
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://SHOP.com/cart",
+      "match": true,
+      "why": "normalization: page host is lowercased"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://Shop.COM/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart",
+      "match": true,
+      "why": "normalization: rule host is lowercased"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com:443/cart",
+      "match": true,
+      "why": "normalization: default https port is dropped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "http://shop.com:80/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "http://shop.com/cart",
+      "match": true,
+      "why": "normalization: default http port is dropped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com:8443/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart",
+      "match": false,
+      "why": "normalization: a non-default port must match"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "http://shop.com/cart",
+      "match": false,
+      "why": "normalization: http and https differ"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "http://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart",
+      "match": false,
+      "why": "normalization: https and http differ"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart/",
+      "match": true,
+      "why": "normalization: one trailing slash on the page is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart/"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart",
+      "match": true,
+      "why": "normalization: one trailing slash on the rule is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/",
+      "match": true,
+      "why": "normalization: an empty path is the root path"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com",
+      "match": true,
+      "why": "normalization: the root path matches with or without a slash"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart//",
+      "match": false,
+      "why": "normalization: only one trailing slash is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/Cart",
+      "match": false,
+      "why": "normalization: path is case-sensitive"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://www.shop.com/cart",
+      "match": false,
+      "why": "normalization: host must match exactly"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart/items",
+      "match": false,
+      "why": "normalization: the whole path must match"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "ftp://shop.com/cart",
+      "match": false,
+      "why": "normalization: only http and https pages match"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/*"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123",
+      "match": true,
+      "why": "pattern: * matches one segment"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/*"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123/reviews",
+      "match": false,
+      "why": "pattern: * does not cross a slash"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/*/checkout"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/a/b/checkout",
+      "match": false,
+      "why": "pattern: * matches a single segment only"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item-*"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item-blue",
+      "match": true,
+      "why": "pattern: * matches part of a segment"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/**"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/a/b/c",
+      "match": true,
+      "why": "pattern: ** crosses segments"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/**/checkout"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/a/b/checkout",
+      "match": true,
+      "why": "pattern: ** in the middle crosses segments"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/:id"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123",
+      "match": true,
+      "why": "pattern: :name matches one segment"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/:id"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123/reviews",
+      "match": false,
+      "why": "pattern: :name does not cross a slash"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/:id"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item",
+      "match": false,
+      "why": "pattern: :name requires a segment"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/:id/reviews"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/9/reviews",
+      "match": true,
+      "why": "pattern: :name in the middle of the path"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/:id/reviews"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item//reviews",
+      "match": false,
+      "why": "pattern: :name does not match an empty segment"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/*/reviews"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item//reviews",
+      "match": true,
+      "why": "pattern: * matches an empty segment"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://*.shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://www.shop.com/cart",
+      "match": false,
+      "why": "pattern: the host stays literal, * is not a wildcard there"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/a.b"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/axb",
+      "match": false,
+      "why": "pattern: . is literal"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/a.b"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/a.b",
+      "match": true,
+      "why": "pattern: literal characters match themselves"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/:id"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/9?color=red#top",
+      "match": true,
+      "why": "pattern: query and hash are ignored when their rules are null"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123",
+      "match": true,
+      "why": "regex: matches origin + path"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123/reviews",
+      "match": false,
+      "why": "regex: implicitly anchored at the end"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "shop\\.com/item/\\d+"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123",
+      "match": false,
+      "why": "regex: implicitly anchored at the start"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/a|https://shop\\.com/b"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/ab",
+      "match": false,
+      "why": "regex: the anchors wrap the whole alternation"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/a|https://shop\\.com/b"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/b",
+      "match": true,
+      "why": "regex: any alternative can match the whole string"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123?q=1#reviews",
+      "match": true,
+      "why": "regex: query and hash are not part of the tested string"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+\\?q=1"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/123?q=1",
+      "match": false,
+      "why": "regex: the query is never part of the tested string"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://SHOP.com:443/cart/",
+      "match": true,
+      "why": "regex: tested against the normalized origin + path"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/(\\d+"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/1",
+      "match": false,
+      "why": "regex: an invalid regex never matches"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a=1&utm_source=x",
+      "match": true,
+      "why": "query: null ignores the query"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": []
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item",
+      "match": true,
+      "why": "query: {params: []} matches a page with no query"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": []
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?",
+      "match": true,
+      "why": "query: a bare ? is an empty query"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": []
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a=1",
+      "match": false,
+      "why": "query: {params: []} rejects any non-ignored key"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": []
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?utm_source=x&gclid=1",
+      "match": true,
+      "why": "query: {params: []} still allows ignored keys"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?quantity=2",
+      "match": true,
+      "why": "query: exact key and value"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?quantity=3",
+      "match": false,
+      "why": "query: value differs"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?quantity=2&color=red",
+      "match": false,
+      "why": "query: an extra key does not match"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item",
+      "match": false,
+      "why": "query: a missing key does not match"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": "1"
+            },
+            {
+              "key": "b",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?b=2&a=1",
+      "match": true,
+      "why": "query: key order does not matter"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": "1"
+            },
+            {
+              "key": "b",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a=1",
+      "match": false,
+      "why": "query: every rule key must be present"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?quantity=2&utm_source=x&utm_medium=y&gclid=a&fbclid=b&msclkid=c&mp_preview_token=t",
+      "match": true,
+      "why": "query: every default ignored key is ignored, utm_* as a prefix"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?quantity=2&utm=1",
+      "match": false,
+      "why": "query: utm_* is a prefix of utm_, not utm"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?quantity=2&UTM_source=x",
+      "match": false,
+      "why": "query: ignored keys are case-sensitive"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["ref"]
+      },
+      "page": "https://shop.com/item?quantity=2&ref=x",
+      "match": true,
+      "why": "query: the ignored list comes from the payload"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["ref"]
+      },
+      "page": "https://shop.com/item?quantity=2&utm_source=x",
+      "match": false,
+      "why": "query: keys not in the payload ignore list count as extra"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "sc",
+              "value": "1*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?sc=1",
+      "match": true,
+      "why": "query: * in a value matches an empty run"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "sc",
+              "value": "1*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?sc=123",
+      "match": true,
+      "why": "query: * in a value matches any run"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "sc",
+              "value": "1*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?sc=21",
+      "match": false,
+      "why": "query: a value with * is still anchored"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "sc",
+              "value": "1%2A"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?sc=1*",
+      "match": true,
+      "why": "query: %2A in the rule is a literal *"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "sc",
+              "value": "1%2A"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?sc=12",
+      "match": false,
+      "why": "query: %2A is not a wildcard"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "sc",
+              "value": "1%2A"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?sc=1%2A",
+      "match": true,
+      "why": "query: page values are decoded before comparing"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "q",
+              "value": "a+b"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?q=a%20b",
+      "match": true,
+      "why": "query: + in the rule is a space"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "q",
+              "value": "a b"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?q=a+b",
+      "match": true,
+      "why": "query: + on the page is a space"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "q",
+              "value": "caf%C3%A9"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?q=café",
+      "match": true,
+      "why": "query: values compare after percent-decoding"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "q",
+              "value": "Blue"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?q=blue",
+      "match": false,
+      "why": "query: values are case-sensitive"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": ""
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a=",
+      "match": true,
+      "why": "query: an empty rule value matches a="
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": ""
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a",
+      "match": true,
+      "why": "query: an empty rule value matches bare a"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": ""
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a=1",
+      "match": false,
+      "why": "query: an empty rule value matches only an empty value"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": "*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a=1",
+      "match": true,
+      "why": "query: a=* matches any value"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": "*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a=",
+      "match": true,
+      "why": "query: a=* matches an empty value"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": "*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?a",
+      "match": true,
+      "why": "query: a=* matches bare a"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "a",
+              "value": "*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item",
+      "match": false,
+      "why": "query: a=* still requires the key"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "tag",
+              "value": "x"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?tag=x&tag=x",
+      "match": true,
+      "why": "query: every repeated page key matches"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "tag",
+              "value": "x"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?tag=x&tag=y",
+      "match": false,
+      "why": "query: one repeated page key fails"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "tag",
+              "value": "*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item?tag=x&tag=y",
+      "match": true,
+      "why": "query: a wildcard accepts every repeated value"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/item/:id"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "quantity",
+              "value": "2"
+            },
+            {
+              "key": "sc",
+              "value": "1*"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/9?sc=1abc&quantity=2&utm_source=x",
+      "match": true,
+      "why": "query: pattern URL with params, wildcard value and an ignored key"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/anything",
+      "match": true,
+      "why": "hash: null ignores the hash"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart/*",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart/123",
+      "match": true,
+      "why": "hash: route * matches one segment"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart/*",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart/1/2",
+      "match": false,
+      "why": "hash: route * does not cross a slash"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart/**",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart/1/2",
+      "match": true,
+      "why": "hash: route ** crosses segments"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/item/:id",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/item/9",
+      "match": true,
+      "why": "hash: route :name matches one segment"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart/*",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/checkout",
+      "match": false,
+      "why": "hash: route differs"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart/*",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app",
+      "match": false,
+      "why": "hash: a route rule requires a hash"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "reviews",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#reviews",
+      "match": true,
+      "why": "hash: plain anchor route"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "reviews",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#Reviews",
+      "match": false,
+      "why": "hash: route is case-sensitive"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart?step=2",
+      "match": true,
+      "why": "hash: null hash params ignore params after the route"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/path/*",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/path/a=b",
+      "match": true,
+      "why": "hash: with null hash params, a route segment may contain ="
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/path/*",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/path/a=b?x=1",
+      "match": true,
+      "why": "hash: with null hash params, = in the route and params after ? are ignored"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/my cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/my cart",
+      "match": true,
+      "why": "hash: route with a space is compared decoded"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/café",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/café",
+      "match": true,
+      "why": "hash: non-ASCII route is compared decoded"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/café",
+          "params": [
+            {
+              "key": "step",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/café?step=2",
+      "match": true,
+      "why": "hash: combined form compares the decoded route"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/100%",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/100%",
+      "match": true,
+      "why": "hash: a malformed escape in the page route is compared raw"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart/",
+      "match": true,
+      "why": "hash: one trailing slash on the page route is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart/",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart",
+      "match": true,
+      "why": "hash: one trailing slash on the rule route is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/",
+      "match": true,
+      "why": "hash: the root route / keeps its slash"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart//",
+      "match": false,
+      "why": "hash: only one trailing slash on the route is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": [
+            {
+              "key": "step",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart/?step=2",
+      "match": true,
+      "why": "hash: combined form strips a trailing slash from the page route"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#!/cart/",
+      "match": true,
+      "why": "hash: a hashbang route with a trailing slash is normalized"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#!/cart",
+      "match": true,
+      "why": "hash: a leading ! on the page route is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "!/cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart",
+      "match": true,
+      "why": "hash: a leading ! on the rule route is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "!/cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#!/cart",
+      "match": true,
+      "why": "hash: a hashbang rule route matches a hashbang page route"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": [
+            {
+              "key": "step",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#!/cart?step=2",
+      "match": true,
+      "why": "hash: combined form strips a leading ! from the page route"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#!!/cart",
+      "match": false,
+      "why": "hash: only one leading ! is stripped"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "specs"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#tab=specs",
+      "match": true,
+      "why": "hash: key/value form"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "specs"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#!tab=specs",
+      "match": true,
+      "why": "hash: key/value form after a leading !"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "specs"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#?tab=specs",
+      "match": true,
+      "why": "hash: key/value form after a leading ?"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "specs"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#tab=specs&utm_source=x",
+      "match": true,
+      "why": "hash: key/value form uses the ignored keys"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "specs"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#tab=specs&x=1",
+      "match": false,
+      "why": "hash: key/value form rejects extra keys"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "specs"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#tab=reviews",
+      "match": false,
+      "why": "hash: key/value form compares values"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "spec*"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#tab=specs",
+      "match": true,
+      "why": "hash: key/value form supports * in values"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": [
+            {
+              "key": "step",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart?step=2",
+      "match": true,
+      "why": "hash: combined route and params"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": [
+            {
+              "key": "step",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart?step=3",
+      "match": false,
+      "why": "hash: combined form compares params"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": [
+            {
+              "key": "step",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/checkout?step=2",
+      "match": false,
+      "why": "hash: combined form compares the route"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": "/cart",
+          "params": [
+            {
+              "key": "step",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#/cart",
+      "match": false,
+      "why": "hash: combined form requires the params"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": []
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app",
+      "match": true,
+      "why": "hash: must have no hash, page has none"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": []
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#",
+      "match": true,
+      "why": "hash: must have no hash, an empty # counts as none"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": []
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#top",
+      "match": false,
+      "why": "hash: must have no hash rejects an anchor"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/app"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": []
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/app#a=1",
+      "match": false,
+      "why": "hash: must have no hash rejects params"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "color",
+              "value": "red"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7?color=red",
+      "match": true,
+      "why": "regex + query: the query rule is applied"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "color",
+              "value": "red"
+            }
+          ]
+        },
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7?color=blue",
+      "match": false,
+      "why": "regex + query: a failing query rule rejects the page"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": null,
+        "hash": {
+          "route": "/reviews",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7#/reviews",
+      "match": true,
+      "why": "regex + hash: the hash route is applied"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": null,
+        "hash": {
+          "route": "/reviews",
+          "params": null
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7#/specs",
+      "match": false,
+      "why": "regex + hash: a failing hash route rejects the page"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "specs"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7#tab=specs",
+      "match": true,
+      "why": "regex + hash: hash params are applied"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": null,
+        "hash": {
+          "route": null,
+          "params": [
+            {
+              "key": "tab",
+              "value": "specs"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7#tab=reviews",
+      "match": false,
+      "why": "regex + hash: failing hash params reject the page"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "color",
+              "value": "red"
+            }
+          ]
+        },
+        "hash": {
+          "route": "/reviews",
+          "params": [
+            {
+              "key": "page",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7?color=red#/reviews?page=2",
+      "match": true,
+      "why": "regex + query + hash: both rules are applied"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "color",
+              "value": "red"
+            }
+          ]
+        },
+        "hash": {
+          "route": "/reviews",
+          "params": [
+            {
+              "key": "page",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7?color=blue#/reviews?page=2",
+      "match": false,
+      "why": "regex + query + hash: a failing query rule rejects the page"
+    },
+    {
+      "target": {
+        "version": 1,
+        "url": {
+          "type": "regex",
+          "value": "https://shop\\.com/item/\\d+"
+        },
+        "query": {
+          "params": [
+            {
+              "key": "color",
+              "value": "red"
+            }
+          ]
+        },
+        "hash": {
+          "route": "/reviews",
+          "params": [
+            {
+              "key": "page",
+              "value": "2"
+            }
+          ]
+        },
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/item/7?color=red#/reviews?page=3",
+      "match": false,
+      "why": "regex + query + hash: failing hash params reject the page"
+    },
+    {
+      "target": {
+        "version": 2,
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart",
+      "match": false,
+      "why": "version: an unknown version never matches"
+    },
+    {
+      "target": {
+        "url": {
+          "type": "pattern",
+          "value": "https://shop.com/cart"
+        },
+        "query": null,
+        "hash": null,
+        "ignoredParamKeys": ["mp_preview_token", "utm_*", "gclid", "fbclid", "msclkid"]
+      },
+      "page": "https://shop.com/cart",
+      "match": false,
+      "why": "version: a missing version never matches"
+    }
+  ]
+}

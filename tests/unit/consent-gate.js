@@ -23,7 +23,8 @@ describe(`consent gate`, function() {
       expect(gate.allowsSending()).to.be.true;
       expect(gate.allowsFetching()).to.be.false;
       expect(gate.allowsStoring()).to.be.true;
-      expect(allows.args.map(args => args[0])).to.deep.equal([`api_calls`, `send`, `fetch`, `store`]);
+      expect(gate.allowsExemptMeasurement()).to.be.true;
+      expect(allows.args.map(args => args[0])).to.deep.equal([`api_calls`, `send`, `fetch`, `store`, `exempt_measurement`]);
     });
 
     it(`lets the calls run if asking throws`, function() {
@@ -70,6 +71,7 @@ describe(`consent gate`, function() {
 
       expect(gate.allowsApiCalls()).to.be.false;
       expect(gate.allowsStoring()).to.be.true;
+      expect(gate.allowsExemptMeasurement()).to.be.false;
       expect(gates.consentGateFor(makeInstance({})).allowsApiCalls()).to.be.true;
     });
 

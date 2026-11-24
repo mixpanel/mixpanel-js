@@ -87,18 +87,51 @@ var VisualChangeEngine = function() {
     // Parallel to _currentMutations: a WeakSet of elements already mutated for
     // each mutation, so re-application only touches new/re-rendered nodes.
     this._appliedSets = [];
-    // Optional per-set callback, invoked once per mutation index the first time
-    // that mutation actually changes an element (possibly later, via the
-    // observer). _firstApplyReported is parallel to _currentMutations. Reports are
-    // queued in _pendingFirstApply and delivered only after the apply pass ends,
-    // so the callback never runs while the engine is mid-mutation.
-    this._onFirstApply = null;
-    this._firstApplyReported = [];
-    this._pendingFirstApply = [];
     this._observer = null;
     this._reapplyScheduled = false;
     // True while a body-not-yet-parsed observer-start retry is queued (at most one).
     this._observerStartPending = false;
+};
+
+// Each undo entry records the element it restores, so entries for elements the
+// page has since removed can be dropped without reverting the live ones.
+VisualChangeEngine.prototype._pushUndo = function(el, undo) {
+    this._undoStack.push({ el: el, undo: undo });
+};
+
+var isAttached = function(el) {
+    if (typeof el.isConnected === 'boolean') {
+        return el.isConnected;
+    }
+    return window['document'].documentElement.contains(el);
+};
+
+// Restore and drop undo entries for detached elements. Their closures hold the
+// old nodes (and, for setText, their original children), so on a page that
+// keeps replacing matched elements they would otherwise accumulate until the
+// next full apply or revert. A detached element can still come back: another
+// entry's setText undo re-attaches the children it saved, and the page may
+// re-insert a node it removed. Running the undo before dropping it means such a
+// node returns in its original state, and forgetting it in the applied sets
+// means a re-inserted node is applied (and its undo recorded) afresh.
+VisualChangeEngine.prototype._pruneDetachedUndo = function() {
+    var kept = [];
+    for (var i = this._undoStack.length - 1; i >= 0; i--) {
+        var entry = this._undoStack[i];
+        if (isAttached(entry.el)) {
+            kept.push(entry);
+            continue;
+        }
+        try {
+            entry.undo();
+        } catch (err) {
+            logger.error('Revert failed', err);
+        }
+        for (var j = 0; j < this._appliedSets.length; j++) {
+            this._appliedSets[j]['delete'](entry.el);
+        }
+    }
+    this._undoStack = kept.reverse();
 };
 
 // firstApply=false is a re-apply onto a node whose value a re-render clobbered:
@@ -123,7 +156,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         var hadAttr = el.hasAttribute(attr);
         var prev = hadAttr ? el.getAttribute(attr) : null;
         el.setAttribute(attr, mutation['value']);
-        this._undoStack.push(function() {
+        this._pushUndo(el, function() {
             if (hadAttr) {
                 el.setAttribute(attr, prev);
             } else {
@@ -149,9 +182,15 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
             prevChildren.push(child);
         }
         el.textContent = mutation['value'];
-        this._undoStack.push(function() {
+        // A saved child the page has since moved elsewhere in the live document
+        // stays where the page put it, both on revert and when pruning a
+        // detached element.
+        this._pushUndo(el, function() {
             el.textContent = '';
             for (var i = 0; i < prevChildren.length; i++) {
+                if (isAttached(prevChildren[i])) {
+                    continue;
+                }
                 el.appendChild(prevChildren[i]);
             }
         });
@@ -180,7 +219,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         var prevValue = el.style.getPropertyValue(prop);
         var prevPriority = el.style.getPropertyPriority(prop);
         el.style.setProperty(prop, mutation['value']);
-        this._undoStack.push(function() {
+        this._pushUndo(el, function() {
             if (prevValue) {
                 el.style.setProperty(prop, prevValue, prevPriority);
             } else {
@@ -206,7 +245,7 @@ VisualChangeEngine.prototype._applyOneToElement = function(mutation, el, firstAp
         }
         // add/remove above is idempotent (contains-guarded); only record undo once.
         if (firstApply) {
-            this._undoStack.push(function() {
+            this._pushUndo(el, function() {
                 for (var i = 0; i < added.length; i++) {
                     el.classList.remove(added[i]);
                 }
@@ -252,18 +291,12 @@ VisualChangeEngine.prototype._applyOne = function(index) {
             applied.add(el);
             passAgain = true;
         }
-        // A first apply that changed the element records an undo entry; skipped
-        // (unsafe/unsupported) mutations do not.
-        var undoDepth = this._undoStack.length;
         try {
             if (this._applyOneToElement(mutation, el, firstApply)) {
                 passAgain = true;
             }
         } catch (err) {
             logger.error('Mutation failed for selector ' + mutation['selector'], err);
-        }
-        if (firstApply && this._undoStack.length > undoDepth) {
-            this._queueFirstApply(index);
         }
     }
     return passAgain;
@@ -279,34 +312,6 @@ VisualChangeEngine.prototype._applyAll = function() {
         }
         if (!passAgain) {
             return;
-        }
-    }
-};
-
-VisualChangeEngine.prototype._queueFirstApply = function(index) {
-    if (!this._onFirstApply || this._firstApplyReported[index]) {
-        return;
-    }
-    this._firstApplyReported[index] = true;
-    this._pendingFirstApply.push(index);
-};
-
-// Deliver queued first-apply reports. Runs after an apply pass completes; the
-// callback (exposure tracking, and anything a before_track hook does) may
-// revert or replace the set, in which case the remaining reports are stale and
-// dropped.
-VisualChangeEngine.prototype._flushFirstApply = function() {
-    var callback = this._onFirstApply;
-    var pending = this._pendingFirstApply;
-    this._pendingFirstApply = [];
-    for (var i = 0; i < pending.length; i++) {
-        if (this._onFirstApply !== callback) {
-            return;
-        }
-        try {
-            callback(pending[i]);
-        } catch (err) {
-            logger.error('Visual changes onFirstApply callback failed', err);
         }
     }
 };
@@ -383,11 +388,11 @@ VisualChangeEngine.prototype._reapplyDirty = function() {
     }
     this._pauseObserver();
     try {
+        this._pruneDetachedUndo();
         this._applyAll();
     } finally {
         this._startObserverIfNeeded();
     }
-    this._flushFirstApply();
 };
 
 /**
@@ -395,12 +400,8 @@ VisualChangeEngine.prototype._reapplyDirty = function() {
  * prior set: reverts the previous undo stack first, then applies the new list.
  * Safe to call repeatedly; bad selectors are logged and skipped, never thrown.
  * @param {Array<Object>} mutations
- * @param {function(number)} [onFirstApply] called once per mutation index the
- *   first time that mutation changes an element, including later re-applies
- *   triggered by the observer. Not called for mutations that never apply.
- *   Invoked after the apply pass completes, never mid-mutation.
  */
-VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApply) {
+VisualChangeEngine.prototype.applyVisualChanges = function(mutations) {
     if (!minApisSupported() || !mutations || !mutations.length) {
         return;
     }
@@ -410,9 +411,6 @@ VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApp
             this._revertInternal();
         }
         this._currentMutations = mutations.slice();
-        this._onFirstApply = onFirstApply || null;
-        this._firstApplyReported = [];
-        this._pendingFirstApply = [];
         this._appliedSets = [];
         for (var i = 0; i < this._currentMutations.length; i++) {
             this._appliedSets.push(makeTracker());
@@ -421,14 +419,13 @@ VisualChangeEngine.prototype.applyVisualChanges = function(mutations, onFirstApp
     } finally {
         this._startObserverIfNeeded();
     }
-    this._flushFirstApply();
 };
 
 VisualChangeEngine.prototype._revertInternal = function() {
     while (this._undoStack.length) {
-        var undoFn = this._undoStack.pop();
+        var entry = this._undoStack.pop();
         try {
-            undoFn();
+            entry.undo();
         } catch (err) {
             logger.error('Revert failed', err);
         }
@@ -447,9 +444,6 @@ VisualChangeEngine.prototype.revertVisualChanges = function() {
     try {
         this._revertInternal();
         this._currentMutations = [];
-        this._onFirstApply = null;
-        this._firstApplyReported = [];
-        this._pendingFirstApply = [];
     } finally {
         this._stopObserverIfIdle();
         this._startObserverIfNeeded();

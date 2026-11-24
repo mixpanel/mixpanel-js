@@ -5,33 +5,42 @@
  *   'send'       tracking requests go out
  *   'fetch'      feature flags and remote settings are fetched
  *   'store'      the services store data about the visitor
+ *   'exempt_measurement'  exempt-events.js events are sent, and remote settings fetched
  */
 
 import { console } from './utils';
 
 /** @const */ var CONSENT_MODE_NO_CONSENT_REQUIRED = 'no_consent_required';
 /** @const */ var CONSENT_MODE_REQUIRE_CONSENT = 'require_consent';
+// CNIL's audience-measurement exemption
+/** @const */ var CONSENT_MODE_EXEMPT = 'exempt';
 
-/** @const */ var CAPABILITIES = ['api_calls', 'send', 'fetch', 'store'];
+/** @const */ var CAPABILITIES = ['api_calls', 'send', 'fetch', 'store', 'exempt_measurement'];
+
+/** @typedef {'none'|'opted_in'|'opted_out'|'objected'} ConsentDecision */
+/** @typedef {'full'|'api_calls_stopped'|'exempt'|'blocked'} ConsentState */
 
 /** @const */ var DECISION_NONE = 'none';
 /** @const */ var DECISION_OPTED_IN = 'opted_in';
 /** @const */ var DECISION_OPTED_OUT = 'opted_out';
-// Do Not Track counts as an objection
+// object_to_tracking(); Do Not Track counts as one too
 /** @const */ var DECISION_OBJECTED = 'objected';
 
 /** @const */ var STATE_FULL = 'full';
 /** @const */ var STATE_API_CALLS_STOPPED = 'api_calls_stopped';
+/** @const */ var STATE_EXEMPT = 'exempt';
 /** @const */ var STATE_BLOCKED = 'blocked';
 
 /** @const */ var CONSENT_STATES = {
     // the SDK works normally, as for a site with no consent rules
-    'full':              {'api_calls': true,  'send': true,  'fetch': true,  'store': true},
+    'full':              {'api_calls': true,  'send': true,  'fetch': true,  'store': true,  'exempt_measurement': false},
     // an opt-out under 'no_consent_required': the public calls do nothing, flags keep loading,
     // and persistence follows the opt-out's clear_persistence and enable_persistence options
-    'api_calls_stopped': {'api_calls': false, 'send': true,  'fetch': true,  'store': true},
+    'api_calls_stopped': {'api_calls': false, 'send': true,  'fetch': true,  'store': true,  'exempt_measurement': false},
+    // 'exempt' before an opt-in, refusals included: only exempt events, nothing stored
+    'exempt':            {'api_calls': false, 'send': false, 'fetch': false, 'store': false, 'exempt_measurement': true},
     // nothing runs, is sent or is stored
-    'blocked':           {'api_calls': false, 'send': false, 'fetch': false, 'store': false}
+    'blocked':           {'api_calls': false, 'send': false, 'fetch': false, 'store': false, 'exempt_measurement': false}
 };
 
 /**
@@ -40,7 +49,8 @@ import { console } from './utils';
  */
 /** @const */ var CONSENT_MODES = {
     'no_consent_required': {'none': STATE_FULL,    'opted_in': STATE_FULL, 'opted_out': STATE_API_CALLS_STOPPED, 'objected': STATE_API_CALLS_STOPPED},
-    'require_consent':     {'none': STATE_BLOCKED, 'opted_in': STATE_FULL, 'opted_out': STATE_BLOCKED,           'objected': STATE_BLOCKED}
+    'require_consent':     {'none': STATE_BLOCKED, 'opted_in': STATE_FULL, 'opted_out': STATE_BLOCKED,           'objected': STATE_BLOCKED},
+    'exempt':              {'none': STATE_EXEMPT,  'opted_in': STATE_FULL, 'opted_out': STATE_EXEMPT,            'objected': STATE_BLOCKED}
 };
 
 /**
@@ -61,14 +71,18 @@ function resolveConsentMode(configuredMode) {
 }
 
 /**
- * The visitor's decision: Do Not Track, then the stored opt-out flag.
+ * The visitor's decision: Do Not Track, then a stored objection, then the stored opt-out flag.
  * @param {boolean} doNotTrack whether Do Not Track is on and not ignored
  * @param {string|null} storedFlag '1', '0', or null when there's none
- * @returns {string}
+ * @param {boolean} [objectionStored] whether an objection is stored
+ * @returns {ConsentDecision}
  */
-function readDecision(doNotTrack, storedFlag) {
+function readDecision(doNotTrack, storedFlag, objectionStored) {
     if (doNotTrack) {
         console.warn('This browser has "Do Not Track" enabled. This will prevent the Mixpanel SDK from sending any data. To ignore the "Do Not Track" browser setting, initialize the Mixpanel instance with the config "ignore_dnt: true"');
+        return DECISION_OBJECTED;
+    }
+    if (objectionStored) {
         return DECISION_OBJECTED;
     }
 
@@ -84,6 +98,7 @@ function readDecision(doNotTrack, storedFlag) {
 export {
     CONSENT_MODE_NO_CONSENT_REQUIRED,
     CONSENT_MODE_REQUIRE_CONSENT,
+    CONSENT_MODE_EXEMPT,
     CAPABILITIES,
     DECISION_NONE,
     DECISION_OPTED_IN,

@@ -5,6 +5,8 @@ import { window } from '../window';
 import { onLocationChange } from '../navigation';
 import { VisualChangeEngine } from './engine';
 import { AntiFlickerController } from './anti-flicker';
+import { anySelectorPresent, ExposureWatcher } from './exposure-watcher';
+import { normalizePathname, urlTargetMatches } from '../url-matching';
 
 var logger = console_with_prefix('visual-experiments');
 
@@ -28,21 +30,6 @@ var payloadTooLarge = function(mutations) {
     }
 };
 
-// Normalize a pathname for comparison: ensure a leading slash and drop a single
-// trailing slash (keeping root "/") so "/foo" and "/foo/" are treated as equal.
-var normalizePathname = function(pathname) {
-    if (!pathname) {
-        return '/';
-    }
-    if (pathname.charAt(0) !== '/') {
-        pathname = '/' + pathname;
-    }
-    if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
-        pathname = pathname.slice(0, -1);
-    }
-    return pathname;
-};
-
 // Compare a persisted page url against the current location by origin + pathname
 // (query string and hash ignored). Uses a throwaway anchor to parse robustly
 // without assuming URL is available. Returns false when parsing is not possible.
@@ -63,6 +50,16 @@ var urlMatchesCurrentPage = function(url) {
     return normalizePathname(a.pathname) === normalizePathname(loc.pathname);
 };
 
+// A variant applies to the current page by its structured Target URL rule
+// ($mp.target) when it has one, and otherwise by its persisted page url.
+var variantMatchesCurrentPage = function(mp) {
+    var target = mp['target'];
+    if (target !== undefined && target !== null) {
+        return urlTargetMatches(target, window && window['location']);
+    }
+    return urlMatchesCurrentPage(mp['url']);
+};
+
 // A stable key for the current page at the granularity visual-change scoping uses
 // (origin + normalized pathname; query/hash ignored). Returns null outside a browser.
 var currentPageKey = function() {
@@ -71,6 +68,14 @@ var currentPageKey = function() {
         return null;
     }
     return loc.protocol + '//' + loc.host + normalizePathname(loc.pathname);
+};
+
+// The key SPA replay dedupes on: the sorted set of matched variants, each
+// identified by flag key and variant key, and whether the editor preview
+// applies. Navigating between pages that match the same variants (e.g. /item/1
+// to /item/2 under one pattern) leaves the applied set untouched.
+var matchedSetKey = function(matchedVariantIds, previewApplies) {
+    return (previewApplies ? 'preview;' : '') + matchedVariantIds.slice().sort().join(',');
 };
 
 /**
@@ -84,7 +89,9 @@ var currentPageKey = function() {
  * @param {function(): Object} [options.getVariantsFunc] current delivered variants
  *   (a Map or any object with forEach), used to replay on navigation and editing
  * @param {function(string, Object)} [options.trackExposureFunc] called with the
- *   flag key and variant the first time a variant is visible on the page
+ *   flag key and variant the first time a variant's page is matched and one of
+ *   its $mp.exposureSelectors is present (or it has none), for every arm alike.
+ *   The variant is a copy carrying 'matched_url', the page url it matched on.
  * @param {Function} [options.applyVisualChangesFunc] engine override for tests
  * @param {Function} [options.revertVisualChangesFunc] engine override for tests
  * @param {Function} [options.onSettledFunc] anti-flicker override for tests
@@ -98,9 +105,9 @@ var VisualExperimentsManager = function(options) {
     this.revertVisualChangesFunc = options.revertVisualChangesFunc || NOOP_FUNC;
     this.onSettledFunc = options.onSettledFunc || NOOP_FUNC;
     this._settled = false;
-    // origin+pathname the set was last (re)applied for, so an SPA navigation that
-    // does not change the matched page is a cheap no-op.
-    this._lastReplayedPageKey = null;
+    // matchedSetKey of the set last (re)applied, so an SPA navigation that does
+    // not change which variants match is a cheap no-op.
+    this._lastAppliedMatchedSetKey = null;
     // experiment_ids whose delivered changes are withheld because an editor
     // session is authoring them; the live preview is the sole driver.
     this._suppressedExperiments = {};
@@ -108,9 +115,14 @@ var VisualExperimentsManager = function(options) {
     // with unrelated experiments on every delivery and navigation.
     this._editorSession = null;
     this._editorPreview = null;
-    // Bumped by onReset so an engine first-apply report for a set applied under
-    // the previous identity is not tracked as the new identity's exposure.
+    // Bumped by every apply and by onReset. An apply whose generation is no
+    // longer current has been replaced (a re-apply, navigation, or a reset of
+    // the visitor), so its remaining exposures and replay state are stale.
     this._applyGeneration = 0;
+    // Waits for the exposure selectors of the last applied set.
+    this._exposureWatcher = null;
+    // Whether the engine holds an applied set that has not been reverted.
+    this._visualChangesApplied = false;
 };
 
 VisualExperimentsManager.prototype.isEnabled = function() {
@@ -190,14 +202,23 @@ VisualExperimentsManager.prototype.onReset = function() {
     this._refresh();
 };
 
-// Re-run page-scoped replay against the already-delivered variants, without a
-// fetch. Deduped so navigating without changing the matched page is a no-op.
+VisualExperimentsManager.prototype._stopExposureWatcher = function() {
+    if (this._exposureWatcher) {
+        this._exposureWatcher.stop();
+        this._exposureWatcher = null;
+    }
+};
+
+// Re-run page-scoped matching against the already-delivered variants, without
+// a fetch, on every navigation. Deduped so a navigation that does not change
+// the matched set is a no-op.
 VisualExperimentsManager.prototype.applyForCurrentPage = function() {
-    var key = currentPageKey();
-    if (key !== null && key === this._lastReplayedPageKey) {
+    var flagsMap = this._currentVariants();
+    var matched = this._matchCurrentPage(flagsMap);
+    if (matched.key === this._lastAppliedMatchedSetKey) {
         return;
     }
-    this._refresh();
+    this._applyForFlags(flagsMap, matched);
 };
 
 // Withhold a single experiment's delivered changes while an editor session is
@@ -234,9 +255,10 @@ VisualExperimentsManager.prototype._revertEditorPreview = function() {
 
 VisualExperimentsManager.prototype._startEditorSession = function(experimentId) {
     var pageKey = currentPageKey();
-    // Repeated starts preserve edits only while authoring the same page.
+    // Repeated starts preserve edits while authoring the same page or any page
+    // the preview applies to.
     if (!experimentId || (this._editorSession && this._editorSession.experimentId === experimentId &&
-        this._editorSession.pageKey === pageKey)) {
+        (this._editorSession.pageKey === pageKey || this._editorPreviewMatchesCurrentPage(this._currentVariants())))) {
         return;
     }
     if (this._editorSession) {
@@ -260,96 +282,178 @@ VisualExperimentsManager.prototype._endEditorSession = function(experimentId) {
 // Re-apply against the current delivered variants. Works before any delivery
 // (and without the flag-fetch APIs) so the editor is usable standalone.
 VisualExperimentsManager.prototype._refresh = function() {
-    var variants = this.getVariants();
-    this._applyForFlags((variants && variants.forEach) ? variants : EMPTY_VARIANTS);
+    this._applyForFlags(this._currentVariants());
 };
 
-// Aggregate $mp.visualChanges across every variant whose $mp.url matches the
-// current page, compose the editor preview, and apply them in a single call.
-// Applying per-variant would let the engine's auto-revert wipe an earlier
-// variant's changes when a later one has its own set.
-VisualExperimentsManager.prototype._applyForFlags = function(flagsMap) {
+VisualExperimentsManager.prototype._currentVariants = function() {
+    var variants = this.getVariants();
+    return (variants && variants.forEach) ? variants : EMPTY_VARIANTS;
+};
+
+// The delivered variants that apply to the current page ($mp.target, or $mp.url
+// when there is no target), skipping experiments withheld for the editor, as
+// [flagKey, variant, $mp] entries, whether the editor preview applies, and the
+// matchedSetKey over both.
+VisualExperimentsManager.prototype._matchCurrentPage = function(flagsMap) {
     var self = this;
-    var generation = this._applyGeneration;
-    var allVisualChanges = [];
-    // Parallel to allVisualChanges: the [flagKey, variant] each mutation came from.
-    var mutationSources = [];
-    // [flagKey, variant] for variants on this page that carry no mutations: a
-    // control arm (or an unedited variant) is exposed by reaching the page.
-    var pageExposures = [];
+    var matches = [];
+    var matchedVariantIds = [];
     flagsMap.forEach(function(variant, flagKey) {
         if (variant && self._suppressedExperiments[variant['experiment_id']]) {
             return;
         }
         var value = variant && variant['value'];
         var mp = value && value['$mp'];
-        if (!mp) {
+        if (!mp || !variantMatchesCurrentPage(mp)) {
             return;
         }
-        if (!urlMatchesCurrentPage(mp['url'])) {
-            return;
-        }
-        var visualChanges = mp['visualChanges'];
-        if (!visualChanges || !visualChanges.length) {
-            // Controls bypass the engine, so check the setting explicitly here.
-            // The disabled engine already prevents treatment exposure callbacks.
-            if (self.isEnabled()) {
-                pageExposures.push([flagKey, variant]);
-            }
-            return;
-        }
-        if (payloadTooLarge(visualChanges)) {
-            logger.error('Ignoring visual changes for ' + flagKey + ' exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
-            return;
-        }
-        allVisualChanges = allVisualChanges.concat(visualChanges);
-        for (var i = 0; i < visualChanges.length; i++) {
-            mutationSources.push([flagKey, variant]);
-        }
+        matches.push([flagKey, variant, mp]);
+        matchedVariantIds.push(JSON.stringify([flagKey, variant['key']]));
     });
-    var preview = this._editorPreview;
-    if (preview && preview.pageKey === currentPageKey()) {
-        if (payloadTooLarge(preview.mutations)) {
-            logger.error('Ignoring editor preview exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
-        } else {
-            // Preview wins any conflicts with live changes. It has no source entries,
-            // so the first-apply callback cannot report preview mutations as exposures.
-            allVisualChanges = allVisualChanges.concat(preview.mutations);
+    var previewApplies = this._editorPreviewMatchesCurrentPage(flagsMap);
+    return {
+        matches: matches,
+        previewApplies: previewApplies,
+        key: matchedSetKey(matchedVariantIds, previewApplies)
+    };
+};
+
+// The editor preview applies on the page where it was authored and on any page
+// a delivered variant of the experiment being authored matches ($mp.target, or
+// $mp.url without one), so it follows the experiment's target across navigation.
+VisualExperimentsManager.prototype._editorPreviewMatchesCurrentPage = function(flagsMap) {
+    if (!this._editorPreview) {
+        return false;
+    }
+    if (this._editorPreview.pageKey === currentPageKey()) {
+        return true;
+    }
+    var session = this._editorSession;
+    var editedVariantMatches = false;
+    if (session) {
+        flagsMap.forEach(function(variant) {
+            var value = variant && variant['experiment_id'] === session.experimentId && variant['value'];
+            var mp = value && value['$mp'];
+            editedVariantMatches = editedVariantMatches || (!!mp && variantMatchesCurrentPage(mp));
+        });
+    }
+    return editedVariantMatches;
+};
+
+// Aggregate $mp.visualChanges across every variant that matches the current
+// page ($mp.target, or $mp.url when there is no target), compose the editor
+// preview, and apply them in a single call.
+// Applying per-variant would let the engine's auto-revert wipe an earlier
+// variant's changes when a later one has its own set.
+// Every matching variant, control or treatment, is exposed by the same rule:
+// the page matched and one of its $mp.exposureSelectors is present (at once or
+// later), or it has none. Whether the engine changed an element is irrelevant,
+// so both arms count the same visitors.
+// matched is the _matchCurrentPage result for flagsMap when the caller already
+// computed it.
+VisualExperimentsManager.prototype._applyForFlags = function(flagsMap, matched) {
+    var self = this;
+    var generation = ++this._applyGeneration;
+    var loc = window && window['location'];
+    var matchedUrl = loc ? _.sanitizeUrl(loc.href) : null;
+    var allVisualChanges = [];
+    // [flagKey, variant, exposureSelectors] for every variant on this page.
+    var pageExposures = [];
+    matched = matched || this._matchCurrentPage(flagsMap);
+    // Recorded before any exposure callback runs: a before_track hook may
+    // navigate, and the nested apply's key must not be overwritten by this one.
+    this._lastAppliedMatchedSetKey = matched.key;
+    for (var m = 0; m < matched.matches.length; m++) {
+        var flagKey = matched.matches[m][0];
+        var variant = matched.matches[m][1];
+        var mp = matched.matches[m][2];
+        var visualChanges = mp['visualChanges'];
+        var hasVisualChanges = visualChanges && visualChanges.length;
+        if (hasVisualChanges && payloadTooLarge(visualChanges)) {
+            logger.error('Ignoring visual changes for ' + flagKey + ' exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
+            continue;
+        }
+        if (self.isEnabled()) {
+            pageExposures.push([flagKey, variant, mp['exposureSelectors']]);
+        }
+        if (hasVisualChanges) {
+            allVisualChanges = allVisualChanges.concat(visualChanges);
         }
     }
-    // Each variant is reported once per applied set, however many of its
-    // mutations land.
+    // Exposures still waiting on a previous set's page are dropped.
+    this._stopExposureWatcher();
+    // Exposure is judged on the page as it was before any treatment changed it,
+    // so a treatment that removes a selector's class or attribute still counts.
+    // A previously applied set is reverted before selectors are checked; the
+    // revert and the apply below run in one task, so no frame shows the page
+    // between them.
+    var checksSelectors = false;
+    _.each(pageExposures, function(source) {
+        if (source[2] && source[2].length) {
+            checksSelectors = true;
+        }
+    });
+    var revertedPreviousSet = false;
+    if (checksSelectors && this._visualChangesApplied) {
+        this.revertVisualChangesFunc();
+        this._visualChangesApplied = false;
+        revertedPreviousSet = true;
+    }
+    var presentBeforeChanges = _.map(pageExposures, function(source) {
+        var selectors = source[2];
+        return !selectors || !selectors.length || anySelectorPresent(selectors);
+    });
+    if (matched.previewApplies) {
+        if (payloadTooLarge(this._editorPreview.mutations)) {
+            logger.error('Ignoring editor preview exceeding ' + MAX_PAYLOAD_LENGTH + ' characters');
+        } else {
+            // Preview wins any conflicts with live changes. Preview mutations belong
+            // to no delivered variant, so they are never reported as exposures.
+            allVisualChanges = allVisualChanges.concat(this._editorPreview.mutations);
+        }
+    }
+    if (allVisualChanges.length) {
+        this.applyVisualChangesFunc(allVisualChanges);
+        this._visualChangesApplied = true;
+    } else if (!revertedPreviousSet) {
+        // No matching live changes or preview, including an empty control preview:
+        // clear the previous set rather than leaving it applied.
+        this.revertVisualChangesFunc();
+        this._visualChangesApplied = false;
+    }
+    var watcher = this._exposureWatcher = new ExposureWatcher();
+    // Each variant is reported once per applied set. A tracking hook may reset
+    // the visitor or navigate, which re-applies; either way this set's
+    // remaining exposures are discarded.
     var reported = [];
     var report = function(source) {
-        if (!source || generation !== self._applyGeneration || _.include(reported, source[0])) {
+        if (generation !== self._applyGeneration || _.include(reported, source[0])) {
             return;
         }
         reported.push(source[0]);
         try {
-            self.trackExposure(source[0], source[1]);
+            self.trackExposure(source[0], _.extend({}, source[1], {'matched_url': matchedUrl}));
         } catch (err) {
             logger.error('Visual exposure tracking failed', err);
         }
     };
-    if (allVisualChanges.length) {
-        // The engine reports each mutation the first time it actually changes an
-        // element (which may be later, once the target renders), so a variant is
-        // only counted as exposed once the user can see it.
-        this.applyVisualChangesFunc(allVisualChanges, function(mutationIndex) {
-            report(mutationSources[mutationIndex]);
-        });
-    } else {
-        // No matching live changes or preview, including an empty control preview:
-        // clear the previous set rather than leaving it applied.
-        this.revertVisualChangesFunc();
+    // Every watch is registered before any immediate report, so an element a
+    // tracking hook inserts while reporting one variant is seen by the others.
+    _.each(pageExposures, function(source, index) {
+        if (!presentBeforeChanges[index]) {
+            watcher.watch(source[2], function() {
+                report(source);
+            });
+        }
+    });
+    _.each(pageExposures, function(source, index) {
+        if (presentBeforeChanges[index]) {
+            report(source);
+        }
+    });
+    if (generation !== this._applyGeneration) {
+        return;
     }
-    // A variant with nothing to apply has no first-apply report, so it is tracked
-    // as soon as the page is matched. A tracking hook may reset the visitor, which
-    // discards that visitor's remaining exposures.
-    for (var k = 0; k < pageExposures.length; k++) {
-        report(pageExposures[k]);
-    }
-    this._lastReplayedPageKey = currentPageKey();
     this.onDeliverySettled();
 };
 

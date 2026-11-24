@@ -16,6 +16,7 @@ import {
     doNotTrackApplies
 } from './opt-out-flag';
 import { CONSENT_MODES, DECISION_OPTED_OUT, DECISION_OBJECTED, readDecision } from './consent-modes';
+import { decisionStorageConfig, storeObjection } from './consent-decisions';
 
 /**
  * @constructor
@@ -43,15 +44,12 @@ OptOutFlagDecisions.prototype.init = function() {
     var localStorageRequested = this.getConfig('opt_out_tracking_persistence_type') === 'localStorage';
     if (localStorageRequested && _.localStorage.is_supported()) {
         if (!this.hasOptedIn({'persistence_type': 'localStorage'}) && this.hasOptedIn({'persistence_type': 'cookie'})) {
-            this.optIn({'enable_persistence': false});
+            this._writeFlag(optIn, {});
         }
         if (!this.hasOptedOut({'persistence_type': 'localStorage'}) && this.hasOptedOut({'persistence_type': 'cookie'})) {
             this.optOut({'clear_persistence': false});
         }
-        this.clear({
-            'persistence_type': 'cookie',
-            'enable_persistence': false
-        });
+        this._writeFlag(clearOptInOut, {'persistence_type': 'cookie'});
     }
 
     if (this.hasOptedOut()) {
@@ -72,7 +70,7 @@ OptOutFlagDecisions.prototype._optsOutByDefault = function() {
 };
 
 /**
- * @returns {string}
+ * @returns {ConsentState}
  */
 OptOutFlagDecisions.prototype.state = function() {
     return CONSENT_MODES[this.mode][this._readDecision()];
@@ -101,6 +99,7 @@ OptOutFlagDecisions.prototype.hasOptedOut = function(options) {
 OptOutFlagDecisions.prototype.optIn = function(options) {
     options = _.extend({'enable_persistence': true}, options);
     this._writeFlag(optIn, options);
+    this._storeObjection(false);
     this._updatePersistence(options);
 };
 
@@ -123,11 +122,21 @@ OptOutFlagDecisions.prototype.optOut = function(options) {
 };
 
 /**
+ * An opt-out here, also stored where 'exempt' reads it, so it holds if the site switches modes.
+ * @param {Object} [options] opt_out_tracking() options
+ */
+OptOutFlagDecisions.prototype.objectTo = function(options) {
+    this.optOut(options);
+    this._storeObjection(true);
+};
+
+/**
  * @param {Object} [options] clear_opt_in_out_tracking() options
  */
 OptOutFlagDecisions.prototype.clear = function(options) {
     options = _.extend({'enable_persistence': true}, options);
     this._writeFlag(clearOptInOut, options);
+    this._storeObjection(false);
     this._updatePersistence(options);
 };
 
@@ -140,6 +149,13 @@ OptOutFlagDecisions.prototype._updatePersistence = function(options) {
     } else if (options['enable_persistence']) {
         this.setPersistenceDisabled(false);
     }
+};
+
+/**
+ * @param {boolean} objected
+ */
+OptOutFlagDecisions.prototype._storeObjection = function(objected) {
+    storeObjection(decisionStorageConfig(this.getConfig), this.getConfig('token'), objected);
 };
 
 /**
@@ -182,7 +198,7 @@ OptOutFlagDecisions.prototype._writeFlag = function(func, options) {
 
 /**
  * @param {Object} [options] persistence_type, cookie_prefix and ignore_dnt to read with
- * @returns {string}
+ * @returns {ConsentDecision}
  */
 OptOutFlagDecisions.prototype._readDecision = function(options) {
     return readDecision(doNotTrackApplies(this.getConfig, options), this._readFlag(options));
